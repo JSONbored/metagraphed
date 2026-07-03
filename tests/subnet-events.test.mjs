@@ -8,7 +8,7 @@ function req(path) {
 
 // D1 mock routing by SQL shape: the subnet-events handler reads account_events
 // filtered by netuid (#1345). A cold/absent DB returns no rows → schema-stable.
-function dbWith({ events } = {}) {
+function dbWith({ events, summaryKinds, summaryRecent } = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
@@ -16,6 +16,15 @@ function dbWith({ events } = {}) {
           bind() {
             return {
               async all() {
+                if (/GROUP BY event_kind ORDER BY event_count DESC/.test(sql))
+                  return { results: summaryKinds || [] };
+                if (
+                  /WHERE netuid = \? AND observed_at >= \?/.test(sql) &&
+                  /ORDER BY block_number DESC, event_index DESC LIMIT \?/.test(
+                    sql,
+                  )
+                )
+                  return { results: summaryRecent || [] };
                 if (/FROM account_events/.test(sql))
                   return { results: events || [] };
                 return { results: [] };
@@ -85,4 +94,47 @@ test("GET /subnets/{netuid}/events is schema-stable when D1 is cold (never 404)"
   assert.equal(body.data.netuid, 7);
   assert.equal(body.data.event_count, 0);
   assert.equal(Array.isArray(body.data.events), true);
+});
+
+test("GET /subnets/{netuid}/event-summary returns windowed kind aggregates", async () => {
+  const env = dbWith({
+    summaryKinds: [
+      {
+        event_kind: "StakeAdded",
+        event_count: 2,
+        hotkey_count: 1,
+        coldkey_count: 1,
+        amount_tao: 3,
+        alpha_amount: 0.5,
+        first_block: 4_000_100,
+        last_block: 4_000_200,
+        first_observed_at: 1_750_008_000_000,
+        last_observed_at: 1_750_009_000_000,
+      },
+    ],
+    summaryRecent: [ROW],
+  });
+  const res = await handleRequest(
+    req("/api/v1/subnets/7/event-summary?window=7d&limit=3"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.data.netuid, 7);
+  assert.equal(body.data.window, "7d");
+  assert.equal(body.data.total_events, 2);
+  assert.equal(body.data.event_kinds[0].category, "stake");
+  assert.equal(body.data.categories[0].event_count, 2);
+  assert.equal(body.data.recent_events[0].event_kind, "NeuronRegistered");
+});
+
+test("GET /subnets/{netuid}/event-summary rejects bad window", async () => {
+  const res = await handleRequest(
+    req("/api/v1/subnets/7/event-summary?window=1y"),
+    {},
+    {},
+  );
+  assert.equal(res.status, 400);
 });

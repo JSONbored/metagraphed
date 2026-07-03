@@ -12,10 +12,12 @@ import {
   formatRegistration,
   buildAccountSummary,
   buildAccountEvents,
+  buildSubnetEventSummary,
   buildAccountSubnets,
   loadAccountSummary,
   loadAccountEvents,
   loadSubnetEvents,
+  loadSubnetEventSummary,
   loadAccountHistory,
   loadAccountExtrinsics,
   loadAccountSubnets,
@@ -1451,6 +1453,199 @@ test("loadSubnetEvents short-circuits an inverted block range before D1", async 
   assert.deepEqual(out.events, []);
   assert.equal(out.next_cursor, null);
   assert.equal(called, false);
+});
+
+test("buildSubnetEventSummary groups event kinds into coarse categories", () => {
+  const out = buildSubnetEventSummary(
+    [
+      {
+        event_kind: "StakeAdded",
+        event_count: "3",
+        hotkey_count: "2",
+        coldkey_count: "1",
+        amount_tao: 1.1 + 2.2,
+        alpha_amount: "0.4",
+        first_block: "100",
+        last_block: "120",
+        first_observed_at: 1_750_000_000_000,
+        last_observed_at: 1_750_000_010_000,
+      },
+      {
+        event_kind: "WeightsSet",
+        event_count: 2,
+        hotkey_count: 1,
+        coldkey_count: 0,
+        amount_tao: null,
+        alpha_amount: null,
+        first_block: 90,
+        last_block: 119,
+        first_observed_at: 1_749_999_000_000,
+        last_observed_at: 1_750_000_005_000,
+      },
+      { event_kind: "", event_count: 99 },
+    ],
+    [
+      {
+        block_number: 120,
+        event_index: 2,
+        event_kind: "StakeAdded",
+        netuid: 7,
+        observed_at: 1_750_000_010_000,
+      },
+    ],
+    7,
+    { window: "7d", limit: 5 },
+  );
+  assert.equal(out.total_events, 5);
+  assert.equal(out.kind_count, 2);
+  assert.equal(out.category_count, 2);
+  assert.equal(out.event_kinds[0].event_kind, "StakeAdded");
+  assert.equal(out.event_kinds[0].amount_tao, 3.3);
+  assert.equal(out.categories[0].category, "stake");
+  assert.equal(out.categories[0].event_count, 3);
+  assert.equal(out.recent_event_count, 1);
+  assert.equal(out.observed_at, "2025-06-15T15:06:50.000Z");
+});
+
+test("buildSubnetEventSummary merges same-category bounds and tie-sorts deterministically", () => {
+  const out = buildSubnetEventSummary(
+    [
+      {
+        event_kind: "StakeAdded",
+        event_count: 2,
+        amount_tao: 1,
+        alpha_amount: 0.1,
+        first_block: 200,
+        last_block: 210,
+        first_observed_at: 1_750_000_200_000,
+        last_observed_at: 1_750_000_210_000,
+      },
+      {
+        event_kind: "StakeRemoved",
+        event_count: 2,
+        amount_tao: 2,
+        alpha_amount: 0.2,
+        first_block: null,
+        last_block: null,
+        first_observed_at: null,
+        last_observed_at: null,
+      },
+      {
+        event_kind: "StakeMoved",
+        event_count: 2,
+        amount_tao: 3,
+        alpha_amount: 0.3,
+        first_block: 150,
+        last_block: 250,
+        first_observed_at: 1_750_000_150_000,
+        last_observed_at: 1_750_000_260_000,
+      },
+      {
+        event_kind: "WeightsSet",
+        event_count: 2,
+        first_block: 180,
+        last_block: 181,
+      },
+      {
+        event_kind: "AxonServed",
+        event_count: 2,
+        first_block: 190,
+        last_block: 191,
+      },
+    ],
+    [{ block_number: 250, event_index: 0, event_kind: "StakeMoved" }],
+    7,
+    { window: "30d", limit: 1 },
+  );
+  assert.deepEqual(
+    out.event_kinds.map((row) => row.event_kind),
+    ["WeightsSet", "AxonServed", "StakeAdded", "StakeMoved", "StakeRemoved"],
+  );
+  assert.deepEqual(
+    out.categories.map((row) => row.category),
+    ["stake", "consensus", "serving"],
+  );
+  assert.deepEqual(
+    {
+      event_count: out.categories[0].event_count,
+      amount_tao: out.categories[0].amount_tao,
+      alpha_amount: out.categories[0].alpha_amount,
+      first_block: out.categories[0].first_block,
+      last_block: out.categories[0].last_block,
+      first_observed_at: out.categories[0].first_observed_at,
+      last_observed_at: out.categories[0].last_observed_at,
+    },
+    {
+      event_count: 6,
+      amount_tao: 6,
+      alpha_amount: 0.6,
+      first_block: 150,
+      last_block: 250,
+      first_observed_at: "2025-06-15T15:09:10.000Z",
+      last_observed_at: "2025-06-15T15:11:00.000Z",
+    },
+  );
+});
+
+test("buildSubnetEventSummary is schema-stable for malformed cold inputs", () => {
+  const out = buildSubnetEventSummary(null, null, 7);
+  assert.equal(out.window, null);
+  assert.equal(out.observed_at, null);
+  assert.equal(out.total_events, 0);
+  assert.equal(out.limit, null);
+  assert.deepEqual(out.categories, []);
+  assert.deepEqual(out.event_kinds, []);
+  assert.deepEqual(out.recent_events, []);
+});
+
+test("buildSubnetEventSummary keeps unknown future kinds in the other category", () => {
+  const out = buildSubnetEventSummary(
+    [{ event_kind: "FutureRuntimeEvent", event_count: 1 }],
+    [],
+    7,
+  );
+  assert.equal(out.event_kinds[0].event_kind, "FutureRuntimeEvent");
+  assert.equal(out.event_kinds[0].category, "other");
+  assert.equal(out.categories[0].category, "other");
+});
+
+test("loadSubnetEventSummary binds the window cutoff and recent-evidence limit", async () => {
+  const calls = [];
+  const out = await loadSubnetEventSummary(
+    async (sql, params) => {
+      calls.push({ sql, params });
+      if (/GROUP BY event_kind/.test(sql)) {
+        return [{ event_kind: "StakeAdded", event_count: 1 }];
+      }
+      return [{ block_number: 10, event_index: 1, event_kind: "StakeAdded" }];
+    },
+    7,
+    { windowLabel: "90d", limit: 50 },
+  );
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].sql, /observed_at >= \?/);
+  assert.match(calls[0].sql, /GROUP BY event_kind/);
+  assert.match(calls[1].sql, /ORDER BY block_number DESC, event_index DESC/);
+  assert.equal(calls[0].params[0], 7);
+  assert.equal(calls[1].params.at(-1), 50);
+  assert.equal(out.window, "90d");
+  assert.equal(out.limit, 50);
+  assert.equal(out.total_events, 1);
+});
+
+test("loadSubnetEventSummary falls back to the default direct-call window", async () => {
+  let cutoff;
+  const out = await loadSubnetEventSummary(
+    async (sql, params) => {
+      if (/GROUP BY event_kind/.test(sql)) cutoff = params[1];
+      return [];
+    },
+    7,
+    { windowLabel: "bogus" },
+  );
+  const expectedCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  assert.ok(Math.abs(cutoff - expectedCutoff) < 1000);
+  assert.equal(out.window, "30d");
 });
 
 test("loadAccountEvents emits a next_cursor only on a full page", async () => {

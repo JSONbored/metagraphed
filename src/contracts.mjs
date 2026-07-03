@@ -1001,6 +1001,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetEventsArtifact",
   ),
   artifact(
+    "subnet-event-summary",
+    "/metagraph/subnets/{netuid}/event-summary.json",
+    "Windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, and a small newest-first evidence slice, served live from D1 at /api/v1/subnets/{netuid}/event-summary (no static file).",
+    "SubnetEventSummaryArtifact",
+  ),
+  artifact(
     "subnet-neuron-history",
     "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
     "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
@@ -2005,6 +2011,23 @@ export const API_ROUTES = [
       { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-event-summary",
+    "GET",
+    "/api/v1/subnets/{netuid}/event-summary",
+    "/metagraph/subnets/{netuid}/event-summary.json",
+    "Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 50 } },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),

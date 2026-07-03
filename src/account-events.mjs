@@ -87,6 +87,39 @@ export const INGESTED_EVENT_KINDS = [
   "Transfer",
 ];
 
+export const SUBNET_EVENT_SUMMARY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW = "30d";
+export const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT = 10;
+export const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX = 50;
+
+const EVENT_KIND_CATEGORIES = {
+  NeuronRegistered: "registration",
+  NeuronDeregistered: "registration",
+  NetworkAdded: "registration",
+  NetworkRemoved: "registration",
+  RegistrationAllowed: "registration",
+  PowRegistrationAllowed: "registration",
+  Faucet: "registration",
+  StakeAdded: "stake",
+  StakeRemoved: "stake",
+  StakeMoved: "stake",
+  StakeTransferred: "stake",
+  AxonServed: "serving",
+  PrometheusServed: "serving",
+  AxonInfoRemoved: "serving",
+  WeightsSet: "consensus",
+  RootClaimed: "consensus",
+  DelegateAdded: "delegation",
+  TakeDecreased: "delegation",
+  TakeIncreased: "delegation",
+  HotkeySwapped: "identity",
+  ColdkeySwapped: "identity",
+  ColdkeySwapScheduled: "identity",
+  SubnetOwnerHotkeySet: "governance",
+  BurnSet: "governance",
+  Transfer: "transfer",
+};
+
 function toIso(ms) {
   // D1 can return the INTEGER observed_at as a numeric string; coerce first, and
   // require n > 0 so a null/blank/zero/invalid cell stays null instead of epoch
@@ -116,6 +149,19 @@ function toTaoOrNull(value) {
   if (value == null) return null;
   const n = Number(value);
   return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
+}
+
+function toTaoOrZero(value) {
+  return toTaoOrNull(value) ?? 0;
+}
+
+function toCount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+}
+
+function eventKindCategory(kind) {
+  return EVENT_KIND_CATEGORIES[kind] ?? "other";
 }
 
 // One D1 account_events row → a clean API event object (#1347 consumes this).
@@ -444,6 +490,187 @@ export async function loadSubnetEvents(
     limit: lim,
     offset: off,
     nextCursor,
+  });
+}
+
+function emptyCategory(category) {
+  return {
+    category,
+    event_count: 0,
+    kind_count: 0,
+    amount_tao: 0,
+    alpha_amount: 0,
+    first_block: null,
+    last_block: null,
+    first_observed_at: null,
+    last_observed_at: null,
+  };
+}
+
+function mergeObserved(existing, next, choose) {
+  const nextValue = Number(next);
+  if (!Number.isFinite(nextValue) || nextValue <= 0) return existing;
+  if (existing == null) return nextValue;
+  return choose(existing, nextValue);
+}
+
+// Windowed event summary for one subnet: compact kind/category counts plus a
+// small newest-first evidence slice. This complements /subnets/{netuid}/events,
+// which exposes the raw paginated feed.
+export function buildSubnetEventSummary(
+  kindRows,
+  recentRows,
+  netuid,
+  { window, limit } = {},
+) {
+  const eventKinds = [];
+  const categories = new Map();
+  let latestObserved = null;
+  for (const row of Array.isArray(kindRows) ? kindRows : []) {
+    const kind =
+      typeof row?.event_kind === "string" && row.event_kind.length > 0
+        ? row.event_kind
+        : null;
+    if (!kind) continue;
+    const category = eventKindCategory(kind);
+    const eventCount = toCount(row.event_count);
+    const amountTao = toTaoOrZero(row.amount_tao);
+    const alphaAmount = toTaoOrZero(row.alpha_amount);
+    const firstObservedMs = mergeObserved(
+      null,
+      row.first_observed_at,
+      Math.min,
+    );
+    const lastObservedMs = mergeObserved(null, row.last_observed_at, Math.max);
+    const shaped = {
+      event_kind: kind,
+      category,
+      event_count: eventCount,
+      hotkey_count: toCount(row.hotkey_count),
+      coldkey_count: toCount(row.coldkey_count),
+      amount_tao: amountTao,
+      alpha_amount: alphaAmount,
+      first_block: toBlockNumber(row.first_block),
+      last_block: toBlockNumber(row.last_block),
+      first_observed_at: toIso(firstObservedMs),
+      last_observed_at: toIso(lastObservedMs),
+    };
+    eventKinds.push(shaped);
+    const summary = categories.get(category) ?? emptyCategory(category);
+    summary.event_count += eventCount;
+    summary.kind_count += 1;
+    summary.amount_tao = toTaoOrZero(summary.amount_tao + amountTao);
+    summary.alpha_amount = toTaoOrZero(summary.alpha_amount + alphaAmount);
+    summary.first_block =
+      summary.first_block == null
+        ? shaped.first_block
+        : shaped.first_block == null
+          ? summary.first_block
+          : Math.min(summary.first_block, shaped.first_block);
+    summary.last_block =
+      summary.last_block == null
+        ? shaped.last_block
+        : shaped.last_block == null
+          ? summary.last_block
+          : Math.max(summary.last_block, shaped.last_block);
+    summary.first_observed_at = toIso(
+      mergeObserved(
+        summary.first_observed_at == null
+          ? null
+          : Date.parse(summary.first_observed_at),
+        firstObservedMs,
+        Math.min,
+      ),
+    );
+    summary.last_observed_at = toIso(
+      mergeObserved(
+        summary.last_observed_at == null
+          ? null
+          : Date.parse(summary.last_observed_at),
+        lastObservedMs,
+        Math.max,
+      ),
+    );
+    categories.set(category, summary);
+    latestObserved = mergeObserved(latestObserved, lastObservedMs, Math.max);
+  }
+  eventKinds.sort(
+    (a, b) =>
+      b.event_count - a.event_count ||
+      a.category.localeCompare(b.category) ||
+      a.event_kind.localeCompare(b.event_kind),
+  );
+  const categoryList = [...categories.values()].sort(
+    (a, b) =>
+      b.event_count - a.event_count || a.category.localeCompare(b.category),
+  );
+  const recentEvents = (Array.isArray(recentRows) ? recentRows : [])
+    .map(formatAccountEvent)
+    .filter(Boolean);
+  for (const event of recentEvents) {
+    latestObserved = mergeObserved(
+      latestObserved,
+      event.observed_at == null ? null : Date.parse(event.observed_at),
+      Math.max,
+    );
+  }
+  return {
+    schema_version: 1,
+    netuid,
+    window: window ?? null,
+    observed_at: toIso(latestObserved),
+    total_events: eventKinds.reduce((sum, row) => sum + row.event_count, 0),
+    kind_count: eventKinds.length,
+    category_count: categoryList.length,
+    recent_event_count: recentEvents.length,
+    limit: limit ?? null,
+    categories: categoryList,
+    event_kinds: eventKinds,
+    recent_events: recentEvents,
+  };
+}
+
+export async function loadSubnetEventSummary(
+  d1,
+  netuid,
+  {
+    windowLabel = DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
+    limit = SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  } = {},
+) {
+  const effectiveWindowLabel = Object.hasOwn(
+    SUBNET_EVENT_SUMMARY_WINDOWS,
+    windowLabel,
+  )
+    ? windowLabel
+    : DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
+  const days = SUBNET_EVENT_SUMMARY_WINDOWS[effectiveWindowLabel];
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const lim = clampLimit(limit, {
+    defaultLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+    maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  });
+  const kindRows = await d1(
+    "SELECT event_kind, COUNT(*) AS event_count, " +
+      "COUNT(DISTINCT hotkey) AS hotkey_count, " +
+      "COUNT(DISTINCT coldkey) AS coldkey_count, " +
+      "COALESCE(SUM(amount_tao), 0) AS amount_tao, " +
+      "COALESCE(SUM(alpha_amount), 0) AS alpha_amount, " +
+      "MIN(block_number) AS first_block, MAX(block_number) AS last_block, " +
+      "MIN(observed_at) AS first_observed_at, MAX(observed_at) AS last_observed_at " +
+      "FROM account_events WHERE netuid = ? AND observed_at >= ? " +
+      "GROUP BY event_kind ORDER BY event_count DESC, event_kind ASC",
+    [netuid, cutoff],
+  );
+  const recentRows = await d1(
+    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events ` +
+      "WHERE netuid = ? AND observed_at >= ? " +
+      "ORDER BY block_number DESC, event_index DESC LIMIT ?",
+    [netuid, cutoff, lim],
+  );
+  return buildSubnetEventSummary(kindRows, recentRows, netuid, {
+    window: effectiveWindowLabel,
+    limit: lim,
   });
 }
 

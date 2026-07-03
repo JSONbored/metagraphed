@@ -146,6 +146,24 @@
         "https://api.blockmachine.io/openapi.json"
       ],
       "url": "https://api.blockmachine.io/epochs/latest-finalized"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-data-artifact-api-blockmachine-io",
+      "kind": "data-artifact",
+      "name": "BlockMachine current-epoch snapshot",
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "statxc"
+      },
+      "source_urls": [
+        "https://blockmachine.io/",
+        "https://api.blockmachine.io/openapi.json"
+      ],
+      "url": "https://api.blockmachine.io/epochs/current"
     }
   ],
   "website_url": "https://blockmachine.io/"

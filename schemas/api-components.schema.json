@@ -12963,6 +12963,167 @@
           }
         ]
       },
+      "SubnetEventCategorySummary": {
+        "additionalProperties": false,
+        "description": "One coarse event-category aggregate in a subnet's windowed account_events summary.",
+        "properties": {
+          "alpha_amount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "amount_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "category": {
+            "enum": [
+              "registration",
+              "stake",
+              "serving",
+              "consensus",
+              "delegation",
+              "identity",
+              "governance",
+              "transfer",
+              "other"
+            ],
+            "type": "string"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "first_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "last_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "event_count",
+          "kind_count",
+          "amount_tao",
+          "alpha_amount",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
+      "SubnetEventKindSummary": {
+        "additionalProperties": false,
+        "description": "One event-kind aggregate in a subnet's windowed account_events summary.",
+        "properties": {
+          "alpha_amount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "amount_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "category": {
+            "enum": [
+              "registration",
+              "stake",
+              "serving",
+              "consensus",
+              "delegation",
+              "identity",
+              "governance",
+              "transfer",
+              "other"
+            ],
+            "type": "string"
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kind": {
+            "type": "string"
+          },
+          "first_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hotkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "last_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "event_kind",
+          "category",
+          "event_count",
+          "hotkey_count",
+          "coldkey_count",
+          "amount_tao",
+          "alpha_amount",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
       "SubnetEventsArtifact": {
         "additionalProperties": true,
         "description": "First-party chain-event stream for one subnet (#1345 block explorer), newest first, from the account_events D1 tier filtered by netuid (registrations, stake, weights, axon, delegation, lifecycle, transfers). Served live at /api/v1/subnets/{netuid}/events (no static file).",
@@ -13001,6 +13162,87 @@
           "netuid",
           "event_count",
           "events"
+        ],
+        "type": "object"
+      },
+      "SubnetEventSummaryArtifact": {
+        "additionalProperties": true,
+        "description": "Windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, and a small newest-first evidence slice. Served live at /api/v1/subnets/{netuid}/event-summary (no static file).",
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEventCategorySummary"
+            },
+            "type": "array"
+          },
+          "category_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEventKindSummary"
+            },
+            "type": "array"
+          },
+          "kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "netuid": {
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recent_event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recent_events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "total_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "total_events",
+          "kind_count",
+          "category_count",
+          "recent_event_count",
+          "limit",
+          "categories",
+          "event_kinds",
+          "recent_events"
         ],
         "type": "object"
       },

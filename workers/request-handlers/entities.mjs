@@ -23,6 +23,7 @@ import {
   DAY_PATTERN,
   FEED_PAGINATION,
   parseDateRange,
+  parseLimitParam,
   parseNonNegativeIntParam,
   parsePagination,
 } from "../request-params.mjs";
@@ -61,10 +62,15 @@ import {
 } from "../../src/neuron-history.mjs";
 import {
   INGESTED_EVENT_KINDS,
+  DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  SUBNET_EVENT_SUMMARY_WINDOWS,
   buildAccountHistory,
   loadAccountSummary,
   loadAccountEvents,
   loadSubnetEvents,
+  loadSubnetEventSummary,
   loadAccountExtrinsics,
   loadAccountTransfers,
   loadAccountSubnets,
@@ -1581,6 +1587,48 @@ export async function handleSubnetEvents(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/events.json`,
         data.events[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/event-summary: compact windowed account_events
+// aggregates by kind/category plus a small newest-first evidence slice. This is
+// the dashboard-friendly companion to the raw /events feed.
+export async function handleSubnetEventSummary(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowLabel =
+    url.searchParams.get("window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      SUBNET_EVENT_SUMMARY_WINDOWS,
+      windowLabel,
+    )
+  ) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `window must be one of ${Object.keys(SUBNET_EVENT_SUMMARY_WINDOWS).join(", ")}.`,
+    });
+  }
+  const parsedLimit = parseLimitParam(url, {
+    defaultLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+    maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  });
+  if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
+  const data = await loadSubnetEventSummary(d1Runner(env), netuid, {
+    windowLabel,
+    limit: parsedLimit.limit,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/event-summary.json`,
+        data.observed_at,
       ),
     },
     "short",

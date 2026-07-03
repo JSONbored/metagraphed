@@ -12985,6 +12985,167 @@
           }
         ]
       },
+      "SubnetEventCategorySummary": {
+        "additionalProperties": false,
+        "description": "One coarse event-category aggregate in a subnet's windowed account_events summary.",
+        "properties": {
+          "alpha_amount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "amount_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "category": {
+            "enum": [
+              "registration",
+              "stake",
+              "serving",
+              "consensus",
+              "delegation",
+              "identity",
+              "governance",
+              "transfer",
+              "other"
+            ],
+            "type": "string"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "first_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "last_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "event_count",
+          "kind_count",
+          "amount_tao",
+          "alpha_amount",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
+      "SubnetEventKindSummary": {
+        "additionalProperties": false,
+        "description": "One event-kind aggregate in a subnet's windowed account_events summary.",
+        "properties": {
+          "alpha_amount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "amount_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "category": {
+            "enum": [
+              "registration",
+              "stake",
+              "serving",
+              "consensus",
+              "delegation",
+              "identity",
+              "governance",
+              "transfer",
+              "other"
+            ],
+            "type": "string"
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kind": {
+            "type": "string"
+          },
+          "first_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hotkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "last_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "event_kind",
+          "category",
+          "event_count",
+          "hotkey_count",
+          "coldkey_count",
+          "amount_tao",
+          "alpha_amount",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
       "SubnetEventsArtifact": {
         "additionalProperties": true,
         "description": "First-party chain-event stream for one subnet (#1345 block explorer), newest first, from the account_events D1 tier filtered by netuid (registrations, stake, weights, axon, delegation, lifecycle, transfers). Served live at /api/v1/subnets/{netuid}/events (no static file).",
@@ -13023,6 +13184,87 @@
           "netuid",
           "event_count",
           "events"
+        ],
+        "type": "object"
+      },
+      "SubnetEventSummaryArtifact": {
+        "additionalProperties": true,
+        "description": "Windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, and a small newest-first evidence slice. Served live at /api/v1/subnets/{netuid}/event-summary (no static file).",
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEventCategorySummary"
+            },
+            "type": "array"
+          },
+          "category_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEventKindSummary"
+            },
+            "type": "array"
+          },
+          "kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "netuid": {
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recent_event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recent_events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "total_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "total_events",
+          "kind_count",
+          "category_count",
+          "recent_event_count",
+          "limit",
+          "categories",
+          "event_kinds",
+          "recent_events"
         ],
         "type": "object"
       },
@@ -33840,6 +34082,199 @@
         "tags": [
           "endpoints",
           "subnets"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/event-summary": {
+      "get": {
+        "operationId": "subnetEventSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "categories": [
+                      {
+                        "alpha_amount": 0.5,
+                        "amount_tao": 0.5,
+                        "category": "registration",
+                        "event_count": 1,
+                        "first_block": 5000000,
+                        "first_observed_at": "2026-06-01T00:00:00.000Z",
+                        "kind_count": 1,
+                        "last_block": 5000000,
+                        "last_observed_at": "2026-06-01T00:00:00.000Z"
+                      }
+                    ],
+                    "category_count": 1,
+                    "event_kinds": [
+                      {
+                        "alpha_amount": 0.5,
+                        "amount_tao": 0.5,
+                        "category": "registration",
+                        "coldkey_count": 1,
+                        "event_count": 1,
+                        "event_kind": "example",
+                        "first_block": 5000000,
+                        "first_observed_at": "2026-06-01T00:00:00.000Z",
+                        "hotkey_count": 1,
+                        "last_block": 5000000,
+                        "last_observed_at": "2026-06-01T00:00:00.000Z"
+                      }
+                    ],
+                    "kind_count": 1,
+                    "limit": 1,
+                    "netuid": 7,
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "recent_event_count": 1,
+                    "recent_events": [
+                      {
+                        "block_number": 5000000,
+                        "event_kind": "example"
+                      }
+                    ],
+                    "schema_version": 1,
+                    "total_events": 1,
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetEventSummaryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
+        "tags": [
+          "subnets",
+          "analytics"
         ]
       }
     },
