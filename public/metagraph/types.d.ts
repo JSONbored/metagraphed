@@ -1728,7 +1728,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier. */
+        /** Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier. Pass ?format=csv to download the ranked neuron rows as CSV. */
         get: operations["subnetYield"];
         put?: never;
         post?: never;
@@ -19928,7 +19928,10 @@ export interface operations {
     };
     subnetYield: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
             header?: never;
             path: {
                 netuid: number;
@@ -19937,7 +19940,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -20014,6 +20017,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetYieldArtifact"];
                     };
+                    /**
+                     * @example uid,hotkey,role,stake_tao,emission_tao,yield,vs_median
+                     *     0,hk_sample,validator,1000,22.1,0.0221,above
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

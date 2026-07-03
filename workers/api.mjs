@@ -92,6 +92,7 @@ import {
   canonicalGlobalValidatorsCachePath,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
+  canonicalSubnetYieldCachePath,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -1402,11 +1403,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     // live from the neurons D1 tier, like the sibling metagraph route.
     const yieldMatch = SUBNET_YIELD_PATH_PATTERN.exec(resolved.url.pathname);
     if (yieldMatch) {
-      return handleSubnetYield(
+      return withNeuronsEdgeCache(
         request,
+        ctx,
         env,
         Number(yieldMatch[1]),
-        resolved.url,
+        "subnet-yield",
+        () =>
+          handleSubnetYield(request, env, Number(yieldMatch[1]), resolved.url),
+        canonicalSubnetYieldCachePath(resolved.url, request),
       );
     }
     // Reward-distribution + score-spread over the current neurons snapshot —

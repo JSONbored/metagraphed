@@ -991,7 +991,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-yield",
     "/metagraph/subnets/{netuid}/yield.json",
-    "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file).",
+    "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield; pass ?format=csv to download the ranked neuron rows as CSV (no static file).",
     "SubnetYieldArtifact",
   ),
   artifact(
@@ -1967,10 +1967,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/yield",
     "/metagraph/subnets/{netuid}/yield.json",
-    "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier.",
+    "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier. Pass ?format=csv to download the ranked neuron rows as CSV.",
     "short",
     ["subnets", "analytics"],
-    [],
+    csvRouteQuery(),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3196,6 +3196,12 @@ function csvExampleForRoute(entry) {
     return [
       "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       "2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752",
+    ].join("\r\n");
+  }
+  if (entry.id === "subnet-yield") {
+    return [
+      "uid,hotkey,role,stake_tao,emission_tao,yield,vs_median",
+      "0,hk_sample,validator,1000,22.1,0.0221,above",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";
