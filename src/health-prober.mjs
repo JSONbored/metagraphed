@@ -253,7 +253,12 @@ export function workerWebSocketConnector(fetchImpl = fetch) {
         }
       }
 
-      fetchImpl(httpUrl, { headers: { Upgrade: "websocket" } })
+      fetchImpl(httpUrl, {
+        headers: { Upgrade: "websocket" },
+        // Never auto-follow an upgrade redirect: only the initial WSS URL passed the
+        // SSRF guard, so following a 3xx would open a socket to an unvetted host.
+        redirect: "manual",
+      })
         .then((response) => {
           socket = response.webSocket;
           if (!socket) {
