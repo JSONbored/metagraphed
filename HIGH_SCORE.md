@@ -6,7 +6,8 @@ Use this checklist before opening any PR against `JSONbored/metagraphed`.
 
 ```bash
 git fetch upstream main
-git checkout -B update-pr-workflow upstream/main
+export PR_BRANCH="update-pr-workflow"
+git checkout -B "$PR_BRANCH" upstream/main
 git status
 ```
 
@@ -71,7 +72,7 @@ Before creating the PR diff, compare your target path(s) to open PR changed file
 - **Surface updates** (`registry/subnets/...` only):
   - `npm run validate:surface -- registry/subnets/<slug>.json`
   - `npm run scan:public-safety`
-  - Ensure `git diff --stat` shows only the subnet manifest + one optional `review` edit.
+  - Ensure `git diff --stat` shows only the subnet manifest file.
 - **Code/schema changes**:
   - Make changes in `src/`, `schemas/`, scripts, etc.
   - Run required tests and `npm run build`.
@@ -82,7 +83,8 @@ Before creating the PR diff, compare your target path(s) to open PR changed file
 
 PR body should include:
 
-- Summary, proof links (`url` + `source_url`), local validate commands.
+- For surface PRs: summary, proof links (`url` + `source_url`), and local validate commands.
+- For code/schema PRs: include validation and test commands plus artifact scope.
 - Duplicate check result with open PR/issue review (if any overlap).
 - Conventional commit subject style and no AI/agent attribution.
 
