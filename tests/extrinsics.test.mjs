@@ -144,6 +144,11 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
+test("formatExtrinsic rejects blank chain-position cells to null", () => {
+  assert.equal(formatExtrinsic({ block_number: "" }).block_number, null);
+  assert.equal(formatExtrinsic({ extrinsic_index: "   " }).extrinsic_index, null);
+});
+
 test("formatExtrinsic drops an out-of-range observed_at instead of throwing", () => {
   // A finite but out-of-range epoch (beyond the ±8.64e15 ms JS Date limit) would
   // make new Date(n).toISOString() throw a RangeError and 500 the extrinsics feed.
