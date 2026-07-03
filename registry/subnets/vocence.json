@@ -1,0 +1,54 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Vocence",
+  "netuid": 78,
+  "schema_version": 1,
+  "slug": "sn-78",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-78-vocence-subnet-api",
+      "kind": "subnet-api",
+      "name": "Vocence developer API health endpoint",
+      "notes": "Public health endpoint for the official Vocence developer API.",
+      "provider": "vocence",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "daedalus-icarus"
+      },
+      "source_urls": [
+        "https://api.vocence.ai/openapi.json",
+        "https://github.com/vocence-78/vocence/blob/master/vocence/gateway/http/service/endpoints/status.py"
+      ],
+      "url": "https://api.vocence.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-78-vocence-openapi",
+      "kind": "openapi",
+      "name": "Vocence Developer API OpenAPI",
+      "notes": "Official machine-readable OpenAPI spec for the Vocence developer API.",
+      "provider": "vocence",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "daedalus-icarus"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.vocence.ai/openapi.json",
+      "source_urls": [
+        "https://www.vocence.ai/docs/api",
+        "https://github.com/vocence-78/vocence/blob/master/vocence/gateway/http/service/app.py"
+      ],
+      "url": "https://api.vocence.ai/openapi.json"
+    }
+  ]
+}
