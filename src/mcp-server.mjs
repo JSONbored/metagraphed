@@ -32,6 +32,12 @@ import {
   loadGlobalOperationalHealth,
 } from "./global-operational-health.mjs";
 import {
+  GET_HEALTH_HISTORY_INSTRUCTIONS,
+  GET_HEALTH_HISTORY_MCP_TOOL,
+  GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
+  loadHealthHistory,
+} from "./health-history-mcp.mjs";
+import {
   loadChainConcentration,
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
@@ -191,7 +197,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.20.0";
+export const MCP_SERVER_VERSION = "1.21.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -260,6 +266,7 @@ export const MCP_INSTRUCTIONS =
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, " +
   GET_NETWORK_HEALTH_INSTRUCTIONS +
+  GET_HEALTH_HISTORY_INSTRUCTIONS +
   "get_health_trends the all-subnet 7d/30d " +
   "uptime + latency matrix, get_subnet_health_trends one subnet's per-surface " +
   "health trends, get_subnet_health_percentiles its " +
@@ -1552,6 +1559,21 @@ export const MCP_TOOLS = [
         },
         { contractVersion: () => mcpContractVersion(ctx) },
       );
+    },
+  },
+  {
+    ...GET_HEALTH_HISTORY_MCP_TOOL,
+    async handler(args, ctx) {
+      try {
+        return await loadHealthHistory(ctx, args, {
+          readArtifact: loadArtifactData,
+        });
+      } catch (err) {
+        if (err?.healthHistoryMcp) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
     },
   },
   {
@@ -5141,6 +5163,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
+  get_health_history: GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
     additionalProperties: true,
