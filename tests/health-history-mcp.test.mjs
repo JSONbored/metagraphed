@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import { latestArtifactDate } from "../scripts/lib.mjs";
+import * as healthHistoryMcp from "../src/health-history-mcp.mjs";
 import {
   GET_HEALTH_HISTORY_INSTRUCTIONS,
   GET_HEALTH_HISTORY_MCP_TOOL,
@@ -40,16 +41,12 @@ function makeCtx() {
   return { env: {} };
 }
 
-function makeDeps({ blob = HISTORY_BLOB, missing = false } = {}) {
+function makeDeps({ blob = HISTORY_BLOB, artifact = blob } = {}) {
   return {
     readArtifact: async (_ctx, path) => {
-      if (missing) {
-        const err = healthHistoryMcpError("not_found", "missing");
-        throw err;
-      }
-      if (path.endsWith(`${blob.date}.json`)) return blob;
-      const err = healthHistoryMcpError("not_found", "missing");
-      throw err;
+      if (artifact == null) return null;
+      if (path.endsWith(`${blob.date}.json`)) return artifact;
+      return null;
     },
   };
 }
@@ -58,22 +55,35 @@ describe("health-history-mcp — healthHistoryQueryUrl", () => {
   test("maps health-surfaces list-query args onto the internal URL", () => {
     const url = healthHistoryQueryUrl({
       netuid: 7,
+      kind: "openapi",
+      provider: "allways",
       status: "ok",
+      classification: "live",
       sort: "latency_ms",
       order: "desc",
+      fields: "netuid,surface_id",
       limit: 25,
       cursor: 1,
     });
     assert.equal(url.searchParams.get("netuid"), "7");
+    assert.equal(url.searchParams.get("kind"), "openapi");
+    assert.equal(url.searchParams.get("provider"), "allways");
     assert.equal(url.searchParams.get("status"), "ok");
+    assert.equal(url.searchParams.get("classification"), "live");
     assert.equal(url.searchParams.get("sort"), "latency_ms");
+    assert.equal(url.searchParams.get("order"), "desc");
+    assert.equal(url.searchParams.get("fields"), "netuid,surface_id");
     assert.equal(url.searchParams.get("limit"), "25");
+    assert.equal(url.searchParams.get("cursor"), "1");
   });
 
-  test("rejects invalid netuid and malformed enums", () => {
+  test("rejects invalid netuid, cursor, and malformed enums", () => {
     for (const [args, pattern] of [
       [{ netuid: -1 }, /netuid must be a non-negative integer/],
+      [{ cursor: -1 }, /cursor must be a non-negative integer/],
       [{ status: "alive" }, /must be one of:/],
+      [{ provider: "   " }, /must be a non-empty string/],
+      [{ fields: 123 }, /must be a non-empty string/],
     ]) {
       assert.throws(
         () => healthHistoryQueryUrl(args),
@@ -86,6 +96,11 @@ describe("health-history-mcp — healthHistoryQueryUrl", () => {
       );
     }
   });
+
+  test("clamps a non-numeric limit to the default", () => {
+    const url = healthHistoryQueryUrl({ limit: "50" });
+    assert.equal(url.searchParams.get("limit"), "100");
+  });
 });
 
 describe("health-history-mcp — loadHealthHistory", () => {
@@ -95,7 +110,7 @@ describe("health-history-mcp — loadHealthHistory", () => {
         loadHealthHistory(
           makeCtx(),
           { date: "June" },
-          makeDeps({ missing: true }),
+          makeDeps({ artifact: null }),
         ),
       /date must be a YYYY-MM-DD day/,
     );
@@ -113,20 +128,70 @@ describe("health-history-mcp — loadHealthHistory", () => {
     assert.equal(typeof out.summary.incident_count, "number");
   });
 
-  test("maps artifact misses to not_found", async () => {
+  test("returns not_found when the dated artifact is absent", async () => {
     await assert.rejects(
       () =>
         loadHealthHistory(
           makeCtx(),
           { date: HISTORY_BLOB.date },
-          makeDeps({ missing: true }),
+          makeDeps({ artifact: null }),
         ),
       (err) => {
         assert.equal(err.healthHistoryMcp, true);
         assert.equal(err.code, "not_found");
+        assert.match(err.message, /No health-history snapshot/);
         return true;
       },
     );
+  });
+
+  test("surfaces invalid_params from list-query validation", async () => {
+    await assert.rejects(
+      () =>
+        loadHealthHistory(
+          makeCtx(),
+          { date: HISTORY_BLOB.date, fields: "netuid,not_a_field" },
+          makeDeps(),
+        ),
+      (err) => {
+        assert.equal(err.healthHistoryMcp, true);
+        assert.equal(err.code, "invalid_params");
+        return true;
+      },
+    );
+  });
+
+  test("pages with limit and echoes next_cursor when more rows remain", async () => {
+    const out = await loadHealthHistory(
+      makeCtx(),
+      {
+        date: HISTORY_BLOB.date,
+        limit: 1,
+        sort: "netuid",
+        order: "asc",
+      },
+      makeDeps(),
+    );
+    assert.equal(out.returned, 1);
+    assert.equal(out.total, 2);
+    assert.equal(out.limit, 1);
+    assert.equal(out.next_cursor, 1);
+    assert.equal(out.sort, "netuid");
+    assert.equal(out.order, "asc");
+  });
+
+  test("defaults pagination totals when the list-query meta omits page fields", async () => {
+    const out = await loadHealthHistory(
+      makeCtx(),
+      { date: HISTORY_BLOB.date },
+      makeDeps(),
+    );
+    assert.equal(out.surfaces.length, 2);
+    assert.equal(out.total, 2);
+    assert.equal(out.returned, 2);
+    assert.equal(out.limit, 2);
+    assert.equal(out.cursor, 0);
+    assert.equal(out.next_cursor, null);
   });
 });
 
@@ -145,5 +210,43 @@ describe("health-history-mcp — MCP metadata", () => {
     const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
     assert.ok(tool?.handler);
     assert.equal(tool.title, GET_HEALTH_HISTORY_MCP_TOOL.title);
+  });
+
+  test("get_health_history handler maps healthHistoryMcp loader errors", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
+    const err = healthHistoryMcpError("invalid_params", "bad filter");
+    const spy = vi
+      .spyOn(healthHistoryMcp, "loadHealthHistory")
+      .mockRejectedValue(err);
+    try {
+      await assert.rejects(
+        () => tool.handler({ date: HISTORY_BLOB.date }, { env: {} }),
+        (thrown) => {
+          assert.equal(thrown.toolError, true);
+          assert.equal(thrown.code, "invalid_params");
+          assert.match(thrown.message, /bad filter/);
+          return true;
+        },
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("get_health_history handler rethrows unexpected loader failures", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
+    await assert.rejects(
+      () =>
+        tool.handler(
+          { date: HISTORY_BLOB.date },
+          {
+            env: {},
+            readArtifact: async () => {
+              throw new Error("kaboom");
+            },
+          },
+        ),
+      /kaboom/,
+    );
   });
 });
