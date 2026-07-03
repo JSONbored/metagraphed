@@ -271,6 +271,25 @@
         "https://verathos.ai/openapi.json"
       ],
       "url": "https://verathos.ai/api/models/presets"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-subnet-api",
+      "kind": "subnet-api",
+      "name": "Verathos circulating-supply API",
+      "notes": "Public no-auth GET returning the subnet's circulating supply. Documented in the subnet's own OpenAPI (api.verathos.ai/openapi.json); same host as the existing subnet-api (/v1/models) surface.",
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.verathos.ai/openapi.json",
+        "https://verathos.ai/docs"
+      ],
+      "url": "https://api.verathos.ai/v1/supply/circulating"
     }
   ],
   "website_url": "https://verathos.ai/"
