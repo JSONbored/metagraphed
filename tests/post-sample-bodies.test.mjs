@@ -22,7 +22,12 @@ describe("post-sample-bodies", () => {
   });
 
   it("buildPostCurl never emits an empty object for body-required routes", () => {
-    const curl = buildPostCurl(graphqlRoute, { paths: {} }, "https://api.metagraph.sh", "/api/v1/graphql");
+    const curl = buildPostCurl(
+      graphqlRoute,
+      { paths: {} },
+      "https://api.metagraph.sh",
+      "/api/v1/graphql",
+    );
     expect(curl).toContain('"query":');
     expect(curl).toContain("subnet(netuid: 7)");
     expect(curl).not.toContain("-d '{}'");

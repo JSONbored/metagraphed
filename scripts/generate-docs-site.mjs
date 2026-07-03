@@ -28,10 +28,7 @@ import {
   sampleQueryParams,
   substituteRoutePlaceholders,
 } from "./lib/route-samples.mjs";
-import {
-  buildPostCurl,
-  samplePostBody,
-} from "./lib/post-sample-bodies.mjs";
+import { buildPostCurl, samplePostBody } from "./lib/post-sample-bodies.mjs";
 import { repoRoot } from "./lib.mjs";
 
 const API_BASE = "https://api.metagraph.sh";
