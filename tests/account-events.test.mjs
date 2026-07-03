@@ -114,6 +114,10 @@ test("INGESTED_EVENT_KINDS accepts PrometheusServed for kind filters", () => {
   assert.ok(INGESTED_EVENT_KINDS.includes("PrometheusServed"));
 });
 
+test("INGESTED_EVENT_KINDS accepts AxonInfoRemoved for kind filters", () => {
+  assert.ok(INGESTED_EVENT_KINDS.includes("AxonInfoRemoved"));
+});
+
 test("INGESTED_EVENT_KINDS accepts BurnSet (subnet registration cost) for kind filters", () => {
   assert.ok(INGESTED_EVENT_KINDS.includes("BurnSet"));
 });

@@ -367,6 +367,28 @@ class NeuronDeregisteredExtractorTest(unittest.TestCase):
         self.assertIsNone(_extract("NeuronDeregistered", []))
 
 
+class AxonInfoRemovedExtractorTest(unittest.TestCase):
+    """Tests for SubtensorModule.AxonInfoRemoved (#2555).
+
+    [netuid, hotkey] positional tuple — same shape as AxonServed.
+    """
+
+    def test_positional_netuid_hotkey(self):
+        result = _extract("AxonInfoRemoved", [7, _SS58_A])
+        self.assertEqual(result["netuid"], 7)
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["uid"])
+
+    def test_invalid_hotkey_gives_null(self):
+        result = _extract("AxonInfoRemoved", [7, "not-an-address"])
+        self.assertEqual(result["netuid"], 7)
+        self.assertIsNone(result["hotkey"])
+
+    def test_empty_shape_drift_is_skipped(self):
+        self.assertIsNone(_extract("AxonInfoRemoved", []))
+
+
 class PrometheusServedExtractorTest(unittest.TestCase):
     """Tests for the SubtensorModule.PrometheusServed extractor (#2554)."""
 

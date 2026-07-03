@@ -76,6 +76,7 @@ export const INGESTED_EVENT_KINDS = [
   "HotkeySwapped",
   "ColdkeySwapped",
   "ColdkeySwapScheduled",
+  "AxonInfoRemoved",
   "Transfer",
 ];
 
