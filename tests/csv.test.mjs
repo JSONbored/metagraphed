@@ -236,9 +236,6 @@ test("csvBodyStream serializes malformed row entries as empty cells", async () =
   const first = await reader.read();
   assert.equal(decoder.decode(first.value), "netuid\r\n");
 
-  const second = await reader.read();
-  assert.equal(decoder.decode(second.value), "");
-
   const done = await reader.read();
   assert.equal(done.done, true);
 });

@@ -68,17 +68,7 @@ export function rowsToCsv(rows, columns) {
 
   const lines = [
     header.map(escapeCell).join(","),
-    ...safeRows.map((row) =>
-      header
-        .map((column) =>
-          escapeCell(
-            row && typeof row === "object" && !Array.isArray(row)
-              ? row[column]
-              : undefined,
-          ),
-        )
-        .join(","),
-    ),
+    ...safeRows.map((row) => csvLineForRow(row, header)),
   ];
   return lines.join("\r\n");
 }
@@ -135,13 +125,11 @@ export function csvBodyStream(rows, columns) {
         lines.push(csvLineForRow(safeRows[index], header));
         index += 1;
       }
-      controller.enqueue(
-        encoder.encode(
-          index < safeRows.length
-            ? `${lines.join("\r\n")}\r\n`
-            : lines.join("\r\n"),
-        ),
-      );
+      const chunkText =
+        index < safeRows.length ? `${lines.join("\r\n")}\r\n` : lines.join("\r\n");
+      if (chunkText.length > 0) {
+        controller.enqueue(encoder.encode(chunkText));
+      }
       if (index >= safeRows.length) {
         controller.close();
       }
