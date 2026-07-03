@@ -554,6 +554,13 @@ assert.ok(
     Array.isArray(healthTrendsCold.windows["7d"].subnets),
   "get_health_trends must return windows.7d.subnets[] on cold D1",
 );
+const networkHealthCold = await callOk("get_network_health", {});
+assert.ok(
+  networkHealthCold.scope === "operational" &&
+    networkHealthCold.global &&
+    Array.isArray(networkHealthCold.subnets),
+  "get_network_health must return scope + global + subnets[] on cold KV",
+);
 const blockExtrinsicsCold = await callOk("list_block_extrinsics", {
   ref: "4200000",
 });
