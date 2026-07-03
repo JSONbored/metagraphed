@@ -15,6 +15,7 @@ import {
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
+import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
@@ -901,6 +902,16 @@ function optionalString(args, key) {
     );
   }
   return value.trim();
+}
+
+// Optional YYYY-MM-DD day bound — mirrors parseDateRange() on REST history routes.
+function optionalDayArg(args, key) {
+  const value = optionalString(args, key);
+  if (value === null) return null;
+  if (!DAY_PATTERN.test(value)) {
+    throw toolError("invalid_params", "from/to must be YYYY-MM-DD dates.");
+  }
+  return value;
 }
 
 // Require a bare SS58 address (hotkey or coldkey) — the same shape the REST
@@ -2716,10 +2727,9 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      const netuid =
-        typeof args?.netuid === "number" ? Math.floor(args.netuid) : undefined;
-      const from = optionalString(args, "from");
-      const to = optionalString(args, "to");
+      const netuid = optionalNonNegativeInt(args, "netuid") ?? undefined;
+      const from = optionalDayArg(args, "from");
+      const to = optionalDayArg(args, "to");
       const cursor = optionalString(args, "cursor");
       return loadAccountHistory(mcpD1Runner(ctx), ss58, {
         netuid,

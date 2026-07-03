@@ -6717,6 +6717,24 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.deepEqual(res.body.result.structuredContent.days, []);
   });
 
+  test("get_account_history rejects malformed from/to dates before D1", async () => {
+    const res = await callTool("get_account_history", {
+      ss58: SS58,
+      from: "June",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /YYYY-MM-DD/i);
+  });
+
+  test("get_account_history rejects a non-integer netuid filter", async () => {
+    const res = await callTool("get_account_history", {
+      ss58: SS58,
+      netuid: 7.5,
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+
   test("get_account_extrinsics returns signed extrinsics with correct fields", async () => {
     const env = tailD1({
       extrinsics: [
