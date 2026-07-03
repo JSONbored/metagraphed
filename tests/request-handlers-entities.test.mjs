@@ -4329,6 +4329,72 @@ describe("handleExtrinsics", () => {
     );
     assert.equal(body.data.limit, 100);
   });
+
+  const EXTRINSICS_CSV_HEADER =
+    "extrinsic_id,block_number,signer,call_module,call_function,success";
+
+  test("?format=csv exports filtered extrinsic rows (#2529)", async () => {
+    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?limit=10&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="extrinsics.csv"',
+    );
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(lines[0], EXTRINSICS_CSV_HEADER);
+    assert.equal(lines[1].split(",")[0], `${BLOCK_NUM}-2`);
+    assert.equal(lines[1].split(",")[1], String(BLOCK_NUM));
+    assert.equal(lines[1].split(",")[2], SS58);
+    assert.equal(lines[1].split(",")[3], "SubtensorModule");
+    assert.equal(lines[1].split(",")[4], "add_stake");
+    assert.equal(lines[1].split(",")[5], "true");
+  });
+
+  test("?call_module=SubtensorModule&format=csv honors conjunctive filters", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?call_module=SubtensorModule&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(/call_module = \?/.test(sql));
+    const text = await res.text();
+    assert.equal(text.split("\r\n")[0], EXTRINSICS_CSV_HEADER);
+    assert.ok(text.includes("SubtensorModule"));
+  });
+
+  test("?format=csv emits a header-only export on cold D1", async () => {
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      emptyEnv(),
+      url("/api/v1/extrinsics?format=csv"),
+    );
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(lines[0], EXTRINSICS_CSV_HEADER);
+    assert.equal(lines.length, 1);
+  });
+
+  test("rejects an unsupported format value", async () => {
+    const body = await errorJson(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        emptyEnv(),
+        url("/api/v1/extrinsics?format=pdf"),
+      ),
+    );
+    assert.equal(body.meta.parameter, "format");
+  });
 });
 
 describe("handleExtrinsic", () => {

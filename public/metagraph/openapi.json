@@ -23856,6 +23856,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -23916,9 +23929,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "extrinsic_id,block_number,signer,call_module,call_function,success\r\n8454388-2,8454388,5Signer,SubtensorModule,add_stake,true",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -23975,7 +23994,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+        "summary": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345).",
         "tags": [
           "extrinsics",
           "analytics"

@@ -173,6 +173,28 @@ const GLOBAL_VALIDATOR_CSV_COLUMNS = [
   "latest_block_number",
   "subnets",
 ];
+const EXTRINSICS_CSV_COLUMNS = [
+  "extrinsic_id",
+  "block_number",
+  "signer",
+  "call_module",
+  "call_function",
+  "success",
+];
+
+function extrinsicsToCsvRows(extrinsics) {
+  return (extrinsics || []).map((row) => ({
+    extrinsic_id:
+      row?.block_number != null && row?.extrinsic_index != null
+        ? `${row.block_number}-${row.extrinsic_index}`
+        : null,
+    block_number: row?.block_number ?? null,
+    signer: row?.signer ?? null,
+    call_module: row?.call_module ?? null,
+    call_function: row?.call_function ?? null,
+    success: row?.success ?? null,
+  }));
+}
 
 function validateResponseFormat(url) {
   const raw = url.searchParams.get("format");
@@ -1737,7 +1759,7 @@ export async function handleBlockEvents(request, env, ref, url) {
 // zero. Reuses the chain-events meta since the same first-party poller fills this
 // tier. The per-row shape is bound, never interpolated.
 export async function handleExtrinsics(request, env, url) {
-  const validationError = validateQueryParams(url, [
+  const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
     "cursor",
@@ -1750,6 +1772,7 @@ export async function handleExtrinsics(request, env, url) {
     "block_end",
     "from",
     "to",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, BLOCK_PAGINATION);
@@ -1786,6 +1809,15 @@ export async function handleExtrinsics(request, env, url) {
     offset,
     cursor,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      extrinsicsToCsvRows(data.extrinsics),
+      "extrinsics",
+      "short",
+      request,
+      EXTRINSICS_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {

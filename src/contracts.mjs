@@ -1117,7 +1117,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "extrinsics-feed",
     "/metagraph/extrinsics.json",
-    "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+    "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics; pass ?format=csv to download the filtered extrinsic rows as CSV (no static file).",
     "ExtrinsicsFeedArtifact",
   ),
   artifact(
@@ -2320,10 +2320,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/extrinsics",
     "/metagraph/extrinsics.json",
-    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345).",
     "short",
     ["extrinsics", "analytics"],
-    [
+    csvRouteQuery([
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },
@@ -2336,7 +2336,7 @@ export const API_ROUTES = [
       { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "from", schema: { type: "integer", minimum: 0 } },
       { name: "to", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [],
   ),
   route(
@@ -3196,6 +3196,12 @@ function csvExampleForRoute(entry) {
     return [
       "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       "2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752",
+    ].join("\r\n");
+  }
+  if (entry.id === "extrinsics-feed") {
+    return [
+      "extrinsic_id,block_number,signer,call_module,call_function,success",
+      "8454388-2,8454388,5Signer,SubtensorModule,add_stake,true",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";

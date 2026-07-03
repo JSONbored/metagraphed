@@ -750,7 +750,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.1",
-      "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+      "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics; pass ?format=csv to download the filtered extrinsic rows as CSV (no static file).",
       "id": "extrinsics-feed",
       "path": "/metagraph/extrinsics.json",
       "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
