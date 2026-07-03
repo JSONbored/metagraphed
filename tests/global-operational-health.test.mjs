@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
+import * as healthServing from "../src/health-serving.mjs";
 import {
+  GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   loadGlobalOperationalHealth,
   unknownGlobalHealth,
 } from "../src/global-operational-health.mjs";
+import {
+  MCP_INSTRUCTIONS,
+  MCP_SERVER_VERSION,
+  MCP_TOOLS,
+} from "../src/mcp-server.mjs";
 
 const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
 
@@ -58,12 +65,63 @@ describe("global-operational-health", () => {
     assert.equal(out.global.surface_count, 0);
   });
 
+  test("accepts a static contractVersion without calling it as a function", async () => {
+    const out = await loadGlobalOperationalHealth(
+      { env: {}, readHealthKv: async () => null },
+      { contractVersion: 77 },
+    );
+    assert.equal(out.contract_version, 77);
+    assert.equal(out.health_source, "unavailable");
+  });
+
+  test("falls back to unknown when live KV lacks a summary block", async () => {
+    const out = await loadGlobalOperationalHealth(
+      {
+        env: {},
+        readHealthKv: async (_env, key) =>
+          key === "health:current" ? { generated_at: "2026-06-11T00:00:00.000Z" } : null,
+      },
+      { contractVersion: () => 5 },
+    );
+    assert.equal(out.health_source, "unavailable");
+    assert.equal(out.contract_version, 5);
+  });
+
+  test("forwards an explicit db binding instead of env.METAGRAPH_HEALTH_DB", async () => {
+    const seen = { db: null };
+    const spy = vi
+      .spyOn(healthServing, "resolveLiveHealth")
+      .mockImplementation(async ({ db }) => {
+        seen.db = db;
+        return null;
+      });
+    try {
+      const explicitDb = { prepare: () => ({}) };
+      await loadGlobalOperationalHealth(
+        { env: { METAGRAPH_HEALTH_DB: { prepare: () => ({}) } }, readHealthKv: async () => null, db: explicitDb },
+        { contractVersion: () => 1 },
+      );
+      assert.equal(seen.db, explicitDb);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   test("MCP tool metadata and outputSchema compile", () => {
     assert.equal(GET_NETWORK_HEALTH_MCP_TOOL.name, "get_network_health");
+    assert.match(GET_NETWORK_HEALTH_INSTRUCTIONS, /get_network_health/);
     assert.deepEqual(
       Object.keys(GET_NETWORK_HEALTH_MCP_TOOL.inputSchema.properties),
       [],
     );
-    assert.ok(new Ajv2020().compile(GET_NETWORK_HEALTH_OUTPUT_SCHEMA));
+    assert.ok(new Ajv2020({ strict: false }).compile(GET_NETWORK_HEALTH_OUTPUT_SCHEMA));
+  });
+
+  test("MCP server exports wire get_network_health at the bumped SemVer", () => {
+    assert.equal(MCP_SERVER_VERSION, "1.20.0");
+    assert.match(MCP_INSTRUCTIONS, /get_network_health/);
+    const tool = MCP_TOOLS.find((t) => t.name === "get_network_health");
+    assert.ok(tool?.handler);
+    assert.equal(tool.title, GET_NETWORK_HEALTH_MCP_TOOL.title);
   });
 });
