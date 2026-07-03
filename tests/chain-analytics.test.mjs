@@ -996,6 +996,9 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
 });
 
 test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL fees", async () => {
+  const testDay = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const captured = [];
   const env = {
     ...createLocalArtifactEnv(),
@@ -1007,7 +1010,7 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
             const rows = /ROW_NUMBER\(\) OVER/.test(sql)
               ? [
                   {
-                    day: "2026-06-25",
+                    day: testDay,
                     median_fee_tao: 0.006,
                     median_tip_tao: 0,
                   },
@@ -1015,7 +1018,7 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
               : /GROUP BY day/.test(sql)
                 ? [
                     {
-                      day: "2026-06-25",
+                      day: testDay,
                       extrinsic_count: 50,
                       total_fee_tao: 0.5,
                       total_tip_tao: 0,

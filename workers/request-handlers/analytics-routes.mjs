@@ -20,6 +20,7 @@ import {
   markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.mjs";
+import { csvRequested, csvResponse } from "../csv.mjs";
 import {
   dailyLatencyColumns,
   surfaceStatusAvgLatencySql,
@@ -101,8 +102,19 @@ export async function handleTrajectory(request, env, netuid, url) {
 // emission share). Same source as the per-subnet trajectory; raw rows (not a GROUP
 // BY) so the weighted/median price is computed in the pure builder. Schema-stable
 // (day_count:0, days:[]) on a cold rollup. Bounded by ECONOMICS_TRENDS_ROW_CAP.
+const ECONOMICS_TRENDS_COLUMNS = [
+  "snapshot_date",
+  "subnet_count",
+  "total_stake_tao",
+  "alpha_price_tao_weighted",
+  "alpha_price_tao_median",
+  "validator_count",
+  "miner_count",
+  "mean_emission_share",
+];
+
 export async function handleEconomicsTrends(request, env, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
   const { label, days, error } = parseHistoryWindow(
     url.searchParams.get("window"),
@@ -112,6 +124,15 @@ export async function handleEconomicsTrends(request, env, url) {
     (sql, params) => d1All(env, sql, params),
     { windowLabel: label, windowDays: days },
   );
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.days,
+      "economics-trends",
+      "short",
+      request,
+      ECONOMICS_TRENDS_COLUMNS,
+    );
+  }
   return envelopeWithD1Fallback(
     request,
     {

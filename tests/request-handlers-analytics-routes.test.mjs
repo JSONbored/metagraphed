@@ -237,6 +237,72 @@ describe("handleEconomicsTrends", () => {
     assert.equal(day.miner_count, null);
     assert.equal(day.mean_emission_share, null);
   });
+
+  test("returns CSV response when ?format=csv is requested", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+      ],
+    });
+    const res = await handleEconomicsTrends(req("/"), env, url("/?format=csv"));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(
+      res.headers
+        .get("content-disposition")
+        .includes('filename="economics-trends.csv"'),
+    );
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(
+      lines[0],
+      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+    );
+    assert.equal(lines[1], "2026-06-02,1,300,0.02,0.02,8,50,0.04");
+  });
+
+  test("returns CSV response when Accept: text/csv header is present", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+      ],
+    });
+    const request = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const res = await handleEconomicsTrends(request, env, url("/"));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(lines[1], "2026-06-02,1,300,0.02,0.02,8,50,0.04");
+  });
+
+  test("returns empty/header-only CSV when rollup is cold", async () => {
+    const res = await handleEconomicsTrends(req("/"), {}, url("/?format=csv"));
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(
+      lines[0],
+      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+    );
+    assert.equal(lines.length, 1);
+  });
 });
 
 describe("handleUptime", () => {

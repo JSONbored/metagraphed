@@ -1534,12 +1534,21 @@ export const API_ROUTES = [
     "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
     "short",
     ["subnets", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
-      },
-    ],
+    {
+      csvResponse: true,
+      parameters: [
+        {
+          name: "window",
+          schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+        },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the network economics trends as text/csv; `json` keeps the default response envelope.",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [],
   ),
   route(
