@@ -184,7 +184,9 @@
       "auth_required": false,
       "authority": "community",
       "public_safe": true,
-      "source_urls": ["https://github.com/trajectoryRL/trajrl/blob/main/trajrl/subnet/api.py"],
+      "source_urls": [
+        "https://github.com/trajectoryRL/trajrl/blob/main/trajrl/subnet/api.py"
+      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "boskodev790"
