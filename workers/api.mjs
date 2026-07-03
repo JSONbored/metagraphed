@@ -72,6 +72,7 @@ import {
   handleSubnetMetagraph,
   handleNeuron,
   handleSubnetValidators,
+  handleSubnetEventSummary,
   handleSubnetEvents,
   handleNeuronHistory,
   handleSubnetHistory,
@@ -271,6 +272,7 @@ import {
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
+  SUBNET_EVENT_SUMMARY_PATH_PATTERN,
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
@@ -1531,6 +1533,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             resolved.url,
           ),
         canonicalSubnetValidatorsCachePath(resolved.url, request),
+      );
+    }
+    // Per-subnet event summary: compact windowed account_events aggregates with
+    // a small evidence slice, sibling to the raw /events feed.
+    const subnetEventSummaryMatch = SUBNET_EVENT_SUMMARY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (subnetEventSummaryMatch) {
+      return withEdgeCache(request, ctx, env, "subnet-event-summary", () =>
+        handleSubnetEventSummary(
+          request,
+          env,
+          Number(subnetEventSummaryMatch[1]),
+          resolved.url,
+        ),
       );
     }
     // Per-subnet chain-event stream (#1345): account_events filtered by netuid.

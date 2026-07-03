@@ -4,6 +4,7 @@
   "main": "workers/api.mjs",
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
+  "minify": true,
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,

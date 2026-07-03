@@ -450,6 +450,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-event-summary",
+      "path": "/metagraph/subnets/{netuid}/event-summary.json",
+      "schema_ref": "#/components/schemas/SubnetEventSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
@@ -4937,6 +4944,38 @@
           "name": "offset",
           "schema": {
             "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/event-summary.json",
+      "cache": "short",
+      "description": "Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
+      "id": "subnet-event-summary",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/event-summary",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
             "type": "integer"
           }
         }
