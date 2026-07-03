@@ -408,6 +408,23 @@ describe("feeds — item builders", () => {
     assert.ok(item.tags.includes("ongoing"));
   });
 
+  test("incidentItems survives an out-of-range started_at (no RangeError)", () => {
+    // A finite but out-of-range epoch-ms (beyond the ±8.64e15 JS Date limit)
+    // would make toIso -> new Date().toISOString() throw a RangeError and 500
+    // the whole incidents feed. A single corrupt timestamp must degrade, not crash.
+    const incidents = {
+      surfaces: [
+        { netuid: 1, surface_id: "api", incidents: [{ started_at: 9e15 }] },
+      ],
+    };
+    let item;
+    assert.doesNotThrow(() => {
+      item = incidentItems(incidents)[0];
+    });
+    // The item is still emitted with a valid fallback (request-time) timestamp.
+    assert.ok(Number.isFinite(Date.parse(item.timestamp)));
+  });
+
   test("gapsItems builds ranked enrichment targets with lane/kind tags", () => {
     const items = gapsItems(ENRICHMENT_QUEUE);
     assert.equal(items.length, 3);
