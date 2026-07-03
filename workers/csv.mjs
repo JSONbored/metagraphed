@@ -1,6 +1,7 @@
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.mjs";
 
 const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
+const CSV_STREAM_ROWS_PER_CHUNK = 128;
 
 function normalizeColumns(rows, columns) {
   if (Array.isArray(columns) && columns.length > 0) {
@@ -82,6 +83,77 @@ export function rowsToCsv(rows, columns) {
   return lines.join("\r\n");
 }
 
+function csvLineForRow(row, header) {
+  return header
+    .map((column) =>
+      escapeCell(
+        row && typeof row === "object" && !Array.isArray(row)
+          ? row[column]
+          : undefined,
+      ),
+    )
+    .join(",");
+}
+
+export function csvBodyStream(rows, columns) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const header = normalizeColumns(safeRows, columns);
+  const encoder = new TextEncoder();
+
+  if (header.length === 0) {
+    return new globalThis.ReadableStream({
+      start(controller) {
+        controller.close();
+      },
+    });
+  }
+
+  const headerLine = header.map(escapeCell).join(",");
+  let index = 0;
+  let sentHeader = false;
+
+  return new globalThis.ReadableStream({
+    pull(controller) {
+      if (!sentHeader) {
+        sentHeader = true;
+        controller.enqueue(
+          encoder.encode(
+            safeRows.length > 0 ? `${headerLine}\r\n` : headerLine,
+          ),
+        );
+        if (safeRows.length === 0) {
+          controller.close();
+        }
+        return;
+      }
+
+      if (index >= safeRows.length) {
+        controller.close();
+        return;
+      }
+
+      const lines = [];
+      while (
+        index < safeRows.length &&
+        lines.length < CSV_STREAM_ROWS_PER_CHUNK
+      ) {
+        lines.push(csvLineForRow(safeRows[index], header));
+        index += 1;
+      }
+      controller.enqueue(
+        encoder.encode(
+          index < safeRows.length
+            ? `${lines.join("\r\n")}\r\n`
+            : lines.join("\r\n"),
+        ),
+      );
+      if (index >= safeRows.length) {
+        controller.close();
+      }
+    },
+  });
+}
+
 export function csvRequested(url, request) {
   const format = url.searchParams.get("format")?.toLowerCase();
   if (format === "csv") {
@@ -133,20 +205,33 @@ export async function csvResponse(
   request = null,
   columns = undefined,
   extraHeaders = {},
+  options = {},
 ) {
-  const body = rowsToCsv(rows, columns);
   const headers = apiHeaders(cacheProfile);
-  const etag = await weakEtag(body);
   headers.set("content-type", "text/csv; charset=utf-8");
   headers.set(
     "content-disposition",
     `attachment; filename="${csvFilename(filename)}"`,
   );
-  headers.set("etag", etag);
   headers.set("vary", "Accept, Accept-Encoding");
   for (const [key, value] of Object.entries(extraHeaders)) {
     headers.set(key, value);
   }
+
+  const shouldStream =
+    options.stream === true &&
+    request?.method !== "HEAD" &&
+    !request?.headers?.get("if-none-match");
+  if (shouldStream) {
+    return new Response(csvBodyStream(rows, columns), {
+      status: 200,
+      headers,
+    });
+  }
+
+  const body = rowsToCsv(rows, columns);
+  const etag = await weakEtag(body);
+  headers.set("etag", etag);
 
   if (request && ifNoneMatchSatisfied(request, etag)) {
     return new Response(null, { status: 304, headers });

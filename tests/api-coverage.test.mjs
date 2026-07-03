@@ -80,6 +80,60 @@ function rpcEnv(overrides = {}) {
   };
 }
 
+const SYNTHETIC_ENDPOINT_ROWS = Array.from({ length: 260 }, (_, index) => ({
+  id: `ep-${index}`,
+  netuid: index % 2 === 0 ? 7 : 11,
+  provider: `provider-${index % 5}`,
+  kind: index % 3 === 0 ? "openapi" : "subnet-api",
+  layer: index % 4 === 0 ? "data-provider" : "subnet-app",
+  status: index % 6 === 0 ? "degraded" : "ok",
+  latency_ms: 25 + index,
+}));
+
+function endpointArtifact(value) {
+  return {
+    async json() {
+      return value;
+    },
+    async text() {
+      return JSON.stringify(value);
+    },
+  };
+}
+
+function createEndpointCsvEnv() {
+  const base = createLocalArtifactEnv();
+  const artifacts = new Map([
+    ["/metagraph/endpoints.json", { endpoints: SYNTHETIC_ENDPOINT_ROWS }],
+    [
+      "/metagraph/endpoints/7.json",
+      { endpoints: SYNTHETIC_ENDPOINT_ROWS.filter((row) => row.netuid === 7) },
+    ],
+  ]);
+
+  return {
+    ...base,
+    ASSETS: {
+      async fetch(request) {
+        const pathname = new URL(request.url).pathname;
+        if (artifacts.has(pathname)) {
+          return Response.json(artifacts.get(pathname));
+        }
+        return base.ASSETS.fetch(request);
+      },
+    },
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        const pathname = `/metagraph/${String(key).replace(/^latest\//, "")}`;
+        if (artifacts.has(pathname)) {
+          return endpointArtifact(artifacts.get(pathname));
+        }
+        return base.METAGRAPH_ARCHIVE.get(key);
+      },
+    },
+  };
+}
+
 function withGlobals({ cache, fetchImpl }, run) {
   const originalCaches = globalThis.caches;
   const originalFetch = globalThis.fetch;
@@ -1214,6 +1268,70 @@ describe("registry list CSV export", () => {
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnet-surfaces.csv"',
+    );
+  });
+
+  test("endpoints CSV export filters, projects, and streams the large route path (#2523)", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/endpoints?format=csv&fields=netuid,provider,status&status=ok&limit=3",
+      ),
+      createEndpointCsvEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="endpoints.csv"',
+    );
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    const first = await reader.read();
+    assert.equal(decoder.decode(first.value), "netuid,provider,status\r\n");
+
+    let body = "";
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      body += decoder.decode(chunk.value, { stream: true });
+    }
+    body += decoder.decode();
+
+    const lines = body.split("\r\n");
+    assert.equal(lines.length, 3);
+    assert.equal(
+      lines.every((line) => /^\d+,provider-\d+,ok$/.test(line)),
+      true,
+    );
+  });
+
+  test("subnet-endpoints CSV export keeps endpoint columns and honors projection (#2523)", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/subnets/7/endpoints?format=csv&fields=layer,kind,status,latency_ms&status=ok&limit=3",
+      ),
+      createEndpointCsvEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="subnet-endpoints.csv"',
+    );
+
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(lines[0], "layer,kind,status,latency_ms");
+    assert.equal(lines.length, 4);
+    assert.equal(
+      lines
+        .slice(1)
+        .every((line) =>
+          /^(data-provider|subnet-app),(openapi|subnet-api),ok,\d+$/.test(line),
+        ),
+      true,
     );
   });
 

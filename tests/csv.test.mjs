@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { csvRequested, csvResponse, rowsToCsv } from "../workers/csv.mjs";
+import {
+  csvBodyStream,
+  csvRequested,
+  csvResponse,
+  rowsToCsv,
+} from "../workers/csv.mjs";
 
 function url(search = "") {
   return new URL(`https://api.metagraph.sh/api/v1/subnets${search}`);
@@ -169,4 +174,53 @@ test("csvResponse suppresses the body on HEAD", async () => {
   );
   assert.equal(response.status, 200);
   assert.equal(await response.text(), "");
+});
+
+test("csvBodyStream emits the header before row chunks", async () => {
+  const stream = csvBodyStream(
+    [
+      { netuid: 7, name: "Allways" },
+      { netuid: 8, name: "Templar" },
+    ],
+    ["netuid", "name"],
+  );
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+
+  const first = await reader.read();
+  assert.equal(decoder.decode(first.value), "netuid,name\r\n");
+
+  const second = await reader.read();
+  assert.equal(decoder.decode(second.value), "7,Allways\r\n8,Templar");
+
+  const done = await reader.read();
+  assert.equal(done.done, true);
+});
+
+test("csvResponse can stream endpoint-sized exports without eager ETags", async () => {
+  const response = await csvResponse(
+    [
+      { netuid: 7, provider: "allways", status: "ok" },
+      { netuid: 8, provider: "templar", status: "degraded" },
+    ],
+    "endpoints",
+    "short",
+    null,
+    ["netuid", "provider", "status"],
+    {},
+    { stream: true },
+  );
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /^text\/csv/);
+  assert.equal(response.headers.get("etag"), null);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const first = await reader.read();
+  assert.equal(decoder.decode(first.value), "netuid,provider,status\r\n");
+  const second = await reader.read();
+  assert.equal(
+    decoder.decode(second.value),
+    "7,allways,ok\r\n8,templar,degraded",
+  );
 });
