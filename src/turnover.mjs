@@ -54,6 +54,7 @@ function validatorHotkeys(rows) {
 
 function normalizedUid(value) {
   if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const uid = Number(value);
   return Number.isSafeInteger(uid) && uid >= 0 ? uid : null;
 }

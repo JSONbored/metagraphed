@@ -525,6 +525,29 @@ describe("buildTurnover — invariants", () => {
 });
 
 describe("buildTurnover — regressions", () => {
+  test("skips blank uid cells that would coerce to uid 0", () => {
+    const rows = [
+      {
+        snapshot_date: "2026-05-01",
+        uid: "",
+        hotkey: "ghost",
+        validator_permit: 0,
+      },
+      {
+        snapshot_date: "2026-05-01",
+        uid: 0,
+        hotkey: "real",
+        validator_permit: 0,
+      },
+    ];
+    const data = buildTurnover(rows, 1, {
+      window: "30d",
+      startDate: "2026-05-01",
+      endDate: "2026-05-01",
+    });
+    assert.equal(data.neurons_start, 1);
+  });
+
   test("a validator that moves UID slot but keeps its hotkey is retained (keyed by hotkey)", () => {
     const rows = [
       {
