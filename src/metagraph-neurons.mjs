@@ -91,10 +91,10 @@ function roundTao(value) {
 // individual value is itself exact (metagraphed#2922, mirrors the toRaoBig
 // pattern in src/chain-yield.mjs and the toRao helper proven in
 // src/account-balance.mjs for #2070). Convert back to TAO only once, at the
-// very end.
-function toRaoBig(taoValue) {
-  const n = Number(taoValue);
-  return Number.isFinite(n) ? BigInt(Math.round(n * RAO_PER_TAO)) : 0n;
+// very end. Callers always pass an already-finite numberOrZero()/roundTao()
+// result, so no isFinite guard here.
+function toRaoBig(tao) {
+  return BigInt(Math.round(tao * RAO_PER_TAO));
 }
 function raoBigToTao(rao) {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
