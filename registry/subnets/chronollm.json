@@ -1,0 +1,30 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "ChronoLLM",
+  "netuid": 38,
+  "schema_version": 1,
+  "slug": "sn-38",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-chronollm-miner-docs",
+      "kind": "docs",
+      "name": "ChronoLLM miner docs",
+      "notes": "Public miner guide linked from the official ChronoLLM README.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "Paral1995"
+      },
+      "source_urls": ["https://github.com/chronollm/sn38/blob/main/README.md"],
+      "url": "https://github.com/chronollm/sn38/blob/main/docs/miner.md"
+    }
+  ]
+}
