@@ -1156,12 +1156,7 @@ describe("handleSubnetHistory", () => {
       neuronDailySubnet: [subnetHistoryRow()],
     });
     const path = `/api/v1/subnets/${NETUID}/history?window=90d&format=csv`;
-    const res = await handleSubnetHistory(
-      req(path),
-      env,
-      NETUID,
-      url(path),
-    );
+    const res = await handleSubnetHistory(req(path), env, NETUID, url(path));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
     assert.ok(
@@ -2616,12 +2611,7 @@ describe("handleAccountHistory", () => {
   test("returns CSV response when ?format=csv is requested", async () => {
     const { env } = dbWith({ accountEventsDaily: [accountDayRow()] });
     const path = `/api/v1/accounts/${SS58}/history?format=csv`;
-    const res = await handleAccountHistory(
-      req(path),
-      env,
-      SS58,
-      url(path),
-    );
+    const res = await handleAccountHistory(req(path), env, SS58, url(path));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
     assert.ok(
