@@ -10,6 +10,7 @@ import {
   listToolDefinitions,
   handleMcpRequest,
 } from "../src/mcp-server.mjs";
+import * as profilesMcp from "../src/profiles-mcp.mjs";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
@@ -5257,6 +5258,40 @@ describe("MCP economics + metagraph data tools", () => {
         ),
       /kaboom/,
     );
+  });
+
+  test("get_subnet_profile maps profilesMcp loader errors to tool errors", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_subnet_profile");
+    const err = profilesMcp.profilesMcpError("not_found", "Profile gone.");
+    const spy = vi
+      .spyOn(profilesMcp, "loadSubnetProfile")
+      .mockRejectedValue(err);
+    try {
+      await assert.rejects(() => tool.handler({ netuid: 7 }, { env: {} }), (thrown) => {
+        assert.equal(thrown.toolError, true);
+        assert.equal(thrown.code, "not_found");
+        assert.match(thrown.message, /Profile gone/);
+        return true;
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("list_profiles maps profilesMcp loader errors to tool errors", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "list_profiles");
+    const err = profilesMcp.profilesMcpError("invalid_params", "bad filter");
+    const spy = vi.spyOn(profilesMcp, "loadProfilesList").mockRejectedValue(err);
+    try {
+      await assert.rejects(() => tool.handler({}, { env: {} }), (thrown) => {
+        assert.equal(thrown.toolError, true);
+        assert.equal(thrown.code, "invalid_params");
+        assert.match(thrown.message, /bad filter/);
+        return true;
+      });
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   test("list_profiles payload validates against its declared outputSchema", async () => {

@@ -178,11 +178,33 @@ describe("profiles-mcp — loadProfilesList", () => {
     assert.equal(out.profiles[0].netuid, 7);
     assert.equal(out.limit, 1);
     assert.equal(out.returned, 1);
+    assert.equal(out.cursor, 0);
+    assert.equal(out.next_cursor, null);
     assert.deepEqual(Object.keys(out.profiles[0]).sort(), [
       "completeness_score",
       "name",
       "netuid",
     ]);
+  });
+
+  test("defaults pagination totals when the list-query meta omits page fields", async () => {
+    const out = await loadProfilesList(makeCtx(), {}, makeDeps());
+    assert.equal(out.profiles.length, 2);
+    assert.equal(out.total, 2);
+    assert.equal(out.returned, 2);
+    assert.equal(out.limit, 2);
+    assert.equal(out.cursor, 0);
+    assert.equal(out.next_cursor, null);
+    assert.equal(out.sort, null);
+    assert.equal(out.order, "asc");
+  });
+
+  test("rejects non-string enum and optional string values", () => {
+    assert.throws(() => profilesQueryUrl({ confidence: 9 }), /must be one of:/);
+    assert.throws(
+      () => profilesQueryUrl({ fields: 123 }),
+      /must be a non-empty string/,
+    );
   });
 });
 
