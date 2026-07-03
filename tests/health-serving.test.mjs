@@ -1335,6 +1335,40 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
   });
 
+  test("D1 fallback survives an out-of-range last_checked/last_ok (no RangeError)", async () => {
+    // A finite but out-of-range epoch-ms (beyond the ±8.64e15 JS Date limit)
+    // would make new Date().toISOString() throw a RangeError and 500 the live
+    // health response. One corrupt cell must degrade to null, not crash the row.
+    const db = d1With([
+      {
+        surface_id: "7:subnet-api:x",
+        surface_key: "srf-oob00000000000",
+        netuid: 7,
+        kind: "subnet-api",
+        provider: "x",
+        url: "https://x",
+        status: "ok",
+        classification: "up",
+        latency_ms: 10,
+        status_code: 200,
+        last_checked: 9e15, // out of the JS Date range
+        last_ok: 1_699_000_000_000,
+      },
+    ]);
+    let live;
+    await assert.doesNotReject(async () => {
+      live = await resolveLiveHealth({
+        readHealthKv: async () => null,
+        env: {},
+        db,
+        now: () => 1_700_000_600_000,
+      });
+    });
+    assert.equal(live.surfaces[0].last_checked, null);
+    // The valid last_ok still renders as ISO.
+    assert.match(live.surfaces[0].last_ok, /^20\d\d-/);
+  });
+
   test("D1 fallback folds unrecognized surface status into unknown in global status_counts", async () => {
     const now = 1_700_000_600_000;
     const db = {

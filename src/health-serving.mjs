@@ -1281,6 +1281,16 @@ export async function loadReliabilityAggregate({
 // baked value). The overlay helpers below are pure: they take the resolved
 // snapshot and replace the embedded health on composed artifacts.
 
+// A finite but out-of-range epoch-ms (|ms| > 8.64e15, the JS Date limit) makes
+// toISOString() throw a RangeError, which would 500 the live endpoint response
+// on one corrupt last_checked/last_ok cell. Range-guard via getTime() and drop
+// to null, preserving the existing non-finite -> null behavior.
+function isoFromMs(ms) {
+  if (!Number.isFinite(ms)) return null;
+  const date = new Date(ms);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
 function liveFromD1Rows(rows) {
   const surfaces = rows.map((r) => ({
     surface_id: r.surface_id,
@@ -1293,12 +1303,8 @@ function liveFromD1Rows(rows) {
     classification: r.classification,
     latency_ms: Number.isFinite(r.latency_ms) ? r.latency_ms : null,
     status_code: Number.isInteger(r.status_code) ? r.status_code : null,
-    last_checked: Number.isFinite(r.last_checked)
-      ? new Date(r.last_checked).toISOString()
-      : null,
-    last_ok: Number.isFinite(r.last_ok)
-      ? new Date(r.last_ok).toISOString()
-      : null,
+    last_checked: isoFromMs(r.last_checked),
+    last_ok: isoFromMs(r.last_ok),
   }));
   const byNetuid = new Map();
   for (const row of surfaces) {
