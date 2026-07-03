@@ -127,6 +127,19 @@ describe("buildSubnetPerformance", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z"); // newest of the two
   });
 
+  test("coerces a D1 numeric-string captured_at to an ISO timestamp", () => {
+    // D1 hands back the INTEGER captured_at as a numeric string; it must stamp
+    // like the numeric form, not drop to null via Date.parse("<digits>") === NaN.
+    const out = buildSubnetPerformance(
+      [
+        { incentive: 0.2, captured_at: "1750000000000" },
+        { incentive: 0.3, captured_at: "1750000060000" }, // newer
+      ],
+      7,
+    );
+    assert.equal(out.captured_at, new Date(1_750_000_060_000).toISOString());
+  });
+
   test("cold/empty subnet → schema-stable zero (every metric null)", () => {
     const out = buildSubnetPerformance([], 3);
     assert.equal(out.neuron_count, 0);
