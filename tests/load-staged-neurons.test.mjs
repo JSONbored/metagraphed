@@ -92,11 +92,17 @@ function mockEnv({
             bind: (...v) => ({
               sql,
               v,
+              async all() {
+                return { results: [] };
+              },
               async run() {
                 runs.push({ sql, v });
                 return { meta: { changes: 1 } };
               },
             }),
+            async all() {
+              return { results: [] };
+            },
           };
         },
         async batch(stmts) {
@@ -352,6 +358,15 @@ function applyNeuronSnapshotRollback(table, sql, values) {
   return 0;
 }
 
+function applyNeuronSelect(table, sql, values) {
+  let rows = [...table.values()];
+  if (sql.includes("WHERE netuid IN")) {
+    const netuids = new Set(values);
+    rows = rows.filter((row) => netuids.has(row.netuid));
+  }
+  return rows;
+}
+
 function statefulEnv(
   table,
   {
@@ -401,6 +416,12 @@ function statefulEnv(
             bind: (...v) => ({
               sql,
               v,
+              async all() {
+                if (sql.startsWith("SELECT")) {
+                  return { results: applyNeuronSelect(table, sql, v) };
+                }
+                return { results: [] };
+              },
               async run() {
                 if (sql.startsWith("DELETE FROM neurons")) {
                   pruneAttempts += 1;
@@ -426,6 +447,12 @@ function statefulEnv(
                 return { meta: { changes: 0 } };
               },
             }),
+            async all() {
+              if (sql.startsWith("SELECT")) {
+                return { results: applyNeuronSelect(table, sql, []) };
+              }
+              return { results: [] };
+            },
           };
         },
         async batch(stmts) {
@@ -601,14 +628,14 @@ test("loadStagedNeurons retries a failed multi-batch prune before giving up", as
 test("loadStagedNeurons rolls back partial multi-batch upserts on mid-load failure", async () => {
   const table = new Map();
   const T1 = 1_700_000_000_000;
-  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1, stake_tao: 99 });
   table.set("1:1", { ...neuronRow(1, 1), captured_at: T1 });
   const m = statefulEnv(table, { failUpsertOnBatch: 2 });
 
   const T2 = T1 + 60_000;
   const snap2 = Array.from({ length: 255 }, (_, i) => {
     const uid = i === 0 ? 0 : i + 1;
-    return { ...neuronRow(1, uid), captured_at: T2 };
+    return { ...neuronRow(1, uid), captured_at: T2, stake_tao: 200 };
   });
   m.env.METAGRAPH_ARCHIVE._staged = signedCoverageEnvelope(snap2, [1], T2);
   const r = await loadStagedNeurons(m.env);
@@ -622,9 +649,19 @@ test("loadStagedNeurons rolls back partial multi-batch upserts on mid-load failu
     "partial snapshot rows at T2 must be rolled back",
   );
   assert.equal(
+    table.get("1:0").captured_at,
+    T1,
+    "replaced UID must be restored to the prior snapshot stamp",
+  );
+  assert.equal(
+    table.get("1:0").stake_tao,
+    99,
+    "replaced UID must be restored to prior row values, not deleted",
+  );
+  assert.equal(
     table.get("1:1").captured_at,
     T1,
-    "prior snapshot stays until retry",
+    "untouched UID stays at prior snapshot until retry",
   );
   assert.deepEqual(m.deleted, [], "staged R2 object kept for retry");
 });
@@ -650,13 +687,13 @@ test("loadStagedNeurons returns purge_failed when upserts finish but prune never
 test("loadStagedNeurons rolls back legacy bare-array snapshots on mid-load failure", async () => {
   const table = new Map();
   const T1 = 1_700_000_000_000;
-  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1, stake_tao: 77 });
   const m = statefulEnv(table, { failUpsertOnBatch: 2 });
 
   const T2 = T1 + 60_000;
   const snap2 = Array.from({ length: 255 }, (_, i) => {
     const uid = i === 0 ? 0 : i + 1;
-    return { ...neuronRow(1, uid), captured_at: T2 };
+    return { ...neuronRow(1, uid), captured_at: T2, stake_tao: 200 };
   });
   m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope(snap2);
   const r = await loadStagedNeurons(m.env);
@@ -667,6 +704,8 @@ test("loadStagedNeurons rolls back legacy bare-array snapshots on mid-load failu
     false,
     "partial legacy snapshot rows must be rolled back",
   );
+  assert.equal(table.get("1:0").captured_at, T1);
+  assert.equal(table.get("1:0").stake_tao, 77);
 });
 
 test("loadStagedNeurons survives rollback failure after mid-load upsert failure", async () => {
