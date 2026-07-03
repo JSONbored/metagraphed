@@ -1,0 +1,51 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Albedo",
+  "netuid": 97,
+  "schema_version": 1,
+  "slug": "sn-97",
+  "source_repo": "https://github.com/unarbos/albedo",
+  "status": "active",
+  "website_url": "https://albedo.tech",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-97-albedo-subnet-api",
+      "kind": "subnet-api",
+      "name": "Albedo King Chat config API",
+      "provider": "albedo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "statxc"
+      },
+      "source_urls": [
+        "https://albedo.tech",
+        "https://github.com/unarbos/albedo/blob/main/website/index.html"
+      ],
+      "url": "https://chat.albedo.tech/api/config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-97-albedo-data-artifact",
+      "kind": "data-artifact",
+      "name": "Albedo live dashboard data",
+      "provider": "albedo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "statxc"
+      },
+      "source_urls": [
+        "https://github.com/unarbos/albedo/blob/main/website/js/config.js"
+      ],
+      "url": "https://s3.hippius.com/albedo/data/dashboard.json"
+    }
+  ]
+}

@@ -8,7 +8,9 @@ import {
   EXTRINSIC_RETENTION_MS,
   buildExtrinsic,
   buildExtrinsicFeed,
+  EXTRINSICS_CSV_COLUMNS,
   extrinsicInsertStatements,
+  extrinsicsToCsvRows,
   formatExtrinsic,
   loadExtrinsic,
   loadExtrinsics,
@@ -292,6 +294,83 @@ test("formatExtrinsic coerces a string-typed D1 success cell", () => {
       .success,
     false,
   );
+});
+
+test("extrinsicsToCsvRows projects composite extrinsic_id and core columns", () => {
+  const row = formatExtrinsic({
+    block_number: 100,
+    extrinsic_index: 3,
+    signer: "5Signer",
+    call_module: "SubtensorModule",
+    call_function: "add_stake",
+    success: 1,
+  });
+  assert.deepEqual(extrinsicsToCsvRows([row]), [
+    {
+      extrinsic_id: "100-3",
+      block_number: 100,
+      signer: "5Signer",
+      call_module: "SubtensorModule",
+      call_function: "add_stake",
+      success: true,
+    },
+  ]);
+  assert.deepEqual(EXTRINSICS_CSV_COLUMNS, [
+    "extrinsic_id",
+    "block_number",
+    "signer",
+    "call_module",
+    "call_function",
+    "success",
+  ]);
+});
+
+test("extrinsicsToCsvRows nulls extrinsic_id when chain position is incomplete", () => {
+  assert.deepEqual(
+    extrinsicsToCsvRows([
+      {
+        block_number: 100,
+        extrinsic_index: null,
+        signer: null,
+        call_module: null,
+        call_function: null,
+        success: null,
+      },
+    ]),
+    [
+      {
+        extrinsic_id: null,
+        block_number: 100,
+        signer: null,
+        call_module: null,
+        call_function: null,
+        success: null,
+      },
+    ],
+  );
+  assert.deepEqual(
+    extrinsicsToCsvRows([
+      {
+        block_number: null,
+        extrinsic_index: 3,
+        signer: "5Signer",
+        call_module: "Balances",
+        call_function: "transfer",
+        success: false,
+      },
+    ]),
+    [
+      {
+        extrinsic_id: null,
+        block_number: null,
+        signer: "5Signer",
+        call_module: "Balances",
+        call_function: "transfer",
+        success: false,
+      },
+    ],
+  );
+  assert.deepEqual(extrinsicsToCsvRows(null), []);
 });
 
 test("formatExtrinsic is null-safe on junk + sparse rows", () => {

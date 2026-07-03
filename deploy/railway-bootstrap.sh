@@ -37,12 +37,22 @@ railway add -s wss-lb --repo "$REPO" --branch "$BRANCH"
 railway domain                # mint *.up.railway.app; add a CNAME for wss.metagraph.sh
 
 echo "==> 4. Indexer (private; references the DBs over the private network)"
-railway add -s indexer --repo "$REPO" --branch "$BRANCH" \
+# The Rust indexer (subxt, INDEX_MODE=live) replaced the Python indexer this
+# repo used to ship a Dockerfile + railway.json for (both deleted — the Python
+# implementation is retired). The Rust indexer's source has no git remote yet
+# (a real, tracked gap), so it can't be deployed via `railway add --repo` like
+# the other services here — it's currently pushed manually from a local
+# Docker build (`docker build` + `railway up`, or `docker save | ssh ... |
+# docker load` for a non-Railway box). Once the Rust indexer has a real repo,
+# replace this step with a proper `railway add -s indexer --repo <that-repo>`
+# + a committed railway.json, matching the pattern above.
+railway add -s indexer \
   -v "DATABASE_URL=\${{Postgres.DATABASE_URL}}" \
   -v "REDIS_URL=\${{Redis.REDIS_URL}}" \
-  -v "EVENTS_RPC_URL=${RPC_URL}"
-#   then in the dashboard: Config-as-code → Railway Config File =
-#   /deploy/indexer.railway.json
+  -v "EVENTS_RPC_URL=${RPC_URL}" \
+  -v "INDEX_MODE=live"
+#   then deploy manually: `railway up` from the indexer's local checkout
+#   (there is no Config-as-code railway.json for this service yet).
 
 echo "==> 5. Apply the portable schema to Postgres (one-time, before the indexer runs)"
 #   psql against the PUBLIC proxy URL (the private host isn't reachable from your laptop):

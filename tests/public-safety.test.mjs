@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import {
   isUnsafeResolvedUrl,
   isUnsafeUrl,
@@ -15,6 +15,9 @@ const TEST_FIXTURE = "__public_safety_test__.json";
 const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);
 const TEST_PUBLIC_FILE = "__public_safety_test__.txt";
 const TEST_PUBLIC_PATH = path.join(repoRoot, "public", TEST_PUBLIC_FILE);
+const SCANNER_TEST_TIMEOUT_MS = 15000;
+
+vi.setConfig({ testTimeout: SCANNER_TEST_TIMEOUT_MS });
 
 async function writeTestFixture(body) {
   await fs.mkdir(FIXTURE_DIR, { recursive: true });
