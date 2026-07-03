@@ -26,6 +26,12 @@ import {
   loadNetworkEconomics,
 } from "./network-economics.mjs";
 import {
+  LIST_CURATION_INSTRUCTIONS,
+  LIST_CURATION_MCP_TOOL,
+  LIST_CURATION_OUTPUT_SCHEMA,
+  loadCurationList,
+} from "./curation-mcp.mjs";
+import {
   GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
@@ -192,7 +198,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.20.0";
+export const MCP_SERVER_VERSION = "1.22.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -246,6 +252,7 @@ export const MCP_INSTRUCTIONS =
   "language answer with citations; get_subnet / get_subnet_health for detail, " +
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
+  LIST_CURATION_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
   "get_subnet_gaps for one subnet's interface gap priorities and contributor " +
@@ -4027,6 +4034,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_CURATION_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadCurationList(ctx, args);
+    },
+  },
+  {
     name: "get_lineage",
     title: "Get cross-network subnet lineage",
     description:
@@ -6135,6 +6148,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       notes: NULLABLE_STRING,
     },
   },
+  list_curation: LIST_CURATION_OUTPUT_SCHEMA,
   get_lineage: {
     type: "object",
     additionalProperties: true,

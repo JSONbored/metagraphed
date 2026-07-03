@@ -1291,6 +1291,31 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.structuredContent.eligible_count, 0);
   });
 
+  test("list_curation returns filtered curation rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/curation.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        curation: [
+          { netuid: 7, coverage_level: "probed", curation_level: "verified" },
+          { netuid: 31, coverage_level: "manifested" },
+        ],
+      },
+    });
+    const res = await callTool("list_curation", { netuid: 7 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.curation[0].netuid, 7);
+  });
+
+  test("list_curation reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_curation", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Curation snapshot unavailable/,
+    );
+  });
+
   test("registry_summary returns the summary artifact", async () => {
     const res = await callTool("registry_summary", {}, { deps });
     assert.equal(res.body.result.structuredContent.completeness, 0.42);

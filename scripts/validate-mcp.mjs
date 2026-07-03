@@ -263,6 +263,11 @@ assert.ok(
 
 await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
+const curationPage = await callOk("list_curation", { limit: 3 });
+assert.ok(
+  Array.isArray(curationPage.curation),
+  "list_curation must return curation[]",
+);
 await callOk("registry_summary", {});
 
 // Per-subnet gap artifacts are R2-only (review/gaps/{netuid}.json); the cold
