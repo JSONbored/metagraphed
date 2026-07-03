@@ -108,6 +108,9 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide cross-subnet capital flow, computed live from the account_events
   // stake stream at /api/v1/chain/stake-flow — never a file.
   /^chain\/stake-flow\.json$/,
+  // Network-wide validator weight-setting activity across every subnet, computed live from
+  // the account_events WeightsSet stream at /api/v1/chain/weights — never a file.
+  /^chain\/weights\.json$/,
   // Network-wide concentration aggregated across every subnet's neurons, computed
   // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
   /^chain\/concentration\.json$/,

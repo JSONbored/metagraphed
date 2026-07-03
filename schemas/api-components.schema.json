@@ -4174,6 +4174,160 @@
         ],
         "type": "object"
       },
+      "ChainWeightsArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide validator weight-setting activity over a 7d/30d window across the subnets with observed weight-setting activity: a per-subnet leaderboard (distinct setters, WeightsSet count, updates per validator) plus a network rollup with the true distinct setter count and a distribution of per-subnet update intensity. Served live from the account_events WeightsSet stream at /api/v1/chain/weights (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "properties": {
+          "intensity_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet updates-per-validator intensity across the subnets that set weights in the window (null when no subnet set weights). subnet_count and this distribution cover only subnets with observed WeightsSet activity, not every registered subnet.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "mean": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "min": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p25": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p75": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p90": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the window: the true distinct weight-setting validators across all subnets (a validator setting weights on several subnets counts once, so NOT the sum of the per-subnet counts), total WeightsSet events, and the network updates-per-validator intensity (null when no validator set weights).",
+            "properties": {
+              "distinct_setters": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "sets_per_setter": {
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "weight_sets": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "distinct_setters",
+              "weight_sets",
+              "sets_per_setter"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "distinct_setters": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "sets_per_setter": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "weight_sets": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "distinct_setters",
+                "weight_sets",
+                "sets_per_setter"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "intensity_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainYieldArtifact": {
         "additionalProperties": true,
         "description": "Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact.",

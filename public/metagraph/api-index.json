@@ -653,6 +653,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-weights",
+      "path": "/metagraph/chain/weights.json",
+      "schema_ref": "#/components/schemas/ChainWeightsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
       "schema_ref": "#/components/schemas/ChainFeesArtifact",
@@ -6059,6 +6066,37 @@
       "id": "chain-stake-flow",
       "method": "GET",
       "path": "/api/v1/chain/stake-flow",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/weights.json",
+      "cache": "short",
+      "description": "Fetch network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): a per-subnet leaderboard (distinct weight-setting validators, WeightsSet event count, and average updates per validator) ranked by total events, a network rollup with the true distinct setter count (a validator setting weights on several subnets counts once) and total events, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet update intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events WeightsSet stream; schema-stable empty block when cold.",
+      "id": "chain-weights",
+      "method": "GET",
+      "path": "/api/v1/chain/weights",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
