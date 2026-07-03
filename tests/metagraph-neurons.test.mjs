@@ -280,8 +280,10 @@ describe("metagraph-neurons builders", () => {
       7,
     );
     assert.equal(detail.captured_at, iso);
-    // null / blank / invalid stay null (never epoch 1970).
-    for (const captured_at of [null, "", "not-a-date"]) {
+    // null / blank / invalid / out-of-range stay null (never epoch 1970, never
+    // a RangeError). 8.64e15 ms is the max valid Date, so 8640000000000001 is
+    // finite but new Date(n) is an Invalid Date.
+    for (const captured_at of [null, "", "not-a-date", 8640000000000001]) {
       assert.equal(
         buildNeuronDetail({ ...ROW, captured_at }, 7).captured_at,
         null,
