@@ -4,20 +4,16 @@ name: PR Overlap Notice Comment
 # full rationale). Triggered by `workflow_run`, which -- unlike
 # `pull_request_target` -- is NEVER directly reachable by a PR author's event;
 # it only fires when a workflow run completes on this repo's own trusted ref.
-# This is the only place `pull-requests: write` is granted. It downloads the
-# detection result artifact (pr_number, checked, has_overlap, body -- a plain
-# JSON data file, never executed as code) and performs the actual comment
-# upsert. The body text ultimately derives from other-PRs' own file names,
-# which are already fully public in each PR's own diff; nothing here discloses
-# anything not already visible, and `gh api -f body=...` passes it as a
-# properly-encoded API field value, never as shell/script text.
+# This is the only place `pull-requests: write` is granted. It does not trust
+# artifacts or other outputs from the unprivileged PR run; instead, it derives
+# the PR number from the workflow_run payload and recomputes the overlap from
+# public GitHub API metadata before performing the comment upsert.
 on:
   workflow_run:
     workflows: ["PR Overlap Notice"]
     types: [completed]
 
 permissions:
-  actions: read
   pull-requests: write
 
 concurrency:
@@ -26,7 +22,7 @@ concurrency:
 
 jobs:
   comment:
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0]
     runs-on: ubuntu-latest
     steps:
       # No contributor code is checked out or executed anywhere in this
@@ -41,47 +37,91 @@ jobs:
             .github/workflows/pr-overlap-notice-comment.yml
           sparse-checkout-cone-mode: false
 
-      - name: Download overlap result
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          github-token: ${{ github.token }}
-          run-id: ${{ github.event.workflow_run.id }}
-          name: overlap-result
-          path: ${{ runner.temp }}/overlap-result
-
       - name: Upsert overlap-notice comment
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
           MARKER: "<!-- overlap-notice:v1 -->"
-          RESULT_FILE: ${{ runner.temp }}/overlap-result/result.json
+          MAX_OTHER_PRS: "200"
+          PER_PAGE: "100"
         run: |
           set -euo pipefail
 
-          if [ ! -f "$RESULT_FILE" ]; then
-            echo "No overlap-result artifact found; nothing to do." >&2
+          api_get() {
+            gh api "$1" 2>/dev/null || return 1
+          }
+
+          files_json_for_pr() {
+            local pr="$1"
+            local flat
+            flat=$(gh api "repos/$REPO/pulls/$pr/files" \
+              --paginate --jq '.[].filename' 2>/dev/null) || return 1
+            printf '%s' "$flat" | jq -R -s -c 'split("\n") | map(select(length > 0))'
+          }
+
+          this_pr_files_json=$(files_json_for_pr "$PR_NUMBER") || {
+            echo "Could not fetch this PR's changed files; skipping overlap comment update." >&2
             exit 0
+          }
+
+          other_pr_numbers=()
+          page=1
+          max_pages=$(( (MAX_OTHER_PRS + PER_PAGE - 1) / PER_PAGE ))
+          while [ "$page" -le "$max_pages" ]; do
+            page_numbers=$(api_get "repos/$REPO/pulls?state=open&per_page=$PER_PAGE&page=$page" \
+              | jq -r '.[].number') || {
+              echo "PR list fetch failed (possible rate limit); skipping overlap comment update." >&2
+              exit 0
+            }
+            [ -z "$page_numbers" ] && break
+            while IFS= read -r n; do
+              [ -n "$n" ] && [ "$n" != "$PR_NUMBER" ] && other_pr_numbers+=("$n")
+            done <<< "$page_numbers"
+            page_count=$(printf '%s\n' "$page_numbers" | grep -c .)
+            if [ "$page_count" -lt "$PER_PAGE" ]; then
+              break
+            fi
+            page=$((page + 1))
+          done
+          if [ "$page" -gt "$max_pages" ]; then
+            echo "::notice::Open PR list may be truncated at $MAX_OTHER_PRS PRs; some overlaps could be missed."
           fi
 
-          # Gate strictly on checked == true -- see pr-overlap-notice.yml's
-          # write_result comment for why this can never be misread as "no
-          # overlap" when detection actually skipped.
-          checked=$(jq -r '.checked' "$RESULT_FILE")
-          if [ "$checked" != "true" ]; then
-            echo "Detection did not complete a real comparison; skipping." >&2
-            exit 0
-          fi
+          has_overlap=false
+          body=""
+          overlap_lines=()
+          for other in "${other_pr_numbers[@]}"; do
+            other_files_json=$(files_json_for_pr "$other") || continue
+            shared=$(jq -n \
+              --argjson a "$this_pr_files_json" \
+              --argjson b "$other_files_json" \
+              '[$a[] | . as $x | select($b | any(. == $x))] | unique')
+            shared_count=$(printf '%s' "$shared" | jq 'length')
+            if [ "$shared_count" -gt 0 ]; then
+              shared_list=$(printf '%s' "$shared" | jq -r 'join("`, `")')
+              overlap_lines+=("- PR #$other also touches: `$shared_list`")
+            fi
+          done
 
-          pr_number=$(jq -r '.pr_number' "$RESULT_FILE")
-          has_overlap=$(jq -r '.has_overlap' "$RESULT_FILE")
-          body=$(jq -r '.body' "$RESULT_FILE")
+          if [ "${#overlap_lines[@]}" -gt 0 ]; then
+            has_overlap=true
+            body=$(
+              {
+                echo "$MARKER"
+                echo "This PR touches file(s) that are also being changed in other currently-open PR(s) — worth checking for overlap before either merges."
+                echo ""
+                printf '%s\n' "${overlap_lines[@]}"
+              }
+            )
+          fi
 
           # Same per-page pagination shape as the detection workflow: emit bare
           # scalar ids (one per matching comment, across all pages) rather than
           # a bracketed array literal per page, and take the first match. A PR
           # should carry at most one marker comment (this workflow always
           # upserts), so the first match is the one to update.
-          existing_comment_id=$(gh api "repos/$REPO/issues/$pr_number/comments?per_page=100" \
+          existing_comment_id=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" \
             --paginate --jq "[.[] | select(.body | startswith(\"$MARKER\")) | .id][]" 2>/dev/null \
             | head -n1) || {
             echo "Could not list existing comments; skipping." >&2
@@ -104,7 +144,7 @@ jobs:
                 >/dev/null 2>&1 || echo "Failed to update overlap comment; skipping." >&2
             else
               jq -n --arg body "$body" '{body: $body}' \
-                | gh api --method POST "repos/$REPO/issues/$pr_number/comments" --input - \
+                | gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" --input - \
                 >/dev/null 2>&1 || echo "Failed to post overlap comment; skipping." >&2
             fi
           else

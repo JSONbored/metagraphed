@@ -13,11 +13,11 @@ name: PR Overlap Notice
 # "I need write access triggered by PR activity, but the PR content itself
 # is untrusted"). This workflow runs on the untrusted `pull_request` event
 # with NO permissions granted at all; it only ever reads already-public PR
-# metadata over the GitHub API and writes its result to an artifact. The
-# second workflow, triggered by `workflow_run` (never directly reachable by
-# PR event content -- only by a workflow run completing on this repo's own
-# trusted ref), downloads that artifact and is the only place
-# `pull-requests: write` is ever granted.
+# metadata over the GitHub API. The second workflow, triggered by
+# `workflow_run` (never directly reachable by PR event content -- only by a
+# workflow run completing on this repo's own trusted ref), independently
+# recomputes the overlap and is the only place `pull-requests: write` is ever
+# granted.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -185,12 +185,3 @@ jobs:
             }
           )
           write_result true true "$body"
-
-      - name: Upload overlap result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: overlap-result
-          path: ${{ runner.temp }}/overlap-result/result.json
-          retention-days: 1
-          if-no-files-found: ignore
