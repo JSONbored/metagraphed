@@ -246,7 +246,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.1",
-      "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends (no static file).",
+      "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends; pass ?format=csv to download the per-day series as CSV (no static file).",
       "id": "economics-trends",
       "path": "/metagraph/economics/trends.json",
       "schema_ref": "#/components/schemas/EconomicsTrendsArtifact",
