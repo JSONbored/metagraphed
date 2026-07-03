@@ -936,6 +936,48 @@
         },
         "additionalProperties": true
       },
+      "ChainYieldArtifact": {
+        "type": "object",
+        "description": "Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact.",
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "network_yield",
+          "distribution"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "miner_count": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"] },
+          "total_stake_tao": { "type": "number" },
+          "total_emission_tao": { "type": "number" },
+          "network_yield": { "type": ["number", "null"] },
+          "validator_yield": { "type": ["number", "null"] },
+          "miner_yield": { "type": ["number", "null"] },
+          "distribution": { "$ref": "#/components/schemas/YieldDistribution" }
+        },
+        "additionalProperties": true
+      },
+      "YieldDistribution": {
+        "type": ["object", "null"],
+        "description": "Distribution summary of the per-neuron emission/stake return rate across the network: count, mean, median, min, max, and the p10/p25/p75/p90 nearest-rank percentiles. Null when no neuron carries a defined yield (a cold store, an empty network, or every neuron zero-stake).",
+        "properties": {
+          "count": { "type": "integer", "minimum": 0 },
+          "mean": { "type": ["number", "null"] },
+          "median": { "type": ["number", "null"] },
+          "min": { "type": ["number", "null"] },
+          "max": { "type": ["number", "null"] },
+          "p10": { "type": ["number", "null"] },
+          "p25": { "type": ["number", "null"] },
+          "p75": { "type": ["number", "null"] },
+          "p90": { "type": ["number", "null"] }
+        },
+        "additionalProperties": true
+      },
       "ScoreDistribution": {
         "type": ["object", "null"],
         "description": "Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",

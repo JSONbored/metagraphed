@@ -66,6 +66,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "chain-concentration",
   "chain-performance",
   "chain-identity-history",
+  "chain-yield",
   // Postgres-backed all-events tier (ADR 0013): served live by the data Worker,
   // never written as files.
   "chain-events-feed",

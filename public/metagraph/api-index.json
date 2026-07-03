@@ -653,6 +653,13 @@
     },
     {
       "contract_version": "2026-07-03.1",
+      "id": "chain-yield",
+      "path": "/metagraph/chain/yield.json",
+      "schema_ref": "#/components/schemas/ChainYieldArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.1",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
@@ -5928,6 +5935,18 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/yield.json",
+      "cache": "short",
+      "description": "Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons D1 tier; schema-stable nulls when cold.",
+      "id": "chain-yield",
+      "method": "GET",
+      "path": "/api/v1/chain/yield",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/uptime.json",

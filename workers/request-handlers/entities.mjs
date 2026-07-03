@@ -95,6 +95,7 @@ import {
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import { loadChainPerformance } from "../../src/chain-performance.mjs";
+import { loadChainYield } from "../../src/chain-yield.mjs";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -676,6 +677,30 @@ export async function handleChainIdentityHistory(request, env, url) {
         // Freshness = the newest change's observed_at (feed is newest-first), else
         // null when the store is cold.
         data.changes[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/yield: network-wide emission-yield (return rate) across EVERY
+// subnet's neurons — the aggregate network return (total emission / total stake),
+// the same split by validator vs miner role, and the p10–p90 spread of the
+// per-neuron emission/stake return, computed live from the neurons D1 tier. The
+// return-rate companion to /chain/performance. No params; a cold/absent store →
+// 200 with null blocks.
+export async function handleChainYield(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadChainYield(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/yield.json",
+        data.captured_at,
       ),
     },
     "short",
