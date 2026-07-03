@@ -94,6 +94,8 @@ function flattenUptimeSurfacesForCsv(data) {
   return rows;
 }
 
+export { flattenUptimeSurfacesForCsv };
+
 function validateFormatParam(url) {
   const raw = url.searchParams.get("format");
   if (raw === null && !url.searchParams.has("format")) return null;

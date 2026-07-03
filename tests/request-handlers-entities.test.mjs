@@ -973,6 +973,19 @@ describe("handleNeuronHistory", () => {
     assert.equal(body.meta.parameter, "format");
   });
 
+  test("rejects an empty format parameter", async () => {
+    const res = await handleNeuronHistory(
+      req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
+      emptyEnv(),
+      NETUID,
+      UID,
+      url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?format=`),
+    );
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
+
   test("returns CSV when Accept: text/csv is present", async () => {
     const { env } = dbWith({ neuronDailyUid: [neuronDailyRow()] });
     const request = new Request(
@@ -1119,6 +1132,18 @@ describe("handleSubnetHistory", () => {
       emptyEnv(),
       NETUID,
       url(`/api/v1/subnets/${NETUID}/history?format=pdf`),
+    );
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("rejects an empty format parameter", async () => {
+    const res = await handleSubnetHistory(
+      req(`/api/v1/subnets/${NETUID}/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/history?format=`),
     );
     const body = await errorJson(res);
     assert.equal(res.status, 400);
@@ -2635,6 +2660,30 @@ describe("handleAccountHistory", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+  });
+
+  test("rejects an unsupported format value", async () => {
+    const res = await handleAccountHistory(
+      req(`/api/v1/accounts/${SS58}/history`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/history?format=pdf`),
+    );
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("rejects an empty format parameter", async () => {
+    const res = await handleAccountHistory(
+      req(`/api/v1/accounts/${SS58}/history`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/history?format=`),
+    );
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
   });
 });
 
@@ -5196,6 +5245,32 @@ describe("canonicalSubnetHistoryCachePath", () => {
       ),
       "/api/v1/subnets/7/history?window=30d&format=csv",
     );
+  });
+
+  test("explicit CSV and JSON format overrides produce distinct cache variants", () => {
+    const csv = canonicalSubnetHistoryCachePath(
+      url("/api/v1/subnets/7/history?format=csv"),
+    );
+    assert.equal(csv, "/api/v1/subnets/7/history?window=30d&format=csv");
+
+    const csvAccept = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const json = canonicalSubnetHistoryCachePath(
+      url("/api/v1/subnets/7/history?format=json"),
+      csvAccept,
+    );
+    assert.equal(json, "/api/v1/subnets/7/history?window=30d");
+  });
+
+  test("falls back to raw search on invalid format", () => {
+    const raw = "/api/v1/subnets/7/history?format=pdf";
+    assert.equal(canonicalSubnetHistoryCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on empty format", () => {
+    const raw = "/api/v1/subnets/7/history?format=";
+    assert.equal(canonicalSubnetHistoryCachePath(url(raw)), raw);
   });
 });
 

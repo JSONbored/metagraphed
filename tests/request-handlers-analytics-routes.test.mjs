@@ -17,6 +17,7 @@ import {
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
+  flattenUptimeSurfacesForCsv,
 } from "../workers/request-handlers/analytics-routes.mjs";
 import {
   unsupportedWindowMessage,
@@ -516,6 +517,119 @@ describe("handleUptime", () => {
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
   });
+
+  test("rejects an empty format parameter", async () => {
+    const res = await handleUptime(req("/"), {}, NETUID, url("/?format="));
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
+    const env = d1Env({
+      "FROM surface_uptime_daily": [
+        {
+          surface_id: "sn-7-acme-subnet-api",
+          surface_key: "subnet-api",
+          day: "2026-06-01",
+          samples: 10,
+          ok_count: 9,
+          uptime_ratio: 0.9,
+          avg_latency_ms: 120,
+          latency_samples: 10,
+          p50: 100,
+          p95: 200,
+          p99: 250,
+          status: "degraded",
+        },
+      ],
+    });
+    const request = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const res = await handleUptime(
+      request,
+      env,
+      NETUID,
+      url("/?window=1y&format=json"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^application\/json/);
+  });
+
+  test("honors min_samples and format=csv together", async () => {
+    const env = d1Env({
+      "FROM surface_uptime_daily": [
+        {
+          surface_id: "sn-7-acme-subnet-api",
+          surface_key: "subnet-api",
+          day: "2026-06-01",
+          samples: 10,
+          ok_count: 9,
+          uptime_ratio: 0.9,
+          avg_latency_ms: 120,
+          latency_samples: 10,
+          p50: 100,
+          p95: 200,
+          p99: 250,
+          status: "degraded",
+        },
+      ],
+    });
+    const res = await handleUptime(
+      req("/"),
+      env,
+      NETUID,
+      url("/?window=1y&min_samples=5&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+  });
+});
+
+describe("flattenUptimeSurfacesForCsv", () => {
+  test("returns an empty array for nullish payloads", () => {
+    assert.deepEqual(flattenUptimeSurfacesForCsv(null), []);
+    assert.deepEqual(flattenUptimeSurfacesForCsv(undefined), []);
+    assert.deepEqual(flattenUptimeSurfacesForCsv({ surfaces: [] }), []);
+  });
+
+  test("skips surfaces without day rows and nulls missing latency tails", () => {
+    const rows = flattenUptimeSurfacesForCsv({
+      surfaces: [
+        { surface_id: "empty-surface", days: [] },
+        {
+          surface_id: "partial-surface",
+          days: [
+            {
+              day: "2026-06-01",
+              samples: 3,
+              uptime_ratio: 1,
+              avg_latency_ms: 40,
+              latency_sample_count: 3,
+              status: "ok",
+            },
+            {
+              day: "2026-06-02",
+              samples: 2,
+              uptime_ratio: 0.5,
+              avg_latency_ms: 50,
+              latency_sample_count: 2,
+              latency_ms: { p50: 45, p95: null, p99: 60 },
+              status: "degraded",
+            },
+          ],
+        },
+      ],
+    });
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].surface_id, "partial-surface");
+    assert.equal(rows[0].p50_latency_ms, null);
+    assert.equal(rows[0].p95_latency_ms, null);
+    assert.equal(rows[1].p50_latency_ms, 45);
+    assert.equal(rows[1].p95_latency_ms, null);
+    assert.equal(rows[1].p99_latency_ms, 60);
+  });
 });
 
 describe("handleLeaderboards", () => {
@@ -828,6 +942,32 @@ describe("canonicalUptimeCachePath", () => {
       ),
       "/api/v1/subnets/7/uptime?window=1y&min_samples=5",
     );
+  });
+
+  test("explicit CSV and JSON format overrides produce distinct cache variants", () => {
+    const csv = canonicalUptimeCachePath(
+      url("/api/v1/subnets/7/uptime?format=csv"),
+    );
+    assert.equal(csv, "/api/v1/subnets/7/uptime?window=90d&format=csv");
+
+    const csvAccept = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const json = canonicalUptimeCachePath(
+      url("/api/v1/subnets/7/uptime?format=json"),
+      csvAccept,
+    );
+    assert.equal(json, "/api/v1/subnets/7/uptime?window=90d");
+  });
+
+  test("falls back to raw search on empty format", () => {
+    const raw = "/api/v1/subnets/7/uptime?format=";
+    assert.equal(canonicalUptimeCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on duplicate window params", () => {
+    const raw = "/api/v1/subnets/7/uptime?window=90d&window=1y";
+    assert.equal(canonicalUptimeCachePath(url(raw)), raw);
   });
 });
 

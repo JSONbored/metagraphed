@@ -216,6 +216,22 @@ describe("public contract registry", () => {
         "/api/v1/economics/trends",
         "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       ],
+      [
+        "/api/v1/subnets/{netuid}/history",
+        "snapshot_date,neuron_count,validator_count,total_stake_tao,total_emission_tao",
+      ],
+      [
+        "/api/v1/subnets/{netuid}/neurons/{uid}/history",
+        "snapshot_date,captured_at,block_number,uid,hotkey,coldkey,active,validator_permit,rank,trust,validator_trust,consensus,incentive,dividends,emission_tao,stake_tao,registered_at_block,is_immunity_period,axon",
+      ],
+      [
+        "/api/v1/accounts/{ss58}/history",
+        "day,netuid,event_count,event_kinds,first_block,last_block",
+      ],
+      [
+        "/api/v1/subnets/{netuid}/uptime",
+        "surface_id,day,samples,uptime_ratio,avg_latency_ms,latency_sample_count,p50_latency_ms,p95_latency_ms,p99_latency_ms,status",
+      ],
     ];
     for (const [path, expectedHeader] of csvExamples) {
       const csvContent =
