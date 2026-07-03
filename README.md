@@ -114,7 +114,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**102 curated subnets** — 88 with a site, 44 with docs, 87 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**105 curated subnets** — 89 with a site, 44 with docs, 90 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -156,6 +156,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[OxMarkets](https://metagraph.sh/subnets/35)** `SN35` · [site](https://www.0xmarkets.io/) · [repo](https://github.com/General-Tao-Ventures/cartha-validator)
 - **[Eirel](https://metagraph.sh/subnets/36)** `SN36` · [site](https://eirel.ai/) · [repo](https://github.com/RendixNetwork/eirel-ai)
 - **[Aurelius](https://metagraph.sh/subnets/37)** `SN37` · [site](https://aureliusaligned.ai/) · [repo](https://github.com/Aurelius-Protocol/Aurelius-Protocol)
+- **[ChronoLLM](https://metagraph.sh/subnets/38)** `SN38`
 - **[Basilica](https://metagraph.sh/subnets/39)** `SN39` — `compute` · [site](https://www.basilica.ai/) · [repo](https://github.com/one-covenant/basilica)
 - **[Chunking](https://metagraph.sh/subnets/40)** `SN40` — `data-pipeline` `rag` · [site](https://subnet.chunking.com/)
 - **[Gopher](https://metagraph.sh/subnets/42)** `SN42` — `data` `tee` · [site](https://developers.gopher-ai.com/) · [docs](https://developers.gopher-ai.com/docs/subnet/intro) · [repo](https://github.com/gopher-lab/subnet-42)
@@ -183,6 +184,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[Hippius](https://metagraph.sh/subnets/75)** `SN75` — `depin` `storage` · [site](https://hippius.com/) · [docs](https://docs.hippius.com/) · [repo](https://github.com/thenervelab/hippius-validator)
 - **[Byzantium](https://metagraph.sh/subnets/76)** `SN76` · [site](https://www.byzantiumai.net/) · [repo](https://github.com/byzantiumaitao-arch/byzantium)
 - **[MVTRX](https://metagraph.sh/subnets/79)** `SN79` · [site](https://taos.im/) · [docs](https://simulate.trading/taos-im-paper) · [repo](https://github.com/taos-im/sn-79)
+- **[dogelayer](https://metagraph.sh/subnets/80)** `SN80`
 - **[Grail](https://metagraph.sh/subnets/81)** `SN81` — `decentralized-training` · [docs](https://github.com/one-covenant/grail/tree/main/docs) · [repo](https://github.com/one-covenant/grail)
 - **[Compelle](https://metagraph.sh/subnets/82)** `SN82` · [site](https://compelle.com/) · [repo](https://github.com/compelle/compelle-validator)
 - **[ansuz](https://metagraph.sh/subnets/84)** `SN84` — `chip-design` `hardware` · [site](https://www.chipforge.io/) · [docs](https://docs.chipforge.io/) · [repo](https://github.com/TatsuProject/ChipForge_SN84)
@@ -195,16 +197,17 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[Bitstarter #1](https://metagraph.sh/subnets/91)** `SN91` · [site](https://bitstarter.ai/) · [repo](https://github.com/AlphaCoreBittensor/alphacore)
 - **[Tensorclaw](https://metagraph.sh/subnets/92)** `SN92` — `inference` `stale-source-restored` · [site](https://www.tensorclaw.ai/) · [repo](https://github.com/tensorclaw/tensorclaw)
 - **[Bitcast](https://metagraph.sh/subnets/93)** `SN93` · [site](https://stats.bitcast.network/) · [repo](https://github.com/bitcast-network/bitcast)
-- **[Bitsota](https://metagraph.sh/subnets/94)** `SN94`
+- **[Bitsota](https://metagraph.sh/subnets/94)** `SN94` · [repo](https://github.com/AlveusLabs/SN94-BitSota)
 - **[Actual](https://metagraph.sh/subnets/95)** `SN95` — `inference` `model-registry` · [site](https://actual.inc/) · [repo](https://github.com/actual-computer/actual-subnet-95)
 - **[Verathos](https://metagraph.sh/subnets/96)** `SN96` — `inference` `language-models` · [site](https://verathos.ai/) · [docs](https://verathos.ai/docs) · [repo](https://github.com/verathos-ai/verathos)
+- **[Albedo](https://metagraph.sh/subnets/97)** `SN97` · [site](https://albedo.tech) · [repo](https://github.com/unarbos/albedo)
 - **[ForeverMoney](https://metagraph.sh/subnets/98)** `SN98` — `finance` · [site](https://forevermoney.ai/) · [repo](https://github.com/SN98-ForeverMoney/forever-money)
 - **[Plaτform](https://metagraph.sh/subnets/100)** `SN100` — `ai-research` · [site](https://www.platform.network/) · [docs](https://www.platform.network/docs) · [repo](https://github.com/PlatformNetwork/platform)
 - **[eni](https://metagraph.sh/subnets/101)** `SN101` · [site](http://tag101.ai/) · [repo](https://github.com/tag101-ai/tag101)
 - **[ConnitoAI](https://metagraph.sh/subnets/102)** `SN102` · [site](https://connito.ai/) · [repo](https://github.com/Connito-AI/Connito)
 - **[Djinn](https://metagraph.sh/subnets/103)** `SN103` · [site](https://www.djinn.gg/) · [repo](https://github.com/Djinn-Inc/djinn)
 - **[for sale (burn to uid1)](https://metagraph.sh/subnets/104)** `SN104` — `no-public-project-surface`
-- **[Nodexo](https://metagraph.sh/subnets/106)** `SN106` — `compute` `gpu` · [site](https://nodexo.ai/) · [docs](https://docs.nodexo.ai/)
+- **[Nodexo](https://metagraph.sh/subnets/106)** `SN106` — `compute` `gpu` · [site](https://nodexo.ai/) · [docs](https://docs.nodexo.ai/) · [repo](https://github.com/nodexo-ai/nodexo)
 - **[Minos](https://metagraph.sh/subnets/107)** `SN107` · [site](https://theminos.ai/) · [repo](https://github.com/minos-protocol/minos_subnet)
 - **[Academia](https://metagraph.sh/subnets/109)** `SN109` — `data-artifact` · [repo](https://github.com/fx-integral/academia)
 - **[Green Compute](https://metagraph.sh/subnets/110)** `SN110` — `model-directory` · [site](https://www.green-compute.com/) · [docs](https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx) · [repo](https://github.com/Rich-Kids-of-TAO/rkt-subnet)
