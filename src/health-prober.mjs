@@ -914,3 +914,9 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
     };
   }
 }
+
+// Exported for unit tests.
+export const __test = {
+  iso,
+  utcDayBounds,
+};

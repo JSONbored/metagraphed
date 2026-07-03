@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -13,7 +13,10 @@ import {
   runHealthProber,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
+  __test,
 } from "../src/health-prober.mjs";
+
+const { iso, utcDayBounds } = __test;
 import { handleScheduled } from "../workers/api.mjs";
 import {
   EMBEDDING_SYNC_CRON,
@@ -1962,6 +1965,37 @@ describe("rollupDailyUptime (durable daily history)", () => {
       rolled: false,
       error: "invalid run timestamp",
     });
+  });
+
+  test("rollupDailyUptime skips an out-of-range UTC day bound without aborting", async () => {
+    const db = makeDb();
+    const result = await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => 8640000000000001 },
+    );
+    assert.equal(result.rolled, true);
+    assert.equal(result.days.length, 1);
+    assert.equal(db.calls.batches.length, 1);
+    assert.equal(db.calls.batches[0].length, 1);
+  });
+
+  test("iso and utcDayBounds drop out-of-range epochs without RangeError (#2807)", () => {
+    assert.equal(iso(8640000000000001), null);
+    assert.equal(iso(50000), new Date(50000).toISOString());
+    assert.equal(utcDayBounds(Number.NaN), null);
+    assert.equal(utcDayBounds(8640000000000001), null);
+    const bounds = utcDayBounds(Date.UTC(2026, 5, 13, 10, 0, 0));
+    assert.equal(bounds.date, "2026-06-13");
+    const getTime = vi.spyOn(Date.prototype, "getTime");
+    getTime.mockReturnValueOnce(Date.UTC(2026, 5, 13, 10));
+    getTime.mockReturnValueOnce(Number.NaN);
+    assert.equal(utcDayBounds(Date.UTC(2026, 5, 13, 10)), null);
+    getTime.mockRestore();
+    const isoGetTime = vi
+      .spyOn(Date.prototype, "getTime")
+      .mockReturnValueOnce(Number.NaN);
+    assert.equal(iso(50000), null);
+    isoGetTime.mockRestore();
   });
 
   test("degrades to { rolled: false } when the batch write throws", async () => {
