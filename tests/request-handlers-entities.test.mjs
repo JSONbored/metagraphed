@@ -921,6 +921,61 @@ describe("handleNeuronHistory", () => {
     assert.ok(historySql);
     assert.ok(!/snapshot_date >=/.test(historySql));
   });
+
+  test("returns CSV response when ?format=csv is requested", async () => {
+    const { env } = dbWith({ neuronDailyUid: [neuronDailyRow()] });
+    const res = await handleNeuronHistory(
+      req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
+      env,
+      NETUID,
+      UID,
+      url(
+        `/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=7d&format=csv`,
+      ),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(
+      res.headers
+        .get("content-disposition")
+        .includes('filename="subnet-neuron-history.csv"'),
+    );
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.match(lines[0], /snapshot_date,.*uid,hotkey/);
+    assert.match(lines[1], /2026-06-20/);
+  });
+
+  test("returns empty/header-only CSV when D1 is cold", async () => {
+    const res = await handleNeuronHistory(
+      req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
+      emptyEnv(),
+      NETUID,
+      UID,
+      url(
+        `/api/v1/subnets/${NETUID}/neurons/${UID}/history?format=csv`,
+      ),
+    );
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\r\n");
+    assert.match(lines[0], /snapshot_date/);
+    assert.equal(lines.length, 1);
+  });
+
+  test("rejects an unsupported format value", async () => {
+    const res = await handleNeuronHistory(
+      req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
+      emptyEnv(),
+      NETUID,
+      UID,
+      url(
+        `/api/v1/subnets/${NETUID}/neurons/${UID}/history?format=pdf`,
+      ),
+    );
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
 });
 
 describe("handleSubnetHistory", () => {
@@ -1024,6 +1079,43 @@ describe("handleSubnetHistory", () => {
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns CSV response when ?format=csv is requested", async () => {
+    const { env } = dbWith({
+      neuronDailySubnet: [subnetHistoryRow()],
+    });
+    const res = await handleSubnetHistory(
+      req(`/api/v1/subnets/${NETUID}/history`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/history?window=90d&format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(
+      res.headers
+        .get("content-disposition")
+        .includes('filename="subnet-history.csv"'),
+    );
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(
+      lines[0],
+      "snapshot_date,neuron_count,validator_count,total_stake_tao,total_emission_tao",
+    );
+    assert.equal(lines[1], "2026-06-20,2,1,900,12.5");
+  });
+
+  test("returns empty/header-only CSV when D1 is cold", async () => {
+    const res = await handleSubnetHistory(
+      req(`/api/v1/subnets/${NETUID}/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/history?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(lines.length, 1);
   });
 });
 
@@ -2415,6 +2507,41 @@ describe("handleAccountHistory", () => {
     assert.equal(body.data.day_count, 0);
     assert.deepEqual(body.data.days, []);
     assert.equal(captures.sql.length, 0);
+  });
+
+  test("returns CSV response when ?format=csv is requested", async () => {
+    const { env } = dbWith({ accountEventsDaily: [accountDayRow()] });
+    const res = await handleAccountHistory(
+      req(`/api/v1/accounts/${SS58}/history`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/history?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(
+      res.headers
+        .get("content-disposition")
+        .includes('filename="account-history.csv"'),
+    );
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(
+      lines[0],
+      "day,netuid,event_count,event_kinds,first_block,last_block",
+    );
+    assert.match(lines[1], /2026-06-24,7,12,StakeAdded;WeightsSet/);
+  });
+
+  test("returns empty/header-only CSV when D1 is cold", async () => {
+    const res = await handleAccountHistory(
+      req(`/api/v1/accounts/${SS58}/history`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/history?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(lines.length, 1);
   });
 });
 
@@ -4954,6 +5081,15 @@ describe("canonicalSubnetHistoryCachePath", () => {
   test("falls back to raw url when window value is invalid", () => {
     const raw = "/api/v1/subnets/7/history?window=invalid";
     assert.equal(canonicalSubnetHistoryCachePath(url(raw)), raw);
+  });
+
+  test("appends format=csv for CSV requests", () => {
+    assert.equal(
+      canonicalSubnetHistoryCachePath(
+        url("/api/v1/subnets/7/history?window=30d&format=csv"),
+      ),
+      "/api/v1/subnets/7/history?window=30d&format=csv",
+    );
   });
 });
 

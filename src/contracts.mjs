@@ -1003,13 +1003,13 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-neuron-history",
     "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
-    "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
+    "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file). Pass ?format=csv to download the per-day series as CSV.",
     "NeuronHistoryArtifact",
   ),
   artifact(
     "subnet-history",
     "/metagraph/subnets/{netuid}/history.json",
-    "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+    "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file). Pass ?format=csv to download the per-day series as CSV.",
     "SubnetHistoryArtifact",
   ),
   artifact(
@@ -1033,7 +1033,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "account-history",
     "/metagraph/accounts/{ss58}/history.json",
-    "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
+    "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file). Pass ?format=csv to download the per-day series as CSV.",
     "AccountHistoryArtifact",
   ),
   artifact(
@@ -1171,7 +1171,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
-    "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
+    "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file). Pass ?format=csv to download the per-surface per-day series as CSV.",
     "UptimeArtifact",
   ),
   artifact(
@@ -1995,15 +1995,15 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/neurons/{uid}/history",
     "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
-    "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
       },
-    ],
+    ]),
     [
       { name: "netuid", schema: { type: "integer", minimum: 0 } },
       { name: "uid", schema: { type: "integer", minimum: 0 } },
@@ -2014,15 +2014,15 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/history",
     "/metagraph/subnets/{netuid}/history.json",
-    "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
       },
-    ],
+    ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -2075,16 +2075,16 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/history",
     "/metagraph/accounts/{ss58}/history.json",
-    "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+    "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset. Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["accounts", "analytics"],
-    [
+    csvRouteQuery([
       { name: "netuid", schema: { type: "integer", minimum: 0 } },
       { name: "from", schema: { type: "string", format: "date" } },
       { name: "to", schema: { type: "string", format: "date" } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -2455,13 +2455,13 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
-    "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history.",
+    "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history. Pass ?format=csv to download the per-surface per-day series as CSV.",
     "short",
     ["health", "subnets", "analytics"],
-    [
+    csvRouteQuery([
       { name: "window", schema: { type: "string", enum: ["90d", "1y"] } },
       { name: "min_samples", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3196,6 +3196,30 @@ function csvExampleForRoute(entry) {
     return [
       "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       "2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752",
+    ].join("\r\n");
+  }
+  if (entry.id === "subnet-neuron-history") {
+    return [
+      "snapshot_date,captured_at,block_number,uid,hotkey,coldkey,active,validator_permit,rank,trust,validator_trust,consensus,incentive,dividends,emission_tao,stake_tao,registered_at_block,is_immunity_period,axon",
+      "2026-06-02,2026-06-02T00:00:00.000Z,8454388,0,hk_sample,ck_sample,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091",
+    ].join("\r\n");
+  }
+  if (entry.id === "subnet-history") {
+    return [
+      "snapshot_date,neuron_count,validator_count,total_stake_tao,total_emission_tao",
+      "2026-06-02,256,32,125000.5,42.1",
+    ].join("\r\n");
+  }
+  if (entry.id === "account-history") {
+    return [
+      "day,netuid,event_count,event_kinds,first_block,last_block",
+      "2026-06-02,7,12,StakeAdded;Transfer,8454300,8454388",
+    ].join("\r\n");
+  }
+  if (entry.id === "subnet-uptime") {
+    return [
+      "surface_id,day,samples,uptime_ratio,avg_latency_ms,latency_sample_count,p50_latency_ms,p95_latency_ms,p99_latency_ms,status",
+      "subnet-7-rpc,2026-06-02,1440,0.9986,42,1200,38,55,72,ok",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";

@@ -173,6 +173,42 @@ const GLOBAL_VALIDATOR_CSV_COLUMNS = [
   "latest_block_number",
   "subnets",
 ];
+const NEURON_HISTORY_CSV_COLUMNS = [
+  "snapshot_date",
+  "captured_at",
+  "block_number",
+  "uid",
+  "hotkey",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "validator_trust",
+  "consensus",
+  "incentive",
+  "dividends",
+  "emission_tao",
+  "stake_tao",
+  "registered_at_block",
+  "is_immunity_period",
+  "axon",
+];
+const SUBNET_HISTORY_CSV_COLUMNS = [
+  "snapshot_date",
+  "neuron_count",
+  "validator_count",
+  "total_stake_tao",
+  "total_emission_tao",
+];
+const ACCOUNT_HISTORY_CSV_COLUMNS = [
+  "day",
+  "netuid",
+  "event_count",
+  "event_kinds",
+  "first_block",
+  "last_block",
+];
 
 function validateResponseFormat(url) {
   const raw = url.searchParams.get("format");
@@ -434,7 +470,7 @@ export async function handleGlobalValidators(request, env, url) {
 // GET /api/v1/subnets/{netuid}/neurons/{uid}/history?window=7d|30d|90d|1y|all
 // Per-UID time series (one point per snapshot_date, newest first, bounded).
 export async function handleNeuronHistory(request, env, netuid, uid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateEntityQuery(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const { label, days, error } = parseHistoryWindow(
     url.searchParams.get("window"),
@@ -454,6 +490,15 @@ export async function handleNeuronHistory(request, env, netuid, uid, url) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await d1All(env, sql, params);
   const data = buildNeuronHistory(rows, netuid, uid, { window: label });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.points,
+      "subnet-neuron-history",
+      "short",
+      request,
+      NEURON_HISTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -472,7 +517,7 @@ export async function handleNeuronHistory(request, env, netuid, uid, url) {
 // Per-subnet daily aggregates over time (count + totals) for a history sparkline,
 // without shipping every UID's row.
 export async function handleSubnetHistory(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateEntityQuery(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const { label, days, error } = parseHistoryWindow(
     url.searchParams.get("window"),
@@ -495,6 +540,15 @@ export async function handleSubnetHistory(request, env, netuid, url) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await d1All(env, sql, params);
   const data = buildSubnetHistory(rows, netuid, { window: label });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.points,
+      "subnet-history",
+      "short",
+      request,
+      SUBNET_HISTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -649,16 +703,22 @@ export async function handleChainPerformance(request, env, url) {
 // normalising the ?window= query parameter through the route-specific parse
 // function, so that an omitted window and an explicit default-value window map
 // to the same cache slot.
-function canonicalWindowedCachePath(url, parseWindow) {
-  const validationError = validateQueryParams(url, ["window"]);
+function canonicalWindowedCachePath(url, parseWindow, request = null) {
+  const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return `${url.pathname}${url.search}`;
+  const formatError = validateResponseFormat(url);
+  if (formatError) return `${url.pathname}${url.search}`;
   const { label, error } = parseWindow(url.searchParams.get("window"));
   if (error) return `${url.pathname}${url.search}`;
-  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+  return csvCacheVariant(
+    url,
+    request,
+    `${url.pathname}?window=${encodeURIComponent(label)}`,
+  );
 }
 
-export function canonicalSubnetHistoryCachePath(url) {
-  return canonicalWindowedCachePath(url, parseHistoryWindow);
+export function canonicalSubnetHistoryCachePath(url, request = null) {
+  return canonicalWindowedCachePath(url, parseHistoryWindow, request);
 }
 
 export function canonicalSubnetConcentrationHistoryCachePath(url) {
@@ -1132,7 +1192,7 @@ const ACCOUNT_DAY_COLUMNS =
   "day, netuid, event_count, event_kinds, first_block, last_block";
 
 export async function handleAccountHistory(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, [
+  const validationError = validateEntityQuery(url, [
     "netuid",
     "from",
     "to",
@@ -1164,6 +1224,15 @@ export async function handleAccountHistory(request, env, ss58, url) {
       offset,
       nextCursor: null,
     });
+    if (csvRequested(url, request)) {
+      return csvResponse(
+        data.days,
+        "account-history",
+        "short",
+        request,
+        ACCOUNT_HISTORY_CSV_COLUMNS,
+      );
+    }
     // Use the account envelope so this short-circuit exposes the
     // x-metagraph-artifact-source header too — the normal path below does (#2618),
     // and the payload stamps the same meta.source, so a browser must not lose the
@@ -1228,6 +1297,15 @@ export async function handleAccountHistory(request, env, ss58, url) {
       ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
       : null;
   const data = buildAccountHistory(rows, ss58, { limit, offset, nextCursor });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.days,
+      "account-history",
+      "short",
+      request,
+      ACCOUNT_HISTORY_CSV_COLUMNS,
+    );
+  }
   return accountEnvelopeResponse(
     request,
     {

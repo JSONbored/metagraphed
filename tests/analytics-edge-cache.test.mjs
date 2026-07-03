@@ -762,6 +762,32 @@ describe("analytics edge cache", () => {
     );
   });
 
+  test("subnet-history JSON and CSV requests use distinct cache entries", async () => {
+    const queries = [];
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/subnets/7/history?window=30d";
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    const queriesAfterJson = queries.length;
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}&format=csv`),
+      env,
+      ctx,
+    );
+    assert.ok(
+      queries.length > queriesAfterJson,
+      "?format=csv must not reuse the JSON cache entry",
+    );
+  });
+
   test("economics-trends ?window variants share a single cache entry (canonical key)", async () => {
     const queries = [];
     const cache = mockCaches();

@@ -60,6 +60,40 @@ const ECONOMICS_TRENDS_CSV_COLUMNS = [
   "mean_emission_share",
 ];
 
+const UPTIME_CSV_COLUMNS = [
+  "surface_id",
+  "day",
+  "samples",
+  "uptime_ratio",
+  "avg_latency_ms",
+  "latency_sample_count",
+  "p50_latency_ms",
+  "p95_latency_ms",
+  "p99_latency_ms",
+  "status",
+];
+
+function flattenUptimeSurfacesForCsv(data) {
+  const rows = [];
+  for (const surface of data?.surfaces || []) {
+    for (const day of surface.days || []) {
+      rows.push({
+        surface_id: surface.surface_id,
+        day: day.day,
+        samples: day.samples,
+        uptime_ratio: day.uptime_ratio,
+        avg_latency_ms: day.avg_latency_ms,
+        latency_sample_count: day.latency_sample_count,
+        p50_latency_ms: day.latency_ms?.p50 ?? null,
+        p95_latency_ms: day.latency_ms?.p95 ?? null,
+        p99_latency_ms: day.latency_ms?.p99 ?? null,
+        status: day.status,
+      });
+    }
+  }
+  return rows;
+}
+
 function validateFormatParam(url) {
   const raw = url.searchParams.get("format");
   if (raw === null && !url.searchParams.has("format")) return null;
@@ -170,8 +204,14 @@ export async function handleEconomicsTrends(request, env, url) {
 
 // Long-term daily uptime history for one subnet's operational surfaces.
 export async function handleUptime(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window", "min_samples"]);
+  const validationError = validateQueryParams(url, [
+    "window",
+    "min_samples",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const windowParam = url.searchParams.get("window") || "90d";
   if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
     return analyticsQueryError({
@@ -229,6 +269,15 @@ export async function handleUptime(request, env, netuid, url) {
     rows,
     now: new Date().toISOString(),
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      flattenUptimeSurfacesForCsv(data),
+      "subnet-uptime",
+      "short",
+      request,
+      UPTIME_CSV_COLUMNS,
+    );
+  }
   return envelopeWithD1Fallback(
     request,
     {
@@ -244,16 +293,39 @@ export async function handleUptime(request, env, netuid, url) {
   );
 }
 
+function uptimeCacheVariant(url, request, canonicalPath) {
+  const format = url.searchParams.get("format")?.toLowerCase();
+  const wantsCsv =
+    format === "csv" || (request != null && csvRequested(url, request));
+  if (!wantsCsv) return canonicalPath;
+  return `${canonicalPath}&format=csv`;
+}
+
 // Normalises the uptime URL so that a bare ?-free request and an explicit
 // ?window=90d request both resolve to the same edge-cache entry — mirrors
 // canonicalSubnetConcentrationHistoryCachePath in entities.mjs.
-export function canonicalUptimeCachePath(url) {
-  const validationError = validateQueryParams(url, ["window"]);
+export function canonicalUptimeCachePath(url, request = null) {
+  const validationError = validateQueryParams(url, [
+    "window",
+    "min_samples",
+    "format",
+  ]);
   if (validationError) return `${url.pathname}${url.search}`;
+  const formatError = validateFormatParam(url);
+  if (formatError) return `${url.pathname}${url.search}`;
   const windowParam = url.searchParams.get("window") || "90d";
   if (!Object.hasOwn(UPTIME_WINDOWS, windowParam))
     return `${url.pathname}${url.search}`;
-  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+  const minSamples = parseNonNegativeIntParam(
+    url.searchParams.get("min_samples"),
+    "min_samples",
+  );
+  if (minSamples.error) return `${url.pathname}${url.search}`;
+  let path = `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+  if (minSamples.value !== null) {
+    path += `&min_samples=${minSamples.value}`;
+  }
+  return uptimeCacheVariant(url, request, path);
 }
 
 // Normalises the economics-trends URL so that a bare ?-free request and an explicit

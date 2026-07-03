@@ -405,6 +405,65 @@ describe("handleUptime", () => {
     assert.equal(body.data.surfaces[0].surface_id, "sn-7-acme-subnet-api");
     assert.equal(body.data.surfaces[0].days[0].uptime_ratio, 0.9);
   });
+
+  test("returns CSV response when ?format=csv is requested", async () => {
+    const env = d1Env({
+      "FROM surface_uptime_daily": [
+        {
+          surface_id: "sn-7-acme-subnet-api",
+          surface_key: "subnet-api",
+          day: "2026-06-01",
+          samples: 10,
+          ok_count: 9,
+          uptime_ratio: 0.9,
+          avg_latency_ms: 120,
+          latency_samples: 10,
+          p50: 100,
+          p95: 200,
+          p99: 250,
+          status: "degraded",
+        },
+      ],
+    });
+    const res = await handleUptime(
+      req("/"),
+      env,
+      NETUID,
+      url("/?window=1y&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(
+      res.headers
+        .get("content-disposition")
+        .includes('filename="subnet-uptime.csv"'),
+    );
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(
+      lines[0],
+      "surface_id,day,samples,uptime_ratio,avg_latency_ms,latency_sample_count,p50_latency_ms,p95_latency_ms,p99_latency_ms,status",
+    );
+    assert.match(lines[1], /sn-7-acme-subnet-api,2026-06-01,10,0\.9/);
+  });
+
+  test("returns empty/header-only CSV when D1 is cold", async () => {
+    const res = await handleUptime(
+      req("/"),
+      {},
+      NETUID,
+      url("/?format=csv"),
+    );
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(lines.length, 1);
+  });
+
+  test("rejects an unsupported format value", async () => {
+    const res = await handleUptime(req("/"), {}, NETUID, url("/?format=pdf"));
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
 });
 
 describe("handleLeaderboards", () => {

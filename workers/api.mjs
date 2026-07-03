@@ -1312,7 +1312,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         "uptime",
         () => handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
-        canonicalUptimeCachePath(resolved.url),
+        canonicalUptimeCachePath(resolved.url, request),
       );
     }
     const concentrationHistoryMatch =
@@ -1463,7 +1463,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(subnetHistoryMatch[1]),
             resolved.url,
           ),
-        canonicalSubnetHistoryCachePath(resolved.url),
+        canonicalSubnetHistoryCachePath(resolved.url, request),
       );
     }
     const subnetIdentityHistoryMatch =
