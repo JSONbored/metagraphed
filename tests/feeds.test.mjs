@@ -1349,6 +1349,37 @@ describe("feeds — Worker dispatch integration", () => {
     );
   });
 
+  test("handleRequest keys edge-cached feeds by limit", async () => {
+    installMockCache();
+    const env = createLocalArtifactEnv();
+    const ctx = { waitUntil: (promise) => promise };
+
+    // ?limit is threaded into the feed edge-cache key, so a capped request and a
+    // later unlimited request do not share a cache slot.
+    const capped = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/registry.json?limit=1",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(capped.status, 200);
+    assert.ok((await capped.json()).items.length <= 1);
+
+    const invalid = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/registry.json?limit=0",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(invalid.status, 400);
+    assert.equal(
+      invalid.headers.get("x-metagraph-error-code"),
+      "invalid_limit",
+    );
+  });
+
   test("an unknown feed path is a 404 with the canonical error envelope", async () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
