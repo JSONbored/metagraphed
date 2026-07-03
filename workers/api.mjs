@@ -59,6 +59,7 @@ import {
   withEdgeCache,
   withNeuronsEdgeCache,
   readNeuronsCacheStamp,
+  readIdentityHistoryCacheStamp,
 } from "./request-handlers/analytics.mjs";
 import {
   loadStagedNeurons,
@@ -78,6 +79,8 @@ import {
   handleSubnetConcentrationHistory,
   handleChainConcentration,
   handleChainPerformance,
+  handleChainIdentityHistory,
+  canonicalChainIdentityHistoryCachePath,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
@@ -1714,6 +1717,22 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
       );
     }
+    // GET /api/v1/chain/identity-history: network-wide recent subnet-identity-change
+    // feed across ALL subnets (newest first) — edge-cache busts on the newest
+    // identity change's observed_at; ?limit rides the canonical cache path so a bare
+    // request and an explicit-default request share one slot (like chain/performance
+    // but a capped feed, not a per-subnet aggregate).
+    if (resolved.url.pathname === "/api/v1/chain/identity-history") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-identity-history",
+        () => handleChainIdentityHistory(request, env, resolved.url),
+        canonicalChainIdentityHistoryCachePath(resolved.url),
+        (edgeEnv) => readIdentityHistoryCacheStamp(edgeEnv),
+      );
+    }
     // Network-wide economics time series (#1307): deterministic per cron snapshot
     // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
     // sibling history/trajectory routes; ?window rides the search into the key.
@@ -1775,6 +1794,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/transfers" ||
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/performance" ||
+    pathname === "/api/v1/chain/identity-history" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||

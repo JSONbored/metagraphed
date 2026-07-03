@@ -952,6 +952,42 @@
         },
         "additionalProperties": true
       },
+      "ChainIdentityHistoryChange": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "One observed on-chain SubnetIdentitiesV3 change in the network-wide feed, shaped like a per-subnet identity-history entry plus the netuid it belongs to. Operator-controlled untrusted data.",
+        "required": ["observed_at", "identity_hash"],
+        "properties": {
+          "netuid": { "type": ["integer", "null"], "minimum": 0 },
+          "block_number": { "type": ["integer", "null"], "minimum": 0 },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "subnet_name": { "type": ["string", "null"] },
+          "symbol": { "type": ["string", "null"] },
+          "description": { "type": ["string", "null"] },
+          "github_repo": { "type": ["string", "null"], "format": "uri" },
+          "subnet_url": { "type": ["string", "null"], "format": "uri" },
+          "discord": { "type": ["string", "null"], "maxLength": 200 },
+          "logo_url": { "type": ["string", "null"], "format": "uri" },
+          "identity_hash": { "type": ["string", "null"] }
+        }
+      },
+      "ChainIdentityHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets, computed live from the subnet_identity_history D1 tier at /api/v1/chain/identity-history (no static file). Each change carries the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route; capped to ?limit (default 50, max 200). subnet_count is the distinct subnets the emitted feed spans. The network analog of SubnetIdentityHistoryArtifact.",
+        "required": ["schema_version", "count", "subnet_count", "changes"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "count": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChainIdentityHistoryChange"
+            }
+          }
+        }
+      },
       "SubnetConcentrationHistoryArtifact": {
         "type": "object",
         "description": "Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup.",

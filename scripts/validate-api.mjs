@@ -525,6 +525,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/identity-history",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.count, "number");
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(Array.isArray(body.data.changes), true);
+    },
+  ],
+  [
     "/api/v1/chain/concentration",
     (body) => {
       assert.equal(body.data.schema_version, 1);

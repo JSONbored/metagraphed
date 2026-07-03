@@ -5683,6 +5683,77 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_trust.count, 1);
   });
 
+  test("get_chain_identity_history returns a schema-stable empty feed on cold D1", async () => {
+    const res = await callTool("get_chain_identity_history", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.count, 0);
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.changes, []);
+  });
+
+  test("get_chain_identity_history summarizes recent changes across subnets", async () => {
+    const identityDb = {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            return {
+              all() {
+                if (sql.includes("FROM subnet_identity_history")) {
+                  assert.equal(params[params.length - 1], 2); // clamped limit bound
+                  return Promise.resolve({
+                    results: [
+                      {
+                        id: 2,
+                        netuid: 12,
+                        block_number: 200,
+                        observed_at: 1_700_000_000_000,
+                        subnet_name: "Beta",
+                        symbol: "β",
+                        description: null,
+                        github_repo: null,
+                        subnet_url: null,
+                        discord: null,
+                        logo_url: null,
+                        identity_hash: "h2",
+                      },
+                      {
+                        id: 1,
+                        netuid: 7,
+                        block_number: 100,
+                        observed_at: 1_600_000_000_000,
+                        subnet_name: "Alpha",
+                        symbol: "α",
+                        description: null,
+                        github_repo: null,
+                        subnet_url: null,
+                        discord: null,
+                        logo_url: null,
+                        identity_hash: "h1",
+                      },
+                    ],
+                  });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    };
+    const res = await callTool(
+      "get_chain_identity_history",
+      { limit: 2 },
+      { env: { METAGRAPH_HEALTH_DB: identityDb } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.count, 2);
+    assert.equal(out.subnet_count, 2); // spans netuids 12 and 7
+    assert.equal(out.changes[0].netuid, 12);
+    assert.equal(out.changes[0].subnet_name, "Beta");
+    assert.equal(out.changes[1].netuid, 7);
+  });
+
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
     const res = await callTool(
       "get_subnet_concentration_history",

@@ -463,6 +463,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/identity-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier; schema-stable empty feed when cold. */
+        get: operations["chainIdentityHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/performance": {
         parameters: {
             query?: never;
@@ -2612,6 +2629,35 @@ export interface components {
             schema_version: number;
             top_fee_payers: components["schemas"]["ChainFeePayer"][];
             window: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets, computed live from the subnet_identity_history D1 tier at /api/v1/chain/identity-history (no static file). Each change carries the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route; capped to ?limit (default 50, max 200). subnet_count is the distinct subnets the emitted feed spans. The network analog of SubnetIdentityHistoryArtifact. */
+        ChainIdentityHistoryArtifact: {
+            changes: components["schemas"]["ChainIdentityHistoryChange"][];
+            count: number;
+            schema_version: number;
+            subnet_count: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One observed on-chain SubnetIdentitiesV3 change in the network-wide feed, shaped like a per-subnet identity-history entry plus the netuid it belongs to. Operator-controlled untrusted data. */
+        ChainIdentityHistoryChange: {
+            block_number?: number | null;
+            description?: string | null;
+            discord?: string | null;
+            /** Format: uri */
+            github_repo?: string | null;
+            identity_hash: string | null;
+            /** Format: uri */
+            logo_url?: string | null;
+            netuid?: number | null;
+            /** Format: date-time */
+            observed_at: string | null;
+            subnet_name?: string | null;
+            /** Format: uri */
+            subnet_url?: string | null;
+            symbol?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -9008,6 +9054,115 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainFeesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainIdentityHistory: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "changes": [
+                     *           {
+                     *             "identity_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z"
+                     *           }
+                     *         ],
+                     *         "count": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainIdentityHistoryArtifact"];
                     };
                 };
             };

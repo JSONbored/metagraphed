@@ -342,6 +342,23 @@ export async function readNeuronsCacheStamp(env) {
     : null;
 }
 
+// Network-wide identity-history cache stamp: the newest observed_at across ALL
+// subnets' identity changes, so the network identity-history feed busts its edge
+// cache the moment any subnet records a new change. The append-only feed analog of
+// readNeuronsCacheStamp.
+export async function readIdentityHistoryCacheStamp(env) {
+  const rows = await d1All(
+    env,
+    "SELECT MAX(observed_at) AS observed_at FROM subnet_identity_history",
+    [],
+  );
+  if (hasD1FallbackRows(rows)) return null;
+  const observedAt = rows[0]?.observed_at;
+  return Number.isInteger(observedAt) && observedAt > 0
+    ? String(observedAt)
+    : null;
+}
+
 export function withNeuronsEdgeCache(
   request,
   ctx,

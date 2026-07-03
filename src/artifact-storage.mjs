@@ -105,6 +105,9 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide reward distribution & score spread, computed live from the
   // neurons D1 tier at /api/v1/chain/performance — never a file.
   /^chain\/performance\.json$/,
+  // Network-wide recent subnet-identity-change feed, computed live from the
+  // subnet_identity_history D1 tier at /api/v1/chain/identity-history — never a file.
+  /^chain\/identity-history\.json$/,
   // Postgres-backed all-events tier (ADR 0013): the recent-events feed, the
   // per-block all-events list, and the activity-stats aggregate are served live
   // by the dedicated data Worker at /api/v1/chain-events* — never written as

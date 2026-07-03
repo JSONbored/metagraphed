@@ -3176,6 +3176,120 @@
         ],
         "type": "object"
       },
+      "ChainIdentityHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets, computed live from the subnet_identity_history D1 tier at /api/v1/chain/identity-history (no static file). Each change carries the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route; capped to ?limit (default 50, max 200). subnet_count is the distinct subnets the emitted feed spans. The network analog of SubnetIdentityHistoryArtifact.",
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ChainIdentityHistoryChange"
+            },
+            "type": "array"
+          },
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "count",
+          "subnet_count",
+          "changes"
+        ],
+        "type": "object"
+      },
+      "ChainIdentityHistoryChange": {
+        "additionalProperties": true,
+        "description": "One observed on-chain SubnetIdentitiesV3 change in the network-wide feed, shaped like a per-subnet identity-history entry plus the netuid it belongs to. Operator-controlled untrusted data.",
+        "properties": {
+          "block_number": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discord": {
+            "maxLength": 200,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "github_repo": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identity_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logo_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "symbol": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "observed_at",
+          "identity_hash"
+        ],
+        "type": "object"
+      },
       "ChainPerformanceArtifact": {
         "additionalProperties": true,
         "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. subnet_count reports how many subnets the snapshot spans. The network-wide reward-flow companion to ChainConcentrationArtifact.",
@@ -20463,6 +20577,143 @@
           }
         },
         "summary": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/identity-history": {
+      "get": {
+        "operationId": "chainIdentityHistory",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "changes": [
+                      {
+                        "identity_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                        "observed_at": "2026-06-01T00:00:00.000Z"
+                      }
+                    ],
+                    "count": 1,
+                    "schema_version": 1,
+                    "subnet_count": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainIdentityHistoryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier; schema-stable empty feed when cold.",
         "tags": [
           "chain",
           "analytics"

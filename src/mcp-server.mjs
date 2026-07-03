@@ -135,6 +135,11 @@ import { loadSubnetYield } from "./subnet-yield.mjs";
 import { loadSubnetPerformance } from "./subnet-performance.mjs";
 import { loadChainPerformance } from "./chain-performance.mjs";
 import {
+  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+  loadChainIdentityHistory,
+} from "./chain-identity-history.mjs";
+import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
@@ -299,7 +304,8 @@ export const MCP_INSTRUCTIONS =
   "native-TAO transfer volume plus top senders/receivers, get_chain_concentration " +
   "the network-wide stake/emission decentralization scorecard across all subnets, " +
   "get_chain_performance the network-wide reward-distribution and trust/consensus " +
-  "score spread across all subnets, " +
+  "score spread across all subnets, get_chain_identity_history the network-wide " +
+  "recent subnet-identity-change feed across all subnets, " +
   "get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
@@ -1893,6 +1899,37 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadChainPerformance(mcpD1Runner(ctx));
+    },
+  },
+  {
+    name: "get_chain_identity_history",
+    title: "Get network-wide subnet-identity-change feed",
+    description:
+      "Fetch the network-wide recent subnet-identity-change feed aggregated " +
+      "across ALL subnets (newest first): the most-recent SubnetIdentitiesV3 " +
+      "changes, each carrying the netuid it belongs to plus the same tracked " +
+      "identity fields (name, symbol, description, links, hash) as the per-subnet " +
+      "identity-history, capped to `limit` (default " +
+      `${CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT}, max ${CHAIN_IDENTITY_HISTORY_LIMIT_MAX}` +
+      ") and reporting the distinct subnet_count the feed spans. The network-level " +
+      "companion of get_subnet_identity_history. Mirrors GET " +
+      "/api/v1/chain/identity-history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "integer",
+          description: `Max changes to return (1-${CHAIN_IDENTITY_HISTORY_LIMIT_MAX}, default ${CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      return loadChainIdentityHistory(mcpD1Runner(ctx), {
+        limit: args?.limit,
+      });
     },
   },
   {
@@ -5267,6 +5304,29 @@ const TOOL_OUTPUT_SCHEMAS = {
       trust: { type: ["object", "null"] },
       consensus: { type: ["object", "null"] },
       validator_trust: { type: ["object", "null"] },
+    },
+  },
+  get_chain_identity_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["schema_version", "count", "subnet_count", "changes"],
+    properties: {
+      schema_version: { type: "integer" },
+      count: { type: "integer" },
+      subnet_count: { type: "integer" },
+      changes: objectItems({
+        netuid: NULLABLE_INT,
+        block_number: NULLABLE_INT,
+        observed_at: NULLABLE_STRING,
+        subnet_name: NULLABLE_STRING,
+        symbol: NULLABLE_STRING,
+        description: NULLABLE_STRING,
+        github_repo: NULLABLE_STRING,
+        subnet_url: NULLABLE_STRING,
+        discord: NULLABLE_STRING,
+        logo_url: NULLABLE_STRING,
+        identity_hash: NULLABLE_STRING,
+      }),
     },
   },
   get_subnet_concentration_history: {

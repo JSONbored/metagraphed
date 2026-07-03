@@ -1169,6 +1169,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainPerformanceArtifact",
   ),
   artifact(
+    "chain-identity-history",
+    "/metagraph/chain/identity-history.json",
+    "Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to a ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier at /api/v1/chain/identity-history (no static file).",
+    "ChainIdentityHistoryArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -2448,6 +2454,17 @@ export const API_ROUTES = [
     "short",
     ["chain", "analytics"],
     [],
+    [],
+  ),
+  route(
+    "chain-identity-history",
+    "GET",
+    "/api/v1/chain/identity-history",
+    "/metagraph/chain/identity-history.json",
+    "Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier; schema-stable empty feed when cold.",
+    "short",
+    ["chain", "analytics"],
+    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } }],
     [],
   ),
   route(
