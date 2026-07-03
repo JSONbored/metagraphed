@@ -294,11 +294,23 @@ test("formatAccountEvent rejects blank integer cells that coerce to 0 (not block
       uid: blank,
       extrinsic_index: blank,
     });
-    assert.equal(out.block_number, null, `block_number for ${JSON.stringify(blank)}`);
-    assert.equal(out.event_index, null, `event_index for ${JSON.stringify(blank)}`);
+    assert.equal(
+      out.block_number,
+      null,
+      `block_number for ${JSON.stringify(blank)}`,
+    );
+    assert.equal(
+      out.event_index,
+      null,
+      `event_index for ${JSON.stringify(blank)}`,
+    );
     assert.equal(out.netuid, null, `netuid for ${JSON.stringify(blank)}`);
     assert.equal(out.uid, null, `uid for ${JSON.stringify(blank)}`);
-    assert.equal(out.extrinsic_index, null, `extrinsic_index for ${JSON.stringify(blank)}`);
+    assert.equal(
+      out.extrinsic_index,
+      null,
+      `extrinsic_index for ${JSON.stringify(blank)}`,
+    );
   }
 });
 
