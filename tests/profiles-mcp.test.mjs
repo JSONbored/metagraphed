@@ -120,6 +120,11 @@ describe("profiles-mcp — profilesQueryUrl", () => {
     assert.equal(url.searchParams.get("fields"), "netuid,name");
     assert.equal(url.searchParams.get("limit"), "100");
   });
+
+  test("clamps a non-numeric limit to the default", () => {
+    const url = profilesQueryUrl({ limit: "50" });
+    assert.equal(url.searchParams.get("limit"), "100");
+  });
 });
 
 describe("profiles-mcp — loadProfilesList", () => {
@@ -196,6 +201,20 @@ describe("profiles-mcp — loadProfilesList", () => {
     assert.equal(out.cursor, 0);
     assert.equal(out.next_cursor, null);
     assert.equal(out.sort, null);
+    assert.equal(out.order, "asc");
+  });
+
+  test("pages with limit and echoes next_cursor when more rows remain", async () => {
+    const out = await loadProfilesList(
+      makeCtx(),
+      { limit: 1, sort: "netuid", order: "asc" },
+      makeDeps(),
+    );
+    assert.equal(out.returned, 1);
+    assert.equal(out.total, 2);
+    assert.equal(out.limit, 1);
+    assert.equal(out.next_cursor, 1);
+    assert.equal(out.sort, "netuid");
     assert.equal(out.order, "asc");
   });
 

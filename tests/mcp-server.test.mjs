@@ -5319,6 +5319,29 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("get_subnet_profile payload validates against its declared outputSchema", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(
+      listToolDefinitions().find((t) => t.name === "get_subnet_profile")
+        .outputSchema,
+    );
+    const detail = {
+      subnet: { netuid: 7, slug: "allways" },
+      profile: { completeness_score: 82 },
+      surfaces: [],
+      endpoints: [],
+    };
+    const res = await callTool(
+      "get_subnet_profile",
+      { netuid: 7 },
+      {
+        deps: makeDeps({ "/metagraph/profiles/7.json": detail }),
+        env: {},
+      },
+    );
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats),
   // mirroring the metagraph-neurons unit-test fixtures.
   const ROW = {
