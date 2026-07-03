@@ -5267,12 +5267,15 @@ describe("MCP economics + metagraph data tools", () => {
       .spyOn(profilesMcp, "loadSubnetProfile")
       .mockRejectedValue(err);
     try {
-      await assert.rejects(() => tool.handler({ netuid: 7 }, { env: {} }), (thrown) => {
-        assert.equal(thrown.toolError, true);
-        assert.equal(thrown.code, "not_found");
-        assert.match(thrown.message, /Profile gone/);
-        return true;
-      });
+      await assert.rejects(
+        () => tool.handler({ netuid: 7 }, { env: {} }),
+        (thrown) => {
+          assert.equal(thrown.toolError, true);
+          assert.equal(thrown.code, "not_found");
+          assert.match(thrown.message, /Profile gone/);
+          return true;
+        },
+      );
     } finally {
       spy.mockRestore();
     }
@@ -5281,14 +5284,19 @@ describe("MCP economics + metagraph data tools", () => {
   test("list_profiles maps profilesMcp loader errors to tool errors", async () => {
     const tool = MCP_TOOLS.find((t) => t.name === "list_profiles");
     const err = profilesMcp.profilesMcpError("invalid_params", "bad filter");
-    const spy = vi.spyOn(profilesMcp, "loadProfilesList").mockRejectedValue(err);
+    const spy = vi
+      .spyOn(profilesMcp, "loadProfilesList")
+      .mockRejectedValue(err);
     try {
-      await assert.rejects(() => tool.handler({}, { env: {} }), (thrown) => {
-        assert.equal(thrown.toolError, true);
-        assert.equal(thrown.code, "invalid_params");
-        assert.match(thrown.message, /bad filter/);
-        return true;
-      });
+      await assert.rejects(
+        () => tool.handler({}, { env: {} }),
+        (thrown) => {
+          assert.equal(thrown.toolError, true);
+          assert.equal(thrown.code, "invalid_params");
+          assert.match(thrown.message, /bad filter/);
+          return true;
+        },
+      );
     } finally {
       spy.mockRestore();
     }
