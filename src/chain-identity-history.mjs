@@ -63,7 +63,9 @@ export function buildChainIdentityHistory(rows, { limit } = {}) {
     if (!entry) continue;
     const netuid = toNetuid(row?.netuid);
     if (netuid !== null) netuids.add(netuid);
-    changes.push({ netuid, ...entry });
+    // Spread the shared entry first so the sanitized `netuid` (via toNetuid) is
+    // authoritative and can never be clobbered if the formatter ever emits one.
+    changes.push({ ...entry, netuid });
   }
   return {
     schema_version: 1,
@@ -79,7 +81,7 @@ export function buildChainIdentityHistory(rows, { limit } = {}) {
 export async function loadChainIdentityHistory(d1, { limit } = {}) {
   const cap = clampFeedLimit(limit);
   const rows = await d1(
-    `SELECT ${CHAIN_IDENTITY_HISTORY_READ_COLUMNS} FROM subnet_identity_history ORDER BY block_number DESC, netuid ASC LIMIT ?`,
+    `SELECT ${CHAIN_IDENTITY_HISTORY_READ_COLUMNS} FROM subnet_identity_history ORDER BY block_number DESC, netuid ASC, id DESC LIMIT ?`,
     [cap],
   );
   return buildChainIdentityHistory(rows, { limit: cap });

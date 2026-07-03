@@ -2685,7 +2685,7 @@ export interface components {
             identity_hash: string | null;
             /** Format: uri */
             logo_url?: string | null;
-            netuid?: number | null;
+            netuid: number | null;
             /** Format: date-time */
             observed_at: string | null;
             subnet_name?: string | null;
@@ -9220,6 +9220,7 @@ export interface operations {
                      *         "changes": [
                      *           {
                      *             "identity_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "netuid": 7,
                      *             "observed_at": "2026-06-01T00:00:00.000Z"
                      *           }
                      *         ],

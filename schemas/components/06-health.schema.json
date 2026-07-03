@@ -998,7 +998,7 @@
         "type": "object",
         "additionalProperties": true,
         "description": "One observed on-chain SubnetIdentitiesV3 change in the network-wide feed, shaped like a per-subnet identity-history entry plus the netuid it belongs to. Operator-controlled untrusted data.",
-        "required": ["observed_at", "identity_hash"],
+        "required": ["netuid", "observed_at", "identity_hash"],
         "properties": {
           "netuid": { "type": ["integer", "null"], "minimum": 0 },
           "block_number": { "type": ["integer", "null"], "minimum": 0 },
