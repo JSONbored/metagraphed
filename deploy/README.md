@@ -73,9 +73,9 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 
 That starts:
 
-- **`postgres`** (TimescaleDB) — applies `deploy/postgres/schema.sql` on first
-  boot; never binds a public port (Cloudflare reaches it via Hyperdrive over a
-  tunnel).
+- **`postgres`** (TimescaleDB) — applies `deploy/postgres/schema.sql` then the
+  optional `deploy/postgres/schema-timescaledb.sql` on first boot; never binds
+  a public port (Cloudflare reaches it via Hyperdrive over a tunnel).
 - **`redis`** — the indexer cursor + heartbeat mirror.
 - **`subtensor`** — a **full archive** finney node (`--pruning=archive --sync=full`:
   complete state from genesis), the head source + first-party RPC origin + the
@@ -114,8 +114,12 @@ mkdir -p ~/metagraphed-core && cd ~/metagraphed-core
 railway init --name metagraphed-core --workspace aethereal --json
 railway add -d postgres          # managed Postgres (enable TimescaleDB, or use the Timescale template)
 railway add -d redis             # indexer cursor + dedup + queue
-# apply the portable schema:
+# apply the portable base schema (always):
 railway connect postgres < /path/to/metagraphed/deploy/postgres/schema.sql
+# only if this Postgres actually has the TimescaleDB extension (the Timescale
+# template, or an extension explicitly enabled) — plain Railway Postgres does
+# NOT have it, and applying this file there will fail on CREATE EXTENSION:
+railway connect postgres < /path/to/metagraphed/deploy/postgres/schema-timescaledb.sql
 ```
 
 Each compute service is added from the monorepo with its own root/Dockerfile and

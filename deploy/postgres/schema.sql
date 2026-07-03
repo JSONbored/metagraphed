@@ -3,10 +3,11 @@
 -- The durable replacement for the D1 chain tiers (blocks / extrinsics /
 -- account_events / neurons / neuron_daily / economics) once they outgrow D1's
 -- ~10GB cap and 90-day prune. Portable VANILLA Postgres — runs as-is on Railway
--- Postgres OR a self-hosted Hetzner box (the ADR 0013 escape hatch). The
--- TimescaleDB section at the bottom is OPTIONAL: it upgrades the time-series
--- tables to compressed hypertables; skip it on plain Postgres and everything
--- still works.
+-- Postgres OR a self-hosted Hetzner box (the ADR 0013 escape hatch) with no
+-- extensions required. The companion `schema-timescaledb.sql` in this same
+-- directory is OPTIONAL: apply it separately, only on a Postgres that actually
+-- has the TimescaleDB extension available, to upgrade the time-series tables
+-- to compressed hypertables. This file alone is a complete, working schema.
 --
 -- Key invariants preserved from the D1 era so the Worker serving code
 -- (src/blocks.mjs / extrinsics.mjs / account-events.mjs) changes only its
@@ -222,51 +223,7 @@ CREATE TABLE IF NOT EXISTS indexer_cursor (
   CONSTRAINT indexer_cursor_singleton CHECK (id = 1)
 );
 
--- ===========================================================================
--- TimescaleDB — compressed hypertables for the time-series tiers.
--- Integer-time hypertables on observed_at (epoch ms): chunk interval = 1 day
--- = 86_400_000 ms. Daily tables partition on their DATE column. Compression
--- on chunks older than 7 days (~10-20x on chain data); cold partitions are
--- exported to R2 Parquet (see deploy/README.md).
---
--- Decided in JSO-2054/#2518 (option (a): Postgres/TimescaleDB, no co-located
--- columnar engine). Requires the TimescaleDB extension AND the composite PKs
--- above (block_number, ..., observed_at) — a bare (block_number) PK fails
--- create_hypertable() with "cannot create a unique index without the column
--- ... used in partitioning" (verified live 2026-07-03, was a real, silent
--- blocker before the PK fix above landed). On vanilla Postgres (no
--- TimescaleDB extension available), skip this section — everything above
--- still works as plain tables.
--- ===========================================================================
-CREATE EXTENSION IF NOT EXISTS timescaledb;
-
-SELECT create_hypertable('blocks',         'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
-SELECT create_hypertable('extrinsics',     'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
-SELECT create_hypertable('account_events', 'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
-SELECT create_hypertable('chain_events',   'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
-SELECT create_hypertable('neuron_daily',   'snapshot_date', chunk_time_interval => INTERVAL '30 days', migrate_data => true, if_not_exists => true);
-
--- INTEGER-time hypertables (observed_at is BIGINT epoch-ms, not a native
--- timestamp) need an explicit "what counts as now" function, or compression/
--- retention policies fail at runtime with "integer_now function not set"
--- (verified live 2026-07-03 — the hypertables/compression policies below
--- applied without error, but every scheduled compression job then silently
--- failed at its first run). DATE-partitioned neuron_daily doesn't need this.
-CREATE OR REPLACE FUNCTION current_epoch_ms() RETURNS BIGINT
-LANGUAGE SQL STABLE AS $$
-  SELECT (extract(epoch from now()) * 1000)::BIGINT
-$$;
-SELECT set_integer_now_func('blocks',         'current_epoch_ms');
-SELECT set_integer_now_func('extrinsics',     'current_epoch_ms');
-SELECT set_integer_now_func('account_events', 'current_epoch_ms');
-SELECT set_integer_now_func('chain_events',   'current_epoch_ms');
-
-ALTER TABLE blocks         SET (timescaledb.compress, timescaledb.compress_orderby = 'observed_at DESC');
-ALTER TABLE extrinsics     SET (timescaledb.compress, timescaledb.compress_segmentby = 'signer', timescaledb.compress_orderby = 'observed_at DESC');
-ALTER TABLE account_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'hotkey', timescaledb.compress_orderby = 'observed_at DESC');
-ALTER TABLE chain_events   SET (timescaledb.compress, timescaledb.compress_segmentby = 'pallet', timescaledb.compress_orderby = 'observed_at DESC');
-
-SELECT add_compression_policy('blocks',         BIGINT '604800000');  -- 7d in ms
-SELECT add_compression_policy('extrinsics',     BIGINT '604800000');
-SELECT add_compression_policy('account_events', BIGINT '604800000');
-SELECT add_compression_policy('chain_events',   BIGINT '604800000');
+-- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
+-- schema-timescaledb.sql in this same directory — apply it separately, only
+-- on a Postgres that actually has the TimescaleDB extension. This file is a
+-- complete, working schema on its own (plain tables, no extensions needed).

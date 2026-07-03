@@ -34,9 +34,12 @@
 > unique constraint, and none of the original primary keys included it. Fixed
 > by making `observed_at` part of each composite PK (functionally a no-op for
 > real-world uniqueness, since `observed_at` is already determined by
-> `block_number`) and uncommenting the section now that it's verified working.
-> JSO-2054/#2518's option (a) decision (Postgres/TimescaleDB, no columnar
-> sibling) stands unchanged.
+> `block_number`) and moving the TimescaleDB section into its own optional
+> `deploy/postgres/schema-timescaledb.sql`, now that it's verified working —
+> unconditionally running `CREATE EXTENSION timescaledb` from inside
+> `schema.sql` itself would break the plain-Postgres/Railway path the base
+> schema is supposed to support. JSO-2054/#2518's option (a) decision
+> (Postgres/TimescaleDB, no columnar sibling) stands unchanged.
 
 ## Context
 

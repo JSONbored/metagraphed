@@ -26,9 +26,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Applied once on an empty data dir — includes the TimescaleDB
-      # hypertable/compression section (JSO-2054's decided option (a)).
+      # Both applied once, in order, on an empty data dir. schema.sql is the
+      # portable base (no extensions); schema-timescaledb.sql layers on the
+      # hypertable/compression upgrade (JSO-2054's decided option (a)) — safe
+      # here since this image has the extension, unlike plain Railway Postgres.
       - ./postgres/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+      - ./postgres/schema-timescaledb.sql:/docker-entrypoint-initdb.d/20-schema-timescaledb.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U metagraphed -d metagraphed"]
       interval: 10s
