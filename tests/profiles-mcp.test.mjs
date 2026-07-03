@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
+import * as listQuery from "../workers/list-query.mjs";
 import {
   GET_SUBNET_PROFILE_MCP_TOOL,
   GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
@@ -125,6 +126,22 @@ describe("profiles-mcp — profilesQueryUrl", () => {
     const url = profilesQueryUrl({ limit: "50" });
     assert.equal(url.searchParams.get("limit"), "100");
   });
+
+  test("clamps zero and negative numeric limits to the default", () => {
+    assert.equal(
+      profilesQueryUrl({ limit: 0 }).searchParams.get("limit"),
+      "100",
+    );
+    assert.equal(
+      profilesQueryUrl({ limit: -5 }).searchParams.get("limit"),
+      "100",
+    );
+  });
+
+  test("accepts a valid cursor", () => {
+    const url = profilesQueryUrl({ cursor: 0 });
+    assert.equal(url.searchParams.get("cursor"), "0");
+  });
 });
 
 describe("profiles-mcp — loadProfilesList", () => {
@@ -193,15 +210,41 @@ describe("profiles-mcp — loadProfilesList", () => {
   });
 
   test("defaults pagination totals when the list-query meta omits page fields", async () => {
-    const out = await loadProfilesList(makeCtx(), {}, makeDeps());
-    assert.equal(out.profiles.length, 2);
-    assert.equal(out.total, 2);
-    assert.equal(out.returned, 2);
-    assert.equal(out.limit, 2);
-    assert.equal(out.cursor, 0);
-    assert.equal(out.next_cursor, null);
-    assert.equal(out.sort, null);
-    assert.equal(out.order, "asc");
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { profiles: [PROFILE_ROW] },
+      meta: {},
+    });
+    try {
+      const out = await loadProfilesList(makeCtx(), {}, makeDeps());
+      assert.equal(out.profiles.length, 1);
+      assert.equal(out.total, 1);
+      assert.equal(out.returned, 1);
+      assert.equal(out.limit, 1);
+      assert.equal(out.cursor, 0);
+      assert.equal(out.next_cursor, null);
+      assert.equal(out.sort, null);
+      assert.equal(out.order, null);
+      assert.equal(out.captured_at, null);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("falls back when list-query data omits captured_at and profile rows", async () => {
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { profiles: null },
+      meta: { pagination: { total: 0, returned: 0, limit: 0, cursor: 0 } },
+    });
+    try {
+      const out = await loadProfilesList(makeCtx(), {}, makeDeps());
+      assert.deepEqual(out.profiles, []);
+      assert.equal(out.captured_at, null);
+      assert.equal(out.total, 0);
+      assert.equal(out.returned, 0);
+      assert.equal(out.limit, 0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   test("pages with limit and echoes next_cursor when more rows remain", async () => {
