@@ -5,7 +5,9 @@ export function escapeMarkdownLinkText(value, { maxLength = 240 } = {}) {
 }
 
 function truncateText(value, maxLength) {
-  return Array.from(String(value ?? "")).slice(0, maxLength).join("");
+  return Array.from(String(value ?? ""))
+    .slice(0, maxLength)
+    .join("");
 }
 
 // CommonMark-safe inline code: lengthen the backtick fence until the literal

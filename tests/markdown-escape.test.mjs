@@ -6,7 +6,9 @@ import {
 
 describe("markdown-escape", () => {
   it("wraps plain registry tags in single-backtick code spans", () => {
-    expect(markdownInlineCode("prediction-markets")).toBe("`prediction-markets`");
+    expect(markdownInlineCode("prediction-markets")).toBe(
+      "`prediction-markets`",
+    );
   });
 
   it("uses longer fences when tags contain literal backticks", () => {
