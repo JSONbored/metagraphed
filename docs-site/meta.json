@@ -53,8 +53,8 @@
     }
   ],
   "stats": {
-    "route_count": 103,
+    "route_count": 104,
     "subnet_overlay_count": 102,
-    "mcp_tool_count": 75
+    "mcp_tool_count": 76
   }
 }

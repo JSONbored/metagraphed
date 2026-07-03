@@ -3,24 +3,24 @@
   "generator": "scripts/generate-docs-site.mjs",
   "artifacts": {
     "meta.json": {
-      "sha256": "3a5fe7e4791bd5dd4c4e99e140a3c7d939326dd41fb2f634496de601ec64f689",
+      "sha256": "f7dd5f5a97b012c1530e25b5767a75d7b59babc36f192244a4522c0208696930",
       "bytes": 1405
     },
     "generated/api-reference.md": {
-      "sha256": "363a63093f8b6f5a4fda7b6a7817658171d85a42f5faa047f125199f82a9d945",
-      "bytes": 64387
+      "sha256": "14caf5cb35830dcb7547fafd84fd0ed1b22cb4880c2fcfd0375cc62e64697ca8",
+      "bytes": 64741
     },
     "generated/catalog.md": {
       "sha256": "9ce659f8e0c818b1ada48e31034ae4c44bce06db56bdb4a8f869da16a6e150e0",
       "bytes": 18276
     },
     "generated/resources.md": {
-      "sha256": "cb82b2f57076b19d528d99909c202c6ff3002cf10dea9958d74abda07388a8da",
-      "bytes": 6788
+      "sha256": "bf1cfe6a1c7c2aa3fffbbca7d23435c63d4eda061dab543a2accaf32feaaf17e",
+      "bytes": 6863
     },
     "generated/api-playground.json": {
-      "sha256": "30ac6cc824ea020d95648e49beada8bd07f806cc7a6cba5ba032a8fd3c83093f",
-      "bytes": 181729
+      "sha256": "ba2c5260d5ce623d5977405ae6d0483d6750669b766d38053c863f64fd9cc4a0",
+      "bytes": 182324
     }
   }
 }

@@ -15,7 +15,7 @@ Metagraphed exposes a rich AI-native layer alongside the REST API. Use these URL
 - **Install:** `claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp`
 - **Server card:** [/.well-known/mcp/server-card.json](https://api.metagraph.sh/.well-known/mcp/server-card.json)
 
-**75 tools** (from the committed MCP server — cannot drift from `POST /mcp`):
+**76 tools** (from the committed MCP server — cannot drift from `POST /mcp`):
 
 - `search_subnets` — Search Bittensor subnets
 - `list_subnets` — List all Bittensor subnets
@@ -44,6 +44,7 @@ Metagraphed exposes a rich AI-native layer alongside the REST API. Use these URL
 - `get_global_incidents` — Get global probe incidents
 - `get_subnet_metagraph` — Get subnet metagraph (per-UID)
 - `list_subnet_validators` — List a subnet's validators
+- `list_global_validators` — List the network-wide validator leaderboard
 - `get_neuron` — Get one neuron by UID
 - `get_subnet_history` — Get a subnet's daily history
 - `get_subnet_identity_history` — Get a subnet's on-chain identity history
