@@ -24,6 +24,7 @@
 - [ ] `npm run validate:types`
 - [ ] `npm run validate:artifact-budgets`
 - [ ] `npm run validate:docs`
+- [ ] `npm run validate:docs-site`
 - [ ] `npm run validate:intake`
 - [ ] `npm run validate:workflows`
 - [ ] `npm run worker:test`

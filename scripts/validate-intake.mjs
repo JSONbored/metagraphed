@@ -164,6 +164,7 @@ checkIncludes(docsOnlyTemplate, "docs-only PR template", [
   "docs/templates only",
   "No generated `public/metagraph/**` artifacts",
   "npm run validate:docs",
+  "npm run validate:docs-site",
   "npm run validate:intake",
   "git diff --check",
 ]);

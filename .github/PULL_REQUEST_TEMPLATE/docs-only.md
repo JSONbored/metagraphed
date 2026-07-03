@@ -16,6 +16,7 @@
 ## Validation
 
 - [ ] `npm run validate:docs`
+- [ ] `npm run validate:docs-site`
 - [ ] `npm run validate:intake`
 - [ ] `npm run scan:public-safety`
 - [ ] `git diff --check`

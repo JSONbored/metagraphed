@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { API_ROUTES } from "../src/contracts.mjs";
 import { MCP_TOOLS } from "../src/mcp-server.mjs";
+import { buildSampleRouteUrl } from "./lib/route-samples.mjs";
 
 const DEFAULT_BASE_URL = "https://api.metagraph.sh";
 const baseUrl = normalizeBaseUrl(
@@ -370,45 +371,7 @@ async function discoverHealthHistoryDate() {
 }
 
 export function apiRouteUrl(routePath, date) {
-  // D1-tier detail routes carry id placeholders beyond {netuid}/{slug}/{date}.
-  // Substitute constant, dependency-free sample ids that resolve to a live 200:
-  // uid 0 always exists; an all-zero hash / block 0 hit the cold→null wrapper
-  // (still a 200 envelope); the accounts route requires a checksum-valid SS58, so
-  // use the canonical dev address (Alice) rather than an arbitrary string (which
-  // 404s on the checksum). Without these, the smoke step requests literal-
-  // placeholder URLs that match no route and 404 (#1682).
-  const route = routePath
-    .replace("{netuid}", "7")
-    .replace("{slug}", "allways")
-    .replace("{date}", date)
-    .replace("{uid}", "0")
-    .replace("{hash}", `0x${"0".repeat(64)}`)
-    .replace("{ref}", "0")
-    .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
-  // Guard against the recurring #1682 class: any leftover `{` means a route
-  // placeholder was never substituted, which silently 404s against a live URL
-  // that matches no route. Fail fast with the offending path.
-  if (route.includes("{")) {
-    throw new Error(`unsubstituted placeholder in route ${routePath}`);
-  }
-  const url = new URL(route, baseUrl);
-  if (routePath === "/api/v1/subnets") {
-    url.searchParams.set("limit", "3");
-    url.searchParams.set("sort", "netuid");
-  } else if (routePath === "/api/v1/compare") {
-    // compare requires `netuids` — a bare GET is a 400 (#1682).
-    url.searchParams.set("netuids", "7,8");
-  } else if (
-    [
-      "/api/v1/surfaces",
-      "/api/v1/endpoints",
-      "/api/v1/candidates",
-      "/api/v1/search",
-    ].includes(routePath)
-  ) {
-    url.searchParams.set("limit", "3");
-  }
-  return url.toString();
+  return buildSampleRouteUrl(routePath, baseUrl, { date });
 }
 
 async function fetchJson(url, options = {}) {

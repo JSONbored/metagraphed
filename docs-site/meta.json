@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "site_url": "https://docs.metagraph.sh",
+  "api_base": "https://api.metagraph.sh",
+  "product_url": "https://metagraph.sh",
+  "contract_version": "2026-07-02.1",
+  "sources": {
+    "openapi": "public/metagraph/openapi.json",
+    "api_index": "public/metagraph/api-index.json",
+    "registry": "registry/subnets/",
+    "mcp": "src/mcp-server.mjs"
+  },
+  "nav": [
+    {
+      "title": "Quickstart",
+      "path": "guides/quickstart.md",
+      "generated": false
+    },
+    {
+      "title": "Contributing surfaces",
+      "path": "guides/contributing.md",
+      "generated": false
+    },
+    {
+      "title": "Auth & rate limits",
+      "path": "guides/auth-and-rate-limits.md",
+      "generated": false
+    },
+    {
+      "title": "Data model",
+      "path": "guides/data-model.md",
+      "generated": false
+    },
+    {
+      "title": "API reference",
+      "path": "generated/api-reference.md",
+      "generated": true
+    },
+    {
+      "title": "API playground data",
+      "path": "generated/api-playground.json",
+      "generated": true
+    },
+    {
+      "title": "Subnet catalog",
+      "path": "generated/catalog.md",
+      "generated": true
+    },
+    {
+      "title": "Agent & MCP resources",
+      "path": "generated/resources.md",
+      "generated": true
+    }
+  ],
+  "stats": {
+    "route_count": 103,
+    "subnet_overlay_count": 102,
+    "mcp_tool_count": 75
+  }
+}

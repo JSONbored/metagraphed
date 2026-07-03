@@ -213,6 +213,10 @@ vite.config.ts.timestamp-*
 /submitted-artifact-files.txt
 /validate-route.json
 
+# Large docs-site artifacts — freshness pinned via docs-site/generated/manifest.json
+docs-site/generated/api-reference.md
+docs-site/generated/api-playground.json
+
 # Python bytecode (scripts/ + python/ tests)
 __pycache__/
 *.py[cod]

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "generator": "scripts/generate-docs-site.mjs",
+  "artifacts": {
+    "meta.json": {
+      "sha256": "3a5fe7e4791bd5dd4c4e99e140a3c7d939326dd41fb2f634496de601ec64f689",
+      "bytes": 1405
+    },
+    "generated/api-reference.md": {
+      "sha256": "363a63093f8b6f5a4fda7b6a7817658171d85a42f5faa047f125199f82a9d945",
+      "bytes": 64387
+    },
+    "generated/catalog.md": {
+      "sha256": "9ce659f8e0c818b1ada48e31034ae4c44bce06db56bdb4a8f869da16a6e150e0",
+      "bytes": 18276
+    },
+    "generated/resources.md": {
+      "sha256": "cb82b2f57076b19d528d99909c202c6ff3002cf10dea9958d74abda07388a8da",
+      "bytes": 6788
+    },
+    "generated/api-playground.json": {
+      "sha256": "7e44c200f30ee7ac2341a4025e3127054d9efa8350635a19ea098cd9c51d40bb",
+      "bytes": 178948
+    }
+  }
+}

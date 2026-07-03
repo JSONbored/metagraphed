@@ -399,6 +399,12 @@ jobs:
           npm run validate:generated-client
           npm run validate:committed-seed
 
+      # Docs-site freshness reads the COMMITTED openapi/api-index/registry
+      # sources and must run before `npm run build` — build must not rewrite
+      # docs-site/ or the gate would only ever see post-build output (#1652).
+      - name: Validate docs site freshness
+        run: npm run validate:docs-site
+
       - name: Build artifacts
         if: env.DOCS_ONLY != 'true'
         env:

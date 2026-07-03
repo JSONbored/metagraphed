@@ -29,5 +29,15 @@ blockedPaths:
   - "migrations/**"
   - "packages/**"
   - "public/**"
+  - "docs-site/**"
   - ".github/**"
   - ".claude/**"
+
+# Public review-panel note (Gittensory reads this for slop / review-load context).
+review:
+  note: >-
+    docs-site PRs (#1652): large api-reference/playground output is gitignored
+    and hash-pinned in docs-site/generated/manifest.json; committed surface is
+    guides, catalog, resources, meta, generator, and tests. Verify with
+    npm test -- tests/docs-site.test.mjs tests/route-samples.test.mjs &&
+    npm run validate:docs-site.
