@@ -18,6 +18,7 @@ import {
   handleSubnetYield,
   handleNeuron,
   handleSubnetValidators,
+  handleGlobalValidators,
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetIdentityHistory,
@@ -48,6 +49,7 @@ import {
   canonicalSubnetStakeFlowCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
+  canonicalGlobalValidatorsCachePath,
 } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -764,6 +766,62 @@ describe("handleSubnetValidators", () => {
       body.meta.artifact_path,
       `/metagraph/subnets/${NETUID}/validators.json`,
     );
+  });
+});
+
+describe("handleGlobalValidators", () => {
+  // workers/api.mjs always resolves canonicalGlobalValidatorsCachePath(url)
+  // first and short-circuits on its { response } before handleGlobalValidators
+  // ever runs, so the router never reaches this guard with an invalid query.
+  // It stays as defense in depth for any direct/non-cached caller, so cover it
+  // directly here rather than only through the edge-cache route.
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleGlobalValidators(
+      req("/api/v1/validators"),
+      emptyEnv(),
+      url("/api/v1/validators?bogus=1"),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty leaderboard on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleGlobalValidators,
+      req("/api/v1/validators"),
+      emptyEnv(),
+      url("/api/v1/validators"),
+    );
+    assert.deepEqual(body.data.validators, []);
+  });
+});
+
+describe("canonicalGlobalValidatorsCachePath", () => {
+  test("returns a response short-circuit for an unsupported query param", () => {
+    const result = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators?bogus=1"),
+    );
+    assert.equal(result.cachePathAndSearch, undefined);
+    assert.ok(result.response instanceof Response);
+    assert.equal(result.response.status, 400);
+  });
+
+  test("returns a response short-circuit for an unsupported sort value", () => {
+    const result = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators?sort=bogus"),
+    );
+    assert.equal(result.cachePathAndSearch, undefined);
+    assert.equal(result.response.status, 400);
+  });
+
+  test("omitted sort/limit and their explicit defaults produce the same cache key", () => {
+    const omitted = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators"),
+    );
+    const explicit = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators?sort=subnet_count&limit=20"),
+    );
+    assert.equal(omitted.response, undefined);
+    assert.equal(omitted.cachePathAndSearch, explicit.cachePathAndSearch);
   });
 });
 
@@ -2048,6 +2106,35 @@ describe("handleAccountEvents", () => {
     );
   });
 
+  test("rejects an unknown event kind with 400", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow()],
+    });
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?kind=Nonexistent`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "kind");
+    assert.match(body.error.message, /not a supported event kind/);
+    assert.equal(captures.sql.length, 0);
+  });
+
+  test("accepts a non-SubtensorModule ingested kind (Transfer), not just INDEXED_EVENT_KINDS", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow({ event_kind: "Transfer" })],
+    });
+    await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?kind=Transfer`),
+    );
+    assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
+  });
+
   test("cursor uses keyset seek instead of offset", async () => {
     const { env, captures } = dbWith({
       accountEvents: [accountEventRow({ block_number: 150, event_index: 2 })],
@@ -2809,6 +2896,36 @@ describe("handleAccountStakeFlow", () => {
       url(`/api/v1/accounts/${SS58}/stake-flow?window=1y`),
     );
     await errorJson(res);
+  });
+
+  test("rejects an unsupported direction enum value with 400 (#2694 parity)", async () => {
+    const res = await handleAccountStakeFlow(
+      req(`/api/v1/accounts/${SS58}/stake-flow`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-flow?direction=invalid`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "direction");
+  });
+
+  test("threads ?direction=in to the loader as StakeAdded only", async () => {
+    const { env, captures } = dbWith({ stakeFlow: [] });
+    await handleAccountStakeFlow(
+      req(`/api/v1/accounts/${SS58}/stake-flow`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-flow?direction=in`),
+    );
+    const bound = captures.params.find(
+      (p) => Array.isArray(p) && p.includes("StakeAdded"),
+    );
+    assert.ok(bound, "expected a bound StakeAdded param");
+    assert.ok(
+      !bound.includes("StakeRemoved"),
+      "direction=in must not bind StakeRemoved",
+    );
   });
 
   test("returns schema-stable zeros on cold D1", async () => {

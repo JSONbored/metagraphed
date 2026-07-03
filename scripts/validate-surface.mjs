@@ -86,7 +86,9 @@ for (const file of files) {
     continue;
   }
   if (!validate(document)) {
-    errors.push(`${path.basename(file)}: ${ajv.errorsText(validate.errors)}`);
+    errors.push(
+      `${path.basename(file)}: ${formatValidationErrors(validate.errors, document)}`,
+    );
     continue;
   }
   // Reject placeholder display names (e.g. "Team TBC", "Subnet 86") unless the
@@ -157,3 +159,40 @@ if (errors.length > 0) {
 console.log(
   `Surface validation passed: ${surfaceCount} surface(s) across ${files.length} subnet file(s).`,
 );
+
+// ajv.errorsText() collapses every error to its bare `message`, which for an
+// `enum` keyword is the unhelpful "must be equal to one of the allowed
+// values" with no indication of what those values actually are. Reproduce:
+// set a surface's `kind` to an invalid value and run this script — the error
+// gives no hint of the valid enum. Fix: for enum-keyword errors, append the
+// allowed values (and the offending value, when resolvable from the document)
+// to the message; every other keyword's message is left untouched.
+function formatValidationErrors(errors, document) {
+  return (errors || [])
+    .map((error) => {
+      let message = error.message;
+      if (error.keyword === "enum") {
+        const allowed = (error.params?.allowedValues || []).join(", ");
+        const actual = valueAtInstancePath(document, error.instancePath);
+        const gotSuffix =
+          actual === undefined ? "" : ` (got ${JSON.stringify(actual)})`;
+        message = `${message}: ${allowed}${gotSuffix}`;
+      }
+      return `${error.instancePath} ${message}`;
+    })
+    .join(", ");
+}
+
+function valueAtInstancePath(document, instancePath) {
+  if (!instancePath) return undefined;
+  const segments = instancePath
+    .split("/")
+    .slice(1)
+    .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
+  let value = document;
+  for (const segment of segments) {
+    if (value == null) return undefined;
+    value = value[segment];
+  }
+  return value;
+}

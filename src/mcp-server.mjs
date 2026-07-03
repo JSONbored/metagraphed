@@ -19,6 +19,12 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
+  GET_ECONOMICS_INSTRUCTIONS,
+  GET_ECONOMICS_MCP_TOOL,
+  GET_ECONOMICS_OUTPUT_SCHEMA,
+  loadNetworkEconomics,
+} from "./network-economics.mjs";
+import {
   loadChainConcentration,
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
@@ -95,6 +101,7 @@ import {
   loadSubnetValidators,
 } from "./metagraph-neurons.mjs";
 import {
+  INGESTED_EVENT_KINDS,
   loadAccountSummary,
   loadAccountEvents,
   loadSubnetEvents,
@@ -166,7 +173,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.19.0";
+export const MCP_SERVER_VERSION = "1.20.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -228,7 +235,9 @@ export const MCP_INSTRUCTIONS =
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
-  "open slots, and alpha price, get_economics_trends the network-wide " +
+  "open slots, and alpha price, " +
+  GET_ECONOMICS_INSTRUCTIONS +
+  "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, get_health_trends the all-subnet 7d/30d " +
@@ -896,6 +905,18 @@ function optionalString(args, key) {
     );
   }
   return value.trim();
+}
+
+// Reject unknown event-kind filters before D1, parity with the REST event feeds
+// (handleSubnetEvents / handleAccountEvents) so a typo cannot force a scan.
+function requireKnownEventKind(kind) {
+  if (kind == null) return;
+  if (!INGESTED_EVENT_KINDS.includes(kind)) {
+    throw toolError(
+      "invalid_params",
+      `"${kind}" is not a supported event kind. Supported: ${INGESTED_EVENT_KINDS.join(", ")}.`,
+    );
+  }
 }
 
 // Require a bare SS58 address (hotkey or coldkey) — the same shape the REST
@@ -1708,6 +1729,22 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_ECONOMICS_MCP_TOOL,
+    async handler(args, ctx) {
+      try {
+        return await loadNetworkEconomics(ctx, args, {
+          contractVersion: mcpContractVersion,
+          readOptionalArtifact: loadOptionalArtifact,
+        });
+      } catch (err) {
+        if (err?.networkEconomics) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
+    },
+  },
+  {
     name: "get_subnet_trajectory",
     title: "Get subnet trajectory",
     description:
@@ -2039,7 +2076,9 @@ export const MCP_TOOLS = [
       "Fetch one subnet's long-term daily uptime history for its operational " +
       "surfaces from the live surface_uptime_daily rollup. Returns per-surface " +
       "day series, window-wide uptime ratios, and reliability scores for the " +
-      "requested window (90d or 1y). Mirrors GET /api/v1/subnets/{netuid}/uptime.",
+      "requested window (90d or 1y). ?min_samples drops low-sample day rows " +
+      "(daily probe count below the threshold, incl. zero-sample 'unknown' days). " +
+      "Mirrors GET /api/v1/subnets/{netuid}/uptime.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2048,6 +2087,12 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["90d", "1y"],
           description: "History window (default 90d).",
+        },
+        min_samples: {
+          type: "integer",
+          minimum: 0,
+          description:
+            "Drop day rows whose daily probe count is below this threshold.",
         },
       },
       required: ["netuid"],
@@ -2062,6 +2107,7 @@ export const MCP_TOOLS = [
       return loadSubnetUptime(mcpD1Runner(ctx), netuid, {
         window: window || "90d",
         observedAt: await mcpObservedAt(ctx),
+        minSamples: optionalNonNegativeInt(args, "min_samples"),
       });
     },
   },
@@ -2383,6 +2429,7 @@ export const MCP_TOOLS = [
       "amount, and timestamp. Optionally filter by event kind (e.g. StakeAdded, " +
       "NeuronRegistered, AxonServed, WeightsSet) and page with limit (1-1000, " +
       "default 100) / offset, or follow next_cursor for stable keyset pagination. " +
+      "Optionally constrain block height with block_start/block_end (inclusive). " +
       "Use it to watch what is happening on one subnet right now. Events are " +
       "decoded directly from the chain. Mirrors GET /api/v1/subnets/{netuid}/events.",
     inputSchema: {
@@ -2393,7 +2440,19 @@ export const MCP_TOOLS = [
           type: "string",
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'WeightsSet'. " +
-            "Omit for all kinds; an unknown kind simply matches nothing.",
+            "Omit for all kinds; unsupported kinds are rejected.",
+        },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
         },
         limit: {
           type: "integer",
@@ -2419,9 +2478,12 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
+      requireKnownEventKind(kind);
       const cursor = optionalString(args, "cursor");
       return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
         kind,
+        blockStart: optionalNonNegativeInt(args, "block_start"),
+        blockEnd: optionalNonNegativeInt(args, "block_end"),
         limit: args?.limit,
         offset: args?.offset,
         cursor,
@@ -2526,7 +2588,7 @@ export const MCP_TOOLS = [
           type: "string",
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'NeuronRegistered'. " +
-            "Omit for all kinds; an unknown kind simply matches nothing.",
+            "Omit for all kinds; unsupported kinds are rejected.",
         },
         block_start: {
           type: "integer",
@@ -2564,6 +2626,7 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const kind = optionalString(args, "kind");
+      requireKnownEventKind(kind);
       const cursor = optionalString(args, "cursor");
       return loadAccountEvents(mcpD1Runner(ctx), ss58, {
         blockStart: optionalNonNegativeInt(args, "block_start"),
@@ -4916,6 +4979,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       economics: { type: ["object", "null"] },
     },
   },
+  get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
     additionalProperties: true,

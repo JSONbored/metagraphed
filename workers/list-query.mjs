@@ -95,6 +95,9 @@ export function paginationLinkHeader(url, pagination, options = {}) {
   const pageUri = (offset) => {
     const target = new URL(url.href);
     target.search = canonicalSearch;
+    for (const [name, value] of Object.entries(options.searchParams || {})) {
+      target.searchParams.set(name, String(value));
+    }
     target.searchParams.set("cursor", String(offset));
     target.searchParams.set("limit", String(limit));
     return target.href;

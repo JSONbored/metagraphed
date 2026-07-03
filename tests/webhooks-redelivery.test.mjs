@@ -367,6 +367,31 @@ describe("dispatchWithRedelivery", () => {
     assert.deepEqual(await keysOf(), []);
   });
 
+  test("a transient resolver failure on the sweep re-parks (does NOT drop) the record", async () => {
+    store = makeStore();
+    // Park event7 with a 503 (no resolver → resolves "ok", delivery is attempted).
+    await run({ event: event7, now: () => T0, fetchFn: fail503 });
+    assert.equal((await keysOf()).length, 1);
+
+    // A later sweep where DNS resolution throws (a transient blip). event9 is
+    // filtered for this subscriber, so the parked event7 is the only delivery
+    // path. The resolver blip must NOT delete the still-owed record — it must
+    // stay parked to retry, preserving the at-least-once guarantee.
+    const { redelivered } = await run({
+      event: event9,
+      now: () => "2026-06-22T00:00:05.000Z",
+      fetchFn: ok200,
+      resolveHostnames: async () => {
+        throw new Error("EAI_AGAIN");
+      },
+    });
+    assert.equal(redelivered.length, 1);
+    assert.equal(redelivered[0].status, "failed");
+    // Pre-fix, resolve-error surfaced as "skipped" and Phase 2 deleted the key —
+    // a permanent delivery loss. It must remain parked.
+    assert.equal((await keysOf()).length, 1);
+  });
+
   test("respects the schedule — a not-yet-due record is left untouched", async () => {
     store = makeStore();
     await run({ event: event7, now: () => T0, fetchFn: fail503 });

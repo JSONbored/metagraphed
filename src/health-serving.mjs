@@ -476,6 +476,11 @@ function round4(value) {
 function roundInt(value) {
   return value == null ? null : Math.round(Number(value));
 }
+function toFiniteOrNull(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
 // p50/p95/p99 + avg/min/max latency per surface, computed in SQL (one row per
 // stable surface). `rows`: [{ surface_id, surface_key?, samples, p50, p95, p99,
@@ -909,10 +914,15 @@ export function formatLeaderboards({
       name: row.name ?? null,
       completeness_score: row.completeness_score ?? null,
     }))
+    // Drop subnets with no completeness signal — completeness_score is a nullable
+    // INTEGER, and a not-yet-profiled subnet carries null. Ranking it on a
+    // "most-complete" board (emitting completeness_score: null) is wrong; every
+    // sibling board filters its absent metric (healthiest/most-enriched on >0,
+    // fastest-rpc/fastest-growing on != null, most-reliable on a null score).
+    .filter((entry) => entry.completeness_score != null)
     .sort(
       (a, b) =>
-        (b.completeness_score ?? -1) - (a.completeness_score ?? -1) ||
-        a.netuid - b.netuid,
+        b.completeness_score - a.completeness_score || a.netuid - b.netuid,
     )
     .slice(0, cap);
 
@@ -1009,16 +1019,19 @@ export function formatTrajectory({ netuid, rows }) {
   const points = (rows || [])
     .map((row) => ({
       date: row.snapshot_date,
-      completeness_score: row.completeness_score ?? null,
-      surface_count: row.surface_count ?? null,
-      endpoint_count: row.endpoint_count ?? null,
+      // D1 INTEGER/REAL cells often arrive as numeric strings — coerce through
+      // the same round helpers as the latency formatters so OpenAPI integer/number
+      // types are never violated on the trajectory artifact.
+      completeness_score: roundInt(row.completeness_score),
+      surface_count: roundInt(row.surface_count),
+      endpoint_count: roundInt(row.endpoint_count),
       // Economic time series (#1307) — null on rows captured before the columns
       // existed / when economics was unavailable that day.
-      validator_count: row.validator_count ?? null,
-      miner_count: row.miner_count ?? null,
-      total_stake_tao: row.total_stake_tao ?? null,
-      alpha_price_tao: row.alpha_price_tao ?? null,
-      emission_share: row.emission_share ?? null,
+      validator_count: roundInt(row.validator_count),
+      miner_count: roundInt(row.miner_count),
+      total_stake_tao: toFiniteOrNull(row.total_stake_tao),
+      alpha_price_tao: toFiniteOrNull(row.alpha_price_tao),
+      emission_share: toFiniteOrNull(row.emission_share),
     }))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 

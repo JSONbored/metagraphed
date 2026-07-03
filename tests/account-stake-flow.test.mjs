@@ -208,6 +208,54 @@ describe("loadAccountStakeFlow", () => {
     assert.equal(d.data.window, DEFAULT_STAKE_FLOW_WINDOW);
   });
 
+  test("direction=in queries StakeAdded only (#2694 parity)", async () => {
+    const calls = [];
+    const d1 = async (sql, params) => {
+      calls.push({ sql, params });
+      return [added(1, 100, 3, 5000)];
+    };
+    const d = await loadAccountStakeFlow(d1, ADDR, {
+      windowLabel: "7d",
+      direction: "in",
+    });
+    // Only the StakeAdded kind is bound: [address, StakeAdded, cutoff].
+    assert.equal(calls[0].params.length, 3);
+    assert.equal(calls[0].params[1], STAKE_ADDED_KIND);
+    assert.equal(d.data.total_staked_tao, 100);
+    assert.equal(d.data.total_unstaked_tao, 0);
+    assert.equal(d.data.net_flow_tao, 100);
+  });
+
+  test("direction=out queries StakeRemoved only (#2694 parity)", async () => {
+    const calls = [];
+    const d1 = async (sql, params) => {
+      calls.push({ sql, params });
+      return [removed(1, 40, 2, 6000)];
+    };
+    const d = await loadAccountStakeFlow(d1, ADDR, {
+      windowLabel: "7d",
+      direction: "out",
+    });
+    assert.equal(calls[0].params.length, 3);
+    assert.equal(calls[0].params[1], STAKE_REMOVED_KIND);
+    assert.equal(d.data.total_staked_tao, 0);
+    assert.equal(d.data.total_unstaked_tao, 40);
+    assert.equal(d.data.net_flow_tao, -40);
+  });
+
+  test("direction omitted sums both kinds (unchanged default)", async () => {
+    const calls = [];
+    const d1 = async (sql, params) => {
+      calls.push({ sql, params });
+      return [added(1, 100, 2, 5000), removed(1, 30, 1, 6000)];
+    };
+    await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
+    // [address, StakeAdded, StakeRemoved, cutoff].
+    assert.equal(calls[0].params.length, 4);
+    assert.equal(calls[0].params[1], STAKE_ADDED_KIND);
+    assert.equal(calls[0].params[2], STAKE_REMOVED_KIND);
+  });
+
   test("an unknown window label falls back to the 30d cutoff", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
@@ -243,5 +291,29 @@ describe("loadAccountStakeFlow", () => {
     ];
     const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
     assert.equal(d.generatedAt, new Date(9000).toISOString());
+  });
+
+  test("generatedAt coerces string-typed last_observed cells to ISO timestamps", async () => {
+    const d1 = async () => [added(1, 10, 1, "6000")];
+    const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
+    assert.equal(d.generatedAt, new Date(6000).toISOString());
+  });
+
+  test("generatedAt stays null for blank or out-of-range last_observed (not epoch 1970)", async () => {
+    for (const lastObserved of [
+      "",
+      "   ",
+      "not-a-date",
+      "8640000000000001",
+      null,
+    ]) {
+      const d1 = async () => [added(1, 10, 1, lastObserved)];
+      const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
+      assert.equal(
+        d.generatedAt,
+        null,
+        `lastObserved=${JSON.stringify(lastObserved)}`,
+      );
+    }
   });
 });

@@ -21,6 +21,13 @@ concurrency:
 # by the same gates as everything else (validate:surface + public-safety +
 # private-boundary, all below).
 #
+# The DOCS FAST-LANE below is a narrower, separate thing: it does not skip any
+# job or reduce the safety/contract/registry gates for anything that could
+# plausibly need them. It only lets a diff that is PURELY prose (**/*.md +
+# .claude/skills/**) — which cannot touch registry data, schemas, code, or CI
+# config — finish `checks` in seconds instead of minutes, while still reporting
+# a real `success` conclusion (not `skipped`) on every step.
+#
 # The work splits across two parallel jobs that both build: `test` builds then
 # runs the suite + coverage; `checks` builds then runs lint + the ~20 contract /
 # schema / safety validations. They are independent — no validation needs the
@@ -29,6 +36,141 @@ concurrency:
 # (registry-summary.json etc.) that have NO committed fallback and only exist
 # after `npm run build`, so a fresh runner must stage them.
 jobs:
+  # Computes the docs-fast-lane eligibility for the `checks` job below. This is
+  # a plain shell `git diff` inline in the trusted workflow — no third-party
+  # action. (dorny/paths-filter was considered and rejected: it is published by
+  # an individual GitHub user, not a GitHub-verified-creator org, and this
+  # repo's Actions allowlist is `{github_owned_allowed, verified_allowed,
+  # patterns_allowed: ["peter-evans/create-pull-request@*"]}` — an unlisted,
+  # unverified third-party action would hit a startup_failure. Reusing the
+  # existing "Compute submitted files" pattern already in `checks` avoids the
+  # dependency and the allowlist question entirely.)
+  #
+  # `docs_only` is true only when EVERY changed path matches `**/*.md` or
+  # `.claude/skills/**` (this skill directory is contributor-facing playbook
+  # docs, not workflow/schema/script config). `registry_touched` is a HARD
+  # GUARDRAIL, computed independently: if the diff touches anything under
+  # `registry/` it force-overrides `docs_only` back to false, no matter what
+  # else the diff contains. This directly encodes the incident already
+  # documented above validate.yml's job comment — the old reduced "ugc" lane
+  # was scoped to registry/community-surface PRs and caused a stale-base
+  # preflight false-positive, so registry-touching diffs get zero special
+  # treatment here, full stop.
+  #
+  # On push-to-main and workflow_dispatch (no base to diff against) this
+  # always resolves docs_only=false — the fast lane only ever applies to a
+  # `pull_request` event, where a real merge-base diff exists.
+  #
+  # Two further outputs, independent of docs_only and of each other: `Validate
+  # workflows` (scripts/validate-workflows.mjs) reads ONLY
+  # `.github/workflows/*.yml`/`.yaml`, and `Validate migration sequence`
+  # (scripts/validate-migrations.mjs) reads ONLY `migrations/*.sql` — verified
+  # by reading each script's full source; neither imports anything outside its
+  # own directory. Each flag also matches its OWN validator script path
+  # (scripts/validate-workflows.mjs / scripts/validate-migrations.mjs) directly,
+  # so editing the validator's logic itself still runs it even when the diff
+  # doesn't touch `.github/workflows/` or `migrations/`. A PR can be
+  # workflow-only or migration-only without being a docs PR, so these are
+  # computed as their own flags rather than folded into docs_only, and neither
+  # needs the registry guardrail above (neither path is registry-adjacent).
+  # Every other `checks` validator was evaluated for the same treatment and
+  # rejected: the contract/schema/route validators
+  # (validate:schemas/api/mcp/ai/openapi/types) all transitively import most of
+  # `src/` + `workers/**` via `workers/api.mjs`, so no path glob short of
+  # "almost the whole repo" would safely exclude them — see
+  # `.claude/skills/metagraphed/reference.md`'s "new artifact/route checklist"
+  # for why a route/handler change can trip a contract gate with no lexical
+  # hint in the diff.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.filter.outputs.docs_only }}
+      run_workflows_validation: ${{ steps.filter.outputs.run_workflows_validation }}
+      run_migrations_validation: ${{ steps.filter.outputs.run_migrations_validation }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Compute fast-lane eligibility
+        id: filter
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            {
+              echo "docs_only=false"
+              echo "run_workflows_validation=true"
+              echo "run_migrations_validation=true"
+            } >> "$GITHUB_OUTPUT"
+            echo "Not a pull_request event (${{ github.event_name }}) -- full validation runs."
+            exit 0
+          fi
+
+          if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
+            range="$BASE_SHA...$HEAD_SHA"
+          else
+            git fetch origin "$BASE_REF"
+            range="origin/$BASE_REF...HEAD"
+          fi
+          git diff --name-only "$range" > changed-files.txt
+
+          if [ ! -s changed-files.txt ]; then
+            {
+              echo "docs_only=false"
+              echo "run_workflows_validation=true"
+              echo "run_migrations_validation=true"
+            } >> "$GITHUB_OUTPUT"
+            echo "No changed files detected -- full validation runs."
+            exit 0
+          fi
+
+          echo "Changed files:"
+          cat changed-files.txt
+
+          # Narrow, independent skips -- see the job comment above for the
+          # file:line evidence that these two validators' entire footprint is
+          # their own directory.
+          if grep -qE '^\.github/workflows/|^scripts/validate-workflows\.mjs$' changed-files.txt; then
+            echo "run_workflows_validation=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_workflows_validation=false" >> "$GITHUB_OUTPUT"
+          fi
+          if grep -qE '^migrations/|^scripts/validate-migrations\.mjs$' changed-files.txt; then
+            echo "run_migrations_validation=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # HARD GUARDRAIL: any registry/ path forces full validation,
+          # unconditionally, regardless of every other path in the diff. See
+          # the job comment above for why -- this is not a suggestion.
+          if grep -qE '^registry/' changed-files.txt; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            echo "Diff touches registry/ -- forcing full validation (no exceptions)."
+            exit 0
+          fi
+
+          # docs_only requires EVERY changed path to match one of the two safe
+          # patterns below. A single non-matching path anywhere disqualifies
+          # the whole PR from the fast lane. Both patterns require a `.md`
+          # suffix -- a hypothetical future non-.md file under
+          # .claude/skills/** (e.g. a template or config) must NOT qualify,
+          # since only prose content is proven safe to skip validation for.
+          if grep -vE '(^|/)[^/]+\.md$|^\.claude/skills/.*\.md$' changed-files.txt > /dev/null; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            echo "Diff includes non-docs paths -- full validation runs."
+          else
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "Diff is 100% **/*.md + .claude/skills/** -- docs fast lane applies to the checks job."
+          fi
+
   test:
     name: test
     runs-on: ubuntu-latest
@@ -49,6 +191,13 @@ jobs:
         with:
           node-version: 22.23.1
           cache: npm
+          # Without this, setup-node's cache key hashes EVERY package-lock.json
+          # in the tree (root + packages/client + deploy/wss-lb), so a routine
+          # SDK version bump in packages/client/package-lock.json (the
+          # sync-client-version workflow does this every few days) invalidates
+          # this job's cache even though `npm ci` here only ever reads the root
+          # lockfile (no npm `workspaces` config ties them together).
+          cache-dependency-path: package-lock.json
 
       - name: Install
         run: npm ci
@@ -72,6 +221,12 @@ jobs:
       # writers drive their work via execFileSync child processes and add zero
       # in-process coverage, so coverage comes only from `test:ci` and CI still
       # makes a single Codecov upload.
+      #
+      # NOTE: the `test` job intentionally does NOT participate in the docs
+      # fast lane above. Coverage is a repo-wide delta gate (codecov.yml), not
+      # diff-scoped, so shortcutting it on a docs-only PR would let a docs PR
+      # merge without an accurate coverage report. It's also not the wall-clock
+      # long pole when it does run alongside a fast `checks` job.
       - name: Test (parallel, with coverage gate)
         env:
           VITEST_JUNIT_PATH: reports/junit/vitest.xml
@@ -156,7 +311,22 @@ jobs:
 
   checks:
     name: checks
+    needs: changes
     runs-on: ubuntu-latest
+    env:
+      # A single guard expression, computed once, that every expensive step
+      # below gates on. Deliberately a per-STEP `if:`, not a job-level `if:`
+      # on `checks` itself: a job-level skip reports conclusion=skipped, and
+      # while Gittensory's own CI aggregate (fetchLiveCiAggregate) buckets
+      # skipped identically to success, GitHub's native required-status-check
+      # semantics for a *future* required context are not governed by that
+      # code path. Per-step guards keep this job always reporting a real
+      # success/failure conclusion, which is unconditionally safe under both
+      # systems, at the cost of a few extra seconds on the one self-hosted
+      # runner for `Setup Node` + `Install` + the guard evaluation itself.
+      DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+      RUN_WORKFLOWS_VALIDATION: ${{ needs.changes.outputs.run_workflows_validation }}
+      RUN_MIGRATIONS_VALIDATION: ${{ needs.changes.outputs.run_migrations_validation }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -194,10 +364,18 @@ jobs:
         with:
           node-version: 22.23.1
           cache: npm
+          # See the `test` job's Setup Node step for why this is needed --
+          # same over-scoped-cache-key issue applies here.
+          cache-dependency-path: package-lock.json
 
       - name: Install
         run: npm ci
 
+      # Lint + format + the documentation/intake/safety scans below run
+      # UNCONDITIONALLY, docs fast lane or not — they're cheap (no build, no
+      # network), and directly relevant to a docs-only diff (a stray secret,
+      # broken doc-contract reference, or malformed intake template can land in
+      # a "docs-only" PR just as easily as in a code PR).
       - name: Lint + format
         run: |
           npm run lint
@@ -208,7 +386,12 @@ jobs:
       # they MUST run before the build step below overwrites those committed files.
       # This is the gate CONTRIBUTING.md references — without it a stale or
       # hand-edited committed contract could land on main undetected.
+      #
+      # Skipped for a proven docs-only diff: **/*.md + .claude/skills/** cannot
+      # touch schemas/, openapi.json, or any generated contract file, so there
+      # is nothing for this to drift-check.
       - name: Validate committed contract (drift)
+        if: env.DOCS_ONLY != 'true'
         run: |
           npm run validate:contract-drift
           npm run validate:schema-enums
@@ -217,18 +400,21 @@ jobs:
           npm run validate:committed-seed
 
       - name: Build artifacts
+        if: env.DOCS_ONLY != 'true'
         env:
           METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
         run: npm run build
 
       - name: Verify submitted public artifacts are reproducible
-        if: github.event_name == 'pull_request'
+        if: env.DOCS_ONLY != 'true' && github.event_name == 'pull_request'
         run: node scripts/ci-verify-submitted-artifacts.mjs --changed-files submitted-artifact-files.txt
 
       - name: Validate registry
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate
 
       - name: Generate R2 manifest
+        if: env.DOCS_ONLY != 'true'
         run: npm run r2:manifest
 
       # #1025: committed derived artifacts under public/ must match a fresh
@@ -246,7 +432,11 @@ jobs:
       # is inherently non-deterministic. It is publish infrastructure regenerated
       # on every publish (and by the r2:manifest step above), so its committed
       # copy is a best-effort lockfile, not a served/contract surface.
+      #
+      # Skipped on the docs fast lane along with the "Build artifacts" step it
+      # depends on above -- there is no fresh build to diff against.
       - name: Verify committed derived artifacts are fresh
+        if: env.DOCS_ONLY != 'true'
         run: |
           # Only CONTRACT artifacts are gated here — openapi.json / types.d.ts /
           # contracts.json / api-index.json — because they change only with reviewed
@@ -282,21 +472,27 @@ jobs:
           echo "All committed derived artifacts under public/ match a fresh build."
 
       - name: Validate JSON schemas
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:schemas
 
       - name: Validate Worker API
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:api
 
       - name: Validate MCP server
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:mcp
 
       - name: Validate AI routes
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:ai
 
       - name: Validate OpenAPI
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:openapi
 
       - name: Validate generated API types
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:types
 
       # Client-SDK drift gate: a contract-only PR (schemas → generated →
@@ -306,15 +502,20 @@ jobs:
       # changed versus the merge base but packages/client/package.json "version"
       # was not bumped. Diff-scoped: non-contract PRs never fire.
       - name: Validate client-SDK sync (contract ↔ published version)
-        if: github.event_name == 'pull_request'
+        if: env.DOCS_ONLY != 'true' && github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: npm run validate:client-sdk-sync
 
       - name: Validate artifact size budgets
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:artifact-budgets
 
+      # Always runs, docs fast lane or not: cheap (reads README.md +
+      # docs/backend-artifact-contracts.md + src/contracts.mjs, no build, no
+      # network) and this is exactly the gate a docs-only PR is most likely to
+      # need — the repo's own docs-only.md PR template lists it first.
       - name: Validate documentation contracts
         run: npm run validate:docs
 
@@ -327,37 +528,61 @@ jobs:
       # registry/subnets push. (Same rationale as the gitignored llms.txt
       # catalogs + public/datasets — DATA artifacts are not PR-gated.)
 
+      # Always runs (see docs/backend-artifact-contracts.md rationale above):
+      # cheap file-only scan of .github/ISSUE_TEMPLATE + the PR template, no
+      # build required, and listed in docs-only.md's own checklist.
       - name: Validate intake templates
         run: npm run validate:intake
 
       - name: Validate registry subnet files
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:surface
 
+      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-workflows.mjs
+      # reads ONLY .github/workflows/*.yml/.yaml, so a PR with zero changes under
+      # that path cannot affect this validator's result. See the `changes` job
+      # comment for the full rationale.
       - name: Validate workflows
+        if: env.RUN_WORKFLOWS_VALIDATION == 'true'
         run: npm run validate:workflows
 
+      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-migrations.mjs
+      # reads ONLY migrations/*.sql, so a PR with zero changes under that path
+      # cannot affect this validator's result. See the `changes` job comment for
+      # the full rationale.
       - name: Validate migration sequence
+        if: env.RUN_MIGRATIONS_VALIDATION == 'true'
         run: npm run validate:migrations
 
       - name: Validate Cloudflare config
+        if: env.DOCS_ONLY != 'true'
         run: npm run cloudflare:verify:dry-run
 
       - name: Validate R2 manifest
+        if: env.DOCS_ONLY != 'true'
         run: |
           npm run r2:manifest:dry-run
           npm run r2:download:dry-run
           npm run kv:publish:dry-run
 
       - name: Worker deploy dry-run
+        if: env.DOCS_ONLY != 'true'
         run: npm run worker:deploy:dry-run
 
       - name: Worker bundle-size budget
+        if: env.DOCS_ONLY != 'true'
         run: npm run worker:bundle:budget
 
+      # Always runs, docs fast lane or not: a plain regex scan over
+      # README/docs/registry/schemas/public/.github/workers/wrangler.jsonc for
+      # secrets, private paths, and localhost URLs (scripts/scan-public-
+      # safety.mjs) — no build, no network, and the exact gate a docs edit
+      # could most plausibly trip (a pasted local path or token in a doc).
       - name: Public-safety scan
         run: npm run scan:public-safety
 
       - name: Validate private boundary
+        if: env.DOCS_ONLY != 'true'
         run: npm run validate:private-boundary
 
   # The Python SDK (python/) ships its own hermetic unittest suite (37 cases) but

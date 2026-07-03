@@ -3,7 +3,10 @@
 // timeline + previously_known_as provenance hints. Pure + injectable for tests.
 
 import { encodeCursor, decodeCursor } from "./cursor.mjs";
-import { sanitizeIdentityHistoryFields } from "./chain-identity-sanitize.mjs";
+import {
+  sanitizeIdentityHistoryFields,
+  sanitizeIdentityHistoryText,
+} from "./chain-identity-sanitize.mjs";
 import {
   clampLimit,
   clampOffset,
@@ -59,11 +62,18 @@ export async function identityHash(snapshot) {
 }
 
 function toIso(ms) {
-  return Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString() : null;
+  if (ms == null) return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 function normalizeName(value) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+  const sanitized = sanitizeIdentityHistoryText(value);
+  return typeof sanitized === "string" && sanitized.trim()
+    ? sanitized.trim()
+    : null;
 }
 
 export function formatIdentityHistoryEntry(row) {
@@ -75,7 +85,7 @@ export function formatIdentityHistoryEntry(row) {
         : Number.isSafeInteger(Number(row.block_number))
           ? Number(row.block_number)
           : null,
-    observed_at: toIso(Number(row.observed_at)),
+    observed_at: toIso(row.observed_at),
     subnet_name: row.subnet_name ?? null,
     symbol: row.symbol ?? null,
     description: row.description ?? null,

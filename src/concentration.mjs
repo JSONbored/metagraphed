@@ -36,13 +36,25 @@ function roundRatio(value, dp = 6) {
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
+function epochMsStamp(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const date = new Date(ms);
+  if (!Number.isFinite(date.getTime())) return null;
+  return { ms, value: date.toISOString() };
+}
+
 function captureStamp(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
-  }
+  if (value == null) return null;
   if (typeof value === "string") {
+    if (/^\d+$/.test(value)) {
+      return epochMsStamp(Number(value));
+    }
     const ms = Date.parse(value);
     if (Number.isFinite(ms)) return { ms, value };
+    return null;
+  }
+  if (typeof value === "number") {
+    return epochMsStamp(value);
   }
   return null;
 }

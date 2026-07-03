@@ -1,4 +1,5 @@
 import {
+  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
@@ -9,6 +10,7 @@ import {
   canonicalListSearch,
   paginationLinkHeader,
 } from "./list-query.mjs";
+import { csvRequested, csvResponse } from "./csv.mjs";
 import {
   apiHeaders,
   errorResponse,
@@ -85,6 +87,7 @@ import {
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
   handleGlobalValidators,
+  canonicalGlobalValidatorsCachePath,
   canonicalSubnetMetagraphCachePath,
   handleAccount,
   handleAccountHistory,
@@ -1186,13 +1189,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // validator's permit=1 row wouldn't touch a filtered MAX(captured_at), leaving this
   // leaderboard's edge cache stale for that change.
   if (url.pathname === "/api/v1/validators") {
+    const validatorsCache = canonicalGlobalValidatorsCachePath(url);
+    if (validatorsCache.response) return validatorsCache.response;
     return withEdgeCache(
       request,
       ctx,
       env,
       "global-validators",
       () => handleGlobalValidators(request, env, url),
-      null,
+      validatorsCache.cachePathAndSearch,
       (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
     );
   }
@@ -2355,6 +2360,7 @@ async function handleApiRequest(
   if (!matched) {
     return errorResponse("not_found", "No API route matched this path.", 404);
   }
+  const wantsCsv = matched.csvResponse === true && csvRequested(url, request);
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
   // not by whether live data happened to be available for this request, so cold
@@ -2363,7 +2369,9 @@ async function handleApiRequest(
   // switch can never serve a cross-version body; the response's own
   // cache-control max-age bounds staleness.
   const edgeCache =
-    request.method === "GET" && isStaticEdgeCacheEligible(matched, network)
+    request.method === "GET" &&
+    !wantsCsv &&
+    isStaticEdgeCacheEligible(matched, network)
       ? globalThis.caches?.default
       : null;
   const edgeCacheKey = edgeCache
@@ -2380,6 +2388,7 @@ async function handleApiRequest(
   // + SHA-256 into at-most-once-per-cron-tick, staleness bounded to one interval.
   const overlayCache =
     request.method === "GET" &&
+    !wantsCsv &&
     network.isDefault &&
     CACHEABLE_OVERLAY_ROUTE_IDS.has(matched.id)
       ? globalThis.caches?.default
@@ -2586,6 +2595,51 @@ async function handleApiRequest(
       parameter: transformed.error.parameter,
     });
   }
+  // Advertise the page chain via an RFC 8288 Link header on paginated list
+  // responses. networkPublicUrl restores the prefix stripped before dispatch;
+  // paginationLinkHeader returns null (no header) for non-list/single-page data.
+  const formatOverride = url.searchParams.get("format")?.toLowerCase();
+  const linkSearchParams = {};
+  if (formatOverride === "json") {
+    linkSearchParams.format = "json";
+  } else if (wantsCsv) {
+    linkSearchParams.format = "csv";
+  }
+  const linkValue = paginationLinkHeader(
+    networkPublicUrl(url, network),
+    transformed.meta.pagination,
+    {
+      queryCollection: matched.queryCollection,
+      queryFilterNames: matched.queryFilterNames || [],
+      searchParams: linkSearchParams,
+    },
+  );
+  if (wantsCsv) {
+    let collectionKey = API_QUERY_COLLECTIONS[matched.queryCollection].data_key;
+    if (transformed.meta.pagination) {
+      collectionKey = transformed.meta.pagination.collection;
+    }
+    const rows = transformed.data[collectionKey];
+    if (!Array.isArray(rows)) {
+      return errorResponse(
+        "invalid_artifact",
+        "Artifact did not contain the expected list collection.",
+        500,
+        {
+          artifact_path: artifactPath,
+          collection: collectionKey,
+        },
+      );
+    }
+    return csvResponse(
+      rows,
+      matched.id,
+      matched.cache,
+      request,
+      transformed.meta.projection?.fields,
+      linkValue ? { link: linkValue } : {},
+    );
+  }
   // Real publish time from the KV latest pointer (null until a publish has
   // populated it). Unlike generated_at — a deterministic content marker that is
   // intentionally the 1970 epoch in committed/local builds (issue #349) — this
@@ -2624,17 +2678,6 @@ async function handleApiRequest(
       responseData = { ...responseData, ...patch };
     }
   }
-  // Advertise the page chain via an RFC 8288 Link header on paginated list
-  // responses. networkPublicUrl restores the prefix stripped before dispatch;
-  // paginationLinkHeader returns null (no header) for non-list/single-page data.
-  const linkValue = paginationLinkHeader(
-    networkPublicUrl(url, network),
-    transformed.meta.pagination,
-    {
-      queryCollection: matched.queryCollection,
-      queryFilterNames: matched.queryFilterNames || [],
-    },
-  );
   const response = await envelopeResponse(
     request,
     {
@@ -2693,6 +2736,7 @@ function matchRoute(pathname) {
       params,
       queryCollection: candidate.query_collection,
       queryFilterNames: candidate.query_filter_names,
+      csvResponse: candidate.csv_response === true,
     };
   }
   return null;
