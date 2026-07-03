@@ -64,7 +64,12 @@ services:
     # on every restart.
     command:
       - --base-path=/data
-      - --chain=finney
+      # NOT the bare name "finney" — verified against a real deploy that this
+      # image's `--chain=finney` silently resolves to a DIFFERENT embedded
+      # chainspec (wrong genesis) with zero error, so the node endlessly
+      # rejects every real peer as "Genesis mismatch" and never syncs. The
+      # image ships the correct spec as a file; point at it explicitly.
+      - --chain=/home/subtensor/chainspecs/raw_spec_finney.json
       - --sync=${SUBTENSOR_SYNC:-full}
       - --pruning=${SUBTENSOR_PRUNING:-archive}
       - --rpc-external
