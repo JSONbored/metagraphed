@@ -1051,6 +1051,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (until != null) {
       feedCacheParams.push(`until=${encodeURIComponent(until)}`);
     }
+    const limit = url.searchParams.get("limit");
+    if (limit != null) {
+      feedCacheParams.push(`limit=${encodeURIComponent(limit)}`);
+    }
     const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
     const feedRequest =
       request.method === "HEAD"

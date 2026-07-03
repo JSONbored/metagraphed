@@ -565,6 +565,43 @@ describe("feeds — filterUntil", () => {
   });
 });
 
+describe("feeds — ?limit= filter", () => {
+  test("?limit caps the number of returned items", async () => {
+    const full = JSON.parse(
+      (await feed("/api/v1/feeds/registry.json")).text,
+    ).items;
+    assert.ok(full.length > 1, "fixture must have >1 item to exercise the cap");
+    const { res, text } = await feed("/api/v1/feeds/registry.json?limit=1");
+    assert.equal(res.status, 200);
+    assert.equal(JSON.parse(text).items.length, 1);
+  });
+
+  test("?limit above the 50-item cap clamps instead of erroring", async () => {
+    const { res, text } = await feed("/api/v1/feeds/registry.json?limit=100");
+    assert.equal(res.status, 200);
+    assert.ok(JSON.parse(text).items.length <= 50);
+  });
+
+  test("?limit composes with ?tag=", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?limit=1&tag=registry",
+    );
+    assert.equal(res.status, 200);
+    const items = JSON.parse(text).items;
+    assert.equal(items.length, 1);
+    assert.ok((items[0].tags || []).includes("registry"));
+  });
+
+  test("a malformed ?limit is rejected with 400", async () => {
+    for (const value of ["0", "-1", "1.5", "abc", "10x"]) {
+      const { res } = await feed(
+        `/api/v1/feeds/registry.json?limit=${encodeURIComponent(value)}`,
+      );
+      assert.equal(res.status, 400, value);
+    }
+  });
+});
+
 describe("feeds — ?since= filter", () => {
   test("a future since yields an empty but valid feed (200)", async () => {
     const { res, text } = await feed(
