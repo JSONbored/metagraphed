@@ -1198,6 +1198,9 @@ export async function loadSubnetReliability({
     return null;
   }
   const nowMs = now ? Date.parse(now) : Date.now();
+  if (!Number.isFinite(nowMs)) {
+    return null;
+  }
   const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -1246,6 +1249,9 @@ export async function loadReliabilityAggregate({
     return null;
   }
   const nowMs = now ? Date.parse(now) : Date.now();
+  if (!Number.isFinite(nowMs)) {
+    return null;
+  }
   const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);

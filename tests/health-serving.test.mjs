@@ -2797,6 +2797,17 @@ describe("loadSubnetReliability (D1-backed)", () => {
       null,
     );
   });
+
+  test("returns null when now parses to a non-finite timestamp", async () => {
+    assert.equal(
+      await loadSubnetReliability({
+        db: uptimeDb([]),
+        netuid: 7,
+        now: "not-a-date",
+      }),
+      null,
+    );
+  });
 });
 
 describe("loadReliabilityAggregate (D1-backed, one query for many subnets)", () => {
@@ -2893,6 +2904,17 @@ describe("loadReliabilityAggregate (D1-backed, one query for many subnets)", () 
       await loadReliabilityAggregate({
         db: aggregateDb(null),
         netuids: [7],
+      }),
+      null,
+    );
+  });
+
+  test("returns null when now parses to a non-finite timestamp", async () => {
+    assert.equal(
+      await loadReliabilityAggregate({
+        db: aggregateDb({ samples: 1, ok_count: 1 }),
+        netuids: [7],
+        now: "not-a-date",
       }),
       null,
     );
