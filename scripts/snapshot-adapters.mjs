@@ -672,7 +672,7 @@ export async function fetchJson(url, redirectCount = 0) {
   }
 }
 
-async function fetchSseSummary(url) {
+export async function fetchSseSummary(url, redirectCount = 0) {
   if (await isUnsafeResolvedUrl(url)) {
     return {
       status: "unsafe",
@@ -691,8 +691,33 @@ async function fetchSseSummary(url) {
         accept: "text/event-stream",
         "user-agent": "metagraphed-adapter-snapshot/0.0",
       },
+      // Never auto-follow redirects: validate each hop with isUnsafeResolvedUrl
+      // before connecting, mirroring fetchJson in this module.
+      redirect: "manual",
       signal: controller.signal,
     });
+    const location = response.headers.get("location");
+    if (
+      [301, 302, 303, 307, 308].includes(response.status) &&
+      location &&
+      redirectCount < 5
+    ) {
+      const redirectTarget = new URL(location, url).toString();
+      if (await isUnsafeResolvedUrl(redirectTarget)) {
+        await response.body?.cancel?.();
+        return {
+          status: "unsafe",
+          url,
+          error: "redirect target is unsafe",
+          private_redirect_blocked: true,
+          status_code: response.status,
+          latency_ms: Math.round(performance.now() - started),
+          captured_at: new Date().toISOString(),
+        };
+      }
+      await response.body?.cancel?.();
+      return fetchSseSummary(redirectTarget, redirectCount + 1);
+    }
     let firstChunkBytes = 0;
     if (response.body) {
       const reader = response.body.getReader();
