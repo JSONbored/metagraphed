@@ -207,20 +207,6 @@ function neuronSnapshotPruneStatement(db, stagingMeta, snapshotCapturedAt) {
         .bind(...stagingMeta.refreshed_netuids, stagingMeta.captured_at);
 }
 
-function neuronSnapshotRollbackStatement(db, stagingMeta, snapshotCapturedAt) {
-  return stagingMeta.legacy
-    ? db
-        .prepare(`DELETE FROM neurons WHERE captured_at = ?`)
-        .bind(snapshotCapturedAt)
-    : db
-        .prepare(
-          `DELETE FROM neurons WHERE netuid IN (${stagingMeta.refreshed_netuids
-            .map(() => "?")
-            .join(",")}) AND captured_at = ?`,
-        )
-        .bind(...stagingMeta.refreshed_netuids, snapshotCapturedAt);
-}
-
 function neuronRowKey(row) {
   return `${row.netuid}:${row.uid}`;
 }
@@ -260,25 +246,26 @@ function neuronRestoreStatement(db, cols, colList, row) {
     .bind(...values);
 }
 
+function neuronDeleteByKeyStatement(db, key) {
+  const colon = key.indexOf(":");
+  return db
+    .prepare(`DELETE FROM neurons WHERE netuid = ? AND uid = ?`)
+    .bind(Number(key.slice(0, colon)), Number(key.slice(colon + 1)));
+}
+
 async function restoreNeuronSnapshotAfterFailedLoad(
   db,
-  stagingMeta,
-  snapshotCapturedAt,
   { backup, upsertedKeys, cols, colList, stmtsPerBatch },
 ) {
-  await neuronSnapshotRollbackStatement(
-    db,
-    stagingMeta,
-    snapshotCapturedAt,
-  ).run();
-  const restoreStmts = [];
+  const rollbackStmts = [];
   for (const key of upsertedKeys) {
     const prior = backup.get(key);
     if (prior)
-      restoreStmts.push(neuronRestoreStatement(db, cols, colList, prior));
+      rollbackStmts.push(neuronRestoreStatement(db, cols, colList, prior));
+    else rollbackStmts.push(neuronDeleteByKeyStatement(db, key));
   }
-  for (let i = 0; i < restoreStmts.length; i += stmtsPerBatch) {
-    await db.batch(restoreStmts.slice(i, i + stmtsPerBatch));
+  for (let i = 0; i < rollbackStmts.length; i += stmtsPerBatch) {
+    await db.batch(rollbackStmts.slice(i, i + stmtsPerBatch));
   }
 }
 
@@ -416,12 +403,12 @@ export async function loadStagedNeurons(env) {
       return { ok: false, reason: "load_failed" };
     }
   } else {
-    const backup = await backupNeuronSnapshotRows(
-      db,
-      colList,
-      rows,
-      stagingMeta,
-    );
+    let backup;
+    try {
+      backup = await backupNeuronSnapshotRows(db, colList, rows, stagingMeta);
+    } catch {
+      return { ok: false, reason: "load_failed" };
+    }
     const upsertedKeys = new Set();
     let upsertBatchesDone = 0;
     try {
@@ -441,25 +428,20 @@ export async function loadStagedNeurons(env) {
       purged = result?.meta?.changes ?? 0;
     } catch {
       // Mid-upsert failure: committed INSERT OR REPLACE batches overwrite prior
-      // (netuid, uid) rows. Drop partial rows at this snapshot stamp and restore
-      // backed-up prior rows for keys that were already upserted so the live
-      // snapshot stays queryable until the next cron retries the staged file.
+      // (netuid, uid) rows. Undo only the keys upserted in this attempt — restore
+      // backed-up prior rows for replaced keys and delete partial new-key inserts —
+      // so a purge_failed retry cannot wipe rows this attempt never touched.
       // Post-upsert prune failure: upserts are committed — keep the staged object
       // so the next cron re-prunes.
       if (upsertBatchesDone < upsertBatchCount) {
         try {
-          await restoreNeuronSnapshotAfterFailedLoad(
-            db,
-            stagingMeta,
-            snapshotCapturedAt,
-            {
-              backup,
-              upsertedKeys,
-              cols,
-              colList,
-              stmtsPerBatch: STMTS_PER_BATCH,
-            },
-          );
+          await restoreNeuronSnapshotAfterFailedLoad(db, {
+            backup,
+            upsertedKeys,
+            cols,
+            colList,
+            stmtsPerBatch: STMTS_PER_BATCH,
+          });
         } catch {
           // Best-effort rollback — the staged object is preserved for retry.
         }
