@@ -5298,7 +5298,57 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("list_global_validators groups hotkeys across subnets and applies sort/limit", async () => {
-    const globalEnv = {
+    const globalEnv = globalValidatorsTestEnv();
+    const res = await callTool(
+      "list_global_validators",
+      { sort: "subnet_count", limit: 1 },
+      { env: globalEnv },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "subnet_count");
+    assert.equal(out.limit, 1);
+    assert.equal(out.validator_count, 2);
+    assert.equal(out.validators.length, 1);
+    assert.equal(out.validators[0].hotkey, "5Hk-op-a");
+    assert.equal(out.validators[0].subnet_count, 2);
+    assert.equal(out.validators[0].uid_count, 2);
+    assert.equal(out.validators[0].subnets.length, 2);
+    assert.deepEqual(
+      out.validators[0].subnets.map((row) => row.netuid).sort((a, b) => a - b),
+      [1, 2],
+    );
+    assert.equal(typeof out.validators[0].stake_dominance, "number");
+  });
+
+  test("list_global_validators honors each REST-supported sort key", async () => {
+    const globalEnv = globalValidatorsTestEnv();
+    const cases = [
+      ["subnet_count", "5Hk-op-a"],
+      ["uid_count", "5Hk-op-a"],
+      ["total_stake", "5Hk-op-b"],
+      ["total_emission", "5Hk-op-b"],
+      ["max_validator_trust", "5Hk-op-b"],
+      ["avg_validator_trust", "5Hk-op-b"],
+      ["stake_dominance", "5Hk-op-b"],
+    ];
+    for (const [sort, expectedHotkey] of cases) {
+      const res = await callTool(
+        "list_global_validators",
+        { sort, limit: 1 },
+        { env: globalEnv },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, sort, `sort echo for ${sort}`);
+      assert.equal(
+        out.validators[0]?.hotkey,
+        expectedHotkey,
+        `top hotkey for sort=${sort}`,
+      );
+    }
+  });
+
+  function globalValidatorsTestEnv() {
+    return {
       METAGRAPH_HEALTH_DB: metagraphD1({
         neurons: [
           {
@@ -5340,20 +5390,7 @@ describe("MCP economics + metagraph data tools", () => {
         ],
       }),
     };
-    const res = await callTool(
-      "list_global_validators",
-      { sort: "subnet_count", limit: 1 },
-      { env: globalEnv },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.sort, "subnet_count");
-    assert.equal(out.limit, 1);
-    assert.equal(out.validators.length, 1);
-    assert.equal(out.validators[0].hotkey, "5Hk-op-a");
-    assert.equal(out.validators[0].subnet_count, 2);
-    assert.equal(out.validators[0].uid_count, 2);
-    assert.equal(out.validators[0].subnets.length, 2);
-  });
+  }
 
   test("list_global_validators rejects an invalid sort", async () => {
     const res = await callTool("list_global_validators", { sort: "bogus" });

@@ -177,7 +177,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.19.0";
+export const MCP_SERVER_VERSION = "1.20.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -4668,6 +4668,28 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
+const GLOBAL_VALIDATOR_SUBNET_ITEM = {
+  netuid: NULLABLE_INT,
+  uid: NULLABLE_INT,
+  stake_tao: ANY,
+  emission_tao: ANY,
+  validator_trust: { type: ["number", "null"] },
+};
+const GLOBAL_VALIDATOR_ITEM = {
+  hotkey: NULLABLE_STRING,
+  coldkey: NULLABLE_STRING,
+  coldkey_count: { type: "integer" },
+  subnet_count: { type: "integer" },
+  uid_count: { type: "integer" },
+  total_stake_tao: ANY,
+  total_emission_tao: ANY,
+  avg_validator_trust: { type: ["number", "null"] },
+  max_validator_trust: { type: ["number", "null"] },
+  latest_captured_at: NULLABLE_STRING,
+  latest_block_number: NULLABLE_INT,
+  stake_dominance: { type: ["number", "null"] },
+  subnets: objectItems(GLOBAL_VALIDATOR_SUBNET_ITEM),
+};
 const CHAIN_TRANSFER_PARTY_ITEM = {
   type: "object",
   additionalProperties: false,
@@ -5271,12 +5293,12 @@ const TOOL_OUTPUT_SCHEMAS = {
     required: ["sort", "limit", "validator_count", "validators"],
     properties: {
       schema_version: { type: "integer" },
-      sort: NULLABLE_STRING,
+      sort: { type: "string", enum: GLOBAL_VALIDATOR_SORTS },
       limit: { type: "integer" },
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
       validator_count: { type: "integer" },
-      validators: { type: "array", items: { type: "object" } },
+      validators: objectItems(GLOBAL_VALIDATOR_ITEM),
     },
   },
   get_neuron: {
