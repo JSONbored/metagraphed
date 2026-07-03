@@ -66,6 +66,17 @@ const UNSAFE_HOST_PATTERNS = [
   // 100.64.0.0/10 CGNAT — blocked by the webhook + build SSRF guards; the probe
   // literal guard must stay in parity (issue #2312).
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
+  // Non-global special-use IPv4 the webhook + build guards already reject; the
+  // probe literal guard drifted out of parity and let these through (both as a
+  // direct host and as an IPv4 tunnelled inside an IPv6 literal, since the
+  // embedded-v4 re-check below reuses this list). Mirror src/webhooks.mjs:
+  //   192.0.0.0/24   IETF protocol assignments
+  //   198.18.0.0/15  benchmarking (RFC 2544)
+  //   224.0.0.0/3    multicast 224/4 + reserved 240/4 (incl. 255/8 broadcast) —
+  //                  not global unicast, matching the a>=224 guard (#1538).
+  /^192\.0\.0\./,
+  /^198\.1[89]\./,
+  /^(22[4-9]|2[3-5]\d)\./,
 ];
 
 // IPv6-literal SSRF ranges, checked only when the host is an actual IPv6 literal
@@ -75,15 +86,20 @@ const UNSAFE_HOST_PATTERNS = [
 //   ::             unspecified
 //   fe00::/8       link-local fe80::/10 + deprecated site-local fec0::/10 (#1538)
 //   fc00::/7       unique-local — first hextet fc00–fdff, i.e. an fc__/fd__ prefix
+//   ff00::/8       multicast — not global unicast (2000::/3), matching the a>=224
+//                  IPv4 broadcast/multicast guard (#1538)
 // The full fc00::/7 range matters: the old /^fc00:/ only caught the literal fc00:
-// hextet and let other ULAs (fc12::1, fdab::1) through (#2375).
+// hextet and let other ULAs (fc12::1, fdab::1) through (#2375). The ff__ multicast
+// prefix was missing here while the webhook guard already blocked it, so the probe
+// literal guard let ff02::1 (all-routers) and other multicast targets through.
 function isUnsafeIpv6Literal(host) {
   return (
     host === "::1" ||
     host === "::" ||
     host.startsWith("fe") ||
     host.startsWith("fc") ||
-    host.startsWith("fd")
+    host.startsWith("fd") ||
+    host.startsWith("ff")
   );
 }
 

@@ -19,7 +19,7 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 
 describe("public contract registry", () => {
   test("keeps API routes and artifacts unique", () => {
-    assert.equal(CONTRACT_VERSION, "2026-07-02.1");
+    assert.equal(CONTRACT_VERSION, "2026-07-03.1");
     assert.equal(CACHE_SECONDS.short, 60);
     assert.equal(
       new Set(API_ROUTES.map((route) => route.id)).size,
@@ -194,6 +194,35 @@ describe("public contract registry", () => {
     assert.equal(fixtureExample.meta.source, "r2");
     assert.equal(fixtureExample.meta.pagination, undefined);
     assert.equal(fixtureExample.meta.stale_contract, undefined);
+
+    const csvExamples = [
+      [
+        "/api/v1/subnets/{netuid}/metagraph",
+        "uid,hotkey,coldkey,active,validator_permit,rank,trust,validator_trust,consensus,incentive,dividends,emission_tao,stake_tao,registered_at_block,is_immunity_period,axon",
+      ],
+      [
+        "/api/v1/subnets/{netuid}/validators",
+        "uid,hotkey,coldkey,active,validator_permit,rank,trust,validator_trust,consensus,incentive,dividends,emission_tao,stake_tao,registered_at_block,is_immunity_period,axon",
+      ],
+      [
+        "/api/v1/subnets/movers",
+        "netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta",
+      ],
+      [
+        "/api/v1/validators",
+        "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
+      ],
+      [
+        "/api/v1/economics/trends",
+        "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+      ],
+    ];
+    for (const [path, expectedHeader] of csvExamples) {
+      const csvContent =
+        openapi.paths[path].get.responses["200"].content["text/csv"];
+      assert.equal(csvContent.schema.type, "string");
+      assert.equal(csvContent.example.split("\r\n")[0], expectedHeader);
+    }
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
     assert.equal(

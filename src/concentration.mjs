@@ -268,8 +268,10 @@ export function buildChainConcentration(rows) {
     }
     const rawNetuid = row?.netuid;
     if (rawNetuid != null) {
+      // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+      if (typeof rawNetuid === "string" && rawNetuid.trim() === "") continue;
       const netuid = Number(rawNetuid);
-      // guard the coercion: a blank/non-numeric cell must not count as subnet 0.
+      // guard the coercion: a non-numeric cell must not count as subnet 0.
       if (Number.isInteger(netuid) && netuid >= 0) netuids.add(netuid);
     }
   }

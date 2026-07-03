@@ -966,6 +966,34 @@ describe("analytics edge cache", () => {
       );
     }
   });
+
+  test("subnet movers CSV requests use a distinct cache key", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/movers?sort=emission",
+        { headers: { accept: "text/csv" } },
+      ),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "subnet-movers",
+        "/api/v1/subnets/movers",
+        "?window=30d&sort=emission&limit=20&format=csv",
+      ),
+    ]);
+  });
 });
 
 const NEURON_CAPTURED_AT = 1_781_500_000_000;
@@ -1131,6 +1159,60 @@ describe("neurons-tier edge cache", () => {
       ),
     ]);
     assert.equal(cache.store.size, 1);
+  });
+
+  test("CSV requests use distinct neuron-tier cache keys", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = neuronsEnv(queries);
+
+    const routes = [
+      {
+        keyParts: "global-validators",
+        path: "/api/v1/validators?limit=1",
+        cachePath: "/api/v1/validators",
+        search: "?sort=subnet_count&limit=1&format=csv",
+      },
+      {
+        keyParts: "subnet-metagraph",
+        path: "/api/v1/subnets/7/metagraph",
+        cachePath: "/api/v1/subnets/7/metagraph",
+        search: "?format=csv",
+      },
+      {
+        keyParts: "subnet-validators",
+        path: "/api/v1/subnets/7/validators",
+        cachePath: "/api/v1/subnets/7/validators",
+        search: "?format=csv",
+      },
+    ];
+
+    for (const route of routes) {
+      const res = await handleRequest(
+        new Request(`https://api.metagraph.sh${route.path}`, {
+          headers: { accept: "text/csv" },
+        }),
+        env,
+        ctx,
+      );
+      await Promise.resolve();
+      assert.equal(res.status, 200, route.keyParts);
+      assert.match(res.headers.get("content-type"), /^text\/csv/);
+    }
+
+    assert.deepEqual(
+      cache.putKeys,
+      routes.map((route) =>
+        expectedStampKey(
+          NEURON_CAPTURED_AT,
+          route.keyParts,
+          route.cachePath,
+          route.search,
+        ),
+      ),
+    );
   });
 
   test("a new neuron captured_at busts cache while health last_run_at is unchanged", async () => {

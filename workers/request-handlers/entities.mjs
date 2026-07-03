@@ -33,6 +33,7 @@ import {
   envelopeResponse,
   publishedAt,
 } from "../responses.mjs";
+import { csvRequested, csvResponse } from "../csv.mjs";
 import {
   analyticsQueryError,
   d1All,
@@ -121,6 +122,83 @@ import {
 } from "../../src/movers.mjs";
 import { loadSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
 
+const RESPONSE_FORMATS = ["json", "csv"];
+const NEURON_CSV_COLUMNS = [
+  "uid",
+  "hotkey",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "validator_trust",
+  "consensus",
+  "incentive",
+  "dividends",
+  "emission_tao",
+  "stake_tao",
+  "registered_at_block",
+  "is_immunity_period",
+  "axon",
+];
+const MOVERS_CSV_COLUMNS = [
+  "netuid",
+  "stake_start_tao",
+  "stake_end_tao",
+  "stake_delta_tao",
+  "stake_pct_change",
+  "emission_start_tao",
+  "emission_end_tao",
+  "emission_delta_tao",
+  "emission_pct_change",
+  "validators_start",
+  "validators_end",
+  "validators_delta",
+  "neurons_start",
+  "neurons_end",
+  "neurons_delta",
+];
+const GLOBAL_VALIDATOR_CSV_COLUMNS = [
+  "hotkey",
+  "coldkey",
+  "coldkey_count",
+  "subnet_count",
+  "uid_count",
+  "total_stake_tao",
+  "total_emission_tao",
+  "stake_dominance",
+  "avg_validator_trust",
+  "max_validator_trust",
+  "latest_captured_at",
+  "latest_block_number",
+  "subnets",
+];
+
+function validateResponseFormat(url) {
+  const raw = url.searchParams.get("format");
+  if (raw === null && !url.searchParams.has("format")) return null;
+  const normalized = String(raw || "").toLowerCase();
+  if (RESPONSE_FORMATS.includes(normalized)) return null;
+  return {
+    parameter: "format",
+    message: `format must be one of: ${RESPONSE_FORMATS.join(", ")}.`,
+  };
+}
+
+function validateEntityQuery(url, allowedParams) {
+  const validationError = validateQueryParams(url, allowedParams);
+  if (validationError) return validationError;
+  return validateResponseFormat(url);
+}
+
+function csvCacheVariant(url, request, canonicalPath) {
+  const format = url.searchParams.get("format")?.toLowerCase();
+  const wantsCsv = format === "csv" || (request && csvRequested(url, request));
+  if (!wantsCsv) return canonicalPath;
+  const separator = canonicalPath.includes("?") ? "&" : "?";
+  return `${canonicalPath}${separator}format=csv`;
+}
+
 function parseBoundedIntParam(url, parameter, { def, min, max }) {
   const raw = url.searchParams.get(parameter);
   if (raw == null || raw === "") return { value: def };
@@ -173,12 +251,24 @@ async function metagraphMeta(env, artifactPath, generatedAt) {
 }
 
 export async function handleSubnetMetagraph(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["validator_permit"]);
+  const validationError = validateEntityQuery(url, [
+    "validator_permit",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
   const data = await loadSubnetMetagraph(d1Runner(env), netuid, {
     validatorsOnly,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.neurons,
+      "subnet-metagraph",
+      "short",
+      request,
+      NEURON_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -234,9 +324,18 @@ export async function handleNeuron(request, env, netuid, uid) {
 }
 
 export async function handleSubnetValidators(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, []);
+  const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
   const data = await loadSubnetValidators(d1Runner(env), netuid);
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.validators,
+      "subnet-validators",
+      "short",
+      request,
+      NEURON_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -258,7 +357,7 @@ export async function handleSubnetValidators(request, env, netuid, url) {
 // scoped to each membership row because those source units are not globally aggregated.
 // Cold/absent D1 returns a schema-stable empty list.
 function parseGlobalValidatorsQuery(url) {
-  const validationError = validateQueryParams(url, ["sort", "limit"]);
+  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
   if (validationError) return { error: validationError };
 
   const sort = url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -283,13 +382,19 @@ function parseGlobalValidatorsQuery(url) {
   return { sort, limit: limit.value };
 }
 
-export function canonicalGlobalValidatorsCachePath(url) {
+export function canonicalGlobalValidatorsCachePath(url, request = null) {
   const parsed = parseGlobalValidatorsQuery(url);
   if (parsed.error) {
     return { response: analyticsQueryError(parsed.error) };
   }
   const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
-  return { cachePathAndSearch: `${url.pathname}?${search}` };
+  return {
+    cachePathAndSearch: csvCacheVariant(
+      url,
+      request,
+      `${url.pathname}?${search}`,
+    ),
+  };
 }
 
 export async function handleGlobalValidators(request, env, url) {
@@ -299,6 +404,15 @@ export async function handleGlobalValidators(request, env, url) {
     sort: parsed.sort,
     limit: parsed.limit,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.validators,
+      "global-validators",
+      "short",
+      request,
+      GLOBAL_VALIDATOR_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -591,8 +705,13 @@ export function canonicalSubnetStakeFlowCachePath(url) {
 
 // Canonical edge-cache key for the cross-subnet movers route: window/sort/limit, each
 // canonicalized to its default when omitted, so equivalent requests share one slot.
-export function canonicalSubnetMoversCachePath(url) {
-  const validationError = validateQueryParams(url, ["window", "sort", "limit"]);
+export function canonicalSubnetMoversCachePath(url, request = null) {
+  const validationError = validateEntityQuery(url, [
+    "window",
+    "sort",
+    "limit",
+    "format",
+  ]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
   if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
@@ -608,19 +727,35 @@ export function canonicalSubnetMoversCachePath(url) {
     max: MOVERS_LIMIT_MAX,
   });
   if (limit.error) return `${url.pathname}${url.search}`;
-  return `${url.pathname}?window=${windowParam}&sort=${sortParam}&limit=${limit.value}`;
+  return csvCacheVariant(
+    url,
+    request,
+    `${url.pathname}?window=${windowParam}&sort=${sortParam}&limit=${limit.value}`,
+  );
 }
 
 // Canonical edge-cache key for the subnet-metagraph route. Only
 // ?validator_permit=true changes the response; omission and =false both serve
 // the full metagraph and must share one cache slot.
-export function canonicalSubnetMetagraphCachePath(url) {
-  const validationError = validateQueryParams(url, ["validator_permit"]);
+export function canonicalSubnetMetagraphCachePath(url, request = null) {
+  const validationError = validateEntityQuery(url, [
+    "validator_permit",
+    "format",
+  ]);
   if (validationError) return `${url.pathname}${url.search}`;
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
-  return validatorsOnly
+  const canonicalPath = validatorsOnly
     ? `${url.pathname}?validator_permit=true`
     : url.pathname;
+  return csvCacheVariant(url, request, canonicalPath);
+}
+
+// Canonical edge-cache key for the subnet validators route. The default JSON
+// envelope and explicit ?format=json share one cache slot; CSV receives its own.
+export function canonicalSubnetValidatorsCachePath(url, request = null) {
+  const validationError = validateEntityQuery(url, ["format"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  return csvCacheVariant(url, request, url.pathname);
 }
 
 // GET /api/v1/subnets/{netuid}/concentration/history?window=7d|30d|90d: the per-day
@@ -764,7 +899,12 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
 // snapshot_date read). Cold/absent or single-snapshot store → 200 with movers:[]
 // (schema-stable, never 404), mirroring the sibling history/turnover routes.
 export async function handleSubnetMovers(request, env, url) {
-  const validationError = validateQueryParams(url, ["window", "sort", "limit"]);
+  const validationError = validateEntityQuery(url, [
+    "window",
+    "sort",
+    "limit",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
   if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
@@ -793,6 +933,15 @@ export async function handleSubnetMovers(request, env, url) {
     sort: sortParam,
     limit: limit.value,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.movers,
+      "subnet-movers",
+      "short",
+      request,
+      MOVERS_CSV_COLUMNS,
+    );
+  }
   // neuron_daily-derived, so the meta reports the metagraph-snapshot source; generated_at
   // is the end snapshot date (string), matching the turnover/history routes.
   return envelopeResponse(
