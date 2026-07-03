@@ -18,7 +18,11 @@ import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
 } from "../src/agent-tool-specs.mjs";
-import { artifactFilePath, createLocalArtifactEnv, latestArtifactDate } from "./lib.mjs";
+import {
+  artifactFilePath,
+  createLocalArtifactEnv,
+  latestArtifactDate,
+} from "./lib.mjs";
 
 const env = createLocalArtifactEnv();
 const MCP_URL = "https://api.metagraph.sh/mcp";
