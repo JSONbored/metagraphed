@@ -3311,6 +3311,198 @@
         ],
         "type": "object"
       },
+      "ChainStakeFlowArtifact": {
+        "additionalProperties": false,
+        "description": "Cross-subnet capital flow over a 7d/30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO, with per-subnet staked/unstaked/net/gross totals + a direction label, a network rollup, and a distribution of the per-subnet net flow. subnet_count, the rollup, and the distribution cover only subnets with stake events in the window (quiet subnets are excluded). Served live from the account_events D1 tier at /api/v1/chain/stake-flow (no static file); zeros + empty leaderboard when cold.",
+        "properties": {
+          "net_flow_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet net flow (TAO, can be negative) across every subnet in the window; null when no subnet moved stake.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "type": "number"
+              },
+              "mean": {
+                "type": "number"
+              },
+              "median": {
+                "type": "number"
+              },
+              "min": {
+                "type": "number"
+              },
+              "p25": {
+                "type": "number"
+              },
+              "p75": {
+                "type": "number"
+              },
+              "p90": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "properties": {
+              "flat": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "gaining": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "gross_flow_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "losing": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "net_flow_tao": {
+                "type": "number"
+              },
+              "stake_events": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_staked_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "total_unstaked_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "unstake_events": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total_staked_tao",
+              "total_unstaked_tao",
+              "net_flow_tao",
+              "gross_flow_tao",
+              "stake_events",
+              "unstake_events",
+              "gaining",
+              "losing",
+              "flat"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "inflow",
+                    "outflow",
+                    "balanced"
+                  ],
+                  "type": "string"
+                },
+                "gross_flow_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "net_flow_tao": {
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total_staked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "total_unstaked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "unstake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "total_staked_tao",
+                "total_unstaked_tao",
+                "net_flow_tao",
+                "gross_flow_tao",
+                "stake_events",
+                "unstake_events",
+                "direction"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "net_flow_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainTransferPair": {
         "additionalProperties": false,
         "description": "One directed sender -> receiver pair on the chain-transfer-pairs leaderboard. Rows are well-formed non-self Balances.Transfer events with both account addresses and a non-negative amount.",
@@ -21279,6 +21471,183 @@
           }
         },
         "summary": "Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/stake-flow": {
+      "get": {
+        "operationId": "chainStakeFlow",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "net_flow_distribution": {
+                      "count": 1,
+                      "max": 0.5,
+                      "mean": 0.5,
+                      "median": 0.5,
+                      "min": 0.5,
+                      "p25": 0.5,
+                      "p75": 0.5,
+                      "p90": 0.5
+                    },
+                    "network": {
+                      "flat": 1,
+                      "gaining": 1,
+                      "gross_flow_tao": 0.5,
+                      "losing": 1,
+                      "net_flow_tao": 0.5,
+                      "stake_events": 1,
+                      "total_staked_tao": 0.5,
+                      "total_unstaked_tao": 0.5,
+                      "unstake_events": 1
+                    },
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "subnet_count": 1,
+                    "subnets": [
+                      {
+                        "direction": "inflow",
+                        "gross_flow_tao": 0.5,
+                        "net_flow_tao": 0.5,
+                        "netuid": 7,
+                        "stake_events": 1,
+                        "total_staked_tao": 0.5,
+                        "total_unstaked_tao": 0.5,
+                        "unstake_events": 1
+                      }
+                    ],
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainStakeFlowArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold.",
         "tags": [
           "chain",
           "analytics"

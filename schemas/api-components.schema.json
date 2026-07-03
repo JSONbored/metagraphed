@@ -3297,6 +3297,198 @@
         ],
         "type": "object"
       },
+      "ChainStakeFlowArtifact": {
+        "additionalProperties": false,
+        "description": "Cross-subnet capital flow over a 7d/30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO, with per-subnet staked/unstaked/net/gross totals + a direction label, a network rollup, and a distribution of the per-subnet net flow. subnet_count, the rollup, and the distribution cover only subnets with stake events in the window (quiet subnets are excluded). Served live from the account_events D1 tier at /api/v1/chain/stake-flow (no static file); zeros + empty leaderboard when cold.",
+        "properties": {
+          "net_flow_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet net flow (TAO, can be negative) across every subnet in the window; null when no subnet moved stake.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "type": "number"
+              },
+              "mean": {
+                "type": "number"
+              },
+              "median": {
+                "type": "number"
+              },
+              "min": {
+                "type": "number"
+              },
+              "p25": {
+                "type": "number"
+              },
+              "p75": {
+                "type": "number"
+              },
+              "p90": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "properties": {
+              "flat": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "gaining": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "gross_flow_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "losing": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "net_flow_tao": {
+                "type": "number"
+              },
+              "stake_events": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_staked_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "total_unstaked_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "unstake_events": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total_staked_tao",
+              "total_unstaked_tao",
+              "net_flow_tao",
+              "gross_flow_tao",
+              "stake_events",
+              "unstake_events",
+              "gaining",
+              "losing",
+              "flat"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "inflow",
+                    "outflow",
+                    "balanced"
+                  ],
+                  "type": "string"
+                },
+                "gross_flow_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "net_flow_tao": {
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total_staked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "total_unstaked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "unstake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "total_staked_tao",
+                "total_unstaked_tao",
+                "net_flow_tao",
+                "gross_flow_tao",
+                "stake_events",
+                "unstake_events",
+                "direction"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "net_flow_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainTransferPair": {
         "additionalProperties": false,
         "description": "One directed sender -> receiver pair on the chain-transfer-pairs leaderboard. Rows are well-formed non-self Balances.Transfer events with both account addresses and a non-negative amount.",

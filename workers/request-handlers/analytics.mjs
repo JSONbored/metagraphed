@@ -64,6 +64,11 @@ import {
   loadChainTransferPairs,
 } from "../../src/chain-transfer-pairs.mjs";
 import { loadChainTransfers } from "../../src/chain-transfers.mjs";
+import {
+  loadChainStakeFlow,
+  CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+  CHAIN_STAKE_FLOW_LIMIT_MAX,
+} from "../../src/chain-stake-flow.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -942,6 +947,56 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
       );
     },
     canonicalAnalyticsCacheRoute(url, ["limit", "sort"]),
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// Network-wide cross-subnet capital flow: rank every subnet by net StakeAdded - StakeRemoved
+// over the window from the account_events stream, with a network rollup and a net-flow
+// distribution. The network companion to /api/v1/subnets/{netuid}/stake-flow; edge-cached like
+// the sibling chain-transfers route (account_events-derived, analytics cron freshness).
+export async function handleChainStakeFlow(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  if (error) return analyticsQueryError(error);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+    maxLimit: CHAIN_STAKE_FLOW_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+
+  // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
+  // repeatedly force the network-wide account_events aggregation (mirrors chain-transfers).
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-stake-flow",
+    async () => {
+      const data = await loadChainStakeFlow(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/stake-flow.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit"]),
   );
   return request.method === "HEAD"
     ? new Response(null, { status: response.status, headers: response.headers })

@@ -1157,6 +1157,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainTransferPairsArtifact",
   ),
   artifact(
+    "chain-stake-flow",
+    "/metagraph/chain/stake-flow.json",
+    "Network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded), with per-subnet staked/unstaked/net/gross totals + a direction label, a network rollup, and a distribution of the per-subnet net flow, computed live from the account_events stake stream at /api/v1/chain/stake-flow (no static file).",
+    "ChainStakeFlowArtifact",
+  ),
+  artifact(
     "chain-fees",
     "/metagraph/chain/fees.json",
     "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
@@ -2446,6 +2452,20 @@ export const API_ROUTES = [
         name: "sort",
         schema: { type: "string", enum: ["volume", "count"] },
       },
+    ],
+    [],
+  ),
+  route(
+    "chain-stake-flow",
+    "GET",
+    "/api/v1/chain/stake-flow",
+    "/metagraph/chain/stake-flow.json",
+    "Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
     ],
     [],
   ),
