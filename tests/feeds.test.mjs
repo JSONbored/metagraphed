@@ -39,6 +39,7 @@ function installMockCache() {
 }
 
 const {
+  toIso,
   registryItems,
   incidentItems,
   gapsItems,
@@ -333,6 +334,18 @@ describe("feeds — item builders", () => {
     assert.equal(items[0].summary, "candidates 50→49.");
     assert.ok(!items[0].summary.includes("undefined"));
     assert.ok(!items[0].title.includes("surfaces"));
+  });
+
+  test("toIso normalizes a valid ISO string", () => {
+    assert.equal(toIso("2026-06-12T00:00:00.000Z"), "2026-06-12T00:00:00.000Z");
+  });
+
+  test("toIso drops an out-of-range numeric string to null", () => {
+    assert.equal(toIso("9000000000000000"), null);
+  });
+
+  test("toIso drops an unparseable string to null", () => {
+    assert.equal(toIso("not-a-date"), null);
   });
 
   test("incidentItems marks ongoing vs resolved + filters by netuid", () => {

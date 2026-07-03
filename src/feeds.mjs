@@ -746,6 +746,7 @@ export function feedLinkHeader(originUrl, netuid) {
 
 // Exported for unit tests.
 export const __test = {
+  toIso,
   registryItems,
   incidentItems,
   gapsItems,
