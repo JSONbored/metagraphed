@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import {
   handleFeedRequest,
   parseFeedPath,
@@ -40,6 +40,7 @@ function installMockCache() {
 
 const {
   toIso,
+  toRfc822,
   registryItems,
   incidentItems,
   gapsItems,
@@ -431,6 +432,31 @@ describe("feeds — item builders", () => {
     assert.equal(toIso("1750000000000"), "2025-06-15T15:06:40.000Z");
   });
 
+  test("toIso drops unparseable and out-of-range ISO strings without RangeError", () => {
+    assert.equal(toIso("not-a-date"), null);
+    assert.equal(toIso("2025-06-15T15:06:40.000Z"), "2025-06-15T15:06:40.000Z");
+    const getTime = vi
+      .spyOn(Date.prototype, "getTime")
+      .mockReturnValueOnce(NaN);
+    assert.equal(toIso("2025-06-15T15:06:40.000Z"), null);
+    getTime.mockRestore();
+  });
+
+  test("toRfc822 returns null for missing or invalid timestamps", () => {
+    assert.equal(toRfc822(null), null);
+    assert.equal(toRfc822(undefined), null);
+    assert.equal(toRfc822("not-a-date"), null);
+    assert.equal(
+      toRfc822("2025-06-15T15:06:40.000Z"),
+      "Sun, 15 Jun 2025 15:06:40 GMT",
+    );
+    const getTime = vi
+      .spyOn(Date.prototype, "getTime")
+      .mockReturnValueOnce(NaN);
+    assert.equal(toRfc822("2025-06-15T15:06:40.000Z"), null);
+    getTime.mockRestore();
+  });
+
   test("gapsItems builds ranked enrichment targets with lane/kind tags", () => {
     const items = gapsItems(ENRICHMENT_QUEUE);
     assert.equal(items.length, 3);
@@ -783,6 +809,27 @@ describe("feeds — serializers", () => {
       },
     ]);
     assert.doesNotMatch(xml, /<pubDate>/);
+    assert.match(xml, /<item>/);
+  });
+
+  test("rssFeed omits lastBuildDate when channel updated is invalid", () => {
+    const xml = rssFeed({ ...meta, updated: "not-a-date" }, items);
+    assert.doesNotMatch(xml, /<lastBuildDate>/);
+    assert.match(xml, /<channel>/);
+  });
+
+  test("rssFeed omits pubDate and categories when item timestamp/tags are absent", () => {
+    const xml = rssFeed(meta, [
+      {
+        id: "bare",
+        url: "https://example.com/bare",
+        title: "bare",
+        summary: "bare",
+        timestamp: null,
+      },
+    ]);
+    assert.doesNotMatch(xml, /<pubDate>/);
+    assert.doesNotMatch(xml, /<category>/);
     assert.match(xml, /<item>/);
   });
 
