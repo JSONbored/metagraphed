@@ -30,14 +30,27 @@ function round(value) {
   return Math.round(value * factor) / factor;
 }
 
+// Guard 0/negative epoch ms (a blank/sentinel D1 cell) so a captured_at never
+// stamps the 1970 epoch. Mirrors epochMsStamp in concentration.mjs / the
+// account-events + snapshot fixes (#2776/#2777).
+function epochMsStamp(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const date = new Date(ms);
+  if (!Number.isFinite(date.getTime())) return null;
+  return { ms, value: date.toISOString() };
+}
+
 function captureStamp(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
-  }
+  if (value == null) return null;
   if (typeof value === "string") {
+    // D1 can return an INTEGER captured_at as a numeric-epoch string; Date.parse
+    // returns NaN for a bare epoch string, so coerce it like concentration.mjs.
+    if (/^\d+$/.test(value)) return epochMsStamp(Number(value));
     const ms = Date.parse(value);
     if (Number.isFinite(ms)) return { ms, value };
+    return null;
   }
+  if (typeof value === "number") return epochMsStamp(value);
   return null;
 }
 

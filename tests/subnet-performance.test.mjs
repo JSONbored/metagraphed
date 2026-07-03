@@ -127,6 +127,40 @@ describe("buildSubnetPerformance", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z"); // newest of the two
   });
 
+  test("rejects a zero/negative captured_at instead of stamping the 1970 epoch", () => {
+    // A blank/sentinel D1 cell arrives as 0 (or negative). Alone it must yield a
+    // null captured_at — never the 1970 epoch. Mirrors #2776/#2777.
+    const zero = buildSubnetPerformance(
+      [{ incentive: 0.5, captured_at: 0 }],
+      7,
+    );
+    assert.equal(zero.captured_at, null);
+    const negative = buildSubnetPerformance(
+      [{ incentive: 0.5, captured_at: -5 }],
+      7,
+    );
+    assert.equal(negative.captured_at, null);
+    // …and a real timestamp still wins over the 0 sentinel when both are present.
+    const mixed = buildSubnetPerformance(
+      [
+        { incentive: 0.5, captured_at: 0 },
+        { incentive: 0.2, captured_at: 1_750_000_000_000 },
+      ],
+      7,
+    );
+    assert.equal(mixed.captured_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("coerces a numeric-epoch string captured_at (D1 INTEGER as string)", () => {
+    // D1 can return the INTEGER captured_at as a numeric string; Date.parse
+    // returns NaN for a bare epoch string, so it was silently dropped.
+    const out = buildSubnetPerformance(
+      [{ incentive: 0.2, captured_at: "1750000000000" }],
+      7,
+    );
+    assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
+  });
+
   test("cold/empty subnet → schema-stable zero (every metric null)", () => {
     const out = buildSubnetPerformance([], 3);
     assert.equal(out.neuron_count, 0);
