@@ -67,8 +67,15 @@ const RPC_BLOCK_PLAUSIBILITY_TOLERANCE = 10;
 // last_ok for a surface that has never probed OK. Treat any falsy/zero ms as
 // null at the source so consumers don't each need a pre-2000 sentinel guard. A
 // real timestamp (run time, last OK) is always a large positive ms.
-const iso = (ms) =>
-  Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString() : null;
+// A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
+// toISOString() throw a RangeError, which would abort the 15-minute cron on one
+// corrupt surface_status.last_ok cell. Range-guard via getTime() and drop to
+// null — mirrors isoFromMs in health-serving.mjs (#2807).
+const iso = (ms) => {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const date = new Date(ms);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+};
 
 function safeRpcBlockNumber(value) {
   if (value == null) return null;
