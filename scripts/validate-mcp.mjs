@@ -607,6 +607,24 @@ assert.ok(
     Array.isArray(rpcUsageCold.buckets),
   "get_rpc_usage must return window + endpoints[] + buckets[] on cold D1",
 );
+// endpoint-pools.json is an R2-only artifact staged into the cold env only
+// after `npm run build`; exercise the happy path when present, else assert the
+// not_found guard loadArtifactData maps.
+const endpointPoolsPath = artifactFilePath("endpoint-pools.json");
+if (existsSync(endpointPoolsPath)) {
+  const endpointPools = await callOk("get_endpoint_pools", {});
+  assert.ok(
+    Array.isArray(endpointPools.pools),
+    "get_endpoint_pools must return pools[]",
+  );
+} else {
+  const endpointPoolsCold = await call("get_endpoint_pools", {});
+  assert.equal(
+    endpointPoolsCold.isError,
+    true,
+    "get_endpoint_pools must isError when the endpoint-pools artifact is absent",
+  );
+}
 const healthTrendsCold = await callOk("get_health_trends", {});
 assert.ok(
   healthTrendsCold.windows?.["7d"] &&

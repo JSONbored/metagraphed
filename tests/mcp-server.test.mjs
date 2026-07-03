@@ -9212,6 +9212,41 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.structuredContent.providers[0].status, "ok");
   });
 
+  test("get_endpoint_pools returns the endpoint pool scorecard artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/endpoint-pools.json": {
+        schema_version: 1,
+        pools: [{ layer: "application", endpoint_count: 5 }],
+        provider_scores: [
+          {
+            provider: "datura",
+            endpoint_count: 4,
+            monitored_count: 4,
+            ok_count: 3,
+            failed_count: 1,
+            degraded_count: 0,
+            pool_eligible_count: 3,
+            average_score: 82,
+            operational_score: 90,
+          },
+        ],
+        eligibility_policy: { required_status: "ok" },
+      },
+    });
+    const res = await callTool("get_endpoint_pools", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.pools[0].layer, "application");
+    assert.equal(out.provider_scores[0].provider, "datura");
+    assert.equal(out.provider_scores[0].operational_score, 90);
+    assert.equal(out.eligibility_policy.required_status, "ok");
+  });
+
+  test("get_endpoint_pools is not_found when the artifact is missing", async () => {
+    const res = await callTool("get_endpoint_pools", {});
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
   test("get_freshness overlays the live prober run onto surface-health", async () => {
     const deps = makeDeps(
       {

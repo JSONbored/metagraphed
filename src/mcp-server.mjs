@@ -208,7 +208,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.22.0";
+export const MCP_SERVER_VERSION = "1.23.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -4238,6 +4238,27 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_endpoint_pools",
+    title: "Get generalized endpoint pool scores",
+    description:
+      "Fetch the generalized endpoint pool scorecard: the ranked pools of " +
+      "monitored public surfaces, each provider's aggregate score board " +
+      "(endpoint/monitored/ok/failed/degraded counts, pool-eligible count, and " +
+      "the average + operational scores), the eligibility policy that decides " +
+      "which endpoints qualify (required status, eligible layers, public-safe " +
+      "and no-auth requirements), and the read-only RPC proxy contract. Use it " +
+      "to see which providers and endpoints are healthy enough to route to. " +
+      "Mirrors GET /api/v1/endpoint-pools.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/endpoint-pools.json");
+    },
+  },
+  {
     name: "get_best_rpc_endpoint",
     title: "Get the best Bittensor RPC endpoint",
     description:
@@ -6171,6 +6192,29 @@ const TOOL_OUTPUT_SCHEMAS = {
       endpoints: RPC_USAGE_ENDPOINTS,
       networks: RPC_USAGE_NETWORKS,
       buckets: RPC_USAGE_BUCKETS,
+    },
+  },
+  get_endpoint_pools: {
+    type: "object",
+    additionalProperties: true,
+    required: ["pools"],
+    properties: {
+      schema_version: { type: "integer" },
+      generated_at: NULLABLE_STRING,
+      pools: { type: "array", items: { type: "object" } },
+      provider_scores: objectItems({
+        provider: { type: "string" },
+        endpoint_count: NULLABLE_INT,
+        monitored_count: NULLABLE_INT,
+        ok_count: NULLABLE_INT,
+        failed_count: NULLABLE_INT,
+        degraded_count: NULLABLE_INT,
+        pool_eligible_count: NULLABLE_INT,
+        average_score: NULLABLE_INT,
+        operational_score: NULLABLE_INT,
+      }),
+      eligibility_policy: { type: ["object", "null"] },
+      disabled_proxy_contract: { type: ["object", "null"] },
     },
   },
   list_subnet_apis: {
