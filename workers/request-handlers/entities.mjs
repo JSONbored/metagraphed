@@ -79,7 +79,11 @@ import {
   buildBlock,
   loadBlocks,
 } from "../../src/blocks.mjs";
-import { loadExtrinsics } from "../../src/extrinsics.mjs";
+import {
+  EXTRINSICS_CSV_COLUMNS,
+  extrinsicsToCsvRows,
+  loadExtrinsics,
+} from "../../src/extrinsics.mjs";
 import {
   loadBlockEvents,
   loadBlockExtrinsics,
@@ -173,29 +177,6 @@ const GLOBAL_VALIDATOR_CSV_COLUMNS = [
   "latest_block_number",
   "subnets",
 ];
-const EXTRINSICS_CSV_COLUMNS = [
-  "extrinsic_id",
-  "block_number",
-  "signer",
-  "call_module",
-  "call_function",
-  "success",
-];
-
-function extrinsicsToCsvRows(extrinsics) {
-  return (extrinsics || []).map((row) => ({
-    extrinsic_id:
-      row?.block_number != null && row?.extrinsic_index != null
-        ? `${row.block_number}-${row.extrinsic_index}`
-        : null,
-    block_number: row?.block_number ?? null,
-    signer: row?.signer ?? null,
-    call_module: row?.call_module ?? null,
-    call_function: row?.call_function ?? null,
-    success: row?.success ?? null,
-  }));
-}
-
 function validateResponseFormat(url) {
   const raw = url.searchParams.get("format");
   if (raw === null && !url.searchParams.has("format")) return null;

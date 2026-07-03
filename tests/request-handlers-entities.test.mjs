@@ -4347,14 +4347,42 @@ describe("handleExtrinsics", () => {
       'attachment; filename="extrinsics.csv"',
     );
     const text = await res.text();
-    const lines = text.split("\r\n");
-    assert.equal(lines[0], EXTRINSICS_CSV_HEADER);
-    assert.equal(lines[1].split(",")[0], `${BLOCK_NUM}-2`);
-    assert.equal(lines[1].split(",")[1], String(BLOCK_NUM));
-    assert.equal(lines[1].split(",")[2], SS58);
-    assert.equal(lines[1].split(",")[3], "SubtensorModule");
-    assert.equal(lines[1].split(",")[4], "add_stake");
-    assert.equal(lines[1].split(",")[5], "true");
+    assert.equal(
+      text,
+      `${EXTRINSICS_CSV_HEADER}\r\n${BLOCK_NUM}-2,${BLOCK_NUM},${SS58},SubtensorModule,add_stake,true`,
+    );
+  });
+
+  test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
+    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
+    const res = await handleExtrinsics(
+      new Request("https://api.metagraph.sh/api/v1/extrinsics?format=json&limit=10", {
+        headers: { accept: "text/csv" },
+      }),
+      env,
+      url("/api/v1/extrinsics?format=json&limit=10"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(
+      res.headers.get("content-type") || "",
+      /application\/json/,
+    );
+    const body = await json(res);
+    assert.equal(body.ok, true);
+    assert.equal(body.data.extrinsic_count, 1);
+  });
+
+  test("Accept: text/csv negotiates CSV on the extrinsics feed", async () => {
+    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
+    const res = await handleExtrinsics(
+      new Request("https://api.metagraph.sh/api/v1/extrinsics?limit=10", {
+        headers: { accept: "text/csv" },
+      }),
+      env,
+      url("/api/v1/extrinsics?limit=10"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
   });
 
   test("?call_module=SubtensorModule&format=csv honors conjunctive filters", async () => {
