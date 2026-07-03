@@ -346,6 +346,24 @@ export async function readNeuronsCacheStamp(env) {
     : null;
 }
 
+// Edge-cache stamp for routes derived from the neuron_daily rollup (the daily-snapshot tier), NOT
+// the live `neurons` tier: reads MAX(captured_at) from neuron_daily so the stamp advances exactly
+// when a new daily snapshot lands, invalidating the cached artifact on that refresh rather than on
+// the more-frequent live-neurons cadence. Used by neuron_daily-derived network routes (e.g.
+// /chain/turnover) whose data source is neuron_daily, not neurons.
+export async function readNeuronDailyCacheStamp(env) {
+  const rows = await d1All(
+    env,
+    "SELECT MAX(captured_at) AS captured_at FROM neuron_daily",
+    [],
+  );
+  if (hasD1FallbackRows(rows)) return null;
+  const capturedAt = rows[0]?.captured_at;
+  return Number.isInteger(capturedAt) && capturedAt > 0
+    ? String(capturedAt)
+    : null;
+}
+
 export function withNeuronsEdgeCache(
   request,
   ctx,

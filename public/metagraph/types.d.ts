@@ -531,6 +531,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/turnover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily D1 rollup; schema-stable zeros when cold. */
+        get: operations["chainTurnover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/yield": {
         parameters: {
             query?: never;
@@ -2732,6 +2749,45 @@ export interface components {
             unique_receivers: number;
             unique_senders: number;
             window: string | null;
+        };
+        /** @description Network-wide validator-set turnover across all subnets between a window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered/exited, Jaccard retention, 0-100 stability score) ranked by gross churn, plus a network rollup over the union of every subnet's validator hotkeys. comparable is false (and the leaderboard empty) when the store is cold or has a single snapshot. */
+        ChainTurnoverArtifact: {
+            comparable: boolean;
+            end_date: string | null;
+            /** @description Rollup over the union of every subnet's validator hotkeys (a hotkey validating on several subnets counts once network-wide). */
+            network: {
+                stability_score: number | null;
+                validator_retention: number | null;
+                validators_end: number;
+                validators_entered: number;
+                validators_exited: number;
+                validators_start: number;
+            };
+            schema_version: number;
+            /** @description Spread of the per-subnet 0-100 stability scores across every subnet in the window (null when no subnet is comparable). */
+            stability_distribution: {
+                count: number;
+                max: number;
+                mean: number;
+                median: number;
+                min: number;
+                p25: number;
+                p75: number;
+                p90: number;
+            } | null;
+            start_date: string | null;
+            subnet_count: number;
+            subnets: {
+                netuid: number;
+                stability_score: number | null;
+                validator_retention: number | null;
+                validators_end: number;
+                validators_entered: number;
+                validators_exited: number;
+                validators_start: number;
+            }[];
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         /** @description Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact. */
         ChainYieldArtifact: {
@@ -9636,6 +9692,142 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainTransfersArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainTurnover: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "comparable": false,
+                     *         "end_date": "2026-06-01",
+                     *         "network": {
+                     *           "stability_score": 100,
+                     *           "validator_retention": 0.5,
+                     *           "validators_end": 1,
+                     *           "validators_entered": 1,
+                     *           "validators_exited": 1,
+                     *           "validators_start": 1
+                     *         },
+                     *         "schema_version": 1,
+                     *         "stability_distribution": {
+                     *           "count": 1,
+                     *           "max": 1,
+                     *           "mean": 0.5,
+                     *           "median": 1,
+                     *           "min": 1,
+                     *           "p25": 1,
+                     *           "p75": 1,
+                     *           "p90": 1
+                     *         },
+                     *         "start_date": "2026-06-01",
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "stability_score": 100,
+                     *             "validator_retention": 0.5,
+                     *             "validators_end": 1,
+                     *             "validators_entered": 1,
+                     *             "validators_exited": 1,
+                     *             "validators_start": 1
+                     *           }
+                     *         ],
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainTurnoverArtifact"];
                     };
                 };
             };

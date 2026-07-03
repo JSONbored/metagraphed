@@ -60,6 +60,7 @@ import {
   withEdgeCache,
   withNeuronsEdgeCache,
   readNeuronsCacheStamp,
+  readNeuronDailyCacheStamp,
 } from "./request-handlers/analytics.mjs";
 import {
   loadStagedNeurons,
@@ -90,6 +91,8 @@ import {
   handleSubnetPerformance,
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
+  handleChainTurnover,
+  canonicalChainTurnoverCachePath,
   handleGlobalValidators,
   canonicalGlobalValidatorsCachePath,
   canonicalSubnetMetagraphCachePath,
@@ -1733,6 +1736,23 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
       );
     }
+    // GET /api/v1/chain/turnover: network-wide validator-set churn across all subnets,
+    // neuron_daily-derived — edge-cache keyed on the resolved window/limit AND busted on the
+    // newest neuron captured_at across ALL subnets (like chain/concentration + chain/performance),
+    // so a neuron_daily refresh invalidates the cached scorecard instead of serving stale churn.
+    if (resolved.url.pathname === "/api/v1/chain/turnover") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-turnover",
+        () => handleChainTurnover(request, env, resolved.url),
+        canonicalChainTurnoverCachePath(resolved.url),
+        // neuron_daily-derived: stamp on the neuron_daily rollup (not the live neurons tier), so a
+        // new daily snapshot invalidates the cached scorecard on the same cadence as its source.
+        (edgeEnv) => readNeuronDailyCacheStamp(edgeEnv),
+      );
+    }
     // Network-wide economics time series (#1307): deterministic per cron snapshot
     // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
     // sibling history/trajectory routes; ?window rides the search into the key.
@@ -1796,6 +1816,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/yield" ||
+    pathname === "/api/v1/chain/turnover" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||

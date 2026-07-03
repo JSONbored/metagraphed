@@ -3502,6 +3502,220 @@
         ],
         "type": "object"
       },
+      "ChainTurnoverArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide validator-set turnover across all subnets between a window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered/exited, Jaccard retention, 0-100 stability score) ranked by gross churn, plus a network rollup over the union of every subnet's validator hotkeys. comparable is false (and the leaderboard empty) when the store is cold or has a single snapshot.",
+        "properties": {
+          "comparable": {
+            "type": "boolean"
+          },
+          "end_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the union of every subnet's validator hotkeys (a hotkey validating on several subnets counts once network-wide).",
+            "properties": {
+              "stability_score": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "validator_retention": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "validators_end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_entered": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_exited": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "validators_start",
+              "validators_end",
+              "validators_entered",
+              "validators_exited",
+              "validator_retention",
+              "stability_score"
+            ],
+            "type": "object"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stability_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet 0-100 stability scores across every subnet in the window (null when no subnet is comparable).",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "mean": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "min": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p25": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p75": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p90": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "start_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stability_score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "validator_retention": {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "validators_end": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_entered": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_exited": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_start": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "validators_start",
+                "validators_end",
+                "validators_entered",
+                "validators_exited",
+                "validator_retention",
+                "stability_score"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "start_date",
+          "end_date",
+          "comparable",
+          "subnet_count",
+          "network",
+          "stability_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainYieldArtifact": {
         "additionalProperties": true,
         "description": "Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact.",

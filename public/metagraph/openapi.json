@@ -3516,6 +3516,220 @@
         ],
         "type": "object"
       },
+      "ChainTurnoverArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide validator-set turnover across all subnets between a window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered/exited, Jaccard retention, 0-100 stability score) ranked by gross churn, plus a network rollup over the union of every subnet's validator hotkeys. comparable is false (and the leaderboard empty) when the store is cold or has a single snapshot.",
+        "properties": {
+          "comparable": {
+            "type": "boolean"
+          },
+          "end_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the union of every subnet's validator hotkeys (a hotkey validating on several subnets counts once network-wide).",
+            "properties": {
+              "stability_score": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "validator_retention": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "validators_end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_entered": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_exited": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "validators_start",
+              "validators_end",
+              "validators_entered",
+              "validators_exited",
+              "validator_retention",
+              "stability_score"
+            ],
+            "type": "object"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stability_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet 0-100 stability scores across every subnet in the window (null when no subnet is comparable).",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "mean": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "min": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p25": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p75": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p90": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "start_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stability_score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "validator_retention": {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "validators_end": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_entered": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_exited": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_start": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "validators_start",
+                "validators_end",
+                "validators_entered",
+                "validators_exited",
+                "validator_retention",
+                "stability_score"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "start_date",
+          "end_date",
+          "comparable",
+          "subnet_count",
+          "network",
+          "stability_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainYieldArtifact": {
         "additionalProperties": true,
         "description": "Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact.",
@@ -21408,6 +21622,182 @@
           }
         },
         "summary": "Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/turnover": {
+      "get": {
+        "operationId": "chainTurnover",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "comparable": false,
+                    "end_date": "2026-06-01",
+                    "network": {
+                      "stability_score": 100,
+                      "validator_retention": 0.5,
+                      "validators_end": 1,
+                      "validators_entered": 1,
+                      "validators_exited": 1,
+                      "validators_start": 1
+                    },
+                    "schema_version": 1,
+                    "stability_distribution": {
+                      "count": 1,
+                      "max": 1,
+                      "mean": 0.5,
+                      "median": 1,
+                      "min": 1,
+                      "p25": 1,
+                      "p75": 1,
+                      "p90": 1
+                    },
+                    "start_date": "2026-06-01",
+                    "subnet_count": 1,
+                    "subnets": [
+                      {
+                        "netuid": 7,
+                        "stability_score": 100,
+                        "validator_retention": 0.5,
+                        "validators_end": 1,
+                        "validators_entered": 1,
+                        "validators_exited": 1,
+                        "validators_start": 1
+                      }
+                    ],
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainTurnoverArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily D1 rollup; schema-stable zeros when cold.",
         "tags": [
           "chain",
           "analytics"

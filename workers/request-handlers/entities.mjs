@@ -121,6 +121,13 @@ import {
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
 } from "../../src/movers.mjs";
+import {
+  loadChainTurnover,
+  CHAIN_TURNOVER_WINDOWS,
+  DEFAULT_CHAIN_TURNOVER_WINDOW,
+  CHAIN_TURNOVER_LIMIT_DEFAULT,
+  CHAIN_TURNOVER_LIMIT_MAX,
+} from "../../src/chain-turnover.mjs";
 import { loadSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
 
 const RESPONSE_FORMATS = ["json", "csv"];
@@ -756,6 +763,66 @@ export function canonicalSubnetMoversCachePath(url, request = null) {
     url,
     request,
     `${url.pathname}?window=${windowParam}&sort=${sortParam}&limit=${limit.value}`,
+  );
+}
+
+// Canonical edge-cache key for the network turnover route: window + limit collapsed to
+// their resolved defaults so ?window=30d and the bare path share one cached entry. Falls
+// back to the raw path+search when validation fails (the handler will 400 it anyway).
+export function canonicalChainTurnoverCachePath(url) {
+  const validationError = validateQueryParams(url, ["window", "limit"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
+  if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: CHAIN_TURNOVER_LIMIT_DEFAULT,
+    min: 1,
+    max: CHAIN_TURNOVER_LIMIT_MAX,
+  });
+  if (limit.error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${windowParam}&limit=${limit.value}`;
+}
+
+// GET /api/v1/chain/turnover?window=7d|30d|90d&limit=20: network-wide validator-set churn
+// across all subnets between the window's boundary neuron_daily snapshots — a per-subnet
+// turnover leaderboard plus a network rollup over the union validator set.
+export async function handleChainTurnover(request, env, url) {
+  const validationError = validateQueryParams(url, ["window", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
+  if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, CHAIN_TURNOVER_WINDOWS),
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: CHAIN_TURNOVER_LIMIT_DEFAULT,
+    min: 1,
+    max: CHAIN_TURNOVER_LIMIT_MAX,
+  });
+  if (limit.error) return analyticsQueryError(limit.error);
+  const data = await loadChainTurnover(d1Runner(env), {
+    windowLabel: windowParam,
+    limit: limit.value,
+  });
+  // neuron_daily-derived, so the meta reports the metagraph-snapshot source; generated_at
+  // is the end snapshot date (string), matching the movers/turnover routes.
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/turnover.json",
+        data.end_date,
+      ),
+    },
+    "short",
   );
 }
 
