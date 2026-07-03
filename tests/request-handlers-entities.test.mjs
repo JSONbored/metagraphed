@@ -972,6 +972,42 @@ describe("handleNeuronHistory", () => {
     assert.equal(res.status, 400);
     assert.equal(body.meta.parameter, "format");
   });
+
+  test("returns CSV when Accept: text/csv is present", async () => {
+    const { env } = dbWith({ neuronDailyUid: [neuronDailyRow()] });
+    const request = new Request(
+      `https://api.metagraph.sh/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=7d`,
+      { headers: { accept: "text/csv" } },
+    );
+    const res = await handleNeuronHistory(
+      request,
+      env,
+      NETUID,
+      UID,
+      url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=7d`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+  });
+
+  test("format=json keeps the JSON envelope even with Accept: text/csv", async () => {
+    const { env } = dbWith({ neuronDailyUid: [neuronDailyRow()] });
+    const request = new Request(
+      `https://api.metagraph.sh/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=7d&format=json`,
+      { headers: { accept: "text/csv" } },
+    );
+    const res = await handleNeuronHistory(
+      request,
+      env,
+      NETUID,
+      UID,
+      url(
+        `/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=7d&format=json`,
+      ),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^application\/json/);
+  });
 });
 
 describe("handleSubnetHistory", () => {
@@ -1112,6 +1148,24 @@ describe("handleSubnetHistory", () => {
     assert.equal(res.status, 200);
     const lines = (await res.text()).split("\r\n");
     assert.equal(lines.length, 1);
+  });
+
+  test("returns CSV when Accept: text/csv is present", async () => {
+    const { env } = dbWith({
+      neuronDailySubnet: [subnetHistoryRow()],
+    });
+    const request = new Request(
+      `https://api.metagraph.sh/api/v1/subnets/${NETUID}/history?window=90d`,
+      { headers: { accept: "text/csv" } },
+    );
+    const res = await handleSubnetHistory(
+      request,
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/history?window=90d`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
   });
 });
 
@@ -2538,6 +2592,22 @@ describe("handleAccountHistory", () => {
     assert.equal(res.status, 200);
     const lines = (await res.text()).split("\r\n");
     assert.equal(lines.length, 1);
+  });
+
+  test("returns CSV when Accept: text/csv is present", async () => {
+    const { env } = dbWith({ accountEventsDaily: [accountDayRow()] });
+    const request = new Request(
+      `https://api.metagraph.sh/api/v1/accounts/${SS58}/history`,
+      { headers: { accept: "text/csv" } },
+    );
+    const res = await handleAccountHistory(
+      request,
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/history`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
   });
 });
 
@@ -5083,6 +5153,19 @@ describe("canonicalSubnetHistoryCachePath", () => {
     assert.equal(
       canonicalSubnetHistoryCachePath(
         url("/api/v1/subnets/7/history?window=30d&format=csv"),
+      ),
+      "/api/v1/subnets/7/history?window=30d&format=csv",
+    );
+  });
+
+  test("adds format=csv when only Accept: text/csv is present", () => {
+    const csvAccept = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    assert.equal(
+      canonicalSubnetHistoryCachePath(
+        url("/api/v1/subnets/7/history?window=30d"),
+        csvAccept,
       ),
       "/api/v1/subnets/7/history?window=30d&format=csv",
     );
