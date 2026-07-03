@@ -96,9 +96,7 @@
       "auth_required": false,
       "authority": "community",
       "public_safe": true,
-      "source_urls": [
-        "https://trishool.ai/"
-      ],
+      "source_urls": ["https://trishool.ai/"],
       "review": {
         "state": "community-submitted",
         "submitted_by": "devmixa702"
