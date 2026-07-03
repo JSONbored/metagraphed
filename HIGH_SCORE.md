@@ -1,18 +1,16 @@
-# High Score — Update PR Quick Checks
+# High Score — Update PR Overlap Checks
 
-This is a **supplement**, not a replacement, for the canonical contribution flow in:
+This file is a **supplement** to the canonical workflow in:
 
 - `AGENTS.md`
 - `.claude/skills/metagraphed/SKILL.md`
 - `.claude/skills/metagraphed/reference.md`
 
-Use this file to run a fast duplicate/scope pre-flight before editing and again before opening the PR.
+Use these commands only for duplicate-surface overlap detection before submitting an update PR.
 
-## 1) Pre-flight duplication scan (open PRs)
+## Duplicate-path pre-flight (open PRs)
 
 ```bash
-# Optional but recommended before every PR.
-# Dump open PR changed paths and compare target files manually.
 for pr in $(gh api 'repos/JSONbored/metagraphed/pulls?state=open' --paginate --jq '.[].number'); do
   echo "#${pr}"
   gh api repos/JSONbored/metagraphed/pulls/$pr/files --paginate --jq '.[].filename'
@@ -20,11 +18,9 @@ for pr in $(gh api 'repos/JSONbored/metagraphed/pulls?state=open' --paginate --j
 done
 ```
 
-If you are adding a surface in `registry/subnets/<slug>.json`, confirm that same file is not already changing in another open PR.
+## Scoped subnet overlap check
 
-## 2) Scoped overlap check
-
-When your target is `registry/subnets/<slug>.json`, verify this exact file is not already listed in any other open PR touching the same subnet.
+If your target is `registry/subnets/<slug>.json`, confirm no open PR touches that same file:
 
 ```bash
 TARGET="registry/subnets/<slug>.json"
@@ -34,9 +30,3 @@ for pr in $(gh api 'repos/JSONbored/metagraphed/pulls?state=open' --paginate --j
   fi
 done
 ```
-
-## 3) What to record before opening the PR
-
-- Canonical source of truth was read (`AGENTS.md`, `.claude/.../SKILL.md`, `.claude/.../reference.md`).
-- Duplicate-scope scan output for open PR overlap.
-- Validation/test commands run locally.
