@@ -211,7 +211,12 @@ describe("handleTrajectory", () => {
   });
 
   test("returns header-only CSV when D1 is cold", async () => {
-    const res = await handleTrajectory(req("/"), {}, NETUID, url("/?format=csv"));
+    const res = await handleTrajectory(
+      req("/"),
+      {},
+      NETUID,
+      url("/?format=csv"),
+    );
     assert.equal(res.status, 200);
     const text = await res.text();
     const lines = text.split("\r\n");
@@ -223,7 +228,12 @@ describe("handleTrajectory", () => {
   });
 
   test("rejects an unsupported format value", async () => {
-    const res = await handleTrajectory(req("/"), {}, NETUID, url("/?format=pdf"));
+    const res = await handleTrajectory(
+      req("/"),
+      {},
+      NETUID,
+      url("/?format=pdf"),
+    );
     const body = await errorJson(res);
     assert.equal(res.status, 400);
     assert.equal(body.meta.parameter, "format");
@@ -255,7 +265,12 @@ describe("handleTrajectory", () => {
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
-    const res = await handleTrajectory(request, env, NETUID, url("/?format=json"));
+    const res = await handleTrajectory(
+      request,
+      env,
+      NETUID,
+      url("/?format=json"),
+    );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /application\/json/);
     const body = await res.json();
