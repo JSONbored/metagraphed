@@ -649,14 +649,19 @@ export async function handleNeuronBackfill(request, env) {
     );
   }
   const rows = validNeuronDailyRows(incoming);
+  // Report rows ACTUALLY inserted, not rows validated. Upserts are idempotent on
+  // (netuid, uid, snapshot_date), so re-POSTing a window reports inserted:0.
+  // Sum per-statement D1 meta.changes — mirrors handleEventIngest / handleBlockIngest.
+  let inserted = 0;
   if (rows.length) {
-    await db.batch(neuronDailyUpsertStatements(db, rows));
+    const results = await db.batch(neuronDailyUpsertStatements(db, rows));
+    for (const result of results) inserted += result?.meta?.changes ?? 0;
   }
   return new Response(
     JSON.stringify({
       ok: true,
       received: incoming.length,
-      inserted: rows.length,
+      inserted,
     }),
     { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
   );
@@ -737,14 +742,18 @@ export async function handleEconomicsBackfill(request, env) {
     );
   }
   const rows = validEconomicsBackfillRows(incoming);
+  // Sum D1 meta.changes so idempotent re-upserts report inserted:0 instead of
+  // rows.length (mirrors handleEventIngest / handleNeuronBackfill).
+  let inserted = 0;
   if (rows.length) {
-    await db.batch(economicsSnapshotUpsertStatements(db, rows));
+    const results = await db.batch(economicsSnapshotUpsertStatements(db, rows));
+    for (const result of results) inserted += result?.meta?.changes ?? 0;
   }
   return new Response(
     JSON.stringify({
       ok: true,
       received: incoming.length,
-      inserted: rows.length,
+      inserted,
     }),
     { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
   );
