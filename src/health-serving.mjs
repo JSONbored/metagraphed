@@ -366,7 +366,9 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
   const formatWindow = (rows, days) => {
     const bySubnet = new Map();
     for (const row of rows || []) {
-      const netuid = Number(row.netuid);
+      const rawNetuid = row.netuid;
+      if (typeof rawNetuid === "string" && rawNetuid.trim() === "") continue;
+      const netuid = Number(rawNetuid);
       const date = String(row.date || "");
       if (
         !Number.isInteger(netuid) ||

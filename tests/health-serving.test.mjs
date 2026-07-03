@@ -953,6 +953,21 @@ describe("formatBulkTrends", () => {
     assert.deepEqual(out.windows["7d"].subnets, []);
   });
 
+  test("skips blank netuid cells that would coerce to subnet 0", () => {
+    const out = formatBulkTrends({
+      windows: {
+        "7d": [
+          { netuid: "", date: "2026-06-10", total: 4, ok_count: 2 },
+          { netuid: "   ", date: "2026-06-10", total: 3, ok_count: 1 },
+          { netuid: 7, date: "2026-06-10", total: 10, ok_count: 8 },
+        ],
+      },
+      windowDays: { "7d": 7 },
+    });
+    assert.equal(out.windows["7d"].subnet_count, 1);
+    assert.deepEqual(out.windows["7d"].subnets.map((row) => row.netuid), [7]);
+  });
+
   test("covers zero-sample and omitted-window fallback branches", () => {
     const empty = formatBulkTrends({});
     assert.deepEqual(empty.windows, {});
