@@ -519,6 +519,18 @@ test("buildChainSigners nulls non-finite and negative last_tx_block", () => {
   assert.equal(out.signers[2].last_tx_block, 12345);
 });
 
+test("buildChainSigners nulls blank last_tx_block cells (not block 0)", () => {
+  const out = buildChainSigners({
+    window: "7d",
+    rows: [
+      { signer: "5A", tx_count: 1, last_tx_block: "" },
+      { signer: "5B", tx_count: 2, last_tx_block: 100 },
+    ],
+  });
+  assert.equal(out.signers[0].last_tx_block, null);
+  assert.equal(out.signers[1].last_tx_block, 100);
+});
+
 test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", async () => {
   const captured = [];
   const env = {
