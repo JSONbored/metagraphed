@@ -45,6 +45,30 @@ describe("surface alias artifact (#1005)", () => {
     );
   });
 
+  test("coerces string-typed netuid cells and rejects blank netuid", () => {
+    const artifact = buildSurfaceAliasArtifact({
+      previousSurfaces: [
+        {
+          id: "7:subnet-api:old",
+          key: "srf-stable00000000",
+          netuid: "",
+          kind: "subnet-api",
+          url: "https://api.example",
+        },
+      ],
+      currentSurfaces: [
+        {
+          id: "7:subnet-api:new",
+          key: "srf-stable00000000",
+          netuid: "7",
+          kind: "subnet-api",
+          url: "https://api.example",
+        },
+      ],
+    });
+    assert.equal(artifact.aliases[0].netuid, 7);
+  });
+
   test("carries prior aliases and drops aliases whose key disappeared", () => {
     const artifact = buildSurfaceAliasArtifact({
       previousAliases: {

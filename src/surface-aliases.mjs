@@ -22,7 +22,10 @@ function nullableString(value) {
 }
 
 function nullableInteger(value) {
-  return Number.isInteger(value) ? value : null;
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isInteger(n) ? n : null;
 }
 
 function buildCurrentSurfaceMap(surfaces = []) {
