@@ -25,6 +25,8 @@ function toNumber(value) {
 // so guard null explicitly rather than coercing it to uid 0).
 function normalizedUid(value) {
   if (value == null) return null;
+  // D1 can surface a blank TEXT uid as ""; Number("") === 0 would fabricate uid 0.
+  if (typeof value === "string" && value.trim() === "") return null;
   const uid = Number(value);
   return Number.isSafeInteger(uid) && uid >= 0 ? uid : null;
 }

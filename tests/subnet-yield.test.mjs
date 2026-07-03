@@ -179,6 +179,22 @@ describe("buildSubnetYield", () => {
     assert.equal(d.captured_at, null);
   });
 
+  test("skips blank uid cells that would coerce to uid 0", () => {
+    const d = buildSubnetYield(
+      [
+        { ...neuron(1, { stake: 5, emission: 1 }), uid: "" },
+        { ...neuron(2, { stake: 3, emission: 1 }), uid: "   " },
+        neuron(0, { validator: true, stake: 10, emission: 1 }),
+      ],
+      7,
+    );
+    assert.equal(d.neuron_count, 1);
+    assert.deepEqual(
+      d.neurons.map((row) => row.uid),
+      [0],
+    );
+  });
+
   test("drops blank or out-of-range captured_at strings to null", () => {
     for (const captured of ["", "   ", "not-a-date", "8640000000000001"]) {
       const d = buildSubnetYield(
