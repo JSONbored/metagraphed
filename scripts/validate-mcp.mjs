@@ -396,6 +396,16 @@ assert.ok(
   Array.isArray(globalVals.validators),
   "list_global_validators must return validators[]",
 );
+assert.equal(
+  globalVals.sort,
+  "total_stake",
+  "list_global_validators must echo the requested sort",
+);
+assert.equal(
+  typeof globalVals.validator_count,
+  "number",
+  "list_global_validators must return a numeric validator_count",
+);
 const yieldCard = await callOk("get_subnet_yield", { netuid: 7 });
 assert.ok(
   Array.isArray(yieldCard.neurons),
