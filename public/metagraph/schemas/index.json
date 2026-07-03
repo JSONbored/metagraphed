@@ -210,6 +210,19 @@
       "url": "https://api.oroagents.com/openapi.json"
     },
     {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 18,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://api.zeussubnet.com/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-18",
+      "surface_id": "sn-18-zeus-openapi",
+      "url": "https://api.zeussubnet.com/openapi.json"
+    },
+    {
       "content_type": "application/json",
       "drift_status": "new",
       "hash": "5c60724c84b6d33faac06ec456790403e22b02b03737201e148b4d0b61e5e5e5",
@@ -390,6 +403,19 @@
       "url": "https://desearch.ai/openapi.json"
     },
     {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 28,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://saygm.com/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "gm",
+      "surface_id": "sn-28-gm-openapi",
+      "url": "https://saygm.com/openapi.json"
+    },
+    {
       "content_type": "application/json",
       "drift_status": "new",
       "hash": "824b617328a81e246dd32d2a96b70ffafa46ef39a0cb698b50a4a723890ad8f0",
@@ -471,6 +497,32 @@
       "subnet_slug": "sn-34",
       "surface_id": "sn-34-bitmind-openapi",
       "url": "https://api.bitmind.ai/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 36,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://api.eirel.ai/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-openapi",
+      "url": "https://api.eirel.ai/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 37,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://new-collector-api-production.up.railway.app/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-openapi",
+      "url": "https://new-collector-api-production.up.railway.app/openapi.json"
     },
     {
       "content_type": "application/json",
@@ -682,6 +734,19 @@
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-handshake58-openapi",
       "url": "https://handshake58.com/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 59,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://api.babelbit.ai/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-59",
+      "surface_id": "sn-59-babelbit-openapi",
+      "url": "https://api.babelbit.ai/openapi.json"
     },
     {
       "content_type": "application/json",
@@ -902,6 +967,19 @@
       "url": "https://api.subnet90.com/openapi.json"
     },
     {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 94,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://autoresearch.bitsota.com/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-94",
+      "surface_id": "sn-94-alveus-labs-openapi",
+      "url": "https://autoresearch.bitsota.com/openapi.json"
+    },
+    {
       "content_type": "application/json",
       "drift_status": "new",
       "hash": "c6d9b04b2e9582f1f21caae8a80b0d607e5d24f402bdec92c3b6095ed1303463",
@@ -1026,12 +1104,14 @@
   "source": "openapi-snapshot",
   "summary": {
     "by_drift_status": {
-      "new": 24
+      "new": 24,
+      "not-captured": 6
     },
     "by_status": {
-      "captured": 24
+      "captured": 24,
+      "not-captured": 6
     },
     "schema_count": 24,
-    "surface_count": 24
+    "surface_count": 30
   }
 }

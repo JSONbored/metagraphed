@@ -1169,6 +1169,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainPerformanceArtifact",
   ),
   artifact(
+    "chain-turnover",
+    "/metagraph/chain/turnover.json",
+    "Network-wide validator-set & registration turnover (churn) aggregated across all subnets' neuron_daily rows between a window's two boundary snapshots (7d/30d/90d/1y/all): validators entered/exited, Jaccard retention for validators and neurons, UID deregistrations, a 0–100 stability score, and the subnet_count the boundary spans — identities are netuid-scoped so a hotkey validating on two subnets counts once per subnet. The network-wide analog of subnet-turnover and the churn companion to chain-performance, computed live from the neuron_daily D1 rollup at /api/v1/chain/turnover (no static file).",
+    "ChainTurnoverArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -2448,6 +2454,22 @@ export const API_ROUTES = [
     "short",
     ["chain", "analytics"],
     [],
+    [],
+  ),
+  route(
+    "chain-turnover",
+    "GET",
+    "/api/v1/chain/turnover",
+    "/metagraph/chain/turnover.json",
+    "Fetch network-wide validator-set & registration turnover (churn) aggregated across all subnets' neuron_daily rows between a window's start and end snapshots — validators entered/exited + Jaccard retention for validators and neurons, UID deregistrations, a 0-100 stability score, and the subnet_count the boundary spans. Identities are netuid-scoped so a hotkey validating on two subnets counts once per subnet; computed live from the neuron_daily D1 rollup, schema-stable nulls when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
     [],
   ),
   route(

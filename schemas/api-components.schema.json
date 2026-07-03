@@ -3387,6 +3387,92 @@
         ],
         "type": "object"
       },
+      "ChainTurnoverArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide validator-set & registration turnover (churn) aggregated across all subnets' neuron_daily rows between a window's start and end snapshots, computed live from the neuron_daily D1 rollup. Identities are netuid-scoped so a hotkey validating on two subnets counts once per subnet. subnet_count reports how many subnets the boundary spans. The network-wide analog of SubnetTurnoverArtifact and the churn companion to ChainPerformanceArtifact.",
+        "properties": {
+          "comparable": {
+            "type": "boolean"
+          },
+          "end_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "neuron_retention": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "neurons_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stability_score": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "start_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "uids_deregistered": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_retention": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validators_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_entered": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_exited": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "comparable",
+          "subnet_count"
+        ],
+        "type": "object"
+      },
       "ChangelogArtifact": {
         "allOf": [
           {

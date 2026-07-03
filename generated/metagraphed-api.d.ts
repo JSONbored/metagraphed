@@ -514,6 +514,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/turnover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide validator-set & registration turnover (churn) aggregated across all subnets' neuron_daily rows between a window's start and end snapshots — validators entered/exited + Jaccard retention for validators and neurons, UID deregistrations, a 0-100 stability score, and the subnet_count the boundary spans. Identities are netuid-scoped so a hotkey validating on two subnets counts once per subnet; computed live from the neuron_daily D1 rollup, schema-stable nulls when cold. */
+        get: operations["chainTurnover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/changelog": {
         parameters: {
             query?: never;
@@ -2671,6 +2688,27 @@ export interface components {
             unique_receivers: number;
             unique_senders: number;
             window: string | null;
+        };
+        /** @description Network-wide validator-set & registration turnover (churn) aggregated across all subnets' neuron_daily rows between a window's start and end snapshots, computed live from the neuron_daily D1 rollup. Identities are netuid-scoped so a hotkey validating on two subnets counts once per subnet. subnet_count reports how many subnets the boundary spans. The network-wide analog of SubnetTurnoverArtifact and the churn companion to ChainPerformanceArtifact. */
+        ChainTurnoverArtifact: {
+            comparable: boolean;
+            end_date?: string | null;
+            neuron_retention?: number | null;
+            neurons_end?: number;
+            neurons_start?: number;
+            schema_version: number;
+            stability_score?: number | null;
+            start_date?: string | null;
+            subnet_count: number;
+            uids_deregistered?: number;
+            validator_retention?: number | null;
+            validators_end?: number;
+            validators_entered?: number;
+            validators_exited?: number;
+            validators_start?: number;
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         ChangelogArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: {
@@ -9423,6 +9461,122 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainTransfersArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainTurnover: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d" | "1y" | "all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "comparable": false,
+                     *         "end_date": "example",
+                     *         "neuron_retention": 0.5,
+                     *         "neurons_end": 1,
+                     *         "neurons_start": 1,
+                     *         "schema_version": 1,
+                     *         "stability_score": 100,
+                     *         "start_date": "example",
+                     *         "subnet_count": 1,
+                     *         "uids_deregistered": 1,
+                     *         "validator_retention": 0.5,
+                     *         "validators_end": 1,
+                     *         "validators_entered": 1,
+                     *         "validators_exited": 1,
+                     *         "validators_start": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainTurnoverArtifact"];
                     };
                 };
             };

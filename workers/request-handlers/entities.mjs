@@ -94,6 +94,7 @@ import {
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import { loadChainPerformance } from "../../src/chain-performance.mjs";
+import { loadChainTurnover } from "../../src/chain-turnover.mjs";
 import {
   PERFORMANCE_READ_COLUMNS,
   buildSubnetPerformance,
@@ -645,6 +646,38 @@ export async function handleChainPerformance(request, env, url) {
   );
 }
 
+// GET /api/v1/chain/turnover?window=7d|30d|90d|1y|all: network-wide validator-set &
+// registration churn across EVERY subnet's neuron_daily rows between the window's
+// two boundary snapshots — validators entered/exited, Jaccard retention for
+// validators and neurons, UID deregistrations, a 0–100 stability score, and the
+// subnet_count the boundary spans. The network analog of the per-subnet turnover
+// route and the churn companion to /chain/performance. Identities are netuid-scoped.
+// Cold/absent store → 200 with comparable:false + schema-stable nulls (never 404).
+export async function handleChainTurnover(request, env, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const data = await loadChainTurnover(d1Runner(env), {
+    windowLabel: label,
+    windowDays: days,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/turnover.json",
+        data.end_date,
+      ),
+    },
+    "short",
+  );
+}
+
 // Shared helper: build a canonical edge-cache key for any windowed route by
 // normalising the ?window= query parameter through the route-specific parse
 // function, so that an omitted window and an explicit default-value window map
@@ -658,6 +691,14 @@ function canonicalWindowedCachePath(url, parseWindow) {
 }
 
 export function canonicalSubnetHistoryCachePath(url) {
+  return canonicalWindowedCachePath(url, parseHistoryWindow);
+}
+
+// Canonical edge-cache key for the network-wide chain-turnover route: ?window=
+// (via parseHistoryWindow) is the only response-shaping param, so an omitted window
+// and its explicit default map to one cache slot (mirrors the subnet-turnover key
+// minus the changes flag the network route does not expose).
+export function canonicalChainTurnoverCachePath(url) {
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 

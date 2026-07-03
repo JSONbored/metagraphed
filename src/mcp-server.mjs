@@ -134,6 +134,7 @@ import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
 import { loadSubnetPerformance } from "./subnet-performance.mjs";
 import { loadChainPerformance } from "./chain-performance.mjs";
+import { loadChainTurnover } from "./chain-turnover.mjs";
 import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
@@ -299,7 +300,9 @@ export const MCP_INSTRUCTIONS =
   "native-TAO transfer volume plus top senders/receivers, get_chain_concentration " +
   "the network-wide stake/emission decentralization scorecard across all subnets, " +
   "get_chain_performance the network-wide reward-distribution and trust/consensus " +
-  "score spread across all subnets, " +
+  "score spread across all subnets, get_chain_turnover the network-wide " +
+  "validator-set and registration churn (retention/stability) across all subnets " +
+  "between two boundary snapshots, " +
   "get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
@@ -1893,6 +1896,38 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadChainPerformance(mcpD1Runner(ctx));
+    },
+  },
+  {
+    name: "get_chain_turnover",
+    title: "Get network-wide validator turnover",
+    description:
+      "Fetch the network-wide validator-set & registration churn aggregated " +
+      "across ALL subnets' neuron_daily rows between the start and end snapshots " +
+      "in the requested window (7d, 30d, 90d, 1y, or all; default 30d): " +
+      "validators entered/exited, Jaccard retention for validators and neurons, " +
+      "UID deregistrations, a 0–100 stability score, and the subnet_count the " +
+      "boundary spans. Identities are netuid-scoped so a hotkey validating on two " +
+      "subnets counts once per subnet. The network-level companion of " +
+      "get_subnet_turnover and the churn companion of get_chain_performance. " +
+      "Mirrors GET /api/v1/chain/turnover.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const { label, days } = requireHistoryWindow(args);
+      return loadChainTurnover(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+      });
     },
   },
   {
@@ -5267,6 +5302,39 @@ const TOOL_OUTPUT_SCHEMAS = {
       trust: { type: ["object", "null"] },
       consensus: { type: ["object", "null"] },
       validator_trust: { type: ["object", "null"] },
+    },
+  },
+  get_chain_turnover: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "comparable",
+      "subnet_count",
+      "validators_start",
+      "validators_end",
+      "validators_entered",
+      "validators_exited",
+      "neurons_start",
+      "neurons_end",
+      "uids_deregistered",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      start_date: NULLABLE_STRING,
+      end_date: NULLABLE_STRING,
+      comparable: { type: "boolean" },
+      subnet_count: { type: "integer" },
+      validators_start: { type: "integer" },
+      validators_end: { type: "integer" },
+      validators_entered: { type: "integer" },
+      validators_exited: { type: "integer" },
+      validator_retention: { type: ["number", "null"] },
+      neurons_start: { type: "integer" },
+      neurons_end: { type: "integer" },
+      uids_deregistered: { type: "integer" },
+      neuron_retention: { type: ["number", "null"] },
+      stability_score: { type: ["integer", "null"] },
     },
   },
   get_subnet_concentration_history: {

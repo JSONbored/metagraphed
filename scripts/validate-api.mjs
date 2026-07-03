@@ -525,6 +525,22 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/turnover",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.comparable, "boolean");
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.validators_start, "number");
+      assert.equal(typeof body.data.uids_deregistered, "number");
+      // retentions are a ratio or null on a cold store.
+      assert.equal(
+        body.data.validator_retention === null ||
+          typeof body.data.validator_retention === "number",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/chain/concentration",
     (body) => {
       assert.equal(body.data.schema_version, 1);

@@ -5683,6 +5683,93 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_trust.count, 1);
   });
 
+  test("get_chain_turnover returns schema-stable empty on cold D1", async () => {
+    const res = await callTool("get_chain_turnover", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.comparable, false);
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.validator_retention, null);
+    assert.equal(out.stability_score, null);
+  });
+
+  test("get_chain_turnover computes network-wide churn across subnets", async () => {
+    const res = await callTool(
+      "get_chain_turnover",
+      { window: "30d" },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              // subnet 1: V1 retained, V2 exited / V3 entered (a dereg on uid1)
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 1,
+                uid: 0,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 1,
+                uid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+              // subnet 7: uid 0 shares the number with subnet 1's uid 0 but is a
+              // DIFFERENT neuron — netuid-scoped keys must not collide.
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 7,
+                uid: 0,
+                hotkey: "W1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 1,
+                uid: 0,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 1,
+                uid: 1,
+                hotkey: "V3",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 7,
+                uid: 0,
+                hotkey: "W1",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.comparable, true);
+    assert.equal(out.subnet_count, 2); // spans netuids 1 and 7
+    assert.equal(out.validators_start, 3); // 1:V1, 1:V2, 7:W1
+    assert.equal(out.validators_end, 3); // 1:V1, 1:V3, 7:W1
+    assert.equal(out.validators_entered, 1); // 1:V3
+    assert.equal(out.validators_exited, 1); // 1:V2
+    assert.equal(out.uids_deregistered, 1); // 1:1 swapped V2 → V3
+  });
+
+  test("get_chain_turnover rejects an invalid window", async () => {
+    const res = await callTool("get_chain_turnover", { window: "400d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /is not a supported window/);
+  });
+
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
     const res = await callTool(
       "get_subnet_concentration_history",

@@ -936,6 +936,30 @@
         },
         "additionalProperties": true
       },
+      "ChainTurnoverArtifact": {
+        "type": "object",
+        "description": "Network-wide validator-set & registration turnover (churn) aggregated across all subnets' neuron_daily rows between a window's start and end snapshots, computed live from the neuron_daily D1 rollup. Identities are netuid-scoped so a hotkey validating on two subnets counts once per subnet. subnet_count reports how many subnets the boundary spans. The network-wide analog of SubnetTurnoverArtifact and the churn companion to ChainPerformanceArtifact.",
+        "required": ["schema_version", "comparable", "subnet_count"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": ["string", "null"] },
+          "start_date": { "type": ["string", "null"] },
+          "end_date": { "type": ["string", "null"] },
+          "comparable": { "type": "boolean" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "validators_start": { "type": "integer", "minimum": 0 },
+          "validators_end": { "type": "integer", "minimum": 0 },
+          "validators_entered": { "type": "integer", "minimum": 0 },
+          "validators_exited": { "type": "integer", "minimum": 0 },
+          "validator_retention": { "type": ["number", "null"] },
+          "neurons_start": { "type": "integer", "minimum": 0 },
+          "neurons_end": { "type": "integer", "minimum": 0 },
+          "uids_deregistered": { "type": "integer", "minimum": 0 },
+          "neuron_retention": { "type": ["number", "null"] },
+          "stability_score": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": true
+      },
       "ScoreDistribution": {
         "type": ["object", "null"],
         "description": "Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",
