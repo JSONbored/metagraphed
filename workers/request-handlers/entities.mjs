@@ -75,6 +75,7 @@ import {
   loadAccountTransfers,
   loadAccountSubnets,
 } from "../../src/account-events.mjs";
+import { loadAccountPortfolio } from "../../src/account-portfolio.mjs";
 import {
   isFinneySs58Address,
   loadAccountBalance,
@@ -1541,6 +1542,26 @@ export async function handleAccountSubnets(request, env, ss58) {
         env,
         `/metagraph/accounts/${ss58}/subnets.json`,
         null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/portfolio: the wallet's cross-subnet neuron
+// positions with per-position economics + yield and wallet-level aggregates
+// (totals, counts, overall return, stake concentration), from the neurons D1
+// tier. Richer than /subnets (registration footprint only). Cold/absent → empty.
+export async function handleAccountPortfolio(request, env, ss58) {
+  const data = await loadAccountPortfolio(d1Runner(env), ss58);
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/portfolio.json`,
+        data.captured_at,
       ),
     },
     "short",

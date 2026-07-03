@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons D1 tier. */
+        get: operations["accountPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/stake-flow": {
         parameters: {
             query?: never;
@@ -2039,6 +2056,23 @@ export interface components {
             offset?: number;
             schema_version: number;
             ss58: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description A wallet's cross-subnet neuron portfolio from the neurons D1 tier: every position registered under the hotkey with its economics + yield, plus wallet-level aggregates (totals, subnet/validator counts, overall return, and how concentrated the wallet's stake is across its subnets). Richer than AccountSubnetsArtifact. Served live at /api/v1/accounts/{ss58}/portfolio (no static file). */
+        AccountPortfolioArtifact: {
+            captured_at: string | null;
+            miner_count: number;
+            overall_yield: number | null;
+            position_count: number;
+            positions: components["schemas"]["PortfolioPosition"][];
+            schema_version: number;
+            ss58: string;
+            stake_concentration: components["schemas"]["ConcentrationMetrics"] | null;
+            subnet_count: number;
+            total_emission_tao: number;
+            total_stake_tao: number;
+            validator_count: number;
         } & {
             [key: string]: unknown;
         };
@@ -4051,6 +4085,23 @@ export interface components {
             returned: number;
             sort?: string | null;
             total: number;
+        };
+        /** @description One neuron position a wallet holds on a subnet: its economics and emission/stake yield. Score fields are null when the cell is absent; yield is null with zero stake. */
+        PortfolioPosition: {
+            active: boolean;
+            dividends: number | null;
+            emission_tao: number;
+            incentive: number | null;
+            netuid: number;
+            rank: number | null;
+            /** @enum {string} */
+            role: "validator" | "miner";
+            stake_tao: number;
+            trust: number | null;
+            uid: number | null;
+            yield: number | null;
+        } & {
+            [key: string]: unknown;
         };
         ProbeConfig: {
             enabled: boolean;
@@ -6870,6 +6921,145 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountPortfolio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "miner_count": 1,
+                     *         "overall_yield": 0.5,
+                     *         "position_count": 1,
+                     *         "positions": [
+                     *           {
+                     *             "active": false,
+                     *             "dividends": 0.5,
+                     *             "emission_tao": 0.5,
+                     *             "incentive": 0.5,
+                     *             "netuid": 7,
+                     *             "rank": 0.5,
+                     *             "role": "validator",
+                     *             "stake_tao": 0.5,
+                     *             "trust": 0.5,
+                     *             "uid": 1,
+                     *             "yield": 0.5
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *         "stake_concentration": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "subnet_count": 1,
+                     *         "total_emission_tao": 0.5,
+                     *         "total_stake_tao": 0.5,
+                     *         "validator_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountPortfolioArtifact"];
                     };
                 };
             };

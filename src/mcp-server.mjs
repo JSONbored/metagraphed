@@ -143,6 +143,7 @@ import {
   loadAccountExtrinsics,
   loadAccountTransfers,
 } from "./account-events.mjs";
+import { loadAccountPortfolio } from "./account-portfolio.mjs";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -318,7 +319,9 @@ export const MCP_INSTRUCTIONS =
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
   "get_account_events returns its chain-event history (optional kind filter), and " +
-  "get_account_subnets the subnets where it is registered, get_account_stake_flow " +
+  "get_account_subnets the subnets where it is registered, get_account_portfolio " +
+  "its cross-subnet neuron portfolio (per-position economics + yield and wallet " +
+  "aggregates), get_account_stake_flow " +
   "its per-subnet staking flow with direction and concentration labels. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
@@ -2858,6 +2861,34 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
       return loadAccountSubnets(mcpD1Runner(ctx), ss58);
+    },
+  },
+  {
+    name: "get_account_portfolio",
+    title: "Get a wallet's cross-subnet portfolio",
+    description:
+      "A wallet's cross-subnet neuron portfolio (by SS58 hotkey): each position's " +
+      "economics (stake, emission, rank, trust, incentive, dividends, role) and " +
+      "emission/stake yield, plus aggregates (totals, subnet/validator counts, " +
+      "overall return, and how concentrated the wallet's stake is across subnets). " +
+      "Richer than get_account_subnets; computed live from the neurons tier. An " +
+      "unregistered address returns an empty portfolio, not an error.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's hotkey SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      return loadAccountPortfolio(mcpD1Runner(ctx), ss58);
     },
   },
   {
@@ -5795,6 +5826,25 @@ const TOOL_OUTPUT_SCHEMAS = {
       ss58: { type: "string" },
       balance_tao: { type: ["number", "null"] },
       queried_at: NULLABLE_STRING,
+    },
+  },
+  get_account_portfolio: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "position_count", "positions"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      captured_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      position_count: { type: "integer" },
+      validator_count: { type: "integer" },
+      miner_count: { type: "integer" },
+      total_stake_tao: { type: "number" },
+      total_emission_tao: { type: "number" },
+      overall_yield: { type: ["number", "null"] },
+      stake_concentration: { type: ["object", "null"] },
+      positions: { type: "array", items: { type: "object" } },
     },
   },
   get_account_events: {

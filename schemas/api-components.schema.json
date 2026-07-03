@@ -584,6 +584,83 @@
         ],
         "type": "object"
       },
+      "AccountPortfolioArtifact": {
+        "additionalProperties": true,
+        "description": "A wallet's cross-subnet neuron portfolio from the neurons D1 tier: every position registered under the hotkey with its economics + yield, plus wallet-level aggregates (totals, subnet/validator counts, overall return, and how concentrated the wallet's stake is across its subnets). Richer than AccountSubnetsArtifact. Served live at /api/v1/accounts/{ss58}/portfolio (no static file).",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "overall_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "position_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioPosition"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "stake_concentration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_emission_tao": {
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "type": "number"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "captured_at",
+          "subnet_count",
+          "position_count",
+          "validator_count",
+          "miner_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "overall_yield",
+          "stake_concentration",
+          "positions"
+        ],
+        "type": "object"
+      },
       "AccountRegistration": {
         "additionalProperties": false,
         "description": "A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier.",
@@ -8687,6 +8764,82 @@
           "limit",
           "cursor",
           "next_cursor"
+        ],
+        "type": "object"
+      },
+      "PortfolioPosition": {
+        "additionalProperties": true,
+        "description": "One neuron position a wallet holds on a subnet: its economics and emission/stake yield. Score fields are null when the cell is absent; yield is null with zero stake.",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "dividends": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "emission_tao": {
+            "type": "number"
+          },
+          "incentive": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rank": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "role": {
+            "enum": [
+              "validator",
+              "miner"
+            ],
+            "type": "string"
+          },
+          "stake_tao": {
+            "type": "number"
+          },
+          "trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "uid": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "uid",
+          "role",
+          "active",
+          "stake_tao",
+          "emission_tao",
+          "rank",
+          "trust",
+          "incentive",
+          "dividends",
+          "yield"
         ],
         "type": "object"
       },

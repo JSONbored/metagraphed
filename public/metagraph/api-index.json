@@ -534,6 +534,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-portfolio",
+      "path": "/metagraph/accounts/{ss58}/portfolio.json",
+      "schema_ref": "#/components/schemas/AccountPortfolioArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-balance",
       "path": "/metagraph/accounts/{ss58}/balance.json",
       "schema_ref": "#/components/schemas/AccountBalanceArtifact",
@@ -5382,6 +5389,18 @@
       "id": "account-subnets",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/subnets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/portfolio.json",
+      "cache": "short",
+      "description": "Fetch a wallet's cross-subnet neuron portfolio: each position's economics (stake, emission, rank, trust, incentive, dividends, role) and yield, plus aggregates (totals, subnet/validator counts, overall return, stake concentration). Richer than /subnets; computed live from the neurons D1 tier.",
+      "id": "account-portfolio",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/portfolio",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

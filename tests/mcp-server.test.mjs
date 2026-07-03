@@ -7368,6 +7368,52 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.equal(out.subnets[1].validator_permit, true);
   });
 
+  test("get_account_portfolio returns positions + aggregates", async () => {
+    const env = accountD1({
+      registrations: [
+        {
+          netuid: 7,
+          uid: 3,
+          stake_tao: 1000,
+          emission_tao: 50,
+          validator_permit: 1,
+          active: 1,
+        },
+        {
+          netuid: 64,
+          uid: 12,
+          stake_tao: 200,
+          emission_tao: 30,
+          validator_permit: 0,
+          active: 1,
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_account_portfolio",
+      { ss58: SS58 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.position_count, 2);
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.total_stake_tao, 1200);
+    assert.equal(out.positions[0].netuid, 7); // biggest stake first
+    assert.equal(out.positions[0].yield, 0.05);
+  });
+
+  test("get_account_portfolio returns an empty portfolio on cold D1", async () => {
+    const res = await callTool(
+      "get_account_portfolio",
+      { ss58: SS58 },
+      { env: accountD1({ registrations: [] }) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.position_count, 0);
+    assert.equal(out.stake_concentration, null);
+  });
+
   test("get_account_events rejects a non-string kind", async () => {
     const res = await callTool(
       "get_account_events",

@@ -400,6 +400,18 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/portfolio",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(Array.isArray(body.data.positions), true);
+      assert.equal(typeof body.data.position_count, "number");
+      assert.ok(
+        body.data.stake_concentration === null ||
+          typeof body.data.stake_concentration === "object",
+      );
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/balance",
     (body) => {
       assert.equal(

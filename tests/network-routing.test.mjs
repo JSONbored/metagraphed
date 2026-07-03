@@ -327,6 +327,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/subnets/7/stake-flow",
       "/api/v1/testnet/subnets/7/yield",
       `/api/v1/testnet/accounts/${SS58}/stake-flow`,
+      `/api/v1/testnet/accounts/${SS58}/portfolio`,
       "/api/v1/testnet/incidents",
 
       "/api/v1/testnet/rpc/usage",
