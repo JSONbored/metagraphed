@@ -1,0 +1,32 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "dogelayer",
+  "netuid": 80,
+  "schema_version": 1,
+  "slug": "sn-80",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-80-dogelayer-docs",
+      "kind": "docs",
+      "name": "DogeLayer proxy API reference",
+      "notes": "Documents the /api/workers/stats and /api/workers/timerange proxy endpoints. The doc page itself is public with no auth; the underlying proxy API it describes requires a Bearer token and has no published OpenAPI/Swagger spec, so this is filed as docs rather than subnet-api.",
+      "provider": "dogelayer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dale053"
+      },
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "url": "https://github.com/dogelayer-ai/dogelayer/blob/main/docs/proxy-api.md"
+    }
+  ]
+}
