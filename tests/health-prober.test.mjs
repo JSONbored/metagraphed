@@ -1904,6 +1904,23 @@ describe("rollupDailyUptime (durable daily history)", () => {
     assert.deepEqual(await rollupDailyUptime({}), { rolled: false });
   });
 
+  test("returns rolled:false when run timestamp is out of JS Date range", async () => {
+    const db = {
+      prepare: () => ({ bind: () => ({}) }),
+      async batch() {
+        throw new Error("batch should not run");
+      },
+    };
+    const result = await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => Number.NaN },
+    );
+    assert.deepEqual(result, {
+      rolled: false,
+      error: "invalid run timestamp",
+    });
+  });
+
   test("degrades to { rolled: false } when the batch write throws", async () => {
     const db = {
       prepare: () => ({ bind: () => ({}) }),

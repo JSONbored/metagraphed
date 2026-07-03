@@ -682,10 +682,14 @@ async function persistToKv(kv, probed, runAt) {
 
 // UTC day bounds for a given epoch-ms instant: { date: "YYYY-MM-DD", start, end }.
 function utcDayBounds(ms) {
+  if (!Number.isFinite(ms)) return null;
   const d = new Date(ms);
+  if (!Number.isFinite(d.getTime())) return null;
   const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const startDate = new Date(start);
+  if (!Number.isFinite(startDate.getTime())) return null;
   return {
-    date: new Date(start).toISOString().slice(0, 10),
+    date: startDate.toISOString().slice(0, 10),
     start,
     end: start + 24 * 60 * 60 * 1000,
   };
@@ -704,7 +708,12 @@ export async function rollupDailyUptime(env, overrides = {}) {
   const db = overrides.db || env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return { rolled: false };
   const runAt = now();
-  const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
+  const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)].filter(
+    Boolean,
+  );
+  if (!days.length) {
+    return { rolled: false, error: "invalid run timestamp" };
+  }
   const conflictColumns = `
        surface_id = excluded.surface_id,
        surface_key = excluded.surface_key,
