@@ -182,7 +182,10 @@ describe("deriveDomainTags", () => {
   });
 
   test("returns empty for fully null text and non-array category values that do not match", () => {
-    assert.deepEqual(deriveDomainTags({ description: null, additional: null }), []);
+    assert.deepEqual(
+      deriveDomainTags({ description: null, additional: null }),
+      [],
+    );
     assert.deepEqual(
       deriveDomainTags({
         description: null,

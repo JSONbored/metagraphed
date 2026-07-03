@@ -190,9 +190,13 @@ describe("keywordScore — precision boosts", () => {
     };
 
     // Exact name token sequence gets the larger name boost than a mention-only match.
-    assert.ok(score(nameMatch, "targon search") > score(byText, "targon search"));
+    assert.ok(
+      score(nameMatch, "targon search") > score(byText, "targon search"),
+    );
     // Exact slug token sequence also receives the same boost.
-    assert.ok(score(nameMatch, "targon-search") > score(byText, "targon-search"));
+    assert.ok(
+      score(nameMatch, "targon-search") > score(byText, "targon-search"),
+    );
   });
 });
 
