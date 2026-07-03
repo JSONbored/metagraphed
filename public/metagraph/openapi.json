@@ -2233,6 +2233,157 @@
         ],
         "type": "object"
       },
+      "BlocksSummaryArtifact": {
+        "additionalProperties": true,
+        "description": "Block-production analytics over the most recent blocks from the first-party blocks D1 tier: inter-block time distribution, extrinsic/event throughput, block-author decentralization (the concentration of block production across authors — the block-producer analog of the stake/emission concentration scorecards), and the runtime spec-version spread. Served live at /api/v1/blocks/summary (no static file).",
+        "properties": {
+          "author_concentration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Concentration of block production across authors, or null for a cold store / a window in which no block carried an author. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site."
+          },
+          "block_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "block_time": {
+            "$ref": "#/components/schemas/BlockTimeDistribution"
+          },
+          "distinct_authors": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "distinct_spec_versions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "first_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latest_spec_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "throughput": {
+            "additionalProperties": true,
+            "properties": {
+              "max_extrinsics_in_block": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "mean_events_per_block": {
+                "type": "number"
+              },
+              "mean_extrinsics_per_block": {
+                "type": "number"
+              },
+              "total_events": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_extrinsics": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "block_count",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at",
+          "block_time",
+          "throughput",
+          "distinct_authors",
+          "author_concentration",
+          "distinct_spec_versions",
+          "latest_spec_version"
+        ],
+        "type": "object"
+      },
+      "BlockTimeDistribution": {
+        "additionalProperties": true,
+        "description": "Distribution of inter-block intervals in milliseconds over consecutive blocks in the window: count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when fewer than two consecutive blocks are present.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mean_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "min_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p50_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p90_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": [
+          "object",
+          "null"
+        ]
+      },
       "BuildSummaryArtifact": {
         "allOf": [
           {
@@ -19949,6 +20100,161 @@
           }
         },
         "summary": "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+        "tags": [
+          "blocks",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/blocks/summary": {
+      "get": {
+        "operationId": "blocksSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "author_concentration": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    },
+                    "block_count": 5000000,
+                    "block_time": {
+                      "count": 1,
+                      "max_ms": 1,
+                      "mean_ms": 1,
+                      "min_ms": 1,
+                      "p50_ms": 1,
+                      "p90_ms": 1
+                    },
+                    "distinct_authors": 1,
+                    "distinct_spec_versions": 1,
+                    "first_block": 5000000,
+                    "first_observed_at": "2026-06-01T00:00:00.000Z",
+                    "last_block": 5000000,
+                    "last_observed_at": "2026-06-01T00:00:00.000Z",
+                    "latest_spec_version": 1,
+                    "schema_version": 1,
+                    "throughput": {
+                      "max_extrinsics_in_block": 5000000,
+                      "mean_events_per_block": 5000000,
+                      "mean_extrinsics_per_block": 5000000,
+                      "total_events": 1,
+                      "total_extrinsics": 1
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BlocksSummaryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Computed live from the blocks D1 tier; schema-stable zeroed card when cold.",
         "tags": [
           "blocks",
           "analytics"

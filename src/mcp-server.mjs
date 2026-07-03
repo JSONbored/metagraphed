@@ -156,6 +156,7 @@ import { loadSubnetYield } from "./subnet-yield.mjs";
 import { loadSubnetPerformance } from "./subnet-performance.mjs";
 import { loadChainPerformance } from "./chain-performance.mjs";
 import { loadChainYield } from "./chain-yield.mjs";
+import { loadBlocksSummary } from "./blocks-summary.mjs";
 import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
@@ -328,6 +329,8 @@ export const MCP_INSTRUCTIONS =
   "score spread across all subnets, " +
   "get_chain_yield the network-wide emission-yield (return rate) and its " +
   "distribution across all subnets, " +
+  "get_blocks_summary block-production analytics (inter-block time, throughput, " +
+  "and block-author decentralization), " +
   "get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
@@ -1956,6 +1959,24 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadChainYield(mcpD1Runner(ctx));
+    },
+  },
+  {
+    name: "get_blocks_summary",
+    title: "Get block-production analytics",
+    description:
+      "Block-production analytics over recent blocks: inter-block time " +
+      "distribution, extrinsic/event throughput, block-author decentralization " +
+      "(concentration over each author's block count, distinct from " +
+      "get_chain_signers), and the spec-version spread. Mirrors GET " +
+      "/api/v1/blocks/summary.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadBlocksSummary(mcpD1Runner(ctx));
     },
   },
   {
@@ -5404,6 +5425,25 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_yield: { type: ["number", "null"] },
       miner_yield: { type: ["number", "null"] },
       distribution: { type: ["object", "null"] },
+    },
+  },
+  get_blocks_summary: {
+    type: "object",
+    additionalProperties: true,
+    required: ["block_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      block_count: { type: "integer" },
+      first_block: { type: ["integer", "null"] },
+      last_block: { type: ["integer", "null"] },
+      first_observed_at: NULLABLE_STRING,
+      last_observed_at: NULLABLE_STRING,
+      block_time: { type: ["object", "null"] },
+      throughput: { type: ["object", "null"] },
+      distinct_authors: { type: "integer" },
+      author_concentration: { type: ["object", "null"] },
+      distinct_spec_versions: { type: "integer" },
+      latest_spec_version: { type: ["integer", "null"] },
     },
   },
   get_subnet_concentration_history: {

@@ -5506,6 +5506,7 @@ describe("MCP economics + metagraph data tools", () => {
     neuronDaily = [],
     turnoverBounds = [],
     turnoverRows = [],
+    blocks = [],
   } = {}) {
     return {
       prepare(sql) {
@@ -5537,6 +5538,9 @@ describe("MCP economics + metagraph data tools", () => {
                     return Promise.resolve({ results: turnoverRows });
                   }
                   return Promise.resolve({ results: neuronDaily });
+                }
+                if (sql.includes("FROM blocks")) {
+                  return Promise.resolve({ results: blocks });
                 }
                 if (sql.includes("FROM surface_uptime_daily")) {
                   return Promise.resolve({ results: uptimeRows });
@@ -6038,6 +6042,52 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_yield, 0.05); // 50 / 1000
     assert.equal(out.miner_yield, 0.1); // 10 / 100
     assert.equal(out.distribution.count, 2);
+  });
+
+  test("get_blocks_summary returns a schema-stable zeroed card on cold D1", async () => {
+    const res = await callTool("get_blocks_summary", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_count, 0);
+    assert.equal(out.block_time, null);
+    assert.equal(out.throughput, null);
+    assert.equal(out.author_concentration, null);
+  });
+
+  test("get_blocks_summary summarizes recent block production", async () => {
+    const res = await callTool(
+      "get_blocks_summary",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            blocks: [
+              {
+                block_number: 100,
+                author: "5Alice",
+                extrinsic_count: 3,
+                event_count: 10,
+                spec_version: 200,
+                observed_at: 1_750_000_000_000,
+              },
+              {
+                block_number: 101,
+                author: "5Bob",
+                extrinsic_count: 1,
+                event_count: 4,
+                spec_version: 200,
+                observed_at: 1_750_000_012_000,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_count, 2);
+    assert.equal(out.block_time.count, 1); // one consecutive interval
+    assert.equal(out.block_time.mean_ms, 12000);
+    assert.equal(out.distinct_authors, 2);
+    assert.equal(out.throughput.total_extrinsics, 4);
   });
 
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {

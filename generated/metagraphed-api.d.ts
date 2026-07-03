@@ -327,6 +327,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/blocks/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Computed live from the blocks D1 tier; schema-stable zeroed card when cold. */
+        get: operations["blocksSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/build": {
         parameters: {
             query?: never;
@@ -2456,6 +2473,43 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Block-production analytics over the most recent blocks from the first-party blocks D1 tier: inter-block time distribution, extrinsic/event throughput, block-author decentralization (the concentration of block production across authors — the block-producer analog of the stake/emission concentration scorecards), and the runtime spec-version spread. Served live at /api/v1/blocks/summary (no static file). */
+        BlocksSummaryArtifact: {
+            /** @description Concentration of block production across authors, or null for a cold store / a window in which no block carried an author. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site. */
+            author_concentration: components["schemas"]["ConcentrationMetrics"] | null;
+            block_count: number;
+            block_time: components["schemas"]["BlockTimeDistribution"];
+            distinct_authors: number;
+            distinct_spec_versions: number;
+            first_block: number | null;
+            first_observed_at: string | null;
+            last_block: number | null;
+            last_observed_at: string | null;
+            latest_spec_version: number | null;
+            schema_version: number;
+            throughput: ({
+                max_extrinsics_in_block?: number;
+                mean_events_per_block?: number;
+                mean_extrinsics_per_block?: number;
+                total_events?: number;
+                total_extrinsics?: number;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Distribution of inter-block intervals in milliseconds over consecutive blocks in the window: count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when fewer than two consecutive blocks are present. */
+        BlockTimeDistribution: ({
+            count?: number;
+            max_ms?: number | null;
+            mean_ms?: number | null;
+            min_ms?: number | null;
+            p50_ms?: number | null;
+            p90_ms?: number | null;
+        } & {
+            [key: string]: unknown;
+        }) | null;
         BuildSummaryArtifact: components["schemas"]["ArtifactBase"] & ({
             artifact_budgets?: components["schemas"]["ArtifactSizeBudget"][];
             artifact_count: number;
@@ -8278,6 +8332,142 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["BlockExtrinsicsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    blocksSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "author_concentration": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "block_count": 5000000,
+                     *         "block_time": {
+                     *           "count": 1,
+                     *           "max_ms": 1,
+                     *           "mean_ms": 1,
+                     *           "min_ms": 1,
+                     *           "p50_ms": 1,
+                     *           "p90_ms": 1
+                     *         },
+                     *         "distinct_authors": 1,
+                     *         "distinct_spec_versions": 1,
+                     *         "first_block": 5000000,
+                     *         "first_observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "last_block": 5000000,
+                     *         "last_observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "latest_spec_version": 1,
+                     *         "schema_version": 1,
+                     *         "throughput": {
+                     *           "max_extrinsics_in_block": 5000000,
+                     *           "mean_events_per_block": 5000000,
+                     *           "mean_extrinsics_per_block": 5000000,
+                     *           "total_events": 1,
+                     *           "total_extrinsics": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["BlocksSummaryArtifact"];
                     };
                 };
             };
