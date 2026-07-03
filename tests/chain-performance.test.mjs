@@ -116,15 +116,18 @@ describe("buildChainPerformance", () => {
     assert.equal(out.validator_trust.min, 0.85);
   });
 
-  test("subnet_count ignores null and non-integer netuid cells", () => {
+  test("subnet_count ignores null, blank, and non-integer netuid cells", () => {
     const out = buildChainPerformance([
       { incentive: 0.5, netuid: 7 },
+      { incentive: 0.5, netuid: "7" }, // numeric string — same subnet, not double-counted
       { incentive: 0.5, netuid: null }, // rawNetuid == null → skipped
+      { incentive: 0.5, netuid: "" }, // blank → must not coerce to subnet 0
+      { incentive: 0.5, netuid: "   " }, // whitespace-only → must not coerce to subnet 0
       { incentive: 0.5, netuid: "abc" }, // non-integer → skipped
       { incentive: 0.5, netuid: -1 }, // negative → skipped
     ]);
     assert.equal(out.subnet_count, 1); // only netuid 7 counts
-    assert.equal(out.neuron_count, 4);
+    assert.equal(out.neuron_count, 7);
   });
 
   test("accepts a string (ISO) captured_at, ignoring null/unparseable stamps", () => {

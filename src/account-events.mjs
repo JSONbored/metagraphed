@@ -63,6 +63,11 @@ export const INDEXED_EVENT_KINDS = [
 // scoping validation to INDEXED_EVENT_KINDS alone would wrongly reject valid kinds.
 export const INGESTED_EVENT_KINDS = [
   ...INDEXED_EVENT_KINDS,
+  // Stake moved between two coldkeys (#2556). Ingestible for the kind filter but
+  // deliberately NOT in INDEXED_EVENT_KINDS: only the origin leg (origin_coldkey,
+  // hotkey, origin_netuid, amount) fits the shared account_events columns, so it
+  // is not part of the minimal indexed core the way StakeAdded/Removed/Moved are.
+  "StakeTransferred",
   "NeuronDeregistered",
   "NetworkAdded",
   "NetworkRemoved",
@@ -78,6 +83,7 @@ export const INGESTED_EVENT_KINDS = [
   "ColdkeySwapScheduled",
   // #2555 forward-compat: absent finney spec 424 today; ?kind= accepts once runtime emits
   "AxonInfoRemoved",
+  "Faucet",
   "Transfer",
 ];
 

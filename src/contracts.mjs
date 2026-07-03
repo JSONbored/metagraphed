@@ -781,7 +781,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "economics-trends",
     "/metagraph/economics/trends.json",
-    "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends (no static file).",
+    "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends; pass ?format=csv to download the per-day series as CSV (no static file).",
     "EconomicsTrendsArtifact",
   ),
   artifact(
@@ -961,7 +961,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-movers",
     "/metagraph/subnets/movers.json",
-    "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
+    "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
     "SubnetMoversArtifact",
   ),
   artifact(
@@ -1544,15 +1544,15 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics/trends",
     "/metagraph/economics/trends.json",
-    "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+    "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
       },
-    ],
+    ]),
     [],
   ),
   route(
@@ -1871,7 +1871,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/movers",
     "/metagraph/subnets/movers.json",
-    "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+    "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
     "short",
     ["subnets", "analytics"],
     csvRouteQuery([
@@ -1881,7 +1881,10 @@ export const API_ROUTES = [
       },
       {
         name: "sort",
-        schema: { type: "string", enum: ["stake", "emission", "validators"] },
+        schema: {
+          type: "string",
+          enum: ["stake", "emission", "validators", "neurons"],
+        },
       },
       {
         name: "limit",
@@ -3187,6 +3190,12 @@ function csvExampleForRoute(entry) {
     return [
       "uid,hotkey,coldkey,active,validator_permit,rank,trust,validator_trust,consensus,incentive,dividends,emission_tao,stake_tao,registered_at_block,is_immunity_period,axon",
       "0,hk_sample,ck_sample,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091",
+    ].join("\r\n");
+  }
+  if (entry.id === "economics-trends") {
+    return [
+      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+      "2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";

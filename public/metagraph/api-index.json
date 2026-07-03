@@ -2710,7 +2710,7 @@
     {
       "artifact_path": "/metagraph/economics/trends.json",
       "cache": "short",
-      "description": "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+      "description": "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
       "id": "economics-trends",
       "method": "GET",
       "path": "/api/v1/economics/trends",
@@ -2727,6 +2727,17 @@
               "90d",
               "1y",
               "all"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
             ],
             "type": "string"
           }
@@ -4682,7 +4693,7 @@
     {
       "artifact_path": "/metagraph/subnets/movers.json",
       "cache": "short",
-      "description": "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+      "description": "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
       "id": "subnet-movers",
       "method": "GET",
       "path": "/api/v1/subnets/movers",
@@ -4707,7 +4718,8 @@
             "enum": [
               "stake",
               "emission",
-              "validators"
+              "validators",
+              "neurons"
             ],
             "type": "string"
           }

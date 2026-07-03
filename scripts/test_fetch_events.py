@@ -246,6 +246,29 @@ class EventRowBatchCapTest(unittest.TestCase):
         self.assertAlmostEqual(rows[0]["amount_tao"], 100.0)
         self.assertEqual(rows[0]["observed_at"], 456)
 
+    def test_event_rows_for_events_builds_stake_transferred_row(self):
+        # Exercises the full poller staging path (module dispatch -> extract ->
+        # built row), not just _extract, so a registry/row-building regression for
+        # the new StakeTransferred kind is caught, not only the pure extractor.
+        rows = event_rows_for_events(
+            100,
+            [
+                self.Event(
+                    "SubtensorModule",
+                    "StakeTransferred",
+                    [_SS58_A, _SS58_B, _SS58_C, 7, 8, _RAO_100],
+                )
+            ],
+            200,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["event_kind"], "StakeTransferred")
+        self.assertEqual(rows[0]["coldkey"], _SS58_A)  # origin_coldkey
+        self.assertEqual(rows[0]["hotkey"], _SS58_C)  # hotkey at a[2], not dest ck
+        self.assertEqual(rows[0]["netuid"], 7)  # origin_netuid
+        self.assertAlmostEqual(rows[0]["amount_tao"], 100.0)
+        self.assertEqual(rows[0]["observed_at"], 200)
+
     def test_can_append_event_block_keeps_batches_under_cap(self):
         existing = [{}] * 3
         self.assertTrue(_can_append_event_block(existing, [{}] * 2, max_rows=5))
@@ -283,6 +306,7 @@ class LagAlertNeededTest(unittest.TestCase):
 _extract = _fe.extract
 _SS58_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
 _SS58_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+_SS58_C = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy"
 _RAO_100 = 100_000_000_000  # 100 TAO in rao
 
 
@@ -335,6 +359,57 @@ class TransferExtractorTest(unittest.TestCase):
         self.assertIsNone(result["hotkey"])
         self.assertIsNone(result["coldkey"])
         self.assertIsNone(result["amount_tao"])
+
+
+class FaucetExtractorTest(unittest.TestCase):
+    """Tests for SubtensorModule.Faucet (#2560).
+
+    Live finney spec 424 names the event `Faucet` and exposes positional fields
+    (T::AccountId, u64 amount_rao). The metadata docs describe it as the testnet
+    faucet call.
+    """
+
+    def test_list_form_positional_account_and_amount(self):
+        result = _extract("Faucet", [_SS58_A, _RAO_100])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["uid"])
+
+    def test_dict_form_named_account_and_amount(self):
+        result = _extract("Faucet", {"account": _SS58_B, "amount": _RAO_100})
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_dict_form_accepts_coldkey_alias(self):
+        result = _extract("Faucet", {"coldkey": _SS58_B, "amount_rao": 500_000_000})
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 0.5)
+
+    def test_zero_amount(self):
+        result = _extract("Faucet", [_SS58_A, 0])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertAlmostEqual(result["amount_tao"], 0.0)
+
+    def test_invalid_recipient_gives_null_coldkey(self):
+        result = _extract("Faucet", ["not-an-address", _RAO_100])
+        self.assertIsNone(result["coldkey"])
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_missing_amount_gives_null(self):
+        result = _extract("Faucet", [_SS58_A])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertIsNone(result["amount_tao"])
+
+    def test_empty_shape_drift_never_raises(self):
+        result = _extract("Faucet", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["amount_tao"])
+
+    def test_unconfirmed_faucet_minted_alias_is_not_indexed(self):
+        self.assertIsNone(_extract("FaucetMinted", [_SS58_A, _RAO_100]))
 
 
 class NeuronDeregisteredExtractorTest(unittest.TestCase):
@@ -504,6 +579,99 @@ class StakeAlphaExtractorTest(unittest.TestCase):
         # Transfer carries no alpha leg → null (extract() defaults the key).
         result = _extract("Transfer", [_SS58_A, _SS58_B, _RAO_100])
         self.assertIsNone(result["alpha_amount"])
+
+
+class StakeTransferredExtractorTest(unittest.TestCase):
+    """Tests for SubtensorModule.StakeTransferred (#2556) — stake moved between two
+    coldkeys. Attribute order confirmed against the subtensor events macro:
+    (origin_coldkey, destination_coldkey, hotkey, origin_netuid, destination_netuid,
+    amount_rao). The origin leg maps to the shared coldkey/hotkey/netuid/amount
+    columns; the shape differs from StakeMoved, so it uses its own extractor.
+    """
+
+    def test_positional_maps_origin_leg_and_amount(self):
+        result = _extract(
+            "StakeTransferred",
+            [_SS58_A, _SS58_B, _SS58_C, 7, 8, _RAO_100],
+        )
+        # origin_coldkey -> coldkey, hotkey read from a[2] (NOT the destination
+        # coldkey at a[1]), origin_netuid -> netuid (NOT the hotkey at a[2]).
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_C)
+        self.assertEqual(result["netuid"], 7)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_dict_form_named_fields(self):
+        result = _extract(
+            "StakeTransferred",
+            {
+                "origin_coldkey": _SS58_A,
+                "destination_coldkey": _SS58_B,
+                "hotkey": _SS58_C,
+                "origin_netuid": 9,
+                "destination_netuid": 3,
+                "amount": _RAO_100,
+            },
+        )
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_C)
+        self.assertEqual(result["netuid"], 9)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_dict_form_accepts_amount_rao_macro_field_name(self):
+        # A named decoding could surface the TaoBalance leg under the macro field
+        # name "amount_rao" instead of "amount"; the dict fallback accepts both.
+        result = _extract(
+            "StakeTransferred",
+            {
+                "origin_coldkey": _SS58_A,
+                "hotkey": _SS58_C,
+                "origin_netuid": 9,
+                "amount_rao": _RAO_100,
+            },
+        )
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_invalid_keys_give_null(self):
+        result = _extract(
+            "StakeTransferred",
+            ["not-an-address", _SS58_B, "not-a-hotkey", 7, 8, _RAO_100],
+        )
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["hotkey"])
+        self.assertEqual(result["netuid"], 7)
+
+    def test_out_of_range_netuid_gives_null(self):
+        result = _extract(
+            "StakeTransferred",
+            [_SS58_A, _SS58_B, _SS58_C, 70000, 8, _RAO_100],
+        )
+        self.assertIsNone(result["netuid"])
+        self.assertEqual(result["coldkey"], _SS58_A)
+
+    def test_negative_amount_gives_null(self):
+        result = _extract(
+            "StakeTransferred",
+            [_SS58_A, _SS58_B, _SS58_C, 7, 8, -5],
+        )
+        self.assertIsNone(result["amount_tao"])
+
+    def test_short_payload_nulls_missing_legs(self):
+        # A truncated tuple (only the two coldkeys) → hotkey/netuid/amount null,
+        # never raises.
+        result = _extract("StakeTransferred", [_SS58_A, _SS58_B])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["amount_tao"])
+
+    def test_empty_shape_drift_never_raises(self):
+        result = _extract("StakeTransferred", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["amount_tao"])
 
 
 class TakeDelegateExtractorTest(unittest.TestCase):

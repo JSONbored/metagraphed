@@ -13,7 +13,7 @@ export const MOVERS_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
 export const DEFAULT_MOVERS_WINDOW = "30d";
 
 // Rankable metrics: the signed delta to sort the leaderboard by.
-export const MOVERS_SORTS = ["stake", "emission", "validators"];
+export const MOVERS_SORTS = ["stake", "emission", "validators", "neurons"];
 export const DEFAULT_MOVERS_SORT = "stake";
 
 export const MOVERS_LIMIT_DEFAULT = 20;
@@ -66,11 +66,35 @@ function indexByNetuid(rows) {
 
 const ZERO = { neurons: 0, validators: 0, stake: 0, emission: 0 };
 
+// Sum a boundary map's stake, emission, and validator counts across every subnet — the
+// single source the dominance-share denominator and the network summary totals derive
+// from, so both stay consistent as more network-level fields are added.
+function sumBoundary(map) {
+  let stake = 0;
+  let emission = 0;
+  let validators = 0;
+  for (const v of map.values()) {
+    stake += v.stake;
+    emission += v.emission;
+    validators += v.validators;
+  }
+  return { stake, emission, validators };
+}
+
 const SORT_KEY = {
   stake: "stake_delta_tao",
   emission: "emission_delta_tao",
   validators: "validators_delta",
+  neurons: "neurons_delta",
 };
+
+// A subnet's share (%) of a network total, rounded to 2dp. Null when the total is
+// 0 or non-finite (share of nothing is undefined) — mirrors pctChange's null contract.
+function pctShare(part, total) {
+  if (!Number.isFinite(part) || !Number.isFinite(total) || total <= 0)
+    return null;
+  return Math.round((part / total) * 100 * 100) / 100;
+}
 
 // Build the per-subnet mover scorecards from the start + end snapshot aggregates and rank
 // them by the chosen metric's signed delta (biggest gainers first, biggest losers last),
@@ -83,6 +107,10 @@ export function computeMovers(
   const startMap = indexByNetuid(startRows);
   const endMap = indexByNetuid(endRows);
   const netuids = new Set([...startMap.keys(), ...endMap.keys()]);
+  // Network end totals for the dominance shares: each subnet's stake/emission as a
+  // percentage of the whole network at the window's end snapshot. Summed over EVERY
+  // subnet (not just the returned page) so the share denominator is the true total.
+  const endTotals = sumBoundary(endMap);
   const movers = [];
   for (const netuid of netuids) {
     const s = startMap.get(netuid) ?? ZERO;
@@ -93,10 +121,13 @@ export function computeMovers(
       stake_end_tao: roundTao(e.stake),
       stake_delta_tao: roundTao(e.stake - s.stake),
       stake_pct_change: pctChange(s.stake, e.stake),
+      // Dominance: this subnet's share of network stake at the end snapshot.
+      stake_share_pct: pctShare(e.stake, endTotals.stake),
       emission_start_tao: roundTao(s.emission),
       emission_end_tao: roundTao(e.emission),
       emission_delta_tao: roundTao(e.emission - s.emission),
       emission_pct_change: pctChange(s.emission, e.emission),
+      emission_share_pct: pctShare(e.emission, endTotals.emission),
       validators_start: s.validators,
       validators_end: e.validators,
       validators_delta: e.validators - s.validators,
@@ -108,6 +139,41 @@ export function computeMovers(
   const key = SORT_KEY[sort] ?? SORT_KEY[DEFAULT_MOVERS_SORT];
   movers.sort((a, b) => b[key] - a[key] || a.netuid - b.netuid);
   return movers;
+}
+
+// Network-wide aggregate context for the leaderboard: total stake/emission/validator
+// counts at each boundary plus their deltas, and how many subnets gained, lost, or held
+// flat on the ACTIVE sort metric. Totals sum the RAW boundary aggregates and round once at
+// the end (not a sum of already-rounded per-subnet fields), so no rao drift accumulates
+// across subnets. Gainer/loser/unchanged counts cover the full ranked set (every subnet),
+// so they stay network-wide even though the response caps `movers` to `limit`. Empty
+// boundaries (cold or single-snapshot store) yield an all-zero summary, never throws.
+function buildNetworkSummary(ranked, sortDeltaKey, startRows, endRows) {
+  const start = sumBoundary(indexByNetuid(startRows));
+  const end = sumBoundary(indexByNetuid(endRows));
+  let gainers = 0;
+  let losers = 0;
+  let unchanged = 0;
+  for (const m of ranked) {
+    const delta = m[sortDeltaKey];
+    if (delta > 0) gainers += 1;
+    else if (delta < 0) losers += 1;
+    else unchanged += 1;
+  }
+  return {
+    total_stake_start_tao: roundTao(start.stake),
+    total_stake_end_tao: roundTao(end.stake),
+    total_stake_delta_tao: roundTao(end.stake - start.stake),
+    total_emission_start_tao: roundTao(start.emission),
+    total_emission_end_tao: roundTao(end.emission),
+    total_emission_delta_tao: roundTao(end.emission - start.emission),
+    total_validators_start: start.validators,
+    total_validators_end: end.validators,
+    total_validators_delta: end.validators - start.validators,
+    gainers,
+    losers,
+    unchanged,
+  };
 }
 
 // Shape the cross-subnet movers leaderboard. Null-safe: missing/equal boundary dates (cold
@@ -154,6 +220,12 @@ export function buildMovers(
     end_date: endDate ?? null,
     sort: normalizedSort,
     subnet_count: ranked.length,
+    network: buildNetworkSummary(
+      ranked,
+      SORT_KEY[normalizedSort],
+      comparable ? startRows : [],
+      comparable ? endRows : [],
+    ),
     movers: ranked.slice(0, normalizedLimit),
   };
 }

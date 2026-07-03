@@ -1724,7 +1724,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         "economics-trends",
         () => handleEconomicsTrends(request, env, resolved.url),
-        canonicalEconomicsTrendsCachePath(resolved.url),
+        canonicalEconomicsTrendsCachePath(resolved.url, request),
       );
     }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
