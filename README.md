@@ -114,7 +114,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**106 curated subnets** — 89 with a site, 44 with docs, 90 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**108 curated subnets** — 89 with a site, 44 with docs, 90 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -163,6 +163,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[Graphite](https://metagraph.sh/subnets/43)** `SN43` — `optimization` `research` · [site](https://graphite-ai.net/) · [repo](https://github.com/GraphiteAI/Graphite-Subnet)
 - **[Score](https://metagraph.sh/subnets/44)** `SN44` · [site](https://www.wearescore.com/) · [repo](https://github.com/score-technologies/turbovision)
 - **[Talisman AI](https://metagraph.sh/subnets/45)** `SN45` · [site](https://ai.talisman.xyz/) · [repo](https://github.com/Team-Rizzo/talisman-ai)
+- **[Zipcode](https://metagraph.sh/subnets/46)** `SN46`
 - **[EvolAI](https://metagraph.sh/subnets/47)** `SN47` — `data` · [repo](https://github.com/openevolai/evolai)
 - **[Quantum Compute](https://metagraph.sh/subnets/48)** `SN48` — `compute` `quantum` · [site](https://www.qbittensorlabs.com/) · [repo](https://github.com/qbittensor-labs/quantum-compute)
 - **[Nepher Robotics](https://metagraph.sh/subnets/49)** `SN49` — `robotics` `tournament` · [site](https://nepher.ai) · [docs](https://docs.nepher.ai/) · [repo](https://github.com/nepher-ai/nepher-subnet)
@@ -177,6 +178,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[Enigma](https://metagraph.sh/subnets/63)** `SN63` — `quantum` · [site](https://www.qbittensorlabs.com/) · [repo](https://github.com/qbittensor-labs/enigma)
 - **[Chutes](https://metagraph.sh/subnets/64)** `SN64` — `compute` `inference` · [site](https://chutes.ai/) · [docs](https://chutes.ai/docs) · [repo](https://github.com/chutesai/chutes)
 - **[ninja](https://metagraph.sh/subnets/66)** `SN66` — `software-engineering` `workflow` · [site](https://ninja.arbos.life/) · [docs](https://github.com/unarbos/tau/blob/main/README.md) · [repo](https://github.com/unarbos/tau)
+- **[NOVA](https://metagraph.sh/subnets/68)** `SN68`
 - **[ain](https://metagraph.sh/subnets/69)** `SN69`
 - **[StreetVision by NATIX](https://metagraph.sh/subnets/72)** `SN72` — `computer-vision` `data` `depin` · [site](https://www.natix.network/) · [docs](https://docs.natix.network/whitepaper) · [repo](https://github.com/natixnetwork/streetvision-subnet)
 - **[MetaHash](https://metagraph.sh/subnets/73)** `SN73` — `defi` `otc` `treasury`
