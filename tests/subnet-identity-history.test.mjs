@@ -240,6 +240,17 @@ describe("formatIdentityHistoryEntry", () => {
     assert.equal(out.observed_at, null);
   });
 
+  test("nulls blank/whitespace and negative block_number cells", () => {
+    for (const block_number of ["", "   ", -1, "-5"]) {
+      const out = formatIdentityHistoryEntry({
+        block_number,
+        observed_at: 1_700_000_000_000,
+        identity_hash: "abc",
+      });
+      assert.equal(out.block_number, null);
+    }
+  });
+
   test("coerces string-typed observed_at cells to ISO timestamps", () => {
     const out = formatIdentityHistoryEntry({
       block_number: 1,

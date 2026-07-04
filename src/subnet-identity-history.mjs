@@ -61,6 +61,16 @@ export async function identityHash(snapshot) {
   return sha256Hex(stableStringify(snapshot));
 }
 
+// Non-negative integer block height, or null for absent/blank/negative cells.
+// Mirrors toBlockNumber in account-events.mjs: Number("") / Number("   ") both
+// coerce to 0, so a blank D1 cell must be rejected before the Number() coercion.
+function toBlockNumber(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
 function toIso(ms) {
   if (ms == null) return null;
   const n = Number(ms);
@@ -79,12 +89,7 @@ function normalizeName(value) {
 export function formatIdentityHistoryEntry(row) {
   if (!row || typeof row !== "object") return null;
   const entry = sanitizeIdentityHistoryFields({
-    block_number:
-      row.block_number == null
-        ? null
-        : Number.isSafeInteger(Number(row.block_number))
-          ? Number(row.block_number)
-          : null,
+    block_number: toBlockNumber(row.block_number),
     observed_at: toIso(row.observed_at),
     subnet_name: row.subnet_name ?? null,
     symbol: row.symbol ?? null,
