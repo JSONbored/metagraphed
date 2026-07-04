@@ -408,6 +408,22 @@
         "https://chutes.ai/llms.txt"
       ],
       "url": "https://llm.chutes.ai/v1/chat/completions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-user-growth",
+      "kind": "data-artifact",
+      "name": "Chutes user growth history",
+      "notes": "Public no-auth JSON time series of Chutes platform user growth (daily and cumulative user counts), served by the official Chutes API and defined in its OpenAPI spec.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/users/growth"
     }
   ],
   "website_url": "https://chutes.ai/"
