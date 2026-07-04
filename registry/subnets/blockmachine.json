@@ -164,6 +164,25 @@
         "https://api.blockmachine.io/openapi.json"
       ],
       "url": "https://api.blockmachine.io/epochs/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-epochs-catalog",
+      "kind": "data-artifact",
+      "name": "BlockMachine epochs catalog",
+      "notes": "Public no-auth BlockMachine epochs listing — every epoch's id/number, participating gateway_ids, and per-gateway manifest (request log files + finalized CU-allocation objects). The full-history catalog behind the already-registered latest-finalized/current single-epoch endpoints; declared as GET /epochs (\"List Epochs\") in the operator's OpenAPI (source).",
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://blockmachine.io/",
+        "https://api.blockmachine.io/openapi.json"
+      ],
+      "url": "https://api.blockmachine.io/epochs"
     }
   ],
   "website_url": "https://blockmachine.io/"
