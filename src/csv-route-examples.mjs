@@ -31,4 +31,9 @@ export const ROUTE_CSV_EXAMPLES = {
     "netuid,distinct_servers,announcements,announcements_per_server",
     "1,4,40,10",
   ].join("\r\n"),
+  // The /chain/transfer-pairs top sender -> receiver corridors.
+  "chain-transfer-pairs": [
+    "from,to,volume_tao,transfer_count,last_block,last_observed_at",
+    "5Sender_sample,5Receiver_sample,1250.5,42,8454388,2026-07-03T00:00:00.000Z",
+  ].join("\r\n"),
 };

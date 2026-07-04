@@ -922,6 +922,124 @@ test("GET /api/v1/chain/transfer-pairs ranks directed transfer corridors", async
   assert.equal(pairs.params.at(-1), 5);
 });
 
+function transferPairsEnv({ pairs = [], totals } = {}) {
+  return {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              all: () =>
+                Promise.resolve({
+                  results: /WITH pair_totals/.test(sql)
+                    ? [
+                        totals ?? {
+                          transfer_count: 0,
+                          total_volume_tao: 0,
+                          unique_pairs: 0,
+                          top_pair_volume_tao: 0,
+                        },
+                      ]
+                    : /ORDER BY/.test(sql)
+                      ? pairs
+                      : [],
+                }),
+            };
+          },
+        };
+      },
+    },
+  };
+}
+
+const PAIRS_CSV_HEADER =
+  "from,to,volume_tao,transfer_count,last_block,last_observed_at";
+const PAIR_ROW = {
+  from: "5Sa",
+  to: "5Rx",
+  volume_tao: 80,
+  transfer_count: 5,
+  last_block: "8454388",
+  last_observed_at: Date.parse("2026-07-03T00:00:00.000Z"),
+};
+const PAIR_TOTALS = {
+  transfer_count: 10,
+  total_volume_tao: 100,
+  unique_pairs: 4,
+  top_pair_volume_tao: 80,
+};
+
+test("GET /api/v1/chain/transfer-pairs exports the ranked pairs as CSV with ?format=csv", async () => {
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d&format=csv",
+    ),
+    transferPairsEnv({ pairs: [PAIR_ROW], totals: PAIR_TOTALS }),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.match(
+    res.headers.get("content-disposition"),
+    /attachment; filename="chain-transfer-pairs\.csv"/,
+  );
+  const lines = (await res.text()).trim().split("\r\n");
+  assert.equal(lines[0], PAIRS_CSV_HEADER);
+  assert.equal(lines.length, 2); // header + 1 pair row
+  assert.equal(lines[1], "5Sa,5Rx,80,5,8454388,2026-07-03T00:00:00.000Z");
+});
+
+test("GET /api/v1/chain/transfer-pairs honors Accept: text/csv the same as ?format=csv", async () => {
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/transfer-pairs", {
+      headers: { accept: "text/csv" },
+    }),
+    transferPairsEnv({ pairs: [PAIR_ROW], totals: PAIR_TOTALS }),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+});
+
+test("GET /api/v1/chain/transfer-pairs emits a header-only CSV on a cold store", async () => {
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfer-pairs?format=csv",
+    ),
+    transferPairsEnv({}),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.equal((await res.text()).trim(), PAIRS_CSV_HEADER);
+});
+
+test("HEAD /api/v1/chain/transfer-pairs?format=csv returns the CSV headers with no body", async () => {
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfer-pairs?format=csv",
+      { method: "HEAD" },
+    ),
+    transferPairsEnv({ pairs: [PAIR_ROW], totals: PAIR_TOTALS }),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/csv/);
+  assert.equal(await res.text(), "");
+});
+
+test("GET /api/v1/chain/transfer-pairs rejects an unsupported format value with 400", async () => {
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfer-pairs?format=xml",
+    ),
+    transferPairsEnv({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+});
+
 test("HEAD /api/v1/chain/transfer-pairs returns headers without a body", async () => {
   const env = {
     ...createLocalArtifactEnv(),

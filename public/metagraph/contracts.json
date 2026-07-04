@@ -831,7 +831,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by volume or count, computed live from the account_events Transfer feed at /api/v1/chain/transfer-pairs (no static file).",
+      "description": "Network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by volume or count, computed live from the account_events Transfer feed at /api/v1/chain/transfer-pairs; pass ?format=csv to download the ranked pairs as CSV (no static file).",
       "id": "chain-transfer-pairs",
       "path": "/metagraph/chain/transfer-pairs.json",
       "schema_ref": "#/components/schemas/ChainTransferPairsArtifact",

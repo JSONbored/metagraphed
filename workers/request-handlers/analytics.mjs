@@ -786,6 +786,18 @@ const CHAIN_SERVING_CSV_COLUMNS = [
   "announcements_per_server",
 ];
 
+// CSV column order for the /api/v1/chain/transfer-pairs top corridors (the
+// row-shaped `pairs` array). The totals + top_pair_share rollup stay JSON-only,
+// mirroring chain-stake-flow / chain-weights.
+const CHAIN_TRANSFER_PAIRS_CSV_COLUMNS = [
+  "from",
+  "to",
+  "volume_tao",
+  "transfer_count",
+  "last_block",
+  "last_observed_at",
+];
+
 // Daily network-activity aggregates over the first-party chain D1 tiers (#1987):
 // per-UTC-day extrinsic/event/block counts, success rate, and unique signers —
 // the foundation time-series for the block-explorer "network at a glance" view
@@ -1058,16 +1070,23 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
 // /chain/transfers. Excludes malformed/self-transfer rows so every row represents
 // a real directed account corridor.
 export async function handleChainTransferPairs(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "sort"]);
+  const { label, days, error } = analyticsWindow(url, [
+    "limit",
+    "sort",
+    "format",
+  ]);
   if (error) return analyticsQueryError(error);
   const sortError = validateEnumParam(url, "sort", CHAIN_TRANSFER_PAIR_SORTS);
   if (sortError) return analyticsQueryError(sortError);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const { limit, error: limitError } = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
   });
   if (limitError) return analyticsQueryError(limitError);
   const sort = url.searchParams.get("sort") || "volume";
+  const csv = csvRequested(url, request);
 
   const cacheRequest =
     request.method === "HEAD"
@@ -1087,6 +1106,17 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
         limit,
         sort,
       });
+      // CSV exports the row-shaped top corridors; the totals + top_pair_share
+      // rollup stay JSON-only (mirrors chain-stake-flow / chain-weights).
+      if (csv) {
+        return csvResponse(
+          data.pairs,
+          "chain-transfer-pairs",
+          "short",
+          cacheRequest,
+          CHAIN_TRANSFER_PAIRS_CSV_COLUMNS,
+        );
+      }
       return envelopeResponse(
         cacheRequest,
         {
@@ -1100,7 +1130,7 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
         "short",
       );
     },
-    canonicalAnalyticsCacheRoute(url, ["limit", "sort"]),
+    `${canonicalAnalyticsCacheRoute(url, ["limit", "sort"])}${csv ? "&format=csv" : ""}`,
   );
   return request.method === "HEAD"
     ? new Response(null, { status: response.status, headers: response.headers })

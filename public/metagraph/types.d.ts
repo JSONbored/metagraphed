@@ -589,7 +589,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. */
+        /** Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. Pass ?format=csv to download the ranked pairs as CSV (the totals + top_pair_share stay JSON-only). */
         get: operations["chainTransferPairs"];
         put?: never;
         post?: never;
@@ -10602,6 +10602,8 @@ export interface operations {
                 window?: "7d" | "30d";
                 limit?: number;
                 sort?: "volume" | "count";
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -10609,7 +10611,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -10670,6 +10672,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainTransferPairsArtifact"];
                     };
+                    /**
+                     * @example from,to,volume_tao,transfer_count,last_block,last_observed_at
+                     *     5Sender_sample,5Receiver_sample,1250.5,42,8454388,2026-07-03T00:00:00.000Z
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

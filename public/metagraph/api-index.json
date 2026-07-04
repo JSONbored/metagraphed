@@ -6102,7 +6102,7 @@
     {
       "artifact_path": "/metagraph/chain/transfer-pairs.json",
       "cache": "short",
-      "description": "Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold.",
+      "description": "Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. Pass ?format=csv to download the ranked pairs as CSV (the totals + top_pair_share stay JSON-only).",
       "id": "chain-transfer-pairs",
       "method": "GET",
       "path": "/api/v1/chain/transfer-pairs",
@@ -6134,6 +6134,17 @@
             "enum": [
               "volume",
               "count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
             ],
             "type": "string"
           }
