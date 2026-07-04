@@ -622,6 +622,94 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.network.announcements, 70);
   });
 
+  test("chain prometheus samples keep announcements-per-exporter consistent", () => {
+    const exporterProps = {
+      distinct_exporters: { type: "integer" },
+      announcements: { type: "integer" },
+      announcements_per_exporter: { type: ["number", "null"] },
+    };
+    const prometheusSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "subnet_count",
+        "network",
+        "intensity_distribution",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          required: [
+            "distinct_exporters",
+            "announcements",
+            "announcements_per_exporter",
+          ],
+          properties: exporterProps,
+        },
+        intensity_distribution: {
+          type: ["object", "null"],
+          properties: {
+            count: { type: "integer" },
+            mean: { type: "number" },
+            min: { type: "number" },
+            p25: { type: "number" },
+            median: { type: "number" },
+            p75: { type: "number" },
+            p90: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "distinct_exporters",
+              "announcements",
+              "announcements_per_exporter",
+            ],
+            properties: { netuid: { type: "integer" }, ...exporterProps },
+          },
+        },
+      },
+    };
+    const sample = s(prometheusSchema, "data");
+
+    // The worked example is internally consistent: each subnet's announcements_per_exporter equals
+    // its PrometheusServed count divided by its distinct exporters, and the network rollup does the same.
+    for (const subnet of sample.subnets) {
+      assert.equal(
+        subnet.announcements_per_exporter,
+        subnet.announcements / subnet.distinct_exporters,
+      );
+    }
+    assert.equal(
+      sample.network.announcements_per_exporter,
+      sample.network.announcements / sample.network.distinct_exporters,
+    );
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.intensity_distribution.count, sample.subnets.length);
+
+    // A shape whose network lacks announcements_per_exporter is not a prometheus artifact and is
+    // left untouched (guard branch).
+    const notProm = JSON.parse(JSON.stringify(prometheusSchema));
+    delete notProm.properties.network.properties.announcements_per_exporter;
+    notProm.properties.network.required =
+      notProm.properties.network.required.filter(
+        (key) => key !== "announcements_per_exporter",
+      );
+    const untouched = s(notProm, "data");
+    assert.notEqual(untouched.network.announcements, 70);
+  });
+
   test("chain registration samples keep registrations-per-registrant consistent", () => {
     const registrantProps = {
       distinct_registrants: { type: "integer" },
