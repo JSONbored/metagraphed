@@ -1194,6 +1194,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainServingArtifact",
   ),
   artifact(
+    "chain-onboarding",
+    "/metagraph/chain/onboarding.json",
+    "Network-wide neuron registration inflow over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): each subnet's registration event count, distinct registered hotkeys, and average registrations per hotkey ranked into a leaderboard, a network rollup with the true distinct hotkey count (not a per-subnet sum) and total registrations, and a distribution summary of the per-subnet re-registration intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events NeuronRegistered stream at /api/v1/chain/onboarding (no static file).",
+    "ChainOnboardingArtifact",
+  ),
+  artifact(
     "chain-fees",
     "/metagraph/chain/fees.json",
     "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
@@ -2600,6 +2606,20 @@ export const API_ROUTES = [
     "/api/v1/chain/serving",
     "/metagraph/chain/serving.json",
     "Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-onboarding",
+    "GET",
+    "/api/v1/chain/onboarding",
+    "/metagraph/chain/onboarding.json",
+    "Fetch network-wide neuron registration inflow over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (registration event count, distinct registered hotkeys, and average registrations per hotkey) ranked by total registrations, a network rollup with the true distinct hotkey count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold.",
     "short",
     ["chain", "analytics"],
     [

@@ -622,6 +622,95 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.network.announcements, 70);
   });
 
+  test("chain onboarding samples keep registrations-per-hotkey consistent", () => {
+    const subnetProps = {
+      distinct_hotkeys: { type: "integer" },
+      registrations: { type: "integer" },
+      registrations_per_hotkey: { type: ["number", "null"] },
+    };
+    const onboardingSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "subnet_count",
+        "network",
+        "intensity_distribution",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          required: [
+            "distinct_hotkeys",
+            "registrations",
+            "registrations_per_hotkey",
+          ],
+          properties: subnetProps,
+        },
+        intensity_distribution: {
+          type: ["object", "null"],
+          properties: {
+            count: { type: "integer" },
+            mean: { type: "number" },
+            min: { type: "number" },
+            p25: { type: "number" },
+            median: { type: "number" },
+            p75: { type: "number" },
+            p90: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "distinct_hotkeys",
+              "registrations",
+              "registrations_per_hotkey",
+            ],
+            properties: { netuid: { type: "integer" }, ...subnetProps },
+          },
+        },
+      },
+    };
+    const sample = s(onboardingSchema, "data");
+
+    // The worked example is internally consistent: each subnet's registrations_per_hotkey equals
+    // its NeuronRegistered count divided by its distinct hotkeys, and the network rollup does the
+    // same.
+    for (const subnet of sample.subnets) {
+      assert.equal(
+        subnet.registrations_per_hotkey,
+        subnet.registrations / subnet.distinct_hotkeys,
+      );
+    }
+    assert.equal(
+      sample.network.registrations_per_hotkey,
+      sample.network.registrations / sample.network.distinct_hotkeys,
+    );
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.intensity_distribution.count, sample.subnets.length);
+
+    // A shape whose network lacks registrations_per_hotkey is not an onboarding artifact and is
+    // left untouched (guard branch).
+    const notOnboarding = JSON.parse(JSON.stringify(onboardingSchema));
+    delete notOnboarding.properties.network.properties.registrations_per_hotkey;
+    notOnboarding.properties.network.required =
+      notOnboarding.properties.network.required.filter(
+        (key) => key !== "registrations_per_hotkey",
+      );
+    const untouched = s(notOnboarding, "data");
+    assert.notEqual(untouched.network.registrations, 70);
+  });
+
   test("chain transfer-pair samples keep the top-pair share consistent", () => {
     const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
     const pairSchema = {

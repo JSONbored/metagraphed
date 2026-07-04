@@ -71,6 +71,11 @@ import {
   CHAIN_SERVING_LIMIT_MAX,
 } from "../../src/chain-serving.mjs";
 import {
+  loadChainOnboarding,
+  CHAIN_ONBOARDING_LIMIT_DEFAULT,
+  CHAIN_ONBOARDING_LIMIT_MAX,
+} from "../../src/chain-onboarding.mjs";
+import {
   loadChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,
@@ -1209,6 +1214,55 @@ export async function handleChainServing(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/serving.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit"]),
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// GET /api/v1/chain/onboarding: network-wide neuron registration inflow across every subnet over
+// a 7d/30d window, read from the account_events NeuronRegistered stream. Mirrors chain-serving:
+// window + limit params, HEAD probes normalized through the GET cache key so they cannot bypass
+// the edge cache and repeatedly force the network-wide aggregations, cache keyed on the analytics
+// cron freshness. The leaderboard is fixed to fastest-growing-first (total registration events).
+export async function handleChainOnboarding(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  if (error) return analyticsQueryError(error);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_ONBOARDING_LIMIT_DEFAULT,
+    maxLimit: CHAIN_ONBOARDING_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-onboarding",
+    async () => {
+      const data = await loadChainOnboarding(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/onboarding.json",
             data.observed_at,
           ),
         },
