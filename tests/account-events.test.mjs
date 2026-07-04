@@ -1412,6 +1412,8 @@ test("loadAccountEvents applies the ?netuid filter as a bound param on both bran
   );
   assert.ok(/AND netuid = \?/.test(captured.sql));
   assert.equal(captured.sql.match(/AND netuid = \?/g)?.length, 2);
+  assert.match(captured.sql, /INDEXED BY idx_account_events_hotkey_netuid/);
+  assert.match(captured.sql, /INDEXED BY idx_account_events_coldkey_netuid/);
   assert.deepEqual(captured.params, ["5Hk", 7, "5Hk", "5Hk", 7, 100, 0]);
 });
 
@@ -1426,6 +1428,10 @@ test("loadAccountEvents omits netuid filter when absent", async () => {
     {},
   );
   assert.ok(!/AND netuid = \?/.test(captured.sql));
+  assert.match(captured.sql, /INDEXED BY idx_account_events_hotkey/);
+  assert.match(captured.sql, /INDEXED BY idx_account_events_coldkey/);
+  assert.doesNotMatch(captured.sql, /idx_account_events_hotkey_netuid/);
+  assert.doesNotMatch(captured.sql, /idx_account_events_coldkey_netuid/);
 });
 
 test("loadAccountEvents short-circuits an inverted block range before D1", async () => {

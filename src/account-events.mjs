@@ -812,13 +812,26 @@ export function buildAccountTransfers(
 // loadAccountTransfers' both-direction feed).
 const ACCOUNT_EVENT_HOTKEY_INDEX = "idx_account_events_hotkey";
 const ACCOUNT_EVENT_COLDKEY_INDEX = "idx_account_events_coldkey";
+const ACCOUNT_EVENT_HOTKEY_NETUID_INDEX = "idx_account_events_hotkey_netuid";
+const ACCOUNT_EVENT_COLDKEY_NETUID_INDEX = "idx_account_events_coldkey_netuid";
 
-function accountEventIndexedUnion(select, filters = "", filterParams = []) {
+function accountEventIndexedUnion(
+  select,
+  filters = "",
+  filterParams = [],
+  { netuidFiltered = false } = {},
+) {
   const branchFilters = filters ? ` ${filters}` : "";
+  const hotkeyIndex = netuidFiltered
+    ? ACCOUNT_EVENT_HOTKEY_NETUID_INDEX
+    : ACCOUNT_EVENT_HOTKEY_INDEX;
+  const coldkeyIndex = netuidFiltered
+    ? ACCOUNT_EVENT_COLDKEY_NETUID_INDEX
+    : ACCOUNT_EVENT_COLDKEY_INDEX;
   return {
     sql:
-      `(SELECT ${select} FROM account_events INDEXED BY ${ACCOUNT_EVENT_HOTKEY_INDEX} WHERE hotkey = ?${branchFilters}` +
-      ` UNION ALL SELECT ${select} FROM account_events INDEXED BY ${ACCOUNT_EVENT_COLDKEY_INDEX} WHERE coldkey = ? AND (hotkey IS NULL OR hotkey <> ?)${branchFilters})`,
+      `(SELECT ${select} FROM account_events INDEXED BY ${hotkeyIndex} WHERE hotkey = ?${branchFilters}` +
+      ` UNION ALL SELECT ${select} FROM account_events INDEXED BY ${coldkeyIndex} WHERE coldkey = ? AND (hotkey IS NULL OR hotkey <> ?)${branchFilters})`,
     paramsFor(ss58) {
       return [ss58, ...filterParams, ss58, ss58, ...filterParams];
     },
@@ -983,6 +996,7 @@ export async function loadAccountEvents(
     ACCOUNT_EVENT_COLUMNS,
     filterParts.join(" "),
     filterParams,
+    { netuidFiltered: netuid != null },
   );
   const params = [...union.paramsFor(ss58), lim];
   let sql = `SELECT * FROM ${union.sql} ORDER BY block_number DESC, event_index DESC LIMIT ?`;
