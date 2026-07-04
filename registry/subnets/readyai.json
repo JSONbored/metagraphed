@@ -172,6 +172,25 @@
       },
       "source_urls": ["https://api.readyai.ai/openapi.json"],
       "url": "https://api.readyai.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-33-readyai-organic-query-results",
+      "kind": "data-artifact",
+      "name": "ReadyAI organic query results dataset",
+      "notes": "Public ReadyAI (SN33) HuggingFace text-classification corpus of organic query results (text plus classification labels and token counts); not gated. Published by the ReadyAi HF org whose podcast dataset the SN33 README already links, and the README declares the subnet (--netuid 33). Distinct from the already-registered podcast-conversations dataset.",
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
+        "https://huggingface.co/ReadyAi"
+      ],
+      "url": "https://huggingface.co/datasets/ReadyAi/organic_query_results_dataset"
     }
   ],
   "website_url": "https://readyai.ai/"
