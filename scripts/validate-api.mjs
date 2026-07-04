@@ -692,6 +692,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/stake-moves",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.network, "object");
+      assert.equal(
+        body.data.intensity_distribution === null ||
+          typeof body.data.intensity_distribution === "object",
+        true,
+      );
+      assert.equal(Array.isArray(body.data.subnets), true);
+    },
+  ],
+  [
     "/api/v1/chain/performance",
     (body) => {
       assert.equal(body.data.schema_version, 1);

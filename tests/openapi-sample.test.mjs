@@ -798,6 +798,90 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.network.registrations, 70);
   });
 
+  test("chain stake-moves samples keep movements-per-mover consistent", () => {
+    const moverProps = {
+      distinct_movers: { type: "integer" },
+      movements: { type: "integer" },
+      movements_per_mover: { type: ["number", "null"] },
+    };
+    const stakeMovesSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "subnet_count",
+        "network",
+        "intensity_distribution",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          required: ["distinct_movers", "movements", "movements_per_mover"],
+          properties: moverProps,
+        },
+        intensity_distribution: {
+          type: ["object", "null"],
+          properties: {
+            count: { type: "integer" },
+            mean: { type: "number" },
+            min: { type: "number" },
+            p25: { type: "number" },
+            median: { type: "number" },
+            p75: { type: "number" },
+            p90: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "distinct_movers",
+              "movements",
+              "movements_per_mover",
+            ],
+            properties: { netuid: { type: "integer" }, ...moverProps },
+          },
+        },
+      },
+    };
+    const sample = s(stakeMovesSchema, "data");
+
+    // The worked example is internally consistent: each subnet's movements_per_mover equals its
+    // StakeMoved count divided by its distinct movers, and the network rollup does the same.
+    for (const subnet of sample.subnets) {
+      assert.equal(
+        subnet.movements_per_mover,
+        subnet.movements / subnet.distinct_movers,
+      );
+    }
+    assert.equal(
+      sample.network.movements_per_mover,
+      sample.network.movements / sample.network.distinct_movers,
+    );
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.intensity_distribution.count, sample.subnets.length);
+
+    // A shape whose network lacks movements_per_mover is not a stake-moves artifact and is left
+    // untouched (guard branch).
+    const notMoves = JSON.parse(JSON.stringify(stakeMovesSchema));
+    delete notMoves.properties.network.properties.movements_per_mover;
+    notMoves.properties.network.required =
+      notMoves.properties.network.required.filter(
+        (key) => key !== "movements_per_mover",
+      );
+    const untouched = s(notMoves, "data");
+    assert.notEqual(untouched.network.movements, 70);
+  });
+
   test("chain transfer-pair samples keep the top-pair share consistent", () => {
     const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
     const pairSchema = {

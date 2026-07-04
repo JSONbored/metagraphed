@@ -3402,6 +3402,87 @@
         },
         "additionalProperties": false
       },
+      "ChainStakeMovesArtifact": {
+        "type": "object",
+        "description": "Network-wide stake-movement (re-delegation) activity over a 7d/30d window across the subnets with observed movement activity: a per-subnet leaderboard (distinct movers, StakeMoved count, movements per mover) plus a network rollup with the true distinct mover count and a distribution of per-subnet re-move intensity. The re-delegation-churn companion to the net-capital-flow /api/v1/chain/stake-flow — StakeMoved is an account relocating stake between hotkeys/subnets (move_stake) without unstaking, so it measures churn, not flow; keyed on the origin subnet and moving account. Served live from the account_events StakeMoved stream at /api/v1/chain/stake-moves (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "intensity_distribution",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": ["string", "null"], "enum": ["7d", "30d", null] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "intensity_distribution": {
+            "type": ["object", "null"],
+            "description": "Spread of the per-subnet movements-per-mover intensity across the subnets that saw a move in the window (null when no subnet saw a move). subnet_count and this distribution cover only subnets with observed StakeMoved activity, not every registered subnet.",
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "properties": {
+              "count": { "type": "integer", "minimum": 0 },
+              "mean": { "type": "number", "minimum": 0 },
+              "min": { "type": "number", "minimum": 0 },
+              "p25": { "type": "number", "minimum": 0 },
+              "median": { "type": "number", "minimum": 0 },
+              "p75": { "type": "number", "minimum": 0 },
+              "p90": { "type": "number", "minimum": 0 },
+              "max": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "network": {
+            "type": "object",
+            "description": "Rollup over the window: the true distinct movers across all subnets (an account moving stake out of several subnets counts once, so NOT the sum of the per-subnet counts), total StakeMoved events, and the network movements-per-mover intensity (null when no stake moved).",
+            "required": ["distinct_movers", "movements", "movements_per_mover"],
+            "properties": {
+              "distinct_movers": { "type": "integer", "minimum": 0 },
+              "movements": { "type": "integer", "minimum": 0 },
+              "movements_per_mover": {
+                "type": ["number", "null"],
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "distinct_movers",
+                "movements",
+                "movements_per_mover"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "distinct_movers": { "type": "integer", "minimum": 0 },
+                "movements": { "type": "integer", "minimum": 0 },
+                "movements_per_mover": {
+                  "type": ["number", "null"],
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "ChainFeeDay": {
         "type": "object",
         "additionalProperties": false,

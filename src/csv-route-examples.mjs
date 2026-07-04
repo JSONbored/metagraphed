@@ -41,6 +41,11 @@ export const ROUTE_CSV_EXAMPLES = {
     "netuid,distinct_registrants,registrations,registrations_per_registrant",
     "1,4,40,10",
   ].join("\r\n"),
+  // The /chain/stake-moves per-subnet stake-movement (re-delegation) leaderboard rows.
+  "chain-stake-moves": [
+    "netuid,distinct_movers,movements,movements_per_mover",
+    "1,4,40,10",
+  ].join("\r\n"),
   // The /chain/transfer-pairs top sender -> receiver corridors.
   "chain-transfer-pairs": [
     "from,to,volume_tao,transfer_count,last_block,last_observed_at",
