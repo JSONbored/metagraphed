@@ -18,7 +18,7 @@ import {
 import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
-import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
+import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
   GET_ECONOMICS_MCP_TOOL,
@@ -314,7 +314,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.46.0";
+export const MCP_SERVER_VERSION = "1.47.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -5064,18 +5064,71 @@ export const MCP_TOOLS = [
     name: "list_candidates",
     title: "List unpromoted candidate surfaces",
     description:
-      "Fetch the full catalog of unpromoted candidate surfaces across all " +
-      "subnets: surfaces that have been discovered or proposed but not yet " +
-      "curated/promoted, each with its subnet (netuid), kind, provider, and " +
-      "review state. Use it to see what enrichment is still pending, versus the " +
-      "promoted catalog in list_surfaces. Mirrors GET /api/v1/candidates.",
+      "Fetch unpromoted candidate surfaces across all subnets: surfaces that " +
+      "have been discovered or proposed but not yet curated/promoted, each " +
+      "with its subnet (netuid), kind, provider, and review state. Use it to " +
+      "see what enrichment is still pending, versus the promoted catalog in " +
+      "list_surfaces. Optionally filter by netuid/kind/provider/state and page " +
+      "with limit/offset — the full catalog can be large. Mirrors " +
+      "GET /api/v1/candidates.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        kind: {
+          type: "string",
+          enum: QUERY_ENUMS.surfaceKind,
+          description: "Surface kind, e.g. 'openapi' or 'subnet-api'.",
+        },
+        provider: {
+          type: "string",
+          description: "Provider slug, e.g. 'datura'.",
+        },
+        state: {
+          type: "string",
+          enum: QUERY_ENUMS.candidateState,
+          description: "Review state, e.g. 'schema-valid' or 'verified'.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max candidates to return. Omit for the full list.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset into the (filtered) list. Default 0.",
+          minimum: 0,
+        },
+      },
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/candidates.json");
+    async handler(args, ctx) {
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
+      const provider = optionalString(args, "provider");
+      const state = optionalEnum(args, "state", QUERY_ENUMS.candidateState);
+      const limit = optionalPositiveInt(args, "limit");
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const data = await loadArtifactData(ctx, "/metagraph/candidates.json");
+      const all = Array.isArray(data.candidates) ? data.candidates : [];
+      const filtered = all.filter(
+        (c) =>
+          (netuid === null || c.netuid === netuid) &&
+          (kind === null || c.kind === kind) &&
+          (provider === null || c.provider === provider) &&
+          (state === null || c.state === state),
+      );
+      const page =
+        limit === null
+          ? filtered.slice(offset)
+          : filtered.slice(offset, offset + limit);
+      return {
+        ...data,
+        candidates: page,
+        total: filtered.length,
+        returned: page.length,
+        offset,
+      };
     },
   },
   {
