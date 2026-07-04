@@ -58,6 +58,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/stake-moves\.json$/,
   // Neuron-registration activity: computed live from the account_events NeuronRegistered stream.
   /^subnets\/(?:\d+|\{netuid\})\/registrations\.json$/,
+  // Axon-removal activity: computed live from the account_events AxonInfoRemoved stream.
+  /^subnets\/(?:\d+|\{netuid\})\/axon-removals\.json$/,
   // Per-UID emission yield distribution: computed live from the neurons snapshot.
   /^subnets\/(?:\d+|\{netuid\})\/yield\.json$/,
   // Cross-subnet movers leaderboard: computed live from neuron_daily.

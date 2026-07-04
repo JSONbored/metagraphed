@@ -1662,6 +1662,38 @@
         },
         "additionalProperties": false
       },
+      "SubnetAxonRemovalsArtifact": {
+        "type": "object",
+        "description": "Per-subnet axon-removal activity over a 7d/30d window: the distinct removers (hotkeys), AxonInfoRemoved event count, and removals per remover for ONE subnet. Raw axon-teardown activity from the account_events AxonInfoRemoved stream — the removal-side companion to the AxonServed announcement activity in /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns) — served live at /api/v1/subnets/{netuid}/axon-removals (no static file); zeroed when the subnet has no AxonInfoRemoved events in the window.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "distinct_removers",
+          "removals",
+          "removals_per_remover"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", null]
+          },
+          "observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "distinct_removers": { "type": "integer", "minimum": 0 },
+          "removals": { "type": "integer", "minimum": 0 },
+          "removals_per_remover": {
+            "type": ["number", "null"],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "SubnetYieldArtifact": {
         "type": "object",
         "description": "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low, with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file).",

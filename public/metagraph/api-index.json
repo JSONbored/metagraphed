@@ -436,6 +436,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-axon-removals",
+      "path": "/metagraph/subnets/{netuid}/axon-removals.json",
+      "schema_ref": "#/components/schemas/SubnetAxonRemovalsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-stake-flow",
       "path": "/metagraph/subnets/{netuid}/stake-flow.json",
       "schema_ref": "#/components/schemas/SubnetStakeFlowArtifact",
@@ -4922,6 +4929,29 @@
       "id": "subnet-registrations",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/registrations",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/axon-removals.json",
+      "cache": "short",
+      "description": "Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, computed live from the account_events AxonInfoRemoved stream. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). Schema-stable zeroed card when the subnet has no AxonInfoRemoved events in the window.",
+      "id": "subnet-axon-removals",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/axon-removals",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

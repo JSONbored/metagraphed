@@ -152,6 +152,11 @@ import {
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
 } from "../../src/subnet-registrations.mjs";
 import {
+  loadSubnetAxonRemovals,
+  SUBNET_AXON_REMOVALS_WINDOWS,
+  DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
+} from "../../src/subnet-axon-removals.mjs";
+import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
@@ -1427,6 +1432,57 @@ export async function handleSubnetRegistrations(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/registrations.json`,
+        data.observed_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// Canonical edge-cache key for the subnet-axon-removals route: only ?window= (7d/30d) changes the
+// response, canonicalized to its default when omitted so equivalent requests share a slot.
+export function canonicalSubnetAxonRemovalsCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
+  if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+}
+
+// GET /api/v1/subnets/{netuid}/axon-removals?window=7d|30d: axon-removal activity for one subnet
+// over the window — distinct removers (hotkeys), AxonInfoRemoved event count, and removals per
+// remover — read live from the account_events AxonInfoRemoved stream. The removal-side companion
+// to /serving. Cold/absent store → 200 with a zeroed card (never 404).
+export async function handleSubnetAxonRemovals(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
+  if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(
+        windowParam,
+        SUBNET_AXON_REMOVALS_WINDOWS,
+      ),
+    });
+  }
+  const data = await loadSubnetAxonRemovals(d1Runner(env), netuid, {
+    windowLabel: windowParam,
+    windowDays: SUBNET_AXON_REMOVALS_WINDOWS[windowParam],
+  });
+  // account_events-derived, so the meta reports the event-stream source (accountMeta) with
+  // generated_at the newest observed AxonInfoRemoved event, mirroring the sibling stake-flow route.
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/axon-removals.json`,
         data.observed_at,
       ),
     },

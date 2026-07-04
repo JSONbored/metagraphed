@@ -109,6 +109,8 @@ import {
   canonicalSubnetStakeMovesCachePath,
   handleSubnetRegistrations,
   canonicalSubnetRegistrationsCachePath,
+  handleSubnetAxonRemovals,
+  canonicalSubnetAxonRemovalsCachePath,
   handleSubnetYield,
   handleSubnetPerformance,
   handleSubnetMovers,
@@ -311,6 +313,7 @@ import {
   SUBNET_PROMETHEUS_PATH_PATTERN,
   SUBNET_STAKE_MOVES_PATH_PATTERN,
   SUBNET_REGISTRATIONS_PATH_PATTERN,
+  SUBNET_AXON_REMOVALS_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
   SUBNET_PERFORMANCE_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
@@ -1594,6 +1597,27 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             resolved.url,
           ),
         canonicalSubnetRegistrationsCachePath(resolved.url),
+      );
+    }
+    const axonRemovalsMatch = SUBNET_AXON_REMOVALS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (axonRemovalsMatch) {
+      // Axon-removal activity summed live from account_events over the window —
+      // deterministic per request, edge-cache like the sibling stake-flow route.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-axon-removals",
+        () =>
+          handleSubnetAxonRemovals(
+            request,
+            env,
+            Number(axonRemovalsMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetAxonRemovalsCachePath(resolved.url),
       );
     }
     // Per-UID emission yield distribution over the current neurons snapshot — computed

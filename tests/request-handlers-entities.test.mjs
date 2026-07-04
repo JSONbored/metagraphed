@@ -32,6 +32,7 @@ import {
   handleSubnetPrometheus,
   handleSubnetStakeMoves,
   handleSubnetRegistrations,
+  handleSubnetAxonRemovals,
   handleSubnetMovers,
   handleAccount,
   handleAccountEvents,
@@ -58,6 +59,7 @@ import {
   canonicalSubnetPrometheusCachePath,
   canonicalSubnetStakeMovesCachePath,
   canonicalSubnetRegistrationsCachePath,
+  canonicalSubnetAxonRemovalsCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
@@ -2035,6 +2037,84 @@ describe("handleSubnetRegistrations", () => {
         ),
       );
       assert.equal(path, "/api/v1/subnets/7/registrations?bogus=1");
+    });
+  });
+});
+
+describe("handleSubnetAxonRemovals", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetAxonRemovals(
+      req(`/api/v1/subnets/${NETUID}/axon-removals`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/axon-removals?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleSubnetAxonRemovals(
+      req(`/api/v1/subnets/${NETUID}/axon-removals`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/axon-removals?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns a schema-stable zeroed card on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetAxonRemovals,
+      req(`/api/v1/subnets/${NETUID}/axon-removals`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/axon-removals?window=30d`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.distinct_removers, 0);
+    assert.equal(body.data.removals, 0);
+    assert.equal(body.data.removals_per_remover, null);
+    await assertValidComponent("SubnetAxonRemovalsArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/axon-removals.json`,
+    );
+    // account_events provenance (not the metagraph snapshot); null on a cold store.
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  describe("canonicalSubnetAxonRemovalsCachePath", () => {
+    test("canonicalizes omitted and explicit default window to one cache key", () => {
+      const omitted = canonicalSubnetAxonRemovalsCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/axon-removals"),
+      );
+      const explicit = canonicalSubnetAxonRemovalsCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/axon-removals?window=7d",
+        ),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(omitted, "/api/v1/subnets/7/axon-removals?window=7d");
+    });
+
+    test("passes an invalid window through unchanged (the handler rejects it)", () => {
+      const path = canonicalSubnetAxonRemovalsCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/axon-removals?window=bogus",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/axon-removals?window=bogus");
+    });
+
+    test("passes an unsupported query param through unchanged (validation error)", () => {
+      const path = canonicalSubnetAxonRemovalsCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/axon-removals?bogus=1",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/axon-removals?bogus=1");
     });
   });
 });
