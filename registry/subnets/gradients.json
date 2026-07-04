@@ -236,6 +236,25 @@
         "https://www.gradients.io/"
       ],
       "url": "https://api.gradients.io/v1/network/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-tournament-details",
+      "kind": "subnet-api",
+      "name": "Gradients latest tournament details API",
+      "notes": "Public no-auth Gradients tournament results endpoint (winner/base-winner hotkeys, per-round participant eliminations) for the latest text/image/environment tournaments; distinct from the registered performance/weights and network-status APIs. Declared in the operator's own OpenAPI spec (source).",
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://api.gradients.io/openapi.json",
+        "https://www.gradients.io/"
+      ],
+      "url": "https://api.gradients.io/tournament/latest/details"
     }
   ],
   "website_url": "https://www.gradients.io/"
