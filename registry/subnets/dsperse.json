@@ -148,6 +148,25 @@
       },
       "source_urls": ["https://github.com/inference-labs-inc/subnet-2"],
       "url": "https://www.inferencelabs.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-2-truthtensor-benchmark-dataset",
+      "kind": "data-artifact",
+      "name": "Inference Labs TruthTensor benchmark dataset",
+      "notes": "Public Inference Labs HuggingFace TruthTensor benchmark — ~88k text/parquet rows of per-run LLM decision-execution logs (model, latency/duration, token counts, action, reasoning columns) measuring instruction divergence; not gated. Published by inferencelabs, the HF-verified org of Inference Labs, the DSperse (SN2) operator (its site subnet2.inferencelabs.com and X @inference_labs are the subnet's registered surfaces).",
+      "provider": "inference-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://www.inferencelabs.com/",
+        "https://huggingface.co/inferencelabs"
+      ],
+      "url": "https://huggingface.co/datasets/inferencelabs/TruthTensor"
     }
   ],
   "website_url": "https://subnet2.inferencelabs.com/"
