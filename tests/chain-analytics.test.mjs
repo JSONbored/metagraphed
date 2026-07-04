@@ -519,6 +519,31 @@ test("buildChainSigners nulls non-finite and negative last_tx_block", () => {
   assert.equal(out.signers[2].last_tx_block, 12345);
 });
 
+test("buildChainSigners nulls blank and missing last_tx_block cells (not block 0)", () => {
+  // Mirrors the blank-cell guard in counterparties.mjs (#3008): Number("") is 0.
+  for (const bad of [null, undefined, "", "   "]) {
+    const out = buildChainSigners({
+      window: "7d",
+      rows: [{ signer: "5A", tx_count: 1, last_tx_block: bad }],
+    });
+    assert.equal(
+      out.signers[0].last_tx_block,
+      null,
+      `last_tx_block for ${JSON.stringify(bad)}`,
+    );
+  }
+  const missing = buildChainSigners({
+    window: "7d",
+    rows: [{ signer: "5B", tx_count: 1 }],
+  });
+  assert.equal(missing.signers[0].last_tx_block, null);
+  const numericString = buildChainSigners({
+    window: "7d",
+    rows: [{ signer: "5C", tx_count: 1, last_tx_block: "12345" }],
+  });
+  assert.equal(numericString.signers[0].last_tx_block, 12345);
+});
+
 test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", async () => {
   const captured = [];
   const env = {
