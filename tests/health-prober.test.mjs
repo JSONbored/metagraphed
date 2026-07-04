@@ -369,6 +369,39 @@ describe("runHealthProber", () => {
       (s) => s.surface_id === "opentensor-finney-rpc",
     );
     assert.equal(rpcRow.last_ok, new Date(50000).toISOString());
+  });
+
+  test("an out-of-range prior last_ok coerces to null instead of throwing a RangeError", async () => {
+    // A corrupt/out-of-range epoch (e.g. 1e100) carried on a prior last_ok would make
+    // new Date(ms).toISOString() throw, tearing down the run. It must coerce to null.
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "sn7-api-old",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1e100,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    const kv = makeKv();
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv,
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    const current = kv.json(KV_HEALTH_CURRENT);
+    // sn7-api probes failed, so it keeps its (out-of-range) prior last_ok -> null.
+    const apiRow = current.surfaces.find((s) => s.surface_id === "sn7-api");
+    assert.equal(apiRow.last_ok, null);
 
     // RPC pool snapshot: only the RPC kind, eligible because ok.
     const pool = kv.json(KV_HEALTH_RPC_POOL);
