@@ -25,6 +25,22 @@
       },
       "source_urls": ["https://github.com/chronollm/sn38/blob/main/README.md"],
       "url": "https://github.com/chronollm/sn38/blob/main/docs/miner.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-chronogpt-models",
+      "kind": "data-artifact",
+      "name": "ChronoGPT models (HuggingFace)",
+      "notes": "Official ChronoGPT collection on HuggingFace (per-year chrono-gpt-v1 models), listed as \"ChronoGPT models\" in the official ChronoLLM README.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://github.com/chronollm/sn38/blob/main/README.md"],
+      "url": "https://huggingface.co/collections/manelalab/chronogpt-67c878a02139875341ca9d3b"
     }
   ]
 }
