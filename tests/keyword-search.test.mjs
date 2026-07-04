@@ -55,6 +55,21 @@ describe("queryTerms", () => {
       "vision",
     ]);
   });
+
+  test("repeated terms do not consume the bounded unique-term budget (#2573)", () => {
+    const uniqueTerms = Array.from(
+      { length: MAX_QUERY_TERMS + 3 },
+      (_, i) => `u${i}`,
+    );
+    const withDuplicateNoise = ["u0", "u0", "u0", ...uniqueTerms, "u1"].join(
+      " ",
+    );
+
+    assert.deepEqual(
+      queryTerms(withDuplicateNoise),
+      uniqueTerms.slice(0, MAX_QUERY_TERMS),
+    );
+  });
 });
 
 describe("keywordScore — substring noise is gone (whole-word / prefix only)", () => {
@@ -88,6 +103,18 @@ describe("keywordScore — substring noise is gone (whole-word / prefix only)", 
   test("word-prefix matching still aids discovery (infer → inference)", () => {
     const doc = { name: "x", slug: "x", text: ["inference"] };
     assert.ok(score(doc, "infer") > 0);
+  });
+
+  test("whole-word and prefix paths use their documented weights (#2573)", () => {
+    const textOnly = { name: "x", slug: "x", text: ["inference"] };
+    const nameOnly = { name: "Inference", slug: "inference", text: [] };
+
+    // TEXT_WEIGHT(1) + FULL_COVERAGE_BOOST(2).
+    assert.equal(keywordScore(textOnly, ["inference"]), 3);
+    // TEXT_WEIGHT(1) * PREFIX_FACTOR(0.5) + FULL_COVERAGE_BOOST(2).
+    assert.equal(keywordScore(textOnly, ["infer"]), 2.5);
+    // NAME_WEIGHT(3) * PREFIX_FACTOR(0.5) + FULL_COVERAGE_BOOST(2).
+    assert.equal(keywordScore(nameOnly, ["infer"]), 3.5);
   });
 
   test("a 1-char term does not prefix-explode across the index", () => {
@@ -198,6 +225,13 @@ describe("keywordScore — precision boosts", () => {
       score(nameMatch, "targon-search") > score(byText, "targon-search"),
     );
   });
+
+  test("exact name and full coverage boosts stack numerically (#2573)", () => {
+    const doc = { name: "Targon Search", slug: "targon-search", text: [] };
+
+    // Two NAME_WEIGHT hits (3 + 3), FULL_COVERAGE_BOOST (2), EXACT_NAME_BOOST (5).
+    assert.equal(keywordScore(doc, ["targon", "search"]), 13);
+  });
 });
 
 describe("keywordScore — non-matches and edge inputs", () => {
@@ -210,6 +244,8 @@ describe("keywordScore — non-matches and edge inputs", () => {
     const doc = { name: "Compute", slug: "compute", text: ["gpu"] };
     assert.equal(keywordScore(doc, []), 0);
     assert.equal(keywordScore(doc, undefined), 0);
+    assert.equal(keywordScore(doc, "compute"), 0);
+    assert.equal(keywordScore(doc, { 0: "compute", length: 1 }), 0);
   });
 
   test("missing fields are tolerated", () => {
