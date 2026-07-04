@@ -286,13 +286,23 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     }
   }
 
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_RPC_BODY_BYTES) {
-    return errorResponse(
-      "rpc_body_too_large",
-      "RPC request body is too large for the read-only proxy.",
-      413,
-    );
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    const contentLength = Number(declaredLength);
+    if (!Number.isFinite(contentLength) || contentLength < 0) {
+      return errorResponse(
+        "rpc_invalid_content_length",
+        "Invalid Content-Length header.",
+        400,
+      );
+    }
+    if (contentLength > MAX_RPC_BODY_BYTES) {
+      return errorResponse(
+        "rpc_body_too_large",
+        "RPC request body is too large for the read-only proxy.",
+        413,
+      );
+    }
   }
 
   let bodyText;

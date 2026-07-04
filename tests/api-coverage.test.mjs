@@ -1892,6 +1892,20 @@ describe("RPC proxy edges", () => {
     assert.equal((await res.json()).error.code, "rpc_body_too_large");
   });
 
+  test("400 when Content-Length is invalid before reading the body", async () => {
+    const res = await handleRequest(
+      req("/rpc/v1/finney", {
+        method: "POST",
+        headers: { "content-length": "-1" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "system_health" }),
+      }),
+      rpcEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "rpc_invalid_content_length");
+  });
+
   test("413 when the decoded body byte length exceeds the limit", async () => {
     // content-length header omitted/0, but the actual body is oversized.
     const big = "x".repeat(70000);

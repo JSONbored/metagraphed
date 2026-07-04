@@ -370,6 +370,70 @@ describe("handleRpcProxyRequest", () => {
     assert.equal(body.error.code, "rpc_invalid_json");
   });
 
+  test("400 rpc_invalid_content_length for a negative Content-Length", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost(
+        { jsonrpc: "2.0", id: 1, method: "system_health" },
+        {
+          "content-length": "-1",
+        },
+      ),
+      rpcEnv(),
+      finneyUrl,
+    );
+    const body = await errorJson(res, 400);
+    assert.equal(body.error.code, "rpc_invalid_content_length");
+  });
+
+  test("400 rpc_invalid_content_length for a non-numeric Content-Length", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost(
+        { jsonrpc: "2.0", id: 1, method: "system_health" },
+        {
+          "content-length": "not-a-number",
+        },
+      ),
+      rpcEnv(),
+      finneyUrl,
+    );
+    const body = await errorJson(res, 400);
+    assert.equal(body.error.code, "rpc_invalid_content_length");
+  });
+
+  test("413 rpc_body_too_large when Content-Length exceeds the cap", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost(
+        { jsonrpc: "2.0", id: 1, method: "system_health" },
+        {
+          "content-length": "70000",
+        },
+      ),
+      rpcEnv(),
+      finneyUrl,
+    );
+    const body = await errorJson(res, 413);
+    assert.equal(body.error.code, "rpc_body_too_large");
+  });
+
+  test("passes a finite Content-Length within the cap before reading the body", async () => {
+    const payload = {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "author_submitExtrinsic",
+    };
+    const res = await handleRpcProxyRequest(
+      rpcPost(payload, {
+        "content-length": String(
+          new TextEncoder().encode(JSON.stringify(payload)).byteLength,
+        ),
+      }),
+      rpcEnv(),
+      finneyUrl,
+    );
+    const body = await errorJson(res, 403);
+    assert.equal(body.error.code, "rpc_method_blocked");
+  });
+
   test("403 rpc_method_blocked for a denied method", async () => {
     const res = await handleRpcProxyRequest(
       rpcPost({ jsonrpc: "2.0", id: 1, method: "author_submitExtrinsic" }),
