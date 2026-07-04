@@ -3423,6 +3423,107 @@ describe("MCP get_subnet_axon_removals", () => {
   });
 });
 
+describe("MCP get_subnet_deregistrations", () => {
+  function deregistrationsD1(row = null) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              return {
+                async all() {
+                  return { results: row ? [row] : [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("returns the deregistration scorecard", async () => {
+    const res = await callTool(
+      "get_subnet_deregistrations",
+      { netuid: 9 },
+      {
+        env: deregistrationsD1({
+          deregistrations: 8,
+          distinct_deregistered_hotkeys: 2,
+          newest_observed: 1_717_400_000_000,
+        }),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 9);
+    assert.equal(out.window, "7d");
+    assert.equal(out.deregistrations, 8);
+    assert.equal(out.distinct_deregistered_hotkeys, 2);
+    assert.equal(out.deregistrations_per_hotkey, 4);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_deregistrations", { window: "30d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+});
+
+describe("MCP get_subnet_performance_history", () => {
+  function performanceHistoryD1(rows = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              return {
+                async all() {
+                  return { results: rows };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("returns the per-day performance series", async () => {
+    const res = await callTool(
+      "get_subnet_performance_history",
+      { netuid: 7, window: "7d" },
+      {
+        env: performanceHistoryD1([
+          {
+            snapshot_date: "2026-06-25",
+            incentive: 0.1,
+            dividends: 0.2,
+            trust: 0.5,
+            consensus: 0.6,
+            validator_trust: 0.7,
+            validator_permit: 1,
+            active: 1,
+          },
+        ]),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "7d");
+    assert.equal(out.point_count, 1);
+    assert.equal(out.points[0].snapshot_date, "2026-06-25");
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_subnet_performance_history", {
+      netuid: 7,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+});
+
 describe("MCP get_network_activity", () => {
   test("merges extrinsics + blocks tiers from D1", async () => {
     const env = {

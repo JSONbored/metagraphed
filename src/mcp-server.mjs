@@ -217,6 +217,11 @@ import {
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
 } from "./subnet-axon-removals.mjs";
+import {
+  loadSubnetDeregistrations,
+  SUBNET_DEREGISTRATIONS_WINDOWS,
+  DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
+} from "./subnet-deregistrations.mjs";
 import { loadAccountPortfolio } from "./account-portfolio.mjs";
 import {
   buildNeuronHistory,
@@ -228,7 +233,11 @@ import {
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
-import { loadSubnetPerformance } from "./subnet-performance.mjs";
+import {
+  loadSubnetPerformance,
+  loadSubnetPerformanceHistory,
+  parseSubnetPerformanceHistoryWindow,
+} from "./subnet-performance.mjs";
 import { loadChainPerformance } from "./chain-performance.mjs";
 import { loadChainYield } from "./chain-yield.mjs";
 import { loadBlocksSummary } from "./blocks-summary.mjs";
@@ -295,7 +304,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.38.0";
+export const MCP_SERVER_VERSION = "1.39.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -316,6 +325,9 @@ const SUBNET_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
 );
 const SUBNET_AXON_REMOVALS_WINDOW_KEYS = Object.keys(
   SUBNET_AXON_REMOVALS_WINDOWS,
+);
+const SUBNET_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
+  SUBNET_DEREGISTRATIONS_WINDOWS,
 );
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
@@ -403,7 +415,9 @@ export const MCP_INSTRUCTIONS =
   "(the validators behind /weights ranked by activity), " +
   "get_subnet_axon_removals the per-subnet AxonInfoRemoved teardown activity " +
   "(distinct removers, event count, removals per remover — the removal-side " +
-  "companion to /serving), get_subnet_movers the cross-subnet " +
+  "companion to /serving), get_subnet_deregistrations the per-subnet " +
+  "neuron-deregistration activity card, get_subnet_performance_history the " +
+  "per-day reward-flow and trust trend for one subnet, get_subnet_movers the cross-subnet " +
   "stake/emission/validator momentum leaderboard, get_subnet_yield per-UID " +
   "rates plus distribution percentiles over the current metagraph snapshot, " +
   "get_registry_leaderboards the live " +
@@ -2628,6 +2642,80 @@ export const MCP_TOOLS = [
       return await loadSubnetAxonRemovals(mcpD1Runner(ctx), netuid, {
         windowLabel: window,
         windowDays: SUBNET_AXON_REMOVALS_WINDOWS[window],
+      });
+    },
+  },
+  {
+    name: "get_subnet_deregistrations",
+    title: "Get subnet deregistration activity",
+    description:
+      "Fetch neuron-deregistration activity for one subnet over a 7d or 30d " +
+      "window (default 7d): the distinct deregistered hotkeys, the " +
+      "NeuronDeregistered event count, and the average deregistrations per " +
+      "hotkey, computed live from the account_events NeuronDeregistered stream. " +
+      "Raw deregistration/eviction activity — the exit-side companion to " +
+      "NeuronRegistered demand. Mirrors GET /api/v1/subnets/{netuid}/deregistrations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: SUBNET_DEREGISTRATIONS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW}).`,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
+      if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${SUBNET_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      return await loadSubnetDeregistrations(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+        windowDays: SUBNET_DEREGISTRATIONS_WINDOWS[window],
+      });
+    },
+  },
+  {
+    name: "get_subnet_performance_history",
+    title: "Get subnet performance history",
+    description:
+      "Fetch the per-day reward-flow and trust trend for one subnet over a " +
+      "7d, 30d, or 90d window (default 30d): daily incentive/dividends Gini, " +
+      "Nakamoto coefficient, top-10% share, plus mean/median trust, consensus, " +
+      "and validator_trust scores from the neuron_daily rollup. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/performance/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "Lookback window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const parsed = parseSubnetPerformanceHistoryWindow(args?.window);
+      if (args?.window !== undefined && parsed.error) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      const { label, days } = parsed;
+      return await loadSubnetPerformanceHistory(mcpD1Runner(ctx), netuid, {
+        windowLabel: label,
+        windowDays: days,
       });
     },
   },
@@ -6700,6 +6788,38 @@ const TOOL_OUTPUT_SCHEMAS = {
       distinct_removers: { type: "integer" },
       removals: { type: "integer" },
       removals_per_remover: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_deregistrations: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "window",
+      "distinct_deregistered_hotkeys",
+      "deregistrations",
+      "deregistrations_per_hotkey",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      distinct_deregistered_hotkeys: { type: "integer" },
+      deregistrations: { type: "integer" },
+      deregistrations_per_hotkey: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_performance_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "window", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: { type: "array", items: { type: "object" } },
     },
   },
   get_subnet_movers: {
