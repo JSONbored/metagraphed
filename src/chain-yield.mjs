@@ -61,7 +61,10 @@ function subnetNetuid(value) {
 
 function captureStamp(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
+    const date = new Date(value);
+    if (Number.isFinite(date.getTime())) {
+      return { ms: value, value: date.toISOString() };
+    }
   }
   if (typeof value === "string") {
     const ms = Date.parse(value);

@@ -126,6 +126,22 @@ describe("buildChainYield", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
   });
 
+  test("ignores out-of-range numeric captured_at values", () => {
+    const out = buildChainYield([
+      {
+        stake_tao: 1,
+        emission_tao: 0,
+        captured_at: 100_000_000_000_000_000_000,
+      },
+      {
+        stake_tao: 1,
+        emission_tao: 0,
+        captured_at: 1_750_000_000_000,
+      },
+    ]);
+    assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
+  });
+
   test("coerces numeric-string stake/emission cells from D1", () => {
     const out = buildChainYield([
       {
