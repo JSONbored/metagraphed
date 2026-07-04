@@ -510,9 +510,14 @@ def _extrinsic_signer(value):
 def _safe_json(v):
     """Best-effort JSON serialization of a decoded call_args value.
     Returns None if the value cannot be serialized (e.g. contains non-JSON
-    substrate objects). NEVER raises."""
+    substrate objects). NEVER raises.
+
+    Strips the ``\\u0000`` (NUL) escape: Postgres ``jsonb`` cannot store it, and
+    EVM/Ethereum event ``data`` (and some call args) are raw bytes that serialize
+    to a string full of NULs — one such value fails the WHOLE multi-row insert,
+    silently dropping every event/extrinsic in the batch (verbatim display tier)."""
     try:
-        return json.dumps(v, separators=(",", ":"))
+        return json.dumps(v, separators=(",", ":")).replace("\\u0000", "")
     except (TypeError, ValueError):
         return None
 
