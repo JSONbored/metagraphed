@@ -259,6 +259,25 @@
         "https://github.com/Desearch-ai/desearch-search-evals/blob/cfd3c83b553f6fa61e4fe71b08d46dcbb098b8d5/README.md#L56"
       ],
       "url": "https://huggingface.co/datasets/desearch/desearch-search-evals"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-22-desearch-benchmark-questions",
+      "kind": "data-artifact",
+      "name": "Desearch search benchmark dataset",
+      "notes": "Public Desearch (SN22) HuggingFace benchmark of ~196k fresh web + X search questions (id/question/difficulty/date-window columns), regenerated daily from recent news and posts; not gated, no answer keys. Distinct from the already-registered search-evals results dataset. The subnet-22 README (source) declares the Bittensor subnet and the desearch HF org owns it.",
+      "provider": "desearch",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/Desearch-ai/subnet-22",
+        "https://huggingface.co/desearch"
+      ],
+      "url": "https://huggingface.co/datasets/desearch/dataset"
     }
   ],
   "website_url": "https://www.desearch.ai/"
