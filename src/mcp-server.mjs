@@ -92,6 +92,11 @@ import {
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
 } from "./chain-stake-flow.mjs";
 import {
+  loadChainServing,
+  CHAIN_SERVING_LIMIT_DEFAULT,
+  CHAIN_SERVING_LIMIT_MAX,
+} from "./chain-serving.mjs";
+import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
 } from "./economics-trends.mjs";
@@ -365,6 +370,9 @@ export const MCP_INSTRUCTIONS =
   "(per-subnet churn, retention, and stability) across all subnets, " +
   "get_chain_stake_flow the network-wide cross-subnet capital-flow leaderboard " +
   "(per-subnet net TAO staked/unstaked and direction) across all subnets, " +
+  "get_chain_serving the network-wide axon-serving leaderboard (per-subnet " +
+  "AxonServed announcements, distinct servers, and announce intensity) across " +
+  "all subnets, " +
   "get_blocks_summary block-production analytics (inter-block time, throughput, " +
   "and block-author decentralization), " +
   "get_network_activity the daily " +
@@ -2125,6 +2133,54 @@ export const MCP_TOOLS = [
       return loadChainStakeFlow(mcpD1Runner(ctx), {
         windowLabel: window,
         windowDays: CHAIN_STAKE_FLOW_WINDOWS[window],
+        limit,
+      });
+    },
+  },
+  {
+    name: "get_chain_serving",
+    title: "Get network-wide axon-serving activity",
+    description:
+      "Fetch the network-wide axon-serving leaderboard across ALL subnets over " +
+      "the requested window (7d or 30d; default 7d): each subnet ranked by total " +
+      "AxonServed announcements, with its distinct announcing servers (hotkeys) " +
+      "and average announcements per server (intensity), a network rollup with " +
+      "the true distinct server count (not a per-subnet sum) and total " +
+      "announcements, and the count/mean/min/p25/median/p75/p90/max spread of " +
+      "per-subnet serving intensity, summed live from the account_events " +
+      "AxonServed stream. The account_events kind-filtered companion of " +
+      "get_chain_stake_flow. Mirrors GET /api/v1/chain/serving.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d"],
+          description: "Lookback window (default 7d).",
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the serving leaderboard (1-${CHAIN_SERVING_LIMIT_MAX}, default ${CHAIN_SERVING_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_SERVING_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
+      if (parsed === null) {
+        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
+      }
+      const { label, days } = parsed;
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_SERVING_LIMIT_DEFAULT,
+        CHAIN_SERVING_LIMIT_MAX,
+      );
+      return loadChainServing(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
         limit,
       });
     },
@@ -5827,6 +5883,80 @@ const TOOL_OUTPUT_SCHEMAS = {
             stake_events: { type: "integer" },
             unstake_events: { type: "integer" },
             direction: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  get_chain_serving: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup: the TRUE distinct announcing-server count across all
+      // subnets (not a per-subnet sum), total AxonServed announcements, and
+      // average announcements per server (null on a cold store with no servers).
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "distinct_servers",
+          "announcements",
+          "announcements_per_server",
+        ],
+        properties: {
+          distinct_servers: { type: "integer" },
+          announcements: { type: "integer" },
+          announcements_per_server: { type: ["number", "null"] },
+        },
+      },
+      // Spread of per-subnet serving intensity (announcements per server) over
+      // EVERY subnet that announced; null when none did.
+      intensity_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet axon-serving leaderboard, most announcements first.
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "distinct_servers",
+            "announcements",
+            "announcements_per_server",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            distinct_servers: { type: "integer" },
+            announcements: { type: "integer" },
+            announcements_per_server: { type: "number" },
           },
         },
       },

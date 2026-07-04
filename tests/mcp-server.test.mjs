@@ -6408,6 +6408,122 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  // loadChainServing issues TWO account_events reads: a network COUNT(DISTINCT
+  // hotkey)/MAX aggregate (no GROUP BY) and a per-subnet GROUP BY netuid
+  // leaderboard. Serve the network aggregate to the first, per-subnet rows to the
+  // second.
+  function chainServingEnv(networkRow, subnetRows) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: {
+          prepare(sql) {
+            return {
+              bind() {
+                return {
+                  all() {
+                    if (/GROUP BY netuid/.test(sql)) {
+                      return Promise.resolve({ results: subnetRows });
+                    }
+                    if (sql.includes("FROM account_events")) {
+                      return Promise.resolve({
+                        results: networkRow ? [networkRow] : [],
+                      });
+                    }
+                    return Promise.resolve({ results: [] });
+                  },
+                };
+              },
+            };
+          },
+        },
+      },
+    };
+  }
+
+  test("get_chain_serving returns a schema-stable empty block on cold D1", async () => {
+    const res = await callTool("get_chain_serving", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+    assert.equal(out.network.announcements, 0);
+    assert.equal(out.network.announcements_per_server, null);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_serving ranks subnets by announcements with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_serving",
+      { window: "30d", limit: 10 },
+      chainServingEnv(
+        // Network aggregate: 6 TRUE distinct servers across subnets, newest stamp present.
+        { distinct_servers: 6, newest_observed: 1_750_000_000_000 },
+        [
+          // netuid 1: 10 announcements / 5 servers -> intensity 2 (most active -> first).
+          { netuid: 1, announcements: 10, distinct_servers: 5 },
+          // netuid 2: 4 announcements / 2 servers -> intensity 2.
+          { netuid: 2, announcements: 4, distinct_servers: 2 },
+        ],
+      ),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].announcements, 10);
+    assert.equal(out.subnets[0].distinct_servers, 5);
+    assert.equal(out.subnets[0].announcements_per_server, 2);
+    assert.equal(out.subnets[1].netuid, 2);
+    // Network rollup: total announcements 14, distinct servers 6 (not the 5+2 sum).
+    assert.equal(out.network.announcements, 14);
+    assert.equal(out.network.distinct_servers, 6);
+    assert.equal(out.intensity_distribution.count, 2);
+    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("get_chain_serving rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_serving", { window: "90d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_serving caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_serving",
+      { limit: 1 },
+      chainServingEnv(
+        { distinct_servers: 4, newest_observed: 1_750_000_000_000 },
+        [
+          { netuid: 1, announcements: 10, distinct_servers: 3 },
+          { netuid: 2, announcements: 5, distinct_servers: 1 },
+        ],
+      ),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets count in the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.intensity_distribution.count, 2);
+  });
+
+  test("get_chain_serving payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_serving",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_serving",
+      {},
+      chainServingEnv(
+        { distinct_servers: 3, newest_observed: 1_750_000_000_000 },
+        [{ netuid: 1, announcements: 10, distinct_servers: 3 }],
+      ),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
     const res = await callTool(
       "get_subnet_concentration_history",
