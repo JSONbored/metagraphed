@@ -76,6 +76,13 @@ describe("scoreDistribution", () => {
     assert.equal(d.max, 0.5);
   });
 
+  test("drops a whitespace-only cell instead of reading it as a real 0", () => {
+    const d = scoreDistribution([0.5, " "]);
+    assert.equal(d.count, 1); // the blank cell carries no real score
+    assert.equal(d.mean, 0.5);
+    assert.equal(d.min, 0.5);
+  });
+
   test("empty / all-null column → null (schema-stable)", () => {
     assert.equal(scoreDistribution([]), null);
     assert.equal(scoreDistribution([null, undefined, "x"]), null);
