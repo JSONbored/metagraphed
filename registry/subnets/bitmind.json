@@ -214,6 +214,25 @@
         "https://github.com/BitMind-AI/bitmind-subnet/blob/bdbdb75c0828125ed1891aa1f0bb5e133aa42ab9/README.md#L13"
       ],
       "url": "https://huggingface.co/gasstation"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-34-bitmind-bm-real-dataset",
+      "kind": "data-artifact",
+      "name": "BitMind bm-real image dataset",
+      "notes": "Public BitMind (SN34) HuggingFace corpus of ~28k real (non-generated) images in Parquet, a reference set for the subnet's synthetic-vs-real image detection task; not gated, image column only. The bitmind-subnet README (source) declares Bittensor SN34 and the bitmind HF org owns the dataset.",
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet",
+        "https://bitmind.ai/"
+      ],
+      "url": "https://huggingface.co/datasets/bitmind/bm-real"
     }
   ],
   "website_url": "https://bitmind.ai/"
