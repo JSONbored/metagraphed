@@ -79,6 +79,25 @@ function percentile(ascending, p) {
   return ascending[rank - 1];
 }
 
+// Conventional median of a 0..1 score column: the middle value for an odd count,
+// the average of the two middle values for an even count — NOT the nearest-rank
+// p50, which returns the lower-middle for an even count (e.g. [0.2, 0.8] -> 0.2).
+// This matches the median() the sibling subnet-yield.mjs uses for median_yield
+// (its test asserts "averages the two middle values ... not lower-middle"), so a
+// field literally named *_median reports the same statistic across both modules.
+// Returns null when no neuron carries a finite value.
+function scoreMedian(values) {
+  const ascending = finiteValues(Array.isArray(values) ? values : []).sort(
+    (a, b) => a - b,
+  );
+  const n = ascending.length;
+  if (n === 0) return null;
+  const mid = Math.floor(n / 2);
+  return n % 2 === 1
+    ? round(ascending[mid])
+    : round((ascending[mid - 1] + ascending[mid]) / 2);
+}
+
 // Distribution summary for one 0..1 score column, or `null` when no neuron carries
 // a finite value (cold store / empty subnet / all-null column). count/mean plus the
 // SCORE_PERCENTILES spread and the min/max, all rounded to a stable precision.
@@ -233,11 +252,13 @@ function performanceHistoryPoint(date, dayRows) {
     dividends_nakamoto_coefficient: dividends?.nakamoto_coefficient ?? null,
     dividends_top_10pct_share: dividends?.top_10pct_share ?? null,
     trust_mean: trust?.mean ?? null,
-    trust_median: trust?.p50 ?? null,
+    trust_median: scoreMedian(dayRows.map((row) => row?.trust)),
     consensus_mean: consensus?.mean ?? null,
-    consensus_median: consensus?.p50 ?? null,
+    consensus_median: scoreMedian(dayRows.map((row) => row?.consensus)),
     validator_trust_mean: validatorTrust?.mean ?? null,
-    validator_trust_median: validatorTrust?.p50 ?? null,
+    validator_trust_median: scoreMedian(
+      validatorRows.map((row) => row?.validator_trust),
+    ),
   };
 }
 
