@@ -1128,6 +1128,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountStakeFlowArtifact",
   ),
   artifact(
+    "account-deregistrations",
+    "/metagraph/accounts/{ss58}/deregistrations.json",
+    "One account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first/last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/deregistrations (no static file). The eviction-side complement to /api/v1/accounts/{ss58}/registrations and the account-level companion to /api/v1/chain/deregistrations, distinct from /api/v1/accounts/{ss58}/subnets (current registration state).",
+    "AccountDeregistrationsArtifact",
+  ),
+  artifact(
     "account-serving",
     "/metagraph/accounts/{ss58}/serving.json",
     "One account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/serving (no static file). Operational activity (announcing an axon endpoint) — the account-level companion to /api/v1/chain/serving, orthogonal to /api/v1/accounts/{ss58}/subnets (registration state) and /api/v1/accounts/{ss58}/registrations (registration events).",
@@ -2478,6 +2484,22 @@ export const API_ROUTES = [
       {
         name: "direction",
         schema: { type: "string", enum: ["all", "in", "out"] },
+      },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-deregistrations",
+    "GET",
+    "/api/v1/accounts/{ss58}/deregistrations",
+    "/metagraph/accounts/{ss58}/deregistrations.json",
+    "Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first and last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — summed live from the account_events D1 tier. The eviction-side complement to GET /api/v1/accounts/{ss58}/registrations and the account-level companion to GET /api/v1/chain/deregistrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state).",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
       },
     ],
     [{ name: "ss58", schema: { type: "string" } }],

@@ -157,6 +157,10 @@ export const ACCOUNT_REGISTRATIONS_PATH_PATTERN =
 // per subnet into a count + concentration scorecard over a 7d/30d/90d window.
 export const ACCOUNT_SERVING_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/serving$/;
+// Per-account deregistration footprint: aggregates the account's account_events NeuronDeregistered
+// per subnet into a count + concentration scorecard over a 7d/30d/90d window.
+export const ACCOUNT_DEREGISTRATIONS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/deregistrations$/;
 // Live TAO balance query (#1818): captures any non-slash segment; the handler
 // applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
 export const ACCOUNT_BALANCE_PATH_PATTERN =
