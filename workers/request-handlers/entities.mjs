@@ -1190,9 +1190,11 @@ async function accountEnvelopeResponse(
   request,
   payload,
   cacheProfile = "short",
+  extraHeaders = {},
 ) {
   return envelopeResponse(request, payload, cacheProfile, {
     [X_METAGRAPH_ARTIFACT_SOURCE_HEADER]: payload.meta.source,
+    ...extraHeaders,
   });
 }
 
@@ -1512,6 +1514,7 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
       ),
     },
     "short",
+    { vary: "Accept, Accept-Encoding" },
   );
 }
 
@@ -1586,6 +1589,7 @@ export async function handleAccountTransfers(request, env, ss58, url) {
       ),
     },
     "short",
+    { vary: "Accept, Accept-Encoding" },
   );
 }
 
