@@ -76,6 +76,11 @@ import {
   CHAIN_PROMETHEUS_LIMIT_MAX,
 } from "../../src/chain-prometheus.mjs";
 import {
+  loadChainAxonRemovals,
+  CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+  CHAIN_AXON_REMOVALS_LIMIT_MAX,
+} from "../../src/chain-axon-removals.mjs";
+import {
   loadChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
@@ -815,6 +820,13 @@ const CHAIN_PROMETHEUS_CSV_COLUMNS = [
   "announcements_per_exporter",
 ];
 
+const CHAIN_AXON_REMOVALS_CSV_COLUMNS = [
+  "netuid",
+  "distinct_removers",
+  "removals",
+  "removals_per_remover",
+];
+
 const CHAIN_STAKE_MOVES_CSV_COLUMNS = [
   "netuid",
   "distinct_movers",
@@ -1413,6 +1425,70 @@ export async function handleChainPrometheus(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/prometheus.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// GET /api/v1/chain/axon-removals: network-wide axon-removal activity across every subnet over a
+// 7d/30d window, read from the account_events AxonInfoRemoved stream. The teardown-side companion to
+// chain/serving (axon announcements) and the network-wide companion to the per-subnet
+// axon-removals route; same window + limit params, HEAD probes normalized through the GET cache key
+// so they cannot bypass the edge cache and repeatedly force the network-wide aggregations. The
+// leaderboard is fixed to most-active-first (total AxonInfoRemoved events).
+export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+    maxLimit: CHAIN_AXON_REMOVALS_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-axon-removals",
+    async () => {
+      const data = await loadChainAxonRemovals(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
+      // intensity_distribution stay JSON-only (mirrors chain-serving).
+      if (csv) {
+        return csvResponse(
+          data.subnets,
+          "chain-axon-removals",
+          "short",
+          cacheRequest,
+          CHAIN_AXON_REMOVALS_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/axon-removals.json",
             data.observed_at,
           ),
         },

@@ -36,6 +36,11 @@ export const ROUTE_CSV_EXAMPLES = {
     "netuid,distinct_exporters,announcements,announcements_per_exporter",
     "1,4,40,10",
   ].join("\r\n"),
+  // The /chain/axon-removals per-subnet axon-removal leaderboard rows.
+  "chain-axon-removals": [
+    "netuid,distinct_removers,removals,removals_per_remover",
+    "1,4,40,10",
+  ].join("\r\n"),
   // The /chain/registrations per-subnet neuron-registration leaderboard rows.
   "chain-registrations": [
     "netuid,distinct_registrants,registrations,registrations_per_registrant",

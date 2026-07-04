@@ -1254,6 +1254,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainServingArtifact",
   ),
   artifact(
+    "chain-axon-removals",
+    "/metagraph/chain/axon-removals.json",
+    "Network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): each subnet's AxonInfoRemoved event count, distinct removers (hotkeys removing an announced axon), and average removals per remover ranked into a leaderboard, a network rollup with the true distinct remover count (not a per-subnet sum) and total removals, and a distribution summary of the per-subnet re-teardown intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events AxonInfoRemoved stream at /api/v1/chain/axon-removals. The teardown-side companion to the axon-announcement /api/v1/chain/serving and the network-wide companion to /api/v1/subnets/{netuid}/axon-removals; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
+    "ChainAxonRemovalsArtifact",
+  ),
+  artifact(
     "chain-prometheus",
     "/metagraph/chain/prometheus.json",
     "Network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): each subnet's PrometheusServed event count, distinct exporters (hotkeys announcing a Prometheus endpoint), and average announcements per exporter ranked into a leaderboard, a network rollup with the true distinct exporter count (not a per-subnet sum) and total announcements, and a distribution summary of the per-subnet re-announcement intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events PrometheusServed stream at /api/v1/chain/prometheus. The telemetry-endpoint companion to the axon-endpoint /api/v1/chain/serving — which subnets run observability infrastructure; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
@@ -2810,6 +2816,20 @@ export const API_ROUTES = [
     "/api/v1/chain/serving",
     "/metagraph/chain/serving.json",
     "Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
+    "short",
+    ["chain", "analytics"],
+    csvRouteQuery([
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ]),
+    [],
+  ),
+  route(
+    "chain-axon-removals",
+    "GET",
+    "/api/v1/chain/axon-removals",
+    "/metagraph/chain/axon-removals.json",
+    "Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). The teardown-side companion to the axon-announcement GET /api/v1/chain/serving and the network-wide companion to GET /api/v1/subnets/{netuid}/axon-removals. Computed live from the account_events AxonInfoRemoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
     csvRouteQuery([
