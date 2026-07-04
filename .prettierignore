@@ -1,5 +1,8 @@
 node_modules
 python
+# has its own prettier config + formatting conventions; formatted/gated on its
+# own terms in CI, not by this root check (same precedent as `python` above).
+apps/ui
 # CI-ephemeral: validate.yml's "Classify validation route" step writes this to the
 # workspace root before `prettier --check .` runs, so it must not be format-gated.
 validate-route.json

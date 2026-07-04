@@ -74,11 +74,13 @@ must create the required scaffold fields before the first surface is added.
 
 **Every contributor PR runs the FULL validation — there is no reduced "ugc" fast-lane.** (It was
 retired: it skipped the safety scans and kept tripping a stale-base preflight false-positive.) A
-one-file surface PR runs the same gates as a code PR. Four parallel jobs (the two Node jobs both
+one-file surface PR runs the same gates as a code PR. Five parallel jobs (the two Node jobs both
 build):
 
-- **`changes`** — computes docs-fast-lane eligibility for `checks` (see below). Pure inline
-  `git diff`, no third-party action.
+- **`changes`** — computes docs-fast-lane eligibility for `checks` (see below), plus narrow
+  path-scoped flags (`run_workflows_validation`, `run_migrations_validation`, `run_ui_validation`)
+  for validators/jobs whose entire footprint is their own directory. Pure inline `git diff`, no
+  third-party action.
 - **`test`** — builds, then runs the suite in two non-overlapping passes: `test:ci` (everything
   except the two filesystem-mutating artifact writers, run in parallel, WITH coverage → the single
   Codecov upload) then `test:ci:artifacts` (those two writers, serial). Locally just use
@@ -90,6 +92,13 @@ build):
 discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). Node-independent, so
   it adds no wall-clock to the long poles. The same step runs in `publish-python.yml`'s unprivileged
   `build` job before the artifact is built, so a red suite blocks a PyPI publish.
+- **`ui`** — lint + typecheck + test + build + bundle-size-budget for `apps/ui` (the TanStack
+  Start/Vite frontend, folded into this repo as an npm workspace — #3062). Gated on
+  `run_ui_validation` (`^apps/ui/` in the diff) via the same per-step guard pattern `checks` uses for
+  its docs fast lane — never a job-level skip. Entirely independent of the backend's own
+  lint/test/build; a backend-only PR doesn't build or install `apps/ui`'s tree at all, and vice
+  versa. Not part of the Gittensory contributor gate — `apps/ui/**` is a `blockedPaths` entry in
+  `.gittensory.yml`, maintainer-only.
 
 **The docs fast lane (`checks` only) — narrower than, and does not weaken, the "no reduced ugc
 fast-lane" rule above.** That rule is about _registry/community-surface_ content never getting a

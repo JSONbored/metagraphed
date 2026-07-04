@@ -81,6 +81,12 @@ jobs:
   # `.claude/skills/metagraphed/reference.md`'s "new artifact/route checklist"
   # for why a route/handler change can trip a contract gate with no lexical
   # hint in the diff.
+  #
+  # A third, same-shape flag: `run_ui_validation` gates the `ui` job below
+  # (apps/ui, the TanStack Start/Vite frontend folded in as an npm workspace —
+  # #3062). It matches `^apps/ui/` only -- that workspace's lint/typecheck/
+  # test/build never touches anything outside its own directory, same
+  # reasoning as the two flags above, and it isn't registry-adjacent either.
   changes:
     name: changes
     runs-on: ubuntu-latest
@@ -88,6 +94,7 @@ jobs:
       docs_only: ${{ steps.filter.outputs.docs_only }}
       run_workflows_validation: ${{ steps.filter.outputs.run_workflows_validation }}
       run_migrations_validation: ${{ steps.filter.outputs.run_migrations_validation }}
+      run_ui_validation: ${{ steps.filter.outputs.run_ui_validation }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -108,6 +115,7 @@ jobs:
               echo "docs_only=false"
               echo "run_workflows_validation=true"
               echo "run_migrations_validation=true"
+              echo "run_ui_validation=true"
             } >> "$GITHUB_OUTPUT"
             echo "Not a pull_request event (${{ github.event_name }}) -- full validation runs."
             exit 0
@@ -126,6 +134,7 @@ jobs:
               echo "docs_only=false"
               echo "run_workflows_validation=true"
               echo "run_migrations_validation=true"
+              echo "run_ui_validation=true"
             } >> "$GITHUB_OUTPUT"
             echo "No changed files detected -- full validation runs."
             exit 0
@@ -146,6 +155,11 @@ jobs:
             echo "run_migrations_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
+          fi
+          if grep -qE '^apps/ui/' changed-files.txt; then
+            echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
           fi
 
           # HARD GUARDRAIL: any registry/ path forces full validation,
@@ -610,3 +624,141 @@ jobs:
       - name: Test Python SDK
         working-directory: python
         run: uv run --extra test python -m unittest discover -s tests
+
+  # apps/ui (TanStack Start/Vite frontend, #3062) — entirely independent of the
+  # backend jobs above: a backend-only PR never installs or builds this tree,
+  # and vice versa. Gated on run_ui_validation (see the `changes` job comment)
+  # via the SAME per-step guard pattern `checks` uses for its docs fast lane —
+  # never a job-level `if:`, so this job always reports a real success/failure
+  # conclusion rather than `skipped`.
+  ui:
+    name: ui
+    needs: changes
+    runs-on: ubuntu-latest
+    env:
+      RUN_UI_VALIDATION: ${{ needs.changes.outputs.run_ui_validation }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        if: env.RUN_UI_VALIDATION == 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # Installs the whole workspace tree (root + apps/ui) from the one root
+      # lockfile -- there is no way to `npm ci` a single workspace in isolation.
+      - name: Install
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm ci
+
+      - name: Lint (ESLint + Prettier)
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
+
+      - name: Typecheck
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm run typecheck --workspace=apps/ui
+
+      - name: Test
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm test --workspace=apps/ui
+
+      # LOVABLE_SANDBOX force-enables Nitro's cloudflare-module preset outside
+      # Lovable's own environment (the preset otherwise emits a static-only
+      # client build with no Worker entry) -- matches the exact env Cloudflare
+      # Workers Builds sets in production (see apps/ui/DEPLOY.md).
+      - name: Build
+        if: env.RUN_UI_VALIDATION == 'true'
+        env:
+          LOVABLE_SANDBOX: "1"
+          NITRO_PRESET: cloudflare-module
+        run: npm run build --workspace=apps/ui
+
+      # Guard against client-bundle regressions. Measures the INITIAL client
+      # transfer for a cold visit to "/" -- the entry chunk plus the transitive
+      # closure of its STATIC imports (the shared/vendor graph), deliberately
+      # excluding lazily-loaded route chunks (dynamic import()), which the
+      # browser never fetches on first paint. Source of truth is TanStack
+      # Start's per-route preload manifest
+      # (.output/server/_tanstack-start-manifest_v-*.mjs): each route's
+      # `preloads` is its static module graph, so the cold first-load set is
+      # __root__ (the entry) ∪ the "/" route's preloads. Budget is ~28% above
+      # the current ~233 KB gzipped baseline; raise it deliberately (in the
+      # same PR) when a real feature legitimately grows the initial load.
+      - name: Bundle size budget (initial client JS, gzipped)
+        if: env.RUN_UI_VALIDATION == 'true'
+        working-directory: apps/ui
+        env:
+          BUDGET_KB: 300
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdirSync, readFileSync } from "node:fs";
+          import { gzipSync } from "node:zlib";
+          import path from "node:path";
+
+          const PUBLIC_DIR = ".output/public";
+          const SERVER_DIR = ".output/server";
+
+          const manifestFile = readdirSync(SERVER_DIR).find((f) =>
+            /^_tanstack-start-manifest_v-.*\.mjs$/.test(f),
+          );
+          if (!manifestFile) {
+            console.error(
+              "::error::Could not find the TanStack Start manifest (_tanstack-start-manifest_v-*.mjs) in " +
+                SERVER_DIR +
+                " — the bundle-size gate cannot measure the initial load. Did the build setup change?",
+            );
+            process.exit(1);
+          }
+
+          const mod = await import(path.resolve(SERVER_DIR, manifestFile));
+          const accessor = mod.default ?? Object.values(mod).find((v) => typeof v === "function");
+          const manifest = typeof accessor === "function" ? accessor() : accessor;
+          const routes = manifest?.routes;
+          if (!routes?.__root__) {
+            console.error("::error::Manifest has no routes/__root__ — cannot determine the entry chunk.");
+            process.exit(1);
+          }
+
+          const rootPreloads = routes.__root__.preloads ?? [];
+          const homePreloads = routes["/"]?.preloads ?? [];
+          const initial = [...new Set([...rootPreloads, ...homePreloads])].filter((f) =>
+            f.endsWith(".js"),
+          );
+          if (initial.length === 0) {
+            console.error("::error::No initial JS preloads found in the manifest — refusing to report 0 KB.");
+            process.exit(1);
+          }
+
+          const buffers = initial
+            .sort()
+            .map((f) => readFileSync(path.join(PUBLIC_DIR, f.replace(/^\//, ""))));
+          const bytes = gzipSync(Buffer.concat(buffers)).length;
+          const kb = Math.ceil(bytes / 1024);
+
+          const BUDGET_KB = Number(process.env.BUDGET_KB ?? 300);
+          console.log(
+            `Initial client JS (entry + static-import closure, gzipped): ${kb} KB / budget ${BUDGET_KB} KB  [${initial.length} chunks, lazy route chunks excluded]`,
+          );
+          if (kb > BUDGET_KB) {
+            console.error(
+              `::error::Initial client JS ${kb} KB exceeds the ${BUDGET_KB} KB budget — investigate the regression or raise the budget deliberately.`,
+            );
+            process.exit(1);
+          }
+          NODE
+
+      # Report-only SCA (same posture as the CVE scan the standalone repo's own
+      # CI ran) -- surfaces high/critical runtime-dependency advisories at PR
+      # time without failing the job. Tighten to blocking once it stays clean.
+      - name: Dependency CVE scan (SCA, report-only)
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: |
+          npm audit --audit-level=high --omit=dev --workspace=apps/ui \
+            || echo "::warning::npm audit found high/critical advisories in apps/ui's runtime dependencies — review above (report-only; not failing CI yet)"

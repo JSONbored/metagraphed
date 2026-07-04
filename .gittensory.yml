@@ -31,3 +31,7 @@ blockedPaths:
   - "public/**"
   - ".github/**"
   - ".claude/**"
+  # apps/ui — the frontend workspace (#3062). Owner-branch/maintainer-only
+  # work (repo-structure, CI, and Cloudflare deploy surgery), never a
+  # community data submission.
+  - "apps/**"

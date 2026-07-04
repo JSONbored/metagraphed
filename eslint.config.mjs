@@ -7,6 +7,10 @@ export default [
       "packages/*/node_modules/**",
       "packages/*/dist/**",
       "packages/*/src/metagraphed-*.ts",
+      // apps/ui has its own eslint.config.js scoped to its own React/TS setup —
+      // this repo's root config has no TSX/JSX parser wired in and would just
+      // error on syntax it can't parse, not meaningfully lint it.
+      "apps/ui/**",
       "public/metagraph/**",
       "registry/candidates/generated/**",
       "registry/subnets/generated/**",
