@@ -64,6 +64,17 @@ function captureStamp(value) {
     return { ms: value, value: new Date(value).toISOString() };
   }
   if (typeof value === "string") {
+    // D1 can return an INTEGER captured_at as a numeric-epoch string; Date.parse
+    // returns NaN for a bare epoch string, so coerce the digits to epoch-ms first
+    // (mirrors concentration.mjs / chain-performance.mjs captureStamp), then fall
+    // back to ISO-8601 parsing for a real date string.
+    if (/^\d+$/.test(value)) {
+      const ms = Number(value);
+      if (Number.isFinite(ms) && ms > 0) {
+        return { ms, value: new Date(ms).toISOString() };
+      }
+      return null;
+    }
     const ms = Date.parse(value);
     if (Number.isFinite(ms)) return { ms, value };
   }
