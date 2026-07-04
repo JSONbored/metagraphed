@@ -79,6 +79,9 @@ export const SUBNET_REGISTRATIONS_PATH_PATTERN =
 // Axon-removal activity over the window, live from account_events, no static file.
 export const SUBNET_AXON_REMOVALS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/axon-removals$/;
+// Neuron-deregistration activity over the window, live from account_events, no static file.
+export const SUBNET_DEREGISTRATIONS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/deregistrations$/;
 // Per-UID emission yield distribution over the current neurons snapshot, no static file.
 export const SUBNET_YIELD_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/yield$/;
 // Reward-distribution + score-spread metrics over the current neurons snapshot

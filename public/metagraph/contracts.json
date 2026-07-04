@@ -579,6 +579,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Neuron-deregistration activity for one subnet over a 7d or 30d window — the distinct deregistered hotkeys, NeuronDeregistered event count, and average deregistrations per hotkey — served live from the account_events NeuronDeregistered stream at /api/v1/subnets/{netuid}/deregistrations (no static file). Raw deregistration/eviction activity, the exit-side companion to the NeuronRegistered demand in /api/v1/subnets/{netuid}/registrations.",
+      "id": "subnet-deregistrations",
+      "path": "/metagraph/subnets/{netuid}/deregistrations.json",
+      "schema_ref": "#/components/schemas/SubnetDeregistrationsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Net stake flow for one subnet over a recent window (7d/30d/90d): total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and event counts, with optional ?direction=all|in|out to filter inflow or outflow only, summed live from the account_events stream at /api/v1/subnets/{netuid}/stake-flow (no static file).",
       "id": "subnet-stake-flow",
       "path": "/metagraph/subnets/{netuid}/stake-flow.json",

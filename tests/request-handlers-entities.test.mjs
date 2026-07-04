@@ -34,6 +34,7 @@ import {
   handleSubnetStakeMoves,
   handleSubnetRegistrations,
   handleSubnetAxonRemovals,
+  handleSubnetDeregistrations,
   handleSubnetMovers,
   handleAccount,
   handleAccountEvents,
@@ -61,6 +62,7 @@ import {
   canonicalSubnetStakeMovesCachePath,
   canonicalSubnetRegistrationsCachePath,
   canonicalSubnetAxonRemovalsCachePath,
+  canonicalSubnetDeregistrationsCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
@@ -2248,6 +2250,84 @@ describe("handleSubnetAxonRemovals", () => {
         ),
       );
       assert.equal(path, "/api/v1/subnets/7/axon-removals?bogus=1");
+    });
+  });
+});
+
+describe("handleSubnetDeregistrations", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetDeregistrations(
+      req(`/api/v1/subnets/${NETUID}/deregistrations`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/deregistrations?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleSubnetDeregistrations(
+      req(`/api/v1/subnets/${NETUID}/deregistrations`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/deregistrations?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns a schema-stable zeroed card on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetDeregistrations,
+      req(`/api/v1/subnets/${NETUID}/deregistrations`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/deregistrations?window=30d`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.distinct_deregistered_hotkeys, 0);
+    assert.equal(body.data.deregistrations, 0);
+    assert.equal(body.data.deregistrations_per_hotkey, null);
+    await assertValidComponent("SubnetDeregistrationsArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/deregistrations.json`,
+    );
+    // account_events provenance (not the metagraph snapshot); null on a cold store.
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  describe("canonicalSubnetDeregistrationsCachePath", () => {
+    test("canonicalizes omitted and explicit default window to one cache key", () => {
+      const omitted = canonicalSubnetDeregistrationsCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/deregistrations"),
+      );
+      const explicit = canonicalSubnetDeregistrationsCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/deregistrations?window=7d",
+        ),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(omitted, "/api/v1/subnets/7/deregistrations?window=7d");
+    });
+
+    test("passes an invalid window through unchanged (the handler rejects it)", () => {
+      const path = canonicalSubnetDeregistrationsCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/deregistrations?window=bogus",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/deregistrations?window=bogus");
+    });
+
+    test("passes an unsupported query param through unchanged (validation error)", () => {
+      const path = canonicalSubnetDeregistrationsCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/deregistrations?bogus=1",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/deregistrations?bogus=1");
     });
   });
 });

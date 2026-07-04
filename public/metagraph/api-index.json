@@ -450,6 +450,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-deregistrations",
+      "path": "/metagraph/subnets/{netuid}/deregistrations.json",
+      "schema_ref": "#/components/schemas/SubnetDeregistrationsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-stake-flow",
       "path": "/metagraph/subnets/{netuid}/stake-flow.json",
       "schema_ref": "#/components/schemas/SubnetStakeFlowArtifact",
@@ -4983,6 +4990,29 @@
       "id": "subnet-axon-removals",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/axon-removals",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/deregistrations.json",
+      "cache": "short",
+      "description": "Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, computed live from the account_events NeuronDeregistered stream. Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). Schema-stable zeroed card when the subnet has no NeuronDeregistered events in the window.",
+      "id": "subnet-deregistrations",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/deregistrations",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

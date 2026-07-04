@@ -113,6 +113,8 @@ import {
   canonicalSubnetRegistrationsCachePath,
   handleSubnetAxonRemovals,
   canonicalSubnetAxonRemovalsCachePath,
+  handleSubnetDeregistrations,
+  canonicalSubnetDeregistrationsCachePath,
   handleSubnetYield,
   handleSubnetPerformance,
   handleSubnetMovers,
@@ -317,6 +319,7 @@ import {
   SUBNET_STAKE_MOVES_PATH_PATTERN,
   SUBNET_REGISTRATIONS_PATH_PATTERN,
   SUBNET_AXON_REMOVALS_PATH_PATTERN,
+  SUBNET_DEREGISTRATIONS_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
   SUBNET_PERFORMANCE_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
@@ -1641,6 +1644,27 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             resolved.url,
           ),
         canonicalSubnetAxonRemovalsCachePath(resolved.url),
+      );
+    }
+    const deregistrationsMatch = SUBNET_DEREGISTRATIONS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (deregistrationsMatch) {
+      // Neuron-deregistration activity summed live from account_events over the window —
+      // deterministic per request, edge-cache like the sibling stake-flow route.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-deregistrations",
+        () =>
+          handleSubnetDeregistrations(
+            request,
+            env,
+            Number(deregistrationsMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetDeregistrationsCachePath(resolved.url),
       );
     }
     // Per-UID emission yield distribution over the current neurons snapshot — computed

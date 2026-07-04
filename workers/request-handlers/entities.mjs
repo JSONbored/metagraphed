@@ -161,6 +161,11 @@ import {
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
 } from "../../src/subnet-axon-removals.mjs";
 import {
+  loadSubnetDeregistrations,
+  SUBNET_DEREGISTRATIONS_WINDOWS,
+  DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
+} from "../../src/subnet-deregistrations.mjs";
+import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
@@ -1536,6 +1541,57 @@ export async function handleSubnetAxonRemovals(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/axon-removals.json`,
+        data.observed_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// Canonical edge-cache key for the subnet-deregistrations route: only ?window= (7d/30d) changes the
+// response, canonicalized to its default when omitted so equivalent requests share a slot.
+export function canonicalSubnetDeregistrationsCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
+  if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+}
+
+// GET /api/v1/subnets/{netuid}/deregistrations?window=7d|30d: neuron-deregistration activity for one
+// subnet over the window — distinct deregistered hotkeys, NeuronDeregistered event count, and
+// deregistrations per hotkey — read live from the account_events NeuronDeregistered stream. The
+// exit-side companion to /registrations. Cold/absent store → 200 with a zeroed card (never 404).
+export async function handleSubnetDeregistrations(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
+  if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(
+        windowParam,
+        SUBNET_DEREGISTRATIONS_WINDOWS,
+      ),
+    });
+  }
+  const data = await loadSubnetDeregistrations(d1Runner(env), netuid, {
+    windowLabel: windowParam,
+    windowDays: SUBNET_DEREGISTRATIONS_WINDOWS[windowParam],
+  });
+  // account_events-derived, so the meta reports the event-stream source (accountMeta) with
+  // generated_at the newest observed NeuronDeregistered event, mirroring the sibling stake-flow route.
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/deregistrations.json`,
         data.observed_at,
       ),
     },

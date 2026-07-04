@@ -13905,6 +13905,62 @@
         ],
         "type": "object"
       },
+      "SubnetDeregistrationsArtifact": {
+        "additionalProperties": false,
+        "description": "Per-subnet neuron-deregistration activity over a 7d/30d window: the distinct deregistered hotkeys, NeuronDeregistered event count, and deregistrations per hotkey for ONE subnet. Raw deregistration/eviction activity from the account_events NeuronDeregistered stream — the exit-side companion to /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily validator-set churn in /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume) — served live at /api/v1/subnets/{netuid}/deregistrations (no static file); zeroed when the subnet has no NeuronDeregistered events in the window.",
+        "properties": {
+          "deregistrations": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "deregistrations_per_hotkey": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "distinct_deregistered_hotkeys": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "distinct_deregistered_hotkeys",
+          "deregistrations",
+          "deregistrations_per_hotkey"
+        ],
+        "type": "object"
+      },
       "SubnetDetail": {
         "additionalProperties": false,
         "properties": {

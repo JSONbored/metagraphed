@@ -40,6 +40,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-stake-moves",
   "subnet-registrations",
   "subnet-axon-removals",
+  "subnet-deregistrations",
   "subnet-movers",
   "subnet-yield",
   "global-validators",

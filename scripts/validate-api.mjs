@@ -345,6 +345,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/deregistrations?window=30d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "30d");
+      assert.equal(typeof body.data.distinct_deregistered_hotkeys, "number");
+      assert.equal(typeof body.data.deregistrations, "number");
+      assert.equal(
+        body.data.deregistrations_per_hotkey === null ||
+          typeof body.data.deregistrations_per_hotkey === "number",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/subnets/movers?window=30d&sort=stake&limit=10",
     (body) => {
       assert.equal(body.data.window, "30d");
