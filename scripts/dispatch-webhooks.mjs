@@ -246,7 +246,9 @@ async function resolvePublicAddressRecords(hostname) {
     records.length === 0 ||
     records.some((record) => !isPublicWebhookAddress(record.address))
   ) {
-    throw new Error("unsafe webhook DNS result");
+    const error = new Error("unsafe webhook DNS result");
+    error.code = "UNSAFE_WEBHOOK_DNS_RESULT";
+    throw error;
   }
   return records;
 }

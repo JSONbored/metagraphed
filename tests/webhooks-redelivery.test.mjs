@@ -367,6 +367,26 @@ describe("dispatchWithRedelivery", () => {
     assert.deepEqual(await keysOf(), []);
   });
 
+  test("an unsafe DNS result on the sweep drops the parked record", async () => {
+    store = makeStore();
+    await run({ event: event7, now: () => T0, fetchFn: fail503 });
+    assert.equal((await keysOf()).length, 1);
+
+    const { redelivered } = await run({
+      event: event9,
+      now: () => "2026-06-22T00:00:05.000Z",
+      fetchFn: ok200,
+      resolveHostnames: async () => {
+        const error = new Error("unsafe webhook DNS result");
+        error.code = "UNSAFE_WEBHOOK_DNS_RESULT";
+        throw error;
+      },
+    });
+    assert.equal(redelivered.length, 1);
+    assert.equal(redelivered[0].status, "skipped");
+    assert.equal((await keysOf()).length, 0);
+  });
+
   test("a transient resolver failure on the sweep re-parks (does NOT drop) the record", async () => {
     store = makeStore();
     // Park event7 with a 503 (no resolver → resolves "ok", delivery is attempted).

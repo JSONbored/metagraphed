@@ -158,6 +158,13 @@ export function isPublicWebhookUrl(value) {
 // Splitting the transient resolver failure out from a genuine "unsafe" verdict is
 // what lets deliverChangeEvent park + retry it instead of silently dropping an
 // owed at-least-once delivery when DNS momentarily fails during a sweep.
+function isUnsafeWebhookDnsError(error) {
+  return (
+    error?.code === "UNSAFE_WEBHOOK_DNS_RESULT" ||
+    error?.message === "unsafe webhook DNS result"
+  );
+}
+
 export async function resolvedWebhookUrlStatus(value, resolveHostnames) {
   if (!isPublicWebhookUrl(value)) return "unsafe";
   if (typeof resolveHostnames !== "function") return "ok";
@@ -171,8 +178,8 @@ export async function resolvedWebhookUrlStatus(value, resolveHostnames) {
   let addresses;
   try {
     addresses = await resolveHostnames(host);
-  } catch {
-    return "resolve-error";
+  } catch (error) {
+    return isUnsafeWebhookDnsError(error) ? "unsafe" : "resolve-error";
   }
   const allPublic =
     Array.isArray(addresses) &&
