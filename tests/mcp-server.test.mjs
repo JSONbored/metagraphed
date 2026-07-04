@@ -10901,6 +10901,24 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  test("list_rpc_pools returns the rpc pools artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/rpc/pools.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        pools: [{ network: "finney", score: 0.98 }],
+      },
+    });
+    const res = await callTool("list_rpc_pools", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.pools[0].network, "finney");
+    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+  });
+
+  test("list_rpc_pools rejects an unexpected argument", async () => {
+    const res = await callTool("list_rpc_pools", { netuid: 7 });
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_lineage returns the lineage artifact", async () => {
     const deps = makeDeps({
       "/metagraph/lineage.json": {
