@@ -643,6 +643,23 @@ describe("list_curation — branch coverage", () => {
   });
 });
 
+// ── list_gaps — gaps artifact list ────────────────────────────────────────
+describe("list_gaps — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("list_gaps", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /gaps\.json/);
+  });
+});
+
 // ── get_agent_resources — AI-resources artifact ───────────────────────────
 describe("get_agent_resources — branch coverage", () => {
   test("surfaces non-not_found artifact failures", async () => {
