@@ -303,7 +303,7 @@ describe("curation-mcp", () => {
   });
 
   test("MCP server exports wire list_curation at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.24.0");
+    assert.equal(MCP_SERVER_VERSION, "1.25.0");
     assert.match(MCP_INSTRUCTIONS, /list_curation/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_curation");
     assert.ok(tool);

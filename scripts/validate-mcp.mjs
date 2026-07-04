@@ -393,6 +393,17 @@ assert.ok(
   Number.isInteger(chainConc.subnet_count),
   "get_chain_concentration must return an integer subnet_count",
 );
+const chainTurnover = await callOk("get_chain_turnover", {
+  window: "30d",
+  limit: 5,
+});
+assert.ok(
+  typeof chainTurnover.comparable === "boolean" &&
+    Number.isInteger(chainTurnover.subnet_count) &&
+    Array.isArray(chainTurnover.subnets) &&
+    chainTurnover.network != null,
+  "get_chain_turnover must return comparable + subnet_count + network + subnets[]",
+);
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
   Array.isArray(meta.neurons),
