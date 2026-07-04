@@ -10252,6 +10252,8 @@ export interface operations {
             query?: {
                 window?: "7d" | "30d";
                 limit?: number;
+                /** @description Response format override. Use `csv` to download the per-subnet capital-flow leaderboard as text/csv; `json` (default) keeps the response envelope (which also carries the network rollup + net-flow distribution). */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -10259,7 +10261,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -10338,6 +10340,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainStakeFlowArtifact"];
                     };
+                    /**
+                     * @example netuid,total_staked_tao,total_unstaked_tao,net_flow_tao,gross_flow_tao,stake_events,unstake_events,direction
+                     *     1,100,30,70,130,5,2,inflow
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

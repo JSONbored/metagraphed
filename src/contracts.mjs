@@ -2568,10 +2568,22 @@ export const API_ROUTES = [
     "Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold.",
     "short",
     ["chain", "analytics"],
-    [
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ],
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+        {
+          name: "limit",
+          schema: { type: "integer", minimum: 1, maximum: 100 },
+        },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the per-subnet capital-flow leaderboard as text/csv; `json` (default) keeps the response envelope (which also carries the network rollup + net-flow distribution).",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [],
   ),
   route(
@@ -3464,6 +3476,14 @@ function csvExampleForRoute(entry) {
     return [
       "day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
       "2026-07-01,15000,42.5,0.002833,0.0025,0,0,0",
+    ].join("\r\n");
+  }
+  if (entry.id === "chain-stake-flow") {
+    // The row-shaped per-subnet leaderboard (data.subnets); the network rollup +
+    // net_flow_distribution stay JSON-only, mirroring chain-fees' top_fee_payers.
+    return [
+      "netuid,total_staked_tao,total_unstaked_tao,net_flow_tao,gross_flow_tao,stake_events,unstake_events,direction",
+      "1,100,30,70,130,5,2,inflow",
     ].join("\r\n");
   }
   if (entry.id === "blocks-feed") {

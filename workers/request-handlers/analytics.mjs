@@ -747,6 +747,19 @@ const CHAIN_FEES_CSV_COLUMNS = [
   "avg_tip_tao",
   "median_tip_tao",
 ];
+// The stake-flow CSV exports the per-subnet capital-flow leaderboard (data.subnets)
+// — the row-shaped table, mirroring chain-signers; the network rollup and
+// net_flow_distribution stay JSON-only in the envelope.
+const CHAIN_STAKE_FLOW_CSV_COLUMNS = [
+  "netuid",
+  "total_staked_tao",
+  "total_unstaked_tao",
+  "net_flow_tao",
+  "gross_flow_tao",
+  "stake_events",
+  "unstake_events",
+  "direction",
+];
 
 // Daily network-activity aggregates over the first-party chain D1 tiers (#1987):
 // per-UTC-day extrinsic/event/block counts, success rate, and unique signers —
@@ -1074,13 +1087,16 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
 // distribution. The network companion to /api/v1/subnets/{netuid}/stake-flow; edge-cached like
 // the sibling chain-transfers route (account_events-derived, analytics cron freshness).
 export async function handleChainStakeFlow(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
   if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const { limit, error: limitError } = parseLimitParam(url, {
     defaultLimit: CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
     maxLimit: CHAIN_STAKE_FLOW_LIMIT_MAX,
   });
   if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
 
   // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
   // repeatedly force the network-wide account_events aggregation (mirrors chain-transfers).
@@ -1099,6 +1115,17 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
         windowDays: days,
         limit,
       });
+      // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
+      // net_flow_distribution stay JSON-only (mirrors chain-fees' top_fee_payers).
+      if (csv) {
+        return csvResponse(
+          data.subnets,
+          "chain-stake-flow",
+          "short",
+          cacheRequest,
+          CHAIN_STAKE_FLOW_CSV_COLUMNS,
+        );
+      }
       return envelopeResponse(
         cacheRequest,
         {
@@ -1112,7 +1139,7 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
         "short",
       );
     },
-    canonicalAnalyticsCacheRoute(url, ["limit"]),
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
   );
   return request.method === "HEAD"
     ? new Response(null, { status: response.status, headers: response.headers })

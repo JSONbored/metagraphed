@@ -338,6 +338,71 @@ describe("GET /api/v1/chain/stake-flow", () => {
     const res = await handleRequest(req("?limit=0"), stakeFlowEnv([]), {});
     assert.equal(res.status, 400);
   });
+
+  test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
+    const res = await handleRequest(
+      req("?window=7d&format=csv"),
+      stakeFlowEnv(ROWS),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    assert.match(
+      res.headers.get("content-disposition"),
+      /attachment; filename="chain-stake-flow\.csv"/,
+    );
+    const lines = (await res.text()).trim().split("\r\n");
+    assert.equal(
+      lines[0],
+      "netuid,total_staked_tao,total_unstaked_tao,net_flow_tao,gross_flow_tao,stake_events,unstake_events,direction",
+    );
+    // Biggest net inflow first: netuid 1 (net +70) leads, then 3 (0), then 2 (-60).
+    assert.equal(lines.length, 4); // header + 3 subnet rows
+    assert.equal(lines[1], "1,100,30,70,130,5,2,inflow");
+  });
+
+  test("honors Accept: text/csv the same as ?format=csv", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/stake-flow", {
+        headers: { accept: "text/csv" },
+      }),
+      stakeFlowEnv(ROWS),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+  });
+
+  test("emits a header-only CSV on a cold store", async () => {
+    const res = await handleRequest(req("?format=csv"), stakeFlowEnv([]), {});
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    assert.equal(
+      (await res.text()).trim(),
+      "netuid,total_staked_tao,total_unstaked_tao,net_flow_tao,gross_flow_tao,stake_events,unstake_events,direction",
+    );
+  });
+
+  test("serves a CSV HEAD probe with the CSV headers and no body", async () => {
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/chain/stake-flow?format=csv",
+        {
+          method: "HEAD",
+        },
+      ),
+      stakeFlowEnv(ROWS),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    assert.equal(await res.text(), ""); // HEAD carries no body
+  });
+
+  test("rejects an unsupported format value with 400", async () => {
+    const res = await handleRequest(req("?format=xml"), stakeFlowEnv([]), {});
+    assert.equal(res.status, 400);
+  });
 });
 
 describe("chain/stake-flow edge cache", () => {

@@ -6128,6 +6128,17 @@
             "minimum": 1,
             "type": "integer"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the per-subnet capital-flow leaderboard as text/csv; `json` (default) keeps the response envelope (which also carries the network rollup + net-flow distribution).",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
