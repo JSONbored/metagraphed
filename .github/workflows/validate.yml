@@ -686,11 +686,17 @@ jobs:
       # excluding lazily-loaded route chunks (dynamic import()), which the
       # browser never fetches on first paint. Source of truth is TanStack
       # Start's per-route preload manifest
-      # (.output/server/_tanstack-start-manifest_v-*.mjs): each route's
+      # (dist/server/_tanstack-start-manifest_v-*.mjs): each route's
       # `preloads` is its static module graph, so the cold first-load set is
       # __root__ (the entry) ∪ the "/" route's preloads. Budget is ~28% above
       # the current ~233 KB gzipped baseline; raise it deliberately (in the
       # same PR) when a real feature legitimately grows the initial load.
+      #
+      # dist/, not Nitro's library-default .output/ -- this project's
+      # vite.config.ts (@lovable.dev/vite-tanstack-config) is customized to
+      # output there instead (confirmed against a real local + CI build; the
+      # standalone repo's own now-removed ci.yml had this as `.output/...`,
+      # which never actually matched this project's real build output).
       - name: Bundle size budget (initial client JS, gzipped)
         if: env.RUN_UI_VALIDATION == 'true'
         working-directory: apps/ui
@@ -702,8 +708,8 @@ jobs:
           import { gzipSync } from "node:zlib";
           import path from "node:path";
 
-          const PUBLIC_DIR = ".output/public";
-          const SERVER_DIR = ".output/server";
+          const PUBLIC_DIR = "dist/client";
+          const SERVER_DIR = "dist/server";
 
           const manifestFile = readdirSync(SERVER_DIR).find((f) =>
             /^_tanstack-start-manifest_v-.*\.mjs$/.test(f),
