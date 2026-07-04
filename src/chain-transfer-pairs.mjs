@@ -39,6 +39,20 @@ function toNonNegativeTao(value) {
   return Math.max(0, roundTao(value));
 }
 
+// Round a 0..1 dominance ratio to a stable precision WITHOUT letting a
+// sub-perfect value round up to an exact 1 — the same anti-overstatement guard
+// the sibling concentration/turnover ratios apply (roundRatio in
+// src/concentration.mjs, round in src/chain-turnover.mjs). top_pair_volume_tao is
+// the full-window MAX corridor and total_volume_tao the full-window SUM, so a
+// near-monopoly (e.g. 249990/250000 = 0.99996, with other pairs still present in
+// unique_pairs/pairs[]) must not surface as a flat 1 ("100% of volume"). A
+// genuine single-corridor window where top == total keeps a true 1.
+function roundShare(value, dp = 4) {
+  const factor = 10 ** dp;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
+}
+
 function toIso(value) {
   if (value == null) return null;
   const n = Number(value);
@@ -97,9 +111,7 @@ export function buildChainTransferPairs({
     ? toNonNegativeTao(totals.top_pair_volume_tao)
     : returnedTopPairVolume;
   const topPairShare =
-    totalVolume > 0
-      ? Math.round((topPairVolume / totalVolume) * 10000) / 10000
-      : null;
+    totalVolume > 0 ? roundShare(topPairVolume / totalVolume) : null;
 
   return {
     schema_version: 1,

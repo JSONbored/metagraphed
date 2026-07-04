@@ -62,6 +62,37 @@ describe("buildChainTransferPairs", () => {
     assert.equal(d.pairs[0].last_observed_at, "2026-07-03T00:00:00.000Z");
   });
 
+  test("clamps a near-monopoly top-pair share below a flat 1 when other pairs exist", () => {
+    // top_pair_volume_tao (full-window MAX) is 99.996% of total_volume_tao
+    // (full-window SUM) but a second corridor exists — the share must not round
+    // up to a flat 1 ("100% of volume") while unique_pairs/pairs[] show > 1.
+    const d = buildChainTransferPairs({
+      totals: {
+        total_volume_tao: 250000,
+        top_pair_volume_tao: 249990,
+        transfer_count: 10,
+        unique_pairs: 2,
+      },
+      pairs: [pair("5A", "5B", 249990), pair("5C", "5D", 10)],
+    });
+    assert.equal(d.unique_pairs, 2);
+    assert.ok(d.top_pair_share < 1, "share must be strictly below 1");
+    assert.equal(d.top_pair_share, 0.9999);
+  });
+
+  test("keeps a genuine single-corridor top-pair share at exactly 1", () => {
+    const d = buildChainTransferPairs({
+      totals: {
+        total_volume_tao: 100,
+        top_pair_volume_tao: 100,
+        transfer_count: 3,
+        unique_pairs: 1,
+      },
+      pairs: [pair("5A", "5B", 100)],
+    });
+    assert.equal(d.top_pair_share, 1);
+  });
+
   test("reports a zero top-pair share when totals exist but no pair rows survive", () => {
     const d = buildChainTransferPairs({
       totals: { total_volume_tao: 10, transfer_count: 1, unique_pairs: 1 },
