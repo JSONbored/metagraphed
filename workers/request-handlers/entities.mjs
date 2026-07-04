@@ -190,6 +190,11 @@ import {
   DEFAULT_SERVING_WINDOW,
 } from "../../src/account-serving.mjs";
 import {
+  loadAccountPrometheus,
+  PROMETHEUS_WINDOWS,
+  DEFAULT_PROMETHEUS_WINDOW,
+} from "../../src/account-prometheus.mjs";
+import {
   loadAccountDeregistrations,
   DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW,
@@ -1915,6 +1920,40 @@ export async function handleAccountServing(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/serving.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/prometheus: the account's per-subnet PrometheusServed footprint over a
+// 7d/30d/90d window — announcement count + first/last timestamps per subnet, an HHI concentration of
+// where its telemetry activity is focused, and the dominant subnet. account_events-derived (source
+// "chain-events"). Cold/absent store → schema-stable zeros (never 404).
+export async function handleAccountPrometheus(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_PROMETHEUS_WINDOW;
+  if (!Object.hasOwn(PROMETHEUS_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, PROMETHEUS_WINDOWS),
+    });
+  }
+  const { data, generatedAt } = await loadAccountPrometheus(
+    d1Runner(env),
+    ss58,
+    { windowLabel: windowParam },
+  );
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/prometheus.json`,
         generatedAt,
       ),
     },

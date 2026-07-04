@@ -2677,6 +2677,58 @@
         },
         "additionalProperties": false
       },
+      "AccountPrometheusArtifact": {
+        "type": "object",
+        "description": "One account's Prometheus-endpoint serving footprint per subnet over a recent window, from the account_events PrometheusServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet. Operational activity (announcing a Prometheus telemetry endpoint) — the telemetry sibling of /accounts/{ss58}/serving and the account-level companion to /api/v1/chain/prometheus and /api/v1/subnets/{netuid}/prometheus, orthogonal to /accounts/{ss58}/subnets (registration state).",
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_announcements",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "address": { "type": "string" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
+          "total_announcements": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "concentration": { "type": ["number", "null"] },
+          "dominant_netuid": { "type": ["integer", "null"], "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "announcements",
+                "first_announced_at",
+                "last_announced_at"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "announcements": { "type": "integer", "minimum": 0 },
+                "first_announced_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "last_announced_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "AccountServingArtifact": {
         "type": "object",
         "description": "One account's axon-serving footprint per subnet over a recent window, from the account_events AxonServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet. Operational activity (announcing an axon endpoint) — the account-level companion to /api/v1/chain/serving and /api/v1/subnets/{netuid}/serving, orthogonal to /accounts/{ss58}/subnets (registration state) and /accounts/{ss58}/registrations (registration events).",

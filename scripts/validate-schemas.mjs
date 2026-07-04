@@ -63,6 +63,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-stake-flow",
   "account-registrations",
   "account-serving",
+  "account-prometheus",
   "account-deregistrations",
   "account-subnets",
   "account-portfolio",
