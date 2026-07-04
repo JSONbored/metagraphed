@@ -99,18 +99,54 @@ describe("buildCounterparties", () => {
     assert.equal(data.total_sent_tao, 20); // the self-transfer contributes nothing
   });
 
-  test("skips rows not involving the account and coerces a non-finite amount to 0", () => {
+  test("skips rows not involving the account and rows with a null/blank amount", () => {
     const data = buildCounterparties(
       [
-        { hotkey: "ME", coldkey: "A", amount_tao: null, block_number: 1 }, // amount → 0
-        { hotkey: "X", coldkey: "Y", amount_tao: 5, block_number: 2 }, // ME absent
+        { hotkey: "ME", coldkey: "A", amount_tao: null, block_number: 1 },
+        { hotkey: "ME", coldkey: "B", amount_tao: "", block_number: 2 },
+        { hotkey: "ME", coldkey: "C", amount_tao: "   ", block_number: 3 },
+        { hotkey: "X", coldkey: "Y", amount_tao: 5, block_number: 4 }, // ME absent
       ],
       ME,
       {},
     );
-    assert.equal(data.counterparty_count, 1); // only A
-    assert.equal(data.counterparties[0].address, "A");
-    assert.equal(data.counterparties[0].sent_tao, 0);
+    assert.equal(data.counterparty_count, 0);
+    assert.equal(data.total_sent_tao, 0);
+    assert.equal(data.total_received_tao, 0);
+    assert.deepEqual(data.counterparties, []);
+  });
+
+  test("blank amount rows do not inflate transfer_count in the leaderboard rollup", () => {
+    // buildCounterpartyRelationship already skips blank amounts (#3044); the
+    // top-counterparties rollup must not count them as phantom 0-TAO transfers.
+    for (const blank of ["", "   "]) {
+      const data = buildCounterparties(
+        [
+          { hotkey: "ME", coldkey: "A", amount_tao: blank, block_number: 5 },
+          { hotkey: "ME", coldkey: "A", amount_tao: 10, block_number: 6 },
+        ],
+        ME,
+        {},
+      );
+      assert.equal(
+        data.counterparty_count,
+        1,
+        `counterparty_count for ${JSON.stringify(blank)}`,
+      );
+      assert.equal(
+        data.counterparties[0].transfer_count,
+        1,
+        `transfer_count for ${JSON.stringify(blank)}`,
+      );
+      assert.equal(data.counterparties[0].sent_tao, 10);
+    }
+    const zero = buildCounterparties(
+      [{ hotkey: "ME", coldkey: "A", amount_tao: 0, block_number: 7 }],
+      ME,
+      {},
+    );
+    assert.equal(zero.counterparties[0].transfer_count, 1);
+    assert.equal(zero.counterparties[0].sent_tao, 0);
   });
 
   test("limit caps the returned list but counterparty_count covers all", () => {

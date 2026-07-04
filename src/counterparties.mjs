@@ -24,12 +24,6 @@ export const COUNTERPARTY_RELATIONSHIP_READ_COLUMNS =
 export const COUNTERPARTIES_SCAN_CAP = 5000;
 export const COUNTERPARTY_RELATIONSHIP_SCAN_CAP = 5000;
 
-// Coerce one raw cell to a finite number (or 0) for summation.
-function numeric(value) {
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
 // Round a TAO sum to rao precision so accumulated float error never leaks a long
 // tail into the JSON.
 function round(value, dp = 9) {
@@ -102,17 +96,13 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
   for (const row of list) {
     const from = row?.hotkey;
     const to = row?.coldkey;
-    const amount = numeric(row?.amount_tao);
     const isSender = from === ss58;
     const isReceiver = to === ss58;
     // The counterparty is the side that ISN'T this account. Skip self-transfers
     // (both sides the account) and rows missing the other side's address.
     let party = null;
-    let sent = 0;
-    let received = 0;
     if (isSender && !isReceiver && typeof to === "string" && to.length > 0) {
       party = to;
-      sent = amount;
     } else if (
       isReceiver &&
       !isSender &&
@@ -120,11 +110,14 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
       from.length > 0
     ) {
       party = from;
-      received = amount;
     }
     if (party == null) continue;
-    const sentRao = toRaoBig(sent);
-    const receivedRao = toRaoBig(received);
+    // Align with buildCounterpartyRelationship: blank/null amount_tao cells must
+    // be skipped, not coerced to 0 and counted as a phantom zero-TAO transfer.
+    const amount = nullableNumber(row?.amount_tao);
+    if (amount == null) continue;
+    const sentRao = isSender && !isReceiver ? toRaoBig(amount) : 0n;
+    const receivedRao = isReceiver && !isSender ? toRaoBig(amount) : 0n;
     totalSentRao += sentRao;
     totalReceivedRao += receivedRao;
     const entry = byParty.get(party) ?? {
