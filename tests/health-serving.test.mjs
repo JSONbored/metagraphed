@@ -1369,6 +1369,73 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.match(live.surfaces[0].last_ok, /^20\d\d-/);
   });
 
+  test("D1 fallback coerces a string netuid and drops a blank one (never subnet 0)", async () => {
+    // D1 hands the INTEGER netuid column back as "7" on this read path; the
+    // emitted netuid both keys the per-subnet summary Map and rides into the
+    // response, so a raw string would splinter one subnet's rows across two
+    // group keys. A blank cell must be dropped, not coerced to subnet 0.
+    const db = d1With([
+      {
+        surface_id: "7:subnet-api:a",
+        surface_key: "srf-strnetuid0000a",
+        netuid: "7",
+        kind: "subnet-api",
+        provider: "a",
+        url: "https://a",
+        status: "ok",
+        classification: "up",
+        latency_ms: 10,
+        status_code: 200,
+        last_checked: 1_700_000_000_000,
+        last_ok: 1_700_000_000_000,
+      },
+      {
+        surface_id: "7:subnet-api:b",
+        surface_key: "srf-strnetuid0000b",
+        netuid: 7,
+        kind: "subnet-api",
+        provider: "b",
+        url: "https://b",
+        status: "ok",
+        classification: "up",
+        latency_ms: 20,
+        status_code: 200,
+        last_checked: 1_700_000_000_000,
+        last_ok: 1_700_000_000_000,
+      },
+      {
+        surface_id: "blank:subnet-api:c",
+        surface_key: "srf-blanknetuid00c",
+        netuid: "",
+        kind: "subnet-api",
+        provider: "c",
+        url: "https://c",
+        status: "ok",
+        classification: "up",
+        latency_ms: 5,
+        status_code: 200,
+        last_checked: 1_700_000_000_000,
+        last_ok: 1_700_000_000_000,
+      },
+    ]);
+    const live = await resolveLiveHealth({
+      readHealthKv: async () => null,
+      env: {},
+      db,
+      now: () => 1_700_000_600_000,
+    });
+    assert.deepEqual(
+      live.surfaces.map((s) => s.surface_id),
+      ["7:subnet-api:a", "7:subnet-api:b"],
+    );
+    assert.equal(typeof live.surfaces[0].netuid, "number");
+    assert.equal(live.surfaces[0].netuid, 7);
+    // Both surfaces land in the SAME subnet-7 group, not two separate rows.
+    assert.equal(live.subnets.length, 1);
+    assert.equal(live.subnets[0].netuid, 7);
+    assert.equal(live.subnets[0].surface_count, 2);
+  });
+
   test("D1 fallback folds unrecognized surface status into unknown in global status_counts", async () => {
     const now = 1_700_000_600_000;
     const db = {

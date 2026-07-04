@@ -1291,21 +1291,38 @@ function isoFromMs(ms) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
+// D1 can hand the INTEGER netuid column back as a numeric string on this
+// `surface_status` read path; the emitted netuid both groups the per-subnet
+// `subnets` summary (Map key) and rides into the response contract, so a raw
+// string netuid would splinter a subnet's surfaces across two group keys and
+// ship a string where every other route ships a number. Accept only a real
+// number or an all-digits string so a blank/null cell is dropped rather than
+// read as valid subnet 0 (Number("") === Number(null) === 0).
+function normalizedNetuid(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const netuid = Number(value);
+  return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
+}
+
 function liveFromD1Rows(rows) {
-  const surfaces = rows.map((r) => ({
-    surface_id: r.surface_id,
-    surface_key: r.surface_key ?? null,
-    netuid: r.netuid,
-    kind: r.kind,
-    provider: r.provider,
-    url: r.url,
-    status: normalizeProbeStatus(r.status),
-    classification: r.classification,
-    latency_ms: Number.isFinite(r.latency_ms) ? r.latency_ms : null,
-    status_code: Number.isInteger(r.status_code) ? r.status_code : null,
-    last_checked: isoFromMs(r.last_checked),
-    last_ok: isoFromMs(r.last_ok),
-  }));
+  const surfaces = rows
+    .map((r) => ({ ...r, netuid: normalizedNetuid(r.netuid) }))
+    .filter((r) => r.netuid != null)
+    .map((r) => ({
+      surface_id: r.surface_id,
+      surface_key: r.surface_key ?? null,
+      netuid: r.netuid,
+      kind: r.kind,
+      provider: r.provider,
+      url: r.url,
+      status: normalizeProbeStatus(r.status),
+      classification: r.classification,
+      latency_ms: Number.isFinite(r.latency_ms) ? r.latency_ms : null,
+      status_code: Number.isInteger(r.status_code) ? r.status_code : null,
+      last_checked: isoFromMs(r.last_checked),
+      last_ok: isoFromMs(r.last_ok),
+    }));
   const byNetuid = new Map();
   for (const row of surfaces) {
     const group = byNetuid.get(row.netuid) || [];
