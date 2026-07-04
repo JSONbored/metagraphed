@@ -10994,8 +10994,118 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_candidates rejects an unexpected argument", async () => {
-    const res = await callTool("list_candidates", { netuid: 7 });
+    const res = await callTool("list_candidates", { bogus: 1 });
     assert.equal(res.body.result.isError, true);
+  });
+
+  function candidatesDeps() {
+    return makeDeps({
+      "/metagraph/candidates.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        candidates: [
+          {
+            netuid: 7,
+            kind: "openapi",
+            provider: "datura",
+            state: "verified",
+          },
+          {
+            netuid: 7,
+            kind: "subnet-api",
+            provider: "chutes",
+            state: "schema-valid",
+          },
+          {
+            netuid: 12,
+            kind: "openapi",
+            provider: "datura",
+            state: "stale",
+          },
+        ],
+      },
+    });
+  }
+
+  test("list_candidates filters by netuid, kind, provider, and state", async () => {
+    const deps = candidatesDeps();
+    const byNetuid = (
+      await callTool("list_candidates", { netuid: 12 }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byNetuid.total, 1);
+    assert.equal(byNetuid.candidates[0].provider, "datura");
+
+    const byKind = (
+      await callTool("list_candidates", { kind: "subnet-api" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byKind.total, 1);
+    assert.equal(byKind.candidates[0].provider, "chutes");
+
+    const byProvider = (
+      await callTool("list_candidates", { provider: "datura" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byProvider.total, 2);
+
+    const byState = (
+      await callTool("list_candidates", { state: "stale" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byState.total, 1);
+    assert.equal(byState.candidates[0].netuid, 12);
+  });
+
+  test("list_candidates combines filters (AND) and reports total vs returned", async () => {
+    const deps = candidatesDeps();
+    const res = await callTool(
+      "list_candidates",
+      { netuid: 7, provider: "datura" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 1);
+    assert.equal(out.returned, 1);
+    assert.equal(out.candidates[0].kind, "openapi");
+  });
+
+  test("list_candidates paginates the filtered list with limit/offset", async () => {
+    const deps = candidatesDeps();
+    const res = await callTool(
+      "list_candidates",
+      { limit: 1, offset: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 1);
+    assert.equal(out.offset, 1);
+    assert.equal(out.candidates[0].provider, "chutes");
+  });
+
+  test("list_candidates rejects an unknown kind/state enum value", async () => {
+    const deps = candidatesDeps();
+    const badKind = await callTool(
+      "list_candidates",
+      { kind: "not-a-kind" },
+      { deps },
+    );
+    assert.equal(badKind.body.result.isError, true);
+    assert.match(badKind.body.result.content[0].text, /invalid_params/);
+
+    const badState = await callTool(
+      "list_candidates",
+      { state: "not-a-state" },
+      { deps },
+    );
+    assert.equal(badState.body.result.isError, true);
+  });
+
+  test("list_candidates is schema-stable when the artifact has no candidates array", async () => {
+    const deps = makeDeps({
+      "/metagraph/candidates.json": { generated_at: "2026-01-01T00:00:00Z" },
+    });
+    const res = await callTool("list_candidates", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.candidates, []);
+    assert.equal(out.total, 0);
+    assert.equal(out.returned, 0);
   });
 
   test("list_endpoints returns the endpoints catalog artifact", async () => {
