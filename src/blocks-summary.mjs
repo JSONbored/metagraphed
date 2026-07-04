@@ -24,6 +24,7 @@ export const BLOCKS_SUMMARY_SCAN_CAP = 5000;
 
 const THROUGHPUT_UNAVAILABLE = null;
 const BLOCK_TIME_PERCENTILES = [50, 90];
+const MAX_DATE_MS = 8_640_000_000_000_000;
 
 // Round a duration/mean to whole milliseconds — inter-block time has no meaningful
 // sub-ms precision, and integer ms keeps the JSON clean.
@@ -40,13 +41,14 @@ function round2(value) {
 // real number or an all-digits string, so a blank/null/false cell is rejected
 // rather than coerced to 0 (Number("") === Number(null) === Number(false) === 0).
 function toInt(value) {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value >= 0 ? value : null;
-  }
-  if (typeof value === "string" && /^\d+$/.test(value)) {
-    return Number(value);
-  }
-  return null;
+  const n =
+    typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  return typeof n === "number" && Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
+function toTimestampMs(value) {
+  const ms = toInt(value);
+  return ms != null && ms <= MAX_DATE_MS ? ms : null;
 }
 
 // A nullable count cell (extrinsic_count / event_count) coerced to a finite,
@@ -96,7 +98,7 @@ export function buildBlocksSummary(rows) {
     if (blockNumber == null) continue;
     blocks.push({
       block_number: blockNumber,
-      observed_at: toInt(row?.observed_at),
+      observed_at: toTimestampMs(row?.observed_at),
       author: typeof row?.author === "string" && row.author ? row.author : null,
       extrinsic_count: toCount(row?.extrinsic_count),
       event_count: toCount(row?.event_count),

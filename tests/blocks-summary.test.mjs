@@ -154,6 +154,32 @@ describe("buildBlocksSummary", () => {
     assert.equal(out.throughput.total_extrinsics, 2); // "2" coerced
   });
 
+  test("ignores unsafe and out-of-range integer cells", () => {
+    const out = buildBlocksSummary([
+      { block_number: "9007199254740992", observed_at: 1 },
+      {
+        block_number: 1,
+        observed_at: "9000000000000000",
+        spec_version: "9007199254740992",
+      },
+      { block_number: 2, observed_at: "1750000012000", spec_version: "200" },
+    ]);
+
+    assert.equal(out.block_count, 2);
+    assert.equal(out.first_block, 1);
+    assert.equal(
+      out.first_observed_at,
+      new Date(1_750_000_012_000).toISOString(),
+    );
+    assert.equal(
+      out.last_observed_at,
+      new Date(1_750_000_012_000).toISOString(),
+    );
+    assert.equal(out.block_time, null);
+    assert.equal(out.latest_spec_version, 200);
+    assert.equal(out.distinct_spec_versions, 1);
+  });
+
   test("junk count cells contribute 0, never poison the totals", () => {
     const out = buildBlocksSummary([
       { block_number: 1, extrinsic_count: "junk", event_count: null },
