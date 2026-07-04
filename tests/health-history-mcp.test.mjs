@@ -284,7 +284,7 @@ describe("health-history-mcp — MCP metadata", () => {
   });
 
   test("MCP server exports wire get_health_history at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.33.0");
+    assert.equal(MCP_SERVER_VERSION, "1.34.0");
     assert.match(MCP_INSTRUCTIONS, /get_health_history/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
     assert.ok(tool?.handler);
