@@ -1397,6 +1397,10 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
       netuidRow("dropped:non-integer", 7.5),
       netuidRow("dropped:non-digit-string", "abc"),
       netuidRow("dropped:exponential-string", "1e3"),
+      // A digit run that can't round-trip through Number() exactly (loses
+      // precision past MAX_SAFE_INTEGER) must be dropped, not silently rounded
+      // into a different, wrong netuid.
+      netuidRow("dropped:unsafe-integer-string", "99999999999999999999"),
     ]);
     const live = await resolveLiveHealth({
       readHealthKv: async () => null,
@@ -1408,8 +1412,13 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
       live.surfaces.map((s) => s.surface_id),
       ["7:subnet-api:a", "7:subnet-api:b"],
     );
+    // Every returned surface has the coerced numeric netuid, not just the first
+    // — the bug involved mixed row types landing in the same response.
+    assert.deepEqual(
+      live.surfaces.map((s) => s.netuid),
+      [7, 7],
+    );
     assert.equal(typeof live.surfaces[0].netuid, "number");
-    assert.equal(live.surfaces[0].netuid, 7);
     // Both surfaces land in the SAME subnet-7 group, not two separate rows.
     assert.equal(live.subnets.length, 1);
     assert.equal(live.subnets[0].netuid, 7);

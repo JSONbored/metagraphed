@@ -1311,20 +1311,18 @@ function isoFromMs(ms) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-// D1 can hand the INTEGER netuid column back as a numeric string on this
-// `surface_status` read path; the emitted netuid both groups the per-subnet
-// `subnets` summary (Map key) and rides into the response contract, so a raw
-// string netuid would splinter a subnet's surfaces across two group keys and
-// ship a string where every other route ships a number. Accept ONLY a real
-// number or an all-digits string (rejecting "1e3"/"0x10"-style Number()
-// coercions, matching subnet-identity-history.mjs's rowNetuid, #2938) so a
-// blank/null/non-numeric cell is dropped rather than read as valid subnet 0.
+// D1 can hand the INTEGER netuid column back as a numeric string here. Accept
+// ONLY a real integer >= 0 or an all-digits string (rejecting "1e3"/"0x10"
+// Number() coercions and an oversized digit run that can't round-trip exactly,
+// matching subnet-identity-history.mjs's rowNetuid, #2938) so a blank/null/
+// non-numeric cell is dropped rather than read as valid subnet 0.
 function normalizedNetuid(value) {
   if (typeof value === "number") {
     return Number.isInteger(value) && value >= 0 ? value : null;
   }
   if (typeof value === "string" && /^\d+$/.test(value)) {
-    return Number(value);
+    const netuid = Number(value);
+    return Number.isSafeInteger(netuid) ? netuid : null;
   }
   return null;
 }
