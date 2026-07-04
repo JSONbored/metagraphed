@@ -2957,6 +2957,122 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.deepEqual(out.subnets, []);
   });
 
+  function accountStakeMovesD1(rows = [], capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (
+                    /idx_account_events_coldkey/.test(sql) &&
+                    /GROUP BY netuid/.test(sql)
+                  ) {
+                    return { results: rows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_account_stake_moves shapes per-subnet movement counts and concentration", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const res = await callTool(
+        "get_account_stake_moves",
+        { ss58: SS58, window: "7d" },
+        {
+          env: accountStakeMovesD1([
+            {
+              netuid: 7,
+              movements: 3,
+              first_observed: 1_717_000_000_000,
+              last_observed: 1_717_500_000_000,
+            },
+            {
+              netuid: 9,
+              movements: 1,
+              first_observed: 1_717_100_000_000,
+              last_observed: 1_717_100_000_000,
+            },
+          ]),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.address, SS58);
+      assert.equal(out.window, "7d");
+      assert.equal(out.total_movements, 4);
+      assert.equal(out.subnet_count, 2);
+      assert.equal(out.subnets[0].netuid, 7);
+      assert.equal(out.dominant_netuid, 7);
+      assert.equal(out.subnets[0].movements, 3);
+      assert.equal(
+        out.subnets[0].first_moved_at,
+        new Date(1_717_000_000_000).toISOString(),
+      );
+      assert.ok(out.concentration > 0.5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_account_stake_moves rejects a missing ss58", async () => {
+    const res = await callTool("get_account_stake_moves", {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ss58/i);
+  });
+
+  test("get_account_stake_moves rejects an unsupported window", async () => {
+    const res = await callTool("get_account_stake_moves", {
+      ss58: SS58,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_account_stake_moves degrades to zeros on cold D1", async () => {
+    const res = await callTool("get_account_stake_moves", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.address, SS58);
+    assert.equal(out.window, "30d");
+    assert.equal(out.total_movements, 0);
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.concentration, null);
+    assert.equal(out.dominant_netuid, null);
+    assert.deepEqual(out.subnets, []);
+  });
+
+  test("get_account_stake_moves payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_account_stake_moves",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_account_stake_moves",
+      { ss58: SS58 },
+      {
+        env: accountStakeMovesD1([
+          {
+            netuid: 7,
+            movements: 2,
+            first_observed: 1_717_000_000_000,
+            last_observed: 1_717_500_000_000,
+          },
+        ]),
+      },
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("get_subnet_movers ranks subnets by stake delta", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
@@ -3093,6 +3209,16 @@ describe("MCP stake-flow and movers economics tools", () => {
       assert.ok(
         validatorFor("get_account_stake_flow")(
           accountStake.body.result.structuredContent,
+        ),
+      );
+      const accountMoves = await callTool(
+        "get_account_stake_moves",
+        { ss58: SS58 },
+        { env: accountStakeMovesD1([]) },
+      );
+      assert.ok(
+        validatorFor("get_account_stake_moves")(
+          accountMoves.body.result.structuredContent,
         ),
       );
       const movers = await callTool(

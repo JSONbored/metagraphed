@@ -300,6 +300,11 @@ import {
 } from "./stake-flow.mjs";
 import { loadAccountStakeFlow } from "./account-stake-flow.mjs";
 import {
+  loadAccountStakeMoves,
+  ACCOUNT_STAKE_MOVES_WINDOWS,
+  DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+} from "./account-stake-moves.mjs";
+import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
   MOVERS_SORTS,
@@ -349,7 +354,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.51.0";
+export const MCP_SERVER_VERSION = "1.52.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -373,6 +378,9 @@ const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
   CHAIN_TRANSFER_PAIR_WINDOWS,
 );
 const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
+const ACCOUNT_STAKE_MOVES_WINDOW_KEYS = Object.keys(
+  ACCOUNT_STAKE_MOVES_WINDOWS,
+);
 const SUBNET_EVENT_SUMMARY_WINDOW_KEYS = Object.keys(
   SUBNET_EVENT_SUMMARY_WINDOWS,
 );
@@ -497,7 +505,9 @@ export const MCP_INSTRUCTIONS =
   "get_account_subnets the subnets where it is registered, get_account_portfolio " +
   "its cross-subnet neuron portfolio (per-position economics + yield and wallet " +
   "aggregates), get_account_stake_flow " +
-  "its per-subnet staking flow with direction and concentration labels. For chain-wide " +
+  "its per-subnet staking flow with direction and concentration labels, " +
+  "get_account_stake_moves its per-subnet StakeMoved re-delegation footprint " +
+  "with movement counts, first/last timestamps, and concentration labels. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
   "fee/tip market series plus top payers, get_chain_registrations the " +
@@ -3994,6 +4004,52 @@ export const MCP_TOOLS = [
       const { data } = await loadAccountStakeFlow(mcpD1Runner(ctx), ss58, {
         windowLabel: window,
         direction,
+      });
+      return data;
+    },
+  },
+  {
+    name: "get_account_stake_moves",
+    title: "Get an account's stake-movement footprint",
+    description:
+      "Fetch one account's StakeMoved (re-delegation) footprint per subnet over " +
+      "the requested window (7d, 30d, or 90d; default 30d): each subnet's movement " +
+      "count with the first and last StakeMoved timestamps, plus account totals, an " +
+      "HHI concentration of where its re-delegation churn is focused, and the dominant " +
+      "subnet. StakeMoved relocates stake between hotkeys/subnets without unstaking — " +
+      "operational re-delegation churn, not net capital flow (see get_account_stake_flow). " +
+      "The account-level companion to get_chain_stake_moves and get_subnet_stake_moves. " +
+      "Mirrors GET /api/v1/accounts/{ss58}/stake-moves.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 coldkey address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ACCOUNT_STAKE_MOVES_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW}).`,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
+      if (!Object.hasOwn(ACCOUNT_STAKE_MOVES_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${ACCOUNT_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const { data } = await loadAccountStakeMoves(mcpD1Runner(ctx), ss58, {
+        windowLabel: window,
       });
       return data;
     },
@@ -8290,6 +8346,42 @@ const TOOL_OUTPUT_SCHEMAS = {
         stake_events: { type: "integer" },
         unstake_events: { type: "integer" },
       }),
+    },
+  },
+  get_account_stake_moves: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "address",
+      "window",
+      "total_movements",
+      "subnet_count",
+      "subnets",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      address: { type: "string" },
+      window: NULLABLE_STRING,
+      total_movements: { type: "integer" },
+      subnet_count: { type: "integer" },
+      // Herfindahl-Hirschman index of StakeMoved events across subnets: 1 means
+      // all movements on one subnet; null when the account has no movements.
+      concentration: { type: ["number", "null"] },
+      dominant_netuid: NULLABLE_INT,
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["netuid", "movements", "first_moved_at", "last_moved_at"],
+          properties: {
+            netuid: { type: "integer" },
+            movements: { type: "integer" },
+            first_moved_at: NULLABLE_STRING,
+            last_moved_at: NULLABLE_STRING,
+          },
+        },
+      },
     },
   },
   get_account_history: {

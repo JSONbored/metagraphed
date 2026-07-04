@@ -628,6 +628,19 @@ assert.equal(
   SS58,
   "get_account_stake_flow must accept the direction filter",
 );
+const accountStakeMoves = await callOk("get_account_stake_moves", {
+  ss58: SS58,
+  window: "30d",
+});
+assert.ok(
+  Array.isArray(accountStakeMoves.subnets),
+  "get_account_stake_moves must return subnets[]",
+);
+assert.equal(
+  accountStakeMoves.address,
+  SS58,
+  "get_account_stake_moves must echo the address",
+);
 const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
 assert.ok(
   "balance_tao" in accountBalance && accountBalance.ss58 === SS58,
