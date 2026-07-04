@@ -3688,6 +3688,20 @@ describe("handleBlocks", () => {
     assert.match(res.headers.get("content-type"), /^text\/csv/);
   });
 
+  test("JSON response varies on Accept for the CSV-negotiated blocks URL", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    const res = await handleBlocks(
+      new Request("https://api.metagraph.sh/api/v1/blocks", {
+        headers: { accept: "application/json" },
+      }),
+      env,
+      url("/api/v1/blocks"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^application\/json/);
+    assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
+  });
+
   test("empty CSV export still emits the header row", async () => {
     const { env } = dbWith({ blocksFeed: [] });
     const res = await handleBlocks(

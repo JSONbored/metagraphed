@@ -1895,6 +1895,7 @@ export async function handleBlocks(request, env, url) {
       ),
     },
     "short",
+    { vary: "Accept, Accept-Encoding" },
   );
 }
 
