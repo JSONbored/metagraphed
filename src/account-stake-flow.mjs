@@ -210,9 +210,13 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
 
 // One account's stake flow — sums StakeAdded/StakeRemoved amount_tao from account_events
 // over the window (observed_at >= now - windowDays, epoch ms), grouped per subnet and
-// kind, shaped with buildAccountStakeFlow. The (hotkey) prefix of idx_account_events_hotkey
-// (migrations/0009) seeks just this account's events; event_kind/observed_at are residual
-// filters on that bounded seek. Returns { data, generatedAt } where generatedAt is the
+// kind, shaped with buildAccountStakeFlow. StakeAdded/StakeRemoved decode as
+// [coldkey, hotkey, ...] (scripts/fetch-events.py `_stake`), so the account whose capital
+// actually moved is the coldkey (the staking wallet); the row's hotkey is the target
+// validator. The (coldkey) prefix of idx_account_events_coldkey (migrations/0009) seeks
+// just this account's events — matching the sibling loadAccountStakeMoves, which keys the
+// same coldkey column — and event_kind/observed_at are residual filters on that bounded
+// seek. Returns { data, generatedAt } where generatedAt is the
 // newest event's observed_at as an ISO string (string|null per the envelope contract).
 // Cold/absent D1 -> zeroed totals + empty subnets + generatedAt null.
 export async function loadAccountStakeFlow(
@@ -236,8 +240,8 @@ export async function loadAccountStakeFlow(
   const rows = await d1(
     "SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, " +
       "COUNT(*) AS event_count, MAX(observed_at) AS last_observed " +
-      "FROM account_events INDEXED BY idx_account_events_hotkey " +
-      `WHERE hotkey = ? AND event_kind IN (${placeholders}) AND observed_at >= ? ` +
+      "FROM account_events INDEXED BY idx_account_events_coldkey " +
+      `WHERE coldkey = ? AND event_kind IN (${placeholders}) AND observed_at >= ? ` +
       "GROUP BY netuid, event_kind",
     [address, ...kinds, cutoff],
   );

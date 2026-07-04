@@ -275,7 +275,7 @@ describe("buildAccountStakeFlow", () => {
 });
 
 describe("loadAccountStakeFlow", () => {
-  test("queries account_events by hotkey + stake kinds, shapes the result", async () => {
+  test("queries account_events by coldkey + stake kinds, shapes the result", async () => {
     const calls = [];
     const d1 = async (sql, params) => {
       calls.push({ sql, params });
@@ -283,7 +283,10 @@ describe("loadAccountStakeFlow", () => {
     };
     const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "30d" });
     assert.match(calls[0].sql, /FROM account_events/);
-    assert.match(calls[0].sql, /WHERE hotkey = \?/);
+    // the staking account is the coldkey (StakeAdded/StakeRemoved decode as
+    // [coldkey, hotkey, ...]); the row's hotkey is the target validator.
+    assert.match(calls[0].sql, /INDEXED BY idx_account_events_coldkey/);
+    assert.match(calls[0].sql, /WHERE coldkey = \?/);
     assert.match(calls[0].sql, /GROUP BY netuid, event_kind/);
     assert.equal(calls[0].params[0], ADDR);
     assert.equal(calls[0].params[1], STAKE_ADDED_KIND);
