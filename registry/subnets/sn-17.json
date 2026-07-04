@@ -33,6 +33,22 @@
         "https://www.404.xyz/plugin"
       ],
       "url": "https://github.com/404-Repo/404-gen-blender-add-on"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-17-404-gen-data-artifact",
+      "kind": "data-artifact",
+      "name": "404—GEN Mini 3D dataset",
+      "notes": "Official 404-Gen HuggingFace dataset of 20k+ text-to-3D assets generated on SN17 (MIT-licensed, public); the 404-Gen org profile used as the source declares it operates Subnet 17 and links the on-chain 404.xyz website.",
+      "provider": "404-gen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://huggingface.co/404-Gen"],
+      "url": "https://huggingface.co/datasets/404-Gen/404mini"
     }
   ],
   "website_url": "https://www.404.xyz/"
