@@ -125,6 +125,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Dojo worker API repository."
+    },
+    {
+      "id": "sn-52-dojo-synthetic-sft-dataset",
+      "name": "Dojo synthetic SFT dataset",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/datasets/tensorplex-labs/Dojo-Synthetic-SFT",
+      "provider": "tensorplex",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/dojo",
+        "https://huggingface.co/tensorplex-labs"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public Tensorplex Dojo (SN52) HuggingFace dataset of 12.5k synthetic HTML/CSS/JS interface-generation Q&A pairs (id + messages columns), used to train the subnet's DOJO-INTERFACE-CODER model; not gated. The dojo repo README (source) declares the Bittensor subnet (--netuid 52) and the tensorplex-labs HF org owns the dataset."
     }
   ],
   "contact": "jarvis@tensorplex.ai"
