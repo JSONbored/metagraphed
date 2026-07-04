@@ -106,6 +106,10 @@ import {
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import { loadChainPerformance } from "../../src/chain-performance.mjs";
+import {
+  SUBNET_COLDKEYS_READ_COLUMNS,
+  buildSubnetColdkeys,
+} from "../../src/subnet-coldkeys.mjs";
 import { loadChainYield } from "../../src/chain-yield.mjs";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
@@ -691,6 +695,35 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/coldkeys: the per-subnet coldkeys ownership leaderboard — who
+// actually controls the subnet. Rolls the neurons up by controlling coldkeys (UID count,
+// validator/miner split, total stake/emission, stake share) ranked by stake, plus an ownership-
+// concentration scorecard. The entity-level "who owns it" drill-in of /concentration (which
+// reports the metrics with coldkeys collapsed but never names the owners). Computed from the neurons
+// D1 tier; a cold/absent store or empty subnet → 200 with an empty card (schema-stable, never 404).
+export async function handleSubnetColdkeys(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const rows = await d1All(
+    env,
+    `SELECT ${SUBNET_COLDKEYS_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
+    [netuid],
+  );
+  const data = buildSubnetColdkeys(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/coldkeys.json`,
         data.captured_at,
       ),
     },

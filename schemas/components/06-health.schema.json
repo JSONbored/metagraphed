@@ -835,6 +835,65 @@
         },
         "additionalProperties": true
       },
+      "SubnetColdkeysArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-subnet coldkeys ownership leaderboard from the neurons D1 tier: who controls the subnet. The neurons rolled up by controlling coldkeys (UID count, validator/miner split, total stake & emission, share of the subnet's stake) ranked by stake, plus an ownership-concentration scorecard over the coldkeys' stakes. The entity-level 'who owns it' drill-in of /concentration, served live at /api/v1/subnets/{netuid}/coldkeys (no static file); an empty card when the subnet has no neurons.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "captured_at",
+          "block_number",
+          "neuron_count",
+          "coldkey_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "ownership_concentration",
+          "coldkeys"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"] },
+          "block_number": { "type": ["integer", "null"], "minimum": 0 },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "coldkey_count": { "type": "integer", "minimum": 0 },
+          "total_stake_tao": { "type": "number" },
+          "total_emission_tao": { "type": "number" },
+          "ownership_concentration": {
+            "description": "Concentration of ownership across the subnet's coldkeys (Gini/HHI/Nakamoto over the coldkeys' stakes), or null for a cold store / a subnet with no staked coldkeys. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site.",
+            "anyOf": [
+              { "$ref": "#/components/schemas/ConcentrationMetrics" },
+              { "type": "null" }
+            ]
+          },
+          "coldkeys": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "coldkey",
+                "uid_count",
+                "validator_count",
+                "miner_count",
+                "total_stake_tao",
+                "total_emission_tao",
+                "stake_share"
+              ],
+              "properties": {
+                "coldkey": { "type": "string" },
+                "uid_count": { "type": "integer", "minimum": 0 },
+                "validator_count": { "type": "integer", "minimum": 0 },
+                "miner_count": { "type": "integer", "minimum": 0 },
+                "total_stake_tao": { "type": "number" },
+                "total_emission_tao": { "type": "number" },
+                "stake_share": { "type": ["number", "null"], "minimum": 0 }
+              }
+            }
+          }
+        }
+      },
       "ScoreDistribution": {
         "type": ["object", "null"],
         "description": "Distribution summary of a 0–1 per-UID score across a subnet's neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty subnet).",

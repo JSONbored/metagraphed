@@ -6168,6 +6168,39 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.stake.holders, 2);
   });
 
+  test("get_subnet_coldkeys returns an empty card on cold D1", async () => {
+    const res = await callTool("get_subnet_coldkeys", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.coldkey_count, 0);
+    assert.deepEqual(out.coldkeys, []);
+    assert.equal(out.ownership_concentration, null);
+  });
+
+  test("get_subnet_coldkeys rolls neurons up by controlling coldkey", async () => {
+    const res = await callTool(
+      "get_subnet_coldkeys",
+      { netuid: 7 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              { ...ROW, stake_tao: 100, emission_tao: 2, coldkey: "ck-a" },
+              { ...MINER, stake_tao: 50, emission_tao: 1, coldkey: "ck-a" },
+              { ...MINER, stake_tao: 30, emission_tao: 1, coldkey: "ck-b" },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.neuron_count, 3);
+    assert.equal(out.coldkey_count, 2);
+    assert.equal(out.coldkeys[0].coldkey, "ck-a"); // 150 stake first
+    assert.equal(out.coldkeys[0].uid_count, 2);
+    assert.equal(out.ownership_concentration.holders, 2);
+  });
+
   test("get_chain_concentration returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_concentration", {});
     const out = res.body.result.structuredContent;

@@ -200,6 +200,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/coldkeys",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.neuron_count, "number");
+      assert.equal(typeof body.data.coldkey_count, "number");
+      assert.equal(Array.isArray(body.data.coldkeys), true);
+      // Cold D1 → null scorecard; with rows → a ConcentrationMetrics object.
+      assert.ok(
+        body.data.ownership_concentration === null ||
+          typeof body.data.ownership_concentration === "object",
+      );
+    },
+  ],
+  [
     "/api/v1/subnets/7/performance",
     (body) => {
       assert.equal(body.data.netuid, 7);

@@ -76,6 +76,7 @@ import {
   loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
+import { loadSubnetColdkeys } from "./subnet-coldkeys.mjs";
 import {
   CHAIN_SIGNERS_SORTS,
   loadChainSigners,
@@ -363,6 +364,7 @@ export const MCP_INSTRUCTIONS =
   "incidents, " +
   "get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
+  "get_subnet_coldkeys the coldkeys ownership leaderboard (who controls the subnet), " +
   "get_subnet_performance the reward distribution (incentive/dividends " +
   "concentration) and trust/consensus score spread, " +
   "get_subnet_concentration_history the decentralization trend over time, " +
@@ -1962,6 +1964,30 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetConcentration(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_subnet_coldkeys",
+    title: "Get subnet coldkeys ownership leaderboard",
+    description:
+      "Fetch one subnet's coldkeys ownership leaderboard: the neurons rolled up by " +
+      "controlling coldkeys (UID count, validator/miner split, total stake and " +
+      "emission, share of the subnet's stake) ranked by stake, plus an ownership-" +
+      "concentration scorecard (Gini/HHI/Nakamoto over the coldkeys' stakes). The " +
+      "entity-level 'who owns it' drill-in of get_subnet_concentration, which reports " +
+      "the metrics with coldkeys collapsed but never names the owners. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/coldkeys.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetColdkeys(mcpD1Runner(ctx), netuid);
     },
   },
   {
@@ -5821,6 +5847,23 @@ const TOOL_OUTPUT_SCHEMAS = {
       entity_stake: { type: ["object", "null"] },
       entity_emission: { type: ["object", "null"] },
       validator_stake: { type: ["object", "null"] },
+    },
+  },
+  get_subnet_coldkeys: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "neuron_count", "coldkey_count", "coldkeys"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      neuron_count: { type: "integer" },
+      coldkey_count: { type: "integer" },
+      total_stake_tao: { type: "number" },
+      total_emission_tao: { type: "number" },
+      ownership_concentration: { type: ["object", "null"] },
+      coldkeys: { type: "array", items: { type: "object" } },
     },
   },
   get_subnet_performance: {

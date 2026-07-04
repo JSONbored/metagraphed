@@ -41,6 +41,10 @@ export const TRAJECTORY_PATH_PATTERN =
 // D1 tier, no static file.
 export const SUBNET_CONCENTRATION_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/concentration$/;
+// Per-subnet coldkeys ownership leaderboard (who controls the subnet) from the neurons
+// D1 tier, no static file. The entity-level "who owns it" drill-in of /concentration.
+export const SUBNET_COLDKEYS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/coldkeys$/;
 // Per-day concentration history (decentralization trend) from the neuron_daily
 // rollup, no static file.
 export const SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN =

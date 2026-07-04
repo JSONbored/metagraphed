@@ -84,6 +84,7 @@ import {
   handleSubnetHistory,
   handleSubnetIdentityHistory,
   handleSubnetConcentration,
+  handleSubnetColdkeys,
   handleSubnetConcentrationHistory,
   handleChainConcentration,
   handleChainPerformance,
@@ -299,6 +300,7 @@ import {
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
+  SUBNET_COLDKEYS_PATH_PATTERN,
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
@@ -1403,6 +1405,27 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         canonicalSubnetConcentrationHistoryCachePath(resolved.url),
       );
     }
+    const coldkeysMatch = SUBNET_COLDKEYS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (coldkeysMatch) {
+      // Coldkeys ownership rollup over the neurons tier — edge-cache busts on the
+      // subnet's neuron captured_at stamp, mirroring the sibling /concentration route.
+      return withNeuronsEdgeCache(
+        request,
+        ctx,
+        env,
+        Number(coldkeysMatch[1]),
+        "subnet-coldkeys",
+        () =>
+          handleSubnetColdkeys(
+            request,
+            env,
+            Number(coldkeysMatch[1]),
+            resolved.url,
+          ),
+      );
+    }
     const concentrationMatch = SUBNET_CONCENTRATION_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2073,6 +2096,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
+    SUBNET_COLDKEYS_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||

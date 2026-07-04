@@ -13173,6 +13173,116 @@
       "SubnetCandidatesArtifact": {
         "$ref": "#/components/schemas/CandidatesArtifact"
       },
+      "SubnetColdkeysArtifact": {
+        "additionalProperties": true,
+        "description": "Per-subnet coldkeys ownership leaderboard from the neurons D1 tier: who controls the subnet. The neurons rolled up by controlling coldkeys (UID count, validator/miner split, total stake & emission, share of the subnet's stake) ranked by stake, plus an ownership-concentration scorecard over the coldkeys' stakes. The entity-level 'who owns it' drill-in of /concentration, served live at /api/v1/subnets/{netuid}/coldkeys (no static file); an empty card when the subnet has no neurons.",
+        "properties": {
+          "block_number": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "coldkeys": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "coldkey": {
+                  "type": "string"
+                },
+                "miner_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_share": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "total_emission_tao": {
+                  "type": "number"
+                },
+                "total_stake_tao": {
+                  "type": "number"
+                },
+                "uid_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validator_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "coldkey",
+                "uid_count",
+                "validator_count",
+                "miner_count",
+                "total_stake_tao",
+                "total_emission_tao",
+                "stake_share"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ownership_concentration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Concentration of ownership across the subnet's coldkeys (Gini/HHI/Nakamoto over the coldkeys' stakes), or null for a cold store / a subnet with no staked coldkeys. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site."
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "total_emission_tao": {
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "captured_at",
+          "block_number",
+          "neuron_count",
+          "coldkey_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "ownership_concentration",
+          "coldkeys"
+        ],
+        "type": "object"
+      },
       "SubnetConcentrationArtifact": {
         "additionalProperties": true,
         "description": "Stake & emission concentration / decentralization metrics for one subnet, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed so an operator's many hotkeys count as one holder, the true control distribution), and validator-only consensus power (validator_stake).",

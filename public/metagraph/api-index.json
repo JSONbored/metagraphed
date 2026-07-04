@@ -373,6 +373,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-coldkeys",
+      "path": "/metagraph/subnets/{netuid}/coldkeys.json",
+      "schema_ref": "#/components/schemas/SubnetColdkeysArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-performance",
       "path": "/metagraph/subnets/{netuid}/performance.json",
       "schema_ref": "#/components/schemas/SubnetPerformanceArtifact",
@@ -4710,6 +4717,18 @@
       "id": "subnet-concentration",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/concentration",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/coldkeys.json",
+      "cache": "short",
+      "description": "Fetch the per-subnet coldkeys ownership leaderboard — who controls the subnet: the neurons rolled up by controlling coldkeys (UID count, validator/miner split, total stake & emission, share of the subnet's stake) ranked by stake, plus an ownership-concentration scorecard (Gini/HHI/Nakamoto over the coldkeys' stakes). The entity-level 'who owns it' drill-in of GET /api/v1/subnets/{netuid}/concentration (which reports the metrics with coldkeys collapsed but never names the owners), computed live from the neurons D1 tier.",
+      "id": "subnet-coldkeys",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/coldkeys",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

@@ -38,6 +38,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   // Stake/emission concentration (#2106): computed live from the neurons D1 tier.
   /^subnets\/(?:\d+|\{netuid\})\/concentration\.json$/,
+  // Coldkey ownership leaderboard: computed live from the neurons D1 tier.
+  /^subnets\/(?:\d+|\{netuid\})\/coldkeys\.json$/,
   // Per-day concentration history: computed live from the neuron_daily rollup.
   /^subnets\/(?:\d+|\{netuid\})\/concentration\/history\.json$/,
   // Reward distribution & score spread: computed live from the neurons D1 tier.

@@ -322,6 +322,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       // D1-backed per-subnet analytics: also mainnet-only, must not fall through
       // to a testnet R2 read that leaks the internal artifact key.
       "/api/v1/testnet/subnets/7/concentration",
+      "/api/v1/testnet/subnets/7/coldkeys",
       "/api/v1/testnet/subnets/7/concentration/history",
       "/api/v1/testnet/subnets/7/turnover",
       "/api/v1/testnet/subnets/7/stake-flow",
