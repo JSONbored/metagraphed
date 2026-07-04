@@ -2885,6 +2885,58 @@
         },
         "additionalProperties": false
       },
+      "AccountWeightSettersArtifact": {
+        "type": "object",
+        "description": "One account's (validator's) weight-setting footprint per subnet over a 7d/30d window, from the account_events WeightsSet stream: per-subnet WeightsSet count with the first/last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet. Keyed on the hotkey (the validator submitting weights); the account-level companion to /api/v1/chain/weights/setters and /api/v1/subnets/{netuid}/weights/setters.",
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_weight_sets",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "address": { "type": "string" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", null]
+          },
+          "total_weight_sets": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "concentration": { "type": ["number", "null"] },
+          "dominant_netuid": { "type": ["integer", "null"], "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "weight_sets",
+                "first_set_at",
+                "last_set_at"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "weight_sets": { "type": "integer", "minimum": 0 },
+                "first_set_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "last_set_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "AccountRegistrationsArtifact": {
         "type": "object",
         "description": "One account's neuron-registration footprint per subnet over a recent window, from the account_events NeuronRegistered stream: per-subnet registration count with the first/last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet. Windowed registration EVENTS (including re-registrations after a deregistration) — the account-level companion to /api/v1/chain/registrations and /api/v1/subnets/{netuid}/registrations, distinct from /accounts/{ss58}/subnets (current registration state).",

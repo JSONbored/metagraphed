@@ -185,6 +185,11 @@ import {
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "../../src/account-stake-moves.mjs";
 import {
+  loadAccountWeightSetters,
+  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+} from "../../src/account-weight-setters.mjs";
+import {
   loadAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
@@ -1902,6 +1907,43 @@ export async function handleAccountStakeMoves(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/stake-moves.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/weight-setters: the account's (validator's) per-subnet WeightsSet
+// footprint over a 7d/30d window — weight-set count + first/last timestamps per subnet, an HHI
+// concentration of where its weight-setting activity is focused, and the dominant subnet.
+// account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros.
+export async function handleAccountWeightSetters(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
+  if (!Object.hasOwn(ACCOUNT_WEIGHT_SETTERS_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(
+        windowParam,
+        ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+      ),
+    });
+  }
+  const { data, generatedAt } = await loadAccountWeightSetters(
+    d1Runner(env),
+    ss58,
+    { windowLabel: windowParam },
+  );
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/weight-setters.json`,
         generatedAt,
       ),
     },

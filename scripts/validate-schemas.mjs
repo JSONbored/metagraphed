@@ -62,6 +62,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-counterparties",
   "account-stake-flow",
   "account-stake-moves",
+  "account-weight-setters",
   "account-registrations",
   "account-serving",
   "account-axon-removals",
