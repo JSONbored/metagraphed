@@ -126,6 +126,22 @@ describe("buildChainYield", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
   });
 
+  test("coerces a numeric-epoch-string captured_at from D1 (not Date.parse NaN)", () => {
+    // D1 returns INTEGER captured_at as a numeric string; Date.parse of a bare
+    // epoch string is NaN, which previously dropped the stamp to null. It must be
+    // read as the real epoch-ms timestamp, matching the sibling chain readers.
+    const out = buildChainYield([
+      { stake_tao: 100, emission_tao: 5, captured_at: "1750000000000" },
+    ]);
+    assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
+    // A mixed batch still stamps the newest across number + numeric-string cells.
+    const mixed = buildChainYield([
+      { stake_tao: 1, emission_tao: 0, captured_at: 1_750_000_000_000 },
+      { stake_tao: 1, emission_tao: 0, captured_at: "1750000100000" },
+    ]);
+    assert.equal(mixed.captured_at, new Date(1_750_000_100_000).toISOString());
+  });
+
   test("coerces numeric-string stake/emission cells from D1", () => {
     const out = buildChainYield([
       {
