@@ -71,6 +71,11 @@ import {
   CHAIN_SERVING_LIMIT_MAX,
 } from "../../src/chain-serving.mjs";
 import {
+  loadChainPrometheus,
+  CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+  CHAIN_PROMETHEUS_LIMIT_MAX,
+} from "../../src/chain-prometheus.mjs";
+import {
   loadChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
@@ -798,6 +803,13 @@ const CHAIN_REGISTRATIONS_CSV_COLUMNS = [
   "registrations_per_registrant",
 ];
 
+const CHAIN_PROMETHEUS_CSV_COLUMNS = [
+  "netuid",
+  "distinct_exporters",
+  "announcements",
+  "announcements_per_exporter",
+];
+
 // CSV column order for the /api/v1/chain/transfer-pairs top corridors (the
 // row-shaped `pairs` array). The totals + top_pair_share rollup stay JSON-only,
 // mirroring chain-stake-flow / chain-weights.
@@ -1326,6 +1338,69 @@ export async function handleChainServing(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/serving.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// GET /api/v1/chain/prometheus: network-wide Prometheus-endpoint serving activity across every
+// subnet over a 7d/30d window, read from the account_events PrometheusServed stream. The
+// telemetry-endpoint companion to chain/serving (axon endpoints); same window + limit params, HEAD
+// probes normalized through the GET cache key so they cannot bypass the edge cache and repeatedly
+// force the network-wide aggregations. The leaderboard is fixed to most-active-first (total events).
+export async function handleChainPrometheus(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+    maxLimit: CHAIN_PROMETHEUS_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-prometheus",
+    async () => {
+      const data = await loadChainPrometheus(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
+      // intensity_distribution stay JSON-only (mirrors chain-serving).
+      if (csv) {
+        return csvResponse(
+          data.subnets,
+          "chain-prometheus",
+          "short",
+          cacheRequest,
+          CHAIN_PROMETHEUS_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/prometheus.json",
             data.observed_at,
           ),
         },

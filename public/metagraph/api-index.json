@@ -695,6 +695,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-prometheus",
+      "path": "/metagraph/chain/prometheus.json",
+      "schema_ref": "#/components/schemas/ChainPrometheusArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-registrations",
       "path": "/metagraph/chain/registrations.json",
       "schema_ref": "#/components/schemas/ChainRegistrationsArtifact",
@@ -6339,6 +6346,48 @@
       "id": "chain-serving",
       "method": "GET",
       "path": "/api/v1/chain/serving",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/prometheus.json",
+      "cache": "short",
+      "description": "Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Computed live from the account_events PrometheusServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
+      "id": "chain-prometheus",
+      "method": "GET",
+      "path": "/api/v1/chain/prometheus",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
