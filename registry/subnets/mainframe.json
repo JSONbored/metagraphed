@@ -49,6 +49,31 @@
         "timeout_ms": 10000
       },
       "notes": "Official Mainframe source repository."
+    },
+    {
+      "id": "sn-25-macrocosm-os-macrobench-benchmark-dataset",
+      "name": "Macrocosmos Macrobench benchmark dataset",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01",
+        "https://huggingface.co/macrocosm-os"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public MIT-licensed benchmark data artifact published under the Macrocosmos (macrocosm-os) Hugging Face organization, the operator of SN25 Mainframe (github.com/macrocosm-os/mainframe, macrocosmos.ai). Daily parquet snapshots of a multiple-choice question benchmark with per-miner evaluation and voting records, spanning October 2024 through August 2025 in the 100K-1M row range."
     }
   ],
   "social": { "x": "https://x.com/macrocosmosai" },
