@@ -10155,6 +10155,24 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  test("list_surfaces returns the surfaces catalog artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/surfaces.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        surfaces: [{ netuid: 7, kind: "openapi", provider: "datura" }],
+      },
+    });
+    const res = await callTool("list_surfaces", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.surfaces[0].netuid, 7);
+    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+  });
+
+  test("list_surfaces rejects an unexpected argument", async () => {
+    const res = await callTool("list_surfaces", { netuid: 7 });
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_lineage returns the lineage artifact", async () => {
     const deps = makeDeps({
       "/metagraph/lineage.json": {
