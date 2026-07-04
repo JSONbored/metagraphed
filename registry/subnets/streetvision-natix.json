@@ -150,6 +150,25 @@
         "timeout_ms": 10000
       },
       "notes": "Public NATIX Hugging Face organization linked from the StreetVision README."
+    },
+    {
+      "id": "sn-72-natix-roadwork-dataset",
+      "name": "StreetVision roadwork image dataset",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/datasets/natix-network-org/roadwork",
+      "provider": "natix",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/natixnetwork/streetvision-subnet",
+        "https://huggingface.co/natix-network-org"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public NATIX StreetVision HuggingFace image+text dataset (~8.5k road/roadwork scenes with structured scene/weather/lighting metadata) backing the SN72 roadwork image-classification task; not gated. The StreetVision README (source) declares the Bittensor subnet and links the natix-network-org HF org that owns it."
     }
   ],
   "social": {
