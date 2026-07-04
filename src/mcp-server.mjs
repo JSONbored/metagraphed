@@ -1011,6 +1011,24 @@ async function rankSubnetsForTask(ctx, task, poolSize, callableByNetuid) {
   return { mode: "keyword", ranked };
 }
 
+function validateToolArguments(tool, args) {
+  if (args === undefined || args === null) return {};
+  if (
+    typeof args !== "object" ||
+    Array.isArray(args) ||
+    (tool.inputSchema?.additionalProperties === false &&
+      Object.keys(args).some(
+        (key) => !Object.hasOwn(tool.inputSchema?.properties ?? {}, key),
+      ))
+  ) {
+    throw toolError(
+      "invalid_params",
+      `Invalid arguments for tool ${tool.name}.`,
+    );
+  }
+  return args;
+}
+
 function requireNonNegativeInt(args, key) {
   const value = args?.[key];
   if (!Number.isInteger(value) || value < 0) {
@@ -8557,7 +8575,8 @@ async function callTool(params, ctx) {
     };
   }
   try {
-    const data = await tool.handler(params?.arguments || {}, ctx);
+    const args = validateToolArguments(tool, params?.arguments);
+    const data = await tool.handler(args, ctx);
     return {
       content: [{ type: "text", text: JSON.stringify(data) }],
       structuredContent: data,

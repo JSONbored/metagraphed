@@ -10843,8 +10843,15 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_endpoints rejects an unexpected argument", async () => {
-    const res = await callTool("list_endpoints", { netuid: 7 });
+    const deps = makeDeps({
+      "/metagraph/endpoints.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        endpoints: [{ netuid: 7, kind: "rest", provider: "datura" }],
+      },
+    });
+    const res = await callTool("list_endpoints", { netuid: 7 }, { deps });
     assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
   });
 
   test("list_evidence returns the evidence ledger artifact", async () => {
