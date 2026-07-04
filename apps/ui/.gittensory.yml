@@ -1,0 +1,5 @@
+# Gittensory config — enable dual-AI maintainer review (self-host: claude-code + codex, synthesis).
+# The reviewers + combine strategy come from the self-host engine env; this just turns the review ON.
+gate:
+  aiReview:
+    mode: block

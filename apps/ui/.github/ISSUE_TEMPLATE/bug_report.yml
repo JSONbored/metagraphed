@@ -1,0 +1,40 @@
+name: Bug report
+description: Something on the metagraph.sh website is broken or wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the metagraphed UI.
+
+        **Data corrections** (a subnet/provider's info is wrong or missing) belong
+        in the backend repo
+        [JSONbored/metagraphed](https://github.com/JSONbored/metagraphed/issues/new/choose) —
+        this repo is the website only.
+  - type: input
+    id: url
+    attributes:
+      label: Page URL
+      placeholder: https://metagraph.sh/...
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect to see?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See ...
+  - type: input
+    id: env
+    attributes:
+      label: Browser / device
+      placeholder: e.g. Chrome 124 on macOS, Safari on iPhone

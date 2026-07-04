@@ -1,0 +1,1577 @@
+// Type entrypoint for the Metagraphed API.
+//
+// The wire contract is owned by the backend and published as
+// `@jsonbored/metagraphed` (generated from the OpenAPI document). That package
+// is the single source of truth for response *shapes*; this file re-exports
+// those contract types and layers the UI's own *normalized render* shapes on
+// top. A contract change therefore surfaces here as a compile error rather than
+// drifting silently (issue #1758).
+//
+// Two axes live in this file:
+//   1. Contract types — re-exported from the package under `Api*`-prefixed
+//      aliases (or their canonical enum names). Do NOT hand-edit these; bump the
+//      package to pick up contract changes.
+//   2. UI render shapes — the post-`normalize*` views the data layer
+//      (`queries.ts`) produces for components. These deliberately rename/flatten
+//      wire fields (e.g. the wire `EndpointResource.status` becomes the UI
+//      `Endpoint.health`, `operator` becomes `provider_slug`) and stay local.
+//      Where a render shape mirrors a contract field it is tied back to the
+//      package type via a `satisfies`/assignment assertion so the link is
+//      compile-time enforced.
+
+import type {
+  AdapterSnapshot as ApiAdapterSnapshot,
+  ApiComponents,
+  ApiEnvelope as ContractApiEnvelope,
+  ApiPaths,
+  ApiSchema,
+  CandidateSurface as ApiCandidateSurface,
+  EndpointPool as ApiEndpointPool,
+  EndpointResource as ApiEndpointResource,
+  ErrorEnvelope as ContractErrorEnvelope,
+  EvidenceClaim as ApiEvidenceClaim,
+  HealthSummary as ApiHealthSummary,
+  HealthSurface as ApiHealthSurface,
+  Provider as ApiProvider,
+  SubnetDetail as ApiSubnetDetail,
+  SubnetIndexEntry as ApiSubnetIndexEntry,
+  SuccessEnvelope as ContractSuccessEnvelope,
+  Surface as ApiSurface,
+} from "@jsonbored/metagraphed";
+
+// --- Contract re-exports (the source of truth) --------------------------------
+// Wire response shapes, generated from the backend OpenAPI document. Consume
+// these when you need the exact contract; the UI render shapes below are derived
+// views over them. Renamed to `Api*` so the canonical names stay free for the
+// normalized UI shapes that components already import.
+export type {
+  ApiAdapterSnapshot,
+  ApiCandidateSurface,
+  ApiComponents,
+  ApiEndpointPool,
+  ApiEndpointResource,
+  ApiEvidenceClaim,
+  ApiHealthSummary,
+  ApiHealthSurface,
+  ApiPaths,
+  ApiProvider,
+  ApiSchema,
+  ApiSubnetDetail,
+  ApiSubnetIndexEntry,
+  ApiSurface,
+  ContractApiEnvelope,
+  ContractErrorEnvelope,
+  ContractSuccessEnvelope,
+};
+
+// Canonical enums, sourced from the contract so the UI can never invent a
+// member the backend doesn't emit (the root cause of the `authority` /
+// `HealthStatus` drifts fixed in #1758).
+export type Authority = ApiSchema<"Authority">;
+export type HealthStatus = ApiSchema<"HealthStatus">;
+export type SurfaceKind = ApiSchema<"SurfaceKind">;
+export type Classification = ApiSchema<"Classification">;
+
+export interface ApiPagination {
+  collection?: string;
+  total?: number;
+  returned?: number;
+  limit?: number;
+  cursor?: string | number | null;
+  next_cursor?: string | number | null;
+  sort?: string | null;
+  order?: "asc" | "desc";
+}
+
+export interface ApiMeta {
+  artifact_path?: string;
+  cache?: string;
+  contract_version?: string;
+  generated_at?: string;
+  source?: string;
+  stale?: boolean;
+  cursor?: string | number | null;
+  next_cursor?: string | number | null;
+  prev_cursor?: string | number | null;
+  count?: number;
+  total?: number;
+  pagination?: ApiPagination;
+  [key: string]: unknown;
+}
+
+export interface ApiEnvelope<T> {
+  ok: boolean;
+  data: T;
+  meta?: ApiMeta;
+  error?: { code?: string; message?: string; [key: string]: unknown };
+}
+
+// Sourced from the contract (was hand-maintained). If the backend adds/renames a
+// curation tier the assertion below stops compiling, forcing this to track it.
+export type CurationLevel = ApiSchema<"CurationLevel">;
+
+// CoverageLevel has no contract counterpart — it is a UI-only rollup label.
+export type CoverageLevel = "native-only" | "manifested" | "probed";
+
+/**
+ * UI presentation health enum (4 states, mapped for the traffic-light UI). The
+ * canonical wire enum is {@link HealthStatus} (`ok | degraded | failed |
+ * unknown`); this collapses it for display via the explicit, tested
+ * `statusToHealth` adapter in `queries.ts` (degraded→warn, failed→down). Keeping
+ * the two enums distinct — rather than the previous silent string-literal drift
+ * — means the presentation mapping is one auditable function instead of ad-hoc
+ * conversions scattered across normalizers (#1758).
+ */
+export type HealthState = "ok" | "warn" | "down" | "unknown";
+
+export interface Subnet {
+  netuid: number;
+  name?: string;
+  symbol?: string;
+  type?: "root" | "application";
+  participants?: number;
+  tempo?: number;
+  registration_block?: number;
+  mechanism_count?: number;
+  curation_level?: CurationLevel;
+  coverage_level?: CoverageLevel;
+  surfaces_count?: number;
+  candidates_count?: number;
+  health?: HealthState;
+  health_score?: number;
+  freshness?: string; // iso
+  updated_at?: string;
+  website?: string;
+  repo?: string;
+  icon_url?: string | { light: string; dark?: string };
+  [key: string]: unknown;
+}
+
+export interface PrimaryLinks {
+  website?: string;
+  docs?: string;
+  repo?: string;
+  dashboard?: string;
+  icon_url?: string | { light: string; dark?: string };
+}
+
+export interface PrimaryAppSurface {
+  id?: string;
+  kind?: string;
+  name?: string;
+  provider?: string;
+  url?: string;
+}
+
+/** Backend integration-readiness breakdown (data.profile.readiness). */
+export interface ReadinessSummary {
+  score?: number;
+  readiness_version?: number;
+  components?: Record<string, boolean>;
+}
+
+export interface SubnetProfile extends Subnet {
+  // identity
+  slug?: string;
+  native_name?: string;
+  description?: string;
+  subnet_type?: string;
+  categories?: string[];
+  block?: number;
+  registered_at_block?: number;
+  // links (flattened)
+  website?: string;
+  homepage?: string;
+  docs?: string;
+  repo?: string;
+  dashboard?: string;
+  primary_links?: PrimaryLinks;
+  // curation
+  curation_level?: CurationLevel;
+  coverage_level?: CoverageLevel;
+  review_state?: string;
+  reviewed_at?: string;
+  confidence?: string;
+  completeness?: number; // 0..1
+  completeness_score?: number; // 0..100
+  // readiness (the backend integration_readiness score + its component breakdown)
+  integration_readiness?: number; // 0..100
+  readiness?: ReadinessSummary;
+  // counts
+  surface_count?: number;
+  endpoint_count?: number;
+  candidate_count?: number;
+  monitored_endpoint_count?: number;
+  operational_interface_kinds?: string[];
+  supported_interface_kinds?: string[];
+  missing_kinds?: string[];
+  gap_notes?: string[];
+  primary_app_surface?: PrimaryAppSurface;
+  // embedded
+  surfaces?: Surface[];
+  endpoints?: Endpoint[];
+  candidate_surfaces?: Candidate[];
+  providers?: Provider[];
+  notes?: string;
+  [key: string]: unknown;
+}
+
+export interface Surface {
+  id: string;
+  netuid?: number;
+  kind?: string; // api | docs | dashboard | repo | sse | data | sdk | example
+  name?: string;
+  url?: string;
+  provider?: string;
+  provider_slug?: string;
+  auth_required?: boolean;
+  public_safe?: boolean;
+  verified?: boolean;
+  schema_url?: string;
+  curation_level?: CurationLevel;
+  updated_at?: string;
+  // Per-surface payload fields from /surfaces and /subnets/{n}/surfaces. The
+  // contract {@link Authority} enum is official | provider-claimed | community |
+  // registry-observed; `| string` tolerates legacy/extra values on this render
+  // shape.
+  authority?: Authority | string;
+  // Per-surface HUMAN review/governance state (#1676): community-submitted →
+  // maintainer-reviewed | rejected. Distinct from probe-derived health/freshness.
+  review?: { state?: string; submitted_by?: string; submitted_at?: string };
+  last_verified_at?: string | null;
+  stale?: boolean;
+  subnet_name?: string;
+  subnet_slug?: string;
+  [key: string]: unknown;
+}
+
+// Captured request/response fixtures (#748). The index lists which surfaces
+// carry a sanitized sample; the detail is the full sanitized request/response.
+export interface FixtureIndexEntry {
+  surface_id: string;
+  netuid?: number;
+  subnet_slug?: string | null;
+  kind?: string;
+  captured_at?: string | null;
+  response_status?: number | null;
+}
+
+export interface Fixture {
+  surface_id?: string;
+  netuid?: number;
+  kind?: string;
+  captured_at?: string | null;
+  request?: { method?: string; url?: string | null };
+  response?: { status?: number | null; content_type?: string | null; body?: unknown };
+  [key: string]: unknown;
+}
+
+export interface Endpoint {
+  id: string;
+  netuid?: number;
+  kind?: string; // rpc | wss | archive | api | sse | grpc
+  url?: string;
+  provider?: string;
+  provider_slug?: string;
+  region?: string;
+  archive?: boolean;
+  pool?: string;
+  pool_eligible?: boolean;
+  health?: HealthState;
+  latency_ms?: number;
+  last_probed_at?: string;
+  [key: string]: unknown;
+}
+
+export interface RpcPool {
+  id: string;
+  name?: string;
+  proxy_enabled?: boolean;
+  members_count?: number;
+  archive_capable?: boolean;
+  region?: string;
+  [key: string]: unknown;
+}
+
+export interface EndpointIncident {
+  id: string;
+  endpoint_id?: string;
+  netuid?: number;
+  state?: HealthState;
+  message?: string;
+  started_at?: string;
+  ended_at?: string | null;
+  [key: string]: unknown;
+}
+
+/** One served-endpoint row from /api/v1/rpc/usage (proxy request distribution). */
+export interface RpcUsageEndpoint {
+  rank: number;
+  endpoint_id: string | null;
+  provider: string | null;
+  requests: number;
+  ok_requests: number;
+  error_rate: number | null;
+  avg_latency_ms: number | null;
+}
+
+/** Per-network proxy volume from /api/v1/rpc/usage. */
+export interface RpcUsageNetwork {
+  network: string;
+  requests: number;
+  ok_requests: number;
+  error_rate: number | null;
+}
+
+/** /api/v1/rpc/usage — reverse-proxy usage analytics over a 7d/30d window. */
+export interface RpcUsage {
+  window?: string | null;
+  observed_at?: string | null;
+  source?: string;
+  summary: {
+    total_requests: number;
+    ok_requests: number;
+    error_requests: number;
+    error_rate: number | null;
+    failover_requests: number;
+    failover_rate: number | null;
+    cache_hits: number;
+    cache_hit_rate: number | null;
+    latency_ms: { p50: number | null; p95: number | null; avg: number | null };
+  };
+  endpoints: RpcUsageEndpoint[];
+  networks: RpcUsageNetwork[];
+}
+
+/** One machine-readable resource from /api/v1/agent-resources. */
+export interface AgentResource {
+  id: string;
+  kind: string; // agent | skill | index | contract | api | data
+  title: string;
+  url: string;
+}
+
+/** /api/v1/agent-resources — the machine-readable index of metagraphed's AI surfaces. */
+export interface AgentResources {
+  generated_at?: string | null;
+  published_at?: string | null;
+  copyable_agent: { title: string; description: string; url: string };
+  mcp: {
+    endpoint: string;
+    install: string;
+    server_card: string;
+    transport: string;
+    tools: { name: string; title?: string }[];
+  };
+  summary: { callable_service_count: number; subnet_count: number };
+  resources: AgentResource[];
+}
+
+/** One reconstructed downtime window from /api/v1/incidents (epoch-ms timestamps). */
+export interface GlobalIncident {
+  started_at: number;
+  ended_at: number;
+  duration_ms: number;
+  failed_samples?: number;
+}
+
+/** A surface with one or more incidents in the window (global incident ledger). */
+export interface GlobalIncidentSurface {
+  netuid: number;
+  surface_id: string;
+  incident_count: number;
+  downtime_ms: number;
+  incidents: GlobalIncident[];
+}
+
+/** /api/v1/incidents — recent cross-subnet downtime reconstructed from probe history. */
+export interface GlobalIncidents {
+  window?: string | null;
+  observed_at?: string | null;
+  source?: string;
+  summary?: { incident_count?: number; affected_surface_count?: number };
+  surfaces: GlobalIncidentSurface[];
+}
+
+export interface ProviderEndpointSummary {
+  endpoint_count?: number;
+  monitored_count?: number;
+  pool_eligible_count?: number;
+  by_kind?: Record<string, number>;
+  by_status?: Record<string, number>;
+  by_layer?: Record<string, number>;
+  by_publication_state?: Record<string, number>;
+}
+
+export interface Provider {
+  slug: string;
+  name?: string;
+  kind?: string; // team | infra | docs | registry | community
+  homepage?: string;
+  website?: string;
+  docs?: string;
+  repo?: string;
+  notes?: string;
+  // Sourced from the contract {@link Authority} enum (official | provider-claimed
+  // | community | registry-observed). The UI previously invented a nonexistent
+  // "third-party" member and omitted the real provider-claimed / registry-observed
+  // values; tying it to the package fixes that drift (#1758). `| string` is kept
+  // because this is a normalized render shape that tolerates as-yet-unseen values.
+  authority?: Authority | string;
+  endpoints_count?: number;
+  surfaces_count?: number;
+  endpoint_summary?: ProviderEndpointSummary;
+  generated_at?: string;
+  icon_url?: string | { light: string; dark?: string };
+  [key: string]: unknown;
+}
+
+export interface Candidate {
+  id: string;
+  netuid?: number;
+  kind?: string;
+  url?: string;
+  source?: string;
+  discovered_at?: string;
+  notes?: string;
+  [key: string]: unknown;
+}
+
+export interface Gap {
+  id: string;
+  netuid?: number;
+  category?: string;
+  severity?: "low" | "medium" | "high";
+  /** Served by the API as a numeric priority score (higher = more urgent). */
+  gap_priority?: number;
+  title?: string;
+  description?: string;
+  suggested_action?: string;
+  /** Raw per-row missing surface kinds from /api/v1/gaps → data.gaps[].gaps.missing_kinds. */
+  missing_kinds?: string[];
+  gap_notes?: string[];
+  [key: string]: unknown;
+}
+
+export interface HealthSummary {
+  total?: number;
+  ok?: number;
+  warn?: number;
+  down?: number;
+  unknown?: number;
+  uptime_24h?: number;
+  generated_at?: string;
+  [key: string]: unknown;
+}
+
+export interface CoverageDimension {
+  pct?: number;
+  present?: number;
+}
+
+export interface CoverageCompleteness {
+  average_score?: number;
+  median_score?: number;
+  fully_complete_count?: number;
+  fully_complete_pct?: number;
+  scored_subnet_count?: number;
+  /** Per-dimension coverage (docs, openapi, subnet-api, sse, …). */
+  dimension_coverage?: Record<string, CoverageDimension>;
+  /** Score buckets → subnet count (0-24, 25-49, 50-74, 75-99, 100). */
+  score_distribution?: Record<string, number>;
+}
+
+export interface Coverage {
+  netuids_total?: number;
+  netuids_active?: number;
+  manifested?: number;
+  surfaces_total?: number;
+  probed?: number;
+  native_only?: number;
+  adapter_backed?: number;
+  completeness?: CoverageCompleteness;
+  [key: string]: unknown;
+}
+
+export interface Freshness {
+  avg_age_seconds?: number;
+  max_age_seconds?: number;
+  stale_count?: number;
+  sources?: Array<{ name: string; last_seen?: string; stale?: boolean }>;
+  [key: string]: unknown;
+}
+
+export interface SchemaInfo {
+  id: string;
+  name?: string;
+  url?: string;
+  netuid?: number;
+  surface_id?: string;
+  drift?: boolean;
+  drift_status?: string;
+  status?: string;
+  hash?: string;
+  previous_hash?: string;
+  artifact_path?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export interface EvidenceItem {
+  id: string;
+  netuid?: number;
+  source?: string;
+  url?: string;
+  recorded_at?: string;
+  note?: string;
+  [key: string]: unknown;
+}
+
+export interface AdapterSnapshot {
+  slug: string;
+  netuid?: number;
+  generated_at?: string;
+  metrics?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface LineageLink {
+  mainnet_netuid: number;
+  mainnet_name?: string;
+  mainnet_slug?: string;
+  testnet_netuid: number;
+  testnet_name?: string;
+  testnet_slug?: string;
+  /** How the pair was matched, e.g. "chain_name" or "github_repo". */
+  matched_by?: string;
+}
+
+export interface Lineage {
+  source_network: string;
+  target_network: string;
+  link_count: number;
+  graduated_subnet_count: number;
+  testnet_only_count: number;
+  broken_link_count: number;
+  links: LineageLink[];
+}
+
+/** The five D1-computed registry leaderboards from /api/v1/registry/leaderboards. */
+export type LeaderboardBoardKey =
+  | "healthiest"
+  | "fastest-rpc"
+  | "most-complete"
+  | "most-enriched"
+  | "fastest-growing";
+
+/**
+ * One ranked subnet in a leaderboard. Every row carries netuid/slug/name; only
+ * the metric field relevant to its board is populated (e.g. `uptime_ratio` for
+ * `healthiest`, `latency_ms` for `fastest-rpc`).
+ */
+export interface LeaderboardRow {
+  netuid: number;
+  slug?: string;
+  name?: string;
+  uptime_ratio?: number; // healthiest (0–1)
+  surfaces_ok?: number; // healthiest
+  surfaces_total?: number; // healthiest
+  avg_latency_ms?: number; // healthiest
+  latency_ms?: number; // fastest-rpc
+  completeness_score?: number; // most-complete (0–100)
+  surface_count?: number; // most-enriched
+  operational_interface_count?: number; // most-enriched
+  completeness_delta?: number; // fastest-growing (points)
+}
+
+export type Leaderboards = Record<LeaderboardBoardKey, LeaderboardRow[]>;
+
+/** Result of an on-demand re-probe via /api/v1/surfaces/{id}/verify. */
+export interface VerifyResult {
+  status?: HealthState | string;
+  classification?: string;
+  latency_ms?: number;
+  status_code?: number;
+  verified_at?: string;
+  from_cache?: boolean;
+}
+
+/** Per-surface latency distribution from /subnets/{n}/health/percentiles. */
+export interface SurfaceLatencyPercentiles {
+  surface_id: string;
+  samples?: number;
+  latency_ms?: {
+    p50?: number;
+    p95?: number;
+    p99?: number;
+    avg?: number;
+    min?: number;
+    max?: number;
+  };
+}
+
+/**
+ * One reconstructed downtime window inside a {@link SurfaceSla}. The API emits
+ * epoch-ms timestamps and a duration; it does NOT carry an id, severity, or
+ * message (these are derived downtime windows, not labeled incidents).
+ */
+export interface SurfaceSlaIncident {
+  started_at?: number;
+  ended_at?: number | null;
+  duration_ms?: number;
+  failed_samples?: number;
+  [key: string]: unknown;
+}
+
+/** Per-surface SLA + reconstructed downtime from /subnets/{n}/health/incidents. */
+export interface SurfaceSla {
+  surface_id: string;
+  samples?: number;
+  uptime_ratio?: number;
+  incident_count?: number;
+  downtime_ms?: number;
+  incidents?: SurfaceSlaIncident[];
+}
+
+/**
+ * A flattened per-surface downtime window — one {@link SurfaceSlaIncident}
+ * lifted out of its {@link SurfaceSla} row, tagged with the owning surface_id
+ * and normalized to ISO timestamps for display. Severity is always "down"
+ * because the source only reconstructs failure windows (no severity field
+ * exists upstream).
+ */
+export interface FlatSurfaceIncident {
+  surface_id: string;
+  /** ISO string (converted from epoch-ms) for TimeAgo / date rendering. */
+  started_at?: string;
+  /** ISO string, or null when the incident is still open. */
+  ended_at?: string | null;
+  duration_ms?: number;
+  failed_samples?: number;
+  /** Derived, not from the API: these are reconstructed downtime windows. */
+  severity: "high";
+}
+
+/** One weekly structural snapshot from /subnets/{n}/trajectory. */
+export interface TrajectoryPoint {
+  date: string;
+  completeness_score?: number;
+  surface_count?: number;
+  endpoint_count?: number;
+  alpha_price_tao?: number;
+}
+
+export interface TrajectoryDelta {
+  from_date?: string;
+  to_date?: string;
+  completeness_score?: number;
+  surface_count?: number;
+  endpoint_count?: number;
+}
+
+export interface Trajectory {
+  point_count?: number;
+  points: TrajectoryPoint[];
+  deltas?: Record<string, TrajectoryDelta | null>;
+}
+
+/** Composed subnet overview from /api/v1/subnets/{netuid}/overview (#1124 port). */
+export interface SubnetOverview {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  status?: string;
+  profile?: Record<string, unknown>;
+  health?: Record<string, unknown>;
+  curation?: Record<string, unknown>;
+  gaps?: Record<string, unknown>;
+  gap_priorities?: unknown[];
+  counts?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+/**
+ * Health trend windows from /api/v1/subnets/{netuid}/health/trends.
+ *
+ * NB the live API returns each window as an aggregate snapshot with a
+ * per-surface breakdown (`surfaces[]`) — NOT a `points[]` time-series. Each
+ * surface carries its window-level uptime ratio + latency percentiles. For an
+ * actual daily time-series, use subnetUptimeQuery (surfaces[].days[]) instead.
+ */
+export interface HealthTrendLatency {
+  p50?: number;
+  p95?: number;
+  p99?: number;
+}
+
+export interface HealthTrendSurface {
+  surface_id: string;
+  samples?: number;
+  uptime_ratio?: number; // 0–1
+  avg_latency_ms?: number;
+  latency_sample_count?: number;
+  latency_ms?: HealthTrendLatency;
+}
+
+export interface HealthTrendWindow {
+  samples?: number;
+  uptime_ratio?: number; // 0–1, aggregate across surfaces
+  latency_sample_count?: number;
+  surfaces?: HealthTrendSurface[];
+  [key: string]: unknown;
+}
+
+export interface HealthTrends {
+  windows: Record<string, HealthTrendWindow>;
+}
+
+/** Reliability grade (A–F) + score for a surface or the whole subnet. */
+export interface ReliabilityGrade {
+  score?: number;
+  grade?: string;
+  uptime_ratio?: number;
+  avg_latency_ms?: number;
+  sample_count?: number;
+  surface_count?: number;
+}
+
+export interface SurfaceUptimeDay {
+  day: string;
+  samples?: number;
+  uptime_ratio?: number;
+  avg_latency_ms?: number;
+  status?: string;
+}
+
+export interface SurfaceUptime {
+  surface_id: string;
+  day_count?: number;
+  samples?: number;
+  uptime_ratio?: number;
+  reliability?: ReliabilityGrade;
+  days: SurfaceUptimeDay[];
+}
+
+/** Long-range daily uptime history from /subnets/{n}/uptime?window=90d|1y. */
+export interface Uptime {
+  window?: string;
+  reliability?: ReliabilityGrade;
+  surfaces: SurfaceUptime[];
+}
+
+/**
+ * One indexed block from the chain-direct event poller.
+ * Source: /api/v1/blocks (list) and /api/v1/blocks/{ref} (detail). Newest first.
+ * `author` is nullable (some blocks carry no resolved author).
+ */
+export interface Block {
+  block_number: number;
+  block_hash: string;
+  parent_hash?: string;
+  author?: string | null;
+  extrinsic_count?: number;
+  event_count?: number;
+  observed_at?: string; // iso
+  prev_block_number?: number | null;
+  next_block_number?: number | null;
+  [key: string]: unknown;
+}
+
+/** Block-local extrinsics payload from /api/v1/blocks/{ref}/extrinsics. */
+export interface BlockExtrinsics {
+  ref?: string | null;
+  block_number?: number | null;
+  extrinsic_count?: number;
+  limit?: number | null;
+  offset?: number | null;
+  extrinsics: Extrinsic[];
+  [key: string]: unknown;
+}
+
+/** Decoded chain event payload from /api/v1/blocks/{ref}/events. */
+export interface BlockEvent {
+  block_number: number | null;
+  event_index: number | null;
+  event_kind: string | null;
+  hotkey?: string | null;
+  coldkey?: string | null;
+  netuid?: number | null;
+  uid?: number | null;
+  amount_tao?: number | null;
+  observed_at?: string | null;
+  extrinsic_index?: number | null;
+  alpha_amount?: number | null;
+  [key: string]: unknown;
+}
+
+export interface BlockEvents {
+  ref?: string | null;
+  block_number?: number | null;
+  event_count?: number;
+  limit?: number | null;
+  offset?: number | null;
+  events: BlockEvent[];
+  [key: string]: unknown;
+}
+
+export interface ExtrinsicCallArg {
+  name?: string | null;
+  value?: unknown;
+  [key: string]: unknown;
+}
+
+/** One extrinsic (transaction) from /api/v1/extrinsics, newest-first. */
+export interface Extrinsic {
+  block_number: number | null;
+  extrinsic_index: number | null;
+  extrinsic_hash: string | null;
+  signer?: string | null;
+  call_module?: string | null;
+  call_function?: string | null;
+  fee_tao?: number | null;
+  tip_tao?: number | null;
+  call_args?: ExtrinsicCallArg[] | Record<string, unknown> | null;
+  events?: AccountEvent[];
+  success?: boolean | null;
+  observed_at?: string; // iso
+  [key: string]: unknown;
+}
+
+/** One native-TAO Balances.Transfer for an account (directional, newest-first). */
+export interface Transfer {
+  block_number: number | null;
+  event_index: number | null;
+  from: string | null;
+  to: string | null;
+  amount_tao: number | null;
+  direction: "sent" | "received" | null;
+  observed_at?: string | null; // iso
+  [key: string]: unknown;
+}
+
+/** A hotkey's current registration on one subnet. */
+export interface AccountRegistration {
+  netuid: number | null;
+  uid: number | null;
+  stake_tao?: number | null;
+  validator_permit?: boolean;
+  active?: boolean;
+  [key: string]: unknown;
+}
+
+/** One first-party chain event for an account (newest-first). */
+export interface AccountEvent {
+  block_number: number | null;
+  event_index: number | null;
+  event_kind: string | null;
+  hotkey?: string | null;
+  coldkey?: string | null;
+  netuid?: number | null;
+  uid?: number | null;
+  amount_tao?: number | null;
+  alpha_amount?: number | null;
+  extrinsic_index?: number | null;
+  observed_at?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * One keyset page of an account's first-party chain events from
+ * /api/v1/accounts/{ss58}/events. `next_cursor` lives in the body (not meta)
+ * and is null at end-of-window.
+ */
+export interface AccountEventsPage {
+  ss58: string;
+  event_count: number;
+  limit?: number | null;
+  offset?: number | null;
+  next_cursor?: string | null;
+  events: AccountEvent[];
+  [key: string]: unknown;
+}
+
+/**
+ * Cross-subnet footprint for one account from /api/v1/accounts/{ss58}/subnets.
+ * Same registration shape as the summary, ordered by netuid ascending.
+ */
+export interface AccountSubnets {
+  ss58: string;
+  subnet_count: number;
+  subnets: AccountRegistration[];
+  [key: string]: unknown;
+}
+
+/** Cross-subnet activity summary for one account from /api/v1/accounts/{ss58}. */
+export interface AccountSummary {
+  ss58: string;
+  event_count: number;
+  subnet_count: number;
+  first_block?: number | null;
+  last_block?: number | null;
+  first_seen_at?: string | null;
+  last_seen_at?: string | null;
+  event_kinds: Array<{ kind: string; count: number }>;
+  registrations: AccountRegistration[];
+  recent_events: AccountEvent[];
+  [key: string]: unknown;
+}
+
+/** One hotkey-keyed daily activity row from /api/v1/accounts/{ss58}/history. */
+export interface AccountDay {
+  day: string;
+  netuid: number | null;
+  event_count: number;
+  event_kinds: string[];
+  first_block?: number | null;
+  last_block?: number | null;
+  [key: string]: unknown;
+}
+
+/** Per-day activity history for one account from /api/v1/accounts/{ss58}/history. */
+export interface AccountHistory {
+  ss58: string;
+  day_count: number;
+  limit?: number | null;
+  offset?: number | null;
+  days: AccountDay[];
+  [key: string]: unknown;
+}
+
+/** Live TAO balance for an account from /api/v1/accounts/{ss58}/balance. */
+export interface AccountBalance {
+  ss58: string;
+  /** Free + reserved balance in TAO; null when the RPC lookup failed. */
+  balance_tao: number | null;
+  queried_at?: string | null;
+}
+
+/** Per-subnet on-chain economics from /api/v1/economics. */
+export interface SubnetEconomics {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  emission_share?: number;
+  alpha_price_tao?: number;
+  validator_count?: number;
+  max_validators?: number;
+  miner_count?: number;
+  max_uids?: number;
+  total_stake_tao?: number;
+  max_stake_tao?: number;
+  subnet_volume_tao?: number;
+  registration_cost_tao?: number;
+  registration_allowed?: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * One subnet row from the composed /api/v1/compare endpoint, which fuses
+ * registry structure + on-chain economics + live probe health per netuid in a
+ * single request. `found` is false (and the dimension blocks null) for netuids
+ * the registry does not know; `health` is null when the subnet has no probed
+ * surfaces. The compare endpoint carries no curation tier.
+ */
+export interface CompareStructure {
+  completeness_score?: number; // 0–100
+  surface_count?: number;
+  operational_interface_count?: number;
+}
+
+export interface CompareEconomics {
+  registration_cost_tao?: number;
+  registration_allowed?: boolean;
+  open_slots?: number;
+  emission_share?: number;
+  alpha_price_tao?: number;
+  validator_count?: number;
+  miner_count?: number;
+  total_stake_tao?: number;
+  miner_readiness?: number;
+  [key: string]: unknown;
+}
+
+export interface CompareHealth {
+  surface_count?: number;
+  ok_count?: number;
+  avg_latency_ms?: number;
+}
+
+export interface CompareSubnet {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  found: boolean;
+  structure?: CompareStructure;
+  economics?: CompareEconomics;
+  health?: CompareHealth;
+}
+
+export interface Compare {
+  dimensions: string[];
+  requested_netuids: number[];
+  subnets: CompareSubnet[];
+  observed_at?: string;
+  source?: string;
+}
+
+/** One daily on-chain snapshot from /subnets/{n}/history. */
+export interface SubnetHistoryPoint {
+  snapshot_date: string;
+  neuron_count?: number;
+  validator_count?: number;
+  total_stake_tao?: number;
+  total_emission_tao?: number;
+  [key: string]: unknown;
+}
+
+/** Per-subnet on-chain history from /api/v1/subnets/{netuid}/history. */
+export interface SubnetHistory {
+  netuid: number;
+  window?: string;
+  point_count?: number;
+  points: SubnetHistoryPoint[];
+}
+
+/** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
+export interface SubnetNeuronHistoryPoint {
+  snapshot_date: string;
+  emission_tao?: number;
+  incentive?: number;
+  consensus?: number;
+  dividends?: number;
+  stake_tao?: number;
+  rank?: number;
+  validator_permit?: boolean;
+  [key: string]: unknown;
+}
+
+/** Per-UID on-chain history from /api/v1/subnets/{netuid}/neurons/{uid}/history. */
+export interface SubnetNeuronHistory {
+  netuid: number;
+  uid: number;
+  window?: string;
+  point_count?: number;
+  points: SubnetNeuronHistoryPoint[];
+}
+
+// ---- Subnet economic depth: metagraph / validators / concentration ----------
+//
+// Render shapes for the live metagraph-snapshot tier:
+//   - /subnets/{n}/metagraph      → the full neuron table
+//   - /subnets/{n}/validators     → pre-filtered + ranked validators (same row)
+//   - /subnets/{n}/neurons/{uid}  → a single neuron snapshot
+//   - /subnets/{n}/concentration  → stake/emission distribution metrics
+//   - /subnets/{n}/concentration/history → daily Gini/Nakamoto/top-share drift
+// Every per-neuron field is optional + nullable: the snapshot fills rank/axon/
+// emission with null for inactive UIDs, so consumers must be null-safe.
+
+/** One neuron row from /subnets/{n}/metagraph (and /validators, /neurons/{uid}). */
+export interface MetagraphNeuron {
+  uid: number;
+  hotkey?: string;
+  coldkey?: string;
+  active?: boolean;
+  validator_permit?: boolean;
+  rank?: number | null;
+  trust?: number;
+  validator_trust?: number;
+  consensus?: number;
+  incentive?: number;
+  dividends?: number;
+  emission_tao?: number;
+  stake_tao?: number;
+  registered_at_block?: number;
+  is_immunity_period?: boolean;
+  axon?: string | null;
+  [key: string]: unknown;
+}
+
+/** The full metagraph snapshot from /api/v1/subnets/{netuid}/metagraph. */
+export interface SubnetMetagraph {
+  netuid: number;
+  neuron_count?: number;
+  captured_at?: string;
+  block_number?: number;
+  neurons: MetagraphNeuron[];
+}
+
+/** The pre-filtered/ranked validator set from /api/v1/subnets/{netuid}/validators. */
+export interface SubnetValidators {
+  netuid: number;
+  validator_count?: number;
+  captured_at?: string;
+  block_number?: number;
+  validators: MetagraphNeuron[];
+}
+
+/** A single neuron snapshot from /api/v1/subnets/{netuid}/neurons/{uid}. */
+export interface SubnetNeuronSnapshot {
+  netuid: number;
+  uid: number;
+  captured_at?: string;
+  block_number?: number;
+  neuron?: MetagraphNeuron;
+}
+
+/** One distribution metric block (stake / emission / entity_* / validator_*). */
+export interface ConcentrationMetrics {
+  holders?: number;
+  total?: number;
+  gini?: number;
+  hhi?: number;
+  hhi_normalized?: number;
+  nakamoto_coefficient?: number;
+  top_1pct_share?: number;
+  top_5pct_share?: number;
+  top_10pct_share?: number;
+  top_20pct_share?: number;
+  entropy?: number;
+  entropy_normalized?: number;
+}
+
+/** Concentration metrics from /api/v1/subnets/{netuid}/concentration. */
+export interface SubnetConcentration {
+  netuid: number;
+  neuron_count?: number;
+  entity_count?: number;
+  uids_per_entity?: number;
+  captured_at?: string;
+  stake?: ConcentrationMetrics;
+  emission?: ConcentrationMetrics;
+  entity_stake?: ConcentrationMetrics;
+  entity_emission?: ConcentrationMetrics;
+  validator_stake?: ConcentrationMetrics;
+}
+
+/** One daily concentration-history point from /concentration/history. */
+export interface ConcentrationHistoryPoint {
+  snapshot_date: string;
+  neuron_count?: number;
+  stake_gini?: number | null;
+  stake_nakamoto_coefficient?: number | null;
+  stake_top_10pct_share?: number | null;
+  emission_gini?: number | null;
+  emission_nakamoto_coefficient?: number | null;
+  emission_top_10pct_share?: number | null;
+  [key: string]: unknown;
+}
+
+/** Concentration drift from /api/v1/subnets/{netuid}/concentration/history. */
+export interface SubnetConcentrationHistory {
+  netuid: number;
+  window?: string;
+  point_count?: number;
+  points: ConcentrationHistoryPoint[];
+}
+
+// --- Compile-time contract enforcement ---------------------------------------
+//
+// These are type-only assertions (zero runtime cost). They tie this file's UI
+// render shapes + enum mappings back to the published contract, so a backend
+// contract change that this file hasn't tracked becomes a `tsc` error instead of
+// a silent drift (the failure mode #1758 set out to close). To see them bite,
+// edit one of the expected unions below and run `npm run typecheck`.
+
+/** Assert two types are mutually assignable (i.e. structurally equal). */
+type Equals<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+/** Assert `Child` is assignable to `Parent` (a subset relation). */
+type Extends<Child, Parent> = Child extends Parent ? true : false;
+
+/** Compiles only when the assertion type resolves to exactly `true`. */
+type Assert<T extends true> = T;
+
+// The UI's CurationLevel must stay byte-for-byte the contract enum — this is a
+// pure re-export, so equality both proves the alias is wired up and breaks if a
+// future package bump changes the member set.
+type _CurationLevelMatchesContract = Assert<Equals<CurationLevel, ApiSchema<"CurationLevel">>>;
+
+// The canonical health enum the presentation mapping (`statusToHealth`) consumes.
+// If the backend adds/renames a HealthStatus member, the adapter's exhaustive
+// test fails AND this anchor confirms the source enum moved.
+type _HealthStatusMatchesContract = Assert<Equals<HealthStatus, ApiSchema<"HealthStatus">>>;
+
+// `Provider.authority` is now sourced from the contract Authority enum (the
+// `third-party` drift fix). Asserting the contract enum is assignable to the
+// field's type proves every real authority value is representable — i.e. we did
+// not narrow away a backend member.
+type _AuthorityRepresentable = Assert<Extends<Authority, NonNullable<Provider["authority"]>>>;
+type _SurfaceAuthorityRepresentable = Assert<Extends<Authority, NonNullable<Surface["authority"]>>>;
+
+// The render shapes read specific wire fields off the contract types; these
+// assertions fail to compile if the backend renames/removes the consumed field,
+// pinning the normalizers in `queries.ts` to the contract.
+//   - normalizeEndpoint maps the wire `status` (HealthStatus) → UI `health`.
+type _EndpointStatusIsHealthStatus = Assert<Equals<ApiEndpointResource["status"], HealthStatus>>;
+//   - normalizeSurface reads the wire `authority` to derive the chip level.
+type _SurfaceWireHasAuthority = Assert<Extends<ApiSurface["authority"], Authority>>;
+//   - the per-surface health probe carries the canonical status enum.
+type _HealthSurfaceStatusIsHealthStatus = Assert<Equals<ApiHealthSurface["status"], HealthStatus>>;
+
+// Reference the assertion aliases so `noUnusedLocals` / eslint don't strip them;
+// `satisfies true` re-checks each at the value level for good measure.
+export const __contractAssertions = {
+  curationLevel: true as _CurationLevelMatchesContract,
+  healthStatus: true as _HealthStatusMatchesContract,
+  authorityRepresentable: true as _AuthorityRepresentable,
+  surfaceAuthorityRepresentable: true as _SurfaceAuthorityRepresentable,
+  endpointStatusIsHealthStatus: true as _EndpointStatusIsHealthStatus,
+  surfaceWireHasAuthority: true as _SurfaceWireHasAuthority,
+  healthSurfaceStatusIsHealthStatus: true as _HealthSurfaceStatusIsHealthStatus,
+} satisfies Record<string, true>;
+
+// ---- Chain analytics dashboard (epic #1986) -------------------------------
+
+export interface ChainActivityDay {
+  day: string;
+  block_count: number;
+  extrinsic_count: number;
+  event_count: number;
+  successful_extrinsics: number;
+  success_rate: number | null;
+  unique_signers: number;
+}
+export interface ChainActivity {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  day_count: number;
+  days: ChainActivityDay[];
+}
+export interface ChainCallEntry {
+  call_module: string;
+  call_function: string | null;
+  count: number;
+  share: number | null;
+}
+export interface ChainCalls {
+  schema_version: number;
+  window: string;
+  group_by: string;
+  observed_at: string | null;
+  total_extrinsics: number;
+  call_count: number;
+  calls: ChainCallEntry[];
+}
+export interface ChainSignerEntry {
+  signer: string;
+  tx_count: number;
+  total_fee_tao: number;
+  total_tip_tao: number;
+  last_tx_block: number | null;
+}
+export interface ChainSigners {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  signer_count: number;
+  signers: ChainSignerEntry[];
+}
+export interface ChainFeeDay {
+  day: string;
+  extrinsic_count: number;
+  total_fee_tao: number;
+  avg_fee_tao: number | null;
+  total_tip_tao: number;
+  avg_tip_tao: number | null;
+}
+export interface ChainFeePayer {
+  signer: string;
+  total_fee_tao: number;
+  total_tip_tao: number;
+  extrinsic_count: number;
+}
+export interface ChainFees {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  day_count: number;
+  daily: ChainFeeDay[];
+  top_fee_payers: ChainFeePayer[];
+}
+
+/* ===================== Theme C: registry & network-health depth ===================== */
+
+/**
+ * /api/v1/health/trends — the BULK per-day health trend artifact. Distinct from
+ * the per-subnet /api/v1/subnets/{netuid}/health/trends shape (HealthTrendWindow):
+ * this one carries `windows[range].subnets[].points[]`, one real point per day.
+ */
+export interface BulkHealthTrendPoint {
+  date: string; // YYYY-MM-DD
+  samples?: number;
+  uptime_ratio?: number | null; // 0–1
+  avg_latency_ms?: number | null;
+  latency_sample_count?: number;
+  [key: string]: unknown;
+}
+
+export interface BulkHealthTrendSubnet {
+  netuid: number;
+  samples?: number;
+  uptime_ratio?: number;
+  avg_latency_ms?: number;
+  latency_sample_count?: number;
+  points: BulkHealthTrendPoint[];
+  [key: string]: unknown;
+}
+
+export interface BulkHealthTrendWindow {
+  days?: number;
+  granularity?: string;
+  subnet_count?: number;
+  subnets: BulkHealthTrendSubnet[];
+  [key: string]: unknown;
+}
+
+export interface BulkHealthTrends {
+  observed_at?: string;
+  schema_version?: number;
+  source?: string;
+  windows: Record<string, BulkHealthTrendWindow>;
+}
+
+/** One per-day aggregate distilled from all subnets' points[] for a window. */
+export interface HealthTrendDay {
+  date: string;
+  uptime_ratio: number; // 0–1, sample-weighted mean across subnets
+  samples: number;
+  subnet_count: number;
+}
+
+/** /api/v1/registry/summary — counts, distributions, and a top-subnet leaderboard. */
+export interface RegistrySummaryDimension {
+  pct?: number;
+  present?: number;
+}
+
+export interface RegistrySummaryTopSubnet {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  completeness_score?: number;
+  curation_level?: string;
+  profile_level?: string;
+}
+
+export interface RegistrySummary {
+  contract_version?: string;
+  generated_at?: string;
+  subnet_count?: number;
+  counts: Record<string, number>;
+  curation_level_counts: Record<string, number>;
+  profile_level_counts: Record<string, number>;
+  coverage: {
+    average_score?: number;
+    median_score?: number;
+    fully_complete_count?: number;
+    fully_complete_pct?: number;
+    scored_subnet_count?: number;
+    score_distribution: Record<string, number>;
+    dimension_coverage: Record<string, RegistrySummaryDimension>;
+  };
+  top_subnets: RegistrySummaryTopSubnet[];
+}
+
+/** /api/v1/coverage-depth — per-subnet dimension counts + a ranked enrichment queue. */
+export interface CoverageDepthDimensions {
+  surface_count?: number;
+  official_surface_count?: number;
+  service_count?: number;
+  callable_service_count?: number;
+  schema_service_count?: number;
+  schema_missing_count?: number;
+  sdk_count?: number;
+  example_count?: number;
+  data_artifact_count?: number;
+  candidate_count?: number;
+  candidate_operational_count?: number;
+  fixture_available_count?: number;
+  docs_url_present?: boolean;
+  source_repo_present?: boolean;
+  provider_claimed_surface_count?: number;
+  registry_observed_surface_count?: number;
+  service_kinds?: string[];
+  fixture_status_counts?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface CoverageDepthRow {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  tier?: string;
+  agent_status?: string;
+  blocker_level?: string;
+  score?: number;
+  readiness_score?: number;
+  priority_score?: number;
+  completeness_score?: number;
+  curation_level?: string;
+  profile_level?: string;
+  subnet_type?: string;
+  recommended_next_action?: string;
+  top_gap_codes?: string[];
+  dimensions: CoverageDepthDimensions;
+  [key: string]: unknown;
+}
+
+export interface CoverageDepthQueueRow {
+  rank: number;
+  netuid: number;
+  name?: string;
+  slug?: string;
+  priority_score?: number;
+  score?: number;
+  severity?: string;
+  tier?: string;
+  recommended_next_action?: string;
+  top_gap_codes?: string[];
+}
+
+export interface CoverageDepth {
+  contract_version?: string;
+  generated_at?: string;
+  subnet_count?: number;
+  ranked_queue: CoverageDepthQueueRow[];
+  rows: CoverageDepthRow[];
+}
+
+/** /api/v1/health/history/{date} — one day's per-surface probe snapshot. */
+export interface HealthHistorySurface {
+  surface_id?: string;
+  netuid?: number;
+  provider?: string;
+  kind?: string;
+  status?: string; // ok | degraded | failed | unknown
+  classification?: string;
+  latency_ms?: number | null;
+  status_code?: number | null;
+  last_checked?: string;
+  last_ok?: string | null;
+  verified_at?: string;
+  error_class?: string | null;
+  [key: string]: unknown;
+}
+
+export interface HealthHistory {
+  date?: string;
+  probe_started_at?: string;
+  probe_finished_at?: string;
+  summary: {
+    status_counts: Record<string, number>;
+    classification_counts: Record<string, number>;
+    surface_count?: number;
+  };
+  surfaces: HealthHistorySurface[];
+}
+
+/** /api/v1/source-health — per-provider verification + status rollup. */
+export interface SourceHealthProvider {
+  id: string;
+  name?: string;
+  kind?: string;
+  authority?: string;
+  status?: string; // ok | degraded | failed | unknown
+  endpoint_count?: number;
+  rpc_endpoint_count?: number;
+  candidate_count?: number;
+  verification_result_count?: number;
+  classifications?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface SourceHealth {
+  generated_at?: string;
+  providers: SourceHealthProvider[];
+  summary: {
+    provider_count?: number;
+    endpoint_count?: number;
+    rpc_endpoint_count?: number;
+    candidate_count?: number;
+    verification_result_count?: number;
+    status_counts: Record<string, number>;
+  };
+}
+
+/* ===================== Theme C: agent-catalog (capability) ===================== */
+
+export interface AgentCatalogBlocker {
+  code?: string;
+  field?: string;
+  message?: string;
+  next_action?: string;
+  severity?: string;
+}
+
+export interface AgentReadiness {
+  status?: string;
+  blocker_level?: string;
+  blockers?: AgentCatalogBlocker[];
+  missing_fields?: string[];
+  [key: string]: unknown;
+}
+
+export interface AgentCatalogServiceHealth {
+  status?: string;
+  classification?: string;
+  latency_ms?: number;
+  last_ok?: string;
+  last_checked?: string;
+  stale?: boolean;
+  observed_by?: string;
+}
+
+export interface AgentCatalogService {
+  kind?: string; // subnet-api | openapi | sse | data-artifact
+  capability?: string;
+  description?: string | null;
+  base_url?: string;
+  provider?: string;
+  authority?: string;
+  auth_required?: boolean;
+  auth_schemes?: string[];
+  health?: AgentCatalogServiceHealth;
+  eligibility?: { callable?: boolean; live_status?: string; reasons?: string[] };
+  schema_url?: string | null;
+  surface_id?: string;
+  [key: string]: unknown;
+}
+
+export interface AgentCatalogReadiness {
+  score?: number;
+  readiness_tier?: string;
+  components?: Record<string, boolean>;
+  readiness_verified?: boolean;
+  [key: string]: unknown;
+}
+
+/** A row in the /api/v1/agent-catalog list (ready or blocked bucket). */
+export interface AgentCatalogSummary {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  subnet_type?: string;
+  integration_readiness?: number;
+  completeness_score?: number;
+  readiness_tier?: string;
+  service_count?: number;
+  callable_count?: number;
+  service_kinds?: string[];
+  categories?: string[];
+  base_url?: string;
+  health?: string;
+  agent_readiness?: AgentReadiness;
+  readiness?: AgentCatalogReadiness;
+}
+
+/** /api/v1/agent-catalog/{netuid} detail (services + examples). */
+export interface AgentCatalogDetail extends AgentCatalogSummary {
+  services?: AgentCatalogService[];
+  examples?: unknown[];
+  example_count?: number;
+  generated_at?: string;
+  operational_observed_at?: string;
+  health_source?: string;
+}
