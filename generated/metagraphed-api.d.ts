@@ -157,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/serving": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Operational activity (announcing an axon endpoint); the account-level companion to GET /api/v1/chain/serving, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state) and GET /api/v1/accounts/{ss58}/registrations (registration events). */
+        get: operations["accountServing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/stake-flow": {
         parameters: {
             query?: never;
@@ -2423,6 +2440,25 @@ export interface components {
                 registrations: number;
             }[];
             total_registrations: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
+        };
+        /** @description One account's axon-serving footprint per subnet over a recent window, from the account_events AxonServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet. Operational activity (announcing an axon endpoint) — the account-level companion to /api/v1/chain/serving and /api/v1/subnets/{netuid}/serving, orthogonal to /accounts/{ss58}/subnets (registration state) and /accounts/{ss58}/registrations (registration events). */
+        AccountServingArtifact: {
+            address: string;
+            concentration: number | null;
+            dominant_netuid: number | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: {
+                announcements: number;
+                /** Format: date-time */
+                first_served_at: string | null;
+                /** Format: date-time */
+                last_served_at: string | null;
+                netuid: number;
+            }[];
+            total_announcements: number;
             /** @enum {string|null} */
             window: "7d" | "30d" | "90d" | null;
         };
@@ -7944,6 +7980,123 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountRegistrationsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountServing: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "address": "example",
+                     *         "concentration": 0.5,
+                     *         "dominant_netuid": 7,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "announcements": 1,
+                     *             "first_served_at": "2026-06-01T00:00:00.000Z",
+                     *             "last_served_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 7
+                     *           }
+                     *         ],
+                     *         "total_announcements": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountServingArtifact"];
                     };
                 };
             };

@@ -185,6 +185,11 @@ import {
   DEFAULT_REGISTRATION_WINDOW,
 } from "../../src/account-registrations.mjs";
 import {
+  loadAccountServing,
+  SERVING_WINDOWS,
+  DEFAULT_SERVING_WINDOW,
+} from "../../src/account-serving.mjs";
+import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
   DEFAULT_MOVERS_WINDOW,
@@ -1874,6 +1879,37 @@ export async function handleAccountRegistrations(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/registrations.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/serving: the account's per-subnet AxonServed footprint over a
+// 7d/30d/90d window — announcement count + first/last timestamps per subnet, an HHI concentration
+// of where its serving activity is focused, and the dominant subnet. account_events-derived (source
+// "chain-events"). Cold/absent store → schema-stable zeros (never 404).
+export async function handleAccountServing(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam = url.searchParams.get("window") || DEFAULT_SERVING_WINDOW;
+  if (!Object.hasOwn(SERVING_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, SERVING_WINDOWS),
+    });
+  }
+  const { data, generatedAt } = await loadAccountServing(d1Runner(env), ss58, {
+    windowLabel: windowParam,
+  });
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/serving.json`,
         generatedAt,
       ),
     },

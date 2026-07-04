@@ -603,3 +603,68 @@ test("GET /accounts/{ss58}/registrations rejects an unsupported window with 400"
   const body = await res.json();
   assert.equal(body.meta.parameter, "window");
 });
+
+test("GET /accounts/{ss58}/serving routes to the per-account serving handler", async () => {
+  const env = dbWith({
+    events: [
+      {
+        netuid: 1,
+        announcements: 30,
+        first_observed: 1750000000000,
+        last_observed: 1750009000000,
+      },
+      {
+        netuid: 7,
+        announcements: 5,
+        first_observed: 1750001000000,
+        last_observed: 1750001000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/serving?window=30d`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.window, "30d");
+  assert.equal(body.data.total_announcements, 35);
+  assert.equal(body.data.subnets[0].netuid, 1); // most announcements -> leads + dominant
+  assert.equal(body.data.dominant_netuid, 1);
+  assert.equal(body.meta.source, "chain-events");
+});
+
+test("GET /accounts/{ss58}/serving is schema-stable when D1 is cold (never 404)", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/serving`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.subnet_count, 0);
+  assert.equal(Array.isArray(body.data.subnets), true);
+});
+
+test("GET /accounts/{ss58}/serving rejects an unknown query param with 400", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/serving?bogus=1`),
+    dbWith({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+});
+
+test("GET /accounts/{ss58}/serving rejects an unsupported window with 400", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/serving?window=1y`),
+    dbWith({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.meta.parameter, "window");
+});

@@ -1128,6 +1128,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountStakeFlowArtifact",
   ),
   artifact(
+    "account-serving",
+    "/metagraph/accounts/{ss58}/serving.json",
+    "One account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/serving (no static file). Operational activity (announcing an axon endpoint) — the account-level companion to /api/v1/chain/serving, orthogonal to /api/v1/accounts/{ss58}/subnets (registration state) and /api/v1/accounts/{ss58}/registrations (registration events).",
+    "AccountServingArtifact",
+  ),
+  artifact(
     "account-registrations",
     "/metagraph/accounts/{ss58}/registrations.json",
     "One account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first/last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/registrations (no static file). Windowed registration events (incl. re-registrations after a deregistration) — the account-level companion to /api/v1/chain/registrations, distinct from /api/v1/accounts/{ss58}/subnets (current registration state).",
@@ -2466,6 +2472,22 @@ export const API_ROUTES = [
       {
         name: "direction",
         schema: { type: "string", enum: ["all", "in", "out"] },
+      },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-serving",
+    "GET",
+    "/api/v1/accounts/{ss58}/serving",
+    "/metagraph/accounts/{ss58}/serving.json",
+    "Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Operational activity (announcing an axon endpoint); the account-level companion to GET /api/v1/chain/serving, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state) and GET /api/v1/accounts/{ss58}/registrations (registration events).",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
       },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
