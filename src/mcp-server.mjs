@@ -325,6 +325,11 @@ import {
   DEFAULT_SERVING_WINDOW,
 } from "./account-serving.mjs";
 import {
+  loadAccountDeregistrations,
+  DEREGISTRATION_WINDOWS as ACCOUNT_DEREGISTRATION_WINDOWS,
+  DEFAULT_DEREGISTRATION_WINDOW as DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW,
+} from "./account-deregistrations.mjs";
+import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
   MOVERS_SORTS,
@@ -374,7 +379,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.56.0";
+export const MCP_SERVER_VERSION = "1.57.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -405,6 +410,9 @@ const ACCOUNT_AXON_REMOVALS_WINDOW_KEYS = Object.keys(AXON_REMOVAL_WINDOWS);
 const ACCOUNT_PROMETHEUS_WINDOW_KEYS = Object.keys(PROMETHEUS_WINDOWS);
 const ACCOUNT_REGISTRATIONS_WINDOW_KEYS = Object.keys(REGISTRATION_WINDOWS);
 const ACCOUNT_SERVING_WINDOW_KEYS = Object.keys(SERVING_WINDOWS);
+const ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
+  ACCOUNT_DEREGISTRATION_WINDOWS,
+);
 const SUBNET_EVENT_SUMMARY_WINDOW_KEYS = Object.keys(
   SUBNET_EVENT_SUMMARY_WINDOWS,
 );
@@ -539,7 +547,9 @@ export const MCP_INSTRUCTIONS =
   "get_account_registrations its per-subnet NeuronRegistered registration footprint " +
   "with registration counts, first/last timestamps, and concentration labels, " +
   "get_account_serving its per-subnet AxonServed axon-endpoint serving footprint " +
-  "with announcement counts, first/last timestamps, and concentration labels. For chain-wide " +
+  "with announcement counts, first/last timestamps, and concentration labels, " +
+  "get_account_deregistrations its per-subnet NeuronDeregistered eviction footprint " +
+  "with deregistration counts, first/last timestamps, and concentration labels. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
   "fee/tip market series plus top payers, get_chain_registrations the " +
@@ -4268,6 +4278,55 @@ export const MCP_TOOLS = [
       const { data } = await loadAccountServing(mcpD1Runner(ctx), ss58, {
         windowLabel: window,
       });
+      return data;
+    },
+  },
+  {
+    name: "get_account_deregistrations",
+    title: "Get an account's neuron-deregistration footprint",
+    description:
+      "Fetch one account's NeuronDeregistered eviction footprint per subnet over " +
+      "the requested window (7d, 30d, or 90d; default 30d): each subnet's " +
+      "deregistration count with the first and last NeuronDeregistered timestamps, " +
+      "plus account totals, an HHI concentration of where its eviction activity is " +
+      "focused, and the dominant subnet. The exit-side complement to " +
+      "get_account_registrations (registration events) — windowed eviction EVENTS, " +
+      "distinct from get_account_subnets (current registration state). The " +
+      "account-level companion to get_chain_deregistrations and " +
+      "get_subnet_deregistrations. Mirrors GET /api/v1/accounts/{ss58}/deregistrations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 hotkey address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW}).`,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW;
+      if (!Object.hasOwn(ACCOUNT_DEREGISTRATION_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const { data } = await loadAccountDeregistrations(
+        mcpD1Runner(ctx),
+        ss58,
+        { windowLabel: window },
+      );
       return data;
     },
   },
@@ -8760,6 +8819,47 @@ const TOOL_OUTPUT_SCHEMAS = {
             announcements: { type: "integer" },
             first_served_at: NULLABLE_STRING,
             last_served_at: NULLABLE_STRING,
+          },
+        },
+      },
+    },
+  },
+  get_account_deregistrations: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "address",
+      "window",
+      "total_deregistrations",
+      "subnet_count",
+      "subnets",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      address: { type: "string" },
+      window: NULLABLE_STRING,
+      total_deregistrations: { type: "integer" },
+      subnet_count: { type: "integer" },
+      // Herfindahl-Hirschman index of NeuronDeregistered events across subnets: 1
+      // means all deregistrations on one subnet; null when the account has none.
+      concentration: { type: ["number", "null"] },
+      dominant_netuid: NULLABLE_INT,
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "deregistrations",
+            "first_deregistered_at",
+            "last_deregistered_at",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            deregistrations: { type: "integer" },
+            first_deregistered_at: NULLABLE_STRING,
+            last_deregistered_at: NULLABLE_STRING,
           },
         },
       },
