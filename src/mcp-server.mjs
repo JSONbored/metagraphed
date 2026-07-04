@@ -18,7 +18,7 @@ import {
 import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
-import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
+import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
   GET_ECONOMICS_MCP_TOOL,
@@ -314,7 +314,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.46.0";
+export const MCP_SERVER_VERSION = "1.47.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -1089,6 +1089,19 @@ function requireNetuid(args) {
 function optionalBoolean(args, key) {
   const value = args?.[key];
   if (value === undefined || value === null) return false;
+  if (typeof value !== "boolean") {
+    throw toolError("invalid_params", `Argument \`${key}\` must be a boolean.`);
+  }
+  return value;
+}
+
+// Unlike optionalBoolean (which defaults an absent flag to false), a tri-state
+// filter arg must distinguish "not provided, don't filter" (null) from an
+// explicit true/false, or an absent filter would wrongly narrow to only the
+// false-valued rows.
+function optionalNullableBoolean(args, key) {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
   if (typeof value !== "boolean") {
     throw toolError("invalid_params", `Argument \`${key}\` must be a boolean.`);
   }
@@ -5086,15 +5099,93 @@ export const MCP_TOOLS = [
       "monitored public endpoint/surface across providers and subnets, each " +
       "with its kind, layer, provider, subnet (netuid), publication state, and " +
       "probe-derived status/latency/score. Use it to discover live endpoints " +
-      "network-wide (filter client-side by kind, status, or latency). Mirrors " +
-      "GET /api/v1/endpoints.",
+      "network-wide. Optionally filter by kind/layer/netuid/provider/" +
+      "publication_state/status/pool_eligible and page with limit/offset — the " +
+      "full catalog can be large. Mirrors GET /api/v1/endpoints.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        kind: {
+          type: "string",
+          enum: QUERY_ENUMS.surfaceKind,
+          description: "Surface kind, e.g. 'subnet-api' or 'openapi'.",
+        },
+        layer: {
+          type: "string",
+          enum: QUERY_ENUMS.endpointLayer,
+          description: "Endpoint layer, e.g. 'subnet-app' or 'bittensor-base'.",
+        },
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        provider: {
+          type: "string",
+          description: "Provider slug, e.g. 'datura'.",
+        },
+        publication_state: {
+          type: "string",
+          enum: QUERY_ENUMS.endpointPublicationState,
+          description:
+            "Publication state, e.g. 'monitored' or 'pool-eligible'.",
+        },
+        status: {
+          type: "string",
+          enum: QUERY_ENUMS.healthStatus,
+          description: "Probe-derived health status, e.g. 'ok' or 'degraded'.",
+        },
+        pool_eligible: {
+          type: "boolean",
+          description: "Only endpoints eligible (or not) for RPC pooling.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max endpoints to return. Omit for the full list.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset into the (filtered) list. Default 0.",
+          minimum: 0,
+        },
+      },
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/endpoints.json");
+    async handler(args, ctx) {
+      const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
+      const layer = optionalEnum(args, "layer", QUERY_ENUMS.endpointLayer);
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      const provider = optionalString(args, "provider");
+      const publicationState = optionalEnum(
+        args,
+        "publication_state",
+        QUERY_ENUMS.endpointPublicationState,
+      );
+      const status = optionalEnum(args, "status", QUERY_ENUMS.healthStatus);
+      const poolEligible = optionalNullableBoolean(args, "pool_eligible");
+      const limit = optionalPositiveInt(args, "limit");
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
+      const all = Array.isArray(data.endpoints) ? data.endpoints : [];
+      const filtered = all.filter(
+        (e) =>
+          (kind === null || e.kind === kind) &&
+          (layer === null || e.layer === layer) &&
+          (netuid === null || e.netuid === netuid) &&
+          (provider === null || e.provider === provider) &&
+          (publicationState === null ||
+            e.publication_state === publicationState) &&
+          (status === null || e.status === status) &&
+          (poolEligible === null || e.pool_eligible === poolEligible),
+      );
+      const page =
+        limit === null
+          ? filtered.slice(offset)
+          : filtered.slice(offset, offset + limit);
+      return {
+        ...data,
+        endpoints: page,
+        total: filtered.length,
+        returned: page.length,
+        offset,
+      };
     },
   },
   {

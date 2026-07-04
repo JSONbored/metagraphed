@@ -11018,9 +11018,170 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
         endpoints: [{ netuid: 7, kind: "rest", provider: "datura" }],
       },
     });
-    const res = await callTool("list_endpoints", { netuid: 7 }, { deps });
+    const res = await callTool("list_endpoints", { bogus: 1 }, { deps });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  function endpointsDeps() {
+    return makeDeps({
+      "/metagraph/endpoints.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        endpoints: [
+          {
+            netuid: 7,
+            kind: "subnet-api",
+            layer: "subnet-app",
+            provider: "datura",
+            publication_state: "monitored",
+            status: "ok",
+            pool_eligible: false,
+          },
+          {
+            netuid: 7,
+            kind: "openapi",
+            layer: "docs-provider",
+            provider: "chutes",
+            publication_state: "verified",
+            status: "degraded",
+            pool_eligible: false,
+          },
+          {
+            netuid: 12,
+            kind: "subtensor-rpc",
+            layer: "bittensor-base",
+            provider: "datura",
+            publication_state: "pool-eligible",
+            status: "ok",
+            pool_eligible: true,
+          },
+        ],
+      },
+    });
+  }
+
+  test("list_endpoints filters by kind, layer, netuid, provider, publication_state, status, pool_eligible", async () => {
+    const deps = endpointsDeps();
+    const byKind = (
+      await callTool("list_endpoints", { kind: "openapi" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byKind.total, 1);
+    assert.equal(byKind.endpoints[0].provider, "chutes");
+
+    const byLayer = (
+      await callTool("list_endpoints", { layer: "bittensor-base" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byLayer.total, 1);
+    assert.equal(byLayer.endpoints[0].netuid, 12);
+
+    const byNetuid = (await callTool("list_endpoints", { netuid: 7 }, { deps }))
+      .body.result.structuredContent;
+    assert.equal(byNetuid.total, 2);
+
+    const byProvider = (
+      await callTool("list_endpoints", { provider: "datura" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byProvider.total, 2);
+
+    const byPubState = (
+      await callTool(
+        "list_endpoints",
+        { publication_state: "verified" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(byPubState.total, 1);
+    assert.equal(byPubState.endpoints[0].kind, "openapi");
+
+    const byStatus = (
+      await callTool("list_endpoints", { status: "degraded" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byStatus.total, 1);
+
+    const byPoolEligible = (
+      await callTool("list_endpoints", { pool_eligible: true }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byPoolEligible.total, 1);
+    assert.equal(byPoolEligible.endpoints[0].netuid, 12);
+  });
+
+  test("list_endpoints combines filters (AND) and reports total vs returned", async () => {
+    const deps = endpointsDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { netuid: 7, status: "ok" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 1);
+    assert.equal(out.returned, 1);
+    assert.equal(out.endpoints[0].provider, "datura");
+  });
+
+  test("list_endpoints paginates the filtered list with limit/offset", async () => {
+    const deps = endpointsDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { limit: 1, offset: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 1);
+    assert.equal(out.offset, 1);
+    assert.equal(out.endpoints[0].provider, "chutes");
+  });
+
+  test("list_endpoints rejects an unknown kind/layer/publication_state/status enum value", async () => {
+    const deps = endpointsDeps();
+    const badKind = await callTool(
+      "list_endpoints",
+      { kind: "not-a-kind" },
+      { deps },
+    );
+    assert.equal(badKind.body.result.isError, true);
+
+    const badLayer = await callTool(
+      "list_endpoints",
+      { layer: "not-a-layer" },
+      { deps },
+    );
+    assert.equal(badLayer.body.result.isError, true);
+
+    const badPubState = await callTool(
+      "list_endpoints",
+      { publication_state: "not-a-state" },
+      { deps },
+    );
+    assert.equal(badPubState.body.result.isError, true);
+
+    const badStatus = await callTool(
+      "list_endpoints",
+      { status: "not-a-status" },
+      { deps },
+    );
+    assert.equal(badStatus.body.result.isError, true);
+  });
+
+  test("list_endpoints rejects a non-boolean pool_eligible", async () => {
+    const deps = endpointsDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { pool_eligible: "yes" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("list_endpoints is schema-stable when the artifact has no endpoints array", async () => {
+    const deps = makeDeps({
+      "/metagraph/endpoints.json": { generated_at: "2026-01-01T00:00:00Z" },
+    });
+    const res = await callTool("list_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.endpoints, []);
+    assert.equal(out.total, 0);
+    assert.equal(out.returned, 0);
   });
 
   test("list_evidence returns the evidence ledger artifact", async () => {
