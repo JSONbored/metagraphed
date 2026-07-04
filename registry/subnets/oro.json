@@ -184,6 +184,25 @@
         "https://huggingface.co/oro-ai"
       ],
       "url": "https://huggingface.co/datasets/oro-ai/sn15-shoppingbench-traces-18k"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-shoppingbench-sft",
+      "kind": "data-artifact",
+      "name": "ORO SN15 ShoppingBench SFT dataset",
+      "notes": "Public ORO (SN15) Hugging Face supervised-fine-tuning dataset of ~15k agentic-commerce instruction/response pairs distilled from the subnet's ShoppingBench benchmark; CC BY 4.0, not gated. The dataset card names ORO Subnet 15 and the oro-ai HF org matches the operator's ORO-AI GitHub org (the ORO repo README declares the subnet). Distinct from the subnet's registered ShoppingBench traces dataset.",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://github.com/ORO-AI/oro",
+        "https://huggingface.co/oro-ai"
+      ],
+      "url": "https://huggingface.co/datasets/oro-ai/sn15-shoppingbench-sft-15k"
     }
   ],
   "website_url": "https://oroagents.com/"
