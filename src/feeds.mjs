@@ -436,19 +436,21 @@ function rssFeed(meta, items) {
 }
 
 function atomFeed(meta, items) {
+  const feedUpdated = toIso(meta.updated);
   const body = items
-    .map((it) =>
-      [
+    .map((it) => {
+      const updated = toIso(it.timestamp);
+      return [
         "  <entry>",
         `    <id>urn:metagraphed:${escapeXml(it.id)}</id>`,
         `    <title>${escapeXml(it.title)}</title>`,
         `    <link href="${escapeXml(it.url)}"/>`,
-        `    <updated>${it.timestamp}</updated>`,
+        ...(updated ? [`    <updated>${escapeXml(updated)}</updated>`] : []),
         `    <summary>${escapeXml(it.summary)}</summary>`,
         ...(it.tags || []).map((t) => `    <category term="${escapeXml(t)}"/>`),
         "  </entry>",
-      ].join("\n"),
-    )
+      ].join("\n");
+    })
     .join("\n");
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -457,7 +459,7 @@ function atomFeed(meta, items) {
     `  <link href="${escapeXml(meta.homeUrl)}"/>`,
     `  <link href="${escapeXml(meta.feedUrl)}" rel="self" type="application/atom+xml"/>`,
     `  <id>${escapeXml(meta.feedUrl)}</id>`,
-    `  <updated>${meta.updated}</updated>`,
+    ...(feedUpdated ? [`  <updated>${escapeXml(feedUpdated)}</updated>`] : []),
     `  <subtitle>${escapeXml(meta.description)}</subtitle>`,
     body,
     "</feed>",

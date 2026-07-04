@@ -853,6 +853,33 @@ describe("feeds — serializers", () => {
     assert.match(xml, /<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/);
     assert.match(xml, /<id>https:\/\/api\.metagraph\.sh/);
     assert.ok((xml.match(/<entry>/g) || []).length === items.length);
+    assert.match(xml, /<updated>2026-06-15T00:00:00\.000Z<\/updated>/);
+  });
+
+  test("atomFeed omits updated for corrupt item timestamps", () => {
+    const xml = atomFeed(meta, [
+      {
+        id: "bad-ts",
+        url: "https://example.com/x",
+        title: "bad",
+        summary: "bad",
+        timestamp: "not-a-date",
+        tags: [],
+      },
+    ]);
+    assert.doesNotMatch(xml, /Invalid Date/);
+    assert.match(xml, /<entry>/);
+    assert.doesNotMatch(xml, /<entry>[\s\S]*<updated>/);
+  });
+
+  test("atomFeed omits feed updated when meta.updated is corrupt", () => {
+    const xml = atomFeed({ ...meta, updated: "not-a-date" }, items.slice(0, 1));
+    assert.doesNotMatch(xml, /Invalid Date/);
+    assert.doesNotMatch(xml.split("<entry>")[0], /<updated>/);
+    assert.match(
+      xml,
+      /<entry>[\s\S]*<updated>2026-06-15T00:00:00\.000Z<\/updated>/,
+    );
   });
 
   test("escapeXml neutralizes markup + strips control chars", () => {
