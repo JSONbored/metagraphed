@@ -50,6 +50,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
   // Axon-serving announcement activity: computed live from the account_events AxonServed stream.
   /^subnets\/(?:\d+|\{netuid\})\/serving\.json$/,
+  // Prometheus-endpoint serving activity: computed live from the account_events PrometheusServed stream.
+  /^subnets\/(?:\d+|\{netuid\})\/prometheus\.json$/,
   // Neuron-registration activity: computed live from the account_events NeuronRegistered stream.
   /^subnets\/(?:\d+|\{netuid\})\/registrations\.json$/,
   // Per-UID emission yield distribution: computed live from the neurons snapshot.

@@ -408,6 +408,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-prometheus",
+      "path": "/metagraph/subnets/{netuid}/prometheus.json",
+      "schema_ref": "#/components/schemas/SubnetPrometheusArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-registrations",
       "path": "/metagraph/subnets/{netuid}/registrations.json",
       "schema_ref": "#/components/schemas/SubnetRegistrationsArtifact",
@@ -4802,6 +4809,29 @@
       "id": "subnet-serving",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/serving",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/prometheus.json",
+      "cache": "short",
+      "description": "Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, computed live from the account_events PrometheusServed stream. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). Schema-stable zeroed card when the subnet has no PrometheusServed events in the window.",
+      "id": "subnet-prometheus",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/prometheus",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

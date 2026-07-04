@@ -379,6 +379,35 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("subnet prometheus routes through the worker and caches at the default window", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+
+    // No ?window — the worker dispatches to handleSubnetPrometheus, which resolves the
+    // 7d default and caches under the canonical ?window=7d key.
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/prometheus"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "7d");
+    assert.equal(typeof body.data.distinct_exporters, "number");
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "subnet-prometheus",
+        "/api/v1/subnets/7/prometheus",
+        "?window=7d",
+      ),
+    ]);
+    assert.equal(cache.store.size, 1);
+  });
+
   test("subnet registrations routes through the worker and caches at the default window", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

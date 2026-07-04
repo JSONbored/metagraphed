@@ -100,6 +100,8 @@ import {
   canonicalSubnetWeightsCachePath,
   handleSubnetServing,
   canonicalSubnetServingCachePath,
+  handleSubnetPrometheus,
+  canonicalSubnetPrometheusCachePath,
   handleSubnetRegistrations,
   canonicalSubnetRegistrationsCachePath,
   handleSubnetYield,
@@ -300,6 +302,7 @@ import {
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
+  SUBNET_PROMETHEUS_PATH_PATTERN,
   SUBNET_REGISTRATIONS_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
   SUBNET_PERFORMANCE_PATH_PATTERN,
@@ -1500,6 +1503,27 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             resolved.url,
           ),
         canonicalSubnetServingCachePath(resolved.url),
+      );
+    }
+    const prometheusMatch = SUBNET_PROMETHEUS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (prometheusMatch) {
+      // Prometheus-endpoint serving activity summed live from account_events over the window —
+      // deterministic per request, edge-cache like the sibling serving route.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-prometheus",
+        () =>
+          handleSubnetPrometheus(
+            request,
+            env,
+            Number(prometheusMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetPrometheusCachePath(resolved.url),
       );
     }
     const registrationsMatch = SUBNET_REGISTRATIONS_PATH_PATTERN.exec(

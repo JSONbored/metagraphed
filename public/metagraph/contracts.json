@@ -525,6 +525,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Prometheus-endpoint serving activity for one subnet over a 7d or 30d window — the distinct exporters (hotkeys), PrometheusServed event count, and average announcements per exporter — served live from the account_events PrometheusServed stream at /api/v1/subnets/{netuid}/prometheus (no static file). The per-subnet drill-in of /api/v1/chain/prometheus and the telemetry-endpoint sibling of /api/v1/subnets/{netuid}/serving.",
+      "id": "subnet-prometheus",
+      "path": "/metagraph/subnets/{netuid}/prometheus.json",
+      "schema_ref": "#/components/schemas/SubnetPrometheusArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Neuron-registration activity for one subnet over a 7d or 30d window — the distinct registrants (hotkeys), NeuronRegistered event count, and average registrations per registrant — served live from the account_events NeuronRegistered stream at /api/v1/subnets/{netuid}/registrations (no static file). Raw registration demand, the account_events companion to the neuron_daily validator-set churn in /api/v1/subnets/{netuid}/turnover.",
       "id": "subnet-registrations",
       "path": "/metagraph/subnets/{netuid}/registrations.json",
