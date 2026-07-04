@@ -242,13 +242,19 @@ async function resolvePublicAddressRecords(hostname) {
       ? v6.value.map((address) => ({ address, family: 6 }))
       : []),
   ];
-  if (
-    records.length === 0 ||
-    records.some((record) => !isPublicWebhookAddress(record.address))
-  ) {
+  if (records.some((record) => !isPublicWebhookAddress(record.address))) {
     const error = new Error("unsafe webhook DNS result");
     error.code = "UNSAFE_WEBHOOK_DNS_RESULT";
     throw error;
+  }
+  if (records.length === 0) {
+    const rejected = [v4, v6]
+      .filter((result) => result.status === "rejected")
+      .map((result) => result.reason);
+    if (rejected.length > 0) {
+      throw new AggregateError(rejected, "webhook DNS resolution failed");
+    }
+    throw new Error("no public webhook DNS result");
   }
   return records;
 }
