@@ -49,7 +49,13 @@ function clampStatsBlocks(raw) {
 // as numbers. block_number and observed_at are both < 2^53, so Number(...) is
 // lossless — coerce them per event row for a consistent numeric API shape.
 function numberOrNull(v) {
-  return v == null ? null : Number(v);
+  if (v == null) return null;
+  // Blank Hyperdrive/Postgres cells coerce via Number("") → 0; trim rejects "" /
+  // whitespace-only so absent indices/timestamps stay null (mirrors toBlockNumber
+  // in src/account-events.mjs and src/blocks.mjs).
+  if (typeof v === "string" && v.trim() === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function nonNegativeIntegerParam(params, key) {

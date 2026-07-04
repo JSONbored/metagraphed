@@ -4,26 +4,28 @@
 import { beforeEach, test, expect, vi } from "vitest";
 
 const sqlCalls = vi.hoisted(() => []);
+const mockRows = vi.hoisted(() => ({
+  current: [
+    {
+      block_number: "123",
+      event_index: 0,
+      pallet: "System",
+      method: "ExtrinsicSuccess",
+      args: { x: 1 },
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 2,
+      observed_at: "100",
+    },
+  ],
+}));
 
 vi.mock("postgres", () => ({
   default: () => {
-    const rows = [
-      {
-        block_number: "123",
-        event_index: 0,
-        pallet: "System",
-        method: "ExtrinsicSuccess",
-        args: { x: 1 },
-        phase: "ApplyExtrinsic",
-        extrinsic_index: 2,
-        observed_at: "100",
-      },
-    ];
     // Every tagged-template call (top-level query OR nested fragment) resolves to rows;
     // the handler awaits the outer query and ignores interpolated fragment values.
     const sql = (strings, ...values) => {
       sqlCalls.push({ text: Array.from(strings).join("?"), values });
-      return Promise.resolve(rows);
+      return Promise.resolve(mockRows.current);
     };
     sql.end = () => Promise.resolve();
     return sql;
@@ -39,6 +41,40 @@ const queryText = () => sqlCalls.map((call) => call.text).join("\n");
 
 beforeEach(() => {
   sqlCalls.length = 0;
+  mockRows.current = [
+    {
+      block_number: "123",
+      event_index: 0,
+      pallet: "System",
+      method: "ExtrinsicSuccess",
+      args: { x: 1 },
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 2,
+      observed_at: "100",
+    },
+  ];
+});
+
+test("chain-events coerces blank bigint cells to null, not zero", async () => {
+  mockRows.current = [
+    {
+      block_number: "",
+      event_index: "   ",
+      pallet: "System",
+      method: "ExtrinsicSuccess",
+      args: { x: 1 },
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 2,
+      observed_at: "",
+    },
+  ];
+  const res = await req("/api/v1/chain-events?limit=1");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.events[0].block_number).toBeNull();
+  expect(body.events[0].observed_at).toBeNull();
+  // Blank seek keys must not produce a lossless cursor token.
+  expect(body.next_cursor).toBeNull();
 });
 
 test("GET /api/v1/blocks/:n/chain-events returns the block's events", async () => {
