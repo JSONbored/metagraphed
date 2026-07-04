@@ -395,6 +395,43 @@ describe("history builders", () => {
     assert.equal(recent.mean_emission_share, 0.03);
   });
 
+  test("buildEconomicsTrends drops the partial oldest day when the read was capped", () => {
+    // A row-capped read truncates the oldest snapshot_date mid-day (only some of
+    // that day's subnets survive the LIMIT), so its network total is spuriously
+    // small. capped:true must drop it, matching buildConcentrationHistory.
+    const rows = [
+      { snapshot_date: "2026-06-02", total_stake_tao: 300, validator_count: 8 },
+      // 2026-06-01 really had the full network but only one subnet fell inside the cap.
+      { snapshot_date: "2026-06-01", total_stake_tao: 5, validator_count: 1 },
+    ];
+    const capped = buildEconomicsTrends(rows, { window: "all", capped: true });
+    assert.equal(capped.day_count, 1);
+    assert.deepEqual(
+      capped.days.map((d) => d.snapshot_date),
+      ["2026-06-02"], // the partial oldest 2026-06-01 is dropped
+    );
+    // Without the cap flag the same rows keep every day (the default path).
+    const full = buildEconomicsTrends(rows, { window: "all" });
+    assert.equal(full.day_count, 2);
+  });
+
+  test("buildEconomicsTrends keeps a lone day even when capped (never empties the series)", () => {
+    // Only one day present: there is no complete day behind it to fall back to, so
+    // the guard keeps it rather than returning an empty series.
+    const out = buildEconomicsTrends(
+      [
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 100,
+          validator_count: 4,
+        },
+      ],
+      { capped: true },
+    );
+    assert.equal(out.day_count, 1);
+    assert.equal(out.days[0].snapshot_date, "2026-06-02");
+  });
+
   test("buildEconomicsTrends skips zero-stake rows from the weighted price, keeps them in the median", () => {
     const out = buildEconomicsTrends([
       {

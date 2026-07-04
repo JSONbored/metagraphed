@@ -352,7 +352,7 @@ export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
 // stake-weighted mean + median alpha price can be computed here. Rows arrive newest
 // first; the output preserves that order. Null-safe throughout — a metric is null
 // for a day only when NO subnet reported it.
-export function buildEconomicsTrends(rows, { window } = {}) {
+export function buildEconomicsTrends(rows, { window, capped } = {}) {
   const byDay = new Map(); // snapshot_date -> accumulator (insertion order = newest first)
   for (const r of rows || []) {
     const day = r.snapshot_date;
@@ -406,7 +406,13 @@ export function buildEconomicsTrends(rows, { window } = {}) {
       }
     }
   }
-  const days = [...byDay.entries()].map(([snapshot_date, acc]) => ({
+  // A row-capped read (the loader's LIMIT was hit) cuts the oldest snapshot_date
+  // mid-day, so that day only holds the subnets that happened to fall inside the
+  // cap — a spuriously small "network total". Drop that partial oldest day (the
+  // last entry, since byDay is newest-first), matching buildConcentrationHistory.
+  let entries = [...byDay.entries()];
+  if (capped && entries.length > 1) entries = entries.slice(0, -1);
+  const days = entries.map(([snapshot_date, acc]) => ({
     snapshot_date,
     subnet_count: acc.subnet_count,
     total_stake_tao: acc.stake_seen ? roundTao(acc.stake_sum) : null,

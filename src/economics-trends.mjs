@@ -39,6 +39,11 @@ export async function loadEconomicsTrends(
   sql += " ORDER BY snapshot_date DESC LIMIT ?";
   params.push(ECONOMICS_TRENDS_ROW_CAP);
   const rows = await d1(sql, params);
-  const data = buildEconomicsTrends(rows, { window: windowLabel });
+  // Hitting the LIMIT means the oldest snapshot_date is truncated mid-day; flag it
+  // so buildEconomicsTrends drops that partial day (mirrors loadSubnetConcentrationHistory).
+  const data = buildEconomicsTrends(rows, {
+    window: windowLabel,
+    capped: rows.length >= ECONOMICS_TRENDS_ROW_CAP,
+  });
   return { data, rows };
 }

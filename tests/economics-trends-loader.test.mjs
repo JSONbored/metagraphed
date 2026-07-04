@@ -73,4 +73,33 @@ describe("loadEconomicsTrends", () => {
     assert.equal(data.day_count, 0);
     assert.deepEqual(data.days, []);
   });
+
+  test("flags capped and drops the truncated oldest day when the row cap is hit", async () => {
+    // Saturate the read to exactly the row cap: the newest day fills the LIMIT and
+    // the oldest snapshot_date survives with a single (partial) subnet — its
+    // network total would be spuriously tiny, so the capped path must drop it.
+    const d1 = async () => {
+      const rows = new Array(ECONOMICS_TRENDS_ROW_CAP);
+      for (let i = 0; i < ECONOMICS_TRENDS_ROW_CAP - 1; i += 1) {
+        rows[i] = {
+          snapshot_date: "2026-06-20",
+          total_stake_tao: 10,
+          validator_count: 1,
+        };
+      }
+      rows[ECONOMICS_TRENDS_ROW_CAP - 1] = {
+        snapshot_date: "2025-01-01",
+        total_stake_tao: 5,
+        validator_count: 1,
+      };
+      return rows;
+    };
+    const { data, rows } = await loadEconomicsTrends(d1, {
+      windowLabel: "all",
+      windowDays: null,
+    });
+    assert.equal(rows.length, ECONOMICS_TRENDS_ROW_CAP);
+    assert.equal(data.day_count, 1); // the truncated oldest 2025-01-01 day is dropped
+    assert.equal(data.days[0].snapshot_date, "2026-06-20");
+  });
 });
