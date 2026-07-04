@@ -37,6 +37,9 @@ function toNullableTao(value) {
 // Coerce a block-height cell to a non-negative integer, or null when the value is
 // missing, non-finite, or negative — block numbers are never negative on-chain.
 function toBlockNumber(value) {
+  if (value == null) return null;
+  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
 }
