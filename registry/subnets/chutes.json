@@ -488,6 +488,22 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/nodes/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-diffusion-stats",
+      "kind": "data-artifact",
+      "name": "Chutes per-chute diffusion invocation stats",
+      "notes": "Public no-auth JSON of per-chute diffusion (image-generation) invocation statistics on the Chutes platform (chute_id, name, invocation counts); GET /invocations/stats/diffusion in the OpenAPI spec. The diffusion-model counterpart to the subnet's registered /invocations/usage feed, distinct from the subnet's other data-artifacts.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/invocations/stats/diffusion"
     }
   ],
   "website_url": "https://chutes.ai/"
