@@ -106,6 +106,69 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.total_stake_tao, 100);
   });
 
+  test("blank score cells stay null (not rank/trust 0)", () => {
+    // Mirrors the blank-cell guard in metagraph-neurons.mjs (#3033): Number("") is 0.
+    for (const blank of ["", "   "]) {
+      const out = buildAccountPortfolio(
+        [
+          {
+            netuid: 1,
+            uid: 1,
+            stake_tao: 10,
+            rank: blank,
+            trust: blank,
+            incentive: blank,
+            dividends: blank,
+          },
+        ],
+        SS58,
+      );
+      assert.equal(out.position_count, 1);
+      assert.equal(
+        out.positions[0].rank,
+        null,
+        `rank for ${JSON.stringify(blank)}`,
+      );
+      assert.equal(
+        out.positions[0].trust,
+        null,
+        `trust for ${JSON.stringify(blank)}`,
+      );
+      assert.equal(
+        out.positions[0].incentive,
+        null,
+        `incentive for ${JSON.stringify(blank)}`,
+      );
+      assert.equal(
+        out.positions[0].dividends,
+        null,
+        `dividends for ${JSON.stringify(blank)}`,
+      );
+    }
+    const missing = buildAccountPortfolio(
+      [
+        {
+          netuid: 2,
+          uid: 1,
+          stake_tao: 10,
+          rank: null,
+          trust: null,
+          incentive: null,
+          dividends: null,
+        },
+      ],
+      SS58,
+    );
+    assert.equal(missing.positions[0].rank, null);
+    assert.equal(missing.positions[0].trust, null);
+    const zero = buildAccountPortfolio(
+      [{ netuid: 3, uid: 1, stake_tao: 10, rank: 0, trust: "0" }],
+      SS58,
+    );
+    assert.equal(zero.positions[0].rank, 0);
+    assert.equal(zero.positions[0].trust, 0);
+  });
+
   test("accepts a string epoch-ms captured_at, ignoring absent ones", () => {
     const out = buildAccountPortfolio(
       [

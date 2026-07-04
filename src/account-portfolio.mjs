@@ -28,7 +28,9 @@ function toNumber(value) {
 
 // A nullable 0..1 score cell -> rounded number, or null when absent/non-finite.
 function nullableScore(value) {
-  if (value == null || value === "") return null;
+  if (value == null) return null;
+  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? round9(n) : null;
 }
