@@ -68,6 +68,9 @@ function numberOrZero(value) {
 }
 
 function nullableNumber(value) {
+  if (value == null) return null;
+  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }

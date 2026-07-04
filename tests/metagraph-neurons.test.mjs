@@ -185,6 +185,34 @@ describe("metagraph-neurons builders", () => {
     assert.equal(n.dividends, null);
   });
 
+  test("formatNeuron rejects blank score cells that coerce to 0 (not rank/trust 0)", () => {
+    // Mirrors the blank-cell guard in account-events.mjs (#3031): Number("") is 0.
+    for (const blank of ["", "   "]) {
+      const n = formatNeuron({
+        rank: blank,
+        trust: blank,
+        validator_trust: blank,
+        consensus: blank,
+        incentive: blank,
+        dividends: blank,
+      });
+      assert.equal(n.rank, null, `rank for ${JSON.stringify(blank)}`);
+      assert.equal(n.trust, null, `trust for ${JSON.stringify(blank)}`);
+      assert.equal(
+        n.validator_trust,
+        null,
+        `validator_trust for ${JSON.stringify(blank)}`,
+      );
+      assert.equal(n.consensus, null, `consensus for ${JSON.stringify(blank)}`);
+      assert.equal(n.incentive, null, `incentive for ${JSON.stringify(blank)}`);
+      assert.equal(n.dividends, null, `dividends for ${JSON.stringify(blank)}`);
+    }
+    // A literal zero score is still valid — only blank strings are rejected.
+    const zero = formatNeuron({ rank: 0, trust: "0" });
+    assert.equal(zero.rank, 0);
+    assert.equal(zero.trust, 0);
+  });
+
   test("formatNeuron rounds stake_tao / emission_tao to rao precision (no IEEE-754 leak)", () => {
     // Regression for the Gittensory Orb follow-up blocker on #2503: stake_tao /
     // emission_tao must be rounded to 1e-9 (rao) precision so a noisy REAL
