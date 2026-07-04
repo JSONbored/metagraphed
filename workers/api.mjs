@@ -143,6 +143,7 @@ import {
   handleAccountServing,
   handleAccountDeregistrations,
   handleAccountPrometheus,
+  handleAccountAxonRemovals,
   handleAccountSubnets,
   handleAccountPortfolio,
   handleBlocks,
@@ -283,6 +284,7 @@ import {
   ACCOUNT_SERVING_PATH_PATTERN,
   ACCOUNT_DEREGISTRATIONS_PATH_PATTERN,
   ACCOUNT_PROMETHEUS_PATH_PATTERN,
+  ACCOUNT_AXON_REMOVALS_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   ACCOUNT_PORTFOLIO_PATH_PATTERN,
@@ -1988,6 +1990,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    const accountAxonRemovalsMatch = ACCOUNT_AXON_REMOVALS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountAxonRemovalsMatch) {
+      return handleAccountAxonRemovals(
+        request,
+        env,
+        accountAxonRemovalsMatch[1],
+        resolved.url,
+      );
+    }
     const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2283,6 +2296,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_SERVING_PATH_PATTERN.test(pathname) ||
     ACCOUNT_DEREGISTRATIONS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PROMETHEUS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_AXON_REMOVALS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_BALANCE_PATH_PATTERN.test(pathname) ||
     BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
     BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||
