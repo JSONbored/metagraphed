@@ -126,7 +126,7 @@ describe("global-operational-health", () => {
   });
 
   test("MCP server exports wire get_network_health at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.44.0");
+    assert.equal(MCP_SERVER_VERSION, "1.45.0");
     assert.match(MCP_INSTRUCTIONS, /get_network_health/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_network_health");
     assert.ok(tool?.handler);

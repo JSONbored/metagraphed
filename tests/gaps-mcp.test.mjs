@@ -305,7 +305,7 @@ describe("gaps-mcp", () => {
   });
 
   test("MCP server exports wire list_gaps at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.44.0");
+    assert.equal(MCP_SERVER_VERSION, "1.45.0");
     assert.match(MCP_INSTRUCTIONS, /list_gaps/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_gaps");
     assert.ok(tool);
