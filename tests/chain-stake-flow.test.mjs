@@ -208,6 +208,15 @@ describe("buildChainStakeFlow", () => {
     assert.equal(data.observed_at, null);
   });
 
+  test("ignores out-of-range timestamps that cannot be rendered as ISO", () => {
+    const data = buildChainStakeFlow(
+      [ev(2, "StakeAdded", 5, 1, 1e100), ev(3, "StakeAdded", 7, 1, OBS)],
+      {},
+    );
+    assert.equal(data.subnet_count, 2);
+    assert.equal(data.observed_at, new Date(OBS).toISOString());
+  });
+
   test("breaks a net-flow tie by netuid ascending", () => {
     // netuid 5 and netuid 3 both net +10 -> tie, broken by the lower netuid first.
     const data = buildChainStakeFlow(
@@ -313,6 +322,18 @@ describe("GET /api/v1/chain/stake-flow", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(await res.text(), ""); // HEAD carries no body
+  });
+
+  test("ignores malformed out-of-range timestamps instead of returning 500", async () => {
+    const res = await handleRequest(
+      req(),
+      stakeFlowEnv([ev(4, "StakeAdded", 10, 1, 1e100)]),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.subnet_count, 1);
+    assert.equal(body.data.observed_at, null);
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {

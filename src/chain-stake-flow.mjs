@@ -50,7 +50,8 @@ function normalizedNetuid(value) {
 function coerceEpochMs(value) {
   if (value == null) return null;
   const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Number.isFinite(new Date(n).getTime()) ? n : null;
 }
 
 function toIso(value) {
