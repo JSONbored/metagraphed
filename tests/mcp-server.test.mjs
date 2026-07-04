@@ -3272,6 +3272,72 @@ describe("MCP get_subnet_weight_setters", () => {
   });
 });
 
+describe("MCP get_subnet_axon_removals", () => {
+  function axonRemovalsD1(row = null, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return { async all() { return { results: row ? [row] : [] }; } };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("reports removal activity for one subnet over the window", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_subnet_axon_removals",
+      { netuid: 7, window: "7d" },
+      {
+        env: axonRemovalsD1(
+          {
+            distinct_removers: 2,
+            removals: 20,
+            newest_observed: 1_750_000_000_000,
+          },
+          capture,
+        ),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "7d");
+    assert.equal(out.distinct_removers, 2);
+    assert.equal(out.removals, 20);
+    assert.equal(out.removals_per_remover, 10);
+    assert.equal(capture[0].params[0], 7);
+  });
+
+  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+    const res = await callTool("get_subnet_axon_removals", { netuid: 9 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.distinct_removers, 0);
+    assert.equal(out.removals, 0);
+    assert.equal(out.removals_per_remover, null);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_axon_removals", {
+      netuid: 7,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_axon_removals", { window: "7d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+});
+
 describe("MCP get_network_activity", () => {
   test("merges extrinsics + blocks tiers from D1", async () => {
     const env = {
