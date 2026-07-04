@@ -41,6 +41,25 @@
       },
       "source_urls": ["https://github.com/chronollm/sn38/blob/main/README.md"],
       "url": "https://huggingface.co/collections/manelalab/chronogpt-67c878a02139875341ca9d3b"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-chronoinstruct-sft-dataset",
+      "kind": "data-artifact",
+      "name": "ChronoInstruct SFT dataset",
+      "notes": "Public ManelaLab (WashU) HuggingFace ChronoInstruct-SFT dataset — 647,944 chronologically-consistent instruction-response pairs (conversation/label/source columns; label marks pre-2000 vs post-1999) built to remove lookahead bias, the SFT corpus for the ChronoGPT architecture the ChronoLLM (SN38) subnet mandates; ODC-BY-1.0, not gated. The chronollm/sn38 repo README (source) declares Subnet 38 and links the manelalab HF org (already the subnet's registered ChronoGPT model-collection org).",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/chronollm/sn38",
+        "https://huggingface.co/manelalab"
+      ],
+      "url": "https://huggingface.co/datasets/manelalab/ChronoInstruct-SFT-v1"
     }
   ]
 }
