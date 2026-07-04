@@ -11,13 +11,29 @@
 // closed via ctx.waitUntil so it never blocks the response.
 import postgres from "postgres";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
+import { csvRequested, csvResponse } from "./csv.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
 const FILTER_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+const CHAIN_EVENTS_CSV_COLUMNS = [
+  "block_number",
+  "event_index",
+  "pallet",
+  "method",
+  "args",
+  "phase",
+  "extrinsic_index",
+  "observed_at",
+];
 
 function validEventFilter(value) {
   return value == null || value === "" || FILTER_PATTERN.test(value);
+}
+
+function validResponseFormat(params) {
+  const format = params.get("format");
+  return format == null || /^(?:json|csv)$/i.test(format);
 }
 
 function json(data, status = 200) {
@@ -117,6 +133,9 @@ export default {
       // cursor is the lossless keyset over (block_number,event_index); before is
       // retained as the legacy block_number-only cursor for existing callers.
       if (url.pathname === "/api/v1/chain-events") {
+        if (!validResponseFormat(url.searchParams)) {
+          return json({ error: "format must be json or csv" }, 400);
+        }
         const limit = clampLimit(url.searchParams.get("limit"));
         const pallet = url.searchParams.get("pallet");
         const method = url.searchParams.get("method");
@@ -168,11 +187,21 @@ export default {
         const nextCursor = last
           ? encodeCursor([nextBlock, numberOrNull(last.event_index)])
           : null;
+        const events = rows.map(coerceEvent);
+        if (csvRequested(url, request)) {
+          return csvResponse(
+            events,
+            "chain-events",
+            "short",
+            request,
+            CHAIN_EVENTS_CSV_COLUMNS,
+          );
+        }
         return json({
           count: rows.length,
           next_before: nextBlock,
           next_cursor: nextCursor,
-          events: rows.map(coerceEvent),
+          events,
         });
       }
 

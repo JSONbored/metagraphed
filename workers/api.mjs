@@ -881,8 +881,10 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
 // envelope so /api/v1/chain-events* matches the OpenAPI contract (typed `data`
 // payload + ETag/cache headers) like every other route. The MCP get_chain_activity
 // tool calls DATA_API directly and keeps consuming the bare shape — only this
-// public REST path is enveloped. 503 when the binding is absent (e.g. a preview
-// deploy without the data Worker); upstream non-2xx maps to a clean error envelope.
+// public REST JSON path is enveloped. CSV exports are already final responses
+// from DATA_API, so pass them through. 503 when the binding is absent (e.g. a
+// preview deploy without the data Worker); upstream non-2xx maps to a clean error
+// envelope.
 async function handleChainEventsProxy(request, env, url) {
   if (!env.DATA_API) {
     return errorResponse(
@@ -901,6 +903,12 @@ async function handleChainEventsProxy(request, env, url) {
       ? new Request(request.url, { method: "GET", headers: request.headers })
       : request,
   );
+  if (/^text\/csv\b/i.test(upstream.headers.get("content-type") || "")) {
+    return new Response(request.method === "HEAD" ? null : upstream.body, {
+      status: upstream.status,
+      headers: upstream.headers,
+    });
+  }
   let body;
   try {
     body = await upstream.json();

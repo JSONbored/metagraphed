@@ -99,6 +99,41 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.source, "data-worker-postgres");
   });
 
+  test("passes DATA_API chain-events CSV exports through without an envelope", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events?format=csv"),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            return new Response(
+              "block_number,event_index,pallet,method\r\n123,0,System,Event",
+              {
+                status: 200,
+                headers: {
+                  "content-type": "text/csv; charset=utf-8",
+                  "content-disposition":
+                    'attachment; filename="chain-events.csv"',
+                },
+              },
+            );
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      response.headers.get("content-disposition"),
+      'attachment; filename="chain-events.csv"',
+    );
+    assert.equal(
+      await response.text(),
+      "block_number,event_index,pallet,method\r\n123,0,System,Event",
+    );
+  });
+
   test("forwards a GET to DATA_API for a HEAD chain-events probe (not a 405)", async () => {
     // DATA_API is GET-only. A HEAD probe must still get the bodiless 200 that
     // every other GET route returns for HEAD — not the data Worker's 405 — so

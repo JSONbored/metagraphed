@@ -4,26 +4,15 @@
 import { beforeEach, test, expect, vi } from "vitest";
 
 const sqlCalls = vi.hoisted(() => []);
+const mockRows = vi.hoisted(() => []);
 
 vi.mock("postgres", () => ({
   default: () => {
-    const rows = [
-      {
-        block_number: "123",
-        event_index: 0,
-        pallet: "System",
-        method: "ExtrinsicSuccess",
-        args: { x: 1 },
-        phase: "ApplyExtrinsic",
-        extrinsic_index: 2,
-        observed_at: "100",
-      },
-    ];
     // Every tagged-template call (top-level query OR nested fragment) resolves to rows;
     // the handler awaits the outer query and ignores interpolated fragment values.
     const sql = (strings, ...values) => {
       sqlCalls.push({ text: Array.from(strings).join("?"), values });
-      return Promise.resolve(rows);
+      return Promise.resolve(mockRows);
     };
     sql.end = () => Promise.resolve();
     return sql;
@@ -39,6 +28,16 @@ const queryText = () => sqlCalls.map((call) => call.text).join("\n");
 
 beforeEach(() => {
   sqlCalls.length = 0;
+  mockRows.splice(0, mockRows.length, {
+    block_number: "123",
+    event_index: 0,
+    pallet: "System",
+    method: "ExtrinsicSuccess",
+    args: { x: 1 },
+    phase: "ApplyExtrinsic",
+    extrinsic_index: 2,
+    observed_at: "100",
+  });
 });
 
 test("GET /api/v1/blocks/:n/chain-events returns the block's events", async () => {
@@ -68,6 +67,39 @@ test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)
   expect(typeof body.events[0].block_number).toBe("number");
   expect(body.events[0].observed_at).toBe(100);
   expect(typeof body.events[0].observed_at).toBe("number");
+});
+
+test("GET /api/v1/chain-events?format=csv exports chain-event rows (#2530)", async () => {
+  const res = await req("/api/v1/chain-events?format=csv&limit=1");
+  expect(res.status).toBe(200);
+  expect(res.headers.get("content-type")).toMatch(/^text\/csv/);
+  expect(res.headers.get("content-disposition")).toBe(
+    'attachment; filename="chain-events.csv"',
+  );
+  expect(await res.text()).toBe(
+    [
+      "block_number,event_index,pallet,method,args,phase,extrinsic_index,observed_at",
+      '123,0,System,ExtrinsicSuccess,"{""x"":1}",ApplyExtrinsic,2,100',
+    ].join("\r\n"),
+  );
+});
+
+test("GET /api/v1/chain-events?pallet=Balances&format=csv binds the pallet filter (#2530)", async () => {
+  const res = await req("/api/v1/chain-events?pallet=Balances&format=csv");
+  expect(res.status).toBe(200);
+  expect(await res.text()).toContain("block_number,event_index,pallet,method");
+  expect(queryText()).toContain("AND pallet =");
+  expect(sqlCalls.flatMap((call) => call.values)).toContain("Balances");
+});
+
+test("GET /api/v1/chain-events?format=csv emits a header-only cold export (#2530)", async () => {
+  mockRows.length = 0;
+  const res = await req("/api/v1/chain-events?format=csv");
+  expect(res.status).toBe(200);
+  expect(res.headers.get("content-type")).toMatch(/^text\/csv/);
+  expect(await res.text()).toBe(
+    "block_number,event_index,pallet,method,args,phase,extrinsic_index,observed_at",
+  );
 });
 
 test("chain-events cursor seeks by block_number and event_index", async () => {
