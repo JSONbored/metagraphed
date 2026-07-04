@@ -470,8 +470,14 @@ export const INCIDENT_GAP_MS = 30 * 60 * 1000;
 // sustained) the ledger reflects real dips, not prober flapping.
 export const MIN_INCIDENT_SAMPLES = 2;
 
+// Round a ratio to 4 dp. A sub-perfect ratio (strictly < 1) that would round up
+// to a flat 1.0 is clamped to 0.9999 so a near-total error/failover/cache-hit
+// rate is never overstated as an exact 100% (mirrors chain-analytics round4);
+// null passes through.
 function round4(value) {
-  return value == null ? null : Number(Number(value).toFixed(4));
+  if (value == null) return null;
+  const rounded = Number(Number(value).toFixed(4));
+  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 function roundInt(value) {
   return value == null ? null : Math.round(Number(value));

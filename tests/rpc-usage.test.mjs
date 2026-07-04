@@ -120,6 +120,34 @@ describe("formatRpcUsage", () => {
     assert.equal(out.endpoints[0].error_rate, null);
     assert.equal(out.networks[0].error_rate, null);
   });
+
+  test("clamps a sub-perfect rate below a flat 1.0 (never overstates 100%)", () => {
+    const out = formatRpcUsage({
+      // 199995/200000 = 0.999975 and 199998/200000 = 0.99999 both round to
+      // 1.0000; clamped so a near-total rate is never reported as a perfect 1.
+      totals: {
+        total: 200000,
+        ok_count: 5,
+        failover_count: 199990,
+        cache_hits: 199998,
+      },
+      endpointRows: [{ endpoint_id: "e", requests: 200000, ok_count: 5 }],
+      networkRows: [{ network: "finney", requests: 200000, ok_count: 5 }],
+    });
+    assert.equal(out.summary.error_rate, 0.9999); // not 1
+    assert.equal(out.summary.cache_hit_rate, 0.9999); // not 1
+    assert.equal(out.endpoints[0].error_rate, 0.9999); // not 1
+    assert.equal(out.networks[0].error_rate, 0.9999); // not 1
+  });
+
+  test("keeps a genuine 100% rate at exactly 1", () => {
+    const out = formatRpcUsage({
+      // Every request errored: a true 1.0 must stay 1 (the clamp only guards
+      // sub-perfect ratios that round up).
+      totals: { total: 10, ok_count: 0 },
+    });
+    assert.equal(out.summary.error_rate, 1);
+  });
 });
 
 // --- /api/v1/rpc/usage route ------------------------------------------------
