@@ -826,6 +826,12 @@ describe("MCP tools (injected deps)", () => {
         netuid: 7,
         services: [{ surface_id: "7:subnet-api:allways", kind: "subnet-api" }],
       },
+      "/metagraph/agent-resources.json": {
+        summary: { subnet_count: 2, callable_service_count: 13 },
+        copyable_agent: { url: "https://api.metagraph.sh/agent.md" },
+        mcp: { endpoint: "https://api.metagraph.sh/mcp", tools: [] },
+        resources: [{ id: "agent", kind: "agent" }],
+      },
       "/metagraph/overview/7.json": { netuid: 7, name: "Allways" },
       "/metagraph/health/subnets/7.json": {
         netuid: 7,
@@ -1274,6 +1280,23 @@ describe("MCP tools (injected deps)", () => {
   test("get_agent_catalog returns a per-subnet catalog with a netuid", async () => {
     const res = await callTool("get_agent_catalog", { netuid: 7 }, { deps });
     assert.equal(res.body.result.structuredContent.netuid, 7);
+  });
+
+  test("get_agent_resources returns the AI-resources index", async () => {
+    const res = await callTool("get_agent_resources", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.summary.subnet_count, 2);
+    assert.ok(Array.isArray(out.resources));
+    assert.ok(out.mcp.endpoint);
+  });
+
+  test("get_agent_resources reports not_found when the artifact is absent", async () => {
+    const res = await callTool("get_agent_resources", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /unavailable in this environment/,
+    );
   });
 
   test("get_best_rpc_endpoint dedupes, exposes url/network, applies live health", async () => {

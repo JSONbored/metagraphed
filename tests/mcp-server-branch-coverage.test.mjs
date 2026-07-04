@@ -643,6 +643,36 @@ describe("list_curation — branch coverage", () => {
   });
 });
 
+// ── get_agent_resources — AI-resources artifact ───────────────────────────
+describe("get_agent_resources — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("get_agent_resources", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /agent-resources\.json/);
+  });
+
+  test("maps a null artifact payload to not_found", async () => {
+    const deps = {
+      readArtifact: async () => ({ ok: true, data: null }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("get_agent_resources", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /unavailable in this environment/,
+    );
+  });
+});
+
 // ── list_subnet_apis fallbacks ────────────────────────────
 describe("list_subnet_apis — detail fallback fields", () => {
   test("falls back to the requested netuid + empty services when detail is bare", async () => {

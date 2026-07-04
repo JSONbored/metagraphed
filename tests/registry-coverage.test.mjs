@@ -109,7 +109,7 @@ describe("registry-coverage", () => {
   });
 
   test("MCP server exports wire get_coverage at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.27.0");
+    assert.equal(MCP_SERVER_VERSION, "1.28.0");
     assert.match(MCP_INSTRUCTIONS, /get_coverage/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_coverage");
     assert.ok(tool);

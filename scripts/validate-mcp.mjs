@@ -267,6 +267,11 @@ assert.ok(
 
 await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
+const agentResources = await callOk("get_agent_resources", {});
+assert.ok(
+  Array.isArray(agentResources.resources) && agentResources.mcp,
+  "get_agent_resources must return resources[] and mcp",
+);
 const curationPage = await callOk("list_curation", { limit: 3 });
 assert.ok(
   Array.isArray(curationPage.curation),
