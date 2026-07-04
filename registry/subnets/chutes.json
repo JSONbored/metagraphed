@@ -472,6 +472,22 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/nodes/supported"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-node-availability",
+      "kind": "data-artifact",
+      "name": "Chutes GPU node availability",
+      "notes": "Public no-auth JSON of live GPU node availability on the Chutes platform — provisioned vs idle node counts per GPU model (3090, 4090, 5090, a100, h100, ...); GET /nodes/ in the OpenAPI spec. A live operational feed, distinct from the static /nodes/supported hardware catalog and the subnet's other data-artifacts.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/nodes/"
     }
   ],
   "website_url": "https://chutes.ai/"
