@@ -8,16 +8,23 @@ name: Refresh Chain Events (first-party poller)
 # /api/v1/accounts/{ss58} + history (#1347).
 #
 # Rolling recent-block window + idempotent load (INSERT OR IGNORE on
-# (block_number, event_index)), so frequent overlapping runs need no cursor and
-# self-heal small gaps. Live-forward only: public nodes prune ~300 blocks, so this
-# runs often to stay inside that window; deep history is the optional archive-RPC
-# upgrade (#1349). Reuses METAGRAPH_STAGING_SIGNING_KEY (same as refresh-metagraph).
+# (block_number, event_index)), so overlapping runs need no cursor and self-heal
+# small gaps. Live-forward only: public nodes prune ~300 blocks (~1hr); deep
+# history is the optional archive-RPC upgrade (#1349). Reuses
+# METAGRAPH_STAGING_SIGNING_KEY (same as refresh-metagraph).
+#
+# 2026-07-04: this was Option A's PRIMARY ingest path (every 5 min) before the
+# realtime streamer (Option B, #1361, epic #1345) existed. The streamer is now
+# live and reliable (~12-30s/block via a direct Worker POST) and is the primary
+# path; this poller is purely a self-healing BACKSTOP for gaps the streamer
+# misses (a redeploy, an outage, a dropped WSS connection). A backstop doesn't
+# need sub-hour latency — it only needs to run more often than the public RPC's
+# ~1hr prune horizon, so a real gap is still recoverable. Hourly keeps a wide
+# safety margin on that horizon while cutting invocation count (and the public
+# RPC / CI-minutes load that comes with it) by ~12x vs every 5 min.
 on:
   schedule:
-    # Every 5 min (#1346 Option A) — the practical CI floor (each run has ~3 min of
-    # setup). Paired with the Worker's */3 fast-load cron, this puts chain-event
-    # latency at ~5 min (down from ~20). True ~12s realtime is Option B (epic #1345).
-    - cron: "*/5 * * * *"
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 permissions:
