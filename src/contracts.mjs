@@ -1134,6 +1134,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountRegistrationsArtifact",
   ),
   artifact(
+    "account-deregistrations",
+    "/metagraph/accounts/{ss58}/deregistrations.json",
+    "One account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered count with the first/last deregistration timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/deregistrations (no static file). The account-level companion to /api/v1/chain/deregistrations, distinct from /api/v1/accounts/{ss58}/subnets (current registration state) and /api/v1/accounts/{ss58}/registrations (windowed NeuronRegistered events).",
+    "AccountDeregistrationsArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -2482,6 +2488,22 @@ export const API_ROUTES = [
     "/api/v1/accounts/{ss58}/registrations",
     "/metagraph/accounts/{ss58}/registrations.json",
     "Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Windowed registration events including re-registrations after a deregistration; the account-level companion to GET /api/v1/chain/registrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state).",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-deregistrations",
+    "GET",
+    "/api/v1/accounts/{ss58}/deregistrations",
+    "/metagraph/accounts/{ss58}/deregistrations.json",
+    "Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered count with the first and last deregistration timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/deregistrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state) and GET /api/v1/accounts/{ss58}/registrations (windowed NeuronRegistered events).",
     "short",
     ["accounts", "analytics"],
     [

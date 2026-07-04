@@ -603,3 +603,68 @@ test("GET /accounts/{ss58}/registrations rejects an unsupported window with 400"
   const body = await res.json();
   assert.equal(body.meta.parameter, "window");
 });
+
+test("GET /accounts/{ss58}/deregistrations routes to the per-account deregistrations handler", async () => {
+  const env = dbWith({
+    events: [
+      {
+        netuid: 1,
+        deregistrations: 3,
+        first_observed: 1750000000000,
+        last_observed: 1750009000000,
+      },
+      {
+        netuid: 7,
+        deregistrations: 1,
+        first_observed: 1750001000000,
+        last_observed: 1750001000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/deregistrations?window=30d`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.window, "30d");
+  assert.equal(body.data.total_deregistrations, 4);
+  assert.equal(body.data.subnets[0].netuid, 1); // most deregistrations -> leads + dominant
+  assert.equal(body.data.dominant_netuid, 1);
+  assert.equal(body.meta.source, "chain-events");
+});
+
+test("GET /accounts/{ss58}/deregistrations is schema-stable when D1 is cold (never 404)", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/deregistrations`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.subnet_count, 0);
+  assert.equal(Array.isArray(body.data.subnets), true);
+});
+
+test("GET /accounts/{ss58}/deregistrations rejects an unknown query param with 400", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/deregistrations?bogus=1`),
+    dbWith({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+});
+
+test("GET /accounts/{ss58}/deregistrations rejects an unsupported window with 400", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/deregistrations?window=1y`),
+    dbWith({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.meta.parameter, "window");
+});

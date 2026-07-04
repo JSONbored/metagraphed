@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/deregistrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered count with the first and last deregistration timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/deregistrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state) and GET /api/v1/accounts/{ss58}/registrations (windowed NeuronRegistered events). */
+        get: operations["accountDeregistrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/events": {
         parameters: {
             query?: never;
@@ -2342,6 +2359,25 @@ export interface components {
             netuid?: number | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description One account's deregistration footprint per subnet over a recent window, from the account_events NeuronDeregistered stream: per-subnet deregistration count with the first/last deregistration timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet. The account-level companion to /api/v1/chain/deregistrations and /api/v1/subnets/{netuid}/deregistrations, distinct from /accounts/{ss58}/subnets (current registration state) and /accounts/{ss58}/registrations (windowed NeuronRegistered events). */
+        AccountDeregistrationsArtifact: {
+            address: string;
+            concentration: number | null;
+            dominant_netuid: number | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: {
+                deregistrations: number;
+                /** Format: date-time */
+                first_deregistered_at: string | null;
+                /** Format: date-time */
+                last_deregistered_at: string | null;
+                netuid: number;
+            }[];
+            total_deregistrations: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         /** @description One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); alpha_amount (#1856) is the alpha leg of a stake swap in TAO units (StakeAdded/StakeRemoved only, else null); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows). */
         AccountEvent: {
@@ -7357,6 +7393,123 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountCounterpartiesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountDeregistrations: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "address": "example",
+                     *         "concentration": 0.5,
+                     *         "dominant_netuid": 7,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "deregistrations": 1,
+                     *             "first_deregistered_at": "2026-06-01T00:00:00.000Z",
+                     *             "last_deregistered_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 7
+                     *           }
+                     *         ],
+                     *         "total_deregistrations": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountDeregistrationsArtifact"];
                     };
                 };
             };
