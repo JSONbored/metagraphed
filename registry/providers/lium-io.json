@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/Datura-ai/lium-io",
+  "id": "lium-io",
+  "kind": "subnet-team",
+  "name": "lium.io",
+  "public_notes": "",
+  "schema_version": 1,
+  "website_url": "https://lium.io/"
+}

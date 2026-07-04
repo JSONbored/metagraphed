@@ -1,0 +1,35 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "lium.io",
+  "netuid": 51,
+  "schema_version": 1,
+  "slug": "sn-51",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-io-openapi",
+      "kind": "openapi",
+      "name": "lium.io OpenAPI schema",
+      "notes": "Public machine-readable OpenAPI schema for the Lium Backend API on Bittensor Subnet 51.",
+      "provider": "lium-io",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dragunovx16"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://lium.io/api/openapi.json",
+      "source_urls": [
+        "https://github.com/Datura-ai/lium-io/blob/main/README.md",
+        "https://docs.lium.io/bittensor-subnet/overview"
+      ],
+      "url": "https://lium.io/api/openapi.json"
+    }
+  ]
+}
