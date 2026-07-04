@@ -2036,13 +2036,25 @@ export const API_ROUTES = [
     "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset.",
     "short",
     ["subnets", "analytics"],
-    [
-      { name: "kind", schema: { type: "string" } },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ],
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "kind", schema: { type: "string" } },
+        { name: "block_start", schema: { type: "integer", minimum: 0 } },
+        { name: "block_end", schema: { type: "integer", minimum: 0 } },
+        {
+          name: "limit",
+          schema: { type: "integer", minimum: 1, maximum: 1000 },
+        },
+        { name: "offset", schema: { type: "integer", minimum: 0 } },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the event stream as text/csv; `json` (default) keeps the response envelope.",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -2131,15 +2143,27 @@ export const API_ROUTES = [
     "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
     "short",
     ["accounts", "analytics"],
-    [
-      { name: "kind", schema: { type: "string" } },
-      { name: "netuid", schema: { type: "integer", minimum: 0 } },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-    ],
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "kind", schema: { type: "string" } },
+        { name: "netuid", schema: { type: "integer", minimum: 0 } },
+        { name: "block_start", schema: { type: "integer", minimum: 0 } },
+        { name: "block_end", schema: { type: "integer", minimum: 0 } },
+        {
+          name: "limit",
+          schema: { type: "integer", minimum: 1, maximum: 1000 },
+        },
+        { name: "offset", schema: { type: "integer", minimum: 0 } },
+        { name: "cursor", schema: { type: "string" } },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the event history as text/csv; `json` (default) keeps the response envelope.",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(

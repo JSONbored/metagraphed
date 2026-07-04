@@ -5005,6 +5005,17 @@
             "minimum": 0,
             "type": "integer"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the event stream as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -5194,6 +5205,17 @@
         {
           "name": "cursor",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the event history as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }

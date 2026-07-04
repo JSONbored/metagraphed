@@ -5259,3 +5259,65 @@ describe("canonicalSubnetHistoryCachePath", () => {
 // Fixture documentation: each factory above mirrors the D1 column contracts used
 // by workers/request-handlers/entities.mjs. When adding a new handler test,
 // prefer reusing these rows so formatters stay aligned with production schemas.
+
+// --- account-events CSV export (#2533) --------------------------------------
+describe("handleAccountEvents CSV export", () => {
+  const ACCOUNT_EVENTS_CSV_HEADER =
+    "block_number,event_index,event_kind,netuid,uid,hotkey,coldkey,amount_tao,alpha_amount,observed_at,extrinsic_index";
+
+  test("?format=csv exports the event history as CSV", async () => {
+    const { env } = dbWith({ accountEvents: [accountEventRow()] });
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(lines[0], ACCOUNT_EVENTS_CSV_HEADER);
+    assert.ok(lines[1].includes("StakeAdded"));
+  });
+
+  test("Accept: text/csv negotiates CSV on the account-events feed", async () => {
+    const { env } = dbWith({ accountEvents: [accountEventRow()] });
+    const res = await handleAccountEvents(
+      new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/events`, {
+        headers: { accept: "text/csv" },
+      }),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+  });
+
+  test("?kind=StakeAdded&format=csv filters and emits CSV", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?kind=StakeAdded&format=csv`),
+    );
+    assert.equal(res.status, 200);
+    const sql = captures.sql.find((s) => /FROM account_events/.test(s));
+    assert.ok(/event_kind = \?/.test(sql));
+    assert.ok((await res.text()).includes("StakeAdded"));
+  });
+
+  test("?format=csv on a cold DB emits a header-only export", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(lines[0], ACCOUNT_EVENTS_CSV_HEADER);
+    assert.equal(lines.length, 1);
+  });
+});

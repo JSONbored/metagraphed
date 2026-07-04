@@ -138,3 +138,48 @@ test("GET /subnets/{netuid}/event-summary rejects bad window", async () => {
   );
   assert.equal(res.status, 400);
 });
+
+// --- CSV export (#2533) ------------------------------------------------------
+const SUBNET_EVENTS_CSV_HEADER =
+  "block_number,event_index,event_kind,netuid,uid,hotkey,coldkey,amount_tao,alpha_amount,observed_at,extrinsic_index";
+
+test("GET /subnets/{netuid}/events?format=csv exports the stream as CSV", async () => {
+  const env = dbWith({ events: [ROW] });
+  const res = await handleRequest(
+    req("/api/v1/subnets/7/events?format=csv"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /^text\/csv/);
+  const lines = (await res.text()).split("\r\n");
+  assert.equal(lines[0], SUBNET_EVENTS_CSV_HEADER);
+  assert.ok(lines[1].includes("NeuronRegistered"));
+  assert.ok(lines[1].includes(",7,"));
+});
+
+test("GET /subnets/{netuid}/events?kind=WeightsSet&format=csv filters + emits CSV", async () => {
+  const env = dbWith({ events: [{ ...ROW, event_kind: "WeightsSet" }] });
+  const res = await handleRequest(
+    req("/api/v1/subnets/7/events?kind=WeightsSet&format=csv"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /^text\/csv/);
+  const text = await res.text();
+  assert.equal(text.split("\r\n")[0], SUBNET_EVENTS_CSV_HEADER);
+  assert.ok(text.includes("WeightsSet"));
+});
+
+test("GET /subnets/{netuid}/events?format=csv on a cold DB is header-only", async () => {
+  const res = await handleRequest(
+    req("/api/v1/subnets/7/events?format=csv"),
+    dbWith({}),
+    {},
+  );
+  assert.equal(res.status, 200);
+  const lines = (await res.text()).split("\r\n");
+  assert.equal(lines[0], SUBNET_EVENTS_CSV_HEADER);
+  assert.equal(lines.length, 1);
+});

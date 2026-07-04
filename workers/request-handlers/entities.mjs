@@ -1266,6 +1266,23 @@ export async function handleAccount(request, env, ss58) {
 
 // GET /api/v1/accounts/{ss58}/events: paginated event history (newest first),
 // optional ?kind= filter, ?limit (<=1000) / ?offset.
+// Column order for the CSV export of the first-party chain-event streams
+// (subnet-events + account-events), mirroring the account_events row shape
+// (src/account-events.mjs formatAccountEvent).
+const EVENT_CSV_COLUMNS = [
+  "block_number",
+  "event_index",
+  "event_kind",
+  "netuid",
+  "uid",
+  "hotkey",
+  "coldkey",
+  "amount_tao",
+  "alpha_amount",
+  "observed_at",
+  "extrinsic_index",
+];
+
 export async function handleAccountEvents(request, env, ss58, url) {
   const validationError = validateQueryParams(url, [
     "kind",
@@ -1275,6 +1292,7 @@ export async function handleAccountEvents(request, env, ss58, url) {
     "limit",
     "offset",
     "cursor",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   // Optional block-height range filter, parity with the extrinsics and
@@ -1317,6 +1335,15 @@ export async function handleAccountEvents(request, env, ss58, url) {
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.events,
+      "account-events",
+      "short",
+      request,
+      EVENT_CSV_COLUMNS,
+    );
+  }
   return accountEnvelopeResponse(
     request,
     {
@@ -1702,6 +1729,7 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     "limit",
     "offset",
     "cursor",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const kind = url.searchParams.get("kind");
@@ -1736,6 +1764,15 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.events,
+      "subnet-events",
+      "short",
+      request,
+      EVENT_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
