@@ -170,6 +170,17 @@ describe("buildChainStakeTransfers", () => {
     assert.equal(absent.network.transfers_per_sender, null);
   });
 
+  test("an out-of-range newest_observed yields null instead of throwing a RangeError", () => {
+    // A finite but out-of-JS-Date-range epoch (e.g. 1e100) makes new Date(n).toISOString()
+    // throw, which would 500 the endpoint. It must coerce to null, matching chain-stake-flow (#3016).
+    const data = buildChainStakeTransfers(SUBNETS, {
+      window: "7d",
+      networkDistinct: { distinct_senders: 12, newest_observed: 1e100 },
+    });
+    assert.equal(data.observed_at, null);
+    assert.equal(data.subnet_count, 3);
+  });
+
   test("an omitted window is emitted as null in both shapes", () => {
     assert.equal(
       buildChainStakeTransfers(SUBNETS, { networkDistinct: NETWORK }).window,
