@@ -894,6 +894,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): each subnet's PrometheusServed event count, distinct exporters (hotkeys announcing a Prometheus endpoint), and average announcements per exporter ranked into a leaderboard, a network rollup with the true distinct exporter count (not a per-subnet sum) and total announcements, and a distribution summary of the per-subnet re-announcement intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events PrometheusServed stream at /api/v1/chain/prometheus. The telemetry-endpoint companion to the axon-endpoint /api/v1/chain/serving — which subnets run observability infrastructure; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
+      "id": "chain-prometheus",
+      "path": "/metagraph/chain/prometheus.json",
+      "schema_ref": "#/components/schemas/ChainPrometheusArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): each subnet's NeuronRegistered event count, distinct registrants (hotkeys), and average registrations per registrant ranked into a leaderboard, a network rollup with the true distinct registrant count (not a per-subnet sum) and total registrations, and a distribution summary of the per-subnet re-registration intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events NeuronRegistered stream at /api/v1/chain/registrations. Raw registration demand — the account_events companion to the neuron_daily validator-set churn in /api/v1/chain/turnover (no static file).",
       "id": "chain-registrations",
       "path": "/metagraph/chain/registrations.json",

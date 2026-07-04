@@ -1212,6 +1212,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainServingArtifact",
   ),
   artifact(
+    "chain-prometheus",
+    "/metagraph/chain/prometheus.json",
+    "Network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): each subnet's PrometheusServed event count, distinct exporters (hotkeys announcing a Prometheus endpoint), and average announcements per exporter ranked into a leaderboard, a network rollup with the true distinct exporter count (not a per-subnet sum) and total announcements, and a distribution summary of the per-subnet re-announcement intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events PrometheusServed stream at /api/v1/chain/prometheus. The telemetry-endpoint companion to the axon-endpoint /api/v1/chain/serving — which subnets run observability infrastructure; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
+    "ChainPrometheusArtifact",
+  ),
+  artifact(
     "chain-registrations",
     "/metagraph/chain/registrations.json",
     "Network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): each subnet's NeuronRegistered event count, distinct registrants (hotkeys), and average registrations per registrant ranked into a leaderboard, a network rollup with the true distinct registrant count (not a per-subnet sum) and total registrations, and a distribution summary of the per-subnet re-registration intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events NeuronRegistered stream at /api/v1/chain/registrations. Raw registration demand — the account_events companion to the neuron_daily validator-set churn in /api/v1/chain/turnover (no static file).",
@@ -2684,17 +2690,31 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "chain-prometheus",
+    "GET",
+    "/api/v1/chain/prometheus",
+    "/metagraph/chain/prometheus.json",
+    "Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Computed live from the account_events PrometheusServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
+    "short",
+    ["chain", "analytics"],
+    csvRouteQuery([
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ]),
+    [],
+  ),
+  route(
     "chain-registrations",
     "GET",
     "/api/v1/chain/registrations",
     "/metagraph/chain/registrations.json",
-    "Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold.",
+    "Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    [
+    csvRouteQuery([
       { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ],
+    ]),
     [],
   ),
   route(

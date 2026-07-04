@@ -1,35 +1,35 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
-  buildChainRegistrations,
-  loadChainRegistrations,
-  CHAIN_REGISTRATIONS_LIMIT_MAX,
-  REGISTRATION_EVENT_KIND,
-} from "../src/chain-registrations.mjs";
+  buildChainPrometheus,
+  loadChainPrometheus,
+  CHAIN_PROMETHEUS_LIMIT_MAX,
+  PROMETHEUS_EVENT_KIND,
+} from "../src/chain-prometheus.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 const OBS = 1_700_000_000_000;
 
-// One per-subnet account_events NeuronRegistered aggregate row (the loader GROUPs BY netuid).
-function rrow(netuid, distinct_registrants, registrations) {
-  return { netuid, distinct_registrants, registrations };
+// One per-subnet account_events PrometheusServed aggregate row (the loader GROUPs BY netuid).
+function prow(netuid, distinct_exporters, announcements) {
+  return { netuid, distinct_exporters, announcements };
 }
 
-// netuid 1: 4 hotkeys, 40 regs -> 10 regs/hotkey.
-// netuid 2: 2 hotkeys, 30 regs -> 15 regs/hotkey.
-// netuid 5: 10 hotkeys, 25 regs -> 2.5 regs/hotkey.
-const SUBNETS = [rrow(1, 4, 40), rrow(2, 2, 30), rrow(5, 10, 25)];
-// True network distinct hotkeys (12) is below the per-subnet sum (16): some registrants register
+// netuid 1: 4 hotkeys, 40 events -> 10 events/hotkey.
+// netuid 2: 2 hotkeys, 30 events -> 15 events/hotkey.
+// netuid 5: 10 hotkeys, 25 events -> 2.5 events/hotkey.
+const SUBNETS = [prow(1, 4, 40), prow(2, 2, 30), prow(5, 10, 25)];
+// True network distinct hotkeys (12) is below the per-subnet sum (16): some exporters announce
 // on more than one subnet and count once network-wide.
 const NETWORK = {
-  distinct_registrants: 12,
+  distinct_exporters: 12,
   newest_observed: OBS,
 };
 
-describe("buildChainRegistrations", () => {
-  test("shapes the per-subnet leaderboard ranked by total NeuronRegistered events", () => {
-    const data = buildChainRegistrations(SUBNETS, {
+describe("buildChainPrometheus", () => {
+  test("shapes the per-subnet leaderboard ranked by total PrometheusServed events", () => {
+    const data = buildChainPrometheus(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
@@ -42,31 +42,31 @@ describe("buildChainRegistrations", () => {
       [1, 2, 5],
     );
     const s1 = data.subnets.find((s) => s.netuid === 1);
-    assert.equal(s1.distinct_registrants, 4);
-    assert.equal(s1.registrations, 40);
-    assert.equal(s1.registrations_per_registrant, 10);
+    assert.equal(s1.distinct_exporters, 4);
+    assert.equal(s1.announcements, 40);
+    assert.equal(s1.announcements_per_exporter, 10);
     assert.equal(
-      data.subnets.find((s) => s.netuid === 2).registrations_per_registrant,
+      data.subnets.find((s) => s.netuid === 2).announcements_per_exporter,
       15,
     );
     assert.equal(
-      data.subnets.find((s) => s.netuid === 5).registrations_per_registrant,
+      data.subnets.find((s) => s.netuid === 5).announcements_per_exporter,
       2.5,
     );
   });
 
   test("rolls up the true distinct hotkey count and derived total events", () => {
-    const { network } = buildChainRegistrations(SUBNETS, {
+    const { network } = buildChainPrometheus(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
-    assert.equal(network.distinct_registrants, 12); // true distinct, not the 16 per-subnet sum
-    assert.equal(network.registrations, 95);
-    assert.equal(network.registrations_per_registrant, 7.92); // 95 / 12
+    assert.equal(network.distinct_exporters, 12); // true distinct, not the 16 per-subnet sum
+    assert.equal(network.announcements, 95);
+    assert.equal(network.announcements_per_exporter, 7.92); // 95 / 12
   });
 
-  test("summarises the spread of per-subnet re-registration intensity", () => {
-    const { intensity_distribution } = buildChainRegistrations(SUBNETS, {
+  test("summarises the spread of per-subnet re-announcement intensity", () => {
+    const { intensity_distribution } = buildChainPrometheus(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
@@ -82,7 +82,7 @@ describe("buildChainRegistrations", () => {
   });
 
   test("ties on total events break by netuid ascending", () => {
-    const data = buildChainRegistrations([rrow(9, 3, 50), rrow(4, 2, 50)], {
+    const data = buildChainPrometheus([prow(9, 3, 50), prow(4, 2, 50)], {
       window: "7d",
       networkDistinct: NETWORK,
     });
@@ -93,7 +93,7 @@ describe("buildChainRegistrations", () => {
   });
 
   test("limit caps the leaderboard; distribution and count stay network-wide", () => {
-    const data = buildChainRegistrations(SUBNETS, {
+    const data = buildChainPrometheus(SUBNETS, {
       window: "7d",
       limit: 2,
       networkDistinct: NETWORK,
@@ -104,13 +104,13 @@ describe("buildChainRegistrations", () => {
   });
 
   test("limit above the max clamps; a non-numeric limit uses the default", () => {
-    const big = buildChainRegistrations(SUBNETS, {
+    const big = buildChainPrometheus(SUBNETS, {
       window: "7d",
-      limit: CHAIN_REGISTRATIONS_LIMIT_MAX + 500,
+      limit: CHAIN_PROMETHEUS_LIMIT_MAX + 500,
       networkDistinct: NETWORK,
     });
     assert.equal(big.subnets.length, 3);
-    const bogus = buildChainRegistrations(SUBNETS, {
+    const bogus = buildChainPrometheus(SUBNETS, {
       window: "7d",
       limit: "abc",
       networkDistinct: NETWORK,
@@ -118,36 +118,36 @@ describe("buildChainRegistrations", () => {
     assert.equal(bogus.subnets.length, 3);
   });
 
-  test("merges duplicate netuid rows (sum hotkeys and registrations)", () => {
-    const data = buildChainRegistrations([rrow(1, 3, 20), rrow(1, 2, 15)], {
+  test("merges duplicate netuid rows (sum exporters and announcements)", () => {
+    const data = buildChainPrometheus([prow(1, 3, 20), prow(1, 2, 15)], {
       window: "7d",
       networkDistinct: NETWORK,
     });
     assert.equal(data.subnet_count, 1);
     const s = data.subnets[0];
-    assert.equal(s.distinct_registrants, 5); // 3 + 2
-    assert.equal(s.registrations, 35); // 20 + 15
+    assert.equal(s.distinct_exporters, 5); // 3 + 2
+    assert.equal(s.announcements, 35); // 20 + 15
   });
 
   test("coerces non-numeric count cells to zero", () => {
-    const data = buildChainRegistrations(
-      [{ netuid: 1, distinct_registrants: 3, registrations: null }],
+    const data = buildChainPrometheus(
+      [{ netuid: 1, distinct_exporters: 3, announcements: null }],
       { window: "7d", networkDistinct: NETWORK },
     );
-    assert.equal(data.subnets[0].registrations, 0);
-    assert.equal(data.subnets[0].registrations_per_registrant, 0); // 0 registrations / 3 hotkeys
+    assert.equal(data.subnets[0].announcements, 0);
+    assert.equal(data.subnets[0].announcements_per_exporter, 0); // 0 announcements / 3 hotkeys
   });
 
-  test("skips rows with a malformed/blank/negative netuid and zero-hotkey rows", () => {
-    const data = buildChainRegistrations(
+  test("skips rows with a malformed/blank/negative netuid and zero-exporter rows", () => {
+    const data = buildChainPrometheus(
       [
-        rrow(1, 4, 40),
-        { netuid: null, distinct_registrants: 3 },
-        { netuid: "", distinct_registrants: 3 },
-        { netuid: "  ", distinct_registrants: 3 },
-        { netuid: "bad", distinct_registrants: 3 },
-        { netuid: -1, distinct_registrants: 3 },
-        rrow(2, 0, 10), // zero hotkeys: not a registration surface
+        prow(1, 4, 40),
+        { netuid: null, distinct_exporters: 3 },
+        { netuid: "", distinct_exporters: 3 },
+        { netuid: "  ", distinct_exporters: 3 },
+        { netuid: "bad", distinct_exporters: 3 },
+        { netuid: -1, distinct_exporters: 3 },
+        prow(2, 0, 10), // zero exporters: not a telemetry surface
       ],
       { window: "7d", networkDistinct: NETWORK },
     );
@@ -156,44 +156,44 @@ describe("buildChainRegistrations", () => {
   });
 
   test("a zero/absent network distinct count yields null network intensity", () => {
-    const zeroed = buildChainRegistrations(SUBNETS, {
+    const zeroed = buildChainPrometheus(SUBNETS, {
       window: "7d",
       // newest_observed 0 is present-but-invalid: observed_at coerces to null, not a 1970 stamp.
-      networkDistinct: { distinct_registrants: 0, newest_observed: 0 },
+      networkDistinct: { distinct_exporters: 0, newest_observed: 0 },
     });
-    assert.equal(zeroed.network.distinct_registrants, 0);
-    assert.equal(zeroed.network.registrations_per_registrant, null);
+    assert.equal(zeroed.network.distinct_exporters, 0);
+    assert.equal(zeroed.network.announcements_per_exporter, null);
     assert.equal(zeroed.observed_at, null);
-    const absent = buildChainRegistrations(SUBNETS, { window: "7d" });
+    const absent = buildChainPrometheus(SUBNETS, { window: "7d" });
     assert.equal(absent.observed_at, null);
-    assert.equal(absent.network.distinct_registrants, 0);
-    assert.equal(absent.network.registrations_per_registrant, null);
+    assert.equal(absent.network.distinct_exporters, 0);
+    assert.equal(absent.network.announcements_per_exporter, null);
   });
 
   test("an omitted window is emitted as null in both shapes", () => {
     assert.equal(
-      buildChainRegistrations(SUBNETS, { networkDistinct: NETWORK }).window,
+      buildChainPrometheus(SUBNETS, { networkDistinct: NETWORK }).window,
       null,
     );
-    assert.equal(buildChainRegistrations([], {}).window, null);
+    assert.equal(buildChainPrometheus([], {}).window, null);
   });
 
   test("empty, non-array, or all-invalid rows yield the empty block", () => {
     for (const rows of [[], "not-an-array", [{ netuid: null }]]) {
-      const data = buildChainRegistrations(rows, {
+      const data = buildChainPrometheus(rows, {
         window: "7d",
         networkDistinct: NETWORK,
       });
       assert.equal(data.subnet_count, 0);
       assert.deepEqual(data.subnets, []);
       assert.equal(data.intensity_distribution, null);
-      assert.equal(data.network.distinct_registrants, 0);
-      assert.equal(data.network.registrations_per_registrant, null);
+      assert.equal(data.network.distinct_exporters, 0);
+      assert.equal(data.network.announcements_per_exporter, null);
     }
   });
 });
 
-describe("loadChainRegistrations", () => {
+describe("loadChainPrometheus", () => {
   test("reads the network aggregate then the per-subnet leaderboard over the window", async () => {
     const calls = [];
     const d1 = async (sql, params) => {
@@ -201,7 +201,7 @@ describe("loadChainRegistrations", () => {
       if (/GROUP BY netuid/.test(sql)) return SUBNETS;
       return [NETWORK];
     };
-    const data = await loadChainRegistrations(d1, {
+    const data = await loadChainPrometheus(d1, {
       windowLabel: "7d",
       windowDays: 7,
       limit: 20,
@@ -212,7 +212,7 @@ describe("loadChainRegistrations", () => {
       calls[1].sql,
       /event_kind = \? AND observed_at >= \? GROUP BY netuid/,
     );
-    assert.equal(calls[0].params[0], REGISTRATION_EVENT_KIND);
+    assert.equal(calls[0].params[0], PROMETHEUS_EVENT_KIND);
     assert.equal(typeof calls[0].params[1], "number"); // epoch-ms cutoff
     assert.equal(calls[1].params[1], calls[0].params[1]); // same window cutoff
     assert.equal(data.subnet_count, 3);
@@ -226,7 +226,7 @@ describe("loadChainRegistrations", () => {
       if (/GROUP BY netuid/.test(sql)) return SUBNETS;
       return []; // network aggregate returns no row on a fully cold store
     };
-    const data = await loadChainRegistrations(d1, {
+    const data = await loadChainPrometheus(d1, {
       windowLabel: "7d",
       windowDays: 7,
     });
@@ -236,8 +236,8 @@ describe("loadChainRegistrations", () => {
   });
 });
 
-describe("GET /api/v1/chain/registrations", () => {
-  function registrationsEnv({ networkRow, subnetRows }) {
+describe("GET /api/v1/chain/prometheus", () => {
+  function prometheusEnv({ networkRow, subnetRows }) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
@@ -257,33 +257,26 @@ describe("GET /api/v1/chain/registrations", () => {
     };
   }
   const req = (q = "") =>
-    new Request(`https://api.metagraph.sh/api/v1/chain/registrations${q}`);
+    new Request(`https://api.metagraph.sh/api/v1/chain/prometheus${q}`);
   const cold = { networkRow: [{ newest_observed: null }], subnetRows: [] };
   const warm = { networkRow: [NETWORK], subnetRows: SUBNETS };
 
-  test("dispatches to the network registration scorecard", async () => {
-    const res = await handleRequest(
-      req("?window=7d"),
-      registrationsEnv(warm),
-      {},
-    );
+  test("dispatches to the network Prometheus serving scorecard", async () => {
+    const res = await handleRequest(req("?window=7d"), prometheusEnv(warm), {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
     assert.equal(body.data.subnet_count, 3);
     assert.equal(body.data.subnets[0].netuid, 1);
-    assert.equal(
-      body.meta.artifact_path,
-      "/metagraph/chain/registrations.json",
-    );
+    assert.equal(body.meta.artifact_path, "/metagraph/chain/prometheus.json");
   });
 
   test("serves a HEAD probe through the GET cache key with no body", async () => {
     const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/chain/registrations", {
+      new Request("https://api.metagraph.sh/api/v1/chain/prometheus", {
         method: "HEAD",
       }),
-      registrationsEnv(warm),
+      prometheusEnv(warm),
       {},
     );
     assert.equal(res.status, 200);
@@ -291,7 +284,7 @@ describe("GET /api/v1/chain/registrations", () => {
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {
-    const res = await handleRequest(req(), registrationsEnv(cold), {});
+    const res = await handleRequest(req(), prometheusEnv(cold), {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -302,58 +295,50 @@ describe("GET /api/v1/chain/registrations", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleRequest(
       req("?window=90d"),
-      registrationsEnv(cold),
+      prometheusEnv(cold),
       {},
     );
     assert.equal(res.status, 400);
   });
 
   test("rejects an unknown query param with 400", async () => {
-    const res = await handleRequest(
-      req("?bogus=1"),
-      registrationsEnv(cold),
-      {},
-    );
+    const res = await handleRequest(req("?bogus=1"), prometheusEnv(cold), {});
     assert.equal(res.status, 400);
   });
 
   test("rejects an out-of-range limit with 400", async () => {
-    const res = await handleRequest(
-      req("?limit=0"),
-      registrationsEnv(cold),
-      {},
-    );
+    const res = await handleRequest(req("?limit=0"), prometheusEnv(cold), {});
     assert.equal(res.status, 400);
   });
 
-  const REGISTRATIONS_CSV_HEADER =
-    "netuid,distinct_registrants,registrations,registrations_per_registrant";
+  const PROMETHEUS_CSV_HEADER =
+    "netuid,distinct_exporters,announcements,announcements_per_exporter";
 
   test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      registrationsEnv(warm),
+      prometheusEnv(warm),
       {},
     );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /text\/csv/);
     assert.match(
       res.headers.get("content-disposition"),
-      /attachment; filename="chain-registrations\.csv"/,
+      /attachment; filename="chain-prometheus\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
-    assert.equal(lines[0], REGISTRATIONS_CSV_HEADER);
-    // Ranked by total registrations desc: netuid 1 (40), 2 (30), 5 (25).
+    assert.equal(lines[0], PROMETHEUS_CSV_HEADER);
+    // Ranked by total announcements desc: netuid 1 (40), 2 (30), 5 (25).
     assert.equal(lines.length, 4); // header + 3 subnet rows
     assert.equal(lines[1], "1,4,40,10");
   });
 
   test("honors Accept: text/csv the same as ?format=csv", async () => {
     const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/chain/registrations", {
+      new Request("https://api.metagraph.sh/api/v1/chain/prometheus", {
         headers: { accept: "text/csv" },
       }),
-      registrationsEnv(warm),
+      prometheusEnv(warm),
       {},
     );
     assert.equal(res.status, 200);
@@ -363,21 +348,21 @@ describe("GET /api/v1/chain/registrations", () => {
   test("emits a header-only CSV on a cold store", async () => {
     const res = await handleRequest(
       req("?format=csv"),
-      registrationsEnv(cold),
+      prometheusEnv(cold),
       {},
     );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /text\/csv/);
-    assert.equal((await res.text()).trim(), REGISTRATIONS_CSV_HEADER);
+    assert.equal((await res.text()).trim(), PROMETHEUS_CSV_HEADER);
   });
 
   test("serves a CSV HEAD probe with the CSV headers and no body", async () => {
     const res = await handleRequest(
       new Request(
-        "https://api.metagraph.sh/api/v1/chain/registrations?format=csv",
+        "https://api.metagraph.sh/api/v1/chain/prometheus?format=csv",
         { method: "HEAD" },
       ),
-      registrationsEnv(warm),
+      prometheusEnv(warm),
       {},
     );
     assert.equal(res.status, 200);
@@ -388,14 +373,14 @@ describe("GET /api/v1/chain/registrations", () => {
   test("rejects an unsupported format value with 400", async () => {
     const res = await handleRequest(
       req("?format=xml"),
-      registrationsEnv(cold),
+      prometheusEnv(cold),
       {},
     );
     assert.equal(res.status, 400);
   });
 });
 
-describe("chain/registrations edge cache", () => {
+describe("chain/prometheus edge cache", () => {
   let originalCaches;
   afterEach(() => {
     globalThis.caches = originalCaches;
@@ -440,7 +425,7 @@ describe("chain/registrations edge cache", () => {
     const waits = [];
     const call = () =>
       handleRequest(
-        new Request("https://api.metagraph.sh/api/v1/chain/registrations"),
+        new Request("https://api.metagraph.sh/api/v1/chain/prometheus"),
         env,
         { waitUntil: (promise) => waits.push(promise) },
       );

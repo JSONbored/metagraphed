@@ -123,6 +123,9 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide axon-serving announcement activity across every subnet, computed live from
   // the account_events AxonServed stream at /api/v1/chain/serving — never a file.
   /^chain\/serving\.json$/,
+  // Network-wide Prometheus-endpoint serving activity across every subnet, computed live from
+  // the account_events PrometheusServed stream at /api/v1/chain/prometheus — never a file.
+  /^chain\/prometheus\.json$/,
   // Network-wide neuron-registration activity across every subnet, computed live from
   // the account_events NeuronRegistered stream at /api/v1/chain/registrations — never a file.
   /^chain\/registrations\.json$/,

@@ -548,6 +548,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/prometheus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Computed live from the account_events PrometheusServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        get: operations["chainPrometheus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/registrations": {
         parameters: {
             query?: never;
@@ -555,7 +572,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. */
+        /** Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainRegistrations"];
         put?: never;
         post?: never;
@@ -3005,6 +3022,38 @@ export interface components {
             validator_trust?: components["schemas"]["ScoreDistribution"];
         } & {
             [key: string]: unknown;
+        };
+        /** @description Network-wide Prometheus-endpoint serving activity over a 7d/30d window across the subnets with observed telemetry activity: a per-subnet leaderboard (distinct exporters, PrometheusServed count, announcements per exporter) plus a network rollup with the true distinct exporter count and a distribution of per-subnet re-announcement intensity. The telemetry-endpoint companion to /api/v1/chain/serving (axon endpoints) — which subnets run observability infrastructure — served live from the account_events PrometheusServed stream at /api/v1/chain/prometheus (no static file); subnet_count 0 and the leaderboard empty when cold. */
+        ChainPrometheusArtifact: {
+            /** @description Spread of the per-subnet announcements-per-exporter intensity across the subnets that announced a Prometheus endpoint in the window (null when no subnet announced one). subnet_count and this distribution cover only subnets with observed PrometheusServed activity, not every registered subnet. */
+            intensity_distribution: {
+                count: number;
+                max: number;
+                mean: number;
+                median: number;
+                min: number;
+                p25: number;
+                p75: number;
+                p90: number;
+            } | null;
+            /** @description Rollup over the window: the true distinct exporters across all subnets (a hotkey announcing on several subnets counts once, so NOT the sum of the per-subnet counts), total PrometheusServed events, and the network announcements-per-exporter intensity (null when no endpoint was announced). */
+            network: {
+                announcements: number;
+                announcements_per_exporter: number | null;
+                distinct_exporters: number;
+            };
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: {
+                announcements: number;
+                announcements_per_exporter: number | null;
+                distinct_exporters: number;
+                netuid: number;
+            }[];
+            /** @enum {string|null} */
+            window: "7d" | "30d" | null;
         };
         /** @description Network-wide neuron-registration activity over a 7d/30d window across the subnets with observed registration activity: a per-subnet leaderboard (distinct registrants, NeuronRegistered count, registrations per registrant) plus a network rollup with the true distinct registrant count and a distribution of per-subnet re-registration intensity. Raw registration demand from the account_events NeuronRegistered stream — the companion to the neuron_daily validator-set churn in /api/v1/chain/turnover — served live at /api/v1/chain/registrations (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainRegistrationsArtifact: {
@@ -10521,11 +10570,13 @@ export interface operations {
             };
         };
     };
-    chainRegistrations: {
+    chainPrometheus: {
         parameters: {
             query?: {
                 window?: "7d" | "30d";
                 limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -10533,7 +10584,148 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "intensity_distribution": {
+                     *           "count": 2,
+                     *           "max": 15,
+                     *           "mean": 12.5,
+                     *           "median": 10,
+                     *           "min": 10,
+                     *           "p25": 10,
+                     *           "p75": 15,
+                     *           "p90": 15
+                     *         },
+                     *         "network": {
+                     *           "announcements": 70,
+                     *           "announcements_per_exporter": 14,
+                     *           "distinct_exporters": 5
+                     *         },
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 2,
+                     *         "subnets": [
+                     *           {
+                     *             "announcements": 40,
+                     *             "announcements_per_exporter": 10,
+                     *             "distinct_exporters": 4,
+                     *             "netuid": 1
+                     *           },
+                     *           {
+                     *             "announcements": 30,
+                     *             "announcements_per_exporter": 15,
+                     *             "distinct_exporters": 2,
+                     *             "netuid": 2
+                     *           }
+                     *         ],
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainPrometheusArtifact"];
+                    };
+                    /**
+                     * @example netuid,distinct_exporters,announcements,announcements_per_exporter
+                     *     1,4,40,10
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainRegistrations: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -10608,6 +10800,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainRegistrationsArtifact"];
                     };
+                    /**
+                     * @example netuid,distinct_registrants,registrations,registrations_per_registrant
+                     *     1,4,40,10
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
