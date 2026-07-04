@@ -256,6 +256,17 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/weights/setters?window=30d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "30d");
+      assert.equal(typeof body.data.distinct_setters, "number");
+      assert.equal(typeof body.data.weight_sets, "number");
+      assert.equal(typeof body.data.setter_count, "number");
+      assert.equal(Array.isArray(body.data.setters), true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/serving?window=30d",
     (body) => {
       assert.equal(body.data.netuid, 7);

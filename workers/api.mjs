@@ -97,6 +97,8 @@ import {
   canonicalSubnetStakeFlowCachePath,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
+  handleSubnetWeightSetters,
+  canonicalSubnetWeightSettersCachePath,
   handleSubnetServing,
   canonicalSubnetServingCachePath,
   handleSubnetRegistrations,
@@ -298,6 +300,7 @@ import {
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
+  SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
   SUBNET_REGISTRATIONS_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
@@ -1457,6 +1460,27 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             resolved.url,
           ),
         canonicalSubnetStakeFlowCachePath(resolved.url),
+      );
+    }
+    const weightSettersMatch = SUBNET_WEIGHT_SETTERS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (weightSettersMatch) {
+      // Per-subnet weight-setter leaderboard — the individual validators behind /weights,
+      // computed live from account_events over the window; edge-cache like the sibling routes.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-weight-setters",
+        () =>
+          handleSubnetWeightSetters(
+            request,
+            env,
+            Number(weightSettersMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetWeightSettersCachePath(resolved.url),
       );
     }
     const weightsMatch = SUBNET_WEIGHTS_PATH_PATTERN.exec(

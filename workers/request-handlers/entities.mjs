@@ -127,6 +127,11 @@ import {
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
 } from "../../src/subnet-weights.mjs";
 import {
+  loadSubnetWeightSetters,
+  SUBNET_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+} from "../../src/subnet-weight-setters.mjs";
+import {
   loadSubnetServing,
   SUBNET_SERVING_WINDOWS,
   DEFAULT_SUBNET_SERVING_WINDOW,
@@ -1161,6 +1166,57 @@ export async function handleSubnetWeights(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/weights.json`,
+        data.observed_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// Canonical edge-cache key for the subnet-weight-setters route: only ?window= (7d/30d) changes
+// the response, canonicalized to its default when omitted so equivalent requests share a slot.
+export function canonicalSubnetWeightSettersCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
+  if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+}
+
+// GET /api/v1/subnets/{netuid}/weights/setters?window=7d|30d: the per-subnet weight-setter
+// leaderboard — the individual validators behind /weights, each with its WeightsSet count,
+// share of the subnet's total, and first/last set time, ranked by activity. Read live from the
+// account_events WeightsSet stream. Cold/absent store → 200 with an empty leaderboard (never 404).
+export async function handleSubnetWeightSetters(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
+  if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(
+        windowParam,
+        SUBNET_WEIGHT_SETTERS_WINDOWS,
+      ),
+    });
+  }
+  const data = await loadSubnetWeightSetters(d1Runner(env), netuid, {
+    windowLabel: windowParam,
+    windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam],
+  });
+  // account_events-derived: the meta reports the event-stream source (accountMeta) with
+  // generated_at the newest observed WeightsSet event, mirroring the sibling /weights route.
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/weights/setters.json`,
         data.observed_at,
       ),
     },

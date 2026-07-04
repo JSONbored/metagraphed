@@ -48,6 +48,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/stake-flow\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
+  // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.
+  /^subnets\/(?:\d+|\{netuid\})\/weights\/setters\.json$/,
   // Axon-serving announcement activity: computed live from the account_events AxonServed stream.
   /^subnets\/(?:\d+|\{netuid\})\/serving\.json$/,
   // Neuron-registration activity: computed live from the account_events NeuronRegistered stream.

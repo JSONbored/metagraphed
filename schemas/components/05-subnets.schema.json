@@ -1475,6 +1475,65 @@
         },
         "additionalProperties": false
       },
+      "SubnetWeightSettersArtifact": {
+        "type": "object",
+        "description": "Per-subnet weight-setter leaderboard over a 7d/30d window: the individual validators behind /weights ranked by activity, each with its WeightsSet count, its share of the subnet's total, and its first/last set time. The setter-level drill-in of /api/v1/subnets/{netuid}/weights, served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights/setters (no static file); an empty leaderboard when the subnet has no WeightsSet events in the window.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "distinct_setters",
+          "weight_sets",
+          "setter_count",
+          "setters"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", null]
+          },
+          "observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "distinct_setters": { "type": "integer", "minimum": 0 },
+          "weight_sets": { "type": "integer", "minimum": 0 },
+          "setter_count": { "type": "integer", "minimum": 0 },
+          "setters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "hotkey",
+                "uid",
+                "weight_sets",
+                "share",
+                "first_set_at",
+                "last_set_at"
+              ],
+              "properties": {
+                "hotkey": { "type": ["string", "null"] },
+                "uid": { "type": ["integer", "null"], "minimum": 0 },
+                "weight_sets": { "type": "integer", "minimum": 0 },
+                "share": { "type": ["number", "null"], "minimum": 0 },
+                "first_set_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "last_set_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "SubnetServingArtifact": {
         "type": "object",
         "description": "Per-subnet axon-serving announcement activity over a 7d/30d window: the distinct servers (hotkeys), AxonServed event count, and announcements per server for ONE subnet. The per-subnet drill-in of /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid), served live from the account_events AxonServed stream at /api/v1/subnets/{netuid}/serving (no static file); zeroed when the subnet has no AxonServed events in the window.",
