@@ -1346,6 +1346,50 @@ describe("registry list CSV export", () => {
     );
   });
 
+  test("surfaces CSV export projects kind/provider/name and honors kind filters (#2522)", async () => {
+    const parseCsv = async (res) => {
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get("content-type"), /^text\/csv/);
+      const lines = (await res.text()).split("\r\n").filter(Boolean);
+      const header = lines[0].split(",");
+      const rows = lines.slice(1).map((line) => {
+        const values = line.split(",");
+        return Object.fromEntries(
+          header.map((name, index) => [name, values[index]]),
+        );
+      });
+      return { header, rows };
+    };
+
+    const all = await handleRequest(
+      req(
+        "/api/v1/surfaces?format=csv&fields=kind,provider,name&kind=openapi&limit=5",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const allCsv = await parseCsv(all);
+    assert.equal(allCsv.header.join(","), "kind,provider,name");
+    assert.ok(allCsv.rows.length > 0);
+    assert.ok(allCsv.rows.every((row) => row.kind === "openapi"));
+    assert.ok(allCsv.rows.every((row) => row.provider !== ""));
+    assert.ok(allCsv.rows.every((row) => row.name !== ""));
+
+    const subnet = await handleRequest(
+      req(
+        "/api/v1/subnets/6/surfaces?format=csv&fields=kind,provider,name&kind=openapi",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const subnetCsv = await parseCsv(subnet);
+    assert.equal(subnetCsv.header.join(","), "kind,provider,name");
+    assert.ok(subnetCsv.rows.length > 0);
+    assert.ok(subnetCsv.rows.every((row) => row.kind === "openapi"));
+    assert.ok(subnetCsv.rows.every((row) => row.provider !== ""));
+    assert.ok(subnetCsv.rows.every((row) => row.name !== ""));
+  });
+
   test("endpoints CSV export filters, projects, and streams the large route path (#2523)", async () => {
     const res = await handleRequest(
       req(
