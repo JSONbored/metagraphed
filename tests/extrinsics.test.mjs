@@ -423,6 +423,27 @@ test("formatExtrinsic rejects negative or non-integer chain-position cells to nu
   );
 });
 
+test("formatExtrinsic rejects blank chain-position cells that coerce to 0", () => {
+  // Mirrors the blank-cell guard in blocks.mjs (#2947): Number("") and
+  // Number("   ") are 0, which would fabricate genesis block / index 0.
+  for (const blank of ["", "   "]) {
+    const out = formatExtrinsic({
+      block_number: blank,
+      extrinsic_index: blank,
+    });
+    assert.equal(
+      out.block_number,
+      null,
+      `block_number for ${JSON.stringify(blank)}`,
+    );
+    assert.equal(
+      out.extrinsic_index,
+      null,
+      `extrinsic_index for ${JSON.stringify(blank)}`,
+    );
+  }
+});
+
 test("buildExtrinsic wraps a row + is schema-stable when absent (#1345)", () => {
   const hash = `0x${"a".repeat(64)}`;
   const out = buildExtrinsic(
