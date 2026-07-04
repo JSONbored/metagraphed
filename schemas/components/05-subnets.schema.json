@@ -1598,6 +1598,38 @@
         },
         "additionalProperties": false
       },
+      "SubnetStakeMovesArtifact": {
+        "type": "object",
+        "description": "Per-subnet stake-movement (re-delegation) activity over a 7d/30d window: the distinct movers (accounts), StakeMoved event count, and movements per mover for ONE subnet. The per-subnet drill-in of /api/v1/chain/stake-moves (which ranks only the top-N subnets and cannot be queried by netuid) and the re-delegation-churn sibling of /api/v1/subnets/{netuid}/stake-flow — StakeMoved relocates stake between hotkeys/subnets (move_stake) without unstaking, so it measures churn, not flow — served live from the account_events StakeMoved stream at /api/v1/subnets/{netuid}/stake-moves (no static file); zeroed when the subnet has no StakeMoved events in the window.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "distinct_movers",
+          "movements",
+          "movements_per_mover"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", null]
+          },
+          "observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "distinct_movers": { "type": "integer", "minimum": 0 },
+          "movements": { "type": "integer", "minimum": 0 },
+          "movements_per_mover": {
+            "type": ["number", "null"],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "SubnetRegistrationsArtifact": {
         "type": "object",
         "description": "Per-subnet neuron-registration activity over a 7d/30d window: the distinct registrants (hotkeys), NeuronRegistered event count, and registrations per registrant for ONE subnet. Raw registration demand from the account_events NeuronRegistered stream — the companion to the neuron_daily validator-set churn in /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume) — served live at /api/v1/subnets/{netuid}/registrations (no static file); zeroed when the subnet has no NeuronRegistered events in the window.",

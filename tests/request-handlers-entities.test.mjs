@@ -30,6 +30,7 @@ import {
   handleSubnetWeights,
   handleSubnetServing,
   handleSubnetPrometheus,
+  handleSubnetStakeMoves,
   handleSubnetRegistrations,
   handleSubnetMovers,
   handleAccount,
@@ -55,6 +56,7 @@ import {
   canonicalSubnetWeightsCachePath,
   canonicalSubnetServingCachePath,
   canonicalSubnetPrometheusCachePath,
+  canonicalSubnetStakeMovesCachePath,
   canonicalSubnetRegistrationsCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
@@ -1877,6 +1879,84 @@ describe("handleSubnetPrometheus", () => {
         new URL("https://api.metagraph.sh/api/v1/subnets/7/prometheus?bogus=1"),
       );
       assert.equal(path, "/api/v1/subnets/7/prometheus?bogus=1");
+    });
+  });
+});
+
+describe("handleSubnetStakeMoves", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetStakeMoves(
+      req(`/api/v1/subnets/${NETUID}/stake-moves`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/stake-moves?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleSubnetStakeMoves(
+      req(`/api/v1/subnets/${NETUID}/stake-moves`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/stake-moves?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns a schema-stable zeroed card on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetStakeMoves,
+      req(`/api/v1/subnets/${NETUID}/stake-moves`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/stake-moves?window=30d`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.distinct_movers, 0);
+    assert.equal(body.data.movements, 0);
+    assert.equal(body.data.movements_per_mover, null);
+    await assertValidComponent("SubnetStakeMovesArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/stake-moves.json`,
+    );
+    // account_events provenance (not the metagraph snapshot); null on a cold store.
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  describe("canonicalSubnetStakeMovesCachePath", () => {
+    test("canonicalizes omitted and explicit default window to one cache key", () => {
+      const omitted = canonicalSubnetStakeMovesCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/stake-moves"),
+      );
+      const explicit = canonicalSubnetStakeMovesCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-moves?window=7d",
+        ),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(omitted, "/api/v1/subnets/7/stake-moves?window=7d");
+    });
+
+    test("passes an invalid window through unchanged (the handler rejects it)", () => {
+      const path = canonicalSubnetStakeMovesCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-moves?window=bogus",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/stake-moves?window=bogus");
+    });
+
+    test("passes an unsupported query param through unchanged (validation error)", () => {
+      const path = canonicalSubnetStakeMovesCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-moves?bogus=1",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/stake-moves?bogus=1");
     });
   });
 });

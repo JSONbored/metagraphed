@@ -295,6 +295,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/stake-moves?window=30d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "30d");
+      assert.equal(typeof body.data.distinct_movers, "number");
+      assert.equal(typeof body.data.movements, "number");
+      assert.equal(
+        body.data.movements_per_mover === null ||
+          typeof body.data.movements_per_mover === "number",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/subnets/7/registrations?window=30d",
     (body) => {
       assert.equal(body.data.netuid, 7);

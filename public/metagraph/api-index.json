@@ -422,6 +422,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-stake-moves",
+      "path": "/metagraph/subnets/{netuid}/stake-moves.json",
+      "schema_ref": "#/components/schemas/SubnetStakeMovesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-registrations",
       "path": "/metagraph/subnets/{netuid}/registrations.json",
       "schema_ref": "#/components/schemas/SubnetRegistrationsArtifact",
@@ -4869,6 +4876,29 @@
       "id": "subnet-prometheus",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/prometheus",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/stake-moves.json",
+      "cache": "short",
+      "description": "Fetch stake-movement (re-delegation) activity for one subnet over a 7d or 30d window: the distinct movers (accounts), the StakeMoved event count, and the average movements per mover, computed live from the account_events StakeMoved stream. The per-subnet drill-in of GET /api/v1/chain/stake-moves (which ranks only the top-N subnets and cannot be queried by netuid) and the re-delegation-churn sibling of GET /api/v1/subnets/{netuid}/stake-flow (net capital flow) — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Schema-stable zeroed card when the subnet has no StakeMoved events in the window.",
+      "id": "subnet-stake-moves",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/stake-moves",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

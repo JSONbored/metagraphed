@@ -66,6 +66,9 @@ export const SUBNET_SERVING_PATH_PATTERN =
 // Prometheus-endpoint serving activity over the window, live from account_events, no static file.
 export const SUBNET_PROMETHEUS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/prometheus$/;
+// Stake-movement (re-delegation) activity over the window, live from account_events, no static file.
+export const SUBNET_STAKE_MOVES_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/stake-moves$/;
 // Neuron-registration activity over the window, live from account_events, no static file.
 export const SUBNET_REGISTRATIONS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/registrations$/;
