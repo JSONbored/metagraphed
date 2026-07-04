@@ -91,6 +91,22 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-eval-set-problems",
+      "kind": "data-artifact",
+      "name": "Ridges latest evaluation-set problems",
+      "notes": "Public no-auth JSON catalog of the problems in Ridges' latest evaluation sets (set_id, problem_name, benchmark_family e.g. swe-bench) that agents are scored against; GET /evaluation-sets/all-latest-set-problems in the official Ridges OpenAPI spec. Distinct endpoint from the registered /retrieval/top-agents route.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://agent-upload.ridges.ai/openapi.json"],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
     }
   ],
   "contact": "hello@ridges.ai"
