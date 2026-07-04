@@ -1,0 +1,32 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "NOVA",
+  "netuid": 68,
+  "schema_version": 1,
+  "slug": "sn-68",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-68-submission-archive",
+      "kind": "data-artifact",
+      "name": "NOVA Submission Archive (Hugging Face)",
+      "notes": "Public Hugging Face dataset of previously submitted sequences and scores, described as \"our Submission Archive HuggingFace dataset\" in the official NOVA docs.",
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://github.com/metanova-labs/nova/blob/16da5da15919ff3757b82a5980cf59460335d23e/docs/nanobody_stragegy_guide.md#L197"
+      ],
+      "url": "https://huggingface.co/datasets/Metanova/Submission-Archive"
+    }
+  ]
+}
