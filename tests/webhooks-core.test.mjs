@@ -514,6 +514,21 @@ describe("deliverChangeEvent", () => {
     assert.equal(out.reason, "unsafe-url");
   });
 
+  test("skips when the resolver throws an unsafe DNS result", async () => {
+    const out = await deliverChangeEvent({
+      subscription: base,
+      event,
+      fetchFn: async () => new Response("", { status: 200 }),
+      resolveHostnames: async () => {
+        const error = new Error("unsafe webhook DNS result");
+        error.code = "UNSAFE_WEBHOOK_DNS_RESULT";
+        throw error;
+      },
+    });
+    assert.equal(out.status, "skipped");
+    assert.equal(out.reason, "unsafe-url");
+  });
+
   test("returns a retryable failure (not a drop) when the resolver throws", async () => {
     // A transient DNS failure (resolver throws, e.g. EAI_AGAIN) must NOT be a
     // terminal "skipped" — that would delete the parked record on the redelivery
