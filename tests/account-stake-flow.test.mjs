@@ -192,6 +192,20 @@ describe("buildAccountStakeFlow", () => {
     assert.equal(d.total_staked_tao, 25);
   });
 
+  test("skips blank netuid cells instead of coercing to subnet 0", () => {
+    // Mirrors the blank-cell guard in turnover.mjs (#3026): Number("") is 0.
+    for (const blank of ["", "   "]) {
+      const d = buildAccountStakeFlow([added(blank, 100), added(1, 25)], ADDR);
+      assert.equal(
+        d.subnet_count,
+        1,
+        `subnet_count for netuid ${JSON.stringify(blank)}`,
+      );
+      assert.equal(d.total_staked_tao, 25);
+      assert.equal(d.subnets[0].netuid, 1);
+    }
+  });
+
   test("rounds tao output to rao precision", () => {
     const d = buildAccountStakeFlow([added(1, 0.1), removed(1, 0.2)], ADDR);
     assert.equal(d.net_flow_tao, -0.1);
