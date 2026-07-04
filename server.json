@@ -3,7 +3,7 @@
   "name": "io.github.JSONbored/metagraphed",
   "title": "metagraphed — Bittensor subnet operational registry",
   "description": "Live operational + integration registry for Bittensor subnets: APIs, schemas, health.",
-  "version": "1.38.0",
+  "version": "1.39.0",
   "websiteUrl": "https://metagraph.sh",
   "repository": {
     "url": "https://github.com/JSONbored/metagraphed",
