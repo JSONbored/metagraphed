@@ -26,4 +26,9 @@ export const ROUTE_CSV_EXAMPLES = {
     "netuid,distinct_setters,weight_sets,sets_per_setter",
     "1,4,40,10",
   ].join("\r\n"),
+  // The /chain/serving per-subnet axon-serving leaderboard rows.
+  "chain-serving": [
+    "netuid,distinct_servers,announcements,announcements_per_server",
+    "1,4,40,10",
+  ].join("\r\n"),
 };

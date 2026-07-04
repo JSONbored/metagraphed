@@ -1190,7 +1190,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "chain-serving",
     "/metagraph/chain/serving.json",
-    "Network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): each subnet's AxonServed event count, distinct servers (hotkeys announcing an axon), and average announcements per server ranked into a leaderboard, a network rollup with the true distinct server count (not a per-subnet sum) and total announcements, and a distribution summary of the per-subnet re-announcement intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events AxonServed stream at /api/v1/chain/serving (no static file).",
+    "Network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): each subnet's AxonServed event count, distinct servers (hotkeys announcing an axon), and average announcements per server ranked into a leaderboard, a network rollup with the true distinct server count (not a per-subnet sum) and total announcements, and a distribution summary of the per-subnet re-announcement intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events AxonServed stream at /api/v1/chain/serving; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
     "ChainServingArtifact",
   ),
   artifact(
@@ -2611,13 +2611,13 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/serving",
     "/metagraph/chain/serving.json",
-    "Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold.",
+    "Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    [
+    csvRouteQuery([
       { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ],
+    ]),
     [],
   ),
   route(

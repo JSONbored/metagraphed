@@ -538,7 +538,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. */
+        /** Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainServing"];
         put?: never;
         post?: never;
@@ -10191,6 +10191,8 @@ export interface operations {
             query?: {
                 window?: "7d" | "30d";
                 limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -10198,7 +10200,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -10273,6 +10275,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainServingArtifact"];
                     };
+                    /**
+                     * @example netuid,distinct_servers,announcements,announcements_per_server
+                     *     1,4,40,10
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

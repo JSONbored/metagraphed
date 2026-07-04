@@ -306,6 +306,65 @@ describe("GET /api/v1/chain/serving", () => {
     const res = await handleRequest(req("?limit=0"), servingEnv(cold), {});
     assert.equal(res.status, 400);
   });
+
+  const SERVING_CSV_HEADER =
+    "netuid,distinct_servers,announcements,announcements_per_server";
+
+  test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
+    const res = await handleRequest(
+      req("?window=7d&format=csv"),
+      servingEnv(warm),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    assert.match(
+      res.headers.get("content-disposition"),
+      /attachment; filename="chain-serving\.csv"/,
+    );
+    const lines = (await res.text()).trim().split("\r\n");
+    assert.equal(lines[0], SERVING_CSV_HEADER);
+    // Ranked by total announcements desc: netuid 1 (40), 2 (30), 5 (25).
+    assert.equal(lines.length, 4); // header + 3 subnet rows
+    assert.equal(lines[1], "1,4,40,10");
+  });
+
+  test("honors Accept: text/csv the same as ?format=csv", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/serving", {
+        headers: { accept: "text/csv" },
+      }),
+      servingEnv(warm),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+  });
+
+  test("emits a header-only CSV on a cold store", async () => {
+    const res = await handleRequest(req("?format=csv"), servingEnv(cold), {});
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    assert.equal((await res.text()).trim(), SERVING_CSV_HEADER);
+  });
+
+  test("serves a CSV HEAD probe with the CSV headers and no body", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/serving?format=csv", {
+        method: "HEAD",
+      }),
+      servingEnv(warm),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    assert.equal(await res.text(), ""); // HEAD carries no body
+  });
+
+  test("rejects an unsupported format value with 400", async () => {
+    const res = await handleRequest(req("?format=xml"), servingEnv(cold), {});
+    assert.equal(res.status, 400);
+  });
 });
 
 describe("chain/serving edge cache", () => {
