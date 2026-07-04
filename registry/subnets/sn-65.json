@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 65,
+  "name": "TAO Private Network",
+  "slug": "sn-65",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/tpn_labs"
+  },
+  "surfaces": []
+}

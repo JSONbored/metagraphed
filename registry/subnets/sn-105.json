@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 105,
+  "name": "Beam",
+  "slug": "sn-105",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/b1m_ai"
+  },
+  "surfaces": []
+}

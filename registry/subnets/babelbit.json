@@ -9,6 +9,9 @@
   "schema_version": 1,
   "slug": "sn-59",
   "status": "active",
+  "social": {
+    "x": "https://x.com/babelbit"
+  },
   "surfaces": [
     {
       "auth_required": false,

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 54,
+  "name": "Yanez MIID",
+  "slug": "sn-54",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/yanez__ai"
+  },
+  "surfaces": []
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 70,
+  "name": "NexisGen",
+  "slug": "sn-70",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/nexisgen_ai"
+  },
+  "surfaces": []
+}

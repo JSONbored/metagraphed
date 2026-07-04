@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 108,
+  "name": "TalkHead",
+  "slug": "sn-108",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/talkheadai"
+  },
+  "surfaces": []
+}

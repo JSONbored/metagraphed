@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 67,
+  "name": "Harnyx",
+  "slug": "sn-67",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/harnyx_ai"
+  },
+  "surfaces": []
+}

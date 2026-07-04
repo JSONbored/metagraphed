@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 112,
+  "name": "minotaur",
+  "slug": "sn-112",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/minotaursubnet"
+  },
+  "surfaces": []
+}

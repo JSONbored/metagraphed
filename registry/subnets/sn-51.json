@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 51,
+  "name": "lium.io",
+  "slug": "sn-51",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/lium_io"
+  },
+  "surfaces": []
+}

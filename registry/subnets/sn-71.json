@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 71,
+  "name": "Leadpoet",
+  "slug": "sn-71",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/leadpoetai"
+  },
+  "surfaces": []
+}

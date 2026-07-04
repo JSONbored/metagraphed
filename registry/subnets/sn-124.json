@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "netuid": 124,
+  "name": "Swarm",
+  "slug": "sn-124",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/swarmsubnet"
+  },
+  "surfaces": []
+}
