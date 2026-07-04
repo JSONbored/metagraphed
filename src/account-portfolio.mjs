@@ -47,15 +47,21 @@ function toInt(value) {
   return null;
 }
 
+// Guard 0/negative epoch ms (a blank/sentinel D1 cell) so captured_at never stamps
+// the 1970 epoch; mirrors epochMsStamp in concentration.mjs / subnet-performance.mjs.
 function captureStamp(value) {
+  let ms;
   if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
+    ms = value;
+  } else if (typeof value === "string" && /^\d+$/.test(value)) {
+    ms = Number(value);
+  } else {
+    return null;
   }
-  if (typeof value === "string" && /^\d+$/.test(value)) {
-    const ms = Number(value);
-    return { ms, value: new Date(ms).toISOString() };
-  }
-  return null;
+  if (ms <= 0) return null;
+  const date = new Date(ms);
+  if (!Number.isFinite(date.getTime())) return null;
+  return { ms, value: date.toISOString() };
 }
 
 // Emission-per-stake return rate; null when stake is 0 (undefined return).

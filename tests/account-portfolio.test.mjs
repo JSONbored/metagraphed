@@ -180,6 +180,18 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
+  test("rejects a 0/negative/out-of-range captured_at instead of leaking a junk stamp", () => {
+    const out = buildAccountPortfolio(
+      [
+        { netuid: 1, stake_tao: 1, captured_at: 0 },
+        { netuid: 2, stake_tao: 1, captured_at: -1 },
+        { netuid: 3, stake_tao: 1, captured_at: 8_640_000_000_000_001 }, // beyond Date range
+      ],
+      SS58,
+    );
+    assert.equal(out.captured_at, null);
+  });
+
   test("cold/empty → schema-stable empty card", () => {
     const out = buildAccountPortfolio([], SS58);
     assert.equal(out.position_count, 0);
