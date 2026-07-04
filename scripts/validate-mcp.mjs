@@ -277,6 +277,8 @@ assert.ok(
   Array.isArray(curationPage.curation),
   "list_curation must return curation[]",
 );
+const gapsPage = await callOk("list_gaps", { limit: 3 });
+assert.ok(Array.isArray(gapsPage.gaps), "list_gaps must return gaps[]");
 await callOk("registry_summary", {});
 await callOk("get_coverage", {});
 

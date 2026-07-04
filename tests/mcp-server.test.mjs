@@ -1382,6 +1382,53 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_gaps returns filtered gap rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/gaps.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        gaps: [
+          {
+            netuid: 7,
+            coverage_level: "probed",
+            curation_level: "maintainer-reviewed",
+            gap_count: 2,
+          },
+          { netuid: 31, coverage_level: "manifested", gap_count: 5 },
+        ],
+      },
+    });
+    const res = await callTool("list_gaps", { netuid: 7 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.gaps[0].netuid, 7);
+    assert.equal(out.gaps[0].gap_count, 2);
+  });
+
+  test("list_gaps reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_gaps", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Interface gaps snapshot unavailable/,
+    );
+  });
+
+  test("list_gaps payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_gaps",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/gaps.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        notes: "ok",
+        gaps: [{ netuid: 7, gap_count: 1 }],
+      },
+    });
+    const res = await callTool("list_gaps", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("registry_summary returns the summary artifact", async () => {
     const res = await callTool("registry_summary", {}, { deps });
     assert.equal(res.body.result.structuredContent.completeness, 0.42);
