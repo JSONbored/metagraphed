@@ -27,6 +27,25 @@
         "https://github.com/metanova-labs/nova/blob/16da5da15919ff3757b82a5980cf59460335d23e/docs/nanobody_stragegy_guide.md#L197"
       ],
       "url": "https://huggingface.co/datasets/Metanova/Submission-Archive"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-68-nova-savi-2020-dataset",
+      "kind": "data-artifact",
+      "name": "NOVA SAVI-2020 molecule library",
+      "notes": "Public Metanova (NOVA, SN68) HuggingFace SAVI-2020 dataset — ~1.5B computationally generated, synthetically-accessible organic compounds (SMILES, drug-likeness scores, single-step routes), the candidate-molecule library NOVA's drug-discovery miners screen against; not gated, chemistry columns only. The metanova-labs/nova README (source) declares the Bittensor subnet and the Metanova HF org owns the dataset.",
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/metanova-labs/nova",
+        "https://huggingface.co/Metanova"
+      ],
+      "url": "https://huggingface.co/datasets/Metanova/SAVI-2020"
     }
   ]
 }
