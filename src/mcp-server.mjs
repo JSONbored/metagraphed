@@ -1054,6 +1054,34 @@ function optionalNonNegativeInt(args, key) {
   return value;
 }
 
+// Like optionalNonNegativeInt but for a decimal quantity (e.g. a TAO amount),
+// where a fractional value is valid.
+function optionalNonNegativeNumber(args, key) {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a non-negative number.`,
+    );
+  }
+  return value;
+}
+
+// Like optionalNonNegativeInt, but 0 is invalid (a "cap the list to zero rows"
+// argument reads as a misuse, not a legitimate empty-result request).
+function optionalPositiveInt(args, key) {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
+  if (!Number.isInteger(value) || value < 1) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a positive integer.`,
+    );
+  }
+  return value;
+}
+
 function requireNetuid(args) {
   return requireNonNegativeInt(args, "netuid");
 }
@@ -3128,18 +3156,49 @@ export const MCP_TOOLS = [
       "List one subnet's permit-holding validators, ranked by stake " +
       "(descending): hot and cold keys, stake, validator trust, consensus, " +
       "dividends, emission, and axon. Use it to pick which validators to " +
-      "target, delegate to, or weight against.",
+      "target, delegate to, or weight against. Optionally cap the list with " +
+      "limit (keeps the highest-stake rows, since the list is already " +
+      "stake-ranked) or drop small-stake rows with min_stake_tao.",
     inputSchema: {
       type: "object",
       properties: {
         netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        limit: {
+          type: "integer",
+          description:
+            "Max validators to return, keeping the highest-stake rows. Omit " +
+            "for the full list.",
+          minimum: 1,
+        },
+        min_stake_tao: {
+          type: "number",
+          description:
+            "Only validators whose stake is >= this many TAO. Omit for no floor.",
+          minimum: 0,
+        },
       },
       required: ["netuid"],
       additionalProperties: false,
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadSubnetValidators(mcpD1Runner(ctx), netuid);
+      const limit = optionalPositiveInt(args, "limit");
+      const minStakeTao = optionalNonNegativeNumber(args, "min_stake_tao");
+      const data = await loadSubnetValidators(mcpD1Runner(ctx), netuid);
+      if (limit === null && minStakeTao === null) {
+        return data;
+      }
+      // The loader already ranks by stake_tao DESC, so a limit after the
+      // min_stake_tao floor keeps the highest-stake survivors — no re-sort.
+      const filtered =
+        minStakeTao === null
+          ? data.validators
+          : data.validators.filter(
+              (v) =>
+                typeof v.stake_tao === "number" && v.stake_tao >= minStakeTao,
+            );
+      const validators = limit === null ? filtered : filtered.slice(0, limit);
+      return { ...data, validator_count: validators.length, validators };
     },
   },
   {
@@ -3466,10 +3525,11 @@ export const MCP_TOOLS = [
       "Fetch the paginated first-party chain-event history for one account by its " +
       "SS58 address (hotkey OR coldkey), newest first: each event's kind, block, " +
       "Subnet, UID, amount, and timestamp. Optionally filter by event kind (e.g. " +
-      "StakeAdded, StakeRemoved, NeuronRegistered, AxonServed, WeightsSet). " +
-      "Optionally constrain block height with block_start/block_end (inclusive). " +
-      "Page with limit (1-1000, default 100) / offset, or follow next_cursor for stable " +
-      "keyset pagination. Mirrors GET /api/v1/accounts/{ss58}/events.",
+      "StakeAdded, StakeRemoved, NeuronRegistered, AxonServed, WeightsSet) or scope " +
+      "to one subnet with netuid. Optionally constrain block height with " +
+      "block_start/block_end (inclusive). Page with limit (1-1000, default 100) / " +
+      "offset, or follow next_cursor for stable keyset pagination. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/events.",
     inputSchema: {
       type: "object",
       properties: {
@@ -3484,6 +3544,13 @@ export const MCP_TOOLS = [
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'NeuronRegistered'. " +
             "Omit for all kinds; unsupported kinds are rejected.",
+        },
+        netuid: {
+          type: "integer",
+          description:
+            "Optional subnet scope: only events tied to this netuid. Omit for " +
+            "events across every subnet.",
+          minimum: 0,
         },
         block_start: {
           type: "integer",
@@ -3524,6 +3591,7 @@ export const MCP_TOOLS = [
       requireKnownEventKind(kind);
       const cursor = optionalString(args, "cursor");
       return loadAccountEvents(mcpD1Runner(ctx), ss58, {
+        netuid: optionalNonNegativeInt(args, "netuid"),
         blockStart: optionalNonNegativeInt(args, "block_start"),
         blockEnd: optionalNonNegativeInt(args, "block_end"),
         limit: args?.limit,

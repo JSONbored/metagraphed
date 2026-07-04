@@ -55,6 +55,17 @@ function percentile(ascending, p) {
   return ascending[Math.min(rank, ascending.length) - 1];
 }
 
+// Conventional median of a NON-EMPTY ascending numeric array: the middle value for an odd count,
+// the mean of the two middle values for an even count (so [33, 100] -> 66.5, not the lower-middle 33
+// a nearest-rank p50 gives). The averaging form needs no odd/even branch — for an odd count the two
+// indices coincide and it returns that middle value unchanged. Matches median() in chain-yield.mjs /
+// subnet-yield.mjs so a `median` field is the same statistic across the API. Reached only after
+// stabilityDistribution's empty short-circuit.
+function median(ascending) {
+  const mid = (ascending.length - 1) / 2;
+  return round((ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2);
+}
+
 // Spread of the per-subnet stability scores across every subnet in the window: count, mean,
 // and min / p25 / median / p75 / p90 / max. Null when no subnet is comparable. Lets a caller
 // read network stability as a distribution (how many subnets are churning hard) rather than a
@@ -68,7 +79,7 @@ function stabilityDistribution(scores) {
     mean: Math.round((sum / ascending.length) * 100) / 100,
     min: ascending[0],
     p25: percentile(ascending, 25),
-    median: percentile(ascending, 50),
+    median: median(ascending),
     p75: percentile(ascending, 75),
     p90: percentile(ascending, 90),
     max: ascending[ascending.length - 1],

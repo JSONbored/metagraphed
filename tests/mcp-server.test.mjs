@@ -6442,6 +6442,122 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validators[0].validator_permit, true);
   });
 
+  function threeValidatorsD1() {
+    return {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        neurons: [
+          {
+            netuid: 7,
+            uid: 0,
+            hotkey: "5Hk-a",
+            coldkey: "5Co-a",
+            validator_permit: 1,
+            stake_tao: 100,
+            emission_tao: 1,
+            validator_trust: 0.9,
+            captured_at: 1750000000000,
+            block_number: 100,
+          },
+          {
+            netuid: 7,
+            uid: 1,
+            hotkey: "5Hk-b",
+            coldkey: "5Co-b",
+            validator_permit: 1,
+            stake_tao: 50,
+            emission_tao: 1,
+            validator_trust: 0.8,
+            captured_at: 1750000000000,
+            block_number: 100,
+          },
+          {
+            netuid: 7,
+            uid: 2,
+            hotkey: "5Hk-c",
+            coldkey: "5Co-c",
+            validator_permit: 1,
+            stake_tao: 5,
+            emission_tao: 1,
+            validator_trust: 0.5,
+            captured_at: 1750000000000,
+            block_number: 100,
+          },
+        ],
+      }),
+    };
+  }
+
+  test("list_subnet_validators limit keeps the highest-stake rows (already stake-ranked)", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, limit: 2 },
+      { env: threeValidatorsD1() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["5Hk-a", "5Hk-b"],
+    );
+  });
+
+  test("list_subnet_validators min_stake_tao drops small-stake validators", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, min_stake_tao: 50 },
+      { env: threeValidatorsD1() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["5Hk-a", "5Hk-b"],
+    );
+  });
+
+  test("list_subnet_validators combines min_stake_tao and limit", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, min_stake_tao: 6, limit: 1 },
+      { env: threeValidatorsD1() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.validators[0].hotkey, "5Hk-a");
+  });
+
+  test("list_subnet_validators without limit/min_stake_tao is unchanged (full ranked list)", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7 },
+      { env: threeValidatorsD1() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 3);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["5Hk-a", "5Hk-b", "5Hk-c"],
+    );
+  });
+
+  test("list_subnet_validators rejects limit=0 and a negative min_stake_tao", async () => {
+    const zeroLimit = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, limit: 0 },
+      { env: threeValidatorsD1() },
+    );
+    assert.equal(zeroLimit.body.result.isError, true);
+    assert.match(zeroLimit.body.result.content[0].text, /invalid_params/);
+
+    const negStake = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, min_stake_tao: -1 },
+      { env: threeValidatorsD1() },
+    );
+    assert.equal(negStake.body.result.isError, true);
+    assert.match(negStake.body.result.content[0].text, /invalid_params/);
+  });
+
   test("list_global_validators returns schema-stable empty list on cold D1", async () => {
     const res = await callTool("list_global_validators", {});
     const out = res.body.result.structuredContent;
@@ -8742,6 +8858,59 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
     assert.ok(/AND event_kind = \?/.test(eventsQuery.sql));
     assert.ok(eventsQuery.params.includes("StakeRemoved"));
+  });
+
+  test("get_account_events scopes to one subnet with netuid (#2585 parity)", async () => {
+    const capture = [];
+    const env = accountD1(
+      {
+        events: [
+          {
+            block_number: 210,
+            event_index: 0,
+            event_kind: "StakeAdded",
+            hotkey: SS58,
+            coldkey: null,
+            netuid: 74,
+            uid: 5,
+            amount_tao: 1.0,
+            observed_at: 1750009100000,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, netuid: 74 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.events[0].netuid, 74);
+    // The netuid filter must reach the SQL as a bound param inside each indexed
+    // branch of the hotkey/coldkey union (never interpolated).
+    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
+    assert.equal((eventsQuery.sql.match(/AND netuid = \?/g) || []).length, 2);
+    assert.ok(eventsQuery.params.includes(74));
+  });
+
+  test("get_account_events without netuid is unscoped (no netuid predicate)", async () => {
+    const capture = [];
+    const env = accountD1({ events: [] }, capture);
+    await callTool("get_account_events", { ss58: SS58 }, { env });
+    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
+    assert.doesNotMatch(eventsQuery.sql, /AND netuid = \?/);
+  });
+
+  test("get_account_events rejects a malformed netuid", async () => {
+    const env = accountD1({ events: [] });
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, netuid: -1 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
   });
 
   test("get_account_events clamps an over-range limit the same way the REST route does", async () => {

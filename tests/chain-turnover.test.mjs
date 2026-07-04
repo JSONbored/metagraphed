@@ -82,7 +82,9 @@ describe("buildChainTurnover", () => {
     assert.equal(dist.mean, 66.5);
     assert.equal(dist.min, 33);
     assert.equal(dist.p25, 33); // nearest-rank: ceil(.25*2)=1 -> asc[0]
-    assert.equal(dist.median, 33);
+    // conventional median of an even set = mean of the two middles (33 + 100) / 2,
+    // NOT the lower-middle 33 a nearest-rank p50 returns.
+    assert.equal(dist.median, 66.5);
     assert.equal(dist.p75, 100); // ceil(.75*2)=2 -> asc[1]
     assert.equal(dist.p90, 100);
     assert.equal(dist.max, 100);
