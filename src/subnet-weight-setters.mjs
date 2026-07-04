@@ -28,11 +28,15 @@ const SETTER_IDENTITY =
   "WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid " +
   "ELSE NULL END";
 
-// Round a share to a stable 4dp precision. Always finite here (a per-setter count over a
-// positive total, with the divisor guarded below).
+// Round a share to a stable 4dp precision WITHOUT letting a sub-1 share round up to an
+// exact 1 -- a setter that drove < 100% of the subnet's weight-setting must not read as a
+// flat 1 while another setter still holds activity (e.g. 49999/50000 = 0.99998 -> 1.0000).
+// The same anti-overstatement guard the sibling share/ratio rounders apply. A genuine sole
+// setter (its count == the subnet total) keeps a true 1.
 function round(value, dp = 4) {
   const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
 // A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),

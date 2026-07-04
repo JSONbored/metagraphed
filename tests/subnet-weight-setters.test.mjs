@@ -61,6 +61,33 @@ describe("buildSubnetWeightSetters", () => {
     assert.equal(buildSubnetWeightSetters([], {}, NETUID).window, null);
   });
 
+  test("a near-monopoly setter's share does not round up to a flat 1 while others set weights", () => {
+    // One setter drove 49999 of the subnet's 50000 WeightsSet events (99.998%);
+    // a second setter drove the last 1. A bare 4dp round lifts 0.99998 to exactly
+    // 1, reading as if the top setter did ALL the weight-setting. Clamp holds it
+    // below 1 while the true sole-setter case (below) still reports 1.
+    const d = buildSubnetWeightSetters(
+      [
+        { hotkey: "5Grw...alice", uid: 3, weight_sets: 49999 },
+        { hotkey: "5Frw...bob", uid: 4, weight_sets: 1 },
+      ],
+      { weight_sets: 50000, distinct_setters: 2 },
+      NETUID,
+    );
+    assert.ok(d.setters[0].share < 1, "near-monopoly share must stay below 1");
+    assert.equal(d.setters[0].share, 0.9999);
+    assert.equal(d.setters[1].share, 0); // 1/50000 rounds to 0.0000 at 4dp
+  });
+
+  test("a genuine sole setter keeps an exact share of 1", () => {
+    const d = buildSubnetWeightSetters(
+      [{ hotkey: "5Grw...alice", uid: 3, weight_sets: 100 }],
+      { weight_sets: 100, distinct_setters: 1 },
+      NETUID,
+    );
+    assert.equal(d.setters[0].share, 1);
+  });
+
   test("shapes the leaderboard: counts, shares, first/last, nullable hotkey/uid", () => {
     const d = buildSubnetWeightSetters(LEADER_ROWS, TOTALS, NETUID, {
       window: "30d",
