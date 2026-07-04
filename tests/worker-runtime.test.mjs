@@ -175,6 +175,30 @@ describe("Worker runtime", () => {
     assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
   });
 
+  test("emits a header-only chain-events CSV when the upstream body omits events", async () => {
+    // Defensive path: if the data tier returns a body with no `events` array
+    // (degraded/partial), the CSV export must still yield a header-only file
+    // rather than throw — this exercises the `Array.isArray(...) ? … : []` guard.
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events?format=csv"),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            return new Response(JSON.stringify({ count: 0 }), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/csv/);
+    assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
+  });
+
   test("chain-events/stats ignores ?format=csv and keeps the JSON envelope", async () => {
     // Only the feed exposes a top-level row array; the stats aggregate has none,
     // so a CSV request must fall through to the enveloped JSON, not a bogus export.
