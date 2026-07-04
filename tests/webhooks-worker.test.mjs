@@ -500,6 +500,47 @@ describe("webhook route edge cases", () => {
     assert.equal((await res.json()).error.code, "payload_too_large");
   });
 
+  test("400 when Content-Length is invalid before reading the body", async () => {
+    for (const contentLength of ["-1", "not-a-number"]) {
+      const res = await handleRequest(
+        req("/api/v1/webhooks/subscriptions", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "content-length": contentLength,
+            "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+          },
+          body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
+        }),
+        envWith(makeKv()),
+        {},
+      );
+      assert.equal(res.status, 400);
+      assert.equal((await res.json()).error.code, "invalid_content_length");
+    }
+  });
+
+  test("accepts a finite Content-Length within the cap before reading the body", async () => {
+    const payload = { url: "https://hooks.example.com/mg" };
+    const body = JSON.stringify(payload);
+    const kv = makeKv();
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": String(new TextEncoder().encode(body).byteLength),
+          "x-metagraph-webhook-subscription-token": SUBSCRIPTION_TOKEN,
+        },
+        body,
+      }),
+      envWith(kv),
+      {},
+    );
+    assert.equal(res.status, 201);
+    assert.equal((await res.json()).ok, true);
+  });
+
   test("413 when the decoded body byte length exceeds the limit", async () => {
     // content-length omitted, but the JSON payload itself is oversized.
     const body = JSON.stringify({

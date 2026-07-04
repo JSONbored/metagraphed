@@ -3457,14 +3457,23 @@ async function createWebhookSubscription(request, env) {
     return authorized.response;
   }
 
-  if (
-    Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BODY_BYTES
-  ) {
-    return errorResponse(
-      "payload_too_large",
-      "Subscription body exceeds the size limit.",
-      413,
-    );
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    const contentLength = Number(declaredLength);
+    if (!Number.isFinite(contentLength) || contentLength < 0) {
+      return errorResponse(
+        "invalid_content_length",
+        "Invalid Content-Length header.",
+        400,
+      );
+    }
+    if (contentLength > MAX_WEBHOOK_BODY_BYTES) {
+      return errorResponse(
+        "payload_too_large",
+        "Subscription body exceeds the size limit.",
+        413,
+      );
+    }
   }
   let body;
   try {
