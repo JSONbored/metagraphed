@@ -1727,6 +1727,18 @@ test("buildAccountEventSummary mirrors subnet summary shape with ss58 footprint"
   assert.equal(out.event_kinds[0].category, "stake");
 });
 
+test("buildAccountEventSummary preserves netuid and defaults subnet_count", () => {
+  const ss58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const out = buildAccountEventSummary([], [], ss58, {
+    window: "30d",
+    limit: 10,
+    netuid: 7,
+  });
+  assert.equal(out.ss58, ss58);
+  assert.equal(out.netuid, 7);
+  assert.equal(out.subnet_count, 0);
+});
+
 test("loadAccountEventSummary uses indexed union seeks and optional netuid filter", async () => {
   const ss58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const calls = [];
@@ -1750,6 +1762,29 @@ test("loadAccountEventSummary uses indexed union seeks and optional netuid filte
   assert.equal(out.netuid, 7);
   assert.equal(out.subnet_count, 2);
   assert.equal(out.total_events, 4);
+});
+
+test("loadAccountEventSummary omits netuid filter when netuid is absent", async () => {
+  const ss58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const calls = [];
+  const out = await loadAccountEventSummary(
+    async (sql, params) => {
+      calls.push({ sql, params });
+      if (/COUNT\(DISTINCT netuid\)/.test(sql)) {
+        return [{ subnet_count: 3 }];
+      }
+      if (/GROUP BY event_kind/.test(sql)) {
+        return [{ event_kind: "Transfer", event_count: 1 }];
+      }
+      return [];
+    },
+    ss58,
+    { windowLabel: "7d", limit: 3 },
+  );
+  assert.equal(calls.length, 3);
+  assert.doesNotMatch(calls[0].sql, /AND netuid = \?/);
+  assert.equal(out.netuid, null);
+  assert.equal(out.subnet_count, 3);
 });
 
 test("loadAccountEvents emits a next_cursor only on a full page", async () => {

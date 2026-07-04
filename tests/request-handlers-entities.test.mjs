@@ -37,6 +37,7 @@ import {
   handleAccountStakeFlow,
   handleAccountSubnets,
   handleSubnetEventSummary,
+  handleAccountEventSummary,
   handleSubnetEvents,
   handleAccountBalance,
   handleBlocks,
@@ -242,6 +243,8 @@ function dbWith({
   subnetEvents,
   subnetEventSummaryKinds,
   subnetEventSummaryRecent,
+  accountEventSummarySubnetCount,
+  accountEventSummaryRecent,
   blockEvents,
   extrinsicEvents,
   extrinsics,
@@ -323,6 +326,30 @@ function dbWith({
                     /observed_at >= \?/.test(sql)
                   ) {
                     return { results: subnetEventSummaryKinds || [] };
+                  }
+                  if (/COUNT\(DISTINCT netuid\) AS subnet_count/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          subnet_count: accountEventSummarySubnetCount ?? 0,
+                        },
+                      ],
+                    };
+                  }
+                  if (
+                    /SELECT \* FROM/.test(sql) &&
+                    /observed_at >= \?/.test(sql) &&
+                    /ORDER BY block_number DESC, event_index DESC LIMIT \?/.test(
+                      sql,
+                    ) &&
+                    /UNION ALL/.test(sql)
+                  ) {
+                    return {
+                      results:
+                        accountEventSummaryRecent ??
+                        subnetEventSummaryRecent ??
+                        [],
+                    };
                   }
                   if (
                     /FROM account_events WHERE netuid = \? AND observed_at >= \?/.test(
@@ -3503,6 +3530,111 @@ describe("handleSubnetEventSummary", () => {
     assert.equal(body.data.event_kinds[0].amount_tao, 4.5);
     assert.equal(body.data.categories[0].category, "stake");
     assert.equal(body.data.recent_events[0].event_kind, "StakeAdded");
+    assert.equal(captures.params.at(-1).at(-1), 5);
+  });
+});
+
+describe("handleAccountEventSummary", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountEventSummary(
+      req(`/api/v1/accounts/${SS58}/event-summary`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/event-summary?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleAccountEventSummary(
+      req(`/api/v1/accounts/${SS58}/event-summary`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/event-summary?window=365d`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("rejects an invalid recent-event limit with 400", async () => {
+    const res = await handleAccountEventSummary(
+      req(`/api/v1/accounts/${SS58}/event-summary`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/event-summary?limit=0`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "limit");
+  });
+
+  test("rejects a malformed netuid with 400", async () => {
+    const res = await handleAccountEventSummary(
+      req(`/api/v1/accounts/${SS58}/event-summary`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/event-summary?netuid=abc`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
+  test("returns schema-stable empty summary on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountEventSummary,
+      req(`/api/v1/accounts/${SS58}/event-summary`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/event-summary`),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.netuid, null);
+    assert.equal(body.data.total_events, 0);
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.categories, []);
+    assert.deepEqual(body.data.event_kinds, []);
+    assert.deepEqual(body.data.recent_events, []);
+  });
+
+  test("happy path returns kind/category aggregates and recent evidence", async () => {
+    const { env, captures } = dbWith({
+      accountEventSummarySubnetCount: 2,
+      subnetEventSummaryKinds: [
+        {
+          event_kind: "StakeAdded",
+          event_count: "3",
+          hotkey_count: "2",
+          coldkey_count: "1",
+          amount_tao: "4.5",
+          alpha_amount: "0.25",
+          first_block: "100",
+          last_block: "120",
+          first_observed_at: OBSERVED_AT - 1000,
+          last_observed_at: OBSERVED_AT,
+        },
+      ],
+      accountEventSummaryRecent: [
+        accountEventRow({ event_kind: "StakeAdded", block_number: 120 }),
+      ],
+    });
+    const body = await json(
+      await handleAccountEventSummary(
+        req(`/api/v1/accounts/${SS58}/event-summary`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/event-summary?window=7d&limit=5&netuid=7`,
+        ),
+      ),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.window, "7d");
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.subnet_count, 2);
+    assert.equal(body.data.total_events, 3);
+    assert.equal(body.data.event_kinds[0].event_kind, "StakeAdded");
+    assert.equal(body.data.recent_events[0].event_kind, "StakeAdded");
+    assert.match(captures.sql[0], /AND netuid = \?/);
     assert.equal(captures.params.at(-1).at(-1), 5);
   });
 });
