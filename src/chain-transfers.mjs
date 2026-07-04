@@ -77,7 +77,9 @@ export function buildChainTransfers({
   const totalVolume = roundTao(totals?.total_volume_tao);
   const topSenders = shapeParties(senders);
   const topReceivers = shapeParties(receivers);
-  const topSenderVolume = topSenders.reduce((sum, s) => sum + s.volume_tao, 0);
+  const topSenderVolume = roundTao(
+    topSenders.reduce((sum, s) => sum + s.volume_tao, 0),
+  );
   const topSenderShare =
     totalVolume > 0 ? roundShare(topSenderVolume / totalVolume) : null;
   return {

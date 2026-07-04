@@ -86,6 +86,14 @@ describe("buildChainTransfers", () => {
     assert.equal(d.top_sender_share, 1);
   });
 
+  test("keeps exact decimal full-volume top_sender_share at 1 despite float underflow", () => {
+    const d = buildChainTransfers({
+      totals: { total_volume_tao: 0.8, unique_senders: 2 },
+      senders: [party("5Sa", 0.1), party("5Sb", 0.7)], // JS sum is 0.7999999999999999
+    });
+    assert.equal(d.top_sender_share, 1);
+  });
+
   test("top_sender_share is null when there is no volume", () => {
     const d = buildChainTransfers({
       totals: { total_volume_tao: 0 },
