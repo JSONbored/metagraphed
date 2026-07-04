@@ -5329,6 +5329,110 @@
         ],
         "type": "object"
       },
+      "ChainWeightSettersArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide weight-setter leaderboard over a 7d/30d window: the individual validators driving consensus across EVERY subnet, ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time. The network-wide companion to /api/v1/subnets/{netuid}/weights/setters (the same relationship /api/v1/chain/weights has to /api/v1/subnets/{netuid}/weights), served live from the account_events WeightsSet stream at /api/v1/chain/weights/setters (no static file); an empty leaderboard when cold.",
+        "properties": {
+          "distinct_setters": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "setter_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "setters": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "first_set_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "hotkey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "last_set_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "share": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "uid": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "weight_sets": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "hotkey",
+                "uid",
+                "weight_sets",
+                "share",
+                "first_set_at",
+                "last_set_at"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "weight_sets": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "distinct_setters",
+          "weight_sets",
+          "setter_count",
+          "setters"
+        ],
+        "type": "object"
+      },
       "ChainYieldArtifact": {
         "additionalProperties": true,
         "description": "Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact.",

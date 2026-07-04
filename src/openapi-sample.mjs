@@ -431,6 +431,44 @@ function normalizeChainServingSample(out) {
   return out;
 }
 
+function normalizeChainWeightSettersSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    "netuid" in out || // excludes the per-subnet SubnetWeightSettersArtifact sibling shape
+    !("distinct_setters" in out) ||
+    !("weight_sets" in out) ||
+    !Array.isArray(out.setters)
+  ) {
+    return out;
+  }
+  // An internally consistent worked example: two setters whose WeightsSet counts (30 and 10) sum
+  // to the network total of 40, so their shares read 30/40 = 0.75 and 10/40 = 0.25. The generic
+  // per-field generator cannot satisfy this weight_sets/total ratio on its own.
+  out.setters = [
+    {
+      hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      uid: 3,
+      weight_sets: 30,
+      share: 0.75,
+      first_set_at: ISO,
+      last_set_at: ISO,
+    },
+    {
+      hotkey: null,
+      uid: 8,
+      weight_sets: 10,
+      share: 0.25,
+      first_set_at: ISO,
+      last_set_at: ISO,
+    },
+  ];
+  out.distinct_setters = 2;
+  out.weight_sets = 40;
+  out.setter_count = 2;
+  return out;
+}
+
 function normalizeChainAxonRemovalsSample(out) {
   if (
     !out ||
@@ -689,6 +727,7 @@ function normalizeObjectSample(out) {
   normalizeChainTransfersSample(out);
   normalizeChainTransferPairsSample(out);
   normalizeChainWeightsSample(out);
+  normalizeChainWeightSettersSample(out);
   normalizeChainServingSample(out);
   normalizeChainPrometheusSample(out);
   normalizeChainAxonRemovalsSample(out);

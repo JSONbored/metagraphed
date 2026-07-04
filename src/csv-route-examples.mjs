@@ -26,6 +26,11 @@ export const ROUTE_CSV_EXAMPLES = {
     "netuid,distinct_setters,weight_sets,sets_per_setter",
     "1,4,40,10",
   ].join("\r\n"),
+  // The /chain/weights/setters network-wide weight-setter leaderboard rows.
+  "chain-weight-setters": [
+    "hotkey,uid,weight_sets,share,first_set_at,last_set_at",
+    "5Grw_sample,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z",
+  ].join("\r\n"),
   // The /chain/serving per-subnet axon-serving leaderboard rows.
   "chain-serving": [
     "netuid,distinct_servers,announcements,announcements_per_server",

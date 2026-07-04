@@ -101,6 +101,11 @@ import {
   CHAIN_WEIGHTS_LIMIT_MAX,
 } from "../../src/chain-weights.mjs";
 import {
+  loadChainWeightSetters,
+  CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+  CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+} from "../../src/chain-weight-setters.mjs";
+import {
   loadChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
@@ -801,6 +806,16 @@ const CHAIN_WEIGHTS_CSV_COLUMNS = [
   "sets_per_setter",
 ];
 
+// CSV column order for the /api/v1/chain/weights/setters network-wide leaderboard rows.
+const CHAIN_WEIGHT_SETTERS_CSV_COLUMNS = [
+  "hotkey",
+  "uid",
+  "weight_sets",
+  "share",
+  "first_set_at",
+  "last_set_at",
+];
+
 // CSV column order for the /api/v1/chain/serving per-subnet leaderboard rows (the
 // row-shaped `subnets` array). The network rollup + intensity_distribution stay
 // JSON-only, mirroring chain-weights / chain-stake-flow.
@@ -1311,6 +1326,69 @@ export async function handleChainWeights(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/weights.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// GET /api/v1/chain/weights/setters: the network-wide weight-setter leaderboard — the individual
+// validators driving consensus across every subnet, read from the account_events WeightsSet
+// stream. The network-wide companion to /api/v1/subnets/{netuid}/weights/setters (the same
+// relationship /chain/weights has to /subnets/{netuid}/weights); mirrors chain-weights: window +
+// limit params, HEAD probes normalized through the GET cache key so they cannot bypass the edge
+// cache and repeatedly force the network-wide aggregation. The leaderboard is fixed to
+// most-active-first (total WeightsSet events).
+export async function handleChainWeightSetters(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+    maxLimit: CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-weight-setters",
+    async () => {
+      const data = await loadChainWeightSetters(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      if (csv) {
+        return csvResponse(
+          data.setters,
+          "chain-weight-setters",
+          "short",
+          cacheRequest,
+          CHAIN_WEIGHT_SETTERS_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/weights/setters.json",
             data.observed_at,
           ),
         },

@@ -708,6 +708,16 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/weights/setters",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.distinct_setters, "number");
+      assert.equal(typeof body.data.weight_sets, "number");
+      assert.equal(typeof body.data.setter_count, "number");
+      assert.equal(Array.isArray(body.data.setters), true);
+    },
+  ],
+  [
     "/api/v1/chain/serving",
     (body) => {
       assert.equal(body.data.schema_version, 1);

@@ -54,6 +54,7 @@ import {
   handleChainTransfers,
   handleChainStakeFlow,
   handleChainWeights,
+  handleChainWeightSetters,
   handleChainServing,
   handleChainPrometheus,
   handleChainAxonRemovals,
@@ -2023,6 +2024,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/weights") {
       return handleChainWeights(request, env, resolved.url, ctx);
     }
+    if (resolved.url.pathname === "/api/v1/chain/weights/setters") {
+      return handleChainWeightSetters(request, env, resolved.url, ctx);
+    }
     if (resolved.url.pathname === "/api/v1/chain/serving") {
       return handleChainServing(request, env, resolved.url, ctx);
     }
@@ -2178,6 +2182,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/transfer-pairs" ||
     pathname === "/api/v1/chain/stake-flow" ||
     pathname === "/api/v1/chain/weights" ||
+    pathname === "/api/v1/chain/weights/setters" ||
     pathname === "/api/v1/chain/serving" ||
     pathname === "/api/v1/chain/prometheus" ||
     pathname === "/api/v1/chain/axon-removals" ||
