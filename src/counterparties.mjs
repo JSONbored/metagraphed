@@ -38,6 +38,26 @@ function round(value, dp = 9) {
   return Math.round(value * factor) / factor;
 }
 
+// Sum in rao-integer BigInt space, not float space -- accumulating TAO amounts
+// with plain `+=` compounds rounding error across the scan (up to thousands of
+// transfers) even when each individual value is itself exact, so convert each
+// addend to integer rao, sum the integers, and convert back once at the end.
+// Mirrors the toRaoBig/raoBigToTao pattern established in concentration.mjs /
+// chain-yield.mjs (#2933).
+function toRaoBig(tao) {
+  // Guard the post-multiply value (not just `tao`): a huge-but-finite TAO amount
+  // like Number.MAX_VALUE overflows `tao * 1e9` to Infinity, and BigInt(Infinity)
+  // throws — so clamp a non-finite rao to 0n, preserving the old round()-based
+  // defensive behaviour that dropped an overflowing sum to 0 rather than leaking
+  // Infinity/NaN into the JSON.
+  const rao = Math.round(tao * 1e9);
+  return Number.isFinite(rao) ? BigInt(rao) : 0n;
+}
+
+function raoBigToTao(rao) {
+  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
+}
+
 function nullableNumber(value) {
   if (value == null || value === "") return null;
   const n = typeof value === "number" ? value : Number(value);
@@ -71,8 +91,8 @@ function toIso(value) {
 export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
   const list = Array.isArray(rows) ? rows : [];
   const byParty = new Map();
-  let totalSent = 0;
-  let totalReceived = 0;
+  let totalSentRao = 0n;
+  let totalReceivedRao = 0n;
   for (const row of list) {
     const from = row?.hotkey;
     const to = row?.coldkey;
@@ -97,17 +117,19 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
       received = amount;
     }
     if (party == null) continue;
-    totalSent += sent;
-    totalReceived += received;
+    const sentRao = toRaoBig(sent);
+    const receivedRao = toRaoBig(received);
+    totalSentRao += sentRao;
+    totalReceivedRao += receivedRao;
     const entry = byParty.get(party) ?? {
       address: party,
-      sent: 0,
-      received: 0,
+      sentRao: 0n,
+      receivedRao: 0n,
       count: 0,
       lastBlock: null,
     };
-    entry.sent += sent;
-    entry.received += received;
+    entry.sentRao += sentRao;
+    entry.receivedRao += receivedRao;
     entry.count += 1;
     // `row` is non-null here (it produced a party), so no optional chain needed.
     // Coerce the cell (D1 can return an INTEGER column as a numeric string) so a
@@ -123,9 +145,9 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
   const ranked = [...byParty.values()]
     .map((entry) => ({
       address: entry.address,
-      sent_tao: round(entry.sent),
-      received_tao: round(entry.received),
-      net_tao: round(entry.received - entry.sent),
+      sent_tao: raoBigToTao(entry.sentRao),
+      received_tao: raoBigToTao(entry.receivedRao),
+      net_tao: raoBigToTao(entry.receivedRao - entry.sentRao),
       transfer_count: entry.count,
       last_block: entry.lastBlock,
     }))
@@ -146,8 +168,8 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
     counterparty_count: byParty.size,
     transfers_scanned: list.length,
     scan_capped: list.length >= COUNTERPARTIES_SCAN_CAP,
-    total_sent_tao: round(totalSent),
-    total_received_tao: round(totalReceived),
+    total_sent_tao: raoBigToTao(totalSentRao),
+    total_received_tao: raoBigToTao(totalReceivedRao),
     counterparties: ranked.slice(0, cap),
   };
 }
@@ -163,8 +185,8 @@ export function buildCounterpartyRelationship(
 ) {
   const list = Array.isArray(rows) ? rows : [];
   const transfers = [];
-  let totalSent = 0;
-  let totalReceived = 0;
+  let totalSentRao = 0n;
+  let totalReceivedRao = 0n;
   let firstBlock = null;
   let lastBlock = null;
   let firstObserved = null;
@@ -181,8 +203,8 @@ export function buildCounterpartyRelationship(
 
     const amount = nullableNumber(row.amount_tao);
     if (amount == null) continue;
-    if (sent) totalSent += amount;
-    if (received) totalReceived += amount;
+    if (sent) totalSentRao += toRaoBig(amount);
+    if (received) totalReceivedRao += toRaoBig(amount);
 
     const block = nullableInteger(row.block_number);
     if (block != null) {
@@ -218,9 +240,9 @@ export function buildCounterpartyRelationship(
     transfer_count: transfers.length,
     transfers_scanned: list.length,
     scan_capped: scanCapped,
-    total_sent_tao: round(totalSent),
-    total_received_tao: round(totalReceived),
-    net_tao: round(totalReceived - totalSent),
+    total_sent_tao: raoBigToTao(totalSentRao),
+    total_received_tao: raoBigToTao(totalReceivedRao),
+    net_tao: raoBigToTao(totalReceivedRao - totalSentRao),
     // Oldest block/timestamp are unknowable when the newest-first scan was truncated.
     first_block: scanCapped ? null : firstBlock,
     last_block: lastBlock,

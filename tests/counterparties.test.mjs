@@ -138,9 +138,55 @@ describe("buildCounterparties", () => {
     assert.equal(data.counterparty_count, COUNTERPARTIES_SCAN_CAP);
     assert.equal(data.counterparties.length, 10);
   });
+
+  test("sums amounts in exact rao space, not float (no accumulated drift)", () => {
+    // 1000 transfers of a 9-dp amount whose scaled rao is exactly representable
+    // (123456.789012345 * 1e9 = 123456789012345 < 2^53). Summing them in float
+    // TAO space drifts (the running sum crosses 2^53 scaled), so the naive
+    // `+=` version reports 123456789.012343466 — off by 1535 rao from the true
+    // integer-rao total 123456789.012345. Mirrors #2933.
+    const amount = 123456.789012345;
+    const rows = Array.from({ length: 1000 }, (_, i) => ({
+      hotkey: ME,
+      coldkey: "A",
+      amount_tao: amount,
+      block_number: i + 1,
+    }));
+    const data = buildCounterparties(rows, ME, { limit: 5 });
+    // Exact: 1000 * round(amount * 1e9) rao = 123456789012345000 rao.
+    assert.equal(data.total_sent_tao, 123456789.012345);
+    assert.equal(data.counterparties[0].sent_tao, 123456789.012345);
+    // The naive float accumulation would have produced this drifted value.
+    let floatSum = 0;
+    for (const row of rows) floatSum += row.amount_tao;
+    assert.notEqual(Math.round(floatSum * 1e9) / 1e9, 123456789.012345);
+  });
 });
 
 describe("buildCounterpartyRelationship", () => {
+  test("sums amounts in exact rao space, not float (no accumulated drift)", () => {
+    // Same drift construction as buildCounterparties: 1000 sends of a 9-dp amount
+    // whose float running-sum drifts past rao precision. The rao-exact total is
+    // 123456789.012345; the naive `+=` version drifts to 123456789.012343466.
+    const amount = 123456.789012345;
+    const rows = Array.from({ length: 1000 }, (_, i) => ({
+      block_number: i + 1,
+      event_index: 0,
+      hotkey: ME,
+      coldkey: "A",
+      netuid: 1,
+      amount_tao: amount,
+      observed_at: 1_700_000_000_000,
+    }));
+    const data = buildCounterpartyRelationship(rows, ME, "A", { limit: 5 });
+    assert.equal(data.total_sent_tao, 123456789.012345);
+    // All 1000 rows are sends (ME → A), so net = received - sent is negative.
+    assert.equal(data.net_tao, -123456789.012345);
+    let floatSum = 0;
+    for (const row of rows) floatSum += row.amount_tao;
+    assert.notEqual(Math.round(floatSum * 1e9) / 1e9, 123456789.012345);
+  });
+
   test("cold / empty / non-array rows yield a schema-stable empty relationship", () => {
     for (const rows of [[], null, undefined]) {
       const data = buildCounterpartyRelationship(rows, ME, "A", {});
