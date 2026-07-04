@@ -146,6 +146,25 @@
         "submitted_by": "claytonlin1110"
       },
       "notes": "Official SN42 Gopher Data API live search (POST data.gopher-ai.com/api/v1/search/live). gopher-client defines jobEndpoint /v1/search/live on default base https://data.gopher-ai.com/api; gopher-mcp-server posts to /search/live on https://data.gopher-ai.com/api/v1."
+    },
+    {
+      "id": "sn-42-gopher-webscrape-example",
+      "name": "Gopher web-scrape example dataset",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/datasets/Gopher-Lab/Bittensor_Whitepaper_Webscrape_Example",
+      "provider": "gopher-ai",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/gopher-lab/subnet-42",
+        "https://huggingface.co/Gopher-Lab"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public Gopher-Lab HuggingFace example of the SN42 web-scraper output (title/url/description/content columns of cleaned, structured page text; tagged Bittensor / Subnet / Masa), MIT-licensed and not gated. The subnet-42 repo (source) and developer portal declare the Bittensor subnet, and the Gopher-Lab HF org matches the operator's gopher-lab GitHub org."
     }
   ]
 }
