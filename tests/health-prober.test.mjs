@@ -4,7 +4,7 @@ import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
-  createWorkerPinnedFetch,
+  createWorkerProbeOptions,
   loadOperationalSurfaces,
   OPERATIONAL_SURFACES_PATH,
   pruneHealthHistory,
@@ -183,9 +183,76 @@ describe("resolveWorkerPublicUrlAddresses", () => {
     );
     assert.deepEqual(addresses, []);
   });
+
+  test("returns [] for unsafe schemes and private literals blocked by the guard", async () => {
+    const dohFetch = async () => {
+      throw new Error("DoH should not run");
+    };
+    assert.deepEqual(
+      await resolveWorkerPublicUrlAddresses("not a url", {
+        fetchImpl: dohFetch,
+      }),
+      [],
+    );
+    assert.deepEqual(
+      await resolveWorkerPublicUrlAddresses("http://10.0.0.1/x", {
+        fetchImpl: dohFetch,
+      }),
+      [],
+    );
+    assert.deepEqual(
+      await resolveWorkerPublicUrlAddresses("https://127.0.0.1/x", {
+        fetchImpl: dohFetch,
+      }),
+      [],
+    );
+  });
+
+  test("returns [] for unsafe IP literals that pass the public URL guard", async () => {
+    const dohFetch = async () => {
+      throw new Error("DoH should not run");
+    };
+    // 100::/64 CGNAT IPv6 is blocked by isUnsafeIpAddress but not isUnsafeIpv6Literal.
+    assert.deepEqual(
+      await resolveWorkerPublicUrlAddresses("https://[100::1]/x", {
+        fetchImpl: dohFetch,
+      }),
+      [],
+    );
+  });
+
+  test("returns [] when DNS answers are private or empty", async () => {
+    const privateDoh = dohFetch({ "evil.example.com": { A: ["10.1.2.3"] } });
+    assert.deepEqual(
+      await resolveWorkerPublicUrlAddresses("https://evil.example.com/x", {
+        fetchImpl: privateDoh,
+      }),
+      [],
+    );
+    assert.deepEqual(
+      await resolveWorkerPublicUrlAddresses("https://empty.example.com/x", {
+        fetchImpl: dohFetch({}),
+      }),
+      [],
+    );
+  });
+
+  test("returns vetted IPv6 addresses from AAAA records", async () => {
+    const addresses = await resolveWorkerPublicUrlAddresses(
+      "https://v6.example.com/x",
+      {
+        fetchImpl: dohFetch({
+          "v6.example.com": { AAAA: ["2001:4860:4860::8888"] },
+        }),
+      },
+    );
+    assert.deepEqual(addresses, [
+      { address: "2001:4860:4860::8888", family: 6 },
+    ]);
+  });
 });
 
-describe("createWorkerPinnedFetch", () => {
+describe("createWorkerProbeOptions", () => {
   const dohFetch = (records) => async (url) => {
     const u = new URL(url);
     const name = u.searchParams.get("name");
@@ -199,54 +266,63 @@ describe("createWorkerPinnedFetch", () => {
     };
   };
 
-  test("pins hostname probes to the vetted address and sets Host", async () => {
+  test("builds default guard + fetch + connector wiring", () => {
+    const options = createWorkerProbeOptions();
+    assert.equal(typeof options.isUnsafeUrl, "function");
+    assert.equal(typeof options.fetchImpl, "function");
+    assert.equal(typeof options.connect, "function");
+  });
+
+  test("fetch keeps the original hostname so TLS SNI stays valid", async () => {
     let capturedUrl = null;
-    let capturedInit = null;
-    const pinned = createWorkerPinnedFetch({
+    const options = createWorkerProbeOptions({
       dohFetchImpl: dohFetch({ "ok.example.com": { A: ["93.184.216.34"] } }),
-      fetchImpl: async (url, init) => {
-        capturedUrl = url;
-        capturedInit = init;
-        return new Response("ok", { status: 200 });
-      },
-    });
-    await pinned("https://ok.example.com/path?q=1", {
-      headers: { accept: "text/plain" },
-    });
-    assert.equal(capturedUrl, "https://93.184.216.34/path?q=1");
-    assert.equal(capturedInit.headers.get("Host"), "ok.example.com");
-    assert.equal(capturedInit.headers.get("accept"), "text/plain");
-  });
-
-  test("throws WorkerPinnedFetchError when resolution fails", async () => {
-    const pinned = createWorkerPinnedFetch({
-      dohFetchImpl: async () => {
-        throw new Error("DoH unreachable");
-      },
-      fetchImpl: async () => new Response("ok"),
-    });
-    await assert.rejects(
-      () => pinned("https://unknown.example.com/x"),
-      (error) => {
-        assert.equal(error.name, "WorkerPinnedFetchError");
-        return true;
-      },
-    );
-  });
-
-  test("passes IP-literal URLs through without rewriting", async () => {
-    let capturedUrl = null;
-    const pinned = createWorkerPinnedFetch({
-      dohFetchImpl: async () => {
-        throw new Error("DoH should not run for IP literals");
-      },
       fetchImpl: async (url) => {
         capturedUrl = url;
         return new Response("ok");
       },
     });
-    await pinned("https://8.8.8.8/x");
-    assert.equal(capturedUrl, "https://8.8.8.8/x");
+    assert.equal(await options.isUnsafeUrl("https://ok.example.com/x"), false);
+    await options.fetchImpl("https://ok.example.com/path?q=1");
+    assert.equal(capturedUrl, "https://ok.example.com/path?q=1");
+  });
+
+  test("DoH fetch and probe fetch are wired independently", async () => {
+    const calls = [];
+    const options = createWorkerProbeOptions({
+      dohFetchImpl: dohFetch({ "ok.example.com": { A: ["93.184.216.34"] } }),
+      fetchImpl: async (url) => {
+        calls.push(["probe", url]);
+        return new Response("ok");
+      },
+    });
+    assert.equal(await options.isUnsafeUrl("https://ok.example.com/x"), false);
+    await options.fetchImpl("https://ok.example.com/x");
+    assert.ok(
+      calls.some(
+        ([kind, url]) => kind === "probe" && url.includes("ok.example.com"),
+      ),
+    );
+    assert.ok(
+      !calls.some(
+        ([kind, url]) => kind === "probe" && url.includes("cloudflare-dns.com"),
+      ),
+    );
+  });
+
+  test("honors explicit overrides for fetch, guard, connect, and DoH", () => {
+    const isUnsafeUrl = async () => false;
+    const probeFetch = async () => new Response("ok");
+    const connect = () => {};
+    const options = createWorkerProbeOptions({
+      isUnsafeUrl,
+      fetchImpl: probeFetch,
+      connect,
+      dohFetchImpl: async () => new Response("{}"),
+    });
+    assert.equal(options.isUnsafeUrl, isUnsafeUrl);
+    assert.equal(options.fetchImpl, probeFetch);
+    assert.equal(options.connect, connect);
   });
 });
 
