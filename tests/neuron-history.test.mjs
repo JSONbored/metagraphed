@@ -954,10 +954,19 @@ describe("R2 cold archive + prune (PR-A2)", () => {
     assert.ok(res.rows >= 1);
   });
 
-  test("retention window covers a rolling 1-year history (>= 365 days)", () => {
+  test("retention window is bounded to a sustainable D1 footprint (2026-07-04 emergency cut)", () => {
+    // Was >= 365 (a rolling 1-year window fully D1-served). Cut to 90 as part of
+    // an emergency fix after D1 hit its hard, unraisable 10GB-per-database cap
+    // in production (metagraphed's D1 shares its 10GB budget across every
+    // table; account_events' own growth was the larger contributor, but both
+    // needed cutting for real headroom). The R2 cold-archive read fallback this
+    // window's original design assumed ("PR-A2b") was never implemented, so
+    // 1y-lookback neuron queries now have a real gap between 90-400 days old --
+    // a known, accepted tradeoff, not an oversight. Raise this again once the
+    // raw chain data lives in self-hosted Postgres (no cap) instead of D1.
     assert.ok(
-      NEURON_DAILY_RETENTION_DAYS >= 365,
-      "1y window must stay D1-served",
+      NEURON_DAILY_RETENTION_DAYS >= 90 && NEURON_DAILY_RETENTION_DAYS <= 400,
+      "retention should stay in the sustainable 90-400 day range until D1's role shrinks",
     );
   });
 });

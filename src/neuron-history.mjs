@@ -99,13 +99,24 @@ export async function rollupNeuronDaily(env, { now = Date.now() } = {}) {
   return { rolled: true, rows: res?.meta?.changes ?? null };
 }
 
-// D1 keeps a bounded hot window; older days live only in the R2 cold archive
-// (written BEFORE any prune). 400 days (~13 months) keeps a ROLLING 1-year history
-// permanently D1-served — "1 year ago" is always ≤ 400 days old, so every
-// 7d/30d/90d/1y query is answered from D1 with zero R2 fallthrough. At the measured
-// ~7.8 MB/day this caps the table ~3.1 GB — comfortably under D1's 10 GB limit.
-// Only >13-month deep history ages into the R2 cold tier (served later by PR-A2b).
-export const NEURON_DAILY_RETENTION_DAYS = 400;
+// D1 keeps a bounded hot window; older days are written to the R2 cold archive
+// BEFORE any prune (coldArchiveKey below), but -- confirmed 2026-07-04 -- nothing
+// in this codebase actually READS from that archive yet ("served later by
+// PR-A2b" below was never shipped). So today, once a day ages out of this
+// window, it's genuinely gone from query results, not "falls back to R2".
+//
+// Was 400 days (~13 months, sized so "1y ago" is always in-window) under the
+// assumption neuron_daily alone would stay ~3.1 GB -- true in isolation, but D1's
+// 10 GB cap is shared across every table (account_events independently grew to
+// dominate it), and the combined total hit the hard, unraisable per-database
+// limit in production (a live outage: every D1 write failed with D1_ERROR:
+// Exceeded maximum DB size). Cut to 90 days as part of the emergency fix --
+// this is a real, known tradeoff (1y-lookback neuron queries lose data between
+// 90-400 days old until PR-A2b's read path ships, or the account_events cut
+// (see EVENT_RETENTION_MS) buys enough headroom to raise this again), accepted
+// because the write outage is the more severe problem. Raise this once the raw
+// chain data moves to self-hosted Postgres (no cap) per ADR 0013, not before.
+export const NEURON_DAILY_RETENTION_DAYS = 90;
 
 // R2 cold-archive key: one immutable gzip-NDJSON object per subnet per UTC day.
 export function coldArchiveKey(netuid, day) {

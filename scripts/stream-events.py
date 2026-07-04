@@ -197,9 +197,14 @@ def push(url, payload):
             resp.read()
         return True
     except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", "replace")[:500]
+        except Exception:
+            body = "<no body>"
         log.warning(
-            "ingest push rejected (HTTP %s) — poller backstop will cover this gap",
+            "ingest push rejected (HTTP %s): %s — poller backstop will cover this gap",
             e.code,
+            body,
         )
         return False
     except urllib.error.URLError as e:

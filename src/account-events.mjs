@@ -15,9 +15,19 @@ import {
   buildAccountExtrinsics,
 } from "./extrinsics.mjs";
 
-// D1 safety-valve: 365-day retention prevents unbounded growth before the
-// Postgres cold tier (#1519) ships. pruneAccountEvents runs in HEALTH_PRUNE_CRON.
-export const EVENT_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+// D1 safety-valve, ORIGINALLY 365 days ("prevents unbounded growth before the
+// Postgres cold tier (#1519) ships") -- but #1519 never shipped, and real
+// ingestion volume (measured 2026-07-04: ~1.3M rows/day, steady) meant 365 days
+// of retention never actually got old enough to prune (the table is younger
+// than that), so this "safety valve" never engaged and the table grew until
+// it hit D1's hard, unraisable 10GB-per-database cap in production (a live
+// outage: every write into this D1 failed with D1_ERROR: Exceeded maximum DB
+// size). 3 days is what the measured ingestion rate can sustainably fit with
+// real headroom under 10GB across all tables sharing this database -- this is
+// an emergency-driven number, not an arbitrary product decision; raise it only
+// once the raw/long-history chain data lives in Postgres (self-hosted, no cap)
+// instead of D1, per ADR 0013's own "demote/retire D1" end state.
+export const EVENT_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 
 // Columns written to account_events — THE load contract. scripts/fetch-events.py
 // emits rows with exactly these keys; loadStagedEvents binds them in this order.
