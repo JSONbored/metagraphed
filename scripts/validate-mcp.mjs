@@ -641,6 +641,19 @@ assert.equal(
   SS58,
   "get_account_stake_moves must echo the address",
 );
+const accountAxonRemovals = await callOk("get_account_axon_removals", {
+  ss58: SS58,
+  window: "30d",
+});
+assert.ok(
+  Array.isArray(accountAxonRemovals.subnets),
+  "get_account_axon_removals must return subnets[]",
+);
+assert.equal(
+  accountAxonRemovals.address,
+  SS58,
+  "get_account_axon_removals must echo the address",
+);
 const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
 assert.ok(
   "balance_tao" in accountBalance && accountBalance.ss58 === SS58,
