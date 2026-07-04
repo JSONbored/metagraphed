@@ -1140,6 +1140,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountPrometheusArtifact",
   ),
   artifact(
+    "account-stake-moves",
+    "/metagraph/accounts/{ss58}/stake-moves.json",
+    "One account's stake-move footprint per origin subnet over a recent window (7d/30d/90d): each origin subnet's StakeMoved count (re-delegations off that subnet) with the first/last move timestamps, plus account totals, an HHI concentration of where its re-delegation activity is focused, and the dominant origin subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-moves (no static file). The re-delegation-side complement to /api/v1/accounts/{ss58}/serving and /api/v1/accounts/{ss58}/axon-removals and the account-level companion to /api/v1/chain/stake-moves, orthogonal to /api/v1/accounts/{ss58}/subnets (registration state).",
+    "AccountStakeMovesArtifact",
+  ),
+  artifact(
     "account-axon-removals",
     "/metagraph/accounts/{ss58}/axon-removals.json",
     "One account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first/last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/axon-removals (no static file). The teardown-side complement to /api/v1/accounts/{ss58}/serving (axon announcements) and the account-level companion to /api/v1/chain/axon-removals, orthogonal to /api/v1/accounts/{ss58}/subnets (registration state).",
@@ -2522,6 +2528,22 @@ export const API_ROUTES = [
     "/api/v1/accounts/{ss58}/prometheus",
     "/metagraph/accounts/{ss58}/prometheus.json",
     "Fetch one account's Prometheus-endpoint serving footprint per subnet over a recent window (7d/30d/90d): each subnet's PrometheusServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Operational activity (announcing a Prometheus telemetry endpoint); the telemetry sibling of GET /api/v1/accounts/{ss58}/serving and the account-level companion to GET /api/v1/chain/prometheus, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state).",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-stake-moves",
+    "GET",
+    "/api/v1/accounts/{ss58}/stake-moves",
+    "/metagraph/accounts/{ss58}/stake-moves.json",
+    "Fetch one account's stake-move footprint per origin subnet over a recent window (7d/30d/90d): each origin subnet's StakeMoved count (re-delegations off that subnet) with the first and last move timestamps, plus account totals, an HHI concentration of where its re-delegation activity is focused, and the dominant origin subnet — summed live from the account_events D1 tier. The re-delegation-side complement to GET /api/v1/accounts/{ss58}/serving and GET /api/v1/accounts/{ss58}/axon-removals and the account-level companion to GET /api/v1/chain/stake-moves, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state).",
     "short",
     ["accounts", "analytics"],
     [

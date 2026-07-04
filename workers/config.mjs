@@ -161,6 +161,10 @@ export const ACCOUNT_SERVING_PATH_PATTERN =
 // per subnet into a count + concentration scorecard over a 7d/30d/90d window.
 export const ACCOUNT_AXON_REMOVALS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/axon-removals$/;
+// Per-account stake-move footprint: aggregates the account's account_events StakeMoved per origin
+// subnet into a count + concentration scorecard over a 7d/30d/90d window.
+export const ACCOUNT_STAKE_MOVES_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/stake-moves$/;
 // Per-account Prometheus-serving footprint: aggregates the account's account_events PrometheusServed
 // per subnet into a count + concentration scorecard over a 7d/30d/90d window.
 export const ACCOUNT_PROMETHEUS_PATH_PATTERN =

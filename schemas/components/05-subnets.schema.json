@@ -2729,6 +2729,58 @@
         },
         "additionalProperties": false
       },
+      "AccountStakeMovesArtifact": {
+        "type": "object",
+        "description": "One account's stake-move footprint per origin subnet over a recent window, from the account_events StakeMoved stream: per-origin-subnet re-delegation count (moves off that subnet) with the first/last move timestamps, plus account totals, an HHI concentration of where its re-delegation activity is focused, and the dominant origin subnet. The re-delegation-side complement to /accounts/{ss58}/serving and /accounts/{ss58}/axon-removals and the account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, orthogonal to /accounts/{ss58}/subnets (registration state). netuid is the origin subnet the stake moved from.",
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_movements",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "address": { "type": "string" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
+          "total_movements": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "concentration": { "type": ["number", "null"] },
+          "dominant_netuid": { "type": ["integer", "null"], "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "movements",
+                "first_moved_at",
+                "last_moved_at"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "movements": { "type": "integer", "minimum": 0 },
+                "first_moved_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "last_moved_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "AccountAxonRemovalsArtifact": {
         "type": "object",
         "description": "One account's axon-removal footprint per subnet over a recent window, from the account_events AxonInfoRemoved stream: per-subnet removal count with the first/last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet. The teardown-side complement to /accounts/{ss58}/serving (axon announcements) and the account-level companion to /api/v1/chain/axon-removals and /api/v1/subnets/{netuid}/axon-removals, orthogonal to /accounts/{ss58}/subnets (registration state).",

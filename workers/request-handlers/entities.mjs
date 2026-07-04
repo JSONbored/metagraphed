@@ -195,6 +195,11 @@ import {
   DEFAULT_AXON_REMOVAL_WINDOW,
 } from "../../src/account-axon-removals.mjs";
 import {
+  loadAccountStakeMoves,
+  STAKE_MOVE_WINDOWS,
+  DEFAULT_STAKE_MOVE_WINDOW,
+} from "../../src/account-stake-moves.mjs";
+import {
   loadAccountPrometheus,
   PROMETHEUS_WINDOWS,
   DEFAULT_PROMETHEUS_WINDOW,
@@ -1959,6 +1964,40 @@ export async function handleAccountAxonRemovals(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/axon-removals.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/stake-moves: the account's per-origin-subnet StakeMoved footprint over
+// a 7d/30d/90d window — move count + first/last timestamps per origin subnet, an HHI concentration of
+// where its re-delegation activity is focused, and the dominant origin subnet. account_events-derived
+// (source "chain-events"). Cold/absent store → schema-stable zeros (never 404).
+export async function handleAccountStakeMoves(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_STAKE_MOVE_WINDOW;
+  if (!Object.hasOwn(STAKE_MOVE_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, STAKE_MOVE_WINDOWS),
+    });
+  }
+  const { data, generatedAt } = await loadAccountStakeMoves(
+    d1Runner(env),
+    ss58,
+    { windowLabel: windowParam },
+  );
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/stake-moves.json`,
         generatedAt,
       ),
     },
