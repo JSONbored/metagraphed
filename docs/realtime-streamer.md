@@ -1,37 +1,20 @@
 # Realtime chain-event streamer (Option B)
 
-The CI poller (#1346) + the `*/3` Worker load cron (#1359) give ~5-minute
-chain-event freshness for **$0** — but GitHub's scheduled-cron is best-effort and
-can be delayed for hours. For **true ~12-second realtime**, run the persistent
-streamer (#1361): a tiny always-on process that subscribes to finalized finney
-heads, decodes each block, and pushes the events to the Worker ingest endpoint
-(#1360). The CI poller stays on as a self-healing backstop — inserts are
-idempotent on `(block_number, event_index)`, so any overlap is free.
+A tiny always-on process (#1361) subscribes to finalized finney heads, decodes
+each block, and pushes the events to the Worker ingest endpoint (#1360) — true
+~12-second realtime freshness. Inserts are idempotent on
+`(block_number, event_index)`, so any overlap with another source is free.
 
-This needs one small always-on host (**~$0–5/mo**): Oracle Cloud Free Tier or
-Fly.io's free allowance ($0), or a cheap VPS / Railway / Render worker (~$5/mo).
+## Deployed on the self-hosted indexer box
 
-## Deployed on Railway (current)
-
-This project runs the streamer on Railway (project `metagraphed-streamer`). Cost is
-**RAM-dominated** — the streamer idles on a WebSocket between blocks, so CPU is
-near-zero; realistically **~$1.5/mo** (~150 MB held 24/7) on usage-based billing.
-
-Config is **config-as-code in `railway.json`** (build via `deploy/streamer.Dockerfile`,
-`ON_FAILURE` restart capped at 10 retries, and `watchPatterns` so a GitHub-connected
-deploy only rebuilds when the streamer's own files change — important because this
-repo's `main` is very active). To enable auto-deploys like the Cloudflare Workers
-Builds pipeline: **Service → Settings → Connect Repo** → `JSONbored/metagraphed`,
-branch `main`. The watch paths in `railway.json` keep unrelated merges from
-triggering pointless rebuilds.
-
-**Cost caps (set once, so the bill can't balloon):**
-
-- **Service → Settings → Scale → Replica Limits:** drop Memory to ~512 MB (the
-  streamer uses ~150 MB; this hard-caps the per-service cost). CPU can stay/at ~2 vCPU.
-- **Workspace → Settings → Usage:** set an account usage limit (hard stop) at your
-  comfort threshold. Note the limit is shared across every service on the account,
-  so size it to cover them all — Railway pauses services if the limit is hit.
+The streamer runs via the `streamer` Ansible role (see
+[`JSONbored/metagraphed-infra`](https://github.com/JSONbored/metagraphed-infra),
+`roles/streamer/`) on `meta-indexer-01-us-lax1` — Docker built directly on the
+box from a static copy of this repo's `scripts/{fetch-events,stream-events}.py`.
+It previously ran on Railway (project `metagraphed-streamer`); that project has
+been deleted (2026-07-04) now that the self-hosted deployment is verified
+stable — moving it off Railway removed a recurring cost with no functional
+change.
 
 ## 1. Configure the Worker secret (one-time)
 
@@ -47,15 +30,12 @@ Until this is set, `POST /api/v1/internal/events` returns `503` (safe default).
 
 ## 2. Run the streamer with the same token
 
-### Docker (any host)
+### Ansible (the canonical deployment — see metagraphed-infra's `roles/streamer/`)
 
-```sh
-docker build -f deploy/streamer.Dockerfile -t metagraphed-streamer .
-docker run --restart=always \
-  -e EVENTS_INGEST_URL=https://api.metagraph.sh/api/v1/internal/events \
-  -e METAGRAPH_EVENTS_INGEST_SECRET=<the same token> \
-  metagraphed-streamer
-```
+Builds the Dockerfile directly on the target box from a static copy of this
+repo's `scripts/{fetch-events,stream-events}.py`; re-run the role after
+updating those files upstream to pick up the change (it doesn't track this repo
+live).
 
 ### systemd (a VPS, no Docker)
 
@@ -87,8 +67,10 @@ batch loader. It auto-reconnects on RPC drops.
 
 ## Cost & reliability
 
-- **$0–5/mo** depending on host (free tiers exist).
+- Runs on already-paid-for self-hosted capacity — no incremental hosting cost.
 - ~12–30s latency (one block behind the chain).
-- If the streamer is down, the CI poller backfills the gap on its next run — no
-  data loss, just temporary staleness.
+- If the streamer is down, there is **no automatic backstop** (the GitHub
+  Actions poller that used to cover this, `refresh-events.yml`, was retired
+  2026-07-04 — redundant with the streamer's own reliability once self-hosted).
+  Gap recovery is a manual `backfill-events.yml` rerun for the affected range.
 - Deep historical backfill (before launch) is a separate decision (#1349).

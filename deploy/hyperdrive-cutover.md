@@ -89,11 +89,14 @@ reads; account for cache staleness on schema changes (recreate the config).
 
 ## 6. After full cutover (decommission — the last gated step)
 
-Only once **all** tiers serve from Postgres and are stable:
+The GitHub `*/5` poller (`refresh-events.yml`) and the `metagraphed-streamer`
+Railway project were already retired 2026-07-04, ahead of and independent from
+this gated cutover (the streamer moved to self-hosted infra with a verified
+working replacement; the poller was redundant with it). What's still gated on
+**all** tiers serving from Postgres and being stable:
 
-1. **Delete** the `metagraphed-streamer` project (now superseded — it fed D1).
-2. **Decommission** the GitHub `*/5` poller (`refresh-events.yml`) + the `*/3`
-   R2-staging drain.
-3. **Demote D1** to a hot cache, or retire it.
-4. Optionally **add the box's node to the RPC/WSS pools** so `/rpc/v1` +
+1. **Decommission** the `*/3` R2-staging drain (still fed by the manual
+   `backfill-events.yml` workflow — do not remove before this step).
+2. **Demote D1** to a hot cache, or retire it.
+3. Optionally **add the box's node to the RPC/WSS pools** so `/rpc/v1` +
    `wss.metagraph.sh` can route to first-party infra.

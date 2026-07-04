@@ -4,10 +4,11 @@
 Decodes SubtensorModule events from a recent window of FINALIZED finney blocks
 via substrate-interface against PUBLIC RPC (no API key), normalizes the
 entity-relevant ones to `account_events` rows, and writes JSON to
-dist/account-events.json. The refresh-events workflow stages that to R2; the
-Worker's loadStagedEvents bulk-loads it into D1 with INSERT OR IGNORE keyed
-(block_number, event_index) — idempotent, so an overlapping window re-inserts
-harmlessly.
+dist/account-events.json. Callers (the manual backfill-events workflow; the
+realtime streamer imports this module's decode functions directly rather than
+invoking this script) stage that to R2; the Worker's loadStagedEvents
+bulk-loads it into D1 with INSERT OR IGNORE keyed (block_number, event_index)
+— idempotent, so an overlapping window re-inserts harmlessly.
 
 Recent-window scan + cursor-driven gap recovery (ADR 0012): each run scans
 `compute_from_block(cursor, head, window, max_lookback) .. head` — the overlap
@@ -46,12 +47,12 @@ Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)
 
 Block-explorer sidecar (#1345 first vertical slice): the same per-block loop also
 emits a `blocks` record (header hash, parent hash, best-effort author, extrinsic
-count, decoded event count, observed_at) to BLOCKS_JSON. The refresh-events
-workflow stages that sidecar to R2; the Worker's loadStagedBlocks bulk-loads it
-into D1 `blocks` with INSERT OR IGNORE keyed on block_number — idempotent like the
-events load. The extras are best-effort: a per-block extras failure skips that
-block's block-row (never a corrupt row, never crashes the poll); the event rows
-for that block are unaffected.
+count, decoded event count, observed_at) to BLOCKS_JSON. The manual
+backfill-events workflow stages that sidecar to R2; the Worker's loadStagedBlocks
+bulk-loads it into D1 `blocks` with INSERT OR IGNORE keyed on block_number —
+idempotent like the events load. The extras are best-effort: a per-block extras
+failure skips that block's block-row (never a corrupt row, never crashes the
+scan); the event rows for that block are unaffected.
 
 Block-explorer extrinsic sidecar (#1345 second vertical slice): the same per-block
 loop also decodes each block's extrinsics (extrinsics_for_block) into `extrinsics`
@@ -90,7 +91,7 @@ CURSOR_OUT = os.environ.get("EVENTS_CURSOR_OUT", "dist/events-cursor.json")
 BLOCKS_OUT = os.environ.get("BLOCKS_JSON", "dist/blocks.json")
 EXTRINSICS_OUT = os.environ.get("EXTRINSICS_JSON", "dist/extrinsics.json")
 # Public finney nodes prune ~300 blocks; if the cursor falls this far behind the
-# head, the poller is losing the race against pruning and blocks between the prune
+# head, this run is losing the race against pruning and blocks between the prune
 # horizon and the cursor can no longer be re-fetched. Surfaced as a workflow alert.
 PRUNE_HORIZON = int(os.environ.get("EVENTS_PRUNE_HORIZON", "300"))
 # Upper bound on cursor-driven gap recovery: one run never scans more than this

@@ -5,20 +5,23 @@ A long-running service: subscribes to FINALIZED finney heads and, for each new
 block, decodes its SubtensorModule events with the EXACT verified extractors from
 fetch-events.py (imported, not duplicated — no drift) and POSTs them to the
 Worker's authenticated ingest endpoint (#1360). End-to-end latency ~12-30s (one
-block). The #1346 CI poller stays running as a self-healing backstop; inserts are
-idempotent on (block_number, event_index), so any overlap — or a dropped block —
-is covered for free.
+block). Inserts are idempotent on (block_number, event_index), so any overlap —
+or a dropped block, recovered via a manual scripts/backfill-events.py rerun — is
+covered for free. There is no automatic backstop poller (retired #1346 2026-07-04
+as redundant with this streamer's own reliability once self-hosted, see
+docs/realtime-streamer.md).
 
 Production behavior:
   * Structured, leveled logging (timestamp + level). The per-block line is DEBUG
     (quiet by default); a periodic INFO summary shows liveness without flooding.
-  * A transient failed ingest POST is logged + skipped (the poller backstop covers
-    it) — it does NOT tear down the subscription. An ingest auth rejection
-    (401/403) or a TLS/certificate verification failure is NOT transient: both are
-    logged at ERROR and exit the process instead.
+  * A transient failed ingest POST is logged + skipped — it does NOT tear down
+    the subscription. An ingest auth rejection (401/403) or a TLS/certificate
+    verification failure is NOT transient: both are logged at ERROR and exit
+    the process instead.
   * Exponential backoff + jitter on RPC reconnect; SIGTERM/SIGINT graceful stop.
 
-Deployed on Railway (config-as-code via railway.json); see docs/realtime-streamer.md.
+Deployed via the Ansible streamer role on the self-hosted indexer box; see
+docs/realtime-streamer.md.
 
 Run:
   EVENTS_INGEST_URL=https://api.metagraph.sh/api/v1/internal/events \
@@ -81,10 +84,10 @@ extract = _fe.extract
 
 # Block-explorer realtime (#1345 Option B): besides account_events, each finalized
 # head also emits its `blocks` row + `extrinsics` rows (via _fe.block_extras +
-# _fe.extrinsics_for_block) POSTed to /api/v1/internal/blocks. This closes the
+# _fe.extrinsics_for_block) POSTed to /api/v1/internal/blocks. This closed the
 # blocks/extrinsics realtime gap the coalesced CI poller alone left (~58%; #1749);
-# the CI poller stays the self-healing backstop and INSERT OR IGNORE on the PKs
-# makes the overlap free.
+# the poller itself has since been retired (2026-07-04) — INSERT OR IGNORE on the
+# PKs still makes any residual overlap with a manual backfill rerun free.
 
 _stop = False
 
@@ -185,12 +188,13 @@ def decode_head(s, block_number):
 
 def push(url, payload):
     """POST a JSON payload to an ingest endpoint. Returns True on success; logs WARN
-    + returns False on a transient network failure (the CI poller backstop covers
-    the gap). Neither an ingest auth rejection (401/403 — token misconfigured or
-    rotated) nor a TLS/certificate verification failure is a transient blip — both
-    are logged at ERROR and the process exits, so a persistent failure is surfaced
-    (Railway restarts a transient one; a persistent one crash-loops to the retry
-    cap + goes visibly down) rather than silently swallowed forever."""
+    + returns False on a transient network failure (a dropped block here needs a
+    manual scripts/backfill-events.py rerun to recover — no automatic backstop).
+    Neither an ingest auth rejection (401/403 — token misconfigured or rotated)
+    nor a TLS/certificate verification failure is a transient blip — both are
+    logged at ERROR and the process exits, so a persistent failure is surfaced
+    (the process supervisor restarts a transient one; a persistent one crash-loops
+    to the retry cap + goes visibly down) rather than silently swallowed forever."""
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode(),
