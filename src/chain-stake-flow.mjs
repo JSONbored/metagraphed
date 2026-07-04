@@ -87,6 +87,17 @@ function percentile(ascending, p) {
   return ascending[Math.min(rank, ascending.length) - 1];
 }
 
+// Conventional median of a NON-EMPTY ascending numeric array (net flow can be negative): the middle
+// value for an odd count, the mean of the two middle values for an even count (so an even count
+// returns the average of the two middles, not the lower-middle a nearest-rank p50 gives). The
+// averaging form needs no odd/even branch — for an odd count the two indices coincide and it returns
+// that middle value unchanged. Matches median() in chain-yield.mjs / subnet-yield.mjs so a `median`
+// field is the same statistic across the API. Reached only after netFlowDistribution's empty short-circuit.
+function median(ascending) {
+  const mid = (ascending.length - 1) / 2;
+  return roundTao((ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2);
+}
+
 // Spread of the per-subnet net flow across every subnet in the window: count, mean, and
 // min / p25 / median / p75 / p90 / max (TAO). Null when no subnet moved stake — lets a caller
 // read the flow as a distribution (how lopsided the network's capital movement is).
@@ -99,7 +110,7 @@ function netFlowDistribution(values) {
     mean: roundTao(sum / ascending.length),
     min: ascending[0],
     p25: percentile(ascending, 25),
-    median: percentile(ascending, 50),
+    median: median(ascending),
     p75: percentile(ascending, 75),
     p90: percentile(ascending, 90),
     max: ascending[ascending.length - 1],
