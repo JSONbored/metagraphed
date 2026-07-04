@@ -381,21 +381,19 @@ export async function readIdentityHistoryCacheStamp(env) {
 }
 
 // Edge-cache stamp for routes derived from the neuron_daily rollup (the daily-snapshot tier), NOT
-// the live `neurons` tier: reads MAX(captured_at) from neuron_daily so the stamp advances exactly
-// when a new daily snapshot lands, invalidating the cached artifact on that refresh rather than on
-// the more-frequent live-neurons cadence. Used by neuron_daily-derived network routes (e.g.
-// /chain/turnover) whose data source is neuron_daily, not neurons.
+// the live `neurons` tier. Use the indexed snapshot_date column so every public cache lookup can
+// resolve freshness with an index-backed tail read instead of scanning the large rollup table.
+// Used by neuron_daily-derived network routes (e.g. /chain/turnover) whose data source is
+// neuron_daily, not neurons.
 export async function readNeuronDailyCacheStamp(env) {
   const rows = await d1All(
     env,
-    "SELECT MAX(captured_at) AS captured_at FROM neuron_daily",
+    "SELECT snapshot_date FROM neuron_daily ORDER BY snapshot_date DESC LIMIT 1",
     [],
   );
   if (hasD1FallbackRows(rows)) return null;
-  const capturedAt = rows[0]?.captured_at;
-  return Number.isInteger(capturedAt) && capturedAt > 0
-    ? String(capturedAt)
-    : null;
+  const snapshotDate = rows[0]?.snapshot_date;
+  return typeof snapshotDate === "string" && snapshotDate ? snapshotDate : null;
 }
 
 export function withNeuronsEdgeCache(

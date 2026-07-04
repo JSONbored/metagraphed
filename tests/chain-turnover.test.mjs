@@ -454,7 +454,7 @@ describe("readNeuronDailyCacheStamp", () => {
     },
   });
 
-  test("reads MAX(captured_at) from neuron_daily and returns it as a string", async () => {
+  test("reads the indexed latest snapshot_date from neuron_daily", async () => {
     let seenSql;
     const env = {
       METAGRAPH_HEALTH_DB: {
@@ -464,7 +464,7 @@ describe("readNeuronDailyCacheStamp", () => {
             bind: () => ({
               all: () =>
                 Promise.resolve({
-                  results: [{ captured_at: 1_700_000_000_000 }],
+                  results: [{ snapshot_date: "2026-06-27" }],
                 }),
             }),
           };
@@ -472,13 +472,15 @@ describe("readNeuronDailyCacheStamp", () => {
       },
     };
     const stamp = await readNeuronDailyCacheStamp(env);
-    assert.equal(stamp, "1700000000000");
+    assert.equal(stamp, "2026-06-27");
     assert.match(seenSql, /FROM neuron_daily/); // the correct source table, not `neurons`
+    assert.match(seenSql, /ORDER BY snapshot_date DESC LIMIT 1/);
+    assert.doesNotMatch(seenSql, /captured_at/);
   });
 
-  test("returns null for a non-integer captured_at", async () => {
+  test("returns null for a missing snapshot_date", async () => {
     assert.equal(
-      await readNeuronDailyCacheStamp(stampEnv([{ captured_at: null }])),
+      await readNeuronDailyCacheStamp(stampEnv([{ snapshot_date: null }])),
       null,
     );
   });
@@ -494,9 +496,9 @@ describe("chain/turnover edge cache", () => {
     globalThis.caches = originalCaches;
   });
 
-  // The neuron_daily captured_at the stamp query returns — mutated mid-test to simulate a rollup
-  // refresh. Every SELECT the stamp resolver runs is recorded so the test can assert the stamp
-  // reads neuron_daily (its actual source table), not the live neurons tier.
+  // The latest neuron_daily snapshot_date the stamp query returns — mutated mid-test to simulate a
+  // rollup refresh. Every SELECT the stamp resolver runs is recorded so the test can assert the
+  // stamp reads neuron_daily (its actual source table), not the live neurons tier.
   function turnoverEnv(state) {
     return {
       ...createLocalArtifactEnv(),
@@ -505,12 +507,12 @@ describe("chain/turnover edge cache", () => {
           return {
             bind: () => ({
               all: () => {
-                // The busting stamp query hits MAX(captured_at); the window boundary hits
-                // MIN(snapshot_date); the rest is the validator read.
-                if (/MAX\(captured_at\)/.test(sql)) {
+                // The busting stamp query uses the indexed latest snapshot_date; the window
+                // boundary hits MIN(snapshot_date); the rest is the validator read.
+                if (/ORDER BY snapshot_date DESC LIMIT 1/.test(sql)) {
                   state.stampSql = sql;
                   return Promise.resolve({
-                    results: [{ captured_at: state.capturedAt }],
+                    results: [{ snapshot_date: state.snapshotDate }],
                   });
                 }
                 if (/MIN\(snapshot_date\)/.test(sql)) {
@@ -541,7 +543,7 @@ describe("chain/turnover edge cache", () => {
         },
       },
     };
-    const state = { capturedAt: 1_700_000_000_000, stampSql: null };
+    const state = { snapshotDate: "2026-06-27", stampSql: null };
     const env = turnoverEnv(state);
     const call = () =>
       handleRequest(
@@ -563,9 +565,9 @@ describe("chain/turnover edge cache", () => {
     await call();
     assert.equal(store.size, 1);
 
-    // Simulate a neuron_daily rollup refresh: a new captured_at -> a new stamp -> a new cache key,
-    // so the stale entry is not reused and the artifact is recomputed and re-cached.
-    state.capturedAt = 1_700_000_600_000;
+    // Simulate a neuron_daily rollup refresh: a new snapshot_date -> a new stamp -> a new
+    // cache key, so the stale entry is not reused and the artifact is recomputed and re-cached.
+    state.snapshotDate = "2026-06-28";
     const refreshed = await call();
     assert.equal(refreshed.status, 200);
     assert.equal(store.size, 2); // busted: a second cache entry under the new stamp
