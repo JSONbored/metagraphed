@@ -4,8 +4,8 @@ import { handleRequest } from "../workers/api.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-function req(path) {
-  return new Request(`https://api.metagraph.sh${path}`);
+function req(path, init) {
+  return new Request(`https://api.metagraph.sh${path}`, init);
 }
 
 // A D1 mock that routes by SQL shape so the account handlers (#1347/#1847) get
@@ -242,6 +242,19 @@ test("GET /accounts/{ss58}/extrinsics is schema-stable when D1 is cold (never 40
   assert.equal(Array.isArray(body.data.extrinsics), true);
 });
 
+test("GET /accounts/{ss58}/extrinsics JSON varies on Accept when CSV is negotiated by header", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/extrinsics`, {
+      headers: { accept: "application/json" },
+    }),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
+  assert.match(res.headers.get("content-type"), /^application\/json/);
+});
+
 test("GET /accounts/{ss58}/extrinsics?format=csv exports extrinsic_id/block_number/call_module columns (#2534)", async () => {
   const env = dbWith({
     extrinsics: [
@@ -361,6 +374,19 @@ test("GET /accounts/{ss58}/transfers is schema-stable when D1 is cold (never 404
   assert.equal(body.data.ss58, SS58);
   assert.equal(body.data.transfer_count, 0);
   assert.equal(Array.isArray(body.data.transfers), true);
+});
+
+test("GET /accounts/{ss58}/transfers JSON varies on Accept when CSV is negotiated by header", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers`, {
+      headers: { accept: "application/json" },
+    }),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
+  assert.match(res.headers.get("content-type"), /^application\/json/);
 });
 
 test("GET /accounts/{ss58}/transfers?direction=sent&format=csv filters direction and exports from/to/amount_tao columns (#2534)", async () => {
