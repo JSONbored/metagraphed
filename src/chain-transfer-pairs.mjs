@@ -26,6 +26,8 @@ function toCount(value) {
 
 function toBlockNumber(value) {
   if (value == null) return null;
+  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isSafeInteger(n) && n >= 0 ? n : null;
 }

@@ -138,6 +138,8 @@ describe("buildChainTransferPairs", () => {
           ...pair("5K", "5L", 1),
           last_observed_at: 8640000000000001,
         },
+        pair("5M", "5N", 1, 1, ""),
+        pair("5O", "5P", 1, 1, "   "),
       ],
     });
     assert.equal(d.pairs[0].last_block, null);
@@ -146,6 +148,8 @@ describe("buildChainTransferPairs", () => {
     assert.equal(d.pairs[3].last_observed_at, null);
     assert.equal(d.pairs[4].last_observed_at, null);
     assert.equal(d.pairs[5].last_observed_at, null);
+    assert.equal(d.pairs[6].last_block, null);
+    assert.equal(d.pairs[7].last_block, null);
   });
 
   test("rounds TAO volume and normalizes unknown sort values", () => {
