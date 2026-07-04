@@ -7,6 +7,7 @@ import {
   loadChainYield,
   loadChainYieldHistory,
   parseChainYieldHistoryWindow,
+  YIELD_HISTORY_ROW_CAP,
 } from "../src/chain-yield.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -422,6 +423,65 @@ describe("buildChainYieldHistory", () => {
     assert.equal(data.point_count, 0);
     assert.deepEqual(data.points, []);
   });
+
+  test("skips rows with no snapshot_date and is cold-store safe", () => {
+    const data = buildChainYieldHistory(
+      [
+        { snapshot_date: null, stake_tao: 5, emission_tao: 1, netuid: 1 },
+        {
+          snapshot_date: "2026-06-27",
+          stake_tao: 100,
+          emission_tao: 10,
+          validator_permit: 1,
+          netuid: 1,
+        },
+      ],
+      { window: "30d" },
+    );
+    assert.equal(data.point_count, 1);
+    for (const rows of [[], "nope", null]) {
+      const empty = buildChainYieldHistory(rows, { window: "30d" });
+      assert.equal(empty.point_count, 0);
+      assert.deepEqual(empty.points, []);
+      assert.equal(empty.window, "30d");
+    }
+  });
+
+  test("a day with no staked neurons yields null distribution metrics", () => {
+    const data = buildChainYieldHistory(
+      [
+        {
+          snapshot_date: "2026-06-27",
+          stake_tao: 0,
+          emission_tao: 5,
+          netuid: 1,
+        },
+      ],
+      { window: "7d" },
+    );
+    assert.equal(data.points[0].neuron_count, 1);
+    assert.equal(data.points[0].distribution, null);
+    assert.equal(data.points[0].network_yield, null);
+  });
+
+  test("does not drop the only day when capped with a single date", () => {
+    const data = buildChainYieldHistory(
+      [
+        {
+          snapshot_date: "2026-06-27",
+          stake_tao: 1,
+          emission_tao: 1,
+          netuid: 1,
+        },
+      ],
+      { window: "7d", capped: true },
+    );
+    assert.equal(data.point_count, 1);
+  });
+
+  test("an omitted window is emitted as null", () => {
+    assert.equal(buildChainYieldHistory([]).window, null);
+  });
 });
 
 describe("loadChainYieldHistory", () => {
@@ -446,6 +506,32 @@ describe("loadChainYieldHistory", () => {
     assert.equal(data.point_count, 1);
     assert.match(capture[0].sql, /FROM neuron_daily WHERE snapshot_date >= \?/);
     assert.equal(capture[0].params.length, 2);
+  });
+
+  test("marks capped when the read hits YIELD_HISTORY_ROW_CAP", async () => {
+    const rows = Array.from({ length: YIELD_HISTORY_ROW_CAP }, (_, i) => ({
+      snapshot_date: i % 2 === 0 ? "2026-06-27" : "2026-06-26",
+      stake_tao: 1,
+      emission_tao: 1,
+      validator_permit: 0,
+      netuid: 1,
+    }));
+    const data = await loadChainYieldHistory(async () => rows, {
+      windowLabel: "90d",
+      windowDays: 90,
+    });
+    assert.equal(data.point_count, 1);
+    assert.equal(data.points[0].snapshot_date, "2026-06-27");
+  });
+
+  test("a cold store (no rows) yields empty points", async () => {
+    const data = await loadChainYieldHistory(async () => [], {
+      windowLabel: "30d",
+      windowDays: 30,
+    });
+    assert.equal(data.window, "30d");
+    assert.equal(data.point_count, 0);
+    assert.deepEqual(data.points, []);
   });
 });
 
