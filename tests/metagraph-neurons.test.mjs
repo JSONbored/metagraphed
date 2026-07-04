@@ -393,13 +393,16 @@ describe("metagraph-neurons builders", () => {
     assert.equal(empty.validator_count, 0);
     assert.deepEqual(empty.validators, []);
 
+    // An explicit limit of 0 yields an EMPTY leaderboard (not a bumped-up single
+    // row), matching the chain-turnover / chain-stake-flow / chain-weights (#2984)
+    // floor-at-0 convention. validator_count still reports the full set.
     const clamped = buildGlobalValidators(
       [{ ...ROW, netuid: 7, uid: 0, hotkey: "hk-a" }],
       { limit: 0 },
     );
-    assert.equal(clamped.limit, 1);
+    assert.equal(clamped.limit, 0);
     assert.equal(clamped.validator_count, 1);
-    assert.equal(clamped.validators.length, 1);
+    assert.equal(clamped.validators.length, 0);
   });
 
   test("buildGlobalValidators handles sparse identity rows and trust sorting", () => {

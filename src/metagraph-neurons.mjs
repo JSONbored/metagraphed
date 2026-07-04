@@ -279,8 +279,11 @@ export function buildGlobalValidators(
     ? sort
     : DEFAULT_GLOBAL_VALIDATOR_SORT;
   const flooredLimit = Math.floor(Number(limit));
+  // Floor the limit at 0, not 1, so an explicit limit=0 returns an empty
+  // leaderboard rather than being silently bumped up to a single validator.
+  // Mirrors the chain-turnover / chain-stake-flow / chain-weights (#2984) clamp.
   const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(1, Math.min(flooredLimit, GLOBAL_VALIDATOR_LIMIT_MAX))
+    ? Math.max(0, Math.min(flooredLimit, GLOBAL_VALIDATOR_LIMIT_MAX))
     : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
   const validatorsByHotkey = new Map();
   let latestCapturedAt = null;
