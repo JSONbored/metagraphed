@@ -42,7 +42,6 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlparse
 
-from substrateinterface import SubstrateInterface
 
 RPC = os.environ.get("EVENTS_RPC_URL", "wss://entrypoint-finney.opentensor.ai:443")
 INGEST_URL = os.environ.get("EVENTS_INGEST_URL")
@@ -309,6 +308,18 @@ def push_blocks(url, block_row, extrinsic_rows):
     return ok
 
 
+def _connect_substrate(url):
+    """Import substrate-interface only when the streamer actually connects.
+
+    Unit tests for ingest-push behavior import this module without the optional
+    production runtime dependency installed; production execution still fails
+    normally here if substrate-interface is unavailable.
+    """
+    from substrateinterface import SubstrateInterface
+
+    return SubstrateInterface(url=url)
+
+
 def run():
     if not INGEST_URL or not SECRET:
         log.error("EVENTS_INGEST_URL and METAGRAPH_EVENTS_INGEST_SECRET are required")
@@ -323,7 +334,7 @@ def run():
     backoff = 5
     while not _stop:
         try:
-            s = SubstrateInterface(url=RPC)
+            s = _connect_substrate(RPC)
             log.info("connected %s — subscribing to finalized heads", RPC)
             backoff = 5  # reset after a clean connect
 
@@ -360,6 +371,17 @@ def run():
                 return None
 
             s.subscribe_block_headers(handler, finalized_only=True)
+        except ModuleNotFoundError as e:
+            # A missing substrate-interface install is a permanent configuration
+            # error, not a transient stream blip — surface it and exit rather than
+            # let the broad except below retry it forever with no chance of
+            # success (same stance as the TLS-failure exit in push()).
+            log.error(
+                "required dependency unavailable (%s) — exiting rather than "
+                "retrying a permanent configuration error.",
+                repr(e)[:160],
+            )
+            sys.exit(1)
         except Exception as e:  # noqa: BLE001 — connection lost; reconnect
             if _stop:
                 break
