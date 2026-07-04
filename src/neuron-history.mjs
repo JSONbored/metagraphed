@@ -430,8 +430,12 @@ export function buildEconomicsTrends(rows, { window } = {}) {
   };
 }
 
+// Blank D1 cells coerce via Number("") -> 0; trim rejects "" / whitespace-only
+// so a blank cell is excluded from the day's aggregate rather than read as a
+// genuine 0. Mirrors toNonNegativeInt above.
 function toFiniteOrNull(v) {
   if (v == null) return null;
+  if (typeof v === "string" && v.trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }

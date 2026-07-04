@@ -423,6 +423,37 @@ describe("history builders", () => {
     assert.equal(day.window, undefined);
   });
 
+  test("buildEconomicsTrends excludes blank-string cells from the day's aggregate", () => {
+    const out = buildEconomicsTrends([
+      {
+        snapshot_date: "2026-06-05",
+        total_stake_tao: "",
+        alpha_price_tao: "",
+        validator_count: "",
+        miner_count: "",
+        emission_share: "",
+      },
+      {
+        snapshot_date: "2026-06-05",
+        total_stake_tao: 200,
+        alpha_price_tao: 0.1,
+        validator_count: 3,
+        miner_count: 5,
+        emission_share: 0.2,
+      },
+    ]);
+    const [day] = out.days;
+    // Blank row contributes nothing: aggregates match the single real row, not
+    // a 0-inflated/deflated blend.
+    assert.equal(day.subnet_count, 2);
+    assert.equal(day.total_stake_tao, 200);
+    assert.equal(day.alpha_price_tao_weighted, 0.1);
+    assert.equal(day.alpha_price_tao_median, 0.1);
+    assert.equal(day.validator_count, 3);
+    assert.equal(day.miner_count, 5);
+    assert.equal(day.mean_emission_share, 0.2);
+  });
+
   test("buildEconomicsTrends is empty + null-safe on no rows", () => {
     const out = buildEconomicsTrends([]);
     assert.equal(out.day_count, 0);
