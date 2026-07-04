@@ -55,6 +55,14 @@ TOKEN_HEADER = "x-metagraph-events-token"
 PUSH_TIMEOUT = 15
 SUMMARY_EVERY = max(1, int(os.environ.get("EVENTS_SUMMARY_EVERY_BLOCKS", "20")))
 MAX_BACKOFF = 60
+# Mirrors the Worker's own caps (workers/config.mjs MAX_EVENTS_INGEST_ROWS /
+# MAX_EVENTS_INGEST_BODY_BYTES, MAX_BLOCKS_INGEST_ROWS / MAX_BLOCKS_INGEST_BODY_BYTES —
+# both endpoints share the same 500-row / 256KB caps today). Normally one block's
+# rows are far under either cap; a handful of blocks (bulk registrations, large
+# batch calls) exceed it, and those pushes were being rejected outright (HTTP 413)
+# instead of chunked. A small safety margin absorbs any body-size drift.
+MAX_INGEST_ROWS = 500
+MAX_INGEST_BODY_BYTES = 262144 - 1024
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -248,6 +256,55 @@ def push(url, payload):
         return False
 
 
+def _chunk_rows(rows, build_payload, max_rows=MAX_INGEST_ROWS, max_bytes=MAX_INGEST_BODY_BYTES):
+    """Split `rows` into POST-able slices honoring both a row-count cap and a
+    serialized-size cap. `build_payload(chunk)` returns the actual JSON-able object
+    that would be POSTed for that chunk (a bare list for the events endpoint, a
+    {"blocks":...,"extrinsics":chunk} dict for the blocks endpoint) — sized against
+    the worst case (block row included) so the check stays correct even though only
+    the first chunk actually carries it. Halves an oversized slice until it fits,
+    which also handles a single freakishly large row."""
+    if not rows:
+        return []
+    chunks = []
+    i, n = 0, len(rows)
+    while i < n:
+        size = min(max_rows, n - i)
+        while size > 1 and len(json.dumps(build_payload(rows[i : i + size])).encode()) > max_bytes:
+            size = max(1, size // 2)
+        chunks.append(rows[i : i + size])
+        i += size
+    return chunks
+
+
+def push_events(url, event_rows):
+    """Push account_events for one block, chunked to respect the ingest caps.
+    Returns True only if every chunk succeeded (a partial failure still logs +
+    lets the poller backstop cover just the failed slice)."""
+    if not event_rows:
+        return True
+    ok = True
+    for chunk in _chunk_rows(event_rows, lambda c: c):
+        ok = push(url, chunk) and ok
+    return ok
+
+
+def push_blocks(url, block_row, extrinsic_rows):
+    """Push one block's row + its extrinsics, chunked to respect the ingest caps.
+    The block row rides along with the first chunk only (INSERT OR IGNORE makes a
+    resend harmless, but there's no reason to repeat it every chunk)."""
+    if not block_row and not extrinsic_rows:
+        return True
+    build = lambda c: {"blocks": [block_row] if block_row else [], "extrinsics": c}
+    chunks = _chunk_rows(extrinsic_rows, build) or [[]]
+    ok = True
+    for i, chunk in enumerate(chunks):
+        payload = {"blocks": [block_row] if (block_row and i == 0) else [], "extrinsics": chunk}
+        if payload["blocks"] or payload["extrinsics"]:
+            ok = push(url, payload) and ok
+    return ok
+
+
 def run():
     if not INGEST_URL or not SECRET:
         log.error("EVENTS_INGEST_URL and METAGRAPH_EVENTS_INGEST_SECRET are required")
@@ -273,14 +330,9 @@ def run():
                 decoded = decode_head(s, bn)
                 event_rows = decoded["events"]
                 # account_events → /internal/events
-                ok = push(INGEST_URL, event_rows) if event_rows else True
+                ok = push_events(INGEST_URL, event_rows)
                 # blocks + extrinsics → /internal/blocks (#1345 Option B)
-                block_payload = {
-                    "blocks": [decoded["block"]] if decoded["block"] else [],
-                    "extrinsics": decoded["extrinsics"],
-                }
-                if block_payload["blocks"] or block_payload["extrinsics"]:
-                    ok = push(BLOCKS_INGEST_URL, block_payload) and ok
+                ok = push_blocks(BLOCKS_INGEST_URL, decoded["block"], decoded["extrinsics"]) and ok
                 stats["blocks"] += 1
                 stats["events"] += len(event_rows)
                 stats["latest"] = bn
