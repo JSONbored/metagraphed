@@ -1,0 +1,73 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Zipcode",
+  "netuid": 46,
+  "schema_version": 1,
+  "slug": "sn-46",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-46-zipcode-openapi",
+      "kind": "openapi",
+      "name": "Zipcode Portal OpenAPI",
+      "notes": "Machine-readable OpenAPI schema for Zipcode's public portal and dashboard API routes.",
+      "provider": "zipcode",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://zipcode.ai/openapi.json",
+      "source_urls": [
+        "https://zipcode.ai/api/dashboard/docs",
+        "https://zipcode.ai/openapi.json"
+      ],
+      "url": "https://zipcode.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-46-zipcode-subnet-api",
+      "kind": "subnet-api",
+      "name": "Zipcode dashboard stats API",
+      "notes": "Public no-auth dashboard endpoint for SN46 network statistics, scores, emissions, and prize pool data.",
+      "provider": "zipcode",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://zipcode.ai/openapi.json",
+        "https://zipcode.ai/api/dashboard/docs"
+      ],
+      "url": "https://zipcode.ai/api/dashboard/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-46-zipcode-data-artifact",
+      "kind": "data-artifact",
+      "name": "Zipcode model leaderboard data",
+      "notes": "Public no-auth JSON feed of SN46 miner model leaderboard and evaluation metadata.",
+      "provider": "zipcode",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": [
+        "https://zipcode.ai/openapi.json",
+        "https://zipcode.ai/api/dashboard/docs"
+      ],
+      "url": "https://zipcode.ai/api/dashboard/models"
+    }
+  ]
+}
