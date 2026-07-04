@@ -92,10 +92,10 @@ const EMPTY_NETWORK = {
 };
 
 // Shape the network-wide weight-setting scorecard from the per-subnet account_events aggregate.
-// `subnetRows` carries one row per netuid (COUNT(*) weight_sets, COUNT(DISTINCT hotkey)
-// distinct_setters). `networkDistinct` carries the true network-wide distinct setter count (a
-// validator setting weights on several subnets counts once, so this is NOT the sum of the
-// per-subnet distinct_setters) plus the newest observed_at. `limit` caps the leaderboard;
+// `subnetRows` carries one row per netuid (COUNT(*) weight_sets, distinct setter count).
+// WeightsSet ingestion can omit hotkey, so the SQL loader falls back to netuid/uid identities
+// rather than dropping real activity. `networkDistinct` carries the best available network-wide
+// distinct setter count plus the newest observed_at. `limit` caps the leaderboard;
 // subnet_count and the distribution span every subnet with observed weight-setting activity
 // (subnets with no WeightsSet events in the window are absent). Null-safe: no rows yields the
 // empty block.
@@ -175,8 +175,9 @@ export function buildChainWeights(
 
 // Network-wide weight-setting activity, computed live: read the account_events WeightsSet stream
 // over the window (observed_at >= now - windowDays, epoch ms), first as a single network aggregate
-// (true distinct setters + newest observed_at, covered by idx_account_events(event_kind, observed_at)
-// from migration 0032) and then grouped by netuid for the per-subnet leaderboard (served by
+// (best available distinct setters + newest observed_at, covered by
+// idx_account_events(event_kind, observed_at) from migration 0032) and then grouped by netuid for
+// the per-subnet leaderboard (served by
 // idx_account_events(netuid, event_kind, block_number) from migration 0024), and shape with
 // buildChainWeights. The
 // newest-observed probe doubles as the cold-store guard: a null MAX(observed_at) skips the
@@ -187,9 +188,15 @@ export async function loadChainWeights(
   { windowLabel, windowDays, limit } = {},
 ) {
   const cutoff = Date.now() - windowDays * DAY_MS;
+  const setterIdentity =
+    "CASE " +
+    "WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey " +
+    "WHEN uid IS NOT NULL AND netuid IS NOT NULL THEN 'uid:' || netuid || ':' || uid " +
+    "ELSE NULL END";
   const networkRows = await d1(
-    "SELECT COUNT(*) AS weight_sets, COUNT(DISTINCT hotkey) AS distinct_setters, " +
-      "MAX(observed_at) AS newest_observed " +
+    "SELECT COUNT(*) AS weight_sets, COUNT(DISTINCT " +
+      setterIdentity +
+      ") AS distinct_setters, MAX(observed_at) AS newest_observed " +
       "FROM account_events WHERE event_kind = ? AND observed_at >= ?",
     [WEIGHTS_EVENT_KIND, cutoff],
   );
@@ -197,7 +204,9 @@ export async function loadChainWeights(
   let subnetRows = [];
   if (networkDistinct?.newest_observed != null) {
     subnetRows = await d1(
-      "SELECT netuid, COUNT(*) AS weight_sets, COUNT(DISTINCT hotkey) AS distinct_setters " +
+      "SELECT netuid, COUNT(*) AS weight_sets, COUNT(DISTINCT " +
+        setterIdentity +
+        ") AS distinct_setters " +
         "FROM account_events WHERE event_kind = ? AND observed_at >= ? GROUP BY netuid",
       [WEIGHTS_EVENT_KIND, cutoff],
     );
