@@ -241,10 +241,26 @@ test("formatBlock rejects blank integer cells that coerce to 0 (not block 0)", (
       event_count: blank,
       spec_version: blank,
     });
-    assert.equal(out.block_number, null, `block_number for ${JSON.stringify(blank)}`);
-    assert.equal(out.extrinsic_count, null, `extrinsic_count for ${JSON.stringify(blank)}`);
-    assert.equal(out.event_count, null, `event_count for ${JSON.stringify(blank)}`);
-    assert.equal(out.spec_version, null, `spec_version for ${JSON.stringify(blank)}`);
+    assert.equal(
+      out.block_number,
+      null,
+      `block_number for ${JSON.stringify(blank)}`,
+    );
+    assert.equal(
+      out.extrinsic_count,
+      null,
+      `extrinsic_count for ${JSON.stringify(blank)}`,
+    );
+    assert.equal(
+      out.event_count,
+      null,
+      `event_count for ${JSON.stringify(blank)}`,
+    );
+    assert.equal(
+      out.spec_version,
+      null,
+      `spec_version for ${JSON.stringify(blank)}`,
+    );
   }
 });
 
