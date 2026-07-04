@@ -70,6 +70,7 @@
   --color-curation-verified: var(--curation-verified);
   --color-curation-pilot: var(--curation-pilot);
   --color-curation-candidate: var(--curation-candidate);
+  --color-curation-seeded: var(--curation-seeded);
   --color-curation-machine: var(--curation-machine);
   --color-curation-adapter: var(--curation-adapter);
 
@@ -153,6 +154,7 @@
   --curation-verified: oklch(0.68 0.16 160); /* kept in lockstep with --health-ok */
   --curation-pilot: oklch(0.6 0.15 150);
   --curation-candidate: var(--ink-muted);
+  --curation-seeded: oklch(0.64 0.15 80); /* same warm hue family as --chart-3 */
   --curation-machine: oklch(0.54 0.14 250);
   --curation-adapter: oklch(0.62 0.15 305);
 
@@ -225,6 +227,7 @@
   --curation-verified: oklch(0.85 0.14 168);
   --curation-pilot: oklch(0.8 0.14 150);
   --curation-candidate: var(--ink-muted);
+  --curation-seeded: oklch(0.78 0.14 80); /* same warm hue family as --chart-3 */
   --curation-machine: oklch(0.76 0.12 250);
   --curation-adapter: oklch(0.78 0.13 305);
 

@@ -14,7 +14,8 @@
     "node": ">=22.23.1"
   },
   "workspaces": [
-    "apps/ui"
+    "apps/ui",
+    "packages/client"
   ],
   "scripts": {
     "validate": "node scripts/validate.mjs",

@@ -52,11 +52,17 @@ jobs:
       # Build + pack happen in THIS unprivileged job (no id-token). The privileged
       # publish job below never runs npm install/build, so a compromised build
       # dependency can't reach the OIDC token (codex #251).
+      #
+      # packages/client is an npm workspace (#3066) with no lockfile of its own,
+      # so the install is now root-scoped (installs apps/ui's tree too) — the
+      # build/pack below still only touches packages/client.
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
       - name: Build package tarball
         working-directory: packages/client
         run: |
           set -euo pipefail
-          npm install --no-audit --no-fund
           npm run build
           npm pack --pack-destination "$RUNNER_TEMP"
           count=$(find "$RUNNER_TEMP" -maxdepth 1 -type f -name "*.tgz" | wc -l | tr -d ' ')

@@ -206,11 +206,11 @@ jobs:
           node-version: 22.23.1
           cache: npm
           # Without this, setup-node's cache key hashes EVERY package-lock.json
-          # in the tree (root + packages/client + deploy/wss-lb), so a routine
-          # SDK version bump in packages/client/package-lock.json (the
-          # sync-client-version workflow does this every few days) invalidates
-          # this job's cache even though `npm ci` here only ever reads the root
-          # lockfile (no npm `workspaces` config ties them together).
+          # in the tree (root + deploy/wss-lb), so a change to the latter's
+          # lockfile would invalidate this job's cache even though `npm ci`
+          # here only ever reads the root lockfile. packages/client is an npm
+          # workspace (#3066) with no lockfile of its own anymore — its version
+          # bumps land in the root lockfile, which this path already covers.
           cache-dependency-path: package-lock.json
 
       - name: Install

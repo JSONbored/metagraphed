@@ -287,6 +287,14 @@ local paths, env dumps, or private notes.
   post-merge `sync-client-version` workflow, which auto-opens a `chore/sync-client-version` PR whenever
   a contract file lands on main. `validate:client-sdk-sync` now emits a notice (not a failure) when the
   version isn't bumped in a contributor PR.
+- **`packages/client` is an npm workspace (#3066), with no lockfile of its own.** `apps/ui` consumes it
+  as a live workspace link (`"@jsonbored/metagraphed": "*"` in `apps/ui/package.json`, resolved from
+  `packages/client` directly) instead of round-tripping through the published npm package — editing
+  `packages/client/src/*` and rebuilding (`npm run build --workspace=packages/client`) is immediately
+  visible to `apps/ui`, no publish needed. `packages/client`'s own `typescript` devDependency must stay
+  aligned with the root/`apps/ui` range (`^5.9.3`): `tsup` (its build tool) is hoisted to the _root_
+  `node_modules` and resolves `typescript` from there regardless of which workspace invokes it, so a
+  workspace-local TypeScript version pin silently gets ignored by `tsup --dts` — don't reintroduce one.
 - **MCP server card is worker-computed — no committed artifact.** Adding or changing tools in
   `src/mcp-server.mjs` does NOT require regenerating `public/.well-known/mcp/server-card.json` (that
   file no longer exists in git). The card is served dynamically by `mcpServerCardResponse` in
@@ -316,12 +324,11 @@ local paths, env dumps, or private notes.
 - **`pipeline:check`** is only trustworthy in isolation after a clean `npm run build`.
 - **`validate.yml`'s `actions/setup-node` steps set `cache-dependency-path: package-lock.json`
   explicitly.** Without it, `setup-node`'s cache key hashes every `package-lock.json` in the tree
-  (root + `packages/client` + `deploy/wss-lb`), so a routine SDK version bump in
-  `packages/client/package-lock.json` (the `sync-client-version` workflow does this every few
-  days) would invalidate the CI npm cache even though `npm ci` in `validate.yml` only ever reads
-  the root lockfile (no npm `workspaces` config ties them together). If you ever add a new
-  `actions/setup-node` step to a workflow in this repo, set this explicitly rather than relying on
-  the default.
+  (root + `deploy/wss-lb`), so a change to the latter would invalidate the CI npm cache even though
+  `npm ci` in `validate.yml` only ever reads the root lockfile. `packages/client` is an npm workspace
+  with no lockfile of its own — its version bumps land in the root lockfile, already covered by this
+  path. If you ever add a new `actions/setup-node` step to a workflow in this repo, set this
+  explicitly rather than relying on the default.
 - The Worker router is `workers/api.mjs`; serving/overlay/health live in `src/*.mjs`; the contract in
   `schemas/` + `src/contracts.mjs`.
 

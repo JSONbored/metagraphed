@@ -102,16 +102,13 @@ jobs:
           fs.writeFileSync('packages/client/package.json', JSON.stringify(p, null, 2) + '\n');
           "
 
-      - name: Bump packages/client/package-lock.json
+      # packages/client is an npm workspace (#3066) — it has no lockfile of its
+      # own anymore; the root package-lock.json carries its version instead.
+      # Refresh just that lockfile entry (no node_modules changes, no re-resolve)
+      # to match the package.json bump above.
+      - name: Refresh root package-lock.json
         if: steps.contract-diff.outputs.changed == 'true'
-        run: |
-          node -e "
-          const fs = require('fs');
-          const l = JSON.parse(fs.readFileSync('packages/client/package-lock.json', 'utf8'));
-          l.version = '${{ steps.version.outputs.next }}';
-          if (l.packages && l.packages['']) l.packages[''].version = '${{ steps.version.outputs.next }}';
-          fs.writeFileSync('packages/client/package-lock.json', JSON.stringify(l, null, 2) + '\n');
-          "
+        run: npm install --package-lock-only --workspace=packages/client
 
       - name: Open sync PR (no-op if unchanged)
         if: steps.contract-diff.outputs.changed == 'true'
@@ -122,7 +119,7 @@ jobs:
           delete-branch: true
           add-paths: |
             packages/client/package.json
-            packages/client/package-lock.json
+            package-lock.json
           title: "chore(client): bump SDK to ${{ steps.version.outputs.next }}"
           commit-message: "chore(client): bump SDK to ${{ steps.version.outputs.next }}"
           body: |
