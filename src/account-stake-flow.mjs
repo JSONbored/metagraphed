@@ -35,6 +35,16 @@ function roundTao(value) {
   return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
+// Round the HHI concentration ratio to 4 decimals WITHOUT letting a sub-perfect
+// value round up to an exact 1 — the same anti-overstatement invariant the shared
+// concentration/turnover/reliability ratios enforce (roundRatio in concentration.mjs,
+// #2327). A wallet spread across two or more subnets (HHI < 1) must never render as
+// 1, which this card's own contract defines as "all flow in one subnet".
+function roundConcentration(value) {
+  const rounded = Math.round(value * 10000) / 10000;
+  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
+}
+
 // Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
 function toNumber(value) {
   const parsed = Number(value);
@@ -154,7 +164,7 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
   // subnet, -> 1/n as it spreads evenly; null when there is no flow to concentrate.
   const concentration =
     totalGross > 0
-      ? Math.round((grossSquares / (totalGross * totalGross)) * 10000) / 10000
+      ? roundConcentration(grossSquares / (totalGross * totalGross))
       : null;
 
   return {

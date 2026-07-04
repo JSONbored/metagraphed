@@ -115,6 +115,17 @@ describe("buildAccountStakeFlow", () => {
     );
   });
 
+  test("a near-monopoly across >1 subnet never rounds up to a perfect 1", () => {
+    // HHI = (100000^2 + 1^2) / 100001^2 = 0.99998... which a bare 4dp round would
+    // lift to exactly 1 — falsely reading as single-subnet concentration. The
+    // anti-overstatement clamp holds it at the largest sub-1 value (#2327).
+    const d = buildAccountStakeFlow([added(0, 100000), added(1, 1)], ADDR);
+    assert.equal(d.subnet_count, 2);
+    assert.equal(d.concentration, 0.9999);
+    // A genuine single-subnet wallet still reports a true, unclamped 1.
+    assert.equal(buildAccountStakeFlow([added(9, 5)], ADDR).concentration, 1);
+  });
+
   test("reports the dominant subnet by gross and ranks subnets by gross desc", () => {
     const d = buildAccountStakeFlow(
       [added(5, 10), added(9, 300), added(2, 50)],
