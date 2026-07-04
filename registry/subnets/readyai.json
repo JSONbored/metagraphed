@@ -156,6 +156,22 @@
       "schema_url": "https://api.readyai.ai/openapi.json",
       "source_urls": ["https://readyai.ai/docs"],
       "url": "https://api.readyai.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-33-readyai-subnet-api",
+      "kind": "subnet-api",
+      "name": "ReadyAI health API",
+      "notes": "Public no-auth health endpoint documented by the ReadyAI OpenAPI schema.",
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/health"
     }
   ],
   "website_url": "https://readyai.ai/"
