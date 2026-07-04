@@ -11,6 +11,12 @@ export const WEIGHTS_EVENT_KIND = "WeightsSet";
 export const CHAIN_WEIGHTS_LIMIT_DEFAULT = 20;
 export const CHAIN_WEIGHTS_LIMIT_MAX = 100;
 
+// Supported lookback windows (label -> days), matching the REST route's analytics
+// window set (7d/30d, default 7d). Kept next to the loader so the MCP tool's input
+// schema and runtime validation cannot drift from the endpoint.
+export const CHAIN_WEIGHTS_WINDOWS = { "7d": 7, "30d": 30 };
+export const DEFAULT_CHAIN_WEIGHTS_WINDOW = "7d";
+
 // Round an updates-per-validator ratio to a stable precision (2dp). Always finite and
 // non-negative here (events / distinct setters, with the divisor guarded below).
 function round(value, dp = 2) {

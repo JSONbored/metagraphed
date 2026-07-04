@@ -414,6 +414,16 @@ assert.ok(
     chainStakeFlow.network != null,
   "get_chain_stake_flow must return subnet_count + network + subnets[]",
 );
+const chainWeights = await callOk("get_chain_weights", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  Number.isInteger(chainWeights.subnet_count) &&
+    Array.isArray(chainWeights.subnets) &&
+    chainWeights.network != null,
+  "get_chain_weights must return subnet_count + network + subnets[]",
+);
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
   Array.isArray(meta.neurons),

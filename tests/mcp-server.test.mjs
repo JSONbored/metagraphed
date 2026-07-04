@@ -5530,6 +5530,8 @@ describe("MCP economics + metagraph data tools", () => {
     turnoverRows = [],
     blocks = [],
     accountEvents = [],
+    weightsNetworkRows = [],
+    weightsSubnetRows = [],
   } = {}) {
     return {
       prepare(sql) {
@@ -5538,6 +5540,16 @@ describe("MCP economics + metagraph data tools", () => {
             return {
               all() {
                 if (sql.includes("FROM account_events")) {
+                  // get_chain_weights reads a network aggregate (carries
+                  // newest_observed) then a per-subnet GROUP BY (carries
+                  // weight_sets); everything else uses the flat account_events
+                  // fixture (e.g. get_chain_stake_flow's single grouped read).
+                  if (sql.includes("newest_observed")) {
+                    return Promise.resolve({ results: weightsNetworkRows });
+                  }
+                  if (sql.includes("weight_sets")) {
+                    return Promise.resolve({ results: weightsSubnetRows });
+                  }
                   return Promise.resolve({ results: accountEvents });
                 }
                 if (sql.includes("FROM neurons")) {
@@ -6402,6 +6414,111 @@ describe("MCP economics + metagraph data tools", () => {
       chainStakeFlowEnv([
         stakeFlowRow(1, "StakeAdded", 100, 5),
         stakeFlowRow(1, "StakeRemoved", 20, 2),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  // The network-wide aggregate row loadChainWeights reads first (its COUNT/
+  // COUNT(DISTINCT)/MAX(observed_at) probe); a non-null newest_observed unlocks
+  // the per-subnet read.
+  function weightsNetwork(weight_sets, distinct_setters) {
+    return {
+      weight_sets,
+      distinct_setters,
+      newest_observed: 1_750_000_000_000,
+    };
+  }
+
+  // A per-subnet GROUP BY netuid row (COUNT weight_sets + distinct setters).
+  function weightsRow(netuid, weight_sets, distinct_setters) {
+    return { netuid, weight_sets, distinct_setters };
+  }
+
+  function chainWeightsEnv(network, subnets) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({
+          weightsNetworkRows: network ? [network] : [],
+          weightsSubnetRows: subnets,
+        }),
+      },
+    };
+  }
+
+  test("get_chain_weights returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_weights", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+    assert.equal(out.network.weight_sets, 0);
+    assert.equal(out.network.sets_per_setter, null);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_weights ranks subnets by weight sets with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_weights",
+      { window: "30d", limit: 10 },
+      chainWeightsEnv(weightsNetwork(30, 8), [
+        // netuid 2: fewer sets -> ranks last despite higher intensity.
+        weightsRow(2, 10, 4),
+        // netuid 1: most WeightsSet events -> ranks first.
+        weightsRow(1, 20, 5),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].weight_sets, 20);
+    assert.equal(out.subnets[0].sets_per_setter, 4); // 20 / 5
+    assert.equal(out.subnets[1].netuid, 2);
+    assert.equal(out.subnets[1].sets_per_setter, 2.5); // 10 / 4
+    // Network rollup: total sets 30 over 8 distinct setters -> 3.75.
+    assert.equal(out.network.weight_sets, 30);
+    assert.equal(out.network.distinct_setters, 8);
+    assert.equal(out.network.sets_per_setter, 3.75);
+    assert.equal(out.intensity_distribution.count, 2);
+    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("get_chain_weights rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_weights", { window: "90d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_weights caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_weights",
+      { limit: 1 },
+      chainWeightsEnv(weightsNetwork(30, 8), [
+        weightsRow(1, 20, 5),
+        weightsRow(2, 10, 4),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets feed the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.intensity_distribution.count, 2);
+  });
+
+  test("get_chain_weights payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_weights",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_weights",
+      {},
+      chainWeightsEnv(weightsNetwork(30, 8), [
+        weightsRow(1, 20, 5),
+        weightsRow(2, 10, 4),
       ]),
     );
     const validate = new Ajv2020().compile(schema);
