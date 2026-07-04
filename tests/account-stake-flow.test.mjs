@@ -105,6 +105,20 @@ describe("buildAccountStakeFlow", () => {
     );
   });
 
+  test("a near-pure flow_ratio does not round up to an exact +/-1 while counter-flow exists", () => {
+    // Accumulation with a sliver of counter-flow: net 99999 / gross 100001 =
+    // 0.99998, which a bare 4dp round lifts to exactly 1 (reads as pure
+    // one-directional flow with zero outflow). Clamp holds it below 1.
+    const acc = buildAccountStakeFlow([added(1, 100000), removed(1, 1)], ADDR);
+    assert.equal(acc.flow_ratio, 0.9999);
+    // The mirror case on the exit side must not round to a flat -1 either.
+    const exit = buildAccountStakeFlow([added(1, 1), removed(1, 100000)], ADDR);
+    assert.equal(exit.flow_ratio, -0.9999);
+    // A genuinely one-directional wallet still reports a true, unclamped +/-1.
+    assert.equal(buildAccountStakeFlow([added(9, 5)], ADDR).flow_ratio, 1);
+    assert.equal(buildAccountStakeFlow([removed(9, 5)], ADDR).flow_ratio, -1);
+  });
+
   test("concentration is the HHI of gross flow across subnets", () => {
     // all flow in one subnet -> 1
     assert.equal(buildAccountStakeFlow([added(1, 100)], ADDR).concentration, 1);

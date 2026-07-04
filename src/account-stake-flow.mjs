@@ -88,7 +88,16 @@ function classifyDirection(netTao, grossTao) {
 // net / gross, rounded to 4dp; null when gross is 0 (ratio undefined with no flow).
 function flowRatio(netTao, grossTao) {
   if (grossTao <= 0) return null;
-  return Math.round((netTao / grossTao) * 10000) / 10000;
+  const raw = netTao / grossTao;
+  const rounded = Math.round(raw * 10000) / 10000;
+  // net/gross lies in [-1, 1]; an exact +1/-1 means purely one-directional flow
+  // (no counter-flow at all). When counter-flow exists (|net| < gross) a
+  // sub-perfect ratio must not round to +/-1 and misread as a pure direction --
+  // the same anti-overstatement clamp roundConcentration applies to this card's
+  // HHI (#2997), extended to both signs.
+  if (rounded >= 1 && raw < 1) return 0.9999;
+  if (rounded <= -1 && raw > -1) return -0.9999;
+  return rounded;
 }
 
 // Shape an account's per-(netuid, kind) StakeAdded/StakeRemoved aggregate into a
