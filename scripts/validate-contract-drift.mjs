@@ -43,6 +43,10 @@ const typegen = spawnSync(
   {
     cwd: repoRoot,
     encoding: "utf8",
+    // The generated .d.ts is ~1 MiB and grows with every route; the default 1 MiB
+    // stdout cap would SIGTERM the child (ENOBUFS) and misreport it as a drift
+    // failure. Match the 32 MiB buffer the build's generate-types.mjs uses.
+    maxBuffer: 32 * 1024 * 1024,
   },
 );
 if (typegen.status !== 0) {

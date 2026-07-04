@@ -19,6 +19,10 @@ const result = spawnSync(
     cwd: repoRoot,
     encoding: "utf8",
     stdio: "pipe",
+    // The generated .d.ts is ~1 MiB and growing with every new route; the default
+    // 1 MiB stdout cap would SIGTERM the child (ENOBUFS) mid-stream. Match the
+    // 32 MiB buffer the other build scripts already use so type-gen keeps working.
+    maxBuffer: 32 * 1024 * 1024,
   },
 );
 
