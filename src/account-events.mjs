@@ -526,15 +526,8 @@ function mergeObserved(existing, next, choose) {
   return choose(existing, nextValue);
 }
 
-// Windowed event summary for one subnet: compact kind/category counts plus a
-// small newest-first evidence slice. This complements /subnets/{netuid}/events,
-// which exposes the raw paginated feed.
-export function buildSubnetEventSummary(
-  kindRows,
-  recentRows,
-  netuid,
-  { window, limit } = {},
-) {
+// Shared windowed summary payload for subnet- and account-scoped event summaries.
+function summarizeEventRows(kindRows, recentRows, { window, limit } = {}) {
   const eventKinds = [];
   const categories = new Map();
   let latestObserved = null;
@@ -628,7 +621,6 @@ export function buildSubnetEventSummary(
   }
   return {
     schema_version: 1,
-    netuid,
     window: window ?? null,
     observed_at: toIso(latestObserved),
     total_events: eventKinds.reduce((sum, row) => sum + row.event_count, 0),
@@ -641,6 +633,50 @@ export function buildSubnetEventSummary(
     recent_events: recentEvents,
   };
 }
+
+// Windowed event summary for one subnet: compact kind/category counts plus a
+// small newest-first evidence slice. This complements /subnets/{netuid}/events,
+// which exposes the raw paginated feed.
+export function buildSubnetEventSummary(
+  kindRows,
+  recentRows,
+  netuid,
+  { window, limit } = {},
+) {
+  return {
+    ...summarizeEventRows(kindRows, recentRows, { window, limit }),
+    netuid,
+  };
+}
+
+// Windowed event summary for one account (hotkey or coldkey): the dashboard-
+// friendly companion to /accounts/{ss58}/events.
+export function buildAccountEventSummary(
+  kindRows,
+  recentRows,
+  ss58,
+  { window, limit, netuid, subnet_count } = {},
+) {
+  return {
+    ...summarizeEventRows(kindRows, recentRows, { window, limit }),
+    ss58,
+    netuid: netuid ?? null,
+    subnet_count: subnet_count ?? 0,
+  };
+}
+
+const EVENT_SUMMARY_AGG_COLUMNS =
+  "event_kind, hotkey, coldkey, netuid, amount_tao, alpha_amount, block_number, observed_at";
+
+const EVENT_SUMMARY_KIND_AGG_SQL =
+  "SELECT event_kind, COUNT(*) AS event_count, " +
+  "COUNT(DISTINCT hotkey) AS hotkey_count, " +
+  "COUNT(DISTINCT coldkey) AS coldkey_count, " +
+  "COALESCE(SUM(amount_tao), 0) AS amount_tao, " +
+  "COALESCE(SUM(alpha_amount), 0) AS alpha_amount, " +
+  "MIN(block_number) AS first_block, MAX(block_number) AS last_block, " +
+  "MIN(observed_at) AS first_observed_at, MAX(observed_at) AS last_observed_at " +
+  "FROM";
 
 export async function loadSubnetEventSummary(
   d1,
@@ -683,6 +719,67 @@ export async function loadSubnetEventSummary(
   return buildSubnetEventSummary(kindRows, recentRows, netuid, {
     window: effectiveWindowLabel,
     limit: lim,
+  });
+}
+
+export async function loadAccountEventSummary(
+  d1,
+  ss58,
+  {
+    windowLabel = DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
+    limit = SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+    netuid = null,
+  } = {},
+) {
+  const effectiveWindowLabel = Object.hasOwn(
+    SUBNET_EVENT_SUMMARY_WINDOWS,
+    windowLabel,
+  )
+    ? windowLabel
+    : DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
+  const days = SUBNET_EVENT_SUMMARY_WINDOWS[effectiveWindowLabel];
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const lim = clampLimit(limit, {
+    defaultLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+    maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  });
+  const filterParts = ["AND observed_at >= ?"];
+  const filterParams = [cutoff];
+  if (netuid != null) {
+    filterParts.push("AND netuid = ?");
+    filterParams.push(netuid);
+  }
+  const filters = filterParts.join(" ");
+  const union = accountEventIndexedUnion(
+    EVENT_SUMMARY_AGG_COLUMNS,
+    filters,
+    filterParams,
+    { netuidFiltered: netuid != null },
+  );
+  const params = union.paramsFor(ss58);
+  const kindRows = await d1(
+    `${EVENT_SUMMARY_KIND_AGG_SQL} (${union.sql}) GROUP BY event_kind ORDER BY event_count DESC, event_kind ASC`,
+    params,
+  );
+  const subnetRows = await d1(
+    `SELECT COUNT(DISTINCT netuid) AS subnet_count FROM (${union.sql}) WHERE netuid IS NOT NULL`,
+    params,
+  );
+  const recentUnion = accountEventIndexedUnion(
+    ACCOUNT_EVENT_COLUMNS,
+    filters,
+    filterParams,
+    { netuidFiltered: netuid != null },
+  );
+  const recentRows = await d1(
+    `SELECT * FROM ${recentUnion.sql} ORDER BY block_number DESC, event_index DESC LIMIT ?`,
+    [...recentUnion.paramsFor(ss58), lim],
+  );
+  return buildAccountEventSummary(kindRows, recentRows, ss58, {
+    window: effectiveWindowLabel,
+    limit: lim,
+    netuid,
+    subnet_count: toCount(subnetRows[0]?.subnet_count),
   });
 }
 

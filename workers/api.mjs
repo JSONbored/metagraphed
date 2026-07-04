@@ -78,6 +78,7 @@ import {
   handleSubnetValidators,
   handleSubnetEventSummary,
   handleSubnetEvents,
+  handleAccountEventSummary,
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetIdentityHistory,
@@ -285,6 +286,7 @@ import {
   SUBNET_VALIDATORS_PATH_PATTERN,
   SUBNET_EVENT_SUMMARY_PATH_PATTERN,
   SUBNET_EVENTS_PATH_PATTERN,
+  ACCOUNT_EVENT_SUMMARY_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
@@ -1595,6 +1597,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         request,
         env,
         accountHistoryMatch[1],
+        resolved.url,
+      );
+    }
+    const accountEventSummaryMatch = ACCOUNT_EVENT_SUMMARY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountEventSummaryMatch) {
+      return handleAccountEventSummary(
+        request,
+        env,
+        accountEventSummaryMatch[1],
         resolved.url,
       );
     }

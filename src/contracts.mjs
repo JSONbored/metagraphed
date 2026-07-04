@@ -1038,6 +1038,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountEventsArtifact",
   ),
   artifact(
+    "account-event-summary",
+    "/metagraph/accounts/{ss58}/event-summary.json",
+    "Windowed event summary for one account (hotkey or coldkey): account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, subnet footprint, first/last evidence bounds, and a small newest-first evidence slice, served live from D1 at /api/v1/accounts/{ss58}/event-summary (no static file).",
+    "AccountEventSummaryArtifact",
+  ),
+  artifact(
     "account-history",
     "/metagraph/accounts/{ss58}/history.json",
     "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
@@ -2145,6 +2151,24 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-event-summary",
+    "GET",
+    "/api/v1/accounts/{ss58}/event-summary",
+    "/metagraph/accounts/{ss58}/event-summary.json",
+    "Fetch a windowed event summary for one account (hotkey or coldkey): account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, subnet footprint, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); optional ?netuid= scopes to one subnet; ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 50 } },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),

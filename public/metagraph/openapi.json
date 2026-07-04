@@ -516,6 +516,101 @@
         ],
         "type": "object"
       },
+      "AccountEventSummaryArtifact": {
+        "additionalProperties": true,
+        "description": "Windowed event summary for one account (hotkey or coldkey): account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, subnet footprint, first/last evidence bounds, and a small newest-first evidence slice. Served live at /api/v1/accounts/{ss58}/event-summary (no static file).",
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEventCategorySummary"
+            },
+            "type": "array"
+          },
+          "category_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEventKindSummary"
+            },
+            "type": "array"
+          },
+          "kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recent_event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recent_events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
+            "type": "string"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "netuid",
+          "window",
+          "observed_at",
+          "total_events",
+          "kind_count",
+          "category_count",
+          "subnet_count",
+          "recent_event_count",
+          "limit",
+          "categories",
+          "event_kinds",
+          "recent_events"
+        ],
+        "type": "object"
+      },
       "AccountExtrinsicsArtifact": {
         "additionalProperties": true,
         "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Page with limit/offset or follow next_cursor, the opaque keyset token emitted on full pages. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
@@ -18151,6 +18246,209 @@
           }
         },
         "summary": "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present.",
+        "tags": [
+          "accounts",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/accounts/{ss58}/event-summary": {
+      "get": {
+        "operationId": "accountEventSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "categories": [
+                      {
+                        "alpha_amount": 0.5,
+                        "amount_tao": 0.5,
+                        "category": "registration",
+                        "event_count": 1,
+                        "first_block": 5000000,
+                        "first_observed_at": "2026-06-01T00:00:00.000Z",
+                        "kind_count": 1,
+                        "last_block": 5000000,
+                        "last_observed_at": "2026-06-01T00:00:00.000Z"
+                      }
+                    ],
+                    "category_count": 1,
+                    "event_kinds": [
+                      {
+                        "alpha_amount": 0.5,
+                        "amount_tao": 0.5,
+                        "category": "registration",
+                        "coldkey_count": 1,
+                        "event_count": 1,
+                        "event_kind": "example",
+                        "first_block": 5000000,
+                        "first_observed_at": "2026-06-01T00:00:00.000Z",
+                        "hotkey_count": 1,
+                        "last_block": 5000000,
+                        "last_observed_at": "2026-06-01T00:00:00.000Z"
+                      }
+                    ],
+                    "kind_count": 1,
+                    "limit": 1,
+                    "netuid": 7,
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "recent_event_count": 1,
+                    "recent_events": [
+                      {
+                        "block_number": 5000000,
+                        "event_kind": "example"
+                      }
+                    ],
+                    "schema_version": 1,
+                    "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                    "subnet_count": 1,
+                    "total_events": 1,
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AccountEventSummaryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch a windowed event summary for one account (hotkey or coldkey): account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, subnet footprint, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); optional ?netuid= scopes to one subnet; ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
         "tags": [
           "accounts",
           "analytics"

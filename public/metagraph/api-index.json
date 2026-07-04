@@ -492,6 +492,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-event-summary",
+      "path": "/metagraph/accounts/{ss58}/event-summary.json",
+      "schema_ref": "#/components/schemas/AccountEventSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-history",
       "path": "/metagraph/accounts/{ss58}/history.json",
       "schema_ref": "#/components/schemas/AccountHistoryArtifact",
@@ -5202,6 +5209,45 @@
           "name": "cursor",
           "schema": {
             "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/event-summary.json",
+      "cache": "short",
+      "description": "Fetch a windowed event summary for one account (hotkey or coldkey): account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, subnet footprint, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); optional ?netuid= scopes to one subnet; ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
+      "id": "account-event-summary",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/event-summary",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
           }
         }
       ]

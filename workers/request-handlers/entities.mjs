@@ -71,6 +71,7 @@ import {
   loadAccountEvents,
   loadSubnetEvents,
   loadSubnetEventSummary,
+  loadAccountEventSummary,
   loadAccountExtrinsics,
   loadAccountTransfers,
   loadAccountSubnets,
@@ -1789,6 +1790,58 @@ export async function handleSubnetEventSummary(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/event-summary.json`,
+        data.observed_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/event-summary: compact windowed account_events
+// aggregates by kind/category plus a small newest-first evidence slice. This is
+// the dashboard-friendly companion to the raw /events feed.
+export async function handleAccountEventSummary(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, [
+    "window",
+    "limit",
+    "netuid",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowLabel =
+    url.searchParams.get("window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      SUBNET_EVENT_SUMMARY_WINDOWS,
+      windowLabel,
+    )
+  ) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `window must be one of ${Object.keys(SUBNET_EVENT_SUMMARY_WINDOWS).join(", ")}.`,
+    });
+  }
+  const parsedLimit = parseLimitParam(url, {
+    defaultLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+    maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  });
+  if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
+  const netuid = parseNonNegativeIntParam(
+    url.searchParams.get("netuid"),
+    "netuid",
+  );
+  if (netuid.error) return analyticsQueryError(netuid.error);
+  const data = await loadAccountEventSummary(d1Runner(env), ss58, {
+    windowLabel,
+    limit: parsedLimit.limit,
+    netuid: netuid.value,
+  });
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/event-summary.json`,
         data.observed_at,
       ),
     },

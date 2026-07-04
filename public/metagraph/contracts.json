@@ -633,6 +633,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Windowed event summary for one account (hotkey or coldkey): account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, subnet footprint, first/last evidence bounds, and a small newest-first evidence slice, served live from D1 at /api/v1/accounts/{ss58}/event-summary (no static file).",
+      "id": "account-event-summary",
+      "path": "/metagraph/accounts/{ss58}/event-summary.json",
+      "schema_ref": "#/components/schemas/AccountEventSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
       "id": "account-history",
       "path": "/metagraph/accounts/{ss58}/history.json",

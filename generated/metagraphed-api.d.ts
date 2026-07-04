@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/event-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a windowed event summary for one account (hotkey or coldkey): account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, subnet footprint, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); optional ?netuid= scopes to one subnet; ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier. */
+        get: operations["accountEventSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/events": {
         parameters: {
             query?: never;
@@ -2083,6 +2100,27 @@ export interface components {
             offset?: number;
             schema_version: number;
             ss58: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Windowed event summary for one account (hotkey or coldkey): account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, subnet footprint, first/last evidence bounds, and a small newest-first evidence slice. Served live at /api/v1/accounts/{ss58}/event-summary (no static file). */
+        AccountEventSummaryArtifact: {
+            categories: components["schemas"]["SubnetEventCategorySummary"][];
+            category_count: number;
+            event_kinds: components["schemas"]["SubnetEventKindSummary"][];
+            kind_count: number;
+            limit: number;
+            netuid: number | null;
+            /** Format: date-time */
+            observed_at: string | null;
+            recent_event_count: number;
+            recent_events: components["schemas"]["AccountEvent"][];
+            schema_version: number;
+            ss58: string;
+            subnet_count: number;
+            total_events: number;
+            /** @enum {string} */
+            window: "7d" | "30d" | "90d";
         } & {
             [key: string]: unknown;
         };
@@ -6710,6 +6748,155 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountCounterpartiesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountEventSummary: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+                netuid?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "categories": [
+                     *           {
+                     *             "alpha_amount": 0.5,
+                     *             "amount_tao": 0.5,
+                     *             "category": "registration",
+                     *             "event_count": 1,
+                     *             "first_block": 5000000,
+                     *             "first_observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "kind_count": 1,
+                     *             "last_block": 5000000,
+                     *             "last_observed_at": "2026-06-01T00:00:00.000Z"
+                     *           }
+                     *         ],
+                     *         "category_count": 1,
+                     *         "event_kinds": [
+                     *           {
+                     *             "alpha_amount": 0.5,
+                     *             "amount_tao": 0.5,
+                     *             "category": "registration",
+                     *             "coldkey_count": 1,
+                     *             "event_count": 1,
+                     *             "event_kind": "example",
+                     *             "first_block": 5000000,
+                     *             "first_observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey_count": 1,
+                     *             "last_block": 5000000,
+                     *             "last_observed_at": "2026-06-01T00:00:00.000Z"
+                     *           }
+                     *         ],
+                     *         "kind_count": 1,
+                     *         "limit": 1,
+                     *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "recent_event_count": 1,
+                     *         "recent_events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event_kind": "example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *         "subnet_count": 1,
+                     *         "total_events": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountEventSummaryArtifact"];
                     };
                 };
             };

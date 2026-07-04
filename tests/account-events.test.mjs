@@ -13,11 +13,13 @@ import {
   buildAccountSummary,
   buildAccountEvents,
   buildSubnetEventSummary,
+  buildAccountEventSummary,
   buildAccountSubnets,
   loadAccountSummary,
   loadAccountEvents,
   loadSubnetEvents,
   loadSubnetEventSummary,
+  loadAccountEventSummary,
   loadAccountHistory,
   loadAccountExtrinsics,
   loadAccountSubnets,
@@ -1683,6 +1685,71 @@ test("loadSubnetEventSummary falls back to the default direct-call window", asyn
   const expectedCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
   assert.ok(Math.abs(cutoff - expectedCutoff) < 1000);
   assert.equal(out.window, "30d");
+});
+
+test("buildAccountEventSummary mirrors subnet summary shape with ss58 footprint", () => {
+  const ss58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const out = buildAccountEventSummary(
+    [
+      {
+        event_kind: "StakeAdded",
+        event_count: 2,
+        hotkey_count: 1,
+        coldkey_count: 1,
+        amount_tao: 3,
+        alpha_amount: 0,
+        first_block: 100,
+        last_block: 200,
+        first_observed_at: 1_750_000_000_000,
+        last_observed_at: 1_750_001_000_000,
+      },
+    ],
+    [
+      {
+        block_number: 200,
+        event_index: 1,
+        event_kind: "StakeAdded",
+        hotkey: ss58,
+        coldkey: null,
+        netuid: 7,
+        uid: 1,
+        amount_tao: 1.5,
+        observed_at: 1_750_001_000_000,
+      },
+    ],
+    ss58,
+    { window: "7d", limit: 5, netuid: null, subnet_count: 1 },
+  );
+  assert.equal(out.ss58, ss58);
+  assert.equal(out.netuid, null);
+  assert.equal(out.subnet_count, 1);
+  assert.equal(out.total_events, 2);
+  assert.equal(out.event_kinds[0].category, "stake");
+});
+
+test("loadAccountEventSummary uses indexed union seeks and optional netuid filter", async () => {
+  const ss58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const calls = [];
+  const out = await loadAccountEventSummary(
+    async (sql, params) => {
+      calls.push({ sql, params });
+      if (/COUNT\(DISTINCT netuid\)/.test(sql)) {
+        return [{ subnet_count: 2 }];
+      }
+      if (/GROUP BY event_kind/.test(sql)) {
+        return [{ event_kind: "Transfer", event_count: 4 }];
+      }
+      return [{ block_number: 10, event_index: 0, event_kind: "Transfer" }];
+    },
+    ss58,
+    { windowLabel: "7d", limit: 3, netuid: 7 },
+  );
+  assert.equal(calls.length, 3);
+  assert.match(calls[0].sql, /INDEXED BY idx_account_events_hotkey_netuid/);
+  assert.match(calls[0].sql, /AND netuid = \?/);
+  assert.equal(out.netuid, 7);
+  assert.equal(out.subnet_count, 2);
+  assert.equal(out.total_events, 4);
 });
 
 test("loadAccountEvents emits a next_cursor only on a full page", async () => {

@@ -328,6 +328,7 @@ const checks = [
   ],
   [
     "/api/v1/subnets/7/event-summary",
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/event-summary",
     (body) => {
       assert.equal(body.data.netuid, 7);
       assert.equal(Array.isArray(body.data.categories), true);
