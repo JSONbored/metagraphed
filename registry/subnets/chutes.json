@@ -388,6 +388,26 @@
       "schema_status": "not-captured",
       "source_urls": ["https://chutes.ai/llms.txt"],
       "url": "https://llm.chutes.ai/v1/models"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-sse",
+      "kind": "sse",
+      "name": "Chutes streaming chat completions",
+      "notes": "POST /v1/chat/completions with `stream: true` yields line-streamed chunks. Endpoint requires an Authorization: Bearer token.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "statxc"
+      },
+      "source_urls": [
+        "https://chutes.ai/docs/getting-started/running-a-chute",
+        "https://chutes.ai/docs/guides/streaming",
+        "https://chutes.ai/llms.txt"
+      ],
+      "url": "https://llm.chutes.ai/v1/chat/completions"
     }
   ],
   "website_url": "https://chutes.ai/"
