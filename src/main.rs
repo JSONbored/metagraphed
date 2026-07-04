@@ -70,7 +70,6 @@ use subxt::utils::AccountId32;
 use subxt::OnlineClient;
 use tokio::sync::{RwLock, Semaphore};
 
-const RAO: f64 = 1e9;
 const BLOCKS_PER_DAY: u64 = 7200;
 // finney ~12s block time; observed_at derived from height when a block's own
 // Timestamp.set can't be decoded (see decode_block's fallback). Matches the
@@ -351,18 +350,25 @@ fn idx_of(v: &Value<()>) -> Option<i64> {
     int_of(v).filter(|n| *n <= 65535).map(|n| n as i64)
 }
 
-/// py `_tao`: rao / 1e9 as a float, rendered as a decimal string for NUMERIC.
+/// py `_tao`: rao rendered as an EXACT TAO decimal string for Postgres NUMERIC.
+/// Never routes through f64 (the old `n as f64 / RAO` here was the same precision-
+/// loss shape as metagraphed#2588's "Mechanism B" -- an exact rao integer discarded
+/// to a lossy double one line before rendering -- just for this Rust indexer's
+/// Postgres sink, which #2588's D1/SQLite-REAL framing never covered). Postgres
+/// NUMERIC is exact-precision, so an exact decimal string here is exact forever,
+/// with no ~9M-TAO ceiling at all.
 fn tao_str(v: &Value<()>) -> Option<String> {
-    let n = int_of(v)?;
-    Some(fmt_f64(n as f64 / RAO))
-}
-
-/// Render an f64 the way python's repr/str would for NUMERIC text (shortest round-trip).
-fn fmt_f64(x: f64) -> String {
-    // Rust's default f64 Display is shortest-round-trip (like python repr) for
-    // non-exponential magnitudes; tao amounts are well within that range.
-    let s = format!("{}", x);
-    s
+    let rao = int_of(v)?;
+    let whole = rao / 1_000_000_000;
+    let frac = rao % 1_000_000_000;
+    if frac == 0 {
+        return Some(whole.to_string());
+    }
+    let mut frac_str = format!("{frac:09}");
+    while frac_str.ends_with('0') {
+        frac_str.pop();
+    }
+    Some(format!("{whole}.{frac_str}"))
 }
 
 fn nth<'a>(fields: &'a [&'a Value<()>], i: usize) -> Option<&'a Value<()>> {
