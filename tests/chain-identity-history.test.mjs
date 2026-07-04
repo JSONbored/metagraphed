@@ -27,6 +27,13 @@ describe("readIdentityHistoryCacheStamp", () => {
     assert.equal(stamp, "1700000000000");
   });
 
+  test("coerces D1 numeric-string observed_at stamps", async () => {
+    const stamp = await readIdentityHistoryCacheStamp(
+      envWith([{ observed_at: "1700000000000" }]),
+    );
+    assert.equal(stamp, "1700000000000");
+  });
+
   test("returns null when the store is cold or the stamp is non-positive/non-integer", async () => {
     assert.equal(
       await readIdentityHistoryCacheStamp(envWith([{ observed_at: null }])),

@@ -372,10 +372,7 @@ export async function readIdentityHistoryCacheStamp(env) {
     [],
   );
   if (hasD1FallbackRows(rows)) return null;
-  const observedAt = rows[0]?.observed_at;
-  return Number.isInteger(observedAt) && observedAt > 0
-    ? String(observedAt)
-    : null;
+  return coerceCapturedAtStamp(rows[0]?.observed_at);
 }
 
 // Edge-cache stamp for routes derived from the neuron_daily rollup (the daily-snapshot tier), NOT
