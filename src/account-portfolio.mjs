@@ -20,6 +20,20 @@ function round9(value) {
   return Math.round(value * SCALE) / SCALE;
 }
 
+// Sum in rao-integer BigInt space, not float space -- accumulating the wallet's
+// per-subnet stake/emission with plain `+=` compounds rounding error across the
+// positions even when each value is itself rao-exact, so convert each addend to
+// integer rao, sum the integers, and convert back once at the end. Mirrors the
+// toRaoBig/raoBigToTao pattern in concentration.mjs / counterparties.mjs (#2933).
+function toRaoBig(tao) {
+  const rao = Math.round(tao * SCALE);
+  return Number.isFinite(rao) ? BigInt(rao) : 0n;
+}
+
+function raoBigToTao(rao) {
+  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / SCALE;
+}
+
 // Coerce a D1 numeric cell (number, numeric string, or null) to a finite number.
 function toNumber(value) {
   const n = Number(value);
@@ -69,8 +83,8 @@ export function buildAccountPortfolio(rows, ss58) {
   const positions = [];
   const netuids = new Set();
   let validatorCount = 0;
-  let totalStake = 0;
-  let totalEmission = 0;
+  let totalStakeRao = 0n;
+  let totalEmissionRao = 0n;
   let capturedAt = null;
   for (const row of list) {
     const netuid = toInt(row?.netuid);
@@ -84,8 +98,8 @@ export function buildAccountPortfolio(rows, ss58) {
     const emission = toNumber(row?.emission_tao);
     const isValidator = Number(row?.validator_permit) === 1;
     if (isValidator) validatorCount += 1;
-    totalStake += stake;
-    totalEmission += emission;
+    totalStakeRao += toRaoBig(stake);
+    totalEmissionRao += toRaoBig(emission);
     positions.push({
       netuid,
       uid: toInt(row?.uid),
@@ -102,6 +116,9 @@ export function buildAccountPortfolio(rows, ss58) {
   }
   // Biggest position first; tie-break by netuid for a stable order.
   positions.sort((a, b) => b.stake_tao - a.stake_tao || a.netuid - b.netuid);
+  // Convert the rao-integer accumulators back to TAO once, at the end.
+  const totalStake = raoBigToTao(totalStakeRao);
+  const totalEmission = raoBigToTao(totalEmissionRao);
   return {
     schema_version: 1,
     ss58,

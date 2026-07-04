@@ -64,6 +64,50 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
+  test("sums the wallet totals in exact rao space, not float", () => {
+    // A wallet registered across 100 subnets, each position a 9-dp stake whose
+    // scaled rao is exactly representable. Summing them in float TAO space drifts
+    // (the running sum crosses 2^53 scaled), so the naive `+=` reports
+    // 12345678.90123447 instead of the true integer-rao total 12345678.9012345.
+    const stake = 123456.789012345;
+    const rows = Array.from({ length: 100 }, (_, i) => ({
+      netuid: i + 1,
+      uid: i,
+      stake_tao: stake,
+      emission_tao: 0,
+      validator_permit: 0,
+      active: 1,
+      captured_at: 1_750_000_000_000,
+    }));
+    const out = buildAccountPortfolio(rows, SS58);
+    assert.equal(out.total_stake_tao, 12345678.9012345);
+    // The naive float accumulation would have produced this drifted value.
+    let floatSum = 0;
+    for (const row of rows) floatSum += row.stake_tao;
+    assert.notEqual(Math.round(floatSum * 1e9) / 1e9, 12345678.9012345);
+  });
+
+  test("a huge stake that overflows the rao scale stays finite (no BigInt throw)", () => {
+    // toRaoBig clamps a non-finite scaled value to 0n so a stake so large that
+    // stake * 1e9 overflows to Infinity drops to 0 rather than throwing on
+    // BigInt(Infinity) — keeping the wallet totals finite JSON.
+    const out = buildAccountPortfolio(
+      [
+        {
+          netuid: 1,
+          uid: 0,
+          stake_tao: Number.MAX_VALUE,
+          emission_tao: 0,
+          validator_permit: 0,
+          active: 1,
+        },
+      ],
+      SS58,
+    );
+    assert.equal(out.total_stake_tao, 0);
+    assert.equal(out.overall_yield, null);
+  });
+
   test("positions carry per-position economics + yield, biggest stake first", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
     assert.equal(out.positions[0].netuid, 7); // 1000 stake sorts first
