@@ -180,6 +180,11 @@ import {
 } from "../../src/stake-flow.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
+  loadAccountRegistrations,
+  REGISTRATION_WINDOWS,
+  DEFAULT_REGISTRATION_WINDOW,
+} from "../../src/account-registrations.mjs";
+import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
   DEFAULT_MOVERS_WINDOW,
@@ -1835,6 +1840,40 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/stake-flow.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/registrations: the account's per-subnet NeuronRegistered footprint
+// over a 7d/30d/90d window — registration count + first/last timestamps per subnet, an HHI
+// concentration of where its registration activity is focused, and the dominant subnet.
+// account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros (never 404).
+export async function handleAccountRegistrations(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_REGISTRATION_WINDOW;
+  if (!Object.hasOwn(REGISTRATION_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, REGISTRATION_WINDOWS),
+    });
+  }
+  const { data, generatedAt } = await loadAccountRegistrations(
+    d1Runner(env),
+    ss58,
+    { windowLabel: windowParam },
+  );
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/registrations.json`,
         generatedAt,
       ),
     },

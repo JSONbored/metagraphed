@@ -1128,6 +1128,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountStakeFlowArtifact",
   ),
   artifact(
+    "account-registrations",
+    "/metagraph/accounts/{ss58}/registrations.json",
+    "One account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first/last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/registrations (no static file). Windowed registration events (incl. re-registrations after a deregistration) — the account-level companion to /api/v1/chain/registrations, distinct from /api/v1/accounts/{ss58}/subnets (current registration state).",
+    "AccountRegistrationsArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -2460,6 +2466,22 @@ export const API_ROUTES = [
       {
         name: "direction",
         schema: { type: "string", enum: ["all", "in", "out"] },
+      },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-registrations",
+    "GET",
+    "/api/v1/accounts/{ss58}/registrations",
+    "/metagraph/accounts/{ss58}/registrations.json",
+    "Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Windowed registration events including re-registrations after a deregistration; the account-level companion to GET /api/v1/chain/registrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state).",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
       },
     ],
     [{ name: "ss58", schema: { type: "string" } }],

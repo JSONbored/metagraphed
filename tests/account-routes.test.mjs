@@ -538,3 +538,68 @@ test("GET /accounts/{ss58}/stake-flow is schema-stable when D1 is cold (never 40
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
 });
+
+test("GET /accounts/{ss58}/registrations routes to the per-account registrations handler", async () => {
+  const env = dbWith({
+    events: [
+      {
+        netuid: 1,
+        registrations: 3,
+        first_observed: 1750000000000,
+        last_observed: 1750009000000,
+      },
+      {
+        netuid: 7,
+        registrations: 1,
+        first_observed: 1750001000000,
+        last_observed: 1750001000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/registrations?window=30d`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.window, "30d");
+  assert.equal(body.data.total_registrations, 4);
+  assert.equal(body.data.subnets[0].netuid, 1); // most registrations -> leads + dominant
+  assert.equal(body.data.dominant_netuid, 1);
+  assert.equal(body.meta.source, "chain-events");
+});
+
+test("GET /accounts/{ss58}/registrations is schema-stable when D1 is cold (never 404)", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/registrations`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.subnet_count, 0);
+  assert.equal(Array.isArray(body.data.subnets), true);
+});
+
+test("GET /accounts/{ss58}/registrations rejects an unknown query param with 400", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/registrations?bogus=1`),
+    dbWith({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+});
+
+test("GET /accounts/{ss58}/registrations rejects an unsupported window with 400", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/registrations?window=1y`),
+    dbWith({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.meta.parameter, "window");
+});
