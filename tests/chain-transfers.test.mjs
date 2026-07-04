@@ -65,6 +65,27 @@ describe("buildChainTransfers", () => {
     assert.equal(d.top_sender_share, 0.8);
   });
 
+  test("clamps a near-monopoly top_sender_share below a flat 1 when other senders exist", () => {
+    // The top senders moved 249990 of 250000 TAO (99.996%); the remaining 10 TAO
+    // came from senders outside the top-N leaderboard (unique_senders is 3). At 4dp
+    // 249990/250000 rounds to 1.0000 without the clamp — which would report the top
+    // senders as 100% of outflow while other accounts still sent TAO.
+    const d = buildChainTransfers({
+      totals: { total_volume_tao: 250000, unique_senders: 3 },
+      senders: [party("5Sa", 249990)],
+    });
+    assert.ok(d.top_sender_share < 1, "near-total share must stay below 1");
+    assert.equal(d.top_sender_share, 0.9999);
+  });
+
+  test("keeps an exact 1 top_sender_share when the top senders are the whole volume", () => {
+    const d = buildChainTransfers({
+      totals: { total_volume_tao: 100, unique_senders: 2 },
+      senders: [party("5Sa", 60), party("5Sb", 40)], // 100 / 100
+    });
+    assert.equal(d.top_sender_share, 1);
+  });
+
   test("top_sender_share is null when there is no volume", () => {
     const d = buildChainTransfers({
       totals: { total_volume_tao: 0 },

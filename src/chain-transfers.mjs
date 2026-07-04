@@ -36,6 +36,20 @@ function toCount(value) {
   return Math.max(0, Math.trunc(toNumber(value)));
 }
 
+// Round a 0..1 concentration ratio to a stable precision WITHOUT letting a
+// sub-perfect value round up to an exact 1 — the same anti-overstatement guard
+// the sibling ratios apply (roundRatio in src/concentration.mjs, round in
+// src/chain-turnover.mjs, roundShare in src/chain-transfer-pairs.mjs #2971).
+// top_sender_share divides the summed top-N senders by the full-window total, so
+// a near-monopoly (e.g. 249990/250000 = 0.99996, with other senders still present
+// in unique_senders) must not surface as a flat 1 ("100% of outflow"). A genuine
+// single-sender window where the top senders ARE the whole volume keeps a true 1.
+function roundShare(value, dp = 4) {
+  const factor = 10 ** dp;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
+}
+
 // Shape one side's leaderboard rows (address + summed volume + transfer count) into a
 // ranked list. Drops rows with a missing address so a NULL sender/receiver cannot leak in.
 function shapeParties(rows) {
@@ -65,9 +79,7 @@ export function buildChainTransfers({
   const topReceivers = shapeParties(receivers);
   const topSenderVolume = topSenders.reduce((sum, s) => sum + s.volume_tao, 0);
   const topSenderShare =
-    totalVolume > 0
-      ? Math.round((topSenderVolume / totalVolume) * 10000) / 10000
-      : null;
+    totalVolume > 0 ? roundShare(topSenderVolume / totalVolume) : null;
   return {
     schema_version: 1,
     window: window ?? null,
