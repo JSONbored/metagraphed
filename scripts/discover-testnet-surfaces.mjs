@@ -15,7 +15,9 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
+  isJsonContentType,
   isUnsafeResolvedUrl,
   readJson,
   repoRoot,
@@ -89,7 +91,9 @@ async function safeFetch(url, redirectCount = 0) {
       return safeFetch(redirectTarget, redirectCount + 1);
     }
 
-    const contentType = (res.headers.get("content-type") || "").split(";")[0];
+    const contentType = (res.headers.get("content-type") || "")
+      .split(";")[0]
+      .trim();
     const body = await readBodySnippet(res);
     return { status: res.status, contentType, body };
   } catch (error) {
@@ -130,7 +134,7 @@ async function classify(subnet) {
   // Probe the common callable-API paths first — a hit is the high-value signal.
   for (const apiPath of API_PATHS) {
     const probe = await safeFetch(base + apiPath);
-    if (probe.status === 200 && probe.contentType.includes("json")) {
+    if (probe.status === 200 && isJsonContentType(probe.contentType)) {
       return {
         ...subnet,
         classification: looksLikeOpenApi(probe.body) ? "openapi" : "json-api",
@@ -150,7 +154,7 @@ async function classify(subnet) {
       error: root.contentType,
     };
   }
-  if (root.contentType.includes("json") && looksLikeOpenApi(root.body)) {
+  if (isJsonContentType(root.contentType) && looksLikeOpenApi(root.body)) {
     return {
       ...subnet,
       classification: "openapi",
@@ -159,7 +163,7 @@ async function classify(subnet) {
       discovered_url: base,
     };
   }
-  if (root.contentType.includes("json")) {
+  if (isJsonContentType(root.contentType)) {
     return {
       ...subnet,
       classification: "maybe-api",
@@ -255,7 +259,14 @@ async function main() {
   return report;
 }
 
-main().catch((error) => {
-  console.error(`testnet discovery failed: ${error?.message || error}`);
-  process.exit(1);
-});
+export { classify };
+
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((error) => {
+    console.error(`testnet discovery failed: ${error?.message || error}`);
+    process.exit(1);
+  });
+}
