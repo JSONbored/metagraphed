@@ -15,4 +15,10 @@ export const ROUTE_CSV_EXAMPLES = {
   ].join("\r\n"),
   "subnet-events": EVENTS_CSV_EXAMPLE,
   "account-events": EVENTS_CSV_EXAMPLE,
+  // The Postgres all-events feed: flat scalar columns of each raw pallet.method
+  // event (the nested `args` object is omitted from the CSV projection).
+  "chain-events-feed": [
+    "block_number,event_index,pallet,method,phase,extrinsic_index,observed_at",
+    "8454388,3,Balances,Transfer,ApplyExtrinsic,2,1751500800000",
+  ].join("\r\n"),
 };

@@ -884,6 +884,20 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
 // tool calls DATA_API directly and keeps consuming the bare shape — only this
 // public REST path is enveloped. 503 when the binding is absent (e.g. a preview
 // deploy without the data Worker); upstream non-2xx maps to a clean error envelope.
+// Stable CSV column order for the ?format=csv download of the all-events feed —
+// the flat scalar fields of the DATA_API event rows. The nested `args` object is
+// intentionally omitted (it has no flat CSV representation); callers who need it
+// use the JSON envelope.
+const CHAIN_EVENTS_CSV_COLUMNS = [
+  "block_number",
+  "event_index",
+  "pallet",
+  "method",
+  "phase",
+  "extrinsic_index",
+  "observed_at",
+];
+
 async function handleChainEventsProxy(request, env, url) {
   if (!env.DATA_API) {
     return errorResponse(
@@ -919,6 +933,19 @@ async function handleChainEventsProxy(request, env, url) {
         ? body.error
         : "The all-events data tier returned an error.",
       upstream.status,
+    );
+  }
+  // CSV download of the page: the /api/v1/chain-events feed exposes `events`, so
+  // serialize that array to text/csv when negotiated. The stats/blocks paths this
+  // proxy also serves have no top-level row array, so their CSV request falls
+  // through to the JSON envelope (a header-only export would be meaningless).
+  if (url.pathname === "/api/v1/chain-events" && csvRequested(url, request)) {
+    return csvResponse(
+      Array.isArray(body?.events) ? body.events : [],
+      "chain-events",
+      "short",
+      request,
+      CHAIN_EVENTS_CSV_COLUMNS,
     );
   }
   return envelopeResponse(

@@ -99,6 +99,107 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.source, "data-worker-postgres");
   });
 
+  const CHAIN_EVENTS_CSV_HEADER =
+    "block_number,event_index,pallet,method,phase,extrinsic_index,observed_at";
+
+  test("serializes the DATA_API chain-events feed to CSV on ?format=csv", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events?format=csv"),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            // The data Worker returns a BARE feed body (no envelope).
+            return new Response(
+              JSON.stringify({
+                count: 1,
+                next_before: null,
+                next_cursor: null,
+                events: [
+                  {
+                    block_number: 8454388,
+                    event_index: 3,
+                    pallet: "Balances",
+                    method: "Transfer",
+                    args: { from: "5A", to: "5B" },
+                    phase: "ApplyExtrinsic",
+                    extrinsic_index: 2,
+                    observed_at: 1751500800000,
+                  },
+                ],
+              }),
+              { status: 200, headers: { "content-type": "application/json" } },
+            );
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/csv/);
+    assert.match(
+      response.headers.get("content-disposition") ?? "",
+      /attachment; filename="/,
+    );
+    const lines = (await response.text()).trim().split("\r\n");
+    assert.equal(lines[0], CHAIN_EVENTS_CSV_HEADER);
+    assert.equal(lines.length, 2);
+    const cells = lines[1].split(",");
+    assert.equal(cells[0], "8454388"); // block_number
+    assert.equal(cells[2], "Balances"); // pallet
+    assert.equal(cells[3], "Transfer"); // method
+    // The nested `args` object is intentionally not a CSV column.
+    assert.equal(cells.length, CHAIN_EVENTS_CSV_HEADER.split(",").length);
+  });
+
+  test("emits a header-only chain-events CSV when the feed is empty", async () => {
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/chain-events?pallet=Balances&format=csv",
+      ),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            return new Response(JSON.stringify({ count: 0, events: [] }), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/csv/);
+    assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
+  });
+
+  test("chain-events/stats ignores ?format=csv and keeps the JSON envelope", async () => {
+    // Only the feed exposes a top-level row array; the stats aggregate has none,
+    // so a CSV request must fall through to the enveloped JSON, not a bogus export.
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/chain-events/stats?blocks=500&format=csv",
+      ),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            return new Response(
+              JSON.stringify({ window_blocks: 500, groups: 0, activity: [] }),
+              { status: 200, headers: { "content-type": "application/json" } },
+            );
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /application\/json/);
+    assert.equal((await response.json()).ok, true);
+  });
+
   test("forwards a GET to DATA_API for a HEAD chain-events probe (not a 405)", async () => {
     // DATA_API is GET-only. A HEAD probe must still get the bodiless 200 that
     // every other GET route returns for HEAD — not the data Worker's 405 — so

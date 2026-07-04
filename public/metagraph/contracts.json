@@ -750,7 +750,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events (no static file). Distinct from the curated account-attributed event stream; empty before the all-events backfill runs.",
+      "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events; pass ?format=csv to download the page as CSV (no static file). Distinct from the curated account-attributed event stream; empty before the all-events backfill runs.",
       "id": "chain-events-feed",
       "path": "/metagraph/chain-events.json",
       "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
