@@ -86,6 +86,7 @@ import {
   handleSubnetIdentityHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
+  handleSubnetPerformanceHistory,
   handleChainConcentration,
   handleChainPerformance,
   handleChainIdentityHistory,
@@ -93,6 +94,7 @@ import {
   handleChainYield,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
+  canonicalSubnetPerformanceHistoryCachePath,
   handleSubnetTurnover,
   canonicalSubnetTurnoverCachePath,
   handleSubnetStakeFlow,
@@ -303,6 +305,7 @@ import {
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
+  SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
@@ -1407,6 +1410,26 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         canonicalSubnetConcentrationHistoryCachePath(resolved.url),
       );
     }
+    const performanceHistoryMatch =
+      SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (performanceHistoryMatch) {
+      // Per-day reward-flow & trust trend over the neuron_daily rollup, deterministic
+      // per cron snapshot — edge-cache like the sibling concentration/history route.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-performance-history",
+        () =>
+          handleSubnetPerformanceHistory(
+            request,
+            env,
+            Number(performanceHistoryMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetPerformanceHistoryCachePath(resolved.url),
+      );
+    }
     const concentrationMatch = SUBNET_CONCENTRATION_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2103,6 +2126,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN.test(pathname) ||
+    SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||

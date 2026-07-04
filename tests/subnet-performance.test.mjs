@@ -4,6 +4,10 @@ import {
   buildSubnetPerformance,
   scoreDistribution,
   loadSubnetPerformance,
+  parseSubnetPerformanceHistoryWindow,
+  buildSubnetPerformanceHistory,
+  loadSubnetPerformanceHistory,
+  PERFORMANCE_HISTORY_ROW_CAP,
 } from "../src/subnet-performance.mjs";
 
 // A neurons-tier snapshot for one subnet: two validators (permit=1) and two
@@ -190,5 +194,183 @@ describe("buildSubnetPerformance", () => {
     assert.deepEqual(seen.params, [7]);
     assert.equal(out.netuid, 7);
     assert.equal(out.validator_count, 2);
+  });
+});
+
+describe("parseSubnetPerformanceHistoryWindow", () => {
+  test("accepts 7d / 30d / 90d", () => {
+    assert.deepEqual(parseSubnetPerformanceHistoryWindow("7d"), {
+      label: "7d",
+      days: 7,
+    });
+    assert.deepEqual(parseSubnetPerformanceHistoryWindow("30d"), {
+      label: "30d",
+      days: 30,
+    });
+    assert.deepEqual(parseSubnetPerformanceHistoryWindow("90d"), {
+      label: "90d",
+      days: 90,
+    });
+  });
+
+  test("defaults a missing/blank window to 30d", () => {
+    assert.equal(parseSubnetPerformanceHistoryWindow(undefined).days, 30);
+    assert.equal(parseSubnetPerformanceHistoryWindow("").days, 30);
+    assert.equal(parseSubnetPerformanceHistoryWindow(null).days, 30);
+  });
+
+  test("rejects unsupported windows (incl. the longer history windows)", () => {
+    for (const bad of ["1y", "all", "bogus", "0d"]) {
+      const { error } = parseSubnetPerformanceHistoryWindow(bad);
+      assert.equal(error.parameter, "window");
+      assert.match(error.message, /7d, 30d, 90d/);
+    }
+  });
+});
+
+describe("buildSubnetPerformanceHistory", () => {
+  test("computes a per-day reward-flow & trust trend, newest first", () => {
+    // Rows arrive snapshot_date DESC (as the SQL returns them). The newest day is
+    // reward-concentrated (one whale earner); the older day is an even split.
+    const rows = [
+      {
+        snapshot_date: "2026-06-27",
+        incentive: 0.9,
+        dividends: 0.9,
+        trust: 0.8,
+        consensus: 0.7,
+        validator_trust: 0.85,
+        validator_permit: 1,
+        active: 1,
+      },
+      {
+        snapshot_date: "2026-06-27",
+        incentive: 0.05,
+        dividends: 0,
+        trust: 0.2,
+        consensus: 0.1,
+        validator_trust: 0,
+        validator_permit: 0,
+        active: 1,
+      },
+      {
+        snapshot_date: "2026-06-26",
+        incentive: 0.5,
+        dividends: 0.5,
+        trust: 0.5,
+        consensus: 0.5,
+        validator_trust: 0.5,
+        validator_permit: 1,
+        active: 1,
+      },
+      {
+        snapshot_date: "2026-06-26",
+        incentive: 0.5,
+        dividends: 0.5,
+        trust: 0.5,
+        consensus: 0.5,
+        validator_trust: 0.5,
+        validator_permit: 1,
+        active: 1,
+      },
+    ];
+    const data = buildSubnetPerformanceHistory(rows, 7, { window: "30d" });
+    assert.equal(data.schema_version, 1);
+    assert.equal(data.netuid, 7);
+    assert.equal(data.window, "30d");
+    assert.equal(data.point_count, 2);
+    assert.equal(data.points[0].snapshot_date, "2026-06-27"); // newest first
+    assert.equal(data.points[1].snapshot_date, "2026-06-26");
+    assert.equal(data.points[0].neuron_count, 2);
+    assert.equal(data.points[0].validator_count, 1);
+    assert.equal(data.points[0].active_count, 2);
+    // The newest day's incentive is more concentrated than the even older day.
+    assert.ok(data.points[0].incentive_gini > data.points[1].incentive_gini);
+    assert.equal(data.points[1].incentive_gini, 0);
+    assert.equal(typeof data.points[0].incentive_top_10pct_share, "number");
+    assert.equal(typeof data.points[0].trust_mean, "number");
+    assert.equal(typeof data.points[0].trust_median, "number");
+    // Dividends + validator_trust are validator-only; the older day's two
+    // validators split dividends evenly (gini 0).
+    assert.equal(data.points[1].dividends_gini, 0);
+    assert.equal(data.points[0].validator_trust_mean, 0.85);
+  });
+
+  test("drops the oldest (possibly partial) day when the read was capped", () => {
+    const rows = [
+      { snapshot_date: "2026-06-27", incentive: 0.5, validator_permit: 0 },
+      { snapshot_date: "2026-06-26", incentive: 0.5, validator_permit: 0 },
+    ];
+    const data = buildSubnetPerformanceHistory(rows, 1, {
+      window: "7d",
+      capped: true,
+    });
+    assert.equal(data.point_count, 1);
+    assert.equal(data.points[0].snapshot_date, "2026-06-27");
+  });
+
+  test("skips rows with no snapshot_date and is cold-store safe", () => {
+    const data = buildSubnetPerformanceHistory(
+      [
+        { snapshot_date: null, incentive: 0.5 },
+        { snapshot_date: "2026-06-27", incentive: 0.5, validator_permit: 0 },
+      ],
+      3,
+      { window: "30d" },
+    );
+    assert.equal(data.point_count, 1);
+    for (const rows of [[], "nope", null]) {
+      const empty = buildSubnetPerformanceHistory(rows, 3, { window: "30d" });
+      assert.equal(empty.point_count, 0);
+      assert.deepEqual(empty.points, []);
+      assert.equal(empty.window, "30d");
+    }
+  });
+
+  test("an omitted window is emitted as null", () => {
+    assert.equal(buildSubnetPerformanceHistory([], 5).window, null);
+  });
+});
+
+describe("loadSubnetPerformanceHistory", () => {
+  test("issues a netuid + date-bounded neuron_daily read and shapes it", async () => {
+    let seen;
+    const d1 = async (sql, params) => {
+      seen = { sql, params };
+      return [
+        {
+          snapshot_date: "2026-06-27",
+          incentive: 0.5,
+          dividends: 0.5,
+          trust: 0.5,
+          consensus: 0.5,
+          validator_trust: 0.5,
+          validator_permit: 1,
+          active: 1,
+        },
+      ];
+    };
+    const data = await loadSubnetPerformanceHistory(d1, 7, {
+      windowLabel: "7d",
+      windowDays: 7,
+    });
+    assert.match(seen.sql, /FROM neuron_daily WHERE netuid = \?/);
+    assert.match(seen.sql, /snapshot_date >= \? ORDER BY snapshot_date DESC/);
+    assert.equal(seen.params[0], 7);
+    assert.equal(typeof seen.params[1], "string"); // YYYY-MM-DD cutoff
+    assert.equal(seen.params[2], PERFORMANCE_HISTORY_ROW_CAP);
+    assert.equal(data.netuid, 7);
+    assert.equal(data.window, "7d");
+    assert.equal(data.point_count, 1);
+  });
+
+  test("a cold store (no rows) yields empty points", async () => {
+    const data = await loadSubnetPerformanceHistory(async () => [], 9, {
+      windowLabel: "30d",
+      windowDays: 30,
+    });
+    assert.equal(data.netuid, 9);
+    assert.equal(data.point_count, 0);
+    assert.deepEqual(data.points, []);
   });
 });

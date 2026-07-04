@@ -25,6 +25,7 @@ import {
   handleSubnetConcentration,
   handleSubnetPerformance,
   handleSubnetConcentrationHistory,
+  handleSubnetPerformanceHistory,
   handleSubnetTurnover,
   handleSubnetStakeFlow,
   handleSubnetWeights,
@@ -1372,6 +1373,138 @@ describe("handleSubnetConcentrationHistory", () => {
     // No positive distribution in that day → null per-metric fields, not throws.
     assert.equal(body.data.points[0].stake_gini, null);
     assert.equal(body.data.points[0].emission_gini, null);
+  });
+});
+
+describe("handleSubnetPerformanceHistory", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetPerformanceHistory(
+      req(`/api/v1/subnets/${NETUID}/performance/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/performance/history?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an out-of-range window with 400", async () => {
+    const res = await handleSubnetPerformanceHistory(
+      req(`/api/v1/subnets/${NETUID}/performance/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/performance/history?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns schema-stable empty series on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetPerformanceHistory,
+      req(`/api/v1/subnets/${NETUID}/performance/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/performance/history`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.point_count, 0);
+    assert.deepEqual(body.data.points, []);
+  });
+
+  test("happy path computes a per-day reward-flow trend", async () => {
+    const { env, captures } = dbWith({
+      neuronDailyHistory: [
+        {
+          snapshot_date: "2026-06-27",
+          incentive: 0.9,
+          dividends: 0.9,
+          trust: 0.8,
+          consensus: 0.7,
+          validator_trust: 0.85,
+          validator_permit: 1,
+          active: 1,
+        },
+        {
+          snapshot_date: "2026-06-27",
+          incentive: 0.05,
+          dividends: 0,
+          trust: 0.2,
+          consensus: 0.1,
+          validator_trust: 0,
+          validator_permit: 0,
+          active: 1,
+        },
+        {
+          snapshot_date: "2026-06-26",
+          incentive: 0.5,
+          dividends: 0.5,
+          trust: 0.5,
+          consensus: 0.5,
+          validator_trust: 0.5,
+          validator_permit: 1,
+          active: 1,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetPerformanceHistory(
+        req(`/api/v1/subnets/${NETUID}/performance/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/performance/history?window=30d`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.point_count, 2);
+    assert.equal(body.data.points[0].snapshot_date, "2026-06-27"); // newest first
+    assert.ok(
+      body.data.points[0].incentive_gini > body.data.points[1].incentive_gini,
+    );
+    assert.equal(typeof body.data.points[0].trust_mean, "number");
+    // Windowed neuron_daily read bound to the netuid.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], NETUID);
+  });
+
+  test("degrades to an empty series when the D1 read throws", async () => {
+    // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
+    const res = await handleSubnetPerformanceHistory(
+      req(`/api/v1/subnets/${NETUID}/performance/history`),
+      dbThrows("d1 timeout"),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/performance/history?window=7d`),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "7d");
+    assert.equal(body.data.point_count, 0);
+    assert.deepEqual(body.data.points, []);
+  });
+
+  test("binds the windowed read with a row cap and an ISO date cutoff", async () => {
+    const { env, captures } = dbWith({ neuronDailyHistory: [] });
+    await handleSubnetPerformanceHistory(
+      req(`/api/v1/subnets/${NETUID}/performance/history`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/performance/history?window=30d`),
+    );
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \? ORDER BY snapshot_date DESC LIMIT \?/.test(
+        s,
+      ),
+    );
+    assert.ok(idx !== -1);
+    const [boundNetuid, cutoff, cap] = captures.params[idx];
+    assert.equal(boundNetuid, NETUID);
+    assert.match(cutoff, /^\d{4}-\d{2}-\d{2}$/); // ISO day cutoff
+    assert.equal(cap, 50_000); // PERFORMANCE_HISTORY_ROW_CAP
   });
 });
 

@@ -1182,6 +1182,48 @@
         },
         "additionalProperties": true
       },
+      "SubnetPerformanceHistoryArtifact": {
+        "type": "object",
+        "description": "Per-day reward-flow & trust trend for one subnet (newest first) over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean/median of the 0-1 trust, consensus, and validator_trust scores. The reward-flow twin of /concentration/history, computed live from the neuron_daily D1 rollup.",
+        "required": ["schema_version", "netuid", "point_count", "points"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["snapshot_date"],
+              "properties": {
+                "snapshot_date": { "type": "string" },
+                "neuron_count": { "type": "integer", "minimum": 0 },
+                "validator_count": { "type": "integer", "minimum": 0 },
+                "active_count": { "type": "integer", "minimum": 0 },
+                "incentive_gini": { "type": ["number", "null"] },
+                "incentive_nakamoto_coefficient": {
+                  "type": ["integer", "null"]
+                },
+                "incentive_top_10pct_share": { "type": ["number", "null"] },
+                "dividends_gini": { "type": ["number", "null"] },
+                "dividends_nakamoto_coefficient": {
+                  "type": ["integer", "null"]
+                },
+                "dividends_top_10pct_share": { "type": ["number", "null"] },
+                "trust_mean": { "type": ["number", "null"] },
+                "trust_median": { "type": ["number", "null"] },
+                "consensus_mean": { "type": ["number", "null"] },
+                "consensus_median": { "type": ["number", "null"] },
+                "validator_trust_mean": { "type": ["number", "null"] },
+                "validator_trust_median": { "type": ["number", "null"] }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
       "SubnetTurnoverArtifact": {
         "type": "object",
         "description": "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup.",

@@ -245,6 +245,39 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("performance history canonicalizes equivalent window query strings before caching", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const variants = [
+      "https://api.metagraph.sh/api/v1/subnets/7/performance/history?window=90d",
+      "https://api.metagraph.sh/api/v1/subnets/7/performance/history?window=90d&",
+      "https://api.metagraph.sh/api/v1/subnets/7/performance/history?window=90d&&",
+    ];
+
+    const first = await handleRequest(new Request(variants[0]), env, ctx);
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    for (const variant of variants.slice(1)) {
+      const hit = await handleRequest(new Request(variant), env, ctx);
+      assert.equal(hit.status, 200);
+    }
+
+    assert.equal(queries.length, queriesAfterMiss);
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "subnet-performance-history",
+        "/api/v1/subnets/7/performance/history",
+        "?window=90d",
+      ),
+    ]);
+    assert.equal(cache.store.size, 1);
+  });
+
   test("turnover canonicalizes omitted and explicit default window to the same cache key", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

@@ -15588,6 +15588,135 @@
         ],
         "type": "object"
       },
+      "SubnetPerformanceHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Per-day reward-flow & trust trend for one subnet (newest first) over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean/median of the 0-1 trust, consensus, and validator_trust scores. The reward-flow twin of /concentration/history, computed live from the neuron_daily D1 rollup.",
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "active_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "consensus_mean": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "consensus_median": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "dividends_gini": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "dividends_nakamoto_coefficient": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "dividends_top_10pct_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "incentive_gini": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "incentive_nakamoto_coefficient": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "incentive_top_10pct_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "neuron_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "snapshot_date": {
+                  "type": "string"
+                },
+                "trust_mean": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "trust_median": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "validator_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validator_trust_mean": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "validator_trust_median": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
+      },
       "SubnetProfile": {
         "additionalProperties": false,
         "properties": {

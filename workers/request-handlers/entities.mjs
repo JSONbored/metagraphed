@@ -115,6 +115,10 @@ import {
 import {
   PERFORMANCE_READ_COLUMNS,
   buildSubnetPerformance,
+  PERFORMANCE_HISTORY_READ_COLUMNS,
+  PERFORMANCE_HISTORY_ROW_CAP,
+  buildSubnetPerformanceHistory,
+  parseSubnetPerformanceHistoryWindow,
 } from "../../src/subnet-performance.mjs";
 import {
   loadCounterparties,
@@ -870,6 +874,10 @@ export function canonicalSubnetConcentrationHistoryCachePath(url) {
   return canonicalWindowedCachePath(url, parseConcentrationHistoryWindow);
 }
 
+export function canonicalSubnetPerformanceHistoryCachePath(url) {
+  return canonicalWindowedCachePath(url, parseSubnetPerformanceHistoryWindow);
+}
+
 // Canonical edge-cache key for the subnet-turnover route (?window= via
 // parseHistoryWindow). Distinct from canonicalSubnetConcentrationHistoryCachePath
 // which uses a different parse function (parseConcentrationHistoryWindow).
@@ -1090,6 +1098,51 @@ export async function handleSubnetConcentrationHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration/history.json`,
+        data.points[0]?.snapshot_date ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/performance/history?window=7d|30d|90d: the per-day
+// reward-flow & trust trend (incentive/dividends Gini, Nakamoto, top-10% share +
+// trust/consensus/validator_trust mean & median) from the dated neuron_daily rollup
+// — "are this subnet's rewards consolidating over time?". The reward-flow twin of
+// concentration/history: each day needs its full per-UID distribution, so the read
+// is the raw rows (not a GROUP BY) bounded by a row cap; a cold/absent store → 200
+// with points:[] (schema-stable, never 404).
+export async function handleSubnetPerformanceHistory(
+  request,
+  env,
+  netuid,
+  url,
+) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseSubnetPerformanceHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const cutoff = new Date(Date.now() - days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1All(
+    env,
+    `SELECT ${PERFORMANCE_HISTORY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?`,
+    [netuid, cutoff, PERFORMANCE_HISTORY_ROW_CAP],
+  );
+  const data = buildSubnetPerformanceHistory(rows, netuid, {
+    window: label,
+    capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/performance/history.json`,
         data.points[0]?.snapshot_date ?? null,
       ),
     },

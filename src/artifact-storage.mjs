@@ -42,6 +42,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/concentration\/history\.json$/,
   // Reward distribution & score spread: computed live from the neurons D1 tier.
   /^subnets\/(?:\d+|\{netuid\})\/performance\.json$/,
+  // Per-day performance history: computed live from the neuron_daily rollup.
+  /^subnets\/(?:\d+|\{netuid\})\/performance\/history\.json$/,
   // Validator-set / registration turnover: computed live from neuron_daily.
   /^subnets\/(?:\d+|\{netuid\})\/turnover\.json$/,
   // Net stake flow: computed live from account_events.

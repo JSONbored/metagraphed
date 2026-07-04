@@ -45,6 +45,10 @@ export const SUBNET_CONCENTRATION_PATH_PATTERN =
 // rollup, no static file.
 export const SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/;
+// Per-day performance history (reward-flow & trust trend) from the neuron_daily
+// rollup, no static file.
+export const SUBNET_PERFORMANCE_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/performance\/history$/;
 // Validator-set & registration turnover (churn) from the neuron_daily rollup,
 // no static file.
 export const SUBNET_TURNOVER_PATH_PATTERN =

@@ -155,3 +155,141 @@ export async function loadSubnetPerformance(d1, netuid) {
   );
   return buildSubnetPerformance(rows, netuid);
 }
+
+// ---- Performance HISTORY (reward flow & trust over time) -------------------
+// Per-day performance from the dated neuron_daily rollup, so a subnet's
+// reward-flow trend (are rewards consolidating? is trust drifting?) is chartable.
+// The reward-flow twin of concentration.mjs's concentration/history: each day
+// needs its full per-UID distribution (Gini of the reward flow + the score
+// spread can't be a cheap SQL GROUP BY), so the read is the raw per-UID rows
+// bounded by a row cap that then drops a truncated oldest day.
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const PERFORMANCE_HISTORY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+const DEFAULT_PERFORMANCE_HISTORY_WINDOW = "30d";
+// Safety valve on the raw per-UID read (≈256 UIDs × 90d ≈ 23k; leaves head room
+// and the builder drops a truncated oldest day so every point is complete).
+export const PERFORMANCE_HISTORY_ROW_CAP = 50_000;
+
+// The neuron_daily columns the history read selects — the per-UID reward/score
+// columns plus the validator_permit/active flags the per-day lenses slice on.
+export const PERFORMANCE_HISTORY_READ_COLUMNS =
+  "snapshot_date, incentive, dividends, trust, consensus, " +
+  "validator_trust, validator_permit, active";
+
+// Parse ?window for the history route — a deliberately smaller set than the
+// structural history (no 1y/all) so the raw read stays bounded. Returns
+// {label, days} or {error:{parameter,message}} (the analyticsQueryError shape).
+export function parseSubnetPerformanceHistoryWindow(value) {
+  const v =
+    typeof value === "string" && value
+      ? value
+      : DEFAULT_PERFORMANCE_HISTORY_WINDOW;
+  if (!Object.prototype.hasOwnProperty.call(PERFORMANCE_HISTORY_WINDOWS, v)) {
+    return {
+      error: {
+        parameter: "window",
+        message: `window must be one of: ${Object.keys(PERFORMANCE_HISTORY_WINDOWS).join(", ")}`,
+      },
+    };
+  }
+  return { label: v, days: PERFORMANCE_HISTORY_WINDOWS[v] };
+}
+
+// Project one day's per-UID rows to a flat, chartable performance point. Flat
+// (not nested) fields keep a time series trivial to plot: the reward-flow Gini /
+// Nakamoto / top-10% share for incentive (all neurons) and dividends (validators),
+// plus the mean/median of the 0..1 trust, consensus, and validator_trust scores.
+// Null-safe — a cold/empty day yields null metrics, never throws.
+function performanceHistoryPoint(date, dayRows) {
+  const validatorRows = dayRows.filter(
+    (row) => Number(row?.validator_permit) === 1,
+  );
+  let validatorCount = 0;
+  let activeCount = 0;
+  for (const row of dayRows) {
+    if (Number(row?.validator_permit) === 1) validatorCount += 1;
+    if (Number(row?.active) === 1) activeCount += 1;
+  }
+  const incentive = computeConcentration(dayRows.map((row) => row?.incentive));
+  const dividends = computeConcentration(
+    validatorRows.map((row) => row?.dividends),
+  );
+  const trust = scoreDistribution(dayRows.map((row) => row?.trust));
+  const consensus = scoreDistribution(dayRows.map((row) => row?.consensus));
+  const validatorTrust = scoreDistribution(
+    validatorRows.map((row) => row?.validator_trust),
+  );
+  return {
+    snapshot_date: date,
+    neuron_count: dayRows.length,
+    validator_count: validatorCount,
+    active_count: activeCount,
+    incentive_gini: incentive?.gini ?? null,
+    incentive_nakamoto_coefficient: incentive?.nakamoto_coefficient ?? null,
+    incentive_top_10pct_share: incentive?.top_10pct_share ?? null,
+    dividends_gini: dividends?.gini ?? null,
+    dividends_nakamoto_coefficient: dividends?.nakamoto_coefficient ?? null,
+    dividends_top_10pct_share: dividends?.top_10pct_share ?? null,
+    trust_mean: trust?.mean ?? null,
+    trust_median: trust?.p50 ?? null,
+    consensus_mean: consensus?.mean ?? null,
+    consensus_median: consensus?.p50 ?? null,
+    validator_trust_mean: validatorTrust?.mean ?? null,
+    validator_trust_median: validatorTrust?.p50 ?? null,
+  };
+}
+
+// Build the per-day performance time series (newest first) from neuron_daily rows
+// already ordered snapshot_date DESC. `capped` (the read hit the row cap) drops the
+// oldest day, which may be a partial distribution. Null-safe: a cold store yields
+// point_count:0.
+export function buildSubnetPerformanceHistory(
+  rows,
+  netuid,
+  { window, capped } = {},
+) {
+  const list = Array.isArray(rows) ? rows : [];
+  // Group by snapshot_date. Rows arrive newest-first + same-date contiguous, so
+  // Map insertion order is the newest-first date order we want.
+  const byDate = new Map();
+  for (const row of list) {
+    const date = row?.snapshot_date;
+    if (typeof date !== "string" || !date) continue;
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(row);
+  }
+  let dates = [...byDate.keys()];
+  if (capped && dates.length > 1) dates = dates.slice(0, -1);
+  const points = dates.map((date) =>
+    performanceHistoryPoint(date, byDate.get(date)),
+  );
+  return {
+    schema_version: 1,
+    netuid,
+    window: window ?? null,
+    point_count: points.length,
+    points,
+  };
+}
+
+// Shared D1 loader (mirrors handleSubnetPerformanceHistory) — read one subnet's
+// dated neuron_daily rows over the window and shape them into the per-day series.
+// Exported for parity with loadSubnetPerformance. Cold store -> point_count:0.
+export async function loadSubnetPerformanceHistory(
+  d1,
+  netuid,
+  { windowLabel, windowDays },
+) {
+  const cutoff = new Date(Date.now() - windowDays * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1(
+    `SELECT ${PERFORMANCE_HISTORY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?`,
+    [netuid, cutoff, PERFORMANCE_HISTORY_ROW_CAP],
+  );
+  return buildSubnetPerformanceHistory(rows, netuid, {
+    window: windowLabel,
+    capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
+  });
+}
