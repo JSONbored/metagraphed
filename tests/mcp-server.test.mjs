@@ -3033,6 +3033,137 @@ describe("MCP stake-flow and movers economics tools", () => {
   });
 });
 
+describe("MCP get_subnet_event_summary", () => {
+  function eventSummaryD1(
+    { kindRows = [], recentRows = [] } = {},
+    capture = [],
+  ) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (/GROUP BY event_kind/.test(sql)) {
+                    return { results: kindRows };
+                  }
+                  if (/ORDER BY block_number DESC/.test(sql)) {
+                    return { results: recentRows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("summarizes per-kind counts plus a recent-events tail", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_subnet_event_summary",
+      { netuid: 7, window: "7d", limit: 2 },
+      {
+        env: eventSummaryD1(
+          {
+            kindRows: [
+              {
+                event_kind: "StakeAdded",
+                event_count: 5,
+                hotkey_count: 3,
+                coldkey_count: 2,
+                amount_tao: 120,
+                alpha_amount: 40,
+                first_block: 100,
+                last_block: 140,
+                first_observed_at: 1_717_000_000_000,
+                last_observed_at: 1_717_500_000_000,
+              },
+              {
+                event_kind: "StakeRemoved",
+                event_count: 2,
+                hotkey_count: 1,
+                coldkey_count: 1,
+                amount_tao: 30,
+                alpha_amount: 10,
+                first_block: 110,
+                last_block: 130,
+                first_observed_at: 1_717_100_000_000,
+                last_observed_at: 1_717_400_000_000,
+              },
+            ],
+            recentRows: [
+              {
+                block_number: 140,
+                event_index: 1,
+                event_kind: "StakeAdded",
+                hotkey: "5Hkey",
+                coldkey: "5Ckey",
+                netuid: 7,
+                uid: 3,
+                amount_tao: 25,
+                alpha_amount: 8,
+                observed_at: 1_717_500_000_000,
+                extrinsic_index: 2,
+              },
+            ],
+          },
+          capture,
+        ),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "7d");
+    assert.equal(out.limit, 2);
+    assert.equal(out.total_events, 7);
+    assert.equal(out.kind_count, 2);
+    assert.equal(out.recent_event_count, 1);
+    assert.equal(out.event_kinds[0].event_kind, "StakeAdded");
+    assert.equal(out.recent_events[0].block_number, 140);
+    // netuid bound first, and the recent-tail LIMIT is clamped to 2.
+    assert.equal(capture[0].params[0], 7);
+    const recentCall = capture.find((c) =>
+      /ORDER BY block_number DESC/.test(c.sql),
+    );
+    assert.equal(recentCall.params[recentCall.params.length - 1], 2);
+  });
+
+  test("defaults to the 30d window and degrades to an empty summary on cold D1", async () => {
+    const res = await callTool("get_subnet_event_summary", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.limit, 10);
+    assert.equal(out.total_events, 0);
+    assert.equal(out.recent_event_count, 0);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_event_summary", {
+      netuid: 7,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_event_summary", { window: "30d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+
+  test("rejects a non-integer netuid", async () => {
+    const res = await callTool("get_subnet_event_summary", { netuid: "seven" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+});
+
 describe("MCP get_network_activity", () => {
   test("merges extrinsics + blocks tiers from D1", async () => {
     const env = {

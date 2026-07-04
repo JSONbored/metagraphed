@@ -189,6 +189,11 @@ import {
   loadAccountHistory,
   loadAccountExtrinsics,
   loadAccountTransfers,
+  loadSubnetEventSummary,
+  SUBNET_EVENT_SUMMARY_WINDOWS,
+  DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
 } from "./account-events.mjs";
 import { loadAccountPortfolio } from "./account-portfolio.mjs";
 import {
@@ -268,7 +273,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.29.0";
+export const MCP_SERVER_VERSION = "1.30.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -280,6 +285,9 @@ const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
   CHAIN_TRANSFER_PAIR_WINDOWS,
 );
 const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
+const SUBNET_EVENT_SUMMARY_WINDOW_KEYS = Object.keys(
+  SUBNET_EVENT_SUMMARY_WINDOWS,
+);
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
 export const MCP_SERVER_INFO = {
@@ -360,7 +368,9 @@ export const MCP_INSTRUCTIONS =
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
   "boundary snapshots, get_subnet_stake_flow net capital in/out for one " +
-  "subnet (StakeAdded vs StakeRemoved), get_subnet_movers the cross-subnet " +
+  "subnet (StakeAdded vs StakeRemoved), get_subnet_event_summary the windowed " +
+  "account-event summary for one subnet (per-kind counts plus a recent-events " +
+  "tail), get_subnet_movers the cross-subnet " +
   "stake/emission/validator momentum leaderboard, get_subnet_yield per-UID " +
   "rates plus distribution percentiles over the current metagraph snapshot, " +
   "get_registry_leaderboards the live " +
@@ -2389,6 +2399,60 @@ export const MCP_TOOLS = [
         direction,
       });
       return data;
+    },
+  },
+  {
+    name: "get_subnet_event_summary",
+    title: "Get subnet event summary",
+    description:
+      "Fetch a windowed account-event summary for one subnet over the " +
+      "requested window (7d, 30d, or 90d; default 30d): per-event_kind counts " +
+      "(events, distinct hotkeys/coldkeys, summed TAO and alpha amounts, " +
+      "block/observation bounds) plus overall totals, followed by a recent-events " +
+      "tail of the newest events. Use limit to cap the recent tail " +
+      "(1-" +
+      SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX +
+      ", default " +
+      SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT +
+      "). Mirrors GET /api/v1/subnets/{netuid}/event-summary.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: SUBNET_EVENT_SUMMARY_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max recent events to return (1-${SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX}, default ${SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
+      if (!Object.hasOwn(SUBNET_EVENT_SUMMARY_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${SUBNET_EVENT_SUMMARY_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+        SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+      );
+      return await loadSubnetEventSummary(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+        limit,
+      });
     },
   },
   {
@@ -6153,6 +6217,56 @@ const TOOL_OUTPUT_SCHEMAS = {
       net_flow_tao: ANY,
       stake_events: { type: "integer" },
       unstake_events: { type: "integer" },
+    },
+  },
+  get_subnet_event_summary: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "window",
+      "total_events",
+      "kind_count",
+      "recent_event_count",
+      "categories",
+      "event_kinds",
+      "recent_events",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      total_events: { type: "integer" },
+      kind_count: { type: "integer" },
+      category_count: { type: "integer" },
+      recent_event_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      categories: objectItems({
+        category: NULLABLE_STRING,
+        event_count: { type: "integer" },
+        kind_count: { type: "integer" },
+        amount_tao: ANY,
+        alpha_amount: ANY,
+        first_block: NULLABLE_INT,
+        last_block: NULLABLE_INT,
+        first_observed_at: NULLABLE_STRING,
+        last_observed_at: NULLABLE_STRING,
+      }),
+      event_kinds: objectItems({
+        event_kind: NULLABLE_STRING,
+        category: NULLABLE_STRING,
+        event_count: { type: "integer" },
+        hotkey_count: { type: "integer" },
+        coldkey_count: { type: "integer" },
+        amount_tao: ANY,
+        alpha_amount: ANY,
+        first_block: NULLABLE_INT,
+        last_block: NULLABLE_INT,
+        first_observed_at: NULLABLE_STRING,
+        last_observed_at: NULLABLE_STRING,
+      }),
+      recent_events: { type: "array", items: { type: "object" } },
     },
   },
   get_subnet_movers: {
