@@ -337,6 +337,46 @@ describe("buildSubnetPerformanceHistory", () => {
   test("an omitted window is emitted as null", () => {
     assert.equal(buildSubnetPerformanceHistory([], 5).window, null);
   });
+
+  test("the *_median fields are the conventional median, not the lower-middle p50", () => {
+    // An even neuron count: nearest-rank p50 would return the lower-middle value
+    // (e.g. trust [0.2, 0.8] -> 0.2), but a field named *_median must be the
+    // conventional median = average of the two middle values, matching the
+    // median subnet-yield.mjs reports for median_yield.
+    const day = (over) => ({
+      snapshot_date: "2026-06-20",
+      incentive: 0.1,
+      dividends: 0.1,
+      trust: 0.2,
+      consensus: 0.1,
+      validator_trust: 0.4,
+      validator_permit: 1,
+      active: 1,
+      ...over,
+    });
+    const even = buildSubnetPerformanceHistory(
+      [
+        day({ trust: 0.2, consensus: 0.1, validator_trust: 0.4 }),
+        day({ trust: 0.8, consensus: 0.9, validator_trust: 0.6 }),
+      ],
+      7,
+    );
+    const p = even.points[0];
+    assert.equal(p.trust_median, 0.5); // (0.2 + 0.8) / 2, not the lower-middle 0.2
+    assert.equal(p.consensus_median, 0.5); // (0.1 + 0.9) / 2
+    assert.equal(p.validator_trust_median, 0.5); // (0.4 + 0.6) / 2, validators only
+
+    // An odd count still returns the true middle value.
+    const odd = buildSubnetPerformanceHistory(
+      [day({ trust: 0.1 }), day({ trust: 0.4 }), day({ trust: 0.9 })],
+      7,
+    );
+    assert.equal(odd.points[0].trust_median, 0.4);
+
+    // A day with no finite scores keeps the field null (schema-stable).
+    const none = buildSubnetPerformanceHistory([day({ trust: null })], 7);
+    assert.equal(none.points[0].trust_median, null);
+  });
 });
 
 describe("loadSubnetPerformanceHistory", () => {
