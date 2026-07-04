@@ -165,6 +165,25 @@
         "https://oroagents.com/"
       ],
       "url": "https://api.oroagents.com/v1/public/suites"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-shoppingbench-traces",
+      "kind": "data-artifact",
+      "name": "ORO SN15 ShoppingBench traces dataset",
+      "notes": "Public ORO (SN15) HuggingFace dataset of 18,043 multi-turn agentic shopping trajectories (messages/tools/task_name columns) harvested from the subnet's ShoppingBench agentic-commerce benchmark; CC BY 4.0, not gated. The dataset card names \"ORO Subnet 15 (SN15), the Bittensor deployment\" and the ORO repo README (source) declares the subnet; the oro-ai HF org matches the operator's ORO-AI GitHub org.",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/ORO-AI/oro",
+        "https://huggingface.co/oro-ai"
+      ],
+      "url": "https://huggingface.co/datasets/oro-ai/sn15-shoppingbench-traces-18k"
     }
   ],
   "website_url": "https://oroagents.com/"
