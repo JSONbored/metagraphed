@@ -149,6 +149,11 @@ import {
   parseCompareNetuidList,
   parseUptimeWindow,
 } from "./analytics-live.mjs";
+import {
+  loadChainRegistrations,
+  CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+  CHAIN_REGISTRATIONS_LIMIT_MAX,
+} from "./chain-registrations.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
   KV_HEALTH_RPC_POOL,
@@ -285,7 +290,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.36.0";
+export const MCP_SERVER_VERSION = "1.37.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -413,7 +418,10 @@ export const MCP_INSTRUCTIONS =
   "its per-subnet staking flow with direction and concentration labels. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
-  "fee/tip market series plus top payers, get_chain_transfers network-wide " +
+  "fee/tip market series plus top payers, get_chain_registrations the " +
+  "network-wide neuron-registration leaderboard (per-subnet NeuronRegistered " +
+  "activity and re-registration intensity) across all subnets, " +
+  "get_chain_transfers network-wide " +
   "native-TAO transfer volume plus top senders/receivers, " +
   "get_chain_transfer_pairs the top sender->receiver transfer corridors " +
   "(directed pairs ranked by volume or count) with a network volume rollup, " +
@@ -4358,6 +4366,51 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_registrations",
+    title: "Get chain registration activity",
+    description:
+      "Fetch network-wide neuron-registration activity over the requested " +
+      "window (7d or 30d; default 7d) across every subnet with observed " +
+      "registration activity: a per-subnet registration leaderboard (ranked by " +
+      "NeuronRegistered count) plus the network rollup, computed live from the " +
+      "account_events NeuronRegistered stream. limit caps the leaderboard " +
+      "(1-100, default 20). Mirrors GET /api/v1/chain/registrations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d"],
+          description: "Lookback window (default 7d).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max leaderboard subnets to return (1-100, default 20).",
+          minimum: 1,
+          maximum: 100,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
+      if (args?.window !== undefined && parsed === null) {
+        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
+      }
+      const { label, days } = parsed;
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+        CHAIN_REGISTRATIONS_LIMIT_MAX,
+      );
+      return await loadChainRegistrations(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+    },
+  },
+  {
     name: "get_chain_transfers",
     title: "Get network-wide native-TAO transfer analytics",
     description:
@@ -7225,6 +7278,32 @@ const TOOL_OUTPUT_SCHEMAS = {
         total_fee_tao: { type: ["number", "null"] },
         total_tip_tao: { type: ["number", "null"] },
         extrinsic_count: NULLABLE_INT,
+      }),
+    },
+  },
+  get_chain_registrations: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window", "subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      network: {
+        type: "object",
+        properties: {
+          distinct_registrants: NULLABLE_INT,
+          registrations: NULLABLE_INT,
+          registrations_per_registrant: { type: ["number", "null"] },
+        },
+      },
+      intensity_distribution: { type: ["object", "null"] },
+      subnets: objectItems({
+        netuid: NULLABLE_INT,
+        distinct_registrants: NULLABLE_INT,
+        registrations: NULLABLE_INT,
+        registrations_per_registrant: { type: ["number", "null"] },
       }),
     },
   },

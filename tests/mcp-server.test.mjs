@@ -2532,6 +2532,87 @@ describe("MCP get_chain_fees", () => {
   });
 });
 
+describe("MCP get_chain_registrations", () => {
+  // Route the two loadChainRegistrations reads by SQL: the network aggregate
+  // (distinct_registrants + newest_observed, single row) vs the per-subnet
+  // GROUP BY netuid leaderboard. The network aggregate's newest_observed must
+  // be non-null or the loader short-circuits the per-subnet read.
+  function registrationsD1(
+    {
+      network = { distinct_registrants: 7, newest_observed: 1_700_000_000_000 },
+      subnets = [
+        { netuid: 5, registrations: 12, distinct_registrants: 10 },
+        { netuid: 2, registrations: 4, distinct_registrants: 4 },
+      ],
+    } = {},
+    capture = [],
+  ) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (/GROUP BY netuid/.test(sql)) {
+                    return { results: subnets };
+                  }
+                  return { results: network ? [network] : [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("returns the per-subnet leaderboard and network rollup from D1", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_chain_registrations",
+      { window: "7d", limit: 20 },
+      { env: registrationsD1({}, capture) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.subnet_count, 2);
+    // Leaderboard ranked by registrations DESC.
+    assert.equal(out.subnets[0].netuid, 5);
+    assert.equal(out.subnets[0].registrations, 12);
+    assert.equal(out.subnets[0].registrations_per_registrant, 1.2);
+    assert.equal(out.subnets[1].netuid, 2);
+    // Network rollup: distinct_registrants from the aggregate row, registrations
+    // summed across subnets (12 + 4).
+    assert.equal(out.network.distinct_registrants, 7);
+    assert.equal(out.network.registrations, 16);
+    // The aggregate read runs before the GROUP BY leaderboard read.
+    assert.ok(!/GROUP BY netuid/.test(capture[0].sql));
+    assert.match(capture[1].sql, /GROUP BY netuid/);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool(
+      "get_chain_registrations",
+      { window: "99d" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/i);
+  });
+
+  test("returns a schema-stable empty block on a cold D1 store", async () => {
+    const res = await callTool("get_chain_registrations", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.network.registrations, 0);
+    assert.equal(out.network.registrations_per_registrant, null);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+  });
+});
+
 describe("MCP get_chain_transfers", () => {
   function chainTransfersD1(
     {
