@@ -6442,6 +6442,122 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validators[0].validator_permit, true);
   });
 
+  function threeValidatorsD1() {
+    return {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        neurons: [
+          {
+            netuid: 7,
+            uid: 0,
+            hotkey: "5Hk-a",
+            coldkey: "5Co-a",
+            validator_permit: 1,
+            stake_tao: 100,
+            emission_tao: 1,
+            validator_trust: 0.9,
+            captured_at: 1750000000000,
+            block_number: 100,
+          },
+          {
+            netuid: 7,
+            uid: 1,
+            hotkey: "5Hk-b",
+            coldkey: "5Co-b",
+            validator_permit: 1,
+            stake_tao: 50,
+            emission_tao: 1,
+            validator_trust: 0.8,
+            captured_at: 1750000000000,
+            block_number: 100,
+          },
+          {
+            netuid: 7,
+            uid: 2,
+            hotkey: "5Hk-c",
+            coldkey: "5Co-c",
+            validator_permit: 1,
+            stake_tao: 5,
+            emission_tao: 1,
+            validator_trust: 0.5,
+            captured_at: 1750000000000,
+            block_number: 100,
+          },
+        ],
+      }),
+    };
+  }
+
+  test("list_subnet_validators limit keeps the highest-stake rows (already stake-ranked)", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, limit: 2 },
+      { env: threeValidatorsD1() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["5Hk-a", "5Hk-b"],
+    );
+  });
+
+  test("list_subnet_validators min_stake_tao drops small-stake validators", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, min_stake_tao: 50 },
+      { env: threeValidatorsD1() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 2);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["5Hk-a", "5Hk-b"],
+    );
+  });
+
+  test("list_subnet_validators combines min_stake_tao and limit", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, min_stake_tao: 6, limit: 1 },
+      { env: threeValidatorsD1() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.validators[0].hotkey, "5Hk-a");
+  });
+
+  test("list_subnet_validators without limit/min_stake_tao is unchanged (full ranked list)", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7 },
+      { env: threeValidatorsD1() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 3);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["5Hk-a", "5Hk-b", "5Hk-c"],
+    );
+  });
+
+  test("list_subnet_validators rejects limit=0 and a negative min_stake_tao", async () => {
+    const zeroLimit = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, limit: 0 },
+      { env: threeValidatorsD1() },
+    );
+    assert.equal(zeroLimit.body.result.isError, true);
+    assert.match(zeroLimit.body.result.content[0].text, /invalid_params/);
+
+    const negStake = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, min_stake_tao: -1 },
+      { env: threeValidatorsD1() },
+    );
+    assert.equal(negStake.body.result.isError, true);
+    assert.match(negStake.body.result.content[0].text, /invalid_params/);
+  });
+
   test("list_global_validators returns schema-stable empty list on cold D1", async () => {
     const res = await callTool("list_global_validators", {});
     const out = res.body.result.structuredContent;
