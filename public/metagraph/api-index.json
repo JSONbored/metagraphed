@@ -541,6 +541,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-portfolio-history",
+      "path": "/metagraph/accounts/{ss58}/portfolio-history.json",
+      "schema_ref": "#/components/schemas/AccountPortfolioHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-balance",
       "path": "/metagraph/accounts/{ss58}/balance.json",
       "schema_ref": "#/components/schemas/AccountBalanceArtifact",
@@ -5465,6 +5472,30 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/portfolio-history.json",
+      "cache": "short",
+      "description": "Fetch a wallet's portfolio timeline (newest first) over a recent window (7d/30d/90d): for each snapshot_date the hotkey's footprint (subnet/position/validator/miner counts) and standing economics (total stake, total emission, overall return) — the point-in-time companion to /portfolio, rolled up live from the neuron_daily D1 tier.",
+      "id": "account-portfolio-history",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/portfolio-history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/accounts/{ss58}/balance.json",

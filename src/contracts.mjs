@@ -1080,6 +1080,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountPortfolioArtifact",
   ),
   artifact(
+    "account-portfolio-history",
+    "/metagraph/accounts/{ss58}/portfolio-history.json",
+    "A wallet's portfolio timeline (newest first) over a 7d/30d/90d window: per snapshot_date the hotkey's footprint (subnet/position/validator/miner counts) and standing economics (total stake, total emission, overall return) — the point-in-time companion to /portfolio, rolled up live from the neuron_daily D1 tier at /api/v1/accounts/{ss58}/portfolio-history (no static file).",
+    "AccountPortfolioHistoryArtifact",
+  ),
+  artifact(
     "account-balance",
     "/metagraph/accounts/{ss58}/balance.json",
     "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
@@ -2268,6 +2274,22 @@ export const API_ROUTES = [
     "short",
     ["accounts", "analytics"],
     [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-portfolio-history",
+    "GET",
+    "/api/v1/accounts/{ss58}/portfolio-history",
+    "/metagraph/accounts/{ss58}/portfolio-history.json",
+    "Fetch a wallet's portfolio timeline (newest first) over a recent window (7d/30d/90d): for each snapshot_date the hotkey's footprint (subnet/position/validator/miner counts) and standing economics (total stake, total emission, overall return) — the point-in-time companion to /portfolio, rolled up live from the neuron_daily D1 tier.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(

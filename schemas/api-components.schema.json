@@ -661,6 +661,86 @@
         ],
         "type": "object"
       },
+      "AccountPortfolioHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "A wallet's portfolio timeline (newest first) over a 7d/30d/90d window: for each snapshot_date the hotkey's footprint (subnet/position/validator/miner counts) and standing economics (total stake, total emission, overall return), rolled up per day from the neuron_daily D1 tier. The point-in-time companion to AccountPortfolioArtifact. Served live at /api/v1/accounts/{ss58}/portfolio-history (no static file).",
+        "properties": {
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "miner_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "overall_yield": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "position_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "snapshot_date": {
+                  "type": "string"
+                },
+                "subnet_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total_emission_tao": {
+                  "type": "number"
+                },
+                "total_stake_tao": {
+                  "type": "number"
+                },
+                "validator_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "snapshot_date",
+                "subnet_count",
+                "position_count",
+                "validator_count",
+                "miner_count",
+                "total_stake_tao",
+                "total_emission_tao",
+                "overall_yield"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "window",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
+      },
       "AccountRegistration": {
         "additionalProperties": false,
         "description": "A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier.",

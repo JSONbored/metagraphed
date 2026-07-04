@@ -100,6 +100,10 @@ export const ACCOUNT_SUBNETS_PATH_PATTERN =
 // + aggregates), richer than the bare /subnets registration footprint.
 export const ACCOUNT_PORTFOLIO_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/portfolio$/;
+// Per-day portfolio timeline for one wallet over a 7d/30d/90d window (the
+// point-in-time companion to /portfolio), rolled up from the neuron_daily rollup.
+export const ACCOUNT_PORTFOLIO_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/portfolio-history$/;
 // Per-account signed extrinsics (#1844): the extrinsics this account signed,
 // matched by extrinsics.signer (a single column, not the hotkey or coldkey union).
 export const ACCOUNT_EXTRINSICS_PATH_PATTERN =
