@@ -139,6 +139,22 @@
         "submitted_by": "davion-knight"
       },
       "notes": "Public no-auth JSON catalog of Eirel's evaluation workflow specifications (workflow_spec_id, class, description, node graph); GET /v1/workflow-specs in the OpenAPI spec. Distinct endpoint from the registered /api/v1/dashboard/* and /v1/metagraph/status routes."
+    },
+    {
+      "id": "sn-36-eirel-env-windows",
+      "name": "Eirel evaluation environment windows",
+      "kind": "data-artifact",
+      "url": "https://api.eirel.ai/v1/env-windows",
+      "provider": "eirel",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json", "https://eirel.ai/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "notes": "Public no-auth JSON of Eirel's active evaluation environment windows per capability (capability, family_id, enabled, min_completeness, weight, evaluation_split, window membership version); GET /v1/env-windows in the OpenAPI spec. Distinct endpoint from the registered /api/v1/dashboard/*, /v1/metagraph/status, and /v1/workflow-specs routes."
     }
   ],
   "social": {
