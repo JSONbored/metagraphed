@@ -49,6 +49,70 @@
         "https://api.zeussubnet.com/openapi.json"
       ],
       "url": "https://api.zeussubnet.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-18-zeus-dashboard",
+      "kind": "dashboard",
+      "name": "Zeus dashboard",
+      "notes": "Official Zeus subnet dashboard, linked from the Zeus website navigation (href=\"/dashboard\" on www.zeussubnet.com).",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://www.zeussubnet.com/"],
+      "url": "https://www.zeussubnet.com/dashboard"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-18-zeus-forecast-point",
+      "kind": "subnet-api",
+      "name": "Zeus BOREAS point forecast",
+      "notes": "Public BOREAS Edge API point-forecast endpoint (lat/lon -> environmental-variable forecast), documented in the Zeus OpenAPI spec. Requires an X-API-Key, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://api.zeussubnet.com/openapi.json"],
+      "url": "https://api.zeussubnet.com/v1/forecast/point"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-18-zeus-forecast-area",
+      "kind": "subnet-api",
+      "name": "Zeus BOREAS area forecast",
+      "notes": "Public BOREAS Edge API area-forecast endpoint (bounding box -> gridded environmental forecast), documented in the Zeus OpenAPI spec. Requires an X-API-Key, so the probe is disabled.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://api.zeussubnet.com/openapi.json"],
+      "url": "https://api.zeussubnet.com/v1/forecast/area"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"
