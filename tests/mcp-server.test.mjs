@@ -6259,6 +6259,8 @@ describe("MCP economics + metagraph data tools", () => {
     stakeTransfersSubnetRows = [],
     axonRemovalsNetworkRows = [],
     axonRemovalsSubnetRows = [],
+    chainDeregistrationsNetworkRows = [],
+    chainDeregistrationsSubnetRows = [],
     transferPairTotals = [],
     transferPairRows = [],
   } = {}) {
@@ -6276,6 +6278,12 @@ describe("MCP economics + metagraph data tools", () => {
                   // per-subnet GROUP BY (AS movements); get_chain_stake_transfers
                   // reads a network aggregate (newest_observed + distinct_senders)
                   // then a per-subnet GROUP BY (AS transfers);
+                  // get_chain_axon_removals reads a network aggregate
+                  // (newest_observed + distinct_removers) then a per-subnet
+                  // GROUP BY (AS removals); get_chain_deregistrations reads a
+                  // network aggregate (newest_observed +
+                  // distinct_deregistered_hotkeys) then a per-subnet GROUP BY
+                  // (AS deregistrations + distinct_deregistered_hotkeys);
                   // get_chain_transfer_pairs reads a totals CTE
                   // (top_pair_volume_tao) then per-corridor rows (AS from_address);
                   // everything else uses the flat account_events fixture.
@@ -6298,6 +6306,11 @@ describe("MCP economics + metagraph data tools", () => {
                         results: axonRemovalsNetworkRows,
                       });
                     }
+                    if (sql.includes("distinct_deregistered_hotkeys")) {
+                      return Promise.resolve({
+                        results: chainDeregistrationsNetworkRows,
+                      });
+                    }
                     return Promise.resolve({ results: weightsNetworkRows });
                   }
                   if (sql.includes("weight_sets")) {
@@ -6313,6 +6326,14 @@ describe("MCP economics + metagraph data tools", () => {
                   }
                   if (sql.includes("AS removals")) {
                     return Promise.resolve({ results: axonRemovalsSubnetRows });
+                  }
+                  if (
+                    sql.includes("AS deregistrations") &&
+                    sql.includes("distinct_deregistered_hotkeys")
+                  ) {
+                    return Promise.resolve({
+                      results: chainDeregistrationsSubnetRows,
+                    });
                   }
                   if (sql.includes("top_pair_volume_tao")) {
                     return Promise.resolve({ results: transferPairTotals });
@@ -7725,6 +7746,118 @@ describe("MCP economics + metagraph data tools", () => {
       chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
         axonRemovalsRow(1, 20, 5),
         axonRemovalsRow(2, 10, 4),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  // The network-wide aggregate row loadChainDeregistrations reads first (its
+  // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
+  // unlocks the per-subnet read.
+  function chainDeregistrationsNetwork(distinct_deregistered_hotkeys) {
+    return {
+      distinct_deregistered_hotkeys,
+      newest_observed: 1_750_000_000_000,
+    };
+  }
+
+  // A per-subnet GROUP BY netuid row (COUNT deregistrations + distinct hotkeys).
+  function chainDeregistrationsRow(
+    netuid,
+    deregistrations,
+    distinct_deregistered_hotkeys,
+  ) {
+    return { netuid, deregistrations, distinct_deregistered_hotkeys };
+  }
+
+  function chainDeregistrationsEnv(network, subnets) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({
+          chainDeregistrationsNetworkRows: network ? [network] : [],
+          chainDeregistrationsSubnetRows: subnets,
+        }),
+      },
+    };
+  }
+
+  test("get_chain_deregistrations returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_deregistrations", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+    assert.equal(out.network.deregistrations, 0);
+    assert.equal(out.network.deregistrations_per_hotkey, null);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_deregistrations ranks subnets by deregistrations with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_deregistrations",
+      { window: "30d", limit: 10 },
+      chainDeregistrationsEnv(chainDeregistrationsNetwork(8), [
+        // netuid 2: fewer deregistrations -> ranks last despite higher intensity.
+        chainDeregistrationsRow(2, 10, 4),
+        // netuid 1: most NeuronDeregistered events -> ranks first.
+        chainDeregistrationsRow(1, 20, 5),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].deregistrations, 20);
+    assert.equal(out.subnets[0].deregistrations_per_hotkey, 4); // 20 / 5
+    assert.equal(out.subnets[1].netuid, 2);
+    assert.equal(out.subnets[1].deregistrations_per_hotkey, 2.5); // 10 / 4
+    // Network rollup: total deregistrations 30 over 8 distinct hotkeys -> 3.75.
+    assert.equal(out.network.deregistrations, 30);
+    assert.equal(out.network.distinct_deregistered_hotkeys, 8);
+    assert.equal(out.network.deregistrations_per_hotkey, 3.75);
+    assert.equal(out.intensity_distribution.count, 2);
+    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("get_chain_deregistrations rejects an unsupported window", async () => {
+    const res = await callTool(
+      "get_chain_deregistrations",
+      { window: "90d" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_deregistrations caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_deregistrations",
+      { limit: 1 },
+      chainDeregistrationsEnv(chainDeregistrationsNetwork(8), [
+        chainDeregistrationsRow(1, 20, 5),
+        chainDeregistrationsRow(2, 10, 4),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets feed the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.intensity_distribution.count, 2);
+  });
+
+  test("get_chain_deregistrations payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_deregistrations",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_deregistrations",
+      {},
+      chainDeregistrationsEnv(chainDeregistrationsNetwork(8), [
+        chainDeregistrationsRow(1, 20, 5),
+        chainDeregistrationsRow(2, 10, 4),
       ]),
     );
     const validate = new Ajv2020().compile(schema);
