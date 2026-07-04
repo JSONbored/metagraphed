@@ -341,6 +341,35 @@ test("formatAccountEvent coerces null amount_tao and alpha_amount to null (not 0
   assert.equal(out.alpha_amount, null);
 });
 
+test("formatAccountEvent rejects blank amount_tao/alpha_amount cells that coerce to 0", () => {
+  // Mirrors the blank-cell guard in extrinsics.mjs (#3030): Number("") is 0.
+  for (const blank of ["", "   "]) {
+    const out = formatAccountEvent({
+      block_number: 1,
+      amount_tao: blank,
+      alpha_amount: blank,
+    });
+    assert.equal(
+      out.amount_tao,
+      null,
+      `amount_tao for ${JSON.stringify(blank)}`,
+    );
+    assert.equal(
+      out.alpha_amount,
+      null,
+      `alpha_amount for ${JSON.stringify(blank)}`,
+    );
+  }
+  // A literal zero amount is still valid — only blank strings are rejected.
+  const zero = formatAccountEvent({
+    block_number: 1,
+    amount_tao: 0,
+    alpha_amount: "0",
+  });
+  assert.equal(zero.amount_tao, 0);
+  assert.equal(zero.alpha_amount, 0);
+});
+
 test("formatAccountEvent rounds amount_tao and alpha_amount to rao precision", () => {
   // The rao is the smallest TAO unit (1e-9). A SUM() over many REAL rows
   // accumulates IEEE-754 noise below the rao floor; toTaoOrNull rounds to

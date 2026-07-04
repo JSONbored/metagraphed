@@ -159,6 +159,8 @@ function toBlockNumber(value) {
 // aggregate is null on a cold store, not 0.
 function toTaoOrNull(value) {
   if (value == null) return null;
+  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
 }
