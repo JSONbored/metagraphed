@@ -314,7 +314,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.45.0";
+export const MCP_SERVER_VERSION = "1.46.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -1048,6 +1048,34 @@ function optionalNonNegativeInt(args, key) {
     throw toolError(
       "invalid_params",
       `Argument \`${key}\` must be a non-negative integer.`,
+    );
+  }
+  return value;
+}
+
+// Like optionalNonNegativeInt but for a decimal quantity (e.g. a TAO amount),
+// where a fractional value is valid.
+function optionalNonNegativeNumber(args, key) {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a non-negative number.`,
+    );
+  }
+  return value;
+}
+
+// Like optionalNonNegativeInt, but 0 is invalid (a "cap the list to zero rows"
+// argument reads as a misuse, not a legitimate empty-result request).
+function optionalPositiveInt(args, key) {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
+  if (!Number.isInteger(value) || value < 1) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a positive integer.`,
     );
   }
   return value;
@@ -3127,18 +3155,49 @@ export const MCP_TOOLS = [
       "List one subnet's permit-holding validators, ranked by stake " +
       "(descending): hot and cold keys, stake, validator trust, consensus, " +
       "dividends, emission, and axon. Use it to pick which validators to " +
-      "target, delegate to, or weight against.",
+      "target, delegate to, or weight against. Optionally cap the list with " +
+      "limit (keeps the highest-stake rows, since the list is already " +
+      "stake-ranked) or drop small-stake rows with min_stake_tao.",
     inputSchema: {
       type: "object",
       properties: {
         netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        limit: {
+          type: "integer",
+          description:
+            "Max validators to return, keeping the highest-stake rows. Omit " +
+            "for the full list.",
+          minimum: 1,
+        },
+        min_stake_tao: {
+          type: "number",
+          description:
+            "Only validators whose stake is >= this many TAO. Omit for no floor.",
+          minimum: 0,
+        },
       },
       required: ["netuid"],
       additionalProperties: false,
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadSubnetValidators(mcpD1Runner(ctx), netuid);
+      const limit = optionalPositiveInt(args, "limit");
+      const minStakeTao = optionalNonNegativeNumber(args, "min_stake_tao");
+      const data = await loadSubnetValidators(mcpD1Runner(ctx), netuid);
+      if (limit === null && minStakeTao === null) {
+        return data;
+      }
+      // The loader already ranks by stake_tao DESC, so a limit after the
+      // min_stake_tao floor keeps the highest-stake survivors — no re-sort.
+      const filtered =
+        minStakeTao === null
+          ? data.validators
+          : data.validators.filter(
+              (v) =>
+                typeof v.stake_tao === "number" && v.stake_tao >= minStakeTao,
+            );
+      const validators = limit === null ? filtered : filtered.slice(0, limit);
+      return { ...data, validator_count: validators.length, validators };
     },
   },
   {
