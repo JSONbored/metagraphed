@@ -320,6 +320,11 @@ import {
   DEFAULT_REGISTRATION_WINDOW,
 } from "./account-registrations.mjs";
 import {
+  loadAccountServing,
+  SERVING_WINDOWS,
+  DEFAULT_SERVING_WINDOW,
+} from "./account-serving.mjs";
+import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
   MOVERS_SORTS,
@@ -369,7 +374,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.55.0";
+export const MCP_SERVER_VERSION = "1.56.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -399,6 +404,7 @@ const ACCOUNT_STAKE_MOVES_WINDOW_KEYS = Object.keys(
 const ACCOUNT_AXON_REMOVALS_WINDOW_KEYS = Object.keys(AXON_REMOVAL_WINDOWS);
 const ACCOUNT_PROMETHEUS_WINDOW_KEYS = Object.keys(PROMETHEUS_WINDOWS);
 const ACCOUNT_REGISTRATIONS_WINDOW_KEYS = Object.keys(REGISTRATION_WINDOWS);
+const ACCOUNT_SERVING_WINDOW_KEYS = Object.keys(SERVING_WINDOWS);
 const SUBNET_EVENT_SUMMARY_WINDOW_KEYS = Object.keys(
   SUBNET_EVENT_SUMMARY_WINDOWS,
 );
@@ -531,7 +537,9 @@ export const MCP_INSTRUCTIONS =
   "get_account_prometheus its per-subnet PrometheusServed telemetry footprint " +
   "with announcement counts, first/last timestamps, and concentration labels, " +
   "get_account_registrations its per-subnet NeuronRegistered registration footprint " +
-  "with registration counts, first/last timestamps, and concentration labels. For chain-wide " +
+  "with registration counts, first/last timestamps, and concentration labels, " +
+  "get_account_serving its per-subnet AxonServed axon-endpoint serving footprint " +
+  "with announcement counts, first/last timestamps, and concentration labels. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
   "fee/tip market series plus top payers, get_chain_registrations the " +
@@ -4212,6 +4220,52 @@ export const MCP_TOOLS = [
         );
       }
       const { data } = await loadAccountRegistrations(mcpD1Runner(ctx), ss58, {
+        windowLabel: window,
+      });
+      return data;
+    },
+  },
+  {
+    name: "get_account_serving",
+    title: "Get an account's axon-endpoint serving footprint",
+    description:
+      "Fetch one account's AxonServed axon-endpoint serving footprint per subnet " +
+      "over the requested window (7d, 30d, or 90d; default 30d): each subnet's " +
+      "announcement count with the first and last AxonServed timestamps, plus account " +
+      "totals, an HHI concentration of where its serving activity is focused, and the " +
+      "dominant subnet. Operational activity (announcing an axon endpoint) — orthogonal " +
+      "to get_account_subnets (registration state) and get_account_registrations " +
+      "(registration events). The axon-endpoint companion to get_account_prometheus " +
+      "(Prometheus telemetry) and the account-level companion to get_chain_serving and " +
+      "get_subnet_serving. Mirrors GET /api/v1/accounts/{ss58}/serving.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 hotkey address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ACCOUNT_SERVING_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_SERVING_WINDOW}).`,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const window = optionalString(args, "window") ?? DEFAULT_SERVING_WINDOW;
+      if (!Object.hasOwn(SERVING_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${ACCOUNT_SERVING_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const { data } = await loadAccountServing(mcpD1Runner(ctx), ss58, {
         windowLabel: window,
       });
       return data;
@@ -8665,6 +8719,47 @@ const TOOL_OUTPUT_SCHEMAS = {
             registrations: { type: "integer" },
             first_registered_at: NULLABLE_STRING,
             last_registered_at: NULLABLE_STRING,
+          },
+        },
+      },
+    },
+  },
+  get_account_serving: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "address",
+      "window",
+      "total_announcements",
+      "subnet_count",
+      "subnets",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      address: { type: "string" },
+      window: NULLABLE_STRING,
+      total_announcements: { type: "integer" },
+      subnet_count: { type: "integer" },
+      // Herfindahl-Hirschman index of AxonServed events across subnets: 1 means all
+      // announcements on one subnet; null when the account has none.
+      concentration: { type: ["number", "null"] },
+      dominant_netuid: NULLABLE_INT,
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "announcements",
+            "first_served_at",
+            "last_served_at",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            announcements: { type: "integer" },
+            first_served_at: NULLABLE_STRING,
+            last_served_at: NULLABLE_STRING,
           },
         },
       },
