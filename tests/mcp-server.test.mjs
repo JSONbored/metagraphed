@@ -3245,6 +3245,69 @@ describe("MCP get_subnet_event_summary", () => {
   });
 });
 
+describe("MCP get_subnet_registrations", () => {
+  function registrationsSubnetD1(row = null, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  return { results: row ? [row] : [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("summarizes per-subnet registration activity", async () => {
+    const res = await callTool(
+      "get_subnet_registrations",
+      { netuid: 5, window: "7d" },
+      {
+        env: registrationsSubnetD1({
+          registrations: 12,
+          distinct_registrants: 4,
+          newest_observed: 1_717_500_000_000,
+        }),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 5);
+    assert.equal(out.registrations, 12);
+    assert.equal(out.distinct_registrants, 4);
+  });
+
+  test("cold subnet degrades to a schema-stable empty summary", async () => {
+    const res = await callTool(
+      "get_subnet_registrations",
+      { netuid: 5 },
+      { env: registrationsSubnetD1(null) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.registrations, 0);
+    assert.equal(out.distinct_registrants, 0);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_registrations", {
+      netuid: 5,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_registrations", { window: "7d" });
+    assert.equal(res.body.result.isError, true);
+  });
+});
+
 describe("MCP get_subnet_weight_setters", () => {
   // The loader runs two reads: the per-setter leaderboard (GROUP BY the
   // hotkey-or-uid identity) and the subnet-wide totals row. Route by SQL shape.
