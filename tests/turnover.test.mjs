@@ -170,6 +170,40 @@ describe("buildTurnover", () => {
     assert.equal(data.stability_score, 100);
   });
 
+  test("blank uid cells are skipped (not counted as uid 0)", () => {
+    // Mirrors the blank-cell guard in subnet-yield.mjs (#3022): Number("") is 0.
+    for (const blank of ["", "   "]) {
+      const data = buildTurnover(
+        [
+          {
+            snapshot_date: "2026-06-01",
+            uid: blank,
+            hotkey: "H0",
+            validator_permit: 0,
+          },
+          {
+            snapshot_date: "2026-06-30",
+            uid: 1,
+            hotkey: "H1",
+            validator_permit: 0,
+          },
+        ],
+        7,
+        {
+          window: "30d",
+          startDate: "2026-06-01",
+          endDate: "2026-06-30",
+        },
+      );
+      assert.equal(
+        data.neurons_start,
+        0,
+        `neurons_start for uid ${JSON.stringify(blank)}`,
+      );
+      assert.equal(data.neurons_end, 1);
+    }
+  });
+
   test("a fully-rotated validator set scores zero retention", () => {
     const rows = [
       { snapshot_date: "2026-05-01", uid: 0, hotkey: "A", validator_permit: 1 },
@@ -273,6 +307,40 @@ describe("buildTurnoverChanges", () => {
     assert.deepEqual(data.validators_entered, []);
     assert.deepEqual(data.validators_exited, []);
     assert.deepEqual(data.uid_reassignments, []);
+  });
+
+  test("blank uid cells do not fabricate uid 0 in validator change lists", () => {
+    const data = buildTurnoverChanges(
+      [
+        {
+          snapshot_date: "2026-06-01",
+          uid: 1,
+          hotkey: "VOLD",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 1,
+          hotkey: "VOLD",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: "",
+          hotkey: "VNEW",
+          validator_permit: 1,
+        },
+      ],
+      9,
+      {
+        window: "30d",
+        startDate: "2026-06-01",
+        endDate: "2026-06-30",
+      },
+    );
+    assert.equal(data.validators_entered_count, 1);
+    assert.equal(data.validators_entered[0].hotkey, "VNEW");
+    assert.equal(data.validators_entered[0].uid, null);
   });
 
   test("lists validator entries, exits, and UID reassignments", () => {

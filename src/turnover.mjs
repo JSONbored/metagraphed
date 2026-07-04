@@ -54,6 +54,8 @@ function validatorHotkeys(rows) {
 
 function normalizedUid(value) {
   if (value == null) return null;
+  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  if (typeof value === "string" && value.trim() === "") return null;
   const uid = Number(value);
   return Number.isSafeInteger(uid) && uid >= 0 ? uid : null;
 }
