@@ -6257,6 +6257,8 @@ describe("MCP economics + metagraph data tools", () => {
     stakeMovesSubnetRows = [],
     stakeTransfersNetworkRows = [],
     stakeTransfersSubnetRows = [],
+    axonRemovalsNetworkRows = [],
+    axonRemovalsSubnetRows = [],
     transferPairTotals = [],
     transferPairRows = [],
   } = {}) {
@@ -6291,6 +6293,11 @@ describe("MCP economics + metagraph data tools", () => {
                         results: stakeTransfersNetworkRows,
                       });
                     }
+                    if (sql.includes("distinct_removers")) {
+                      return Promise.resolve({
+                        results: axonRemovalsNetworkRows,
+                      });
+                    }
                     return Promise.resolve({ results: weightsNetworkRows });
                   }
                   if (sql.includes("weight_sets")) {
@@ -6303,6 +6310,9 @@ describe("MCP economics + metagraph data tools", () => {
                     return Promise.resolve({
                       results: stakeTransfersSubnetRows,
                     });
+                  }
+                  if (sql.includes("AS removals")) {
+                    return Promise.resolve({ results: axonRemovalsSubnetRows });
                   }
                   if (sql.includes("top_pair_volume_tao")) {
                     return Promise.resolve({ results: transferPairTotals });
@@ -7607,6 +7617,114 @@ describe("MCP economics + metagraph data tools", () => {
       chainStakeTransfersEnv(stakeTransfersNetwork(8), [
         stakeTransfersRow(1, 20, 5),
         stakeTransfersRow(2, 10, 4),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  // The network-wide aggregate row loadChainAxonRemovals reads first (its
+  // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
+  // unlocks the per-subnet read.
+  function axonRemovalsNetwork(distinct_removers) {
+    return {
+      distinct_removers,
+      newest_observed: 1_750_000_000_000,
+    };
+  }
+
+  // A per-subnet GROUP BY netuid row (COUNT removals + distinct removers).
+  function axonRemovalsRow(netuid, removals, distinct_removers) {
+    return { netuid, removals, distinct_removers };
+  }
+
+  function chainAxonRemovalsEnv(network, subnets) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({
+          axonRemovalsNetworkRows: network ? [network] : [],
+          axonRemovalsSubnetRows: subnets,
+        }),
+      },
+    };
+  }
+
+  test("get_chain_axon_removals returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_axon_removals", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+    assert.equal(out.network.removals, 0);
+    assert.equal(out.network.removals_per_remover, null);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_axon_removals ranks subnets by removals with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_axon_removals",
+      { window: "30d", limit: 10 },
+      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
+        // netuid 2: fewer removals -> ranks last despite higher intensity.
+        axonRemovalsRow(2, 10, 4),
+        // netuid 1: most AxonInfoRemoved events -> ranks first.
+        axonRemovalsRow(1, 20, 5),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].removals, 20);
+    assert.equal(out.subnets[0].removals_per_remover, 4); // 20 / 5
+    assert.equal(out.subnets[1].netuid, 2);
+    assert.equal(out.subnets[1].removals_per_remover, 2.5); // 10 / 4
+    // Network rollup: total removals 30 over 8 distinct removers -> 3.75.
+    assert.equal(out.network.removals, 30);
+    assert.equal(out.network.distinct_removers, 8);
+    assert.equal(out.network.removals_per_remover, 3.75);
+    assert.equal(out.intensity_distribution.count, 2);
+    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("get_chain_axon_removals rejects an unsupported window", async () => {
+    const res = await callTool(
+      "get_chain_axon_removals",
+      { window: "90d" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_axon_removals caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_axon_removals",
+      { limit: 1 },
+      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
+        axonRemovalsRow(1, 20, 5),
+        axonRemovalsRow(2, 10, 4),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets feed the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.intensity_distribution.count, 2);
+  });
+
+  test("get_chain_axon_removals payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_axon_removals",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_axon_removals",
+      {},
+      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
+        axonRemovalsRow(1, 20, 5),
+        axonRemovalsRow(2, 10, 4),
       ]),
     );
     const validate = new Ajv2020().compile(schema);

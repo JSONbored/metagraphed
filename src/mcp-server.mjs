@@ -161,6 +161,13 @@ import {
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
 } from "./chain-registrations.mjs";
+import {
+  loadChainAxonRemovals,
+  CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+  CHAIN_AXON_REMOVALS_LIMIT_MAX,
+  CHAIN_AXON_REMOVALS_WINDOWS,
+  DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
+} from "./chain-axon-removals.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
   KV_HEALTH_RPC_POOL,
@@ -321,7 +328,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.47.0";
+export const MCP_SERVER_VERSION = "1.48.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -332,6 +339,9 @@ const CHAIN_WEIGHTS_WINDOW_KEYS = Object.keys(CHAIN_WEIGHTS_WINDOWS);
 const CHAIN_STAKE_MOVES_WINDOW_KEYS = Object.keys(CHAIN_STAKE_MOVES_WINDOWS);
 const CHAIN_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
   CHAIN_STAKE_TRANSFERS_WINDOWS,
+);
+const CHAIN_AXON_REMOVALS_WINDOW_KEYS = Object.keys(
+  CHAIN_AXON_REMOVALS_WINDOWS,
 );
 const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
   CHAIN_TRANSFER_PAIR_WINDOWS,
@@ -491,6 +501,9 @@ export const MCP_INSTRUCTIONS =
   "get_chain_stake_transfers the network-wide stake-transfer (between-coldkeys) " +
   "leaderboard (per-subnet StakeTransferred activity, distinct senders, and " +
   "transfers-per-sender intensity) across all subnets, " +
+  "get_chain_axon_removals the network-wide axon-teardown leaderboard " +
+  "(per-subnet AxonInfoRemoved activity, distinct removers, and " +
+  "removals-per-remover intensity) across all subnets, " +
   "get_blocks_summary block-production analytics (inter-block time, throughput, " +
   "and block-author decentralization), " +
   "get_network_activity the daily " +
@@ -2477,6 +2490,58 @@ export const MCP_TOOLS = [
       return loadChainStakeTransfers(mcpD1Runner(ctx), {
         windowLabel: window,
         windowDays: CHAIN_STAKE_TRANSFERS_WINDOWS[window],
+        limit,
+      });
+    },
+  },
+  {
+    name: "get_chain_axon_removals",
+    title: "Get network-wide axon-removal activity",
+    description:
+      "Fetch the network-wide axon-teardown leaderboard over the requested " +
+      "window (7d or 30d; default 7d): each subnet ranked by AxonInfoRemoved " +
+      "events with its distinct-remover (hotkey) count and removals-per-remover " +
+      "intensity, plus a network rollup (distinct removers, total removals, " +
+      "removals per remover) and the count/mean/min/p25/median/p75/p90/max spread " +
+      "of per-subnet intensity, summed live from the account_events stream. " +
+      "AxonInfoRemoved is emitted when a neuron's announced axon endpoint is " +
+      "removed — the teardown-side companion to get_chain_serving (axon " +
+      "announcements) and get_subnet_axon_removals (one subnet). Mirrors GET " +
+      "/api/v1/chain/axon-removals.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_AXON_REMOVALS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_AXON_REMOVALS_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the axon-removal leaderboard (1-${CHAIN_AXON_REMOVALS_LIMIT_MAX}, default ${CHAIN_AXON_REMOVALS_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_AXON_REMOVALS_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
+      if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+        CHAIN_AXON_REMOVALS_LIMIT_MAX,
+      );
+      return loadChainAxonRemovals(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_AXON_REMOVALS_WINDOWS[window],
         limit,
       });
     },
@@ -7182,6 +7247,80 @@ const TOOL_OUTPUT_SCHEMAS = {
             distinct_senders: { type: "integer" },
             transfers: { type: "integer" },
             transfers_per_sender: { type: "number" },
+          },
+        },
+      },
+    },
+  },
+  get_chain_axon_removals: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup over every subnet that saw an AxonInfoRemoved event. A
+      // hotkey removing an axon on several subnets counts once in distinct_removers.
+      // removals_per_remover is null when the network-wide distinct-remover count
+      // is unavailable/zero (no divide-by-zero).
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: ["distinct_removers", "removals", "removals_per_remover"],
+        properties: {
+          distinct_removers: { type: "integer" },
+          removals: { type: "integer" },
+          removals_per_remover: { type: ["number", "null"] },
+        },
+      },
+      // Spread of per-subnet re-teardown intensity (AxonInfoRemoved events per
+      // remover) over EVERY subnet that saw a removal; null when no subnet saw
+      // a removal in the window.
+      intensity_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet axon-removal leaderboard, most AxonInfoRemoved events first.
+      // Each listed subnet has at least one distinct remover, so removals_per_remover
+      // is always a finite number here (never divide-by-zero).
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "distinct_removers",
+            "removals",
+            "removals_per_remover",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            distinct_removers: { type: "integer" },
+            removals: { type: "integer" },
+            removals_per_remover: { type: "number" },
           },
         },
       },

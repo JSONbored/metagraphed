@@ -451,6 +451,16 @@ assert.ok(
     chainStakeTransfers.network != null,
   "get_chain_stake_transfers must return subnet_count + network + subnets[]",
 );
+const chainAxonRemovals = await callOk("get_chain_axon_removals", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  Number.isInteger(chainAxonRemovals.subnet_count) &&
+    Array.isArray(chainAxonRemovals.subnets) &&
+    chainAxonRemovals.network != null,
+  "get_chain_axon_removals must return subnet_count + network + subnets[]",
+);
 const chainTransferPairs = await callOk("get_chain_transfer_pairs", {
   window: "7d",
   limit: 5,
