@@ -118,6 +118,13 @@ import {
   DEFAULT_CHAIN_STAKE_MOVES_WINDOW,
 } from "./chain-stake-moves.mjs";
 import {
+  loadChainStakeTransfers,
+  CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+  CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+  CHAIN_STAKE_TRANSFERS_WINDOWS,
+  DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW,
+} from "./chain-stake-transfers.mjs";
+import {
   loadChainTransferPairs,
   CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
   CHAIN_TRANSFER_PAIR_LIMIT_MAX,
@@ -314,7 +321,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.46.0";
+export const MCP_SERVER_VERSION = "1.47.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -323,6 +330,9 @@ const CHAIN_TURNOVER_WINDOW_KEYS = Object.keys(CHAIN_TURNOVER_WINDOWS);
 const CHAIN_STAKE_FLOW_WINDOW_KEYS = Object.keys(CHAIN_STAKE_FLOW_WINDOWS);
 const CHAIN_WEIGHTS_WINDOW_KEYS = Object.keys(CHAIN_WEIGHTS_WINDOWS);
 const CHAIN_STAKE_MOVES_WINDOW_KEYS = Object.keys(CHAIN_STAKE_MOVES_WINDOWS);
+const CHAIN_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
+  CHAIN_STAKE_TRANSFERS_WINDOWS,
+);
 const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
   CHAIN_TRANSFER_PAIR_WINDOWS,
 );
@@ -478,6 +488,9 @@ export const MCP_INSTRUCTIONS =
   "get_chain_stake_moves the network-wide stake-movement (re-delegation) " +
   "leaderboard (per-subnet StakeMoved activity, distinct movers, and " +
   "movements-per-mover intensity) across all subnets, " +
+  "get_chain_stake_transfers the network-wide stake-transfer (between-coldkeys) " +
+  "leaderboard (per-subnet StakeTransferred activity, distinct senders, and " +
+  "transfers-per-sender intensity) across all subnets, " +
   "get_blocks_summary block-production analytics (inter-block time, throughput, " +
   "and block-author decentralization), " +
   "get_network_activity the daily " +
@@ -2399,6 +2412,58 @@ export const MCP_TOOLS = [
       return loadChainStakeMoves(mcpD1Runner(ctx), {
         windowLabel: window,
         windowDays: CHAIN_STAKE_MOVES_WINDOWS[window],
+        limit,
+      });
+    },
+  },
+  {
+    name: "get_chain_stake_transfers",
+    title: "Get network-wide stake-transfer (between-coldkeys) activity",
+    description:
+      "Fetch the network-wide stake-transfer leaderboard over the requested " +
+      "window (7d or 30d; default 7d): each subnet ranked by StakeTransferred " +
+      "events with its distinct-sender (origin coldkey) count and " +
+      "transfers-per-sender intensity, plus a network rollup (distinct senders, " +
+      "total transfers, transfers per sender) and the count/mean/min/p25/median/" +
+      "p75/p90/max spread of per-subnet intensity, summed live from the " +
+      "account_events stream. StakeTransferred moves staked alpha from one " +
+      "coldkey to another on the same hotkey — it relocates ownership, not net " +
+      "capital (get_chain_stake_flow) or re-delegation churn (get_chain_stake_moves). " +
+      "Mirrors GET /api/v1/chain/stake-transfers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_STAKE_TRANSFERS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the stake-transfer leaderboard (1-${CHAIN_STAKE_TRANSFERS_LIMIT_MAX}, default ${CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
+      if (!Object.hasOwn(CHAIN_STAKE_TRANSFERS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+        CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+      );
+      return loadChainStakeTransfers(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_STAKE_TRANSFERS_WINDOWS[window],
         limit,
       });
     },
@@ -6899,6 +6964,80 @@ const TOOL_OUTPUT_SCHEMAS = {
             distinct_movers: { type: "integer" },
             movements: { type: "integer" },
             movements_per_mover: { type: "number" },
+          },
+        },
+      },
+    },
+  },
+  get_chain_stake_transfers: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup over every subnet that saw a StakeTransferred event. A
+      // coldkey transferring stake out of several subnets counts once in
+      // distinct_senders. transfers_per_sender is null when the network-wide
+      // distinct-sender count is unavailable/zero (no divide-by-zero).
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: ["distinct_senders", "transfers", "transfers_per_sender"],
+        properties: {
+          distinct_senders: { type: "integer" },
+          transfers: { type: "integer" },
+          transfers_per_sender: { type: ["number", "null"] },
+        },
+      },
+      // Spread of per-subnet transfer intensity (StakeTransferred events per
+      // sender) over EVERY subnet that saw a transfer; null when no subnet saw
+      // a transfer in the window.
+      intensity_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet stake-transfer leaderboard, most StakeTransferred events
+      // first. Each listed subnet has at least one distinct sender, so
+      // transfers_per_sender is always a finite number here (never divide-by-zero).
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "distinct_senders",
+            "transfers",
+            "transfers_per_sender",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            distinct_senders: { type: "integer" },
+            transfers: { type: "integer" },
+            transfers_per_sender: { type: "number" },
           },
         },
       },
