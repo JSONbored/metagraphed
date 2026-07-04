@@ -285,6 +285,36 @@ function normalizeAccountStakeFlowSample(out) {
   return out;
 }
 
+function normalizeAccountStakeMovesSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    typeof out.total_movements !== "number" ||
+    !Array.isArray(out.subnets) ||
+    !("concentration" in out) ||
+    !("dominant_netuid" in out)
+  ) {
+    return out;
+  }
+  // A single-subnet, internally consistent worked example: four StakeMoved events
+  // on subnet 1, so total_movements, subnet_count, concentration, and the dominant
+  // subnet agree. The generic per-field generator cannot infer those invariants.
+  out.subnets = [
+    {
+      netuid: 1,
+      movements: 4,
+      first_moved_at: ISO,
+      last_moved_at: ISO,
+    },
+  ];
+  out.total_movements = 4;
+  out.address = SAMPLE_SS58;
+  out.subnet_count = 1;
+  out.concentration = 1;
+  out.dominant_netuid = 1;
+  return out;
+}
+
 function normalizeChainTransfersSample(out) {
   if (
     !out ||
@@ -723,6 +753,7 @@ function normalizeObjectSample(out) {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
   normalizeAccountStakeFlowSample(out);
+  normalizeAccountStakeMovesSample(out);
   normalizeSubnetYieldSample(out);
   normalizeChainTransfersSample(out);
   normalizeChainTransferPairsSample(out);

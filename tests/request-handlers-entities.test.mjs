@@ -44,6 +44,7 @@ import {
   handleAccountTransfers,
   handleAccountCounterparties,
   handleAccountStakeFlow,
+  handleAccountStakeMoves,
   handleAccountSubnets,
   handleSubnetEventSummary,
   handleSubnetEvents,
@@ -247,6 +248,7 @@ function dbWith({
   turnoverBounds,
   turnoverRows,
   stakeFlow,
+  stakeMoves,
   agg,
   kinds,
   registrations,
@@ -332,6 +334,14 @@ function dbWith({
                     /event_kind IN \(/.test(sql)
                   ) {
                     return { results: stakeFlow || [] };
+                  }
+                  // Account stake-movement footprint: GROUP BY netuid over StakeMoved.
+                  if (
+                    /COUNT\(\*\) AS movements/.test(sql) &&
+                    /event_kind = \?/.test(sql) &&
+                    /GROUP BY netuid/.test(sql)
+                  ) {
+                    return { results: stakeMoves || [] };
                   }
                   // Account summary aggregates (order matters).
                   if (
@@ -3993,6 +4003,105 @@ describe("handleAccountStakeFlow", () => {
     assert.equal(captures.params[idx][1], "StakeAdded");
     assert.equal(captures.params[idx][2], "StakeRemoved");
     // newest event across all rows, ISO
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
+  });
+});
+
+describe("handleAccountStakeMoves", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountStakeMoves(
+      req(`/api/v1/accounts/${SS58}/stake-moves`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-moves?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleAccountStakeMoves(
+      req(`/api/v1/accounts/${SS58}/stake-moves`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-moves?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns schema-stable zeros on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountStakeMoves,
+      req(`/api/v1/accounts/${SS58}/stake-moves`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-moves`),
+    );
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.total_movements, 0);
+    assert.equal(body.data.subnet_count, 0);
+    assert.equal(body.data.concentration, null);
+    assert.equal(body.data.dominant_netuid, null);
+    await assertValidComponent("AccountStakeMovesArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/accounts/${SS58}/stake-moves.json`,
+    );
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  test("folds per-subnet movements, bound to the coldkey + StakeMoved", async () => {
+    const { env, captures } = dbWith({
+      stakeMoves: [
+        {
+          netuid: 1,
+          movements: 5,
+          first_observed: 1717000000000,
+          last_observed: 1717900000000,
+        },
+        {
+          netuid: 7,
+          movements: 2,
+          first_observed: 1717500000000,
+          last_observed: 1717600000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleAccountStakeMoves(
+        req(`/api/v1/accounts/${SS58}/stake-moves`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/stake-moves?window=90d`),
+      ),
+    );
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.window, "90d");
+    assert.equal(body.data.total_movements, 7);
+    assert.equal(body.data.subnet_count, 2);
+    assert.equal(body.data.subnets[0].netuid, 1);
+    assert.equal(body.data.dominant_netuid, 1);
+    assert.equal(
+      body.data.subnets[0].first_moved_at,
+      new Date(1717000000000).toISOString(),
+    );
+    assert.equal(
+      body.data.subnets[0].last_moved_at,
+      new Date(1717900000000).toISOString(),
+    );
+    await assertValidComponent("AccountStakeMovesArtifact", body.data);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM account_events INDEXED BY idx_account_events_coldkey WHERE coldkey = \?/.test(
+        s,
+      ),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], SS58);
+    assert.equal(captures.params[idx][1], "StakeMoved");
     assert.equal(body.meta.source, "chain-events");
     assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });

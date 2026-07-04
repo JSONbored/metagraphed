@@ -1128,6 +1128,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountStakeFlowArtifact",
   ),
   artifact(
+    "account-stake-moves",
+    "/metagraph/accounts/{ss58}/stake-moves.json",
+    "One account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first/last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-moves (no static file). The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /api/v1/accounts/{ss58}/stake-flow.",
+    "AccountStakeMovesArtifact",
+  ),
+  artifact(
     "account-deregistrations",
     "/metagraph/accounts/{ss58}/deregistrations.json",
     "One account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first/last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/deregistrations (no static file). The eviction-side complement to /api/v1/accounts/{ss58}/registrations and the account-level companion to /api/v1/chain/deregistrations, distinct from /api/v1/accounts/{ss58}/subnets (current registration state).",
@@ -2496,6 +2502,22 @@ export const API_ROUTES = [
       {
         name: "direction",
         schema: { type: "string", enum: ["all", "in", "out"] },
+      },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-stake-moves",
+    "GET",
+    "/api/v1/accounts/{ss58}/stake-moves",
+    "/metagraph/accounts/{ss58}/stake-moves.json",
+    "Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
       },
     ],
     [{ name: "ss58", schema: { type: "string" } }],

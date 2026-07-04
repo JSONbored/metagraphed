@@ -2625,6 +2625,58 @@
         },
         "additionalProperties": false
       },
+      "AccountStakeMovesArtifact": {
+        "type": "object",
+        "description": "One account's stake-movement (re-delegation) footprint per subnet over a recent window, from the account_events StakeMoved stream: per-subnet movement count with the first/last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /accounts/{ss58}/stake-flow.",
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_movements",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "address": { "type": "string" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
+          "total_movements": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "concentration": { "type": ["number", "null"] },
+          "dominant_netuid": { "type": ["integer", "null"], "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "movements",
+                "first_moved_at",
+                "last_moved_at"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "movements": { "type": "integer", "minimum": 0 },
+                "first_moved_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "last_moved_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "AccountDeregistrationsArtifact": {
         "type": "object",
         "description": "One account's neuron-deregistration footprint per subnet over a recent window, from the account_events NeuronDeregistered stream: per-subnet eviction count with the first/last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet. The eviction-side complement to /accounts/{ss58}/registrations and the account-level companion to /api/v1/chain/deregistrations and /api/v1/subnets/{netuid}/deregistrations, distinct from /accounts/{ss58}/subnets (current registration state).",
