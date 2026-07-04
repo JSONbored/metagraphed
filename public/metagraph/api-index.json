@@ -394,6 +394,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-weights",
+      "path": "/metagraph/subnets/{netuid}/weights.json",
+      "schema_ref": "#/components/schemas/SubnetWeightsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-stake-flow",
       "path": "/metagraph/subnets/{netuid}/stake-flow.json",
       "schema_ref": "#/components/schemas/SubnetStakeFlowArtifact",
@@ -4731,6 +4738,29 @@
           "schema": {
             "enum": [
               "true"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/weights.json",
+      "cache": "short",
+      "description": "Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream. The per-subnet drill-in of GET /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no WeightsSet events in the window.",
+      "id": "subnet-weights",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/weights",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
             ],
             "type": "string"
           }

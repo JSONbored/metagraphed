@@ -1443,6 +1443,38 @@
           }
         }
       },
+      "SubnetWeightsArtifact": {
+        "type": "object",
+        "description": "Per-subnet validator weight-setting activity over a 7d/30d window: the distinct weight-setting validators, WeightsSet event count, and updates per validator for ONE subnet. The per-subnet drill-in of /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid), served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights (no static file); zeroed when the subnet has no WeightsSet events in the window.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "distinct_setters",
+          "weight_sets",
+          "sets_per_setter"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", null]
+          },
+          "observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "distinct_setters": { "type": "integer", "minimum": 0 },
+          "weight_sets": { "type": "integer", "minimum": 0 },
+          "sets_per_setter": {
+            "type": ["number", "null"],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "SubnetYieldArtifact": {
         "type": "object",
         "description": "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low, with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file).",

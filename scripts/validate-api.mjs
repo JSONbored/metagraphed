@@ -242,6 +242,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/weights?window=30d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "30d");
+      assert.equal(typeof body.data.distinct_setters, "number");
+      assert.equal(typeof body.data.weight_sets, "number");
+      assert.equal(
+        body.data.sets_per_setter === null ||
+          typeof body.data.sets_per_setter === "number",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/subnets/movers?window=30d&sort=stake&limit=10",
     (body) => {
       assert.equal(body.data.window, "30d");

@@ -122,6 +122,11 @@ import {
 } from "../../src/counterparties.mjs";
 import { loadSubnetTurnover } from "../../src/turnover.mjs";
 import {
+  loadSubnetWeights,
+  SUBNET_WEIGHTS_WINDOWS,
+  DEFAULT_SUBNET_WEIGHTS_WINDOW,
+} from "../../src/subnet-weights.mjs";
+import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
@@ -1063,6 +1068,54 @@ export async function handleSubnetTurnover(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/turnover.json`,
         data.end_date,
+      ),
+    },
+    "short",
+  );
+}
+
+// Canonical edge-cache key for the subnet-weights route: only ?window= (7d/30d) changes the
+// response, canonicalized to its default when omitted so equivalent requests share a slot.
+export function canonicalSubnetWeightsCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHTS_WINDOW;
+  if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+}
+
+// GET /api/v1/subnets/{netuid}/weights?window=7d|30d: validator weight-setting activity for
+// one subnet over the window — distinct weight-setting validators, WeightsSet event count, and
+// updates per validator — read live from the account_events WeightsSet stream. The per-subnet
+// drill-in of /api/v1/chain/weights. Cold/absent store → 200 with a zeroed card (never 404).
+export async function handleSubnetWeights(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHTS_WINDOW;
+  if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, SUBNET_WEIGHTS_WINDOWS),
+    });
+  }
+  const data = await loadSubnetWeights(d1Runner(env), netuid, {
+    windowLabel: windowParam,
+    windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam],
+  });
+  // account_events-derived, so the meta reports the event-stream source (accountMeta) with
+  // generated_at the newest observed WeightsSet event, mirroring the sibling stake-flow route.
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/weights.json`,
+        data.observed_at,
       ),
     },
     "short",

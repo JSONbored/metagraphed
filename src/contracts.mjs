@@ -954,6 +954,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetTurnoverArtifact",
   ),
   artifact(
+    "subnet-weights",
+    "/metagraph/subnets/{netuid}/weights.json",
+    "Validator weight-setting activity for one subnet over a 7d or 30d window — the distinct weight-setting validators, WeightsSet event count, and average updates per validator — served live from the account_events WeightsSet stream at /api/v1/subnets/{netuid}/weights (no static file). The per-subnet drill-in of /api/v1/chain/weights.",
+    "SubnetWeightsArtifact",
+  ),
+  artifact(
     "subnet-stake-flow",
     "/metagraph/subnets/{netuid}/stake-flow.json",
     "Net stake flow for one subnet over a recent window (7d/30d/90d): total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and event counts, with optional ?direction=all|in|out to filter inflow or outflow only, summed live from the account_events stream at /api/v1/subnets/{netuid}/stake-flow (no static file).",
@@ -1905,6 +1911,17 @@ export const API_ROUTES = [
       },
       { name: "changes", schema: { type: "string", enum: ["true"] } },
     ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-weights",
+    "GET",
+    "/api/v1/subnets/{netuid}/weights",
+    "/metagraph/subnets/{netuid}/weights.json",
+    "Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream. The per-subnet drill-in of GET /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no WeightsSet events in the window.",
+    "short",
+    ["subnets", "analytics"],
+    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
