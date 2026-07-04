@@ -86,6 +86,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official IOTA source repository."
+    },
+    {
+      "id": "sn-9-iota-codeparrot-dataset",
+      "name": "IOTA code pretraining dataset",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/datasets/macrocosm-os/code-parrot-github-code",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/macrocosm-os/iota",
+        "https://huggingface.co/macrocosm-os"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public Macrocosmos HuggingFace GitHub-code corpus (repo_name/path/size/content/license columns; 32 languages) in the macrocosm-os org, a pretraining-data source fit for the IOTA (SN9) LLM-pretraining subnet; not gated. The IOTA repo README (source) declares Macrocosmos operates subnet 9 and links docs.macrocosmos.ai/subnets/subnet-9-pre-training."
     }
   ],
   "contact": "support@macrocosmos.ai"
