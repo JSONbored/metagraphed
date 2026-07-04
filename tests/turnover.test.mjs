@@ -520,31 +520,47 @@ describe("turnover loaders", () => {
     assert.doesNotMatch(captures.sql[0], /snapshot_date >=/);
   });
 
-  test("loadSubnetTurnover binds the exact 30d cutoff date", async () => {
-    const fixedNow = new Date("2026-06-30T12:00:00.000Z");
+  test("anchors the window to the newest stored snapshot for the subnet, not wall clock", async () => {
+    // Worker clock is mid-2026 but the store's newest snapshot is months older; a
+    // now-relative cutoff would return comparable:false despite real churn data.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T12:00:00.000Z"));
     const captures = { sql: [], params: [] };
-    try {
-      vi.useFakeTimers();
-      vi.setSystemTime(fixedNow);
-      await loadSubnetTurnover(
-        d1(
-          {
-            "MIN\\(snapshot_date\\)": [
-              { start_date: "2026-05-31", end_date: "2026-06-30" },
-            ],
-            "snapshot_date IN": [],
-          },
-          captures,
-        ),
-        9,
-        { windowLabel: "30d", windowDays: 30 },
-      );
-    } finally {
-      vi.useRealTimers();
-    }
+    const data = await loadSubnetTurnover(
+      d1(
+        {
+          "MIN\\(snapshot_date\\)": [
+            { start_date: "2026-01-01", end_date: "2026-01-31" },
+          ],
+          "snapshot_date IN": [
+            {
+              snapshot_date: "2026-01-01",
+              uid: 0,
+              hotkey: "V1",
+              validator_permit: 1,
+            },
+            {
+              snapshot_date: "2026-01-31",
+              uid: 0,
+              hotkey: "V2",
+              validator_permit: 1,
+            },
+          ],
+        },
+        captures,
+      ),
+      9,
+      { windowLabel: "30d", windowDays: 30 },
+    );
+    assert.match(captures.sql[0], /date\(MAX\(snapshot_date\), \?\)/);
     assert.equal(captures.params[0][0], 9);
-    assert.equal(captures.params[0][1], "2026-05-31");
-    assert.deepEqual(captures.params[1], [9, "2026-05-31", "2026-06-30"]);
+    assert.equal(captures.params[0][1], "-30 days");
+    assert.equal(captures.params[0][2], 9);
+    assert.equal(data.start_date, "2026-01-01");
+    assert.equal(data.end_date, "2026-01-31");
+    assert.equal(data.comparable, true);
+    assert.equal(data.validators_entered, 1);
+    vi.useRealTimers();
   });
 });
 

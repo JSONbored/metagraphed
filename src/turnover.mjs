@@ -11,8 +11,6 @@
 export const TURNOVER_READ_COLUMNS =
   "snapshot_date, uid, hotkey, validator_permit";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 // Round a retention ratio (always a finite 0..1 jaccard result) to a stable
 // precision WITHOUT letting a sub-perfect ratio round up to an exact 1 — the same
 // invariant `displayUptimeRatio` enforces for uptime (#1799) and `formatUptimePercent`
@@ -290,11 +288,13 @@ async function loadTurnoverBoundaryRows(d1, netuid, { windowDays }) {
     "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
   const boundsParams = [netuid];
   if (windowDays != null) {
-    const cutoff = new Date(Date.now() - windowDays * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    boundsSql += " AND snapshot_date >= ?";
-    boundsParams.push(cutoff);
+    // Anchor the window to the newest stored snapshot for this subnet, not the
+    // worker wall clock — a lagging/restored D1 store still compares its real
+    // boundary days instead of returning comparable:false. Mirrors
+    // loadChainTurnover / loadSubnetMovers (#3024).
+    boundsSql +=
+      " AND snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily WHERE netuid = ?)";
+    boundsParams.push(`-${windowDays} days`, netuid);
   }
   const bounds = await d1(boundsSql, boundsParams);
   const startDate = bounds[0]?.start_date ?? null;
@@ -310,8 +310,9 @@ async function loadTurnoverBoundaryRows(d1, netuid, { windowDays }) {
 }
 
 // One subnet's validator-set & registration churn — shared by the REST route and
-// MCP tool: MIN/MAX the window's boundary snapshot_dates on neuron_daily, read
-// exactly those two days' rows, shape with buildTurnover. Cold D1 → comparable:false.
+// MCP tool: resolve the window's boundary snapshot_dates on neuron_daily (anchored
+// to the subnet's newest stored day for finite windows), read exactly those two
+// days' rows, shape with buildTurnover. Cold D1 → comparable:false.
 export async function loadSubnetTurnover(
   d1,
   netuid,
