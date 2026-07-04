@@ -383,6 +383,36 @@ describe("buildCounterpartyRelationship", () => {
       assert.equal(data.transfers.length, 1);
       assert.equal(data.transfers[0].amount_tao, 2);
     }
+    // Explicit null must skip the row (nullableNumber null guard), not coerce to 0.
+    const missing = buildCounterpartyRelationship(
+      [
+        {
+          block_number: 8,
+          event_index: 0,
+          hotkey: ME,
+          coldkey: "A",
+          netuid: 1,
+          amount_tao: null,
+          observed_at: Date.UTC(2026, 5, 4),
+        },
+        {
+          block_number: 9,
+          event_index: 0,
+          hotkey: ME,
+          coldkey: "A",
+          netuid: 1,
+          amount_tao: 3,
+          observed_at: Date.UTC(2026, 5, 5),
+        },
+      ],
+      ME,
+      "A",
+      {},
+    );
+    assert.equal(missing.transfer_count, 1);
+    assert.equal(missing.total_sent_tao, 3);
+    assert.equal(missing.transfers.length, 1);
+    assert.equal(missing.transfers[0].amount_tao, 3);
     // A literal zero amount is still valid — only blank strings are rejected.
     const zero = buildCounterpartyRelationship(
       [
