@@ -1272,6 +1272,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainDeregistrationsArtifact",
   ),
   artifact(
+    "chain-axon-removals",
+    "/metagraph/chain/axon-removals.json",
+    "Network-wide axon-removal activity over a 7d or 30d window across the subnets with observed axon-removal activity (subnets with no AxonInfoRemoved events are absent): each subnet's AxonInfoRemoved event count, distinct removers (hotkeys), and average removals per remover ranked into a leaderboard, a network rollup with the true distinct remover count (not a per-subnet sum) and total removals, and a distribution summary of the per-subnet re-teardown intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events AxonInfoRemoved stream at /api/v1/chain/axon-removals. Raw axon-teardown activity — the removal-side companion to /api/v1/chain/serving (no static file).",
+    "ChainAxonRemovalsArtifact",
+  ),
+  artifact(
     "chain-stake-moves",
     "/metagraph/chain/stake-moves.json",
     "Network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): each subnet's StakeMoved event count, distinct movers (accounts relocating stake), and average movements per mover ranked into a leaderboard, a network rollup with the true distinct mover count (not a per-subnet sum) and total movements, and a distribution summary of the per-subnet re-move intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events StakeMoved stream at /api/v1/chain/stake-moves. The re-delegation-churn companion to the net-capital-flow /api/v1/chain/stake-flow — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
@@ -2858,6 +2864,20 @@ export const API_ROUTES = [
     "/api/v1/chain/deregistrations",
     "/metagraph/chain/deregistrations.json",
     "Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronDeregistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
+    "short",
+    ["chain", "analytics"],
+    csvRouteQuery([
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ]),
+    [],
+  ),
+  route(
+    "chain-axon-removals",
+    "GET",
+    "/api/v1/chain/axon-removals",
+    "/metagraph/chain/axon-removals.json",
+    "Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed axon-removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). Raw axon-teardown activity — the removal-side companion to GET /api/v1/chain/serving (which counts axon announcements, not teardowns). Computed live from the account_events AxonInfoRemoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
     csvRouteQuery([

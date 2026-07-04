@@ -887,6 +887,90 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouchedDeregs.network.deregistrations, 70);
   });
 
+  test("chain axon-removal samples keep removals-per-remover consistent", () => {
+    const removerProps = {
+      distinct_removers: { type: "integer" },
+      removals: { type: "integer" },
+      removals_per_remover: { type: ["number", "null"] },
+    };
+    const axonRemovalsSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "subnet_count",
+        "network",
+        "intensity_distribution",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          required: ["distinct_removers", "removals", "removals_per_remover"],
+          properties: removerProps,
+        },
+        intensity_distribution: {
+          type: ["object", "null"],
+          properties: {
+            count: { type: "integer" },
+            mean: { type: "number" },
+            min: { type: "number" },
+            p25: { type: "number" },
+            median: { type: "number" },
+            p75: { type: "number" },
+            p90: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "distinct_removers",
+              "removals",
+              "removals_per_remover",
+            ],
+            properties: { netuid: { type: "integer" }, ...removerProps },
+          },
+        },
+      },
+    };
+    const sample = s(axonRemovalsSchema, "data");
+
+    // The worked example is internally consistent: each subnet's removals_per_remover equals its
+    // AxonInfoRemoved count divided by its distinct removers, and the network rollup does the same.
+    for (const subnet of sample.subnets) {
+      assert.equal(
+        subnet.removals_per_remover,
+        subnet.removals / subnet.distinct_removers,
+      );
+    }
+    assert.equal(
+      sample.network.removals_per_remover,
+      sample.network.removals / sample.network.distinct_removers,
+    );
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.intensity_distribution.count, sample.subnets.length);
+
+    // A shape whose network lacks removals_per_remover is not an axon-removals artifact and is left
+    // untouched (guard branch).
+    const notRemovals = JSON.parse(JSON.stringify(axonRemovalsSchema));
+    delete notRemovals.properties.network.properties.removals_per_remover;
+    notRemovals.properties.network.required =
+      notRemovals.properties.network.required.filter(
+        (key) => key !== "removals_per_remover",
+      );
+    const untouchedRemovals = s(notRemovals, "data");
+    assert.notEqual(untouchedRemovals.network.removals, 70);
+  });
+
   test("chain stake-moves samples keep movements-per-mover consistent", () => {
     const moverProps = {
       distinct_movers: { type: "integer" },

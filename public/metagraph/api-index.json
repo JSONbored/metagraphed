@@ -765,6 +765,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-axon-removals",
+      "path": "/metagraph/chain/axon-removals.json",
+      "schema_ref": "#/components/schemas/ChainAxonRemovalsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-stake-moves",
       "path": "/metagraph/chain/stake-moves.json",
       "schema_ref": "#/components/schemas/ChainStakeMovesArtifact",
@@ -6698,6 +6705,48 @@
       "id": "chain-deregistrations",
       "method": "GET",
       "path": "/api/v1/chain/deregistrations",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/axon-removals.json",
+      "cache": "short",
+      "description": "Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed axon-removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). Raw axon-teardown activity — the removal-side companion to GET /api/v1/chain/serving (which counts axon announcements, not teardowns). Computed live from the account_events AxonInfoRemoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
+      "id": "chain-axon-removals",
+      "method": "GET",
+      "path": "/api/v1/chain/axon-removals",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

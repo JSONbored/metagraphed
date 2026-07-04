@@ -984,6 +984,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Network-wide axon-removal activity over a 7d or 30d window across the subnets with observed axon-removal activity (subnets with no AxonInfoRemoved events are absent): each subnet's AxonInfoRemoved event count, distinct removers (hotkeys), and average removals per remover ranked into a leaderboard, a network rollup with the true distinct remover count (not a per-subnet sum) and total removals, and a distribution summary of the per-subnet re-teardown intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events AxonInfoRemoved stream at /api/v1/chain/axon-removals. Raw axon-teardown activity — the removal-side companion to /api/v1/chain/serving (no static file).",
+      "id": "chain-axon-removals",
+      "path": "/metagraph/chain/axon-removals.json",
+      "schema_ref": "#/components/schemas/ChainAxonRemovalsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): each subnet's StakeMoved event count, distinct movers (accounts relocating stake), and average movements per mover ranked into a leaderboard, a network rollup with the true distinct mover count (not a per-subnet sum) and total movements, and a distribution summary of the per-subnet re-move intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events StakeMoved stream at /api/v1/chain/stake-moves. The re-delegation-churn companion to the net-capital-flow /api/v1/chain/stake-flow — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
       "id": "chain-stake-moves",
       "path": "/metagraph/chain/stake-moves.json",

@@ -2965,6 +2965,160 @@
         ],
         "type": "object"
       },
+      "ChainAxonRemovalsArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide axon-removal activity over a 7d/30d window across the subnets with observed axon-removal activity: a per-subnet leaderboard (distinct removers, AxonInfoRemoved count, removals per remover) plus a network rollup with the true distinct remover count and a distribution of per-subnet re-teardown intensity. Raw axon-teardown activity from the account_events AxonInfoRemoved stream — the removal-side companion to /api/v1/chain/serving (which counts axon announcements, not teardowns) — served live at /api/v1/chain/axon-removals (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "properties": {
+          "intensity_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet removals-per-remover intensity across the subnets that saw an axon removal in the window (null when no subnet saw one). subnet_count and this distribution cover only subnets with observed AxonInfoRemoved activity, not every subnet.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "mean": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "min": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p25": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p75": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p90": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the window: the true distinct removers across all subnets (a hotkey removing an axon on several subnets counts once, so NOT the sum of the per-subnet counts), total AxonInfoRemoved events, and the network removals-per-remover intensity (null when no axon was removed).",
+            "properties": {
+              "distinct_removers": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "removals": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "removals_per_remover": {
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "distinct_removers",
+              "removals",
+              "removals_per_remover"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "distinct_removers": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "removals": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "removals_per_remover": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "netuid",
+                "distinct_removers",
+                "removals",
+                "removals_per_remover"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "intensity_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainCallEntry": {
         "additionalProperties": false,
         "description": "One call-mix bucket. call_function is null unless group_by=module_function. share is count / total_extrinsics (full-window), null when the window is empty.",
