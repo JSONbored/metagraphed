@@ -1315,14 +1315,18 @@ function isoFromMs(ms) {
 // `surface_status` read path; the emitted netuid both groups the per-subnet
 // `subnets` summary (Map key) and rides into the response contract, so a raw
 // string netuid would splinter a subnet's surfaces across two group keys and
-// ship a string where every other route ships a number. Accept only a real
-// number or an all-digits string so a blank/null cell is dropped rather than
-// read as valid subnet 0 (Number("") === Number(null) === 0).
+// ship a string where every other route ships a number. Accept ONLY a real
+// number or an all-digits string (rejecting "1e3"/"0x10"-style Number()
+// coercions, matching subnet-identity-history.mjs's rowNetuid, #2938) so a
+// blank/null/non-numeric cell is dropped rather than read as valid subnet 0.
 function normalizedNetuid(value) {
-  if (value == null) return null;
-  if (typeof value === "string" && value.trim() === "") return null;
-  const netuid = Number(value);
-  return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    return Number(value);
+  }
+  return null;
 }
 
 function liveFromD1Rows(rows) {
