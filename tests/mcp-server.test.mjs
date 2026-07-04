@@ -3245,6 +3245,69 @@ describe("MCP get_subnet_event_summary", () => {
   });
 });
 
+describe("MCP get_subnet_stake_moves", () => {
+  function stakeMovesD1(row = null, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  return { results: row ? [row] : [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("summarizes per-subnet stake-movement activity", async () => {
+    const res = await callTool(
+      "get_subnet_stake_moves",
+      { netuid: 5, window: "7d" },
+      {
+        env: stakeMovesD1({
+          movements: 9,
+          distinct_movers: 3,
+          newest_observed: 1_717_500_000_000,
+        }),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 5);
+    assert.equal(out.movements, 9);
+    assert.equal(out.distinct_movers, 3);
+  });
+
+  test("cold subnet degrades to a schema-stable empty summary", async () => {
+    const res = await callTool(
+      "get_subnet_stake_moves",
+      { netuid: 5 },
+      { env: stakeMovesD1(null) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.movements, 0);
+    assert.equal(out.distinct_movers, 0);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_stake_moves", {
+      netuid: 5,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_stake_moves", { window: "7d" });
+    assert.equal(res.body.result.isError, true);
+  });
+});
+
 describe("MCP get_subnet_registrations", () => {
   function registrationsSubnetD1(row = null, capture = []) {
     return {

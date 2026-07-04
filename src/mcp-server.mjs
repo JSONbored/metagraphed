@@ -218,6 +218,11 @@ import {
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
 } from "./subnet-registrations.mjs";
 import {
+  loadSubnetStakeMoves,
+  SUBNET_STAKE_MOVES_WINDOWS,
+  DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
+} from "./subnet-stake-moves.mjs";
+import {
   loadSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
@@ -309,7 +314,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.39.0";
+export const MCP_SERVER_VERSION = "1.40.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -419,6 +424,7 @@ export const MCP_INSTRUCTIONS =
   "tail), get_subnet_weight_setters the per-subnet weight-setter leaderboard " +
   "(the validators behind /weights ranked by activity), " +
   "get_subnet_registrations the per-subnet neuron-registration activity, " +
+  "get_subnet_stake_moves the per-subnet stake-relocation activity, " +
   "get_subnet_axon_removals the per-subnet AxonInfoRemoved teardown activity " +
   "(distinct removers, event count, removals per remover — the removal-side " +
   "companion to /serving), get_subnet_deregistrations the per-subnet " +
@@ -2647,6 +2653,45 @@ export const MCP_TOOLS = [
       return await loadSubnetRegistrations(mcpD1Runner(ctx), netuid, {
         windowLabel: window,
         windowDays: SUBNET_REGISTRATIONS_WINDOWS[window],
+      });
+    },
+  },
+  {
+    name: "get_subnet_stake_moves",
+    title: "Get subnet stake-movement activity",
+    description:
+      "Fetch one subnet's stake-movement activity over a 7d or 30d window " +
+      "(default 7d): the StakeMoved event count, the number of distinct movers " +
+      "(coldkeys), and the movements-per-mover intensity, computed live from " +
+      "the account_events StakeMoved stream. Complements get_subnet_stake_flow " +
+      "(net capital in/out); this counts relocation activity between subnets. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/stake-moves.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: Object.keys(SUBNET_STAKE_MOVES_WINDOWS),
+          description: `Lookback window (default ${DEFAULT_SUBNET_STAKE_MOVES_WINDOW}).`,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
+      if (!Object.hasOwn(SUBNET_STAKE_MOVES_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${Object.keys(SUBNET_STAKE_MOVES_WINDOWS).join(", ")}.`,
+        );
+      }
+      return await loadSubnetStakeMoves(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+        windowDays: SUBNET_STAKE_MOVES_WINDOWS[window],
       });
     },
   },
@@ -6784,6 +6829,20 @@ const TOOL_OUTPUT_SCHEMAS = {
         last_observed_at: NULLABLE_STRING,
       }),
       recent_events: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_subnet_stake_moves: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "window", "distinct_movers", "movements"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      distinct_movers: { type: "integer" },
+      movements: { type: "integer" },
+      movements_per_mover: { type: ["number", "null"] },
     },
   },
   get_subnet_registrations: {
