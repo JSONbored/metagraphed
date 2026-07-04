@@ -64,6 +64,24 @@
         "https://github.com/metanova-labs/nova/blob/16da5da15919ff3757b82a5980cf59460335d23e/install_deps.sh#L57"
       ],
       "url": "https://huggingface.co/datasets/Metanova/Mol-Rxn-DB"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-68-nova-proteins",
+      "kind": "data-artifact",
+      "name": "NOVA Proteins target dataset",
+      "notes": "Public Metanova (NOVA, SN68) Hugging Face dataset of protein targets the subnet's drug-discovery challenges are posed against. The official metanova-labs/nova challenge code loads it directly (utils/challenge.py line 37: load_dataset(\"Metanova/Proteins\")), establishing first-party ownership. Distinct from the subnet's registered Submission-Archive, SAVI-2020, and Mol-Rxn-DB datasets.",
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://github.com/metanova-labs/nova/blob/16da5da15919ff3757b82a5980cf59460335d23e/utils/challenge.py#L37"
+      ],
+      "url": "https://huggingface.co/datasets/Metanova/Proteins"
     }
   ]
 }
