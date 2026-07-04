@@ -882,6 +882,40 @@ describe("feeds — serializers", () => {
     );
   });
 
+  test("jsonFeed omits date_published for corrupt item timestamps", () => {
+    const parsed = JSON.parse(
+      jsonFeed(meta, [
+        {
+          id: "bad-ts",
+          url: "https://example.com/x",
+          title: "bad",
+          summary: "bad",
+          timestamp: "not-a-date",
+          tags: [],
+        },
+      ]),
+    );
+    assert.equal(parsed.items.length, 1);
+    assert.equal(parsed.items[0].id, "bad-ts");
+    assert.equal(parsed.items[0].date_published, undefined);
+  });
+
+  test("jsonFeed normalizes a valid item timestamp to an RFC 3339 date_published", () => {
+    const parsed = JSON.parse(
+      jsonFeed(meta, [
+        {
+          id: "ok-ts",
+          url: "https://example.com/x",
+          title: "ok",
+          summary: "ok",
+          timestamp: "2026-06-15T00:00:00.000Z",
+          tags: [],
+        },
+      ]),
+    );
+    assert.equal(parsed.items[0].date_published, "2026-06-15T00:00:00.000Z");
+  });
+
   test("escapeXml neutralizes markup + strips control chars", () => {
     assert.equal(
       escapeXml(`<a href="x">&'</a>`),

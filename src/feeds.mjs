@@ -381,14 +381,20 @@ function jsonFeed(meta, items) {
       home_page_url: meta.homeUrl,
       feed_url: meta.feedUrl,
       description: meta.description,
-      items: items.map((it) => ({
-        id: it.id,
-        url: it.url,
-        title: it.title,
-        content_text: it.summary,
-        date_published: it.timestamp,
-        tags: it.tags,
-      })),
+      items: items.map((it) => {
+        const datePublished = toIso(it.timestamp);
+        return {
+          id: it.id,
+          url: it.url,
+          title: it.title,
+          content_text: it.summary,
+          // date_published must be an RFC 3339 timestamp per JSON Feed 1.1; drop
+          // it for a corrupt timestamp rather than emit an invalid value, matching
+          // the rssFeed pubDate (toRfc822) and atomFeed updated (toIso, #3218) guards.
+          ...(datePublished ? { date_published: datePublished } : {}),
+          tags: it.tags,
+        };
+      }),
     },
     null,
     2,
