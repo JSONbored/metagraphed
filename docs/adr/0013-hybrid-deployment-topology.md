@@ -41,6 +41,18 @@
 > schema is supposed to support. JSO-2054/#2518's option (a) decision
 > (Postgres/TimescaleDB, no columnar sibling) stands unchanged.
 
+> **Amendment (2026-07-04): the poller and the streamer's Railway hosting were
+> retired early, independent of the Sequencing plan below.** The GitHub `*/5`
+> poller (`refresh-events.yml`) is deleted, and the realtime streamer
+> (`scripts/stream-events.py`) has moved off Railway onto the self-hosted
+> indexer box (Ansible `streamer` role), with the Railway `metagraphed-streamer`
+> project deleted. Both happened ahead of, and decoupled from, the gated
+> Sequencing steps below — the trigger was the streamer having a verified-working
+> redundant copy (self-hosted) rather than the full Postgres/Hyperdrive cutover
+> completing. The `*/3` R2-staging drain and D1's demotion to a hot cache remain
+> gated on that real cutover and are unaffected — the drain is still fed by the
+> manual `backfill-events.yml` workflow and must not be removed early.
+
 ## Context
 
 The explorer's chain data is structurally a **rolling cache, not an archive**, and

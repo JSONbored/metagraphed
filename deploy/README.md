@@ -23,9 +23,11 @@ R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 | Escape hatch  | **Hetzner** (later)                                       | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                                                                                                                                  |
 
 One Railway **project**, two **environments** (`production`, `staging`), one
-private network (`<service>.railway.internal`, zero egress). The existing
-`metagraphed-streamer` project is **separate and untouched** — it is superseded
-by `indexer` only at decommission (final step).
+private network (`<service>.railway.internal`, zero egress). The
+`metagraphed-streamer` project has already been moved off Railway (2026-07-04,
+self-hosted via the Ansible `streamer` role, verified stable) and the Railway
+project deleted — decoupled from, and ahead of, the Postgres/indexer-rs
+cutover sequencing below, which is unaffected.
 
 ## Railway: one project, many services
 
@@ -44,15 +46,14 @@ and you lose internal DNS + cross-service vars and must wire public URLs by hand
   its OWN file. Railway does **not** auto-discover it from a subdirectory — set the
   service's **Settings → Config-as-code → "Railway Config File"** to an **absolute**
   repo-root path (it does **not** follow Root Directory):
-  - `metagraphed-streamer` → `/railway.json`
   - `wss-lb` → `/deploy/wss-lb/railway.json`
   - `indexer` → no config yet; the Python `scripts/index-chain.py`/`backfill-chain.py`
     it used to point at are retired in favor of a faster Rust implementation whose
     source doesn't have a git home in this repo yet (see the Bare-metal section below)
 
   Each builds its Dockerfile from the **repo-root** build context (leave Root
-  Directory unset) and scopes redeploys with `watchPatterns`, so a streamer change
-  never rebuilds the indexer.
+  Directory unset) and scopes redeploys with `watchPatterns`, so an unrelated
+  merge never triggers a pointless rebuild.
 
 - **Whole-project config** (`.railway/railway.ts`, project-as-code): defines ALL
   services + DBs + variables + references in **one file**, applied with
@@ -176,9 +177,11 @@ Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
 3. **Serving cutover** — point the Worker at Hyperdrive→Postgres **tier by tier**
    (blocks → extrinsics → accounts → metagraph), D1 as fallback; only then delete
    the prune-and-discard logic.
-4. **Decommission** the GitHub `*/5` poller (`refresh-events.yml`), the
-   `metagraphed-streamer` project, and the `*/3` R2-staging drain; demote D1 to a
-   hot cache.
+4. **Decommission** the `*/3` R2-staging drain (still fed by the manual
+   `backfill-events.yml` workflow — do not remove until this step); demote D1 to
+   a hot cache. (The GitHub `*/5` poller and the `metagraphed-streamer` Railway
+   project were already decommissioned 2026-07-04, ahead of and independent from
+   this gated cutover — see the note above.)
 
 ## Backup job (Postgres → R2)
 

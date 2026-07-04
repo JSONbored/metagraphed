@@ -1,12 +1,13 @@
 name: Backfill Chain Events (historical range)
 
 # One-shot historical backfill (#1749, ADR 0012) for the block-explorer tiers.
-# Scans an explicit [from, to] block range from a WS ARCHIVE (the live streamer +
-# poller only cover recent blocks; older gaps are pruned from public RPC), decodes
-# blocks/extrinsics/account_events with the SAME verified decode as the live poller,
-# and stages them to R2 — the Worker's */3 fast-load cron drains them into D1 via
-# loadStaged* (INSERT OR IGNORE on the PKs → idempotent, so re-running a range or
-# overlapping the live poller is free).
+# Scans an explicit [from, to] block range from a WS ARCHIVE (the live streamer
+# only covers recent blocks; older gaps are pruned from public RPC — there is no
+# automatic backstop poller anymore, retired 2026-07-04), decodes
+# blocks/extrinsics/account_events with the SAME verified decode the streamer
+# uses, and stages them to R2 — the Worker's */3 fast-load cron drains them into
+# D1 via loadStaged* (INSERT OR IGNORE on the PKs → idempotent, so re-running a
+# range or overlapping the live streamer is free).
 #
 # Manual only. Size each [from, to] to finish inside the timeout (~1500 blocks is a
 # safe chunk); space chunks ~5 min apart so the Worker drains each pending object

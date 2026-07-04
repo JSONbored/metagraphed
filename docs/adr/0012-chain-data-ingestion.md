@@ -9,6 +9,16 @@
   ingestion it deferred), ADR 0006 (provenance-tiered storage), and the
   own-the-core infrastructure program (#1345, #1349, #1519).
 
+> **Amendment (2026-07-04): the bootstrap poller (`refresh-events.yml`) is
+> retired.** The realtime streamer (`scripts/stream-events.py`, epic #1345
+> Option B) is now the continuous live-follow tier this status line anticipated
+> — it moved off Railway onto self-hosted infra the same day, giving it a
+> verified-working redundant copy, which is what actually triggered retiring the
+> poller (not the separate, still-in-progress Rust continuous indexer for
+> Postgres, which remains a later step per ADR 0013). Historical gap recovery
+> for older ranges is now the manual `backfill-events.yml` workflow rather than
+> an automatic cron backstop.
+
 ## Context
 
 The block explorer's first-party ingestion (ADR 0010) ships today as a **$0
