@@ -57,7 +57,7 @@ export function apiHeaders(cacheProfile) {
   headers.set("content-type", JSON_CONTENT_TYPE);
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-metagraph-cache-profile", cacheProfile);
-  headers.set("vary", "Accept-Encoding");
+  headers.set("vary", "Accept, Accept-Encoding");
   return headers;
 }
 

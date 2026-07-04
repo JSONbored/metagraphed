@@ -23,6 +23,12 @@ test("linkHeader joins entries into an RFC 8288 header value", () => {
   assert.equal(linkHeader([]), "");
 });
 
+test("envelopeResponse marks JSON envelopes as varying by Accept", async () => {
+  const payload = { data: { ok: 1 }, meta: { contract_version: "test" } };
+  const res = await envelopeResponse(reqWith(null), payload, "standard");
+  assert.equal(res.headers.get("vary"), "Accept, Accept-Encoding");
+});
+
 test("envelopeResponse applies extra headers and skips null values", async () => {
   const payload = { data: { ok: 1 }, meta: { contract_version: "test" } };
   const res = await envelopeResponse(reqWith(null), payload, "standard", {
