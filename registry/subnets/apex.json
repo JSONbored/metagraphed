@@ -151,6 +151,25 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Apex PvP arena runtime (multi-container PvP game runtime for adversarial agent competition), in the team's macrocosm-os org."
+    },
+    {
+      "id": "sn-1-macrocosmos-data-artifact",
+      "name": "Apex SN1 synthetic-data sample",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/datasets/macrocosm-os/subnet1-synthetic-data-sample",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://huggingface.co/macrocosm-os",
+        "https://huggingface.co/datasets/macrocosm-os/subnet1-synthetic-data-sample/raw/main/SAMPLE.md"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Macrocosmos-published HuggingFace sample of Subnet 1 synthetic Q&A/reasoning data (MIT, public, not gated). The dataset's SAMPLE.md opens \"# Subnet 1: Sample Data\" and the official Macrocosmos org (source) lists it; fills the subnet's noted missing-data-artifact gap."
     }
   ],
   "social": { "x": "https://x.com/macrocosmosai" },
