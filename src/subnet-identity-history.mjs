@@ -319,7 +319,7 @@ export async function loadPreviouslyKnownAsForNetuids(d1, entries) {
   const currentByNetuid = new Map(
     items
       .filter((entry) => Number.isInteger(entry?.netuid))
-      .map((entry) => [entry.netuid, entry.name ?? entry.native_name ?? null]),
+      .map((entry) => [entry.netuid, entry.native_name ?? entry.name ?? null]),
   );
   const grouped = new Map();
   for (const row of rows || []) {

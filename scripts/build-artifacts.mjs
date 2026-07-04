@@ -1698,6 +1698,11 @@ for (const subnet of mergedSubnets) {
       netuid: subnet.netuid,
       slug: subnet.slug,
       name: subnet.name,
+      // On-chain identity name, distinct from the curated `name` above — the
+      // serve-time previously_known_as overlay needs this to resolve the
+      // subnet's CURRENT on-chain name (matching the per-subnet route's
+      // convention) so it isn't mistaken for one of its own past aliases.
+      native_name: subnet.native_name,
       categories: Array.isArray(profile?.categories) ? profile.categories : [],
       subnet_type: profile?.subnet_type || null,
       completeness_score: profile?.completeness_score ?? null,

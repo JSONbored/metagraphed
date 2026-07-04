@@ -973,12 +973,14 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
     assert.equal(map.size, 0);
   });
 
-  test("prefers name over native_name for the current label", async () => {
+  test("prefers native_name over name for the current label, matching the per-subnet route", async () => {
     const map = await loadPreviouslyKnownAsForNetuids(
-      async () => [{ netuid: 7, subnet_name: "Old Allways", observed_at: 1 }],
+      async () => [{ netuid: 7, subnet_name: "Legacy", observed_at: 1 }],
       [{ netuid: 7, name: "Allways", native_name: "Legacy" }],
     );
-    assert.deepEqual(map.get(7), ["Old Allways"]);
+    // "Legacy" is the current on-chain native_name, so it's excluded rather
+    // than leaking into the subnet's own previously_known_as list.
+    assert.equal(map.get(7), undefined);
   });
 
   test("treats null D1 rows as empty", async () => {
