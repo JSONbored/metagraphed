@@ -196,6 +196,24 @@
       },
       "source_urls": ["https://bitmind.ai/"],
       "url": "https://api.bitmind.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-34-gasstation-datasets",
+      "kind": "data-artifact",
+      "name": "GAS-Station datasets (Hugging Face)",
+      "notes": "BitMind's public GAS-Station Hugging Face org hosting the subnet's weekly-refreshed real/generated image and video datasets (gs-images / gs-videos), linked as \"GAS-Station\" in the official bitmind-subnet README.",
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet/blob/bdbdb75c0828125ed1891aa1f0bb5e133aa42ab9/README.md#L13"
+      ],
+      "url": "https://huggingface.co/gasstation"
     }
   ],
   "website_url": "https://bitmind.ai/"
