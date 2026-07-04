@@ -3280,7 +3280,11 @@ describe("MCP get_subnet_axon_removals", () => {
           return {
             bind(...params) {
               capture.push({ sql, params });
-              return { async all() { return { results: row ? [row] : [] }; } };
+              return {
+                async all() {
+                  return { results: row ? [row] : [] };
+                },
+              };
             },
           };
         },
