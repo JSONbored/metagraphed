@@ -424,6 +424,22 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/users/growth"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-daily-revenue-summary",
+      "kind": "data-artifact",
+      "name": "Chutes daily revenue summary",
+      "notes": "Public no-auth JSON daily revenue summary for the Chutes platform (date, new subscriber count, subscription and pay-as-you-go revenue per day); GET /daily_revenue_summary in the OpenAPI spec. Distinct endpoint from the subnet's existing /chutes/* and /users/growth data-artifacts.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/daily_revenue_summary"
     }
   ],
   "website_url": "https://chutes.ai/"
