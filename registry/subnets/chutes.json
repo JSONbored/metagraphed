@@ -440,6 +440,22 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/daily_revenue_summary"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-invocations-usage",
+      "kind": "data-artifact",
+      "name": "Chutes per-chute invocation usage",
+      "notes": "Public no-auth JSON of per-chute invocation usage on the Chutes platform (chute_id, date, usd_amount, invocation_count); GET /invocations/usage in the OpenAPI spec. Distinct endpoint from the subnet's existing /chutes/*, /users/growth, and /daily_revenue_summary data-artifacts.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/invocations/usage"
     }
   ],
   "website_url": "https://chutes.ai/"
