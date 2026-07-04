@@ -456,6 +456,22 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/invocations/usage"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-supported-gpus",
+      "kind": "data-artifact",
+      "name": "Chutes supported GPU catalog",
+      "notes": "Public no-auth JSON catalog of the GPU models the Chutes platform supports, with per-model hardware specs (display name, memory, compute capability, tensor cores, ECC/SXM flags); GET /nodes/supported in the OpenAPI spec. Distinct endpoint from the subnet's existing /chutes/*, /users/growth, /daily_revenue_summary, and /invocations/usage data-artifacts.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/nodes/supported"
     }
   ],
   "website_url": "https://chutes.ai/"
