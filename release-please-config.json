@@ -28,6 +28,11 @@
       "component": "python",
       "package-name": "metagraphed"
     },
+    "apps/ui": {
+      "release-type": "node",
+      "component": "ui",
+      "package-name": "metagraphed-ui"
+    },
     ".": {
       "release-type": "simple",
       "component": "platform",
