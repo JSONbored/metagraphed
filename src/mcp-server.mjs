@@ -175,6 +175,13 @@ import {
   CHAIN_DEREGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
 } from "./chain-deregistrations.mjs";
+import {
+  loadChainPrometheus,
+  CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+  CHAIN_PROMETHEUS_LIMIT_MAX,
+  CHAIN_PROMETHEUS_WINDOWS,
+  DEFAULT_CHAIN_PROMETHEUS_WINDOW,
+} from "./chain-prometheus.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
   KV_HEALTH_RPC_POOL,
@@ -335,7 +342,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.49.0";
+export const MCP_SERVER_VERSION = "1.50.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -353,6 +360,7 @@ const CHAIN_AXON_REMOVALS_WINDOW_KEYS = Object.keys(
 const CHAIN_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
   CHAIN_DEREGISTRATIONS_WINDOWS,
 );
+const CHAIN_PROMETHEUS_WINDOW_KEYS = Object.keys(CHAIN_PROMETHEUS_WINDOWS);
 const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
   CHAIN_TRANSFER_PAIR_WINDOWS,
 );
@@ -517,6 +525,9 @@ export const MCP_INSTRUCTIONS =
   "get_chain_axon_removals the network-wide axon-teardown leaderboard " +
   "(per-subnet AxonInfoRemoved activity, distinct removers, and " +
   "removals-per-remover intensity) across all subnets, " +
+  "get_chain_prometheus the network-wide Prometheus-endpoint serving " +
+  "leaderboard (per-subnet PrometheusServed activity, distinct exporters, and " +
+  "announcements-per-exporter intensity) across all subnets, " +
   "get_blocks_summary block-production analytics (inter-block time, throughput, " +
   "and block-author decentralization), " +
   "get_network_activity the daily " +
@@ -2555,6 +2566,59 @@ export const MCP_TOOLS = [
       return loadChainAxonRemovals(mcpD1Runner(ctx), {
         windowLabel: window,
         windowDays: CHAIN_AXON_REMOVALS_WINDOWS[window],
+        limit,
+      });
+    },
+  },
+  {
+    name: "get_chain_prometheus",
+    title: "Get network-wide Prometheus-endpoint serving activity",
+    description:
+      "Fetch the network-wide Prometheus-endpoint serving leaderboard over the " +
+      "requested window (7d or 30d; default 7d): each subnet ranked by " +
+      "PrometheusServed events with its distinct-exporter (hotkey) count and " +
+      "announcements-per-exporter intensity, plus a network rollup (distinct " +
+      "exporters, total announcements, announcements per exporter) and the " +
+      "count/mean/min/p25/median/p75/p90/max spread of per-subnet intensity, " +
+      "summed live from the account_events stream. PrometheusServed is emitted " +
+      "when a neuron announces its Prometheus telemetry endpoint — the " +
+      "telemetry-endpoint companion to get_chain_serving (axon announcements) " +
+      "and get_subnet_prometheus (one subnet). Mirrors GET " +
+      "/api/v1/chain/prometheus.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_PROMETHEUS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_PROMETHEUS_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the Prometheus serving leaderboard (1-${CHAIN_PROMETHEUS_LIMIT_MAX}, default ${CHAIN_PROMETHEUS_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_PROMETHEUS_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_PROMETHEUS_WINDOW;
+      if (!Object.hasOwn(CHAIN_PROMETHEUS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+        CHAIN_PROMETHEUS_LIMIT_MAX,
+      );
+      return loadChainPrometheus(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_PROMETHEUS_WINDOWS[window],
         limit,
       });
     },
@@ -7386,6 +7450,84 @@ const TOOL_OUTPUT_SCHEMAS = {
             distinct_removers: { type: "integer" },
             removals: { type: "integer" },
             removals_per_remover: { type: "number" },
+          },
+        },
+      },
+    },
+  },
+  get_chain_prometheus: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup over every subnet that saw a PrometheusServed event. A
+      // hotkey announcing on several subnets counts once in distinct_exporters.
+      // announcements_per_exporter is null when the network-wide distinct-exporter
+      // count is unavailable/zero (no divide-by-zero).
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "distinct_exporters",
+          "announcements",
+          "announcements_per_exporter",
+        ],
+        properties: {
+          distinct_exporters: { type: "integer" },
+          announcements: { type: "integer" },
+          announcements_per_exporter: { type: ["number", "null"] },
+        },
+      },
+      // Spread of per-subnet re-announcement intensity (PrometheusServed events
+      // per exporter) over EVERY subnet that saw an announcement; null when no
+      // subnet saw Prometheus activity in the window.
+      intensity_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet Prometheus serving leaderboard, most PrometheusServed events
+      // first. Each listed subnet has at least one distinct exporter, so
+      // announcements_per_exporter is always a finite number here.
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "distinct_exporters",
+            "announcements",
+            "announcements_per_exporter",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            distinct_exporters: { type: "integer" },
+            announcements: { type: "integer" },
+            announcements_per_exporter: { type: "number" },
           },
         },
       },

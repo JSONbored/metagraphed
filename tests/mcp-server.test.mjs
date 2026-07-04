@@ -6261,6 +6261,8 @@ describe("MCP economics + metagraph data tools", () => {
     axonRemovalsSubnetRows = [],
     chainDeregistrationsNetworkRows = [],
     chainDeregistrationsSubnetRows = [],
+    chainPrometheusNetworkRows = [],
+    chainPrometheusSubnetRows = [],
     transferPairTotals = [],
     transferPairRows = [],
   } = {}) {
@@ -6284,6 +6286,9 @@ describe("MCP economics + metagraph data tools", () => {
                   // network aggregate (newest_observed +
                   // distinct_deregistered_hotkeys) then a per-subnet GROUP BY
                   // (AS deregistrations + distinct_deregistered_hotkeys);
+                  // get_chain_prometheus reads a network aggregate
+                  // (newest_observed + distinct_exporters) then a per-subnet GROUP BY
+                  // (AS announcements + distinct_exporters);
                   // get_chain_transfer_pairs reads a totals CTE
                   // (top_pair_volume_tao) then per-corridor rows (AS from_address);
                   // everything else uses the flat account_events fixture.
@@ -6311,6 +6316,11 @@ describe("MCP economics + metagraph data tools", () => {
                         results: chainDeregistrationsNetworkRows,
                       });
                     }
+                    if (sql.includes("distinct_exporters")) {
+                      return Promise.resolve({
+                        results: chainPrometheusNetworkRows,
+                      });
+                    }
                     return Promise.resolve({ results: weightsNetworkRows });
                   }
                   if (sql.includes("weight_sets")) {
@@ -6333,6 +6343,14 @@ describe("MCP economics + metagraph data tools", () => {
                   ) {
                     return Promise.resolve({
                       results: chainDeregistrationsSubnetRows,
+                    });
+                  }
+                  if (
+                    sql.includes("AS announcements") &&
+                    sql.includes("distinct_exporters")
+                  ) {
+                    return Promise.resolve({
+                      results: chainPrometheusSubnetRows,
                     });
                   }
                   if (sql.includes("top_pair_volume_tao")) {
@@ -7858,6 +7876,110 @@ describe("MCP economics + metagraph data tools", () => {
       chainDeregistrationsEnv(chainDeregistrationsNetwork(8), [
         chainDeregistrationsRow(1, 20, 5),
         chainDeregistrationsRow(2, 10, 4),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  // The network-wide aggregate row loadChainPrometheus reads first (its
+  // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
+  // unlocks the per-subnet read.
+  function chainPrometheusNetwork(distinct_exporters) {
+    return {
+      distinct_exporters,
+      newest_observed: 1_750_000_000_000,
+    };
+  }
+
+  // A per-subnet GROUP BY netuid row (COUNT announcements + distinct exporters).
+  function chainPrometheusRow(netuid, announcements, distinct_exporters) {
+    return { netuid, announcements, distinct_exporters };
+  }
+
+  function chainPrometheusEnv(network, subnets) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({
+          chainPrometheusNetworkRows: network ? [network] : [],
+          chainPrometheusSubnetRows: subnets,
+        }),
+      },
+    };
+  }
+
+  test("get_chain_prometheus returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_prometheus", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+    assert.equal(out.network.announcements, 0);
+    assert.equal(out.network.announcements_per_exporter, null);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_prometheus ranks subnets by announcements with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_prometheus",
+      { window: "30d", limit: 10 },
+      chainPrometheusEnv(chainPrometheusNetwork(8), [
+        // netuid 2: fewer announcements -> ranks last despite higher intensity.
+        chainPrometheusRow(2, 10, 4),
+        // netuid 1: most PrometheusServed events -> ranks first.
+        chainPrometheusRow(1, 20, 5),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].announcements, 20);
+    assert.equal(out.subnets[0].announcements_per_exporter, 4); // 20 / 5
+    assert.equal(out.subnets[1].netuid, 2);
+    assert.equal(out.subnets[1].announcements_per_exporter, 2.5); // 10 / 4
+    // Network rollup: total announcements 30 over 8 distinct exporters -> 3.75.
+    assert.equal(out.network.announcements, 30);
+    assert.equal(out.network.distinct_exporters, 8);
+    assert.equal(out.network.announcements_per_exporter, 3.75);
+    assert.equal(out.intensity_distribution.count, 2);
+    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("get_chain_prometheus rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_prometheus", { window: "90d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_prometheus caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_prometheus",
+      { limit: 1 },
+      chainPrometheusEnv(chainPrometheusNetwork(8), [
+        chainPrometheusRow(1, 20, 5),
+        chainPrometheusRow(2, 10, 4),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets feed the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.intensity_distribution.count, 2);
+  });
+
+  test("get_chain_prometheus payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_prometheus",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_prometheus",
+      {},
+      chainPrometheusEnv(chainPrometheusNetwork(8), [
+        chainPrometheusRow(1, 20, 5),
+        chainPrometheusRow(2, 10, 4),
       ]),
     );
     const validate = new Ajv2020().compile(schema);

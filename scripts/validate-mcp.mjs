@@ -471,6 +471,16 @@ assert.ok(
     chainDeregistrations.network != null,
   "get_chain_deregistrations must return subnet_count + network + subnets[]",
 );
+const chainPrometheus = await callOk("get_chain_prometheus", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  Number.isInteger(chainPrometheus.subnet_count) &&
+    Array.isArray(chainPrometheus.subnets) &&
+    chainPrometheus.network != null,
+  "get_chain_prometheus must return subnet_count + network + subnets[]",
+);
 const chainTransferPairs = await callOk("get_chain_transfer_pairs", {
   window: "7d",
   limit: 5,
