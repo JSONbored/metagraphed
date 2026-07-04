@@ -1125,10 +1125,22 @@ export function formatUptime({
     const key = surfaceLookupKey(row);
     if (!key) continue;
     const entry = bySurface.get(key) || {
-      surface_id: row.surface_id,
+      surface_id: null,
+      surface_id_day: null,
       days: [],
     };
-    entry.surface_id = row.surface_id || entry.surface_id;
+    // Resolve the display alias to the surface_id from the LATEST day: the loader
+    // returns rows newest-first (ORDER BY day DESC), so a blind last-writer wins
+    // would leave a renamed surface showing its OLDEST (stale) alias. Track the
+    // day the alias came from and only adopt a row whose day is newer.
+    if (
+      row.surface_id &&
+      (entry.surface_id_day == null ||
+        String(row.day).localeCompare(entry.surface_id_day) > 0)
+    ) {
+      entry.surface_id = row.surface_id;
+      entry.surface_id_day = String(row.day);
+    }
     entry.days.push({
       day: row.day,
       samples: Number(row.samples) || 0,

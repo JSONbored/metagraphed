@@ -2356,6 +2356,70 @@ describe("formatUptime (daily uptime history)", () => {
     assert.equal(out.reliability.surface_count, 1);
   });
 
+  test("resolves a renamed surface_id to the newest day's alias in query order", () => {
+    // The loader returns rows newest-first (ORDER BY day DESC). A renamed surface
+    // shares one stable surface_key but carries a different surface_id per day;
+    // the displayed alias must be the CURRENT one (newest day), never the oldest
+    // row that happens to be processed last.
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      rows: [
+        {
+          surface_id: "7:api:new",
+          surface_key: "srf-api0000000000",
+          day: "2026-06-13",
+          samples: 100,
+          ok_count: 100,
+          uptime_ratio: 1,
+          avg_latency_ms: 40,
+          status: "ok",
+        },
+        {
+          surface_id: "7:api:old",
+          surface_key: "srf-api0000000000",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 80,
+          uptime_ratio: 0.8,
+          avg_latency_ms: 60,
+          status: "degraded",
+        },
+      ],
+    });
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].surface_id, "7:api:new");
+  });
+
+  test("falls back past a newest-day row with no surface_id to the latest labelled alias", () => {
+    // Newest-first rows where the current day's alias is missing: keep the most
+    // recent non-empty surface_id rather than clobbering it to null.
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      rows: [
+        {
+          surface_id: null,
+          surface_key: "srf-api0000000000",
+          day: "2026-06-13",
+          samples: 100,
+          ok_count: 100,
+          status: "ok",
+        },
+        {
+          surface_id: "7:api:labelled",
+          surface_key: "srf-api0000000000",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 90,
+          status: "ok",
+        },
+      ],
+    });
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].surface_id, "7:api:labelled");
+  });
+
   test("returns an empty series + null reliability for no rows", () => {
     const out = formatUptime({ netuid: 7, window: "1y", rows: [] });
     assert.deepEqual(out.surfaces, []);
