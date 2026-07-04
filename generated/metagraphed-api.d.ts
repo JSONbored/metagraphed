@@ -480,6 +480,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/deregistrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronDeregistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        get: operations["chainDeregistrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/fees": {
         parameters: {
             query?: never;
@@ -2976,6 +2993,38 @@ export interface components {
             validator_stake: components["schemas"]["ConcentrationMetrics"];
         } & {
             [key: string]: unknown;
+        };
+        /** @description Network-wide neuron-deregistration activity over a 7d/30d window across the subnets with observed deregistration activity: a per-subnet leaderboard (distinct deregistered hotkeys, NeuronDeregistered count, deregistrations per hotkey) plus a network rollup with the true distinct hotkey count and a distribution of per-subnet re-deregistration intensity. Raw deregistration/eviction activity from the account_events NeuronDeregistered stream — the exit-side companion to /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in /api/v1/chain/turnover — served live at /api/v1/chain/deregistrations (no static file); subnet_count 0 and the leaderboard empty when cold. */
+        ChainDeregistrationsArtifact: {
+            /** @description Spread of the per-subnet deregistrations-per-hotkey intensity across the subnets that saw a deregistration in the window (null when no subnet saw a deregistration). subnet_count and this distribution cover only subnets with observed NeuronDeregistered activity, not every registered subnet. */
+            intensity_distribution: {
+                count: number;
+                max: number;
+                mean: number;
+                median: number;
+                min: number;
+                p25: number;
+                p75: number;
+                p90: number;
+            } | null;
+            /** @description Rollup over the window: the true distinct deregistered hotkeys across all subnets (a hotkey deregistered on several subnets counts once, so NOT the sum of the per-subnet counts), total NeuronDeregistered events, and the network deregistrations-per-hotkey intensity (null when no neuron was deregistered). */
+            network: {
+                deregistrations: number;
+                deregistrations_per_hotkey: number | null;
+                distinct_deregistered_hotkeys: number;
+            };
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: {
+                deregistrations: number;
+                deregistrations_per_hotkey: number | null;
+                distinct_deregistered_hotkeys: number;
+                netuid: number;
+            }[];
+            /** @enum {string|null} */
+            window: "7d" | "30d" | null;
         };
         /** @description One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer. */
         ChainEvent: {
@@ -10166,6 +10215,147 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainConcentrationArtifact"];
                     };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainDeregistrations: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "intensity_distribution": {
+                     *           "count": 2,
+                     *           "max": 15,
+                     *           "mean": 12.5,
+                     *           "median": 10,
+                     *           "min": 10,
+                     *           "p25": 10,
+                     *           "p75": 15,
+                     *           "p90": 15
+                     *         },
+                     *         "network": {
+                     *           "deregistrations": 70,
+                     *           "deregistrations_per_hotkey": 14,
+                     *           "distinct_deregistered_hotkeys": 5
+                     *         },
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 2,
+                     *         "subnets": [
+                     *           {
+                     *             "deregistrations": 40,
+                     *             "deregistrations_per_hotkey": 10,
+                     *             "distinct_deregistered_hotkeys": 4,
+                     *             "netuid": 1
+                     *           },
+                     *           {
+                     *             "deregistrations": 30,
+                     *             "deregistrations_per_hotkey": 15,
+                     *             "distinct_deregistered_hotkeys": 2,
+                     *             "netuid": 2
+                     *           }
+                     *         ],
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainDeregistrationsArtifact"];
+                    };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

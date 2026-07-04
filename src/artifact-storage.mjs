@@ -141,6 +141,9 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide neuron-registration activity across every subnet, computed live from
   // the account_events NeuronRegistered stream at /api/v1/chain/registrations — never a file.
   /^chain\/registrations\.json$/,
+  // Network-wide neuron-deregistration activity across every subnet, computed live from
+  // the account_events NeuronDeregistered stream at /api/v1/chain/deregistrations — never a file.
+  /^chain\/deregistrations\.json$/,
   // Network-wide stake-movement (re-delegation) activity across every subnet, computed live from
   // the account_events StakeMoved stream at /api/v1/chain/stake-moves — never a file.
   /^chain\/stake-moves\.json$/,

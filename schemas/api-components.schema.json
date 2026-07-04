@@ -3106,6 +3106,160 @@
         ],
         "type": "object"
       },
+      "ChainDeregistrationsArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide neuron-deregistration activity over a 7d/30d window across the subnets with observed deregistration activity: a per-subnet leaderboard (distinct deregistered hotkeys, NeuronDeregistered count, deregistrations per hotkey) plus a network rollup with the true distinct hotkey count and a distribution of per-subnet re-deregistration intensity. Raw deregistration/eviction activity from the account_events NeuronDeregistered stream — the exit-side companion to /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in /api/v1/chain/turnover — served live at /api/v1/chain/deregistrations (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "properties": {
+          "intensity_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet deregistrations-per-hotkey intensity across the subnets that saw a deregistration in the window (null when no subnet saw a deregistration). subnet_count and this distribution cover only subnets with observed NeuronDeregistered activity, not every registered subnet.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "mean": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "min": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p25": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p75": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p90": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the window: the true distinct deregistered hotkeys across all subnets (a hotkey deregistered on several subnets counts once, so NOT the sum of the per-subnet counts), total NeuronDeregistered events, and the network deregistrations-per-hotkey intensity (null when no neuron was deregistered).",
+            "properties": {
+              "deregistrations": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "deregistrations_per_hotkey": {
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "distinct_deregistered_hotkeys": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "distinct_deregistered_hotkeys",
+              "deregistrations",
+              "deregistrations_per_hotkey"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "deregistrations": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "deregistrations_per_hotkey": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "distinct_deregistered_hotkeys": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "distinct_deregistered_hotkeys",
+                "deregistrations",
+                "deregistrations_per_hotkey"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "intensity_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainEvent": {
         "additionalProperties": false,
         "description": "One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer.",

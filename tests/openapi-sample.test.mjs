@@ -798,6 +798,95 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.network.registrations, 70);
   });
 
+  test("chain deregistration samples keep deregistrations-per-hotkey consistent", () => {
+    const hotkeyProps = {
+      distinct_deregistered_hotkeys: { type: "integer" },
+      deregistrations: { type: "integer" },
+      deregistrations_per_hotkey: { type: ["number", "null"] },
+    };
+    const deregistrationsSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "subnet_count",
+        "network",
+        "intensity_distribution",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          required: [
+            "distinct_deregistered_hotkeys",
+            "deregistrations",
+            "deregistrations_per_hotkey",
+          ],
+          properties: hotkeyProps,
+        },
+        intensity_distribution: {
+          type: ["object", "null"],
+          properties: {
+            count: { type: "integer" },
+            mean: { type: "number" },
+            min: { type: "number" },
+            p25: { type: "number" },
+            median: { type: "number" },
+            p75: { type: "number" },
+            p90: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "distinct_deregistered_hotkeys",
+              "deregistrations",
+              "deregistrations_per_hotkey",
+            ],
+            properties: { netuid: { type: "integer" }, ...hotkeyProps },
+          },
+        },
+      },
+    };
+    const sample = s(deregistrationsSchema, "data");
+
+    // The worked example is internally consistent: each subnet's deregistrations_per_hotkey
+    // equals its NeuronDeregistered count divided by its distinct hotkeys, and the network rollup does the same.
+    for (const subnet of sample.subnets) {
+      assert.equal(
+        subnet.deregistrations_per_hotkey,
+        subnet.deregistrations / subnet.distinct_deregistered_hotkeys,
+      );
+    }
+    assert.equal(
+      sample.network.deregistrations_per_hotkey,
+      sample.network.deregistrations /
+        sample.network.distinct_deregistered_hotkeys,
+    );
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.intensity_distribution.count, sample.subnets.length);
+
+    // A shape whose network lacks deregistrations_per_hotkey is not a deregistrations artifact and
+    // is left untouched (guard branch).
+    const notDeregs = JSON.parse(JSON.stringify(deregistrationsSchema));
+    delete notDeregs.properties.network.properties.deregistrations_per_hotkey;
+    notDeregs.properties.network.required =
+      notDeregs.properties.network.required.filter(
+        (key) => key !== "deregistrations_per_hotkey",
+      );
+    const untouchedDeregs = s(notDeregs, "data");
+    assert.notEqual(untouchedDeregs.network.deregistrations, 70);
+  });
+
   test("chain stake-moves samples keep movements-per-mover consistent", () => {
     const moverProps = {
       distinct_movers: { type: "integer" },

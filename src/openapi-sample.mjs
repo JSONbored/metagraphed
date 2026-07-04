@@ -531,6 +531,56 @@ function normalizeChainRegistrationsSample(out) {
   return out;
 }
 
+function normalizeChainDeregistrationsSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    !out.network ||
+    typeof out.network !== "object" ||
+    !("deregistrations_per_hotkey" in out.network) ||
+    !("deregistrations" in out.network) ||
+    !Array.isArray(out.subnets)
+  ) {
+    return out;
+  }
+  // An internally consistent worked example: two subnets whose hotkeys emit 40 and 30
+  // NeuronDeregistered events, so deregistrations_per_hotkey reads 40/4 = 10 and 30/2 = 15; the
+  // network rollup uses the true distinct hotkey count (5, below the 6 per-subnet sum because a
+  // hotkey is deregistered on both subnets), total 40 + 30 = 70 give 70/5 = 14, and the distribution
+  // summarizes [10, 15]. The generic per-field generator cannot satisfy these events/hotkeys ratios itself.
+  out.subnets = [
+    {
+      netuid: 1,
+      distinct_deregistered_hotkeys: 4,
+      deregistrations: 40,
+      deregistrations_per_hotkey: 10,
+    },
+    {
+      netuid: 2,
+      distinct_deregistered_hotkeys: 2,
+      deregistrations: 30,
+      deregistrations_per_hotkey: 15,
+    },
+  ];
+  out.network = {
+    distinct_deregistered_hotkeys: 5,
+    deregistrations: 70,
+    deregistrations_per_hotkey: 14,
+  };
+  out.subnet_count = 2;
+  out.intensity_distribution = {
+    count: 2,
+    mean: 12.5,
+    min: 10,
+    p25: 10,
+    median: 10,
+    p75: 15,
+    p90: 15,
+    max: 15,
+  };
+  return out;
+}
+
 function normalizeChainStakeMovesSample(out) {
   if (
     !out ||
@@ -592,6 +642,7 @@ function normalizeObjectSample(out) {
   normalizeChainServingSample(out);
   normalizeChainPrometheusSample(out);
   normalizeChainRegistrationsSample(out);
+  normalizeChainDeregistrationsSample(out);
   normalizeChainStakeMovesSample(out);
   return out;
 }

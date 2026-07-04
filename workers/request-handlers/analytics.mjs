@@ -81,6 +81,11 @@ import {
   CHAIN_REGISTRATIONS_LIMIT_MAX,
 } from "../../src/chain-registrations.mjs";
 import {
+  loadChainDeregistrations,
+  CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+  CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+} from "../../src/chain-deregistrations.mjs";
+import {
   loadChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
@@ -808,6 +813,13 @@ const CHAIN_REGISTRATIONS_CSV_COLUMNS = [
   "registrations_per_registrant",
 ];
 
+const CHAIN_DEREGISTRATIONS_CSV_COLUMNS = [
+  "netuid",
+  "distinct_deregistered_hotkeys",
+  "deregistrations",
+  "deregistrations_per_hotkey",
+];
+
 const CHAIN_PROMETHEUS_CSV_COLUMNS = [
   "netuid",
   "distinct_exporters",
@@ -1476,6 +1488,70 @@ export async function handleChainRegistrations(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/registrations.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// GET /api/v1/chain/deregistrations: network-wide neuron-deregistration activity across every subnet
+// over a 7d/30d window, read from the account_events NeuronDeregistered stream. The exit-side
+// companion to chain-registrations; mirrors it: window + limit + ?format=csv params, HEAD probes
+// normalized through the GET cache key so they cannot bypass the edge cache and repeatedly force the
+// network-wide aggregations, cache keyed on the analytics cron freshness. The leaderboard is fixed
+// to most-active-first (total NeuronDeregistered events).
+export async function handleChainDeregistrations(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+    maxLimit: CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-deregistrations",
+    async () => {
+      const data = await loadChainDeregistrations(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
+      // intensity_distribution stay JSON-only (mirrors chain-registrations).
+      if (csv) {
+        return csvResponse(
+          data.subnets,
+          "chain-deregistrations",
+          "short",
+          cacheRequest,
+          CHAIN_DEREGISTRATIONS_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/deregistrations.json",
             data.observed_at,
           ),
         },
