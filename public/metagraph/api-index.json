@@ -702,6 +702,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-census",
+      "path": "/metagraph/chain/census.json",
+      "schema_ref": "#/components/schemas/ChainCensusArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-turnover",
       "path": "/metagraph/chain/turnover.json",
       "schema_ref": "#/components/schemas/ChainTurnoverArtifact",
@@ -6263,6 +6270,18 @@
       "id": "chain-yield",
       "method": "GET",
       "path": "/api/v1/chain/yield",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/census.json",
+      "cache": "short",
+      "description": "Fetch the network registration/population census across all subnets' neurons: neuron/subnet counts, the active/immunity/validator/miner split and rates, and the registration-age distribution (blocks since registration), computed live from the neurons D1 tier; schema-stable nulls when cold.",
+      "id": "chain-census",
+      "method": "GET",
+      "path": "/api/v1/chain/census",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

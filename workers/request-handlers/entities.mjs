@@ -107,6 +107,7 @@ import {
 } from "../../src/concentration.mjs";
 import { loadChainPerformance } from "../../src/chain-performance.mjs";
 import { loadChainYield } from "../../src/chain-yield.mjs";
+import { loadChainCensus } from "../../src/chain-census.mjs";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -771,6 +772,30 @@ export async function handleChainYield(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/chain/yield.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/census: network registration / population state across EVERY
+// subnet's neurons — neuron/subnet counts, the active / immunity / validator /
+// miner split and rates, and the registration-age distribution, computed live from
+// the neurons D1 tier. The population companion to /chain/performance (rewards),
+// /chain/concentration (stake), and /chain/turnover (churn). No params; a
+// cold/absent store → 200 with a schema-stable zeroed card.
+export async function handleChainCensus(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadChainCensus(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/census.json",
         data.captured_at,
       ),
     },

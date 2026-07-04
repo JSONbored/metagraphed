@@ -6137,6 +6137,54 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.distribution.count, 2);
   });
 
+  test("get_chain_census returns a schema-stable zeroed card on cold D1", async () => {
+    const res = await callTool("get_chain_census", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.active_rate, null);
+    assert.equal(out.registration_age, null);
+  });
+
+  test("get_chain_census summarizes the network population", async () => {
+    const res = await callTool(
+      "get_chain_census",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              {
+                ...ROW,
+                netuid: 1,
+                validator_permit: 1,
+                active: 1,
+                is_immunity_period: 0,
+                registered_at_block: 8000000,
+                block_number: 8454388,
+              },
+              {
+                ...MINER,
+                netuid: 2,
+                validator_permit: 0,
+                active: 0,
+                is_immunity_period: 1,
+                registered_at_block: 8454000,
+                block_number: 8454388,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.active_count, 1);
+    assert.equal(out.immunity_count, 1);
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.registration_age.count, 2);
+  });
+
   test("get_blocks_summary returns a schema-stable zeroed card on cold D1", async () => {
     const res = await callTool("get_blocks_summary", {});
     const out = res.body.result.structuredContent;

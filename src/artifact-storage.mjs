@@ -126,6 +126,9 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide emission yield (return rate), computed live from the neurons D1
   // tier at /api/v1/chain/yield — never a file.
   /^chain\/yield\.json$/,
+  // Network registration/population census, computed live from the neurons D1 tier
+  // at /api/v1/chain/census — never a file.
+  /^chain\/census\.json$/,
   // Network-wide validator-set turnover across every subnet, computed live from the
   // neuron_daily D1 rollup at /api/v1/chain/turnover — never a file.
   /^chain\/turnover\.json$/,

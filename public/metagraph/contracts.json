@@ -903,6 +903,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Network registration/population census across all subnets' neurons: neuron/subnet counts, the active/immunity/validator/miner split and rates, and the registration-age distribution (blocks since registration) — the population companion to chain-performance/chain-concentration/chain-turnover, computed live from the neurons D1 tier at /api/v1/chain/census (no static file).",
+      "id": "chain-census",
+      "path": "/metagraph/chain/census.json",
+      "schema_ref": "#/components/schemas/ChainCensusArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Network-wide validator-set turnover (churn) across all subnets between a window's start and end neuron_daily snapshots: each subnet's validators entered, exited, Jaccard retention, and a 0-100 stability score ranked into a leaderboard, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary of the per-subnet stability scores (count, mean, min, p25, median, p75, p90, max), computed live from the neuron_daily D1 rollup at /api/v1/chain/turnover (no static file).",
       "id": "chain-turnover",
       "path": "/metagraph/chain/turnover.json",

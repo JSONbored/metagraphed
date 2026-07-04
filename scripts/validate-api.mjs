@@ -628,6 +628,25 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/census",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.neuron_count, "number");
+      assert.equal(typeof body.data.active_count, "number");
+      // rates + age distribution are a number/object or null on a cold store.
+      assert.equal(
+        body.data.active_rate === null ||
+          typeof body.data.active_rate === "number",
+        true,
+      );
+      assert.equal(
+        body.data.registration_age === null ||
+          typeof body.data.registration_age === "object",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/chain/concentration",
     (body) => {
       assert.equal(body.data.schema_version, 1);

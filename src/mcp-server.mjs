@@ -163,6 +163,7 @@ import { loadSubnetYield } from "./subnet-yield.mjs";
 import { loadSubnetPerformance } from "./subnet-performance.mjs";
 import { loadChainPerformance } from "./chain-performance.mjs";
 import { loadChainYield } from "./chain-yield.mjs";
+import { loadChainCensus } from "./chain-census.mjs";
 import { loadBlocksSummary } from "./blocks-summary.mjs";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
@@ -345,6 +346,8 @@ export const MCP_INSTRUCTIONS =
   "recent subnet-identity-change feed across all subnets, " +
   "get_chain_yield the network-wide emission-yield (return rate) and its " +
   "distribution across all subnets, " +
+  "get_chain_census the network registration/population census (active/immunity/" +
+  "validator counts + rates and registration-age spread), " +
   "get_blocks_summary block-production analytics (inter-block time, throughput, " +
   "and block-author decentralization), " +
   "get_network_activity the daily " +
@@ -2006,6 +2009,25 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadChainYield(mcpD1Runner(ctx));
+    },
+  },
+  {
+    name: "get_chain_census",
+    title: "Get network registration/population census",
+    description:
+      "The network registration/population census across ALL subnets' neurons: " +
+      "neuron/subnet counts, the active/immunity/validator/miner split and rates, " +
+      "the newest chain height, and the registration-age distribution (blocks " +
+      "since registration). The population companion to get_chain_performance " +
+      "(rewards), get_chain_concentration (stake), and get_chain_turnover (churn). " +
+      "Mirrors GET /api/v1/chain/census.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadChainCensus(mcpD1Runner(ctx));
     },
   },
   {
@@ -5529,6 +5551,26 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_yield: { type: ["number", "null"] },
       miner_yield: { type: ["number", "null"] },
       distribution: { type: ["object", "null"] },
+    },
+  },
+  get_chain_census: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "neuron_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      subnet_count: { type: "integer" },
+      neuron_count: { type: "integer" },
+      active_count: { type: "integer" },
+      inactive_count: { type: "integer" },
+      immunity_count: { type: "integer" },
+      validator_count: { type: "integer" },
+      miner_count: { type: "integer" },
+      active_rate: { type: ["number", "null"] },
+      immunity_rate: { type: ["number", "null"] },
+      latest_block: { type: ["integer", "null"] },
+      captured_at: NULLABLE_STRING,
+      registration_age: { type: ["object", "null"] },
     },
   },
   get_blocks_summary: {

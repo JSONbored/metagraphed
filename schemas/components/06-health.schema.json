@@ -1082,6 +1082,56 @@
         },
         "additionalProperties": true
       },
+      "RegistrationAgeDistribution": {
+        "type": ["object", "null"],
+        "description": "Distribution summary of the per-neuron registration age in blocks (capture height − registered_at_block): count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when no neuron has a resolvable age (a cold store or no capture height).",
+        "properties": {
+          "count": { "type": "integer", "minimum": 0 },
+          "mean_blocks": { "type": ["integer", "null"] },
+          "min_blocks": { "type": ["integer", "null"] },
+          "max_blocks": { "type": ["integer", "null"] },
+          "p50_blocks": { "type": ["integer", "null"] },
+          "p90_blocks": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "ChainCensusArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Network registration/population census across all subnets' neurons, computed live from the neurons D1 tier: neuron/subnet counts, the active/immunity/validator/miner split and their rates, the newest chain height + capture stamp, and the registration-age distribution. The population companion to ChainPerformanceArtifact (rewards), ChainConcentrationArtifact (stake), and SubnetTurnoverArtifact (churn).",
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "active_count",
+          "inactive_count",
+          "immunity_count",
+          "validator_count",
+          "miner_count",
+          "active_rate",
+          "immunity_rate",
+          "latest_block",
+          "captured_at",
+          "registration_age"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "active_count": { "type": "integer", "minimum": 0 },
+          "inactive_count": { "type": "integer", "minimum": 0 },
+          "immunity_count": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "miner_count": { "type": "integer", "minimum": 0 },
+          "active_rate": { "type": ["number", "null"] },
+          "immunity_rate": { "type": ["number", "null"] },
+          "latest_block": { "type": ["integer", "null"] },
+          "captured_at": { "type": ["string", "null"] },
+          "registration_age": {
+            "$ref": "#/components/schemas/RegistrationAgeDistribution"
+          }
+        }
+      },
       "YieldDistribution": {
         "type": ["object", "null"],
         "description": "Distribution summary of the per-neuron emission/stake return rate across the network: count, mean, median, min, max, and the p10/p25/p75/p90 nearest-rank percentiles. Null when no neuron carries a defined yield (a cold store, an empty network, or every neuron zero-stake).",

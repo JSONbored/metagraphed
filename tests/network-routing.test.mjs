@@ -343,6 +343,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/chain/performance",
       "/api/v1/testnet/chain/identity-history",
       "/api/v1/testnet/chain/yield",
+      "/api/v1/testnet/chain/census",
     ]) {
       const { res, body } = await get(env, path);
       assert.equal(res.status, 404, path);

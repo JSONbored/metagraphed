@@ -87,6 +87,7 @@ import {
   handleChainIdentityHistory,
   canonicalChainIdentityHistoryCachePath,
   handleChainYield,
+  handleChainCensus,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
@@ -1809,6 +1810,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
       );
     }
+    // GET /api/v1/chain/census: network registration/population aggregate — edge-
+    // cache busts on the newest neuron captured_at across ALL subnets (like the
+    // other network-neurons lenses).
+    if (resolved.url.pathname === "/api/v1/chain/census") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-census",
+        () => handleChainCensus(request, env, resolved.url),
+        null,
+        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      );
+    }
     // GET /api/v1/chain/turnover: network-wide validator-set churn across all subnets,
     // neuron_daily-derived — edge-cache keyed on the resolved window/limit AND busted on the
     // newest neuron captured_at across ALL subnets (like chain/concentration + chain/performance),
@@ -1892,6 +1907,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/identity-history" ||
     pathname === "/api/v1/chain/yield" ||
+    pathname === "/api/v1/chain/census" ||
     pathname === "/api/v1/chain/turnover" ||
     pathname === "/api/v1/blocks/summary" ||
     pathname === "/api/v1/economics/trends" ||

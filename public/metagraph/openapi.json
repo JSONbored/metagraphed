@@ -3058,6 +3058,86 @@
         ],
         "type": "object"
       },
+      "ChainCensusArtifact": {
+        "additionalProperties": true,
+        "description": "Network registration/population census across all subnets' neurons, computed live from the neurons D1 tier: neuron/subnet counts, the active/immunity/validator/miner split and their rates, the newest chain height + capture stamp, and the registration-age distribution. The population companion to ChainPerformanceArtifact (rewards), ChainConcentrationArtifact (stake), and SubnetTurnoverArtifact (churn).",
+        "properties": {
+          "active_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "active_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "immunity_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "immunity_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "inactive_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "latest_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "registration_age": {
+            "$ref": "#/components/schemas/RegistrationAgeDistribution"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "active_count",
+          "inactive_count",
+          "immunity_count",
+          "validator_count",
+          "miner_count",
+          "active_rate",
+          "immunity_rate",
+          "latest_block",
+          "captured_at",
+          "registration_age"
+        ],
+        "type": "object"
+      },
       "ChainConcentrationArtifact": {
         "additionalProperties": true,
         "description": "Network-wide stake and emission concentration metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier across three lenses: per-UID (stake, emission), per-entity (entity_stake, entity_emission, with coldkeys collapsed across subnets into the network-level control distribution), and validator-only consensus power (validator_stake). subnet_count reports how many subnets the snapshot spans; every lens and stamp field is always present as a value or null.",
@@ -9475,6 +9555,50 @@
           "storage_tier"
         ],
         "type": "object"
+      },
+      "RegistrationAgeDistribution": {
+        "additionalProperties": true,
+        "description": "Distribution summary of the per-neuron registration age in blocks (capture height − registered_at_block): count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when no neuron has a resolvable age (a cold store or no capture height).",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mean_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "min_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p50_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p90_blocks": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": [
+          "object",
+          "null"
+        ]
       },
       "RegistryLeaderboardsArtifact": {
         "additionalProperties": true,
@@ -21976,6 +22100,143 @@
           }
         },
         "summary": "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/census": {
+      "get": {
+        "operationId": "chainCensus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "active_count": 1,
+                    "active_rate": 0.5,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "immunity_count": 1,
+                    "immunity_rate": 0.5,
+                    "inactive_count": 1,
+                    "latest_block": 5000000,
+                    "miner_count": 1,
+                    "neuron_count": 1,
+                    "registration_age": {
+                      "count": 1,
+                      "max_blocks": 5000000,
+                      "mean_blocks": 5000000,
+                      "min_blocks": 5000000,
+                      "p50_blocks": 5000000,
+                      "p90_blocks": 5000000
+                    },
+                    "schema_version": 1,
+                    "subnet_count": 1,
+                    "validator_count": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainCensusArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the network registration/population census across all subnets' neurons: neuron/subnet counts, the active/immunity/validator/miner split and rates, and the registration-age distribution (blocks since registration), computed live from the neurons D1 tier; schema-stable nulls when cold.",
         "tags": [
           "chain",
           "analytics"

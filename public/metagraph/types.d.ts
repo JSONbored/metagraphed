@@ -463,6 +463,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/census": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network registration/population census across all subnets' neurons: neuron/subnet counts, the active/immunity/validator/miner split and rates, and the registration-age distribution (blocks since registration), computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        get: operations["chainCensus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/concentration": {
         parameters: {
             query?: never;
@@ -2740,6 +2757,24 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Network registration/population census across all subnets' neurons, computed live from the neurons D1 tier: neuron/subnet counts, the active/immunity/validator/miner split and their rates, the newest chain height + capture stamp, and the registration-age distribution. The population companion to ChainPerformanceArtifact (rewards), ChainConcentrationArtifact (stake), and SubnetTurnoverArtifact (churn). */
+        ChainCensusArtifact: {
+            active_count: number;
+            active_rate: number | null;
+            captured_at: string | null;
+            immunity_count: number;
+            immunity_rate: number | null;
+            inactive_count: number;
+            latest_block: number | null;
+            miner_count: number;
+            neuron_count: number;
+            registration_age: components["schemas"]["RegistrationAgeDistribution"];
+            schema_version: number;
+            subnet_count: number;
+            validator_count: number;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description Network-wide stake and emission concentration metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier across three lenses: per-UID (stake, emission), per-entity (entity_stake, entity_emission, with coldkeys collapsed across subnets into the network-level control distribution), and validator-only consensus power (validator_stake). subnet_count reports how many subnets the snapshot spans; every lens and stamp field is always present as a value or null. */
         ChainConcentrationArtifact: {
             captured_at: string | null;
@@ -4301,6 +4336,17 @@ export interface components {
             /** @enum {unknown} */
             storage_tier: "dual" | "git" | "r2";
         };
+        /** @description Distribution summary of the per-neuron registration age in blocks (capture height − registered_at_block): count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when no neuron has a resolvable age (a cold store or no capture height). */
+        RegistrationAgeDistribution: ({
+            count?: number;
+            max_blocks?: number | null;
+            mean_blocks?: number | null;
+            min_blocks?: number | null;
+            p50_blocks?: number | null;
+            p90_blocks?: number | null;
+        } & {
+            [key: string]: unknown;
+        }) | null;
         RegistryLeaderboardsArtifact: {
             board?: string | null;
             boards: {
@@ -9494,6 +9540,124 @@ export interface operations {
                      *     SubtensorModule,8200,0.5467
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainCensus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "active_count": 1,
+                     *         "active_rate": 0.5,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "immunity_count": 1,
+                     *         "immunity_rate": 0.5,
+                     *         "inactive_count": 1,
+                     *         "latest_block": 5000000,
+                     *         "miner_count": 1,
+                     *         "neuron_count": 1,
+                     *         "registration_age": {
+                     *           "count": 1,
+                     *           "max_blocks": 5000000,
+                     *           "mean_blocks": 5000000,
+                     *           "min_blocks": 5000000,
+                     *           "p50_blocks": 5000000,
+                     *           "p90_blocks": 5000000
+                     *         },
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "validator_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainCensusArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
