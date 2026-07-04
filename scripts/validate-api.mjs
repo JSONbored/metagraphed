@@ -518,6 +518,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/stake-moves?window=30d",
+    (body) => {
+      assert.equal(body.data.window, "30d");
+      assert.equal(typeof body.data.total_movements, "number");
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(typeof body.data.subnet_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/registrations?window=30d",
     (body) => {
       assert.equal(body.data.window, "30d");
