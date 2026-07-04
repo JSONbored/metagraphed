@@ -3505,6 +3505,160 @@
         ],
         "type": "object"
       },
+      "ChainOnboardingArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide neuron registration inflow over a 7d/30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (distinct hotkeys, registration count, registrations per hotkey) plus a network rollup with the true distinct hotkey count and a distribution of per-subnet re-registration intensity. Served live from the account_events NeuronRegistered stream at /api/v1/chain/onboarding (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "properties": {
+          "intensity_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet registrations-per-hotkey intensity across the subnets with observed registration activity (null when no subnet saw a registration).",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "mean": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "min": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p25": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p75": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p90": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the window: the true distinct registered hotkeys across all subnets (a hotkey registering on several subnets counts once, so NOT the sum of the per-subnet counts), total registration events, and the network registrations-per-hotkey intensity (null when no hotkey registered).",
+            "properties": {
+              "distinct_hotkeys": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "registrations": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "registrations_per_hotkey": {
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "distinct_hotkeys",
+              "registrations",
+              "registrations_per_hotkey"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "distinct_hotkeys": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "registrations": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "registrations_per_hotkey": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "netuid",
+                "distinct_hotkeys",
+                "registrations",
+                "registrations_per_hotkey"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "intensity_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainPerformanceArtifact": {
         "additionalProperties": true,
         "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. subnet_count reports how many subnets the snapshot spans. The network-wide reward-flow companion to ChainConcentrationArtifact.",

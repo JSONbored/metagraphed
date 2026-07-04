@@ -514,6 +514,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide neuron registration inflow over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (registration event count, distinct registered hotkeys, and average registrations per hotkey) ranked by total registrations, a network rollup with the true distinct hotkey count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. */
+        get: operations["chainOnboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/performance": {
         parameters: {
             query?: never;
@@ -2867,6 +2884,38 @@ export interface components {
             symbol?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description Network-wide neuron registration inflow over a 7d/30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (distinct hotkeys, registration count, registrations per hotkey) plus a network rollup with the true distinct hotkey count and a distribution of per-subnet re-registration intensity. Served live from the account_events NeuronRegistered stream at /api/v1/chain/onboarding (no static file); subnet_count 0 and the leaderboard empty when cold. */
+        ChainOnboardingArtifact: {
+            /** @description Spread of the per-subnet registrations-per-hotkey intensity across the subnets with observed registration activity (null when no subnet saw a registration). */
+            intensity_distribution: {
+                count: number;
+                max: number;
+                mean: number;
+                median: number;
+                min: number;
+                p25: number;
+                p75: number;
+                p90: number;
+            } | null;
+            /** @description Rollup over the window: the true distinct registered hotkeys across all subnets (a hotkey registering on several subnets counts once, so NOT the sum of the per-subnet counts), total registration events, and the network registrations-per-hotkey intensity (null when no hotkey registered). */
+            network: {
+                distinct_hotkeys: number;
+                registrations: number;
+                registrations_per_hotkey: number | null;
+            };
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: {
+                distinct_hotkeys: number;
+                netuid: number;
+                registrations: number;
+                registrations_per_hotkey: number | null;
+            }[];
+            /** @enum {string|null} */
+            window: "7d" | "30d" | null;
         };
         /** @description Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. subnet_count reports how many subnets the snapshot spans. The network-wide reward-flow companion to ChainConcentrationArtifact. */
         ChainPerformanceArtifact: {
@@ -9966,6 +10015,140 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainIdentityHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainOnboarding: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "intensity_distribution": {
+                     *           "count": 2,
+                     *           "max": 15,
+                     *           "mean": 12.5,
+                     *           "median": 10,
+                     *           "min": 10,
+                     *           "p25": 10,
+                     *           "p75": 15,
+                     *           "p90": 15
+                     *         },
+                     *         "network": {
+                     *           "distinct_hotkeys": 5,
+                     *           "registrations": 70,
+                     *           "registrations_per_hotkey": 14
+                     *         },
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 2,
+                     *         "subnets": [
+                     *           {
+                     *             "distinct_hotkeys": 4,
+                     *             "netuid": 1,
+                     *             "registrations": 40,
+                     *             "registrations_per_hotkey": 10
+                     *           },
+                     *           {
+                     *             "distinct_hotkeys": 2,
+                     *             "netuid": 2,
+                     *             "registrations": 30,
+                     *             "registrations_per_hotkey": 15
+                     *           }
+                     *         ],
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainOnboardingArtifact"];
                     };
                 };
             };

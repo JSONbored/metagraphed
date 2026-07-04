@@ -674,6 +674,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-onboarding",
+      "path": "/metagraph/chain/onboarding.json",
+      "schema_ref": "#/components/schemas/ChainOnboardingArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
       "schema_ref": "#/components/schemas/ChainFeesArtifact",
@@ -6209,6 +6216,37 @@
       "id": "chain-serving",
       "method": "GET",
       "path": "/api/v1/chain/serving",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/onboarding.json",
+      "cache": "short",
+      "description": "Fetch network-wide neuron registration inflow over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (registration event count, distinct registered hotkeys, and average registrations per hotkey) ranked by total registrations, a network rollup with the true distinct hotkey count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold.",
+      "id": "chain-onboarding",
+      "method": "GET",
+      "path": "/api/v1/chain/onboarding",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

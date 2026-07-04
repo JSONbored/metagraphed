@@ -3045,6 +3045,97 @@
         },
         "additionalProperties": false
       },
+      "ChainOnboardingArtifact": {
+        "type": "object",
+        "description": "Network-wide neuron registration inflow over a 7d/30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (distinct hotkeys, registration count, registrations per hotkey) plus a network rollup with the true distinct hotkey count and a distribution of per-subnet re-registration intensity. Served live from the account_events NeuronRegistered stream at /api/v1/chain/onboarding (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "intensity_distribution",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", null]
+          },
+          "observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "intensity_distribution": {
+            "type": ["object", "null"],
+            "description": "Spread of the per-subnet registrations-per-hotkey intensity across the subnets with observed registration activity (null when no subnet saw a registration).",
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "properties": {
+              "count": { "type": "integer", "minimum": 0 },
+              "mean": { "type": "number", "minimum": 0 },
+              "min": { "type": "number", "minimum": 0 },
+              "p25": { "type": "number", "minimum": 0 },
+              "median": { "type": "number", "minimum": 0 },
+              "p75": { "type": "number", "minimum": 0 },
+              "p90": { "type": "number", "minimum": 0 },
+              "max": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "network": {
+            "type": "object",
+            "description": "Rollup over the window: the true distinct registered hotkeys across all subnets (a hotkey registering on several subnets counts once, so NOT the sum of the per-subnet counts), total registration events, and the network registrations-per-hotkey intensity (null when no hotkey registered).",
+            "required": [
+              "distinct_hotkeys",
+              "registrations",
+              "registrations_per_hotkey"
+            ],
+            "properties": {
+              "distinct_hotkeys": { "type": "integer", "minimum": 0 },
+              "registrations": { "type": "integer", "minimum": 0 },
+              "registrations_per_hotkey": {
+                "type": ["number", "null"],
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "distinct_hotkeys",
+                "registrations",
+                "registrations_per_hotkey"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "distinct_hotkeys": { "type": "integer", "minimum": 0 },
+                "registrations": { "type": "integer", "minimum": 0 },
+                "registrations_per_hotkey": {
+                  "type": ["number", "null"],
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "ChainFeeDay": {
         "type": "object",
         "additionalProperties": false,
