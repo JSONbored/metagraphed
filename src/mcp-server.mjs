@@ -202,6 +202,11 @@ import {
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
 } from "./account-events.mjs";
+import {
+  loadSubnetWeightSetters,
+  SUBNET_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+} from "./subnet-weight-setters.mjs";
 import { loadAccountPortfolio } from "./account-portfolio.mjs";
 import {
   buildNeuronHistory,
@@ -280,7 +285,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.34.0";
+export const MCP_SERVER_VERSION = "1.35.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -295,6 +300,9 @@ const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
 const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
 const SUBNET_EVENT_SUMMARY_WINDOW_KEYS = Object.keys(
   SUBNET_EVENT_SUMMARY_WINDOWS,
+);
+const SUBNET_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
+  SUBNET_WEIGHT_SETTERS_WINDOWS,
 );
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
@@ -378,7 +386,9 @@ export const MCP_INSTRUCTIONS =
   "boundary snapshots, get_subnet_stake_flow net capital in/out for one " +
   "subnet (StakeAdded vs StakeRemoved), get_subnet_event_summary the windowed " +
   "account-event summary for one subnet (per-kind counts plus a recent-events " +
-  "tail), get_subnet_movers the cross-subnet " +
+  "tail), get_subnet_weight_setters the per-subnet weight-setter leaderboard " +
+  "(the validators behind /weights ranked by activity), " +
+  "get_subnet_movers the cross-subnet " +
   "stake/emission/validator momentum leaderboard, get_subnet_yield per-UID " +
   "rates plus distribution percentiles over the current metagraph snapshot, " +
   "get_registry_leaderboards the live " +
@@ -2518,6 +2528,46 @@ export const MCP_TOOLS = [
       return await loadSubnetEventSummary(mcpD1Runner(ctx), netuid, {
         windowLabel: window,
         limit,
+      });
+    },
+  },
+  {
+    name: "get_subnet_weight_setters",
+    title: "Get subnet weight-setter leaderboard",
+    description:
+      "Fetch the per-subnet weight-setter leaderboard over a 7d or 30d " +
+      "window (default 7d): the individual validators behind /weights ranked " +
+      "by activity, each with its WeightsSet count, its share of the subnet's " +
+      "total weight-setting, and its first/last set times, computed live from " +
+      "the account_events WeightsSet stream. The setter-level drill-in of the " +
+      "aggregate get_chain_weights / subnet weights. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/weights/setters.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: SUBNET_WEIGHT_SETTERS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW}).`,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
+      if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${SUBNET_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      return await loadSubnetWeightSetters(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+        windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[window],
       });
     },
   },
@@ -6460,6 +6510,35 @@ const TOOL_OUTPUT_SCHEMAS = {
         last_observed_at: NULLABLE_STRING,
       }),
       recent_events: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_subnet_weight_setters: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "window",
+      "distinct_setters",
+      "weight_sets",
+      "setter_count",
+      "setters",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      distinct_setters: { type: "integer" },
+      weight_sets: { type: "integer" },
+      setter_count: { type: "integer" },
+      setters: objectItems({
+        hotkey: NULLABLE_STRING,
+        uid: NULLABLE_INT,
+        weight_sets: { type: "integer" },
+        share: ANY,
+        first_set_at: NULLABLE_STRING,
+        last_set_at: NULLABLE_STRING,
+      }),
     },
   },
   get_subnet_movers: {

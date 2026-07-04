@@ -3164,6 +3164,114 @@ describe("MCP get_subnet_event_summary", () => {
   });
 });
 
+describe("MCP get_subnet_weight_setters", () => {
+  // The loader runs two reads: the per-setter leaderboard (GROUP BY the
+  // hotkey-or-uid identity) and the subnet-wide totals row. Route by SQL shape.
+  function weightSettersD1(
+    { leaderboardRows = [], totalsRow = null } = {},
+    capture = [],
+  ) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (/GROUP BY/.test(sql)) {
+                    return { results: leaderboardRows };
+                  }
+                  return { results: totalsRow ? [totalsRow] : [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("ranks setters with per-setter shares and set-time bounds", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_subnet_weight_setters",
+      { netuid: 5, window: "7d" },
+      {
+        env: weightSettersD1(
+          {
+            leaderboardRows: [
+              {
+                hotkey: "5Val1",
+                uid: 3,
+                weight_sets: 6,
+                first_set: 1_717_000_000_000,
+                last_set: 1_717_500_000_000,
+              },
+              {
+                hotkey: "5Val2",
+                uid: 7,
+                weight_sets: 4,
+                first_set: 1_717_100_000_000,
+                last_set: 1_717_400_000_000,
+              },
+            ],
+            totalsRow: {
+              weight_sets: 10,
+              distinct_setters: 2,
+              newest_observed: 1_717_500_000_000,
+            },
+          },
+          capture,
+        ),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 5);
+    assert.equal(out.window, "7d");
+    assert.equal(out.weight_sets, 10);
+    assert.equal(out.distinct_setters, 2);
+    assert.equal(out.setter_count, 2);
+    assert.equal(out.setters[0].hotkey, "5Val1");
+    assert.equal(out.setters[0].uid, 3);
+    assert.equal(out.setters[0].weight_sets, 6);
+    assert.equal(out.setters[0].share, 0.6);
+    assert.equal(
+      out.setters[0].last_set_at,
+      new Date(1_717_500_000_000).toISOString(),
+    );
+    assert.equal(out.setters[1].hotkey, "5Val2");
+    assert.equal(out.setters[1].share, 0.4);
+    // netuid is bound first on both reads.
+    assert.equal(capture[0].params[0], 5);
+  });
+
+  test("defaults to the 7d window and degrades to an empty leaderboard on cold D1", async () => {
+    const res = await callTool("get_subnet_weight_setters", { netuid: 5 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.weight_sets, 0);
+    assert.equal(out.distinct_setters, 0);
+    assert.equal(out.setter_count, 0);
+    assert.deepEqual(out.setters, []);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_weight_setters", {
+      netuid: 5,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_weight_setters", { window: "7d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+});
+
 describe("MCP get_network_activity", () => {
   test("merges extrinsics + blocks tiers from D1", async () => {
     const env = {
