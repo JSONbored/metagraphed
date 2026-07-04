@@ -233,6 +233,20 @@ describe("captured-fixture body scan", () => {
     );
   });
 
+  test("flags a bare npm access token", async () => {
+    // The fixed `npm_` prefix + 36 base62 chars is the documented automation /
+    // granular token format; a leaked one grants package publish rights (a supply-
+    // chain risk) and none of the other token rules catch it. Assemble the prefix +
+    // shared body at runtime so the source never commits a contiguous token literal.
+    const token = `npm_${"abcdefghijklmnopqrstuvwxyz0123456789"}`; // npm_ + 36 chars
+    await fs.writeFile(TEST_PUBLIC_PATH, `${token}\n`, "utf8");
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: npm access token`),
+      `npm access token must be flagged; got:\n${output}`,
+    );
+  });
+
   test("flags a link-local cloud-metadata URL as a private/loopback leak", async () => {
     // 169.254.169.254 is the AWS/GCP metadata endpoint — the canonical SSRF /
     // credential-theft target and unsafe per lib.mjs isUnsafeUrl, so a leaked URL

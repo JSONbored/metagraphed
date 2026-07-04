@@ -32,6 +32,14 @@ const patterns = [
     name: "gitlab personal access token",
     regex: /glpat-[A-Za-z0-9_-]{20,}/,
   },
+  // npm access token: the fixed `npm_` prefix + 36 base62 chars is the documented
+  // format for automation / granular / publish tokens. A leaked npm token grants
+  // publish rights to a package (a supply-chain risk) and its distinctive prefix is
+  // matched by none of the other token rules above (`gh`/`glpat-`/`sk-`/`xox`).
+  {
+    name: "npm access token",
+    regex: /npm_[A-Za-z0-9]{36}/,
+  },
   { name: "openai-style token", regex: /sk-[A-Za-z0-9]{20,}/ },
   { name: "slack-style token", regex: /xox[baprs]-[A-Za-z0-9-]+/ },
   // AWS access key id: AKIA (long-term) / ASIA (temporary STS) + 16 upper-alnum.
