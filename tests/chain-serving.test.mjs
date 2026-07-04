@@ -103,6 +103,16 @@ describe("buildChainServing", () => {
     assert.equal(data.intensity_distribution.count, 3);
   });
 
+  test("limit of 0 yields an empty leaderboard, not a single row", () => {
+    const data = buildChainServing(SUBNETS, {
+      window: "7d",
+      limit: 0,
+      networkDistinct: NETWORK,
+    });
+    assert.equal(data.subnets.length, 0);
+    assert.equal(data.subnet_count, 3);
+  });
+
   test("limit above the max clamps; a non-numeric limit uses the default", () => {
     const big = buildChainServing(SUBNETS, {
       window: "7d",
