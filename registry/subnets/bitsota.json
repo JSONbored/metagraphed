@@ -48,6 +48,22 @@
         "https://bitsota.ai/"
       ],
       "url": "https://autoresearch.bitsota.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-tasks",
+      "kind": "data-artifact",
+      "name": "Bitsota research tasks",
+      "notes": "Public no-auth JSON catalog of Bitsota's open autonomous-research tasks, served by the official Bitsota API and defined in its OpenAPI spec.",
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks"
     }
   ]
 }
