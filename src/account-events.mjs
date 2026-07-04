@@ -664,9 +664,21 @@ export async function loadSubnetEventSummary(
     defaultLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
     maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   });
+  // WeightsSet ingestion can omit hotkey; count distinct actors over a
+  // hotkey-or-(netuid,uid) identity rather than COUNT(DISTINCT hotkey) alone —
+  // otherwise hotkey-less WeightsSet rows collapse to a dropped NULL and
+  // hotkey_count reads 0 despite many validators setting weights. Mirrors
+  // loadSubnetWeights / loadChainWeights (#3061).
+  const actorIdentity =
+    "CASE " +
+    "WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey " +
+    "WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid " +
+    "ELSE NULL END";
   const kindRows = await d1(
     "SELECT event_kind, COUNT(*) AS event_count, " +
-      "COUNT(DISTINCT hotkey) AS hotkey_count, " +
+      "COUNT(DISTINCT " +
+      actorIdentity +
+      ") AS hotkey_count, " +
       "COUNT(DISTINCT coldkey) AS coldkey_count, " +
       "COALESCE(SUM(amount_tao), 0) AS amount_tao, " +
       "COALESCE(SUM(alpha_amount), 0) AS alpha_amount, " +

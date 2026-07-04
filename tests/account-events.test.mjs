@@ -1714,6 +1714,47 @@ test("loadSubnetEventSummary falls back to the default direct-call window", asyn
   assert.equal(out.window, "30d");
 });
 
+test("loadSubnetEventSummary counts distinct actors over hotkey-or-uid identity", async () => {
+  // WeightsSet rows often carry uid without hotkey; bare COUNT(DISTINCT hotkey)
+  // undercounts hotkey_count on GET /subnets/{netuid}/event-summary (#3061 parity).
+  let captured;
+  const out = await loadSubnetEventSummary(
+    async (sql, params) => {
+      if (/GROUP BY event_kind/.test(sql)) {
+        captured = { sql, params };
+        return [
+          {
+            event_kind: "WeightsSet",
+            event_count: 3,
+            hotkey_count: 3,
+            coldkey_count: 0,
+            amount_tao: 0,
+            alpha_amount: 0,
+            first_block: 100,
+            last_block: 120,
+            first_observed_at: 1_750_000_000_000,
+            last_observed_at: 1_750_000_010_000,
+          },
+        ];
+      }
+      return [];
+    },
+    7,
+    { windowLabel: "7d", limit: 10 },
+  );
+  assert.doesNotMatch(
+    captured.sql,
+    /COUNT\(DISTINCT hotkey\)/,
+    "must not count distinct hotkey alone",
+  );
+  assert.match(captured.sql, /WHEN hotkey IS NOT NULL/);
+  assert.match(captured.sql, /'uid:' \|\| netuid \|\| ':' \|\| uid/);
+  assert.equal(captured.params[0], 7);
+  const weights = out.event_kinds.find((k) => k.event_kind === "WeightsSet");
+  assert.equal(weights.event_count, 3);
+  assert.equal(weights.hotkey_count, 3);
+});
+
 test("loadAccountEvents emits a next_cursor only on a full page", async () => {
   // A full page (rows.length === limit) → keyset cursor off the last row.
   const full = await loadAccountEvents(
