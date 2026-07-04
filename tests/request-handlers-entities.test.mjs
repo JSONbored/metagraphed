@@ -28,6 +28,7 @@ import {
   handleSubnetTurnover,
   handleSubnetStakeFlow,
   handleSubnetWeights,
+  handleSubnetServing,
   handleSubnetMovers,
   handleAccount,
   handleAccountEvents,
@@ -50,6 +51,7 @@ import {
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
   canonicalSubnetWeightsCachePath,
+  canonicalSubnetServingCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
@@ -1721,6 +1723,80 @@ describe("handleSubnetWeights", () => {
         new URL("https://api.metagraph.sh/api/v1/subnets/7/weights?bogus=1"),
       );
       assert.equal(path, "/api/v1/subnets/7/weights?bogus=1");
+    });
+  });
+});
+
+describe("handleSubnetServing", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetServing(
+      req(`/api/v1/subnets/${NETUID}/serving`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/serving?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleSubnetServing(
+      req(`/api/v1/subnets/${NETUID}/serving`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/serving?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns a schema-stable zeroed card on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetServing,
+      req(`/api/v1/subnets/${NETUID}/serving`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/serving?window=30d`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.distinct_servers, 0);
+    assert.equal(body.data.announcements, 0);
+    assert.equal(body.data.announcements_per_server, null);
+    await assertValidComponent("SubnetServingArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/serving.json`,
+    );
+    // account_events provenance (not the metagraph snapshot); null on a cold store.
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  describe("canonicalSubnetServingCachePath", () => {
+    test("canonicalizes omitted and explicit default window to one cache key", () => {
+      const omitted = canonicalSubnetServingCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/serving"),
+      );
+      const explicit = canonicalSubnetServingCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/serving?window=7d"),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(omitted, "/api/v1/subnets/7/serving?window=7d");
+    });
+
+    test("passes an invalid window through unchanged (the handler rejects it)", () => {
+      const path = canonicalSubnetServingCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/serving?window=bogus",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/serving?window=bogus");
+    });
+
+    test("passes an unsupported query param through unchanged (validation error)", () => {
+      const path = canonicalSubnetServingCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/serving?bogus=1"),
+      );
+      assert.equal(path, "/api/v1/subnets/7/serving?bogus=1");
     });
   });
 });

@@ -15936,6 +15936,62 @@
           }
         ]
       },
+      "SubnetServingArtifact": {
+        "additionalProperties": false,
+        "description": "Per-subnet axon-serving announcement activity over a 7d/30d window: the distinct servers (hotkeys), AxonServed event count, and announcements per server for ONE subnet. The per-subnet drill-in of /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid), served live from the account_events AxonServed stream at /api/v1/subnets/{netuid}/serving (no static file); zeroed when the subnet has no AxonServed events in the window.",
+        "properties": {
+          "announcements": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "announcements_per_server": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "distinct_servers": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "distinct_servers",
+          "announcements",
+          "announcements_per_server"
+        ],
+        "type": "object"
+      },
       "SubnetStakeFlowArtifact": {
         "additionalProperties": false,
         "description": "Net stake flow for one subnet over a recent window, summed live from the account_events stream: TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net, and event counts.",

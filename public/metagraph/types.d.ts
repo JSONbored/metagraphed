@@ -1789,6 +1789,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/serving": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch axon-serving announcement activity for one subnet over a 7d or 30d window: the distinct servers (hotkeys), the AxonServed event count, and the average announcements per server, computed live from the account_events AxonServed stream. The per-subnet drill-in of GET /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no AxonServed events in the window. */
+        get: operations["subnetServing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/stake-flow": {
         parameters: {
             query?: never;
@@ -5830,6 +5847,18 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description Per-subnet axon-serving announcement activity over a 7d/30d window: the distinct servers (hotkeys), AxonServed event count, and announcements per server for ONE subnet. The per-subnet drill-in of /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid), served live from the account_events AxonServed stream at /api/v1/subnets/{netuid}/serving (no static file); zeroed when the subnet has no AxonServed events in the window. */
+        SubnetServingArtifact: {
+            announcements: number;
+            announcements_per_server: number | null;
+            distinct_servers: number;
+            netuid: number;
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | null;
+        };
         /** @description Net stake flow for one subnet over a recent window, summed live from the account_events stream: TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net, and event counts. */
         SubnetStakeFlowArtifact: {
             net_flow_tao: number;
@@ -21102,6 +21131,115 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetProfileArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetServing: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "announcements": 1,
+                     *         "announcements_per_server": 0.5,
+                     *         "distinct_servers": 1,
+                     *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetServingArtifact"];
                     };
                 };
             };

@@ -96,6 +96,8 @@ import {
   canonicalSubnetStakeFlowCachePath,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
+  handleSubnetServing,
+  canonicalSubnetServingCachePath,
   handleSubnetYield,
   handleSubnetPerformance,
   handleSubnetMovers,
@@ -293,6 +295,7 @@ import {
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
+  SUBNET_SERVING_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
   SUBNET_PERFORMANCE_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
@@ -1471,6 +1474,27 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             resolved.url,
           ),
         canonicalSubnetWeightsCachePath(resolved.url),
+      );
+    }
+    const servingMatch = SUBNET_SERVING_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (servingMatch) {
+      // Axon-serving announcement activity summed live from account_events over the window —
+      // deterministic per request, edge-cache like the sibling stake-flow route.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-serving",
+        () =>
+          handleSubnetServing(
+            request,
+            env,
+            Number(servingMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetServingCachePath(resolved.url),
       );
     }
     // Per-UID emission yield distribution over the current neurons snapshot — computed

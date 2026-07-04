@@ -401,6 +401,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-serving",
+      "path": "/metagraph/subnets/{netuid}/serving.json",
+      "schema_ref": "#/components/schemas/SubnetServingArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-stake-flow",
       "path": "/metagraph/subnets/{netuid}/stake-flow.json",
       "schema_ref": "#/components/schemas/SubnetStakeFlowArtifact",
@@ -4751,6 +4758,29 @@
       "id": "subnet-weights",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/weights",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/serving.json",
+      "cache": "short",
+      "description": "Fetch axon-serving announcement activity for one subnet over a 7d or 30d window: the distinct servers (hotkeys), the AxonServed event count, and the average announcements per server, computed live from the account_events AxonServed stream. The per-subnet drill-in of GET /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no AxonServed events in the window.",
+      "id": "subnet-serving",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/serving",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

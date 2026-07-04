@@ -56,6 +56,9 @@ export const SUBNET_STAKE_FLOW_PATH_PATTERN =
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;
+// Axon-serving announcement activity over the window, live from account_events, no static file.
+export const SUBNET_SERVING_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/serving$/;
 // Per-UID emission yield distribution over the current neurons snapshot, no static file.
 export const SUBNET_YIELD_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/yield$/;
 // Reward-distribution + score-spread metrics over the current neurons snapshot

@@ -127,6 +127,11 @@ import {
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
 } from "../../src/subnet-weights.mjs";
 import {
+  loadSubnetServing,
+  SUBNET_SERVING_WINDOWS,
+  DEFAULT_SUBNET_SERVING_WINDOW,
+} from "../../src/subnet-serving.mjs";
+import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
@@ -1151,6 +1156,54 @@ export async function handleSubnetWeights(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/weights.json`,
+        data.observed_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// Canonical edge-cache key for the subnet-serving route: only ?window= (7d/30d) changes the
+// response, canonicalized to its default when omitted so equivalent requests share a slot.
+export function canonicalSubnetServingCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_SERVING_WINDOW;
+  if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+}
+
+// GET /api/v1/subnets/{netuid}/serving?window=7d|30d: axon-serving announcement activity for one
+// subnet over the window — distinct servers (hotkeys), AxonServed event count, and announcements
+// per server — read live from the account_events AxonServed stream. The per-subnet drill-in of
+// /api/v1/chain/serving. Cold/absent store → 200 with a zeroed card (never 404).
+export async function handleSubnetServing(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_SERVING_WINDOW;
+  if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, SUBNET_SERVING_WINDOWS),
+    });
+  }
+  const data = await loadSubnetServing(d1Runner(env), netuid, {
+    windowLabel: windowParam,
+    windowDays: SUBNET_SERVING_WINDOWS[windowParam],
+  });
+  // account_events-derived, so the meta reports the event-stream source (accountMeta) with
+  // generated_at the newest observed AxonServed event, mirroring the sibling stake-flow route.
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/serving.json`,
         data.observed_at,
       ),
     },
