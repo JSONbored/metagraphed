@@ -5532,6 +5532,8 @@ describe("MCP economics + metagraph data tools", () => {
     accountEvents = [],
     weightsNetworkRows = [],
     weightsSubnetRows = [],
+    transferPairTotals = [],
+    transferPairRows = [],
   } = {}) {
     return {
       prepare(sql) {
@@ -5542,13 +5544,22 @@ describe("MCP economics + metagraph data tools", () => {
                 if (sql.includes("FROM account_events")) {
                   // get_chain_weights reads a network aggregate (carries
                   // newest_observed) then a per-subnet GROUP BY (carries
-                  // weight_sets); everything else uses the flat account_events
-                  // fixture (e.g. get_chain_stake_flow's single grouped read).
+                  // weight_sets); get_chain_transfer_pairs reads a totals CTE
+                  // (carries top_pair_volume_tao) then the per-corridor rows
+                  // (aliased AS from_address); everything else uses the flat
+                  // account_events fixture (e.g. get_chain_stake_flow's single
+                  // grouped read).
                   if (sql.includes("newest_observed")) {
                     return Promise.resolve({ results: weightsNetworkRows });
                   }
                   if (sql.includes("weight_sets")) {
                     return Promise.resolve({ results: weightsSubnetRows });
+                  }
+                  if (sql.includes("top_pair_volume_tao")) {
+                    return Promise.resolve({ results: transferPairTotals });
+                  }
+                  if (sql.includes("AS from_address")) {
+                    return Promise.resolve({ results: transferPairRows });
                   }
                   return Promise.resolve({ results: accountEvents });
                 }
@@ -6519,6 +6530,136 @@ describe("MCP economics + metagraph data tools", () => {
       chainWeightsEnv(weightsNetwork(30, 8), [
         weightsRow(1, 20, 5),
         weightsRow(2, 10, 4),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  // The full-window totals row loadChainTransferPairs reads first (its pair_totals
+  // CTE rollup carrying top_pair_volume_tao).
+  function transferPairTotals(
+    total_volume_tao,
+    transfer_count,
+    unique_pairs,
+    top,
+  ) {
+    return {
+      total_volume_tao,
+      transfer_count,
+      unique_pairs,
+      top_pair_volume_tao: top,
+    };
+  }
+
+  // A per-corridor row (hotkey AS from_address, coldkey AS to_address).
+  function transferPairRow(
+    from_address,
+    to_address,
+    volume_tao,
+    transfer_count,
+  ) {
+    return {
+      from_address,
+      to_address,
+      volume_tao,
+      transfer_count,
+      last_block: 5_000_000,
+      last_observed_at: 1_750_000_000_000,
+    };
+  }
+
+  function chainTransferPairsEnv(totals, pairs) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({
+          transferPairTotals: totals ? [totals] : [],
+          transferPairRows: pairs,
+        }),
+      },
+    };
+  }
+
+  test("get_chain_transfer_pairs returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_transfer_pairs", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.sort, "volume"); // REST default sort parity
+    assert.equal(out.pair_count, 0);
+    assert.deepEqual(out.pairs, []);
+    assert.equal(out.total_volume_tao, 0);
+    assert.equal(out.top_pair_share, null);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_transfer_pairs ranks corridors with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_transfer_pairs",
+      { window: "30d", limit: 10 },
+      chainTransferPairsEnv(transferPairTotals(250, 30, 3, 150), [
+        transferPairRow("A", "B", 150, 10),
+        transferPairRow("C", "D", 100, 20),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.pair_count, 2);
+    assert.equal(out.pairs[0].from, "A");
+    assert.equal(out.pairs[0].to, "B");
+    assert.equal(out.pairs[0].volume_tao, 150);
+    assert.equal(out.total_volume_tao, 250);
+    assert.equal(out.unique_pairs, 3);
+    assert.equal(out.transfer_count, 30);
+    assert.equal(out.top_pair_share, 0.6); // 150 / 250
+  });
+
+  test("get_chain_transfer_pairs drops self-transfers and honors the sort argument", async () => {
+    const res = await callTool(
+      "get_chain_transfer_pairs",
+      { sort: "count" },
+      chainTransferPairsEnv(transferPairTotals(250, 30, 2, 150), [
+        // Self-transfer (from === to) must be filtered out.
+        transferPairRow("Z", "Z", 999, 99),
+        transferPairRow("C", "D", 100, 20),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "count");
+    assert.equal(out.pair_count, 1);
+    assert.equal(out.pairs[0].from, "C");
+  });
+
+  test("get_chain_transfer_pairs rejects an unsupported window", async () => {
+    const res = await callTool(
+      "get_chain_transfer_pairs",
+      { window: "90d" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_transfer_pairs rejects an unsupported sort", async () => {
+    const res = await callTool(
+      "get_chain_transfer_pairs",
+      { sort: "recency" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort/);
+  });
+
+  test("get_chain_transfer_pairs payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_transfer_pairs",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_transfer_pairs",
+      {},
+      chainTransferPairsEnv(transferPairTotals(250, 30, 3, 150), [
+        transferPairRow("A", "B", 150, 10),
+        transferPairRow("C", "D", 100, 20),
       ]),
     );
     const validate = new Ajv2020().compile(schema);

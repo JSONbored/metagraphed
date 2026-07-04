@@ -424,6 +424,17 @@ assert.ok(
     chainWeights.network != null,
   "get_chain_weights must return subnet_count + network + subnets[]",
 );
+const chainTransferPairs = await callOk("get_chain_transfer_pairs", {
+  window: "7d",
+  limit: 5,
+  sort: "volume",
+});
+assert.ok(
+  Number.isInteger(chainTransferPairs.pair_count) &&
+    Array.isArray(chainTransferPairs.pairs) &&
+    typeof chainTransferPairs.total_volume_tao === "number",
+  "get_chain_transfer_pairs must return pair_count + pairs[] + total_volume_tao",
+);
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
   Array.isArray(meta.neurons),

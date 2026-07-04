@@ -99,6 +99,14 @@ import {
   DEFAULT_CHAIN_WEIGHTS_WINDOW,
 } from "./chain-weights.mjs";
 import {
+  loadChainTransferPairs,
+  CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
+  CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+  CHAIN_TRANSFER_PAIR_WINDOWS,
+  DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
+  CHAIN_TRANSFER_PAIR_SORTS,
+} from "./chain-transfer-pairs.mjs";
+import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
 } from "./economics-trends.mjs";
@@ -248,7 +256,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.27.0";
+export const MCP_SERVER_VERSION = "1.28.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -256,6 +264,9 @@ const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
 const CHAIN_TURNOVER_WINDOW_KEYS = Object.keys(CHAIN_TURNOVER_WINDOWS);
 const CHAIN_STAKE_FLOW_WINDOW_KEYS = Object.keys(CHAIN_STAKE_FLOW_WINDOWS);
 const CHAIN_WEIGHTS_WINDOW_KEYS = Object.keys(CHAIN_WEIGHTS_WINDOWS);
+const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
+  CHAIN_TRANSFER_PAIR_WINDOWS,
+);
 const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
@@ -362,7 +373,10 @@ export const MCP_INSTRUCTIONS =
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
   "fee/tip market series plus top payers, get_chain_transfers network-wide " +
-  "native-TAO transfer volume plus top senders/receivers, get_chain_concentration " +
+  "native-TAO transfer volume plus top senders/receivers, " +
+  "get_chain_transfer_pairs the top sender->receiver transfer corridors " +
+  "(directed pairs ranked by volume or count) with a network volume rollup, " +
+  "get_chain_concentration " +
   "the network-wide stake/emission decentralization scorecard across all subnets, " +
   "get_chain_performance the network-wide reward-distribution and trust/consensus " +
   "score spread across all subnets, get_chain_identity_history the network-wide " +
@@ -4196,6 +4210,68 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_transfer_pairs",
+    title: "Get top native-TAO transfer corridors",
+    description:
+      "Fetch the network-wide native-TAO transfer-corridor leaderboard over the " +
+      "requested window (7d or 30d; default 7d): the top directed sender->receiver " +
+      "pairs ranked by volume (default) or transfer count, each with its TAO " +
+      "volume, transfer count, and last block/time, plus a network rollup (total " +
+      "volume, transfer count, unique corridor count, and the top corridor's share " +
+      "of total volume). Self-transfers and malformed rows are excluded so every " +
+      "pair is a real account-to-account corridor. The pair-level companion to " +
+      "get_chain_transfers (top individual senders/receivers) and " +
+      "get_account_counterparties (one account's relationships). Mirrors GET " +
+      "/api/v1/chain/transfer-pairs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_TRANSFER_PAIR_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW}).`,
+        },
+        sort: {
+          type: "string",
+          enum: CHAIN_TRANSFER_PAIR_SORTS,
+          description:
+            "Rank corridors by total TAO volume (default) or transfer count.",
+        },
+        limit: {
+          type: "integer",
+          description: `Max corridors to return (1-${CHAIN_TRANSFER_PAIR_LIMIT_MAX}, default ${CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
+      if (!Object.hasOwn(CHAIN_TRANSFER_PAIR_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_TRANSFER_PAIR_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const sort =
+        optionalEnum(args, "sort", CHAIN_TRANSFER_PAIR_SORTS) ?? "volume";
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
+        CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+      );
+      return loadChainTransferPairs(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_TRANSFER_PAIR_WINDOWS[window],
+        observedAt: await mcpObservedAt(ctx),
+        limit,
+        sort,
+      });
+    },
+  },
+  {
     name: "get_network_activity",
     title: "Get daily network-activity aggregates",
     description:
@@ -6752,6 +6828,62 @@ const TOOL_OUTPUT_SCHEMAS = {
       top_receivers: {
         type: "array",
         items: CHAIN_TRANSFER_PARTY_ITEM,
+      },
+    },
+  },
+  get_chain_transfer_pairs: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schema_version",
+      "window",
+      "sort",
+      "observed_at",
+      "total_volume_tao",
+      "transfer_count",
+      "unique_pairs",
+      "pair_count",
+      "top_pair_share",
+      "pairs",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      window: {
+        type: ["string", "null"],
+        enum: [...CHAIN_TRANSFER_PAIR_WINDOW_KEYS, null],
+      },
+      sort: { type: "string", enum: CHAIN_TRANSFER_PAIR_SORTS },
+      observed_at: NULLABLE_STRING,
+      total_volume_tao: { type: "number" },
+      transfer_count: { type: "integer", minimum: 0 },
+      unique_pairs: { type: "integer", minimum: 0 },
+      pair_count: { type: "integer", minimum: 0 },
+      // Top corridor's share of total volume (0..1), clamped below a flat 1 for a
+      // near-monopoly; null when there is no volume in the window.
+      top_pair_share: { type: ["number", "null"] },
+      // Directed sender->receiver corridors, ranked by the requested sort.
+      pairs: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "from",
+            "to",
+            "volume_tao",
+            "transfer_count",
+            "last_block",
+            "last_observed_at",
+          ],
+          properties: {
+            from: { type: "string" },
+            to: { type: "string" },
+            volume_tao: { type: "number" },
+            transfer_count: { type: "integer", minimum: 0 },
+            last_block: { type: ["integer", "null"] },
+            last_observed_at: NULLABLE_STRING,
+          },
+        },
       },
     },
   },
