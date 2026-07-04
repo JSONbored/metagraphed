@@ -6310,6 +6310,108 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  // D1 mock for get_chain_weights: the loader reads a network aggregate first,
+  // then the per-subnet leaderboard via GROUP BY netuid (mirrors the REST env).
+  function chainWeightsEnv({ networkRow, subnetRows }) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: {
+          prepare(sql) {
+            return {
+              bind: () => ({
+                all: () =>
+                  Promise.resolve({
+                    results: /GROUP BY netuid/.test(sql)
+                      ? subnetRows
+                      : networkRow,
+                  }),
+              }),
+            };
+          },
+        },
+      },
+    };
+  }
+  const WEIGHTS_WARM = {
+    networkRow: [
+      {
+        distinct_setters: 12,
+        weight_sets: 95,
+        newest_observed: 1_700_000_000_000,
+      },
+    ],
+    subnetRows: [
+      { netuid: 1, distinct_setters: 4, weight_sets: 40 },
+      { netuid: 2, distinct_setters: 2, weight_sets: 30 },
+    ],
+  };
+  const WEIGHTS_COLD = {
+    networkRow: [{ newest_observed: null }],
+    subnetRows: [],
+  };
+
+  test("get_chain_weights ranks per-subnet weight-setting (default 7d window)", async () => {
+    const res = await callTool(
+      "get_chain_weights",
+      {},
+      chainWeightsEnv(WEIGHTS_WARM),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 2);
+    // Most-active subnet first: netuid 1 (40 events) over netuid 2 (30).
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].weight_sets, 40);
+    assert.equal(out.subnets[0].sets_per_setter, 10); // 40 / 4
+    assert.equal(out.network.distinct_setters, 12); // TRUE distinct, not the per-subnet sum
+  });
+
+  test("get_chain_weights honors an explicit 30d window and limit", async () => {
+    const res = await callTool(
+      "get_chain_weights",
+      { window: "30d", limit: 1 },
+      chainWeightsEnv(WEIGHTS_WARM),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2); // rollup + distribution count every subnet
+    assert.equal(out.subnets.length, 1); // leaderboard capped by limit
+  });
+
+  test("get_chain_weights returns schema-stable empty on cold D1", async () => {
+    const res = await callTool(
+      "get_chain_weights",
+      {},
+      chainWeightsEnv(WEIGHTS_COLD),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+    assert.equal(out.network.distinct_setters, 0);
+  });
+
+  test("get_chain_weights rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_weights", { window: "1y" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_weights payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_weights",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_weights",
+      {},
+      chainWeightsEnv(WEIGHTS_WARM),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   // A grouped account_events aggregate row (one per netuid+event_kind), the
   // shape loadChainStakeFlow's SUM/COUNT/MAX query returns.
   function stakeFlowRow(netuid, event_kind, total_tao, event_count) {

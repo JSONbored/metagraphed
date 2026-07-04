@@ -11,7 +11,9 @@
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
 import {
+  ANALYTICS_WINDOWS,
   DAY_MS,
+  DEFAULT_ANALYTICS_WINDOW,
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
@@ -91,6 +93,11 @@ import {
   CHAIN_STAKE_FLOW_WINDOWS,
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
 } from "./chain-stake-flow.mjs";
+import {
+  loadChainWeights,
+  CHAIN_WEIGHTS_LIMIT_DEFAULT,
+  CHAIN_WEIGHTS_LIMIT_MAX,
+} from "./chain-weights.mjs";
 import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
@@ -241,13 +248,16 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.26.0";
+export const MCP_SERVER_VERSION = "1.27.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
 const CHAIN_TURNOVER_WINDOW_KEYS = Object.keys(CHAIN_TURNOVER_WINDOWS);
 const CHAIN_STAKE_FLOW_WINDOW_KEYS = Object.keys(CHAIN_STAKE_FLOW_WINDOWS);
+// get_chain_weights mirrors the /api/v1/chain/weights route, which uses the shared
+// ANALYTICS_WINDOWS (7d/30d) rather than a dedicated window constant.
+const CHAIN_WEIGHTS_WINDOW_KEYS = Object.keys(ANALYTICS_WINDOWS);
 const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
@@ -365,6 +375,9 @@ export const MCP_INSTRUCTIONS =
   "(per-subnet churn, retention, and stability) across all subnets, " +
   "get_chain_stake_flow the network-wide cross-subnet capital-flow leaderboard " +
   "(per-subnet net TAO staked/unstaked and direction) across all subnets, " +
+  "get_chain_weights the network-wide validator weight-setting leaderboard " +
+  "(per-subnet WeightsSet events, distinct setters, and update intensity) " +
+  "across all subnets, " +
   "get_blocks_summary block-production analytics (inter-block time, throughput, " +
   "and block-author decentralization), " +
   "get_network_activity the daily " +
@@ -2125,6 +2138,57 @@ export const MCP_TOOLS = [
       return loadChainStakeFlow(mcpD1Runner(ctx), {
         windowLabel: window,
         windowDays: CHAIN_STAKE_FLOW_WINDOWS[window],
+        limit,
+      });
+    },
+  },
+  {
+    name: "get_chain_weights",
+    title: "Get network-wide validator weight-setting activity",
+    description:
+      "Fetch the network-wide validator weight-setting leaderboard over the " +
+      "requested window (7d or 30d; default 7d): each subnet ranked by total " +
+      "WeightsSet events with its distinct weight-setting validators and average " +
+      "updates per validator, a network rollup with the TRUE distinct setter " +
+      "count (a validator setting weights on several subnets counts once) and " +
+      "total events, and the count/mean/min/p25/median/p75/p90/max spread of " +
+      "per-subnet update intensity, computed live from the account_events " +
+      "WeightsSet stream. The network-level companion of get_chain_serving, " +
+      "mirroring how get_chain_concentration companions get_subnet_concentration. " +
+      "Mirrors GET /api/v1/chain/weights.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_WEIGHTS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_ANALYTICS_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the weight-setting leaderboard (1-${CHAIN_WEIGHTS_LIMIT_MAX}, default ${CHAIN_WEIGHTS_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_WEIGHTS_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window = optionalString(args, "window") ?? DEFAULT_ANALYTICS_WINDOW;
+      if (!Object.hasOwn(ANALYTICS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_WEIGHTS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_WEIGHTS_LIMIT_DEFAULT,
+        CHAIN_WEIGHTS_LIMIT_MAX,
+      );
+      return loadChainWeights(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: ANALYTICS_WINDOWS[window],
         limit,
       });
     },
@@ -5827,6 +5891,75 @@ const TOOL_OUTPUT_SCHEMAS = {
             stake_events: { type: "integer" },
             unstake_events: { type: "integer" },
             direction: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  get_chain_weights: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup: the TRUE distinct setter count (a validator setting
+      // weights on several subnets counts once) and total WeightsSet events.
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: ["distinct_setters", "weight_sets", "sets_per_setter"],
+        properties: {
+          distinct_setters: { type: "integer" },
+          weight_sets: { type: "integer" },
+          sets_per_setter: { type: ["number", "null"] },
+        },
+      },
+      // Spread of per-subnet update intensity over EVERY subnet with observed
+      // weight-setting activity; null when no subnet set weights in the window.
+      intensity_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet weight-setting leaderboard, most-active first.
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "distinct_setters",
+            "weight_sets",
+            "sets_per_setter",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            distinct_setters: { type: "integer" },
+            weight_sets: { type: "integer" },
+            sets_per_setter: { type: "number" },
           },
         },
       },
