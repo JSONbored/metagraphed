@@ -126,6 +126,25 @@
         "https://api.subnet90.com/openapi.json"
       ],
       "url": "https://api.subnet90.com/api/resolutions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-subnet-api-api-subnet90-com",
+      "kind": "subnet-api",
+      "name": "DegenBrain statement-test progress API",
+      "notes": "Public no-auth GET returning statement/chunk processing progress for the DegenBrain eval pipeline. Documented in the subnet's own OpenAPI (api.subnet90.com/openapi.json, 'Brain-API'); same host as the existing subnet-api surfaces. Response is aggregate counts only (no account/key material).",
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/test/progress"
     }
   ],
   "website_url": "https://subnet90.com/"
