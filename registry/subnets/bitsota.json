@@ -48,6 +48,22 @@
         "https://bitsota.ai/"
       ],
       "url": "https://autoresearch.bitsota.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-idea-rewards",
+      "kind": "data-artifact",
+      "name": "Bitsota idea rewards",
+      "notes": "Public no-auth JSON feed of Bitsota's idea-reward allocations (rewarded research improvements per task), served by the official Bitsota API and defined in its OpenAPI spec. Distinct endpoint from the registered /api/v1/tasks route.",
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
+      "url": "https://autoresearch.bitsota.com/api/v1/idea-rewards"
     }
   ]
 }
