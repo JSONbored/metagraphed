@@ -7,6 +7,7 @@ import {
   CHAIN_EVENT_SUMMARY_WINDOWS,
 } from "../src/chain-event-summary.mjs";
 import { handleRequest } from "../workers/api.mjs";
+import { handleChainEventSummary } from "../workers/request-handlers/analytics.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 const OBS = 1_750_000_000_000;
@@ -254,6 +255,22 @@ describe("buildChainEventSummary", () => {
     );
     assert.equal(out.observed_at, new Date(OBS + 5000).toISOString());
   });
+
+  test("ignores zero or invalid observed timestamps when merging bounds", () => {
+    const out = buildChainEventSummary(
+      [
+        kindRow("StakeAdded", 1, {
+          first_observed_at: 0,
+          last_observed_at: -1,
+        }),
+      ],
+      [],
+      { subnetCount: 1 },
+    );
+    assert.equal(out.observed_at, null);
+    assert.equal(out.event_kinds[0].first_observed_at, null);
+    assert.equal(out.event_kinds[0].last_observed_at, null);
+  });
 });
 
 describe("loadChainEventSummary", () => {
@@ -405,6 +422,68 @@ describe("loadChainEventSummary", () => {
     assert.equal(out.subnet_count, 0);
     assert.equal(out.total_events, 0);
     assert.equal(out.observed_at, null);
+  });
+
+  test("defaults to the 30d window and recent-evidence limit on the loader", async () => {
+    let cutoff;
+    const out = await loadChainEventSummary(async (sql, params) => {
+      if (/MAX\(observed_at\) AS newest_observed/.test(sql)) {
+        cutoff = params[0];
+        return [{ subnet_count: 1, newest_observed: OBS }];
+      }
+      if (/GROUP BY event_kind/.test(sql)) {
+        return [kindRow("StakeAdded", 1)];
+      }
+      assert.equal(params.at(-1), 10);
+      return [];
+    });
+    const expectedCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    assert.ok(Math.abs(cutoff - expectedCutoff) < 1000);
+    assert.equal(out.window, "30d");
+    assert.equal(out.limit, 10);
+  });
+});
+
+describe("handleChainEventSummary", () => {
+  function eventSummaryEnv({ probeRow, kindRows, recentRows }) {
+    return {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind: () => ({
+              all: () =>
+                Promise.resolve({
+                  results: /GROUP BY event_kind/.test(sql)
+                    ? kindRows
+                    : /MAX\(observed_at\) AS newest_observed/.test(sql)
+                      ? probeRow
+                      : recentRows,
+                }),
+            }),
+          };
+        },
+      },
+    };
+  }
+
+  test("returns a GET response and omits limit from the cache key when absent", async () => {
+    const res = await handleChainEventSummary(
+      new Request(
+        "https://api.metagraph.sh/api/v1/chain/event-summary?window=7d",
+      ),
+      eventSummaryEnv({
+        probeRow: [{ subnet_count: 1, newest_observed: OBS }],
+        kindRows: [kindRow("StakeAdded", 1, { subnet_count: 1 })],
+        recentRows: [],
+      }),
+      new URL("https://api.metagraph.sh/api/v1/chain/event-summary?window=7d"),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.window, "7d");
+    assert.equal(body.data.limit, 10);
   });
 });
 
