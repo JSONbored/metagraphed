@@ -61,9 +61,10 @@ function captureStamp(value) {
 function finiteValues(values) {
   const out = [];
   for (const raw of values) {
-    // Guard null/undefined/blank BEFORE Number(): Number(null) / Number("") are 0,
+    // Guard null/undefined/blank BEFORE Number(): Number(null) / Number(" ") are 0,
     // which would count an absent score as a real 0 and pollute the distribution.
-    if (raw == null || raw === "") continue;
+    // trim() catches whitespace-only cells too, not just the exact empty string.
+    if (raw == null || (typeof raw === "string" && raw.trim() === "")) continue;
     const n = typeof raw === "number" ? raw : Number(raw);
     if (Number.isFinite(n)) out.push(n);
   }
