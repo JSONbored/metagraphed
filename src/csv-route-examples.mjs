@@ -46,6 +46,11 @@ export const ROUTE_CSV_EXAMPLES = {
     "netuid,distinct_movers,movements,movements_per_mover",
     "1,4,40,10",
   ].join("\r\n"),
+  // The /chain/axon-removals per-subnet axon-removal (teardown) leaderboard rows.
+  "chain-axon-removals": [
+    "netuid,distinct_removers,removals,removals_per_remover",
+    "1,4,40,10",
+  ].join("\r\n"),
   // The /chain/transfer-pairs top sender -> receiver corridors.
   "chain-transfer-pairs": [
     "from,to,volume_tao,transfer_count,last_block,last_observed_at",

@@ -581,6 +581,57 @@ function normalizeChainStakeMovesSample(out) {
   return out;
 }
 
+function normalizeChainAxonRemovalsSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    !out.network ||
+    typeof out.network !== "object" ||
+    !("removals_per_remover" in out.network) ||
+    !("removals" in out.network) ||
+    !Array.isArray(out.subnets)
+  ) {
+    return out;
+  }
+  // An internally consistent worked example: two subnets whose removers emit 40 and 30
+  // AxonInfoRemoved events, so removals_per_remover reads 40/4 = 10 and 30/2 = 15; the network
+  // rollup uses the true distinct remover count (5, below the 6 per-subnet sum because a hotkey
+  // removes an axon on both subnets), total 40 + 30 = 70 give 70/5 = 14, and the distribution
+  // summarizes [10, 15]. The generic per-field generator cannot satisfy these events/removers
+  // ratios itself.
+  out.subnets = [
+    {
+      netuid: 1,
+      distinct_removers: 4,
+      removals: 40,
+      removals_per_remover: 10,
+    },
+    {
+      netuid: 2,
+      distinct_removers: 2,
+      removals: 30,
+      removals_per_remover: 15,
+    },
+  ];
+  out.network = {
+    distinct_removers: 5,
+    removals: 70,
+    removals_per_remover: 14,
+  };
+  out.subnet_count = 2;
+  out.intensity_distribution = {
+    count: 2,
+    mean: 12.5,
+    min: 10,
+    p25: 10,
+    median: 10,
+    p75: 15,
+    p90: 15,
+    max: 15,
+  };
+  return out;
+}
+
 function normalizeObjectSample(out) {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
@@ -593,6 +644,7 @@ function normalizeObjectSample(out) {
   normalizeChainPrometheusSample(out);
   normalizeChainRegistrationsSample(out);
   normalizeChainStakeMovesSample(out);
+  normalizeChainAxonRemovalsSample(out);
   return out;
 }
 
