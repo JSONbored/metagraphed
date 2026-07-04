@@ -166,6 +166,15 @@ describe("buildChainAxonRemovals", () => {
     assert.equal(zeroed.observed_at, null);
     const absent = buildChainAxonRemovals(SUBNETS, { window: "7d" });
     assert.equal(absent.observed_at, null);
+    // A finite but out-of-range epoch (e.g. 1e100) must coerce to null instead of
+    // throwing a RangeError from toISOString (mirrors chain-stake-flow #3016).
+    assert.equal(
+      buildChainAxonRemovals(SUBNETS, {
+        window: "7d",
+        networkDistinct: { newest_observed: 1e100 },
+      }).observed_at,
+      null,
+    );
     assert.equal(absent.network.distinct_removers, 0);
     assert.equal(absent.network.removals_per_remover, null);
   });
