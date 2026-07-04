@@ -10137,6 +10137,24 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     );
   });
 
+  test("list_providers returns the providers index artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/providers.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        providers: [{ id: "datura", kind: "api", name: "Datura" }],
+      },
+    });
+    const res = await callTool("list_providers", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.providers[0].id, "datura");
+    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+  });
+
+  test("list_providers rejects an unexpected argument", async () => {
+    const res = await callTool("list_providers", { netuid: 7 });
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_lineage returns the lineage artifact", async () => {
     const deps = makeDeps({
       "/metagraph/lineage.json": {
