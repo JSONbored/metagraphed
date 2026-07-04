@@ -222,6 +222,36 @@ describe("metagraph-neurons builders", () => {
     assert.equal(n.emission_tao, null);
   });
 
+  test("formatNeuron rejects blank integer cells that coerce to 0 (not uid/block 0)", () => {
+    // Mirrors the blank-cell guard in chain-analytics.mjs (#3019): Number("") is 0.
+    for (const blank of ["", "   "]) {
+      const n = formatNeuron({
+        uid: blank,
+        registered_at_block: blank,
+      });
+      assert.equal(n.uid, null, `uid for ${JSON.stringify(blank)}`);
+      assert.equal(
+        n.registered_at_block,
+        null,
+        `registered_at_block for ${JSON.stringify(blank)}`,
+      );
+    }
+  });
+
+  test("buildSubnetMetagraph nulls blank snapshot block_number cells (not block 0)", () => {
+    for (const blank of ["", "   "]) {
+      const data = buildSubnetMetagraph(
+        [{ ...ROW, block_number: blank, uid: 1 }],
+        7,
+      );
+      assert.equal(
+        data.block_number,
+        null,
+        `block_number for ${JSON.stringify(blank)}`,
+      );
+    }
+  });
+
   test("buildSubnetMetagraph stamps count + ISO captured_at", () => {
     const data = buildSubnetMetagraph([ROW, MINER], 7);
     assert.equal(data.netuid, 7);
