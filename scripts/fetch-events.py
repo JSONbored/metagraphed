@@ -508,18 +508,59 @@ def _extrinsic_signer(value):
         return None
 
 
+def _strip_json_nuls(v, seen=None):
+    """Return ``v`` with actual NUL characters removed from JSON strings."""
+    if isinstance(v, str):
+        return v.replace("\x00", "")
+    if seen is None:
+        seen = set()
+    if isinstance(v, list):
+        obj_id = id(v)
+        if obj_id in seen:
+            return v
+        seen.add(obj_id)
+        try:
+            return [_strip_json_nuls(item, seen) for item in v]
+        finally:
+            seen.remove(obj_id)
+    if isinstance(v, tuple):
+        obj_id = id(v)
+        if obj_id in seen:
+            return v
+        seen.add(obj_id)
+        try:
+            return tuple(_strip_json_nuls(item, seen) for item in v)
+        finally:
+            seen.remove(obj_id)
+    if isinstance(v, dict):
+        obj_id = id(v)
+        if obj_id in seen:
+            return v
+        seen.add(obj_id)
+        try:
+            return {
+                _strip_json_nuls(key, seen): _strip_json_nuls(value, seen)
+                for key, value in v.items()
+            }
+        finally:
+            seen.remove(obj_id)
+    return v
+
+
 def _safe_json(v):
     """Best-effort JSON serialization of a decoded call_args value.
     Returns None if the value cannot be serialized (e.g. contains non-JSON
     substrate objects). NEVER raises.
 
-    Strips the ``\\u0000`` (NUL) escape: Postgres ``jsonb`` cannot store it, and
-    EVM/Ethereum event ``data`` (and some call args) are raw bytes that serialize
-    to a string full of NULs — one such value fails the WHOLE multi-row insert,
-    silently dropping every event/extrinsic in the batch (verbatim display tier)."""
+    Strips actual NUL characters before serialization: Postgres ``jsonb`` cannot
+    store them, and EVM/Ethereum event ``data`` (and some call args) are raw
+    bytes that can contain NULs — one such value fails the WHOLE multi-row
+    insert, silently dropping every event/extrinsic in the batch (verbatim
+    display tier). Literal ``\\u0000`` text is preserved as data.
+    """
     try:
-        return json.dumps(v, separators=(",", ":")).replace("\\u0000", "")
-    except (TypeError, ValueError):
+        return json.dumps(_strip_json_nuls(v), separators=(",", ":"))
+    except (TypeError, ValueError, RecursionError):
         return None
 
 
