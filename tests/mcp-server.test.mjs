@@ -10417,6 +10417,24 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  test("list_endpoints returns the endpoints catalog artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/endpoints.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        endpoints: [{ netuid: 7, kind: "rest", provider: "datura" }],
+      },
+    });
+    const res = await callTool("list_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].netuid, 7);
+    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+  });
+
+  test("list_endpoints rejects an unexpected argument", async () => {
+    const res = await callTool("list_endpoints", { netuid: 7 });
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_lineage returns the lineage artifact", async () => {
     const deps = makeDeps({
       "/metagraph/lineage.json": {
