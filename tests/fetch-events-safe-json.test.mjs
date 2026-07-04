@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { test } from "vitest";
 
 function runPython(script) {
-  const result = spawnSync("python", ["-c", script], {
+  const result = spawnSync("python3", ["-c", script], {
     cwd: process.cwd(),
     encoding: "utf8",
   });

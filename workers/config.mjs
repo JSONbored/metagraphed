@@ -149,6 +149,10 @@ export const ACCOUNT_COUNTERPARTIES_PATH_PATTERN =
 // per subnet into a net/gross flow + concentration scorecard over a 7d/30d/90d window.
 export const ACCOUNT_STAKE_FLOW_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/stake-flow$/;
+// Per-account stake-movement footprint: aggregates the account's account_events StakeMoved
+// per subnet into a count + concentration scorecard over a 7d/30d/90d window.
+export const ACCOUNT_STAKE_MOVES_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/stake-moves$/;
 // Per-account registration footprint: aggregates the account's account_events NeuronRegistered
 // per subnet into a count + concentration scorecard over a 7d/30d/90d window.
 export const ACCOUNT_REGISTRATIONS_PATH_PATTERN =

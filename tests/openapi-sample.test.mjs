@@ -359,6 +359,63 @@ describe("sampleFromSchema", () => {
     assert.deepEqual(emptySample.counterparties, []);
   });
 
+  test("account stake-move samples keep totals and concentration consistent", () => {
+    const accountStakeMovesSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "address",
+        "window",
+        "total_movements",
+        "subnet_count",
+        "concentration",
+        "dominant_netuid",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: { type: "string" },
+        total_movements: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: { type: ["integer", "null"] },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "movements",
+              "first_moved_at",
+              "last_moved_at",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              movements: { type: "integer" },
+              first_moved_at: { type: ["string", "null"], format: "date-time" },
+              last_moved_at: { type: ["string", "null"], format: "date-time" },
+            },
+          },
+        },
+      },
+    };
+    const sample = s(accountStakeMovesSchema, "data");
+
+    assert.equal(
+      sample.address,
+      "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    );
+    assert.equal(sample.total_movements, 4);
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.concentration, 1);
+    assert.equal(sample.dominant_netuid, sample.subnets[0].netuid);
+    assert.equal(
+      sample.total_movements,
+      sample.subnets.reduce((sum, subnet) => sum + subnet.movements, 0),
+    );
+  });
+
   test("chain transfer-volume samples keep the leaderboard consistent with the total", () => {
     const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
     const partySchema = {

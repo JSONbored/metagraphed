@@ -597,6 +597,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-stake-moves",
+      "path": "/metagraph/accounts/{ss58}/stake-moves.json",
+      "schema_ref": "#/components/schemas/AccountStakeMovesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-deregistrations",
       "path": "/metagraph/accounts/{ss58}/deregistrations.json",
       "schema_ref": "#/components/schemas/AccountDeregistrationsArtifact",
@@ -5844,6 +5851,30 @@
               "all",
               "in",
               "out"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/stake-moves.json",
+      "cache": "short",
+      "description": "Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow.",
+      "id": "account-stake-moves",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/stake-moves",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
             ],
             "type": "string"
           }

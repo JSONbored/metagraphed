@@ -1311,6 +1311,99 @@
         ],
         "type": "object"
       },
+      "AccountStakeMovesArtifact": {
+        "additionalProperties": false,
+        "description": "One account's stake-movement (re-delegation) footprint per subnet over a recent window, from the account_events StakeMoved stream: per-subnet movement count with the first/last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /accounts/{ss58}/stake-flow.",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "concentration": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dominant_netuid": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "first_moved_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "last_moved_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "movements": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "movements",
+                "first_moved_at",
+                "last_moved_at"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_movements": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_movements",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "AccountSubnetsArtifact": {
         "additionalProperties": true,
         "description": "Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file).",

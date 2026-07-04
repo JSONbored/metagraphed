@@ -539,6 +539,37 @@ test("GET /accounts/{ss58}/stake-flow is schema-stable when D1 is cold (never 40
   assert.equal(Array.isArray(body.data.subnets), true);
 });
 
+test("GET /accounts/{ss58}/stake-moves routes to the per-account stake-move handler", async () => {
+  const env = dbWith({
+    events: [
+      {
+        netuid: 1,
+        movements: 3,
+        first_observed: 1750000000000,
+        last_observed: 1750009000000,
+      },
+      {
+        netuid: 7,
+        movements: 1,
+        first_observed: 1750001000000,
+        last_observed: 1750001000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/stake-moves?window=90d`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.window, "90d");
+  assert.equal(body.data.total_movements, 4);
+  assert.equal(body.data.subnets[0].netuid, 1);
+  assert.equal(body.meta.source, "chain-events");
+});
+
 test("GET /accounts/{ss58}/registrations routes to the per-account registrations handler", async () => {
   const env = dbWith({
     events: [

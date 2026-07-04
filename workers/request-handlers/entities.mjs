@@ -180,6 +180,11 @@ import {
 } from "../../src/stake-flow.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
+  loadAccountStakeMoves,
+  ACCOUNT_STAKE_MOVES_WINDOWS,
+  DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+} from "../../src/account-stake-moves.mjs";
+import {
   loadAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
@@ -1860,6 +1865,43 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/stake-flow.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/stake-moves: the account's per-subnet StakeMoved footprint
+// over a 7d/30d/90d window — movement count + first/last timestamps per subnet, an HHI
+// concentration of where its re-delegation churn is focused, and the dominant subnet.
+// account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros.
+export async function handleAccountStakeMoves(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
+  if (!Object.hasOwn(ACCOUNT_STAKE_MOVES_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(
+        windowParam,
+        ACCOUNT_STAKE_MOVES_WINDOWS,
+      ),
+    });
+  }
+  const { data, generatedAt } = await loadAccountStakeMoves(
+    d1Runner(env),
+    ss58,
+    { windowLabel: windowParam },
+  );
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/stake-moves.json`,
         generatedAt,
       ),
     },
