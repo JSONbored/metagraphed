@@ -654,6 +654,19 @@ assert.equal(
   SS58,
   "get_account_axon_removals must echo the address",
 );
+const accountPrometheus = await callOk("get_account_prometheus", {
+  ss58: SS58,
+  window: "30d",
+});
+assert.ok(
+  Array.isArray(accountPrometheus.subnets),
+  "get_account_prometheus must return subnets[]",
+);
+assert.equal(
+  accountPrometheus.address,
+  SS58,
+  "get_account_prometheus must echo the address",
+);
 const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
 assert.ok(
   "balance_tao" in accountBalance && accountBalance.ss58 === SS58,
