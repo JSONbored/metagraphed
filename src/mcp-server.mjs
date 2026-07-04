@@ -314,7 +314,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.45.0";
+export const MCP_SERVER_VERSION = "1.46.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -3465,10 +3465,11 @@ export const MCP_TOOLS = [
       "Fetch the paginated first-party chain-event history for one account by its " +
       "SS58 address (hotkey OR coldkey), newest first: each event's kind, block, " +
       "Subnet, UID, amount, and timestamp. Optionally filter by event kind (e.g. " +
-      "StakeAdded, StakeRemoved, NeuronRegistered, AxonServed, WeightsSet). " +
-      "Optionally constrain block height with block_start/block_end (inclusive). " +
-      "Page with limit (1-1000, default 100) / offset, or follow next_cursor for stable " +
-      "keyset pagination. Mirrors GET /api/v1/accounts/{ss58}/events.",
+      "StakeAdded, StakeRemoved, NeuronRegistered, AxonServed, WeightsSet) or scope " +
+      "to one subnet with netuid. Optionally constrain block height with " +
+      "block_start/block_end (inclusive). Page with limit (1-1000, default 100) / " +
+      "offset, or follow next_cursor for stable keyset pagination. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/events.",
     inputSchema: {
       type: "object",
       properties: {
@@ -3483,6 +3484,13 @@ export const MCP_TOOLS = [
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'NeuronRegistered'. " +
             "Omit for all kinds; unsupported kinds are rejected.",
+        },
+        netuid: {
+          type: "integer",
+          description:
+            "Optional subnet scope: only events tied to this netuid. Omit for " +
+            "events across every subnet.",
+          minimum: 0,
         },
         block_start: {
           type: "integer",
@@ -3523,6 +3531,7 @@ export const MCP_TOOLS = [
       requireKnownEventKind(kind);
       const cursor = optionalString(args, "cursor");
       return loadAccountEvents(mcpD1Runner(ctx), ss58, {
+        netuid: optionalNonNegativeInt(args, "netuid"),
         blockStart: optionalNonNegativeInt(args, "block_start"),
         blockEnd: optionalNonNegativeInt(args, "block_end"),
         limit: args?.limit,

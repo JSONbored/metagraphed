@@ -8744,6 +8744,59 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.ok(eventsQuery.params.includes("StakeRemoved"));
   });
 
+  test("get_account_events scopes to one subnet with netuid (#2585 parity)", async () => {
+    const capture = [];
+    const env = accountD1(
+      {
+        events: [
+          {
+            block_number: 210,
+            event_index: 0,
+            event_kind: "StakeAdded",
+            hotkey: SS58,
+            coldkey: null,
+            netuid: 74,
+            uid: 5,
+            amount_tao: 1.0,
+            observed_at: 1750009100000,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, netuid: 74 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.events[0].netuid, 74);
+    // The netuid filter must reach the SQL as a bound param inside each indexed
+    // branch of the hotkey/coldkey union (never interpolated).
+    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
+    assert.equal((eventsQuery.sql.match(/AND netuid = \?/g) || []).length, 2);
+    assert.ok(eventsQuery.params.includes(74));
+  });
+
+  test("get_account_events without netuid is unscoped (no netuid predicate)", async () => {
+    const capture = [];
+    const env = accountD1({ events: [] }, capture);
+    await callTool("get_account_events", { ss58: SS58 }, { env });
+    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
+    assert.doesNotMatch(eventsQuery.sql, /AND netuid = \?/);
+  });
+
+  test("get_account_events rejects a malformed netuid", async () => {
+    const env = accountD1({ events: [] });
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, netuid: -1 },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
   test("get_account_events clamps an over-range limit the same way the REST route does", async () => {
     const capture = [];
     const env = accountD1({ events: [] }, capture);
