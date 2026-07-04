@@ -88,7 +88,15 @@
     {
       "description": "Isolate Prettier/ESLint formatting tooling — a version bump reformats the whole repo (cf. closed dependabot PR #50), so require deliberate dashboard approval even for minor, never auto-grouped or auto-PR'd.",
       "matchManagers": ["npm"],
-      "matchPackageNames": ["prettier", "eslint", "eslint-config-prettier", "eslint-plugin-prettier", "@typescript-eslint/eslint-plugin", "@typescript-eslint/parser", "typescript-eslint"],
+      "matchPackageNames": [
+        "prettier",
+        "eslint",
+        "eslint-config-prettier",
+        "eslint-plugin-prettier",
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "typescript-eslint"
+      ],
       "matchUpdateTypes": ["minor", "major"],
       "dependencyDashboardApproval": true,
       "groupName": "formatting & lint tooling",
