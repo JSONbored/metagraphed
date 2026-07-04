@@ -3949,7 +3949,7 @@ describe("handleAccountStakeFlow", () => {
     assert.equal(body.meta.generated_at, null);
   });
 
-  test("folds per-subnet flow + totals, bound to the hotkey + both stake kinds", async () => {
+  test("folds per-subnet flow + totals, bound to the coldkey + both stake kinds", async () => {
     const { env, captures } = dbWith({
       stakeFlow: [
         {
@@ -3994,7 +3994,7 @@ describe("handleAccountStakeFlow", () => {
     assert.equal(body.data.dominant_netuid, 1);
     await assertValidComponent("AccountStakeFlowArtifact", body.data);
     const idx = captures.sql.findIndex((s) =>
-      /FROM account_events INDEXED BY idx_account_events_hotkey WHERE hotkey = \?/.test(
+      /FROM account_events INDEXED BY idx_account_events_coldkey WHERE coldkey = \?/.test(
         s,
       ),
     );
