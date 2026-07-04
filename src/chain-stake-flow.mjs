@@ -17,6 +17,12 @@ export const STAKE_REMOVED_KIND = "StakeRemoved";
 export const CHAIN_STAKE_FLOW_LIMIT_DEFAULT = 20;
 export const CHAIN_STAKE_FLOW_LIMIT_MAX = 100;
 
+// Supported lookback windows (label -> days), matching the REST route's
+// analytics window set (7d/30d, default 7d). Kept next to the loader so the MCP
+// tool's input schema and runtime validation cannot drift from the endpoint.
+export const CHAIN_STAKE_FLOW_WINDOWS = { "7d": 7, "30d": 30 };
+export const DEFAULT_CHAIN_STAKE_FLOW_WINDOW = "7d";
+
 // 1 TAO = 1e9 rao. Summing many REAL amount_tao values accumulates IEEE-754 noise below the
 // rao floor; round every TAO output to rao precision (the same rounding the sibling scorecards
 // apply). A non-finite sum can only arise from a malformed direct call — coerce it to 0.

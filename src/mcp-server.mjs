@@ -85,6 +85,13 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.mjs";
 import {
+  loadChainStakeFlow,
+  CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+  CHAIN_STAKE_FLOW_LIMIT_MAX,
+  CHAIN_STAKE_FLOW_WINDOWS,
+  DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
+} from "./chain-stake-flow.mjs";
+import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
 } from "./economics-trends.mjs";
@@ -234,12 +241,13 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.25.0";
+export const MCP_SERVER_VERSION = "1.26.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
 const CHAIN_TURNOVER_WINDOW_KEYS = Object.keys(CHAIN_TURNOVER_WINDOWS);
+const CHAIN_STAKE_FLOW_WINDOW_KEYS = Object.keys(CHAIN_STAKE_FLOW_WINDOWS);
 const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
@@ -355,6 +363,8 @@ export const MCP_INSTRUCTIONS =
   "distribution across all subnets, " +
   "get_chain_turnover the network-wide validator-turnover leaderboard " +
   "(per-subnet churn, retention, and stability) across all subnets, " +
+  "get_chain_stake_flow the network-wide cross-subnet capital-flow leaderboard " +
+  "(per-subnet net TAO staked/unstaked and direction) across all subnets, " +
   "get_blocks_summary block-production analytics (inter-block time, throughput, " +
   "and block-author decentralization), " +
   "get_network_activity the daily " +
@@ -2064,6 +2074,57 @@ export const MCP_TOOLS = [
       );
       return loadChainTurnover(mcpD1Runner(ctx), {
         windowLabel: window,
+        limit,
+      });
+    },
+  },
+  {
+    name: "get_chain_stake_flow",
+    title: "Get network-wide net stake flow",
+    description:
+      "Fetch the network-wide cross-subnet capital-flow leaderboard over the " +
+      "requested window (7d or 30d; default 7d): each subnet ranked by net TAO " +
+      "flow (StakeAdded minus StakeRemoved) with staked/unstaked/gross totals, " +
+      "stake/unstake event counts, and an inflow/outflow/balanced direction " +
+      "label, plus a network rollup (gaining/losing/flat subnet counts) and the " +
+      "count/mean/min/p25/median/p75/p90/max spread of per-subnet net flow, " +
+      "summed live from the account_events stream. The network-level companion " +
+      "of get_subnet_stake_flow, mirroring how get_chain_concentration " +
+      "companions get_subnet_concentration. Mirrors GET /api/v1/chain/stake-flow.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_STAKE_FLOW_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_STAKE_FLOW_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the stake-flow leaderboard (1-${CHAIN_STAKE_FLOW_LIMIT_MAX}, default ${CHAIN_STAKE_FLOW_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_STAKE_FLOW_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
+      if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+        CHAIN_STAKE_FLOW_LIMIT_MAX,
+      );
+      return loadChainStakeFlow(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_STAKE_FLOW_WINDOWS[window],
         limit,
       });
     },
@@ -5673,6 +5734,99 @@ const TOOL_OUTPUT_SCHEMAS = {
             validators_exited: { type: "integer" },
             validator_retention: { type: "number" },
             stability_score: { type: "integer" },
+          },
+        },
+      },
+    },
+  },
+  get_chain_stake_flow: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup over every subnet that moved stake in the window, plus
+      // gaining/losing/flat subnet counts from each subnet's direction label.
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "total_staked_tao",
+          "total_unstaked_tao",
+          "net_flow_tao",
+          "gross_flow_tao",
+          "stake_events",
+          "unstake_events",
+          "gaining",
+          "losing",
+          "flat",
+        ],
+        properties: {
+          total_staked_tao: { type: "number" },
+          total_unstaked_tao: { type: "number" },
+          net_flow_tao: { type: "number" },
+          gross_flow_tao: { type: "number" },
+          stake_events: { type: "integer" },
+          unstake_events: { type: "integer" },
+          gaining: { type: "integer" },
+          losing: { type: "integer" },
+          flat: { type: "integer" },
+        },
+      },
+      // Spread of per-subnet net flow (TAO) over EVERY active subnet; null when
+      // no subnet moved stake in the window.
+      net_flow_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet capital-flow leaderboard, biggest net inflow first.
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "total_staked_tao",
+            "total_unstaked_tao",
+            "net_flow_tao",
+            "gross_flow_tao",
+            "stake_events",
+            "unstake_events",
+            "direction",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            total_staked_tao: { type: "number" },
+            total_unstaked_tao: { type: "number" },
+            net_flow_tao: { type: "number" },
+            gross_flow_tao: { type: "number" },
+            stake_events: { type: "integer" },
+            unstake_events: { type: "integer" },
+            direction: { type: "string" },
           },
         },
       },

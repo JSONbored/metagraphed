@@ -5529,6 +5529,7 @@ describe("MCP economics + metagraph data tools", () => {
     turnoverBounds = [],
     turnoverRows = [],
     blocks = [],
+    accountEvents = [],
   } = {}) {
     return {
       prepare(sql) {
@@ -5536,6 +5537,9 @@ describe("MCP economics + metagraph data tools", () => {
           bind(...params) {
             return {
               all() {
+                if (sql.includes("FROM account_events")) {
+                  return Promise.resolve({ results: accountEvents });
+                }
                 if (sql.includes("FROM neurons")) {
                   let r = neurons;
                   if (sql.includes("validator_permit = 1")) {
@@ -6300,6 +6304,104 @@ describe("MCP economics + metagraph data tools", () => {
       chainTurnoverEnv([
         turnoverRow("2026-06-01", 1, "V1"),
         turnoverRow("2026-06-30", 1, "V2"),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  // A grouped account_events aggregate row (one per netuid+event_kind), the
+  // shape loadChainStakeFlow's SUM/COUNT/MAX query returns.
+  function stakeFlowRow(netuid, event_kind, total_tao, event_count) {
+    return {
+      netuid,
+      event_kind,
+      total_tao,
+      event_count,
+      last_observed: 1_750_000_000_000,
+    };
+  }
+
+  function chainStakeFlowEnv(rows) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({ accountEvents: rows }),
+      },
+    };
+  }
+
+  test("get_chain_stake_flow returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_stake_flow", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.net_flow_distribution, null);
+    assert.equal(out.network.net_flow_tao, 0);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_stake_flow ranks subnets by net flow with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_stake_flow",
+      { window: "30d", limit: 10 },
+      chainStakeFlowEnv([
+        // netuid 1: net +80 (inflow, biggest) -> ranks first.
+        stakeFlowRow(1, "StakeAdded", 100, 5),
+        stakeFlowRow(1, "StakeRemoved", 20, 2),
+        // netuid 2: net -30 (outflow) -> ranks last.
+        stakeFlowRow(2, "StakeAdded", 10, 1),
+        stakeFlowRow(2, "StakeRemoved", 40, 3),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].net_flow_tao, 80);
+    assert.equal(out.subnets[0].direction, "inflow");
+    assert.equal(out.subnets[1].netuid, 2);
+    assert.equal(out.subnets[1].direction, "outflow");
+    // Network rollup: staked 110, unstaked 60 -> net +50; 1 gaining, 1 losing.
+    assert.equal(out.network.net_flow_tao, 50);
+    assert.equal(out.network.gaining, 1);
+    assert.equal(out.network.losing, 1);
+    assert.equal(out.net_flow_distribution.count, 2);
+  });
+
+  test("get_chain_stake_flow rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_stake_flow", { window: "90d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_stake_flow caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_stake_flow",
+      { limit: 1 },
+      chainStakeFlowEnv([
+        stakeFlowRow(1, "StakeAdded", 100, 5),
+        stakeFlowRow(2, "StakeAdded", 50, 3),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets are counted in the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.net_flow_distribution.count, 2);
+  });
+
+  test("get_chain_stake_flow payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_stake_flow",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_stake_flow",
+      {},
+      chainStakeFlowEnv([
+        stakeFlowRow(1, "StakeAdded", 100, 5),
+        stakeFlowRow(1, "StakeRemoved", 20, 2),
       ]),
     );
     const validate = new Ajv2020().compile(schema);

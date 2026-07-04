@@ -404,6 +404,16 @@ assert.ok(
     chainTurnover.network != null,
   "get_chain_turnover must return comparable + subnet_count + network + subnets[]",
 );
+const chainStakeFlow = await callOk("get_chain_stake_flow", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  Number.isInteger(chainStakeFlow.subnet_count) &&
+    Array.isArray(chainStakeFlow.subnets) &&
+    chainStakeFlow.network != null,
+  "get_chain_stake_flow must return subnet_count + network + subnets[]",
+);
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
   Array.isArray(meta.neurons),
