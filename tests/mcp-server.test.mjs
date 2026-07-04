@@ -10586,6 +10586,24 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  test("list_evidence returns the evidence ledger artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/evidence-ledger.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        evidence: [{ netuid: 7, check: "openapi", outcome: "verified" }],
+      },
+    });
+    const res = await callTool("list_evidence", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.evidence[0].netuid, 7);
+    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+  });
+
+  test("list_evidence rejects an unexpected argument", async () => {
+    const res = await callTool("list_evidence", { netuid: 7 });
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_lineage returns the lineage artifact", async () => {
     const deps = makeDeps({
       "/metagraph/lineage.json": {
