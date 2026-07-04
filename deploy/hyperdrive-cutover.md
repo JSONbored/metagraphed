@@ -98,5 +98,5 @@ working replacement; the poller was redundant with it). What's still gated on
 1. **Decommission** the `*/3` R2-staging drain (still fed by the manual
    `backfill-events.yml` workflow — do not remove before this step).
 2. **Demote D1** to a hot cache, or retire it.
-4. Optionally **add the box's node to the RPC/WSS pools** so `/rpc/v1` +
+3. Optionally **add the box's node to the RPC/WSS pools** so `/rpc/v1` +
    `wss.metagraph.sh` can route to first-party infra.
