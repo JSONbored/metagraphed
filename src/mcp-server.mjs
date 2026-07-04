@@ -182,6 +182,13 @@ import {
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
 } from "./chain-prometheus.mjs";
+import {
+  loadChainServing,
+  CHAIN_SERVING_LIMIT_DEFAULT,
+  CHAIN_SERVING_LIMIT_MAX,
+  CHAIN_SERVING_WINDOWS,
+  DEFAULT_CHAIN_SERVING_WINDOW,
+} from "./chain-serving.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
   KV_HEALTH_RPC_POOL,
@@ -342,7 +349,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.50.0";
+export const MCP_SERVER_VERSION = "1.51.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -361,6 +368,7 @@ const CHAIN_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
   CHAIN_DEREGISTRATIONS_WINDOWS,
 );
 const CHAIN_PROMETHEUS_WINDOW_KEYS = Object.keys(CHAIN_PROMETHEUS_WINDOWS);
+const CHAIN_SERVING_WINDOW_KEYS = Object.keys(CHAIN_SERVING_WINDOWS);
 const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
   CHAIN_TRANSFER_PAIR_WINDOWS,
 );
@@ -525,6 +533,9 @@ export const MCP_INSTRUCTIONS =
   "get_chain_axon_removals the network-wide axon-teardown leaderboard " +
   "(per-subnet AxonInfoRemoved activity, distinct removers, and " +
   "removals-per-remover intensity) across all subnets, " +
+  "get_chain_serving the network-wide axon-endpoint serving leaderboard " +
+  "(per-subnet AxonServed activity, distinct servers, and " +
+  "announcements-per-server intensity) across all subnets, " +
   "get_chain_prometheus the network-wide Prometheus-endpoint serving " +
   "leaderboard (per-subnet PrometheusServed activity, distinct exporters, and " +
   "announcements-per-exporter intensity) across all subnets, " +
@@ -2566,6 +2577,59 @@ export const MCP_TOOLS = [
       return loadChainAxonRemovals(mcpD1Runner(ctx), {
         windowLabel: window,
         windowDays: CHAIN_AXON_REMOVALS_WINDOWS[window],
+        limit,
+      });
+    },
+  },
+  {
+    name: "get_chain_serving",
+    title: "Get network-wide axon-endpoint serving activity",
+    description:
+      "Fetch the network-wide axon-endpoint serving leaderboard over the " +
+      "requested window (7d or 30d; default 7d): each subnet ranked by " +
+      "AxonServed events with its distinct-server (hotkey) count and " +
+      "announcements-per-server intensity, plus a network rollup (distinct " +
+      "servers, total announcements, announcements per server) and the " +
+      "count/mean/min/p25/median/p75/p90/max spread of per-subnet intensity, " +
+      "summed live from the account_events stream. AxonServed is emitted when " +
+      "a neuron announces its axon endpoint — the axon-endpoint companion to " +
+      "get_chain_prometheus (Prometheus telemetry announcements) and " +
+      "get_chain_axon_removals (AxonInfoRemoved teardown). Mirrors GET " +
+      "/api/v1/chain/serving.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_SERVING_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_SERVING_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the axon serving leaderboard (1-${CHAIN_SERVING_LIMIT_MAX}, default ${CHAIN_SERVING_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_SERVING_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_SERVING_WINDOW;
+      if (!Object.hasOwn(CHAIN_SERVING_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_SERVING_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_SERVING_LIMIT_DEFAULT,
+        CHAIN_SERVING_LIMIT_MAX,
+      );
+      return loadChainServing(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_SERVING_WINDOWS[window],
         limit,
       });
     },
@@ -7450,6 +7514,84 @@ const TOOL_OUTPUT_SCHEMAS = {
             distinct_removers: { type: "integer" },
             removals: { type: "integer" },
             removals_per_remover: { type: "number" },
+          },
+        },
+      },
+    },
+  },
+  get_chain_serving: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup over every subnet that saw an AxonServed event. A hotkey
+      // announcing on several subnets counts once in distinct_servers.
+      // announcements_per_server is null when the network-wide distinct-server
+      // count is unavailable/zero (no divide-by-zero).
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "distinct_servers",
+          "announcements",
+          "announcements_per_server",
+        ],
+        properties: {
+          distinct_servers: { type: "integer" },
+          announcements: { type: "integer" },
+          announcements_per_server: { type: ["number", "null"] },
+        },
+      },
+      // Spread of per-subnet re-announcement intensity (AxonServed events per
+      // server) over EVERY subnet that saw an announcement; null when no subnet
+      // saw serving activity in the window.
+      intensity_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet axon serving leaderboard, most AxonServed events first. Each
+      // listed subnet has at least one distinct server, so announcements_per_server
+      // is always a finite number here.
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "distinct_servers",
+            "announcements",
+            "announcements_per_server",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            distinct_servers: { type: "integer" },
+            announcements: { type: "integer" },
+            announcements_per_server: { type: "number" },
           },
         },
       },

@@ -481,6 +481,16 @@ assert.ok(
     chainPrometheus.network != null,
   "get_chain_prometheus must return subnet_count + network + subnets[]",
 );
+const chainServing = await callOk("get_chain_serving", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  Number.isInteger(chainServing.subnet_count) &&
+    Array.isArray(chainServing.subnets) &&
+    chainServing.network != null,
+  "get_chain_serving must return subnet_count + network + subnets[]",
+);
 const chainTransferPairs = await callOk("get_chain_transfer_pairs", {
   window: "7d",
   limit: 5,

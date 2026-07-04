@@ -6263,6 +6263,8 @@ describe("MCP economics + metagraph data tools", () => {
     chainDeregistrationsSubnetRows = [],
     chainPrometheusNetworkRows = [],
     chainPrometheusSubnetRows = [],
+    chainServingNetworkRows = [],
+    chainServingSubnetRows = [],
     transferPairTotals = [],
     transferPairRows = [],
   } = {}) {
@@ -6289,6 +6291,9 @@ describe("MCP economics + metagraph data tools", () => {
                   // get_chain_prometheus reads a network aggregate
                   // (newest_observed + distinct_exporters) then a per-subnet GROUP BY
                   // (AS announcements + distinct_exporters);
+                  // get_chain_serving reads a network aggregate
+                  // (newest_observed + distinct_servers) then a per-subnet GROUP BY
+                  // (AS announcements + distinct_servers);
                   // get_chain_transfer_pairs reads a totals CTE
                   // (top_pair_volume_tao) then per-corridor rows (AS from_address);
                   // everything else uses the flat account_events fixture.
@@ -6321,6 +6326,11 @@ describe("MCP economics + metagraph data tools", () => {
                         results: chainPrometheusNetworkRows,
                       });
                     }
+                    if (sql.includes("distinct_servers")) {
+                      return Promise.resolve({
+                        results: chainServingNetworkRows,
+                      });
+                    }
                     return Promise.resolve({ results: weightsNetworkRows });
                   }
                   if (sql.includes("weight_sets")) {
@@ -6351,6 +6361,14 @@ describe("MCP economics + metagraph data tools", () => {
                   ) {
                     return Promise.resolve({
                       results: chainPrometheusSubnetRows,
+                    });
+                  }
+                  if (
+                    sql.includes("AS announcements") &&
+                    sql.includes("distinct_servers")
+                  ) {
+                    return Promise.resolve({
+                      results: chainServingSubnetRows,
                     });
                   }
                   if (sql.includes("top_pair_volume_tao")) {
@@ -7876,6 +7894,110 @@ describe("MCP economics + metagraph data tools", () => {
       chainDeregistrationsEnv(chainDeregistrationsNetwork(8), [
         chainDeregistrationsRow(1, 20, 5),
         chainDeregistrationsRow(2, 10, 4),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  // The network-wide aggregate row loadChainServing reads first (its
+  // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
+  // unlocks the per-subnet read.
+  function chainServingNetwork(distinct_servers) {
+    return {
+      distinct_servers,
+      newest_observed: 1_750_000_000_000,
+    };
+  }
+
+  // A per-subnet GROUP BY netuid row (COUNT announcements + distinct servers).
+  function chainServingRow(netuid, announcements, distinct_servers) {
+    return { netuid, announcements, distinct_servers };
+  }
+
+  function chainServingEnv(network, subnets) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({
+          chainServingNetworkRows: network ? [network] : [],
+          chainServingSubnetRows: subnets,
+        }),
+      },
+    };
+  }
+
+  test("get_chain_serving returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_serving", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+    assert.equal(out.network.announcements, 0);
+    assert.equal(out.network.announcements_per_server, null);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_serving ranks subnets by announcements with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_serving",
+      { window: "30d", limit: 10 },
+      chainServingEnv(chainServingNetwork(8), [
+        // netuid 2: fewer announcements -> ranks last despite higher intensity.
+        chainServingRow(2, 10, 4),
+        // netuid 1: most AxonServed events -> ranks first.
+        chainServingRow(1, 20, 5),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].announcements, 20);
+    assert.equal(out.subnets[0].announcements_per_server, 4); // 20 / 5
+    assert.equal(out.subnets[1].netuid, 2);
+    assert.equal(out.subnets[1].announcements_per_server, 2.5); // 10 / 4
+    // Network rollup: total announcements 30 over 8 distinct servers -> 3.75.
+    assert.equal(out.network.announcements, 30);
+    assert.equal(out.network.distinct_servers, 8);
+    assert.equal(out.network.announcements_per_server, 3.75);
+    assert.equal(out.intensity_distribution.count, 2);
+    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("get_chain_serving rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_serving", { window: "90d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_serving caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_serving",
+      { limit: 1 },
+      chainServingEnv(chainServingNetwork(8), [
+        chainServingRow(1, 20, 5),
+        chainServingRow(2, 10, 4),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets feed the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.intensity_distribution.count, 2);
+  });
+
+  test("get_chain_serving payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_serving",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_serving",
+      {},
+      chainServingEnv(chainServingNetwork(8), [
+        chainServingRow(1, 20, 5),
+        chainServingRow(2, 10, 4),
       ]),
     );
     const validate = new Ajv2020().compile(schema);
