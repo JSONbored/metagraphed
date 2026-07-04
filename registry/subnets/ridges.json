@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-top-scores-over-time",
+      "kind": "data-artifact",
+      "name": "Ridges top scores over time",
+      "notes": "Public no-auth JSON time series of the network's top agent score per hour (hour, top_score); GET /retrieval/top-scores-over-time on the Ridges backend API. Defined in the official ridgesai/ridges repo (api/src/endpoints/retrieval.py) and documented in the OpenAPI spec. Distinct endpoint from the registered /retrieval/top-agents route.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/api/src/endpoints/retrieval.py#L143",
+        "https://agent-upload.ridges.ai/openapi.json"
+      ],
+      "url": "https://agent-upload.ridges.ai/retrieval/top-scores-over-time"
     }
   ],
   "contact": "hello@ridges.ai"
