@@ -13,7 +13,7 @@ import importlib.util
 import os
 import unittest
 import urllib.error
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 _SE_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "stream-events.py"
@@ -46,10 +46,21 @@ class PushAuthFatalTest(unittest.TestCase):
                 _se.push("https://api.metagraph.sh/api/v1/internal/events", {})
         self.assertEqual(cm.exception.code, 1)
 
-    def test_other_http_error_is_transient_not_fatal(self):
-        with patch.object(_se.urllib.request, "urlopen", side_effect=_http_error(500)):
-            result = _se.push("https://api.metagraph.sh/api/v1/internal/events", {})
-        self.assertFalse(result)
+    def test_other_http_error_retries_before_returning(self):
+        ok_response = Mock()
+        ok_response.__enter__ = Mock(return_value=ok_response)
+        ok_response.__exit__ = Mock(return_value=None)
+        ok_response.read = Mock(return_value=b"")
+        with patch.object(
+            _se.urllib.request,
+            "urlopen",
+            side_effect=[_http_error(500), ok_response],
+        ) as urlopen:
+            with patch.object(_se.time, "sleep") as sleep:
+                result = _se.push("https://api.metagraph.sh/api/v1/internal/events", {})
+        self.assertTrue(result)
+        self.assertEqual(urlopen.call_count, 2)
+        sleep.assert_called_once_with(_se.PUSH_RETRY_INITIAL_SECONDS)
 
 
 if __name__ == "__main__":

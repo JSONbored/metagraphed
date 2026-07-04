@@ -14,10 +14,10 @@ docs/realtime-streamer.md).
 Production behavior:
   * Structured, leveled logging (timestamp + level). The per-block line is DEBUG
     (quiet by default); a periodic INFO summary shows liveness without flooding.
-  * A transient failed ingest POST is logged + skipped — it does NOT tear down
-    the subscription. An ingest auth rejection (401/403) or a TLS/certificate
-    verification failure is NOT transient: both are logged at ERROR and exit
-    the process instead.
+  * A transient failed ingest POST is retried in-place before the handler
+    advances to the next finalized block. An ingest auth rejection (401/403) or
+    a TLS/certificate verification failure is NOT transient: both are logged at
+    ERROR and exit the process instead.
   * Exponential backoff + jitter on RPC reconnect; SIGTERM/SIGINT graceful stop.
 
 Deployed via the Ansible streamer role on the self-hosted indexer box; see
@@ -27,7 +27,8 @@ Run:
   EVENTS_INGEST_URL=https://api.metagraph.sh/api/v1/internal/events \
   METAGRAPH_EVENTS_INGEST_SECRET=... \
   uv run --with substrate-interface==1.8.1 python scripts/stream-events.py
-Env knobs: LOG_LEVEL (default INFO), EVENTS_SUMMARY_EVERY_BLOCKS (default 20).
+Env knobs: LOG_LEVEL (default INFO), EVENTS_SUMMARY_EVERY_BLOCKS (default 20),
+EVENTS_PUSH_RETRY_INITIAL_SECONDS (default 5), EVENTS_PUSH_RETRY_MAX_SECONDS (default 60).
 """
 import importlib.util
 import json
@@ -55,6 +56,13 @@ BLOCKS_INGEST_URL = os.environ.get("BLOCKS_INGEST_URL") or (
 SECRET = os.environ.get("METAGRAPH_EVENTS_INGEST_SECRET")
 TOKEN_HEADER = "x-metagraph-events-token"
 PUSH_TIMEOUT = 15
+PUSH_RETRY_INITIAL_SECONDS = max(
+    1, int(os.environ.get("EVENTS_PUSH_RETRY_INITIAL_SECONDS", "5"))
+)
+PUSH_RETRY_MAX_SECONDS = max(
+    PUSH_RETRY_INITIAL_SECONDS,
+    int(os.environ.get("EVENTS_PUSH_RETRY_MAX_SECONDS", "60")),
+)
 SUMMARY_EVERY = max(1, int(os.environ.get("EVENTS_SUMMARY_EVERY_BLOCKS", "20")))
 MAX_BACKOFF = 60
 # Mirrors the Worker's own caps (workers/config.mjs MAX_EVENTS_INGEST_ROWS /
@@ -186,77 +194,85 @@ def decode_head(s, block_number):
 
 
 def push(url, payload):
-    """POST a JSON payload to an ingest endpoint. Returns True on success; logs WARN
-    + returns False on a transient network failure (a dropped block here needs a
-    manual scripts/backfill-events.py rerun to recover — no automatic backstop).
-    Neither an ingest auth rejection (401/403 — token misconfigured or rotated)
-    nor a TLS/certificate verification failure is a transient blip — both are
-    logged at ERROR and the process exits, so a persistent failure is surfaced
-    (the process supervisor restarts a transient one; a persistent one crash-loops
-    to the retry cap + goes visibly down) rather than silently swallowed forever."""
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode(),
-        method="POST",
-        headers={
-            "content-type": "application/json",
-            # Real User-Agent: the default Python-urllib UA is 403'd by the
-            # Cloudflare WAF in front of the Worker.
-            "user-agent": "metagraphed-streamer/1.0",
-            TOKEN_HEADER: SECRET,
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=PUSH_TIMEOUT) as resp:
-            resp.read()
-        return True
-    except urllib.error.HTTPError as e:
+    """POST a JSON payload to an ingest endpoint.
+
+    Returns True on success. Transient ingest/network failures are retried
+    in-place so the stream handler does not advance beyond a block whose rows
+    have not reached the Worker. Neither an ingest auth rejection (401/403 —
+    token misconfigured or rotated) nor a TLS/certificate verification failure
+    is a transient blip: both are logged at ERROR and the process exits, so a
+    persistent configuration/security failure is surfaced.
+    """
+    delay = PUSH_RETRY_INITIAL_SECONDS
+    while not _stop:
+        data = json.dumps(payload).encode()
+        req = urllib.request.Request(
+            url,
+            data=data,
+            method="POST",
+            headers={
+                "content-type": "application/json",
+                # Real User-Agent: the default Python-urllib UA is 403'd by the
+                # Cloudflare WAF in front of the Worker.
+                "user-agent": "metagraphed-streamer/1.0",
+                TOKEN_HEADER: SECRET,
+            },
+        )
         try:
-            body = e.read().decode("utf-8", "replace")[:500]
-        except Exception:
-            body = "<no body>"
-        if e.code in (401, 403):
-            log.error(
-                "ingest push rejected (HTTP %s): %s — auth/token misconfiguration; "
-                "exiting so this does not silently retry forever",
+            with urllib.request.urlopen(req, timeout=PUSH_TIMEOUT) as resp:
+                resp.read()
+            return True
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode("utf-8", "replace")[:500]
+            except Exception:
+                body = "<no body>"
+            if e.code in (401, 403):
+                log.error(
+                    "ingest push rejected (HTTP %s): %s — auth/token misconfiguration; "
+                    "exiting so this does not silently retry forever",
+                    e.code,
+                    body,
+                )
+                sys.exit(1)
+            log.warning(
+                "ingest push rejected (HTTP %s): %s — retrying in %ss before advancing",
                 e.code,
                 body,
+                delay,
             )
-            sys.exit(1)
-        log.warning(
-            "ingest push rejected (HTTP %s): %s — poller backstop will cover this gap",
-            e.code,
-            body,
-        )
-        return False
-    except urllib.error.URLError as e:
-        # urlopen surfaces a cert verification failure as URLError(reason=SSLError).
-        # Never silently swallow a TLS failure on this secret-bearing endpoint.
-        if isinstance(e.reason, ssl.SSLError):
+        except urllib.error.URLError as e:
+            # urlopen surfaces a cert verification failure as URLError(reason=SSLError).
+            # Never silently swallow a TLS failure on this secret-bearing endpoint.
+            if isinstance(e.reason, ssl.SSLError):
+                log.error(
+                    "TLS verification FAILED for the ingest endpoint (%s) — possible "
+                    "cert/MITM issue; exiting rather than continuing unverified.",
+                    repr(e.reason)[:160],
+                )
+                sys.exit(1)
+            log.warning(
+                "ingest push failed (%s) — retrying in %ss before advancing",
+                repr(e.reason)[:120],
+                delay,
+            )
+        except ssl.SSLError as e:  # a raw (unwrapped) TLS error — same security stance
             log.error(
-                "TLS verification FAILED for the ingest endpoint (%s) — possible "
-                "cert/MITM issue; exiting rather than continuing unverified.",
-                repr(e.reason)[:160],
+                "TLS error talking to the ingest endpoint (%s) — exiting rather than "
+                "continuing unverified.",
+                repr(e)[:160],
             )
             sys.exit(1)
-        log.warning(
-            "ingest push failed (%s) — poller backstop will cover this gap",
-            repr(e.reason)[:120],
-        )
-        return False
-    except ssl.SSLError as e:  # a raw (unwrapped) TLS error — same security stance
-        log.error(
-            "TLS error talking to the ingest endpoint (%s) — exiting rather than "
-            "continuing unverified.",
-            repr(e)[:160],
-        )
-        sys.exit(1)
-    except (TimeoutError, ConnectionError, OSError) as e:
-        log.warning(
-            "ingest push failed (%s) — poller backstop will cover this gap",
-            repr(e)[:120],
-        )
-        return False
+        except (TimeoutError, ConnectionError, OSError) as e:
+            log.warning(
+                "ingest push failed (%s) — retrying in %ss before advancing",
+                repr(e)[:120],
+                delay,
+            )
+        time.sleep(delay)
+        delay = min(delay * 2, PUSH_RETRY_MAX_SECONDS)
+
+    return False
 
 
 def _chunk_rows(rows, build_payload, max_rows=MAX_INGEST_ROWS, max_bytes=MAX_INGEST_BODY_BYTES):
@@ -282,8 +298,8 @@ def _chunk_rows(rows, build_payload, max_rows=MAX_INGEST_ROWS, max_bytes=MAX_ING
 
 def push_events(url, event_rows):
     """Push account_events for one block, chunked to respect the ingest caps.
-    Returns True only if every chunk succeeded (a partial failure still logs +
-    lets the poller backstop cover just the failed slice)."""
+    Returns True only if every chunk succeeded; each chunk is retried in-place
+    so the subscription does not advance past an uncommitted block slice."""
     if not event_rows:
         return True
     ok = True
