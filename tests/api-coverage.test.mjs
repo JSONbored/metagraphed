@@ -430,6 +430,33 @@ describe("/health readiness", () => {
     ]);
   });
 
+  test("chain_events treats blank or zero observed_at as absent (#1361)", async () => {
+    for (const at of ["", "   ", 0, "0"]) {
+      const env = createLocalArtifactEnv({
+        METAGRAPH_CONTROL: makeKv({
+          "metagraph:latest": { published_at: new Date().toISOString() },
+        }),
+        METAGRAPH_HEALTH_DB: {
+          prepare() {
+            return {
+              bind() {
+                return {
+                  async all() {
+                    return { results: [{ block: 8461200, at }] };
+                  },
+                };
+              },
+            };
+          },
+        },
+      });
+      const body = await (await handleRequest(req("/health"), env, {})).json();
+      assert.equal(body.chain_events.latest_indexed_block, 8461200);
+      assert.equal(body.chain_events.latest_event_at, null);
+      assert.equal(body.chain_events.age_seconds, null);
+    }
+  });
+
   test("chain_events is schema-stable nulls when the event tier is cold (#1361)", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({

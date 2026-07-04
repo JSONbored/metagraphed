@@ -3332,7 +3332,10 @@ async function handleHealthRequest(request, env) {
   if (bindings.health_db) {
     const chainEventsRow = await readChainEventsDb(env);
     const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
-    const chainEventsFresh = Number.isFinite(chainEventsAtMs);
+    // Blank/zero observed_at cells coerce via Number("") → 0; treat as absent
+    // (mirrors toIso in src/blocks.mjs and captured_at guards elsewhere).
+    const chainEventsFresh =
+      Number.isFinite(chainEventsAtMs) && chainEventsAtMs > 0;
     chainEvents = {
       latest_indexed_block: chainEventsRow?.block ?? null,
       latest_event_at: chainEventsFresh
