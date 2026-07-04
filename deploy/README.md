@@ -152,15 +152,23 @@ Redis so the Worker can surface "realtime stale".
 ## Cloudflare side
 
 The full, gated **serving cutover** (D1 → Postgres via Hyperdrive over a Tunnel +
-Workers VPC, tier-by-tier with D1 fallback) is its own runbook:
-[`hyperdrive-cutover.md`](hyperdrive-cutover.md). In short:
+Workers VPC, tier-by-tier with D1 fallback):
 
-```text
-# Workers VPC over a Cloudflare Tunnel to the private Postgres (box or Railway):
-# Create the Hyperdrive config from the Cloudflare dashboard so the database
-# password is entered into Cloudflare's credential form, not passed in shell argv.
-# Then add the [[hyperdrive]] binding to wrangler.jsonc and read via the binding.
-```
+- **Gate first.** Before touching serving, compare Postgres vs D1 row counts over
+  a recent window per tier (`blocks`, `extrinsics`, `account_events`) — only cut a
+  tier once Postgres ≥ D1 across the window. A shortfall here becomes a serving
+  regression; investigate before proceeding.
+- **Private DB path.** Postgres must never be public — front it with a Cloudflare
+  Tunnel + Workers VPC service, then create the Hyperdrive config from the
+  **Cloudflare dashboard** so the database password is entered into Cloudflare's
+  credential form, never passed as a shell-expanded argument (shell history,
+  process listings, CI logs all record argv). Add the `[[hyperdrive]]` binding to
+  `wrangler.jsonc` and read via `env.HYPERDRIVE.connectionString`.
+- **Cut tier by tier**, D1 as fallback (`if FLAG[tier] == "postgres": try
+Postgres; on error → D1`), watching latency + correctness before the next tier.
+  Leave the indexer's Postgres writes and the D1 write/prune paths running until
+  every tier is stable (dual-write during migration). Roll back per-tier by
+  flipping the flag back to D1.
 
 The Durable Object firehose hub is a new binding in the Worker; the `indexer`
 tees each decoded batch to it for SSE/WS/GraphQL-subscription fan-out.
