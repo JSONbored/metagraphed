@@ -1407,7 +1407,10 @@ export async function handleChainEventSummary(request, env, url, ctx = {}) {
   const windowLabel =
     url.searchParams.get("window") ?? DEFAULT_CHAIN_EVENT_SUMMARY_WINDOW;
   if (
-    !Object.prototype.hasOwnProperty.call(CHAIN_EVENT_SUMMARY_WINDOWS, windowLabel)
+    !Object.prototype.hasOwnProperty.call(
+      CHAIN_EVENT_SUMMARY_WINDOWS,
+      windowLabel,
+    )
   ) {
     return analyticsQueryError({
       parameter: "window",

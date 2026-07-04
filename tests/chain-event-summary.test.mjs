@@ -158,11 +158,9 @@ describe("buildChainEventSummary", () => {
   });
 
   test("keeps unknown future kinds in the other category", () => {
-    const out = buildChainEventSummary(
-      [kindRow("FutureRuntimeEvent", 1)],
-      [],
-      { subnetCount: 1 },
-    );
+    const out = buildChainEventSummary([kindRow("FutureRuntimeEvent", 1)], [], {
+      subnetCount: 1,
+    });
     assert.equal(out.event_kinds[0].event_kind, "FutureRuntimeEvent");
     assert.equal(out.event_kinds[0].category, "other");
     assert.equal(out.categories[0].category, "other");
@@ -176,6 +174,85 @@ describe("buildChainEventSummary", () => {
     );
     assert.equal(out.subnet_count, 0);
     assert.equal(out.event_kinds[0].subnet_count, 0);
+  });
+
+  test("coerces blank or negative amount cells and invalid block numbers", () => {
+    const out = buildChainEventSummary(
+      [
+        kindRow("Transfer", 2, {
+          amount_tao: "",
+          alpha_amount: -1,
+          first_block: -5,
+          last_block: "bad",
+        }),
+        kindRow("DelegateAdded", 1, {
+          amount_tao: "not-a-number",
+        }),
+      ],
+      [],
+      { subnetCount: 1 },
+    );
+    const transfer = out.event_kinds.find(
+      (row) => row.event_kind === "Transfer",
+    );
+    const delegation = out.event_kinds.find(
+      (row) => row.event_kind === "DelegateAdded",
+    );
+    assert.equal(transfer.amount_tao, 0);
+    assert.equal(transfer.alpha_amount, 0);
+    assert.equal(transfer.first_block, null);
+    assert.equal(transfer.last_block, null);
+    assert.equal(transfer.category, "transfer");
+    assert.equal(delegation.category, "delegation");
+    assert.equal(delegation.amount_tao, 0);
+  });
+
+  test("maps every coarse runtime category bucket", () => {
+    const kinds = [
+      "NeuronRegistered",
+      "StakeAdded",
+      "AxonServed",
+      "WeightsSet",
+      "DelegateAdded",
+      "HotkeySwapped",
+      "SubnetOwnerHotkeySet",
+      "Transfer",
+    ];
+    const out = buildChainEventSummary(
+      kinds.map((event_kind, i) => kindRow(event_kind, i + 1)),
+      [],
+      { subnetCount: kinds.length },
+    );
+    assert.deepEqual(
+      [...new Set(out.event_kinds.map((row) => row.category))].sort(),
+      [
+        "consensus",
+        "delegation",
+        "governance",
+        "identity",
+        "registration",
+        "serving",
+        "stake",
+        "transfer",
+      ],
+    );
+  });
+
+  test("derives observed_at from recent evidence when kind rows omit timestamps", () => {
+    const out = buildChainEventSummary(
+      [kindRow("StakeAdded", 1, { last_observed_at: null })],
+      [
+        {
+          block_number: 100,
+          event_index: 0,
+          event_kind: "StakeAdded",
+          netuid: 1,
+          observed_at: OBS + 5000,
+        },
+      ],
+      { limit: 1, subnetCount: 1 },
+    );
+    assert.equal(out.observed_at, new Date(OBS + 5000).toISOString());
   });
 });
 
@@ -212,13 +289,16 @@ describe("loadChainEventSummary", () => {
 
   test("falls back to the default direct-call window", async () => {
     let cutoff;
-    const out = await loadChainEventSummary(async (sql, params) => {
-      if (/MAX\(observed_at\) AS newest_observed/.test(sql)) {
-        cutoff = params[0];
-        return [{ subnet_count: 0, newest_observed: null }];
-      }
-      return [];
-    }, { windowLabel: "bogus" });
+    const out = await loadChainEventSummary(
+      async (sql, params) => {
+        if (/MAX\(observed_at\) AS newest_observed/.test(sql)) {
+          cutoff = params[0];
+          return [{ subnet_count: 0, newest_observed: null }];
+        }
+        return [];
+      },
+      { windowLabel: "bogus" },
+    );
     const expectedCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
     assert.ok(Math.abs(cutoff - expectedCutoff) < 1000);
     assert.equal(out.window, "30d");
@@ -227,31 +307,37 @@ describe("loadChainEventSummary", () => {
 
   test("counts distinct actors over hotkey-or-uid identity for WeightsSet", async () => {
     let kindSql;
-    const out = await loadChainEventSummary(async (sql) => {
-      if (/GROUP BY event_kind/.test(sql)) {
-        kindSql = sql;
-        return [
-          kindRow("WeightsSet", 3, {
-            hotkey_count: 3,
-            subnet_count: 2,
-          }),
-        ];
-      }
-      if (/MAX\(observed_at\) AS newest_observed/.test(sql)) {
-        return [{ subnet_count: 2, newest_observed: OBS }];
-      }
-      return [];
-    }, { windowLabel: "7d" });
+    const out = await loadChainEventSummary(
+      async (sql) => {
+        if (/GROUP BY event_kind/.test(sql)) {
+          kindSql = sql;
+          return [
+            kindRow("WeightsSet", 3, {
+              hotkey_count: 3,
+              subnet_count: 2,
+            }),
+          ];
+        }
+        if (/MAX\(observed_at\) AS newest_observed/.test(sql)) {
+          return [{ subnet_count: 2, newest_observed: OBS }];
+        }
+        return [];
+      },
+      { windowLabel: "7d" },
+    );
     assert.match(kindSql, /WHEN uid IS NOT NULL THEN 'uid:' \|\| netuid/);
     assert.equal(out.event_kinds[0].hotkey_count, 3);
   });
 
   test("skips kind/recent reads on a cold store", async () => {
     const calls = [];
-    const out = await loadChainEventSummary(async (sql, params) => {
-      calls.push({ sql, params });
-      return [{ subnet_count: 0, newest_observed: null }];
-    }, { windowLabel: "7d" });
+    const out = await loadChainEventSummary(
+      async (sql, params) => {
+        calls.push({ sql, params });
+        return [{ subnet_count: 0, newest_observed: null }];
+      },
+      { windowLabel: "7d" },
+    );
     assert.equal(calls.length, 1);
     assert.equal(out.subnet_count, 0);
     assert.equal(out.total_events, 0);
@@ -260,7 +346,11 @@ describe("loadChainEventSummary", () => {
   });
 
   test("exports the same window constants as the subnet summary route", () => {
-    assert.deepEqual(CHAIN_EVENT_SUMMARY_WINDOWS, { "7d": 7, "30d": 30, "90d": 90 });
+    assert.deepEqual(CHAIN_EVENT_SUMMARY_WINDOWS, {
+      "7d": 7,
+      "30d": 30,
+      "90d": 90,
+    });
   });
 
   test("clamps recent evidence limit to the configured max", async () => {
@@ -276,6 +366,45 @@ describe("loadChainEventSummary", () => {
       limit: CHAIN_EVENT_SUMMARY_RECENT_LIMIT_MAX + 100,
     });
     assert.equal(out.limit, CHAIN_EVENT_SUMMARY_RECENT_LIMIT_MAX);
+  });
+
+  test("falls back to probe newest_observed when shaped rows lack timestamps", async () => {
+    const out = await loadChainEventSummary(
+      async (sql) => {
+        if (/MAX\(observed_at\) AS newest_observed/.test(sql)) {
+          return [{ subnet_count: 2, newest_observed: OBS }];
+        }
+        if (/GROUP BY event_kind/.test(sql)) {
+          return [
+            kindRow("NeuronRegistered", 1, {
+              first_observed_at: null,
+              last_observed_at: null,
+              first_block: null,
+              last_block: null,
+            }),
+          ];
+        }
+        return [];
+      },
+      { windowLabel: "7d" },
+    );
+    assert.equal(out.observed_at, new Date(OBS).toISOString());
+  });
+
+  test("returns subnet_count zero when the probe query yields no row", async () => {
+    const calls = [];
+    const out = await loadChainEventSummary(
+      async (sql, params) => {
+        calls.push({ sql, params });
+        if (/MAX\(observed_at\) AS newest_observed/.test(sql)) return [];
+        throw new Error(`unexpected query: ${sql}`);
+      },
+      { windowLabel: "30d" },
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.total_events, 0);
+    assert.equal(out.observed_at, null);
   });
 });
 
@@ -338,7 +467,10 @@ describe("GET /api/v1/chain/event-summary", () => {
     assert.equal(body.data.subnet_count, 3);
     assert.equal(body.data.event_kinds[0].event_kind, "StakeAdded");
     assert.equal(body.data.event_kinds[0].subnet_count, 2);
-    assert.equal(body.meta.artifact_path, "/metagraph/chain/event-summary.json");
+    assert.equal(
+      body.meta.artifact_path,
+      "/metagraph/chain/event-summary.json",
+    );
   });
 
   test("serves a HEAD probe through the GET cache key with no body", async () => {
@@ -364,7 +496,11 @@ describe("GET /api/v1/chain/event-summary", () => {
   });
 
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleRequest(req("?window=1y"), eventSummaryEnv(cold), {});
+    const res = await handleRequest(
+      req("?window=1y"),
+      eventSummaryEnv(cold),
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
