@@ -1177,3 +1177,64 @@ describe("list-query paginationLinkHeader canonicalization", () => {
     );
   });
 });
+
+// A string-equality filter must exclude a row that is MISSING the filtered field
+// — the same absent-field-excluded convention rangeFilterRows already applies —
+// instead of letting String(undefined)/String(null) coerce into a matchable token.
+describe("list-query string filter excludes rows missing the field", () => {
+  const collection = "__test_string_filter_missing_field";
+
+  function withCollection(fn) {
+    const previous = API_QUERY_COLLECTIONS[collection];
+    API_QUERY_COLLECTIONS[collection] = {
+      data_key: "rows",
+      filters: { provider: { type: "string" } },
+      csv_filters: {},
+      array_filters: {},
+      range_filters: [],
+      search_keys: [],
+      sort_fields: [],
+    };
+    try {
+      return fn();
+    } finally {
+      if (previous === undefined) {
+        delete API_QUERY_COLLECTIONS[collection];
+      } else {
+        API_QUERY_COLLECTIONS[collection] = previous;
+      }
+    }
+  }
+
+  const data = {
+    rows: [
+      { id: 1, provider: "alpha" },
+      { id: 2 }, // provider absent
+    ],
+  };
+  const ids = (result) => result.data.rows.map((row) => row.id);
+
+  test("?provider=undefined does not match a row whose provider is absent", () => {
+    withCollection(() => {
+      // Before the null guard, String(undefined) === "undefined" made the
+      // provider-less row match; a missing field must never satisfy a value filter.
+      const result = applyQueryFilters(
+        data,
+        query("/api/v1/x?provider=undefined"),
+        collection,
+      );
+      assert.deepEqual(ids(result), []);
+    });
+  });
+
+  test("a real filter value still matches only the rows that carry it", () => {
+    withCollection(() => {
+      const result = applyQueryFilters(
+        data,
+        query("/api/v1/x?provider=alpha"),
+        collection,
+      );
+      assert.deepEqual(ids(result), [1]);
+    });
+  });
+});

@@ -201,6 +201,11 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
         );
       }
       const value = row[key];
+      // A row missing the filtered field can't satisfy a value filter — exclude
+      // it rather than letting String(undefined)/String(null) coerce into a
+      // matchable "undefined"/"null" token (mirrors the absent-field exclusion in
+      // rangeFilterRows, where a non-numeric/absent field fails every bound).
+      if (value == null) return false;
       if (Array.isArray(value)) {
         return value.map((v) => String(v).toLowerCase()).includes(expectedCi);
       }
