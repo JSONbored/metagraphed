@@ -195,7 +195,14 @@ describe("buildChainStakeFlow", () => {
             total_tao: blank,
             event_count: 9,
           },
+          {
+            netuid: 1,
+            event_kind: "StakeRemoved",
+            total_tao: blank,
+            event_count: 4,
+          },
           ev(1, "StakeAdded", 100, 2),
+          ev(1, "StakeRemoved", 40, 1),
         ],
         {},
       );
@@ -204,7 +211,9 @@ describe("buildChainStakeFlow", () => {
         2,
         `stake events for total_tao ${JSON.stringify(blank)}`,
       );
+      assert.equal(data.network.unstake_events, 1);
       assert.equal(data.subnets[0].total_staked_tao, 100);
+      assert.equal(data.subnets[0].total_unstaked_tao, 40);
     }
   });
 
@@ -214,8 +223,15 @@ describe("buildChainStakeFlow", () => {
         {
           netuid: 9,
           event_kind: "StakeAdded",
+          total_tao: null,
+          event_count: 2,
+          last_observed: OBS,
+        },
+        {
+          netuid: 8,
+          event_kind: "StakeRemoved",
           total_tao: "abc",
-          event_count: "x",
+          event_count: 3,
           last_observed: 0,
         },
       ],

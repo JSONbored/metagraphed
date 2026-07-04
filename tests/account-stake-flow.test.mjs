@@ -222,7 +222,14 @@ describe("buildAccountStakeFlow", () => {
             total_tao: blank,
             event_count: 5,
           },
+          {
+            netuid: 1,
+            event_kind: STAKE_REMOVED_KIND,
+            total_tao: blank,
+            event_count: 3,
+          },
           added(1, 25, 2),
+          removed(1, 10, 1),
         ],
         ADDR,
       );
@@ -231,7 +238,9 @@ describe("buildAccountStakeFlow", () => {
         2,
         `stake_events for total_tao ${JSON.stringify(blank)}`,
       );
+      assert.equal(d.unstake_events, 1);
       assert.equal(d.total_staked_tao, 25);
+      assert.equal(d.total_unstaked_tao, 10);
       assert.equal(d.subnet_count, 1);
     }
     const zero = buildAccountStakeFlow([added(1, 0, 3)], ADDR);

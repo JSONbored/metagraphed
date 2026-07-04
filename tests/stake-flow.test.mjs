@@ -101,7 +101,13 @@ describe("buildStakeFlow", () => {
             total_tao: blank,
             event_count: 4,
           },
+          {
+            event_kind: STAKE_REMOVED_KIND,
+            total_tao: blank,
+            event_count: 2,
+          },
           { event_kind: STAKE_ADDED_KIND, total_tao: 10, event_count: 1 },
+          { event_kind: STAKE_REMOVED_KIND, total_tao: 5, event_count: 1 },
         ],
         1,
         {},
@@ -111,7 +117,9 @@ describe("buildStakeFlow", () => {
         1,
         `stake_events for total_tao ${JSON.stringify(blank)}`,
       );
+      assert.equal(data.unstake_events, 1);
       assert.equal(data.total_staked_tao, 10);
+      assert.equal(data.total_unstaked_tao, 5);
     }
   });
 
