@@ -168,6 +168,13 @@ import {
   CHAIN_AXON_REMOVALS_WINDOWS,
   DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
 } from "./chain-axon-removals.mjs";
+import {
+  loadChainDeregistrations,
+  CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+  CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+  CHAIN_DEREGISTRATIONS_WINDOWS,
+  DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
+} from "./chain-deregistrations.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
   KV_HEALTH_RPC_POOL,
@@ -328,7 +335,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.48.0";
+export const MCP_SERVER_VERSION = "1.49.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -342,6 +349,9 @@ const CHAIN_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
 );
 const CHAIN_AXON_REMOVALS_WINDOW_KEYS = Object.keys(
   CHAIN_AXON_REMOVALS_WINDOWS,
+);
+const CHAIN_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
+  CHAIN_DEREGISTRATIONS_WINDOWS,
 );
 const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
   CHAIN_TRANSFER_PAIR_WINDOWS,
@@ -477,6 +487,9 @@ export const MCP_INSTRUCTIONS =
   "fee/tip market series plus top payers, get_chain_registrations the " +
   "network-wide neuron-registration leaderboard (per-subnet NeuronRegistered " +
   "activity and re-registration intensity) across all subnets, " +
+  "get_chain_deregistrations the network-wide neuron-deregistration leaderboard " +
+  "(per-subnet NeuronDeregistered activity, distinct deregistered hotkeys, and " +
+  "deregistrations-per-hotkey intensity) across all subnets, " +
   "get_chain_transfers network-wide " +
   "native-TAO transfer volume plus top senders/receivers, " +
   "get_chain_transfer_pairs the top sender->receiver transfer corridors " +
@@ -4874,6 +4887,58 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_deregistrations",
+    title: "Get network-wide neuron-deregistration activity",
+    description:
+      "Fetch the network-wide neuron-deregistration leaderboard over the " +
+      "requested window (7d or 30d; default 7d): each subnet ranked by " +
+      "NeuronDeregistered events with its distinct-deregistered-hotkey count and " +
+      "deregistrations-per-hotkey intensity, plus a network rollup (distinct " +
+      "deregistered hotkeys, total deregistrations, deregistrations per hotkey) " +
+      "and the count/mean/min/p25/median/p75/p90/max spread of per-subnet " +
+      "intensity, summed live from the account_events stream. Raw eviction " +
+      "activity — the exit-side companion to get_chain_registrations " +
+      "(NeuronRegistered demand) and get_subnet_deregistrations (one subnet). " +
+      "Mirrors GET /api/v1/chain/deregistrations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_DEREGISTRATIONS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the deregistration leaderboard (1-${CHAIN_DEREGISTRATIONS_LIMIT_MAX}, default ${CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW;
+      if (!Object.hasOwn(CHAIN_DEREGISTRATIONS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+        CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+      );
+      return loadChainDeregistrations(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_DEREGISTRATIONS_WINDOWS[window],
+        limit,
+      });
+    },
+  },
+  {
     name: "get_chain_transfers",
     title: "Get network-wide native-TAO transfer analytics",
     description:
@@ -8262,6 +8327,84 @@ const TOOL_OUTPUT_SCHEMAS = {
         registrations: NULLABLE_INT,
         registrations_per_registrant: { type: ["number", "null"] },
       }),
+    },
+  },
+  get_chain_deregistrations: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      // Network rollup over every subnet that saw a NeuronDeregistered event. A
+      // hotkey deregistered on several subnets counts once in
+      // distinct_deregistered_hotkeys. deregistrations_per_hotkey is null when
+      // the network-wide distinct-hotkey count is unavailable/zero (no divide-by-zero).
+      network: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "distinct_deregistered_hotkeys",
+          "deregistrations",
+          "deregistrations_per_hotkey",
+        ],
+        properties: {
+          distinct_deregistered_hotkeys: { type: "integer" },
+          deregistrations: { type: "integer" },
+          deregistrations_per_hotkey: { type: ["number", "null"] },
+        },
+      },
+      // Spread of per-subnet re-deregistration intensity (NeuronDeregistered
+      // events per hotkey) over EVERY subnet that saw a deregistration; null when
+      // no subnet saw a deregistration in the window.
+      intensity_distribution: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max",
+        ],
+        properties: {
+          count: { type: "integer" },
+          mean: { type: "number" },
+          min: { type: "number" },
+          p25: { type: "number" },
+          median: { type: "number" },
+          p75: { type: "number" },
+          p90: { type: "number" },
+          max: { type: "number" },
+        },
+      },
+      // Per-subnet deregistration leaderboard, most NeuronDeregistered events
+      // first. Each listed subnet has at least one distinct deregistered hotkey,
+      // so deregistrations_per_hotkey is always a finite number here.
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "distinct_deregistered_hotkeys",
+            "deregistrations",
+            "deregistrations_per_hotkey",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            distinct_deregistered_hotkeys: { type: "integer" },
+            deregistrations: { type: "integer" },
+            deregistrations_per_hotkey: { type: "number" },
+          },
+        },
+      },
     },
   },
   get_chain_transfers: {
