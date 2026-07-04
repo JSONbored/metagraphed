@@ -5733,6 +5733,8 @@ describe("MCP economics + metagraph data tools", () => {
     accountEvents = [],
     weightsNetworkRows = [],
     weightsSubnetRows = [],
+    stakeMovesNetworkRows = [],
+    stakeMovesSubnetRows = [],
     transferPairTotals = [],
     transferPairRows = [],
   } = {}) {
@@ -5743,18 +5745,30 @@ describe("MCP economics + metagraph data tools", () => {
             return {
               all() {
                 if (sql.includes("FROM account_events")) {
-                  // get_chain_weights reads a network aggregate (carries
-                  // newest_observed) then a per-subnet GROUP BY (carries
-                  // weight_sets); get_chain_transfer_pairs reads a totals CTE
-                  // (carries top_pair_volume_tao) then the per-corridor rows
-                  // (aliased AS from_address); everything else uses the flat
-                  // account_events fixture (e.g. get_chain_stake_flow's single
-                  // grouped read).
+                  // get_chain_weights reads a network aggregate (newest_observed
+                  // + weight_sets) then a per-subnet GROUP BY (weight_sets);
+                  // get_chain_stake_moves reads a network aggregate
+                  // (newest_observed + distinct_movers, no weight_sets) then a
+                  // per-subnet GROUP BY (AS movements); get_chain_transfer_pairs
+                  // reads a totals CTE (top_pair_volume_tao) then per-corridor
+                  // rows (AS from_address); everything else uses the flat
+                  // account_events fixture (e.g. get_chain_stake_flow).
                   if (sql.includes("newest_observed")) {
+                    if (sql.includes("weight_sets")) {
+                      return Promise.resolve({ results: weightsNetworkRows });
+                    }
+                    if (sql.includes("distinct_movers")) {
+                      return Promise.resolve({
+                        results: stakeMovesNetworkRows,
+                      });
+                    }
                     return Promise.resolve({ results: weightsNetworkRows });
                   }
                   if (sql.includes("weight_sets")) {
                     return Promise.resolve({ results: weightsSubnetRows });
+                  }
+                  if (sql.includes("AS movements")) {
+                    return Promise.resolve({ results: stakeMovesSubnetRows });
                   }
                   if (sql.includes("top_pair_volume_tao")) {
                     return Promise.resolve({ results: transferPairTotals });
@@ -6731,6 +6745,110 @@ describe("MCP economics + metagraph data tools", () => {
       chainWeightsEnv(weightsNetwork(30, 8), [
         weightsRow(1, 20, 5),
         weightsRow(2, 10, 4),
+      ]),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  // The network-wide aggregate row loadChainStakeMoves reads first (its
+  // COUNT(DISTINCT coldkey)/MAX(observed_at) probe); a non-null newest_observed
+  // unlocks the per-subnet read.
+  function stakeMovesNetwork(distinct_movers) {
+    return {
+      distinct_movers,
+      newest_observed: 1_750_000_000_000,
+    };
+  }
+
+  // A per-subnet GROUP BY netuid row (COUNT movements + distinct movers).
+  function stakeMovesRow(netuid, movements, distinct_movers) {
+    return { netuid, movements, distinct_movers };
+  }
+
+  function chainStakeMovesEnv(network, subnets) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({
+          stakeMovesNetworkRows: network ? [network] : [],
+          stakeMovesSubnetRows: subnets,
+        }),
+      },
+    };
+  }
+
+  test("get_chain_stake_moves returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_stake_moves", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d"); // REST default window parity
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.intensity_distribution, null);
+    assert.equal(out.network.movements, 0);
+    assert.equal(out.network.movements_per_mover, null);
+    assert.equal(out.observed_at, null);
+  });
+
+  test("get_chain_stake_moves ranks subnets by movements with a network rollup", async () => {
+    const res = await callTool(
+      "get_chain_stake_moves",
+      { window: "30d", limit: 10 },
+      chainStakeMovesEnv(stakeMovesNetwork(8), [
+        // netuid 2: fewer movements -> ranks last despite higher intensity.
+        stakeMovesRow(2, 10, 4),
+        // netuid 1: most StakeMoved events -> ranks first.
+        stakeMovesRow(1, 20, 5),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].movements, 20);
+    assert.equal(out.subnets[0].movements_per_mover, 4); // 20 / 5
+    assert.equal(out.subnets[1].netuid, 2);
+    assert.equal(out.subnets[1].movements_per_mover, 2.5); // 10 / 4
+    // Network rollup: total movements 30 over 8 distinct movers -> 3.75.
+    assert.equal(out.network.movements, 30);
+    assert.equal(out.network.distinct_movers, 8);
+    assert.equal(out.network.movements_per_mover, 3.75);
+    assert.equal(out.intensity_distribution.count, 2);
+    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  });
+
+  test("get_chain_stake_moves rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_stake_moves", { window: "90d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_stake_moves caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_stake_moves",
+      { limit: 1 },
+      chainStakeMovesEnv(stakeMovesNetwork(8), [
+        stakeMovesRow(1, 20, 5),
+        stakeMovesRow(2, 10, 4),
+      ]),
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets feed the rollup/distribution, but the page is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.intensity_distribution.count, 2);
+  });
+
+  test("get_chain_stake_moves payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_stake_moves",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_stake_moves",
+      {},
+      chainStakeMovesEnv(stakeMovesNetwork(8), [
+        stakeMovesRow(1, 20, 5),
+        stakeMovesRow(2, 10, 4),
       ]),
     );
     const validate = new Ajv2020().compile(schema);
