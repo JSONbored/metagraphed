@@ -267,6 +267,38 @@ describe("movers dominance shares", () => {
     assert.equal(m[0].stake_share_pct, null);
     assert.equal(m[0].emission_share_pct, null);
   });
+
+  test("a near-total share does not round up to a flat 100 while another subnet holds stake", () => {
+    // Subnet 1 holds 249990/250000 = 99.996% of network stake; subnet 2 still
+    // holds the remaining 10 TAO. The 2dp rounding of 99.996 lands on 100.00,
+    // which would report subnet 1 as owning the ENTIRE network — clamp it below.
+    const near = { neurons: 1, validators: 0, stake: 249990, emission: 249990 };
+    const rest = { neurons: 1, validators: 0, stake: 10, emission: 10 };
+    const m = computeMovers(
+      [agg(1, "s", near), agg(2, "s", rest)],
+      [agg(1, "e", near), agg(2, "e", rest)],
+      { sort: "stake" },
+    );
+    const s1 = m.find((x) => x.netuid === 1);
+    const s2 = m.find((x) => x.netuid === 2);
+    // 249990/250000 = 99.996% -> 2dp rounds to 100.00 without the clamp.
+    assert.ok(s1.stake_share_pct < 100, "near-total share must stay below 100");
+    assert.equal(s1.stake_share_pct, 99.99);
+    assert.equal(s1.emission_share_pct, 99.99);
+    // subnet 2's 0.004% rounds to 0.00 at 2dp, but it is a distinct subnet that
+    // holds real stake — which is exactly why subnet 1 must not read as 100%.
+    assert.equal(s2.stake_share_pct, 0);
+  });
+
+  test("a genuine single-subnet network keeps an exact 100 share", () => {
+    const m = computeMovers(
+      [agg(1, "s", { neurons: 1, validators: 0, stake: 100, emission: 5 })],
+      [agg(1, "e", { neurons: 1, validators: 0, stake: 100, emission: 5 })],
+      { sort: "stake" },
+    );
+    assert.equal(m[0].stake_share_pct, 100);
+    assert.equal(m[0].emission_share_pct, 100);
+  });
 });
 
 describe("movers network summary", () => {

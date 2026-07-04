@@ -97,7 +97,13 @@ const SORT_KEY = {
 function pctShare(part, total) {
   if (!Number.isFinite(part) || !Number.isFinite(total) || total <= 0)
     return null;
-  return Math.round((part / total) * 100 * 100) / 100;
+  const pct = Math.round((part / total) * 100 * 100) / 100;
+  // A sub-total share must not round up to a flat 100 while other subnets still
+  // hold stake/emission — that would report a lone subnet as owning the whole
+  // network. Clamp to the largest 2dp value below 100, the same anti-overstatement
+  // guard formatUptimePercent and chain-transfer-pairs' top_pair_share apply. Only
+  // a genuine part === total (single-subnet network) keeps an exact 100.
+  return pct >= 100 && part < total ? 99.99 : pct;
 }
 
 // Build the per-subnet mover scorecards from the start + end snapshot aggregates and rank
