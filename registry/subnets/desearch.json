@@ -241,6 +241,24 @@
       "schema_url": "https://api.desearch.ai/openapi.json",
       "source_urls": ["https://www.desearch.ai/docs"],
       "url": "https://api.desearch.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-22-desearch-search-evals",
+      "kind": "data-artifact",
+      "name": "Desearch Search Evals (Hugging Face)",
+      "notes": "Public CC-BY-4.0 Hugging Face dataset of Desearch search-quality evaluations, published and documented in the official Desearch-ai/desearch-search-evals repo.",
+      "provider": "desearch",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://github.com/Desearch-ai/desearch-search-evals/blob/cfd3c83b553f6fa61e4fe71b08d46dcbb098b8d5/README.md#L56"
+      ],
+      "url": "https://huggingface.co/datasets/desearch/desearch-search-evals"
     }
   ],
   "website_url": "https://www.desearch.ai/"
