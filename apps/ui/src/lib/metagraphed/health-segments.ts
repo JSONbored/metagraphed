@@ -4,6 +4,8 @@
 // sync (#3459). The only per-page difference is the middle tier's label ("Degraded" on /status vs
 // "Warn" on /providers), so that stays a parameter; everything else is centralised here.
 
+import { healthColorVar } from "@/lib/health-tokens";
+
 export interface HealthStatusCounts {
   ok: number;
   warn: number;
@@ -22,13 +24,13 @@ export function healthStatusSegments(
   options: { warnLabel?: string } = {},
 ): HealthStatusSegment[] {
   return [
-    { label: "OK", value: counts.ok, color: "var(--health-ok, #22c55e)" },
+    { label: "OK", value: counts.ok, color: healthColorVar("ok") },
     {
       label: options.warnLabel ?? "Degraded",
       value: counts.warn,
-      color: "var(--health-warn, #f59e0b)",
+      color: healthColorVar("warn"),
     },
-    { label: "Down", value: counts.down, color: "var(--health-down, #ef4444)" },
+    { label: "Down", value: counts.down, color: healthColorVar("down") },
     { label: "Unknown", value: counts.unknown, color: "var(--ink-muted, #94a3b8)" },
   ].filter((s) => s.value > 0);
 }

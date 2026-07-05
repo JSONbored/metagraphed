@@ -9,6 +9,7 @@ import { BrandIcon } from "./brand-icon";
 import { safeExternalUrl } from "./external-link";
 import { Sparkline } from "./charts/sparkline";
 import { useCopy } from "@/hooks/use-copy";
+import { healthColorVar } from "@/lib/health-tokens";
 import { classNames } from "@/lib/metagraphed/format";
 import {
   endpointCategory,
@@ -414,10 +415,10 @@ function HeaderHint({ label, hint }: { label: string; hint: string }) {
 
 function healthColor(state?: HealthState | string): string {
   const s = (state ?? "unknown") as string;
-  if (s === "ok") return "var(--health-ok, #16a34a)";
-  if (s === "warn" || s === "degraded") return "var(--health-warn, #d97706)";
-  if (s === "down" || s === "offline") return "var(--health-down, #dc2626)";
-  return "var(--health-unknown, #94a3b8)";
+  if (s === "ok") return healthColorVar("ok");
+  if (s === "warn" || s === "degraded") return healthColorVar("warn");
+  if (s === "down" || s === "offline") return healthColorVar("down");
+  return healthColorVar("unknown");
 }
 
 /**

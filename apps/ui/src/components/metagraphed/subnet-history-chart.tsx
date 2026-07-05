@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { subnetHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
+import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { SubnetHistoryPoint } from "@/lib/metagraphed/types";
 
@@ -87,14 +88,14 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
             <HistoryRow
               label="Validators"
               series={series.validators}
-              color="var(--health-ok, #4ade80)"
+              color={healthColorVar("ok")}
             />
           ) : null}
           {series.stake.length > 0 ? (
             <HistoryRow
               label="Total stake"
               series={series.stake}
-              color="var(--health-warn, #fbbf24)"
+              color={healthColorVar("warn")}
               format={taoStr}
             />
           ) : null}
