@@ -6430,7 +6430,28 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/rpc/pools.json");
+      const staticData = await loadArtifactData(
+        ctx,
+        "/metagraph/rpc/pools.json",
+      );
+      const livePool = ctx.readHealthKv
+        ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
+        : null;
+      if (
+        livePool &&
+        Array.isArray(livePool.endpoints) &&
+        Array.isArray(staticData?.pools)
+      ) {
+        return {
+          ...staticData,
+          source: "live-cron-prober",
+          operational_observed_at: livePool.last_run_at || null,
+          pools: staticData.pools.map((pool) =>
+            overlayRpcPoolEligibility(pool, livePool),
+          ),
+        };
+      }
+      return staticData;
     },
   },
   {
