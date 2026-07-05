@@ -23,6 +23,7 @@ import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { API_BASE } from "@/lib/metagraphed/config";
+import { TABLE_FILTER_NAV_OPTS } from "@/lib/metagraphed/url-state";
 import type { Extrinsic } from "@/lib/metagraphed/types";
 
 const extrinsicsSearchSchema = z.object({
@@ -107,7 +108,10 @@ function ExtrinsicsTable() {
   const hasNext = rows.length === search.limit;
 
   const setSearch = (patch: Record<string, unknown>) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never });
+    navigate({
+      ...TABLE_FILTER_NAV_OPTS,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+    });
 
   const goPrev = () => setSearch({ offset: Math.max(0, search.offset - search.limit) });
   const goNext = () => setSearch({ offset: search.offset + search.limit });

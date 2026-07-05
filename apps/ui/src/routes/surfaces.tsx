@@ -32,7 +32,7 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { surfacesInfiniteQuery, providersQuery, subnetsQuery } from "@/lib/metagraphed/queries";
-import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
+import { matchesQuery, sortBy, tableSearchSchema, TABLE_FILTER_NAV_OPTS } from "@/lib/metagraphed/url-state";
 import type { Surface, Provider, Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/surfaces")({
@@ -63,6 +63,7 @@ function SurfacesPage() {
     !!search.q || !!search.sort || !!search.kind || !!search.provider || !!search.cursor;
   const onReset = () =>
     navigate({
+      ...TABLE_FILTER_NAV_OPTS,
       // Keep page size and view on reset so the chosen layout survives.
       search: { limit: search.limit, view: search.view } as never,
       replace: true,
@@ -84,6 +85,7 @@ function SurfacesPage() {
                 options={["table", "grid"]}
                 onChange={(v) =>
                   navigate({
+                    ...TABLE_FILTER_NAV_OPTS,
                     search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
                     replace: true,
                   })
@@ -180,11 +182,13 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
+      ...TABLE_FILTER_NAV_OPTS,
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
     });
 
   const onSort = (field: string) =>
     navigate({
+      ...TABLE_FILTER_NAV_OPTS,
       search: (prev: { sort?: string; order?: "asc" | "desc" }) =>
         ({
           ...prev,

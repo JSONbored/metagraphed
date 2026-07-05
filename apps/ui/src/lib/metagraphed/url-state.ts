@@ -78,3 +78,6 @@ export function joinHealth<
     return h ? { ...s, health: h.health, updated_at: s.updated_at ?? h.last_checked } : s;
   });
 }
+
+/** TanStack Router scrolls to (0,0) on every navigate by default; table filter setters opt out (#3691). */
+export const TABLE_FILTER_NAV_OPTS = { resetScroll: false } as const;
