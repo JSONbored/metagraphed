@@ -72,6 +72,25 @@
         "timeout_ms": 10000
       },
       "notes": "Public BrainPlay app URL from repository homepage metadata."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-117-brainplay-health",
+      "kind": "subnet-api",
+      "name": "BrainPlay API health",
+      "notes": "Public no-auth GET /api/health on play.shiftlayer.ai returning application liveness JSON. Served on the BrainPlay public app host declared as the GitHub repository homepage and registered website surface.",
+      "provider": "shiftlayer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/shiftlayer-llc/brainplay-subnet",
+        "https://play.shiftlayer.ai/"
+      ],
+      "url": "https://play.shiftlayer.ai/api/health"
     }
   ]
 }
