@@ -177,6 +177,25 @@
       "public_safe": true,
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/110"],
       "url": "https://taomarketcap.com/subnets/110"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-110-green-compute-healthz",
+      "kind": "subnet-api",
+      "name": "Green Compute gateway healthz",
+      "notes": "Public no-auth GET /healthz on api.green-compute.com returning gateway liveness JSON (observed: {\"status\":\"ok\",\"service\":\"greencompute-gateway\"}). Documented as GET /healthz in the subnet OpenAPI spec on the same host as the existing chat-completions and openapi surfaces.",
+      "provider": "green-compute",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.green-compute.com/openapi.json",
+        "https://www.green-compute.com/"
+      ],
+      "url": "https://api.green-compute.com/healthz"
     }
   ],
   "website_url": "https://www.green-compute.com/"
