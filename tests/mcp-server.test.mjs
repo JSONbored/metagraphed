@@ -3725,6 +3725,55 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.deepEqual(out.subnets, []);
   });
 
+  test("get_account_stake_transfers shapes per-subnet transfer counts and concentration", async () => {
+    const res = await callTool(
+      "get_account_stake_transfers",
+      { ss58: SS58, window: "7d" },
+      {
+        env: accountStakeMovesD1([
+          {
+            netuid: 7,
+            transfers: 3,
+            first_observed: 1_717_000_000_000,
+            last_observed: 1_717_500_000_000,
+          },
+          {
+            netuid: 9,
+            transfers: 1,
+            first_observed: 1_717_100_000_000,
+            last_observed: 1_717_100_000_000,
+          },
+        ]),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.address, SS58);
+    assert.equal(out.window, "7d");
+    assert.equal(out.total_transfers, 4);
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[0].netuid, 7);
+    assert.equal(out.dominant_netuid, 7);
+    assert.equal(out.subnets[0].transfers, 3);
+    assert.ok(out.concentration > 0.5);
+  });
+
+  test("get_account_stake_transfers rejects an unsupported window", async () => {
+    const res = await callTool("get_account_stake_transfers", {
+      ss58: SS58,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_account_stake_transfers degrades to zeros on cold D1", async () => {
+    const res = await callTool("get_account_stake_transfers", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.total_transfers, 0);
+    assert.deepEqual(out.subnets, []);
+  });
+
   test("get_account_stake_moves payload validates against its declared outputSchema", async () => {
     const schema = listToolDefinitions().find(
       (t) => t.name === "get_account_stake_moves",

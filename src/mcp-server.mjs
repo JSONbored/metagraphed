@@ -444,6 +444,11 @@ import {
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "./account-stake-moves.mjs";
 import {
+  loadAccountStakeTransfers,
+  ACCOUNT_STAKE_TRANSFERS_WINDOWS,
+  DEFAULT_ACCOUNT_STAKE_TRANSFERS_WINDOW,
+} from "./account-stake-transfers.mjs";
+import {
   loadAccountAxonRemovals,
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
@@ -523,7 +528,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.78.0";
+export const MCP_SERVER_VERSION = "1.79.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -551,6 +556,9 @@ const CHAIN_TRANSFER_PAIR_WINDOW_KEYS = Object.keys(
 const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
 const ACCOUNT_STAKE_MOVES_WINDOW_KEYS = Object.keys(
   ACCOUNT_STAKE_MOVES_WINDOWS,
+);
+const ACCOUNT_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
+  ACCOUNT_STAKE_TRANSFERS_WINDOWS,
 );
 const ACCOUNT_AXON_REMOVALS_WINDOW_KEYS = Object.keys(AXON_REMOVAL_WINDOWS);
 const ACCOUNT_PROMETHEUS_WINDOW_KEYS = Object.keys(PROMETHEUS_WINDOWS);
@@ -719,6 +727,8 @@ export const MCP_INSTRUCTIONS =
   "its per-subnet staking flow with direction and concentration labels, " +
   "get_account_stake_moves its per-subnet StakeMoved re-delegation footprint " +
   "with movement counts, first/last timestamps, and concentration labels, " +
+  "get_account_stake_transfers its per-subnet StakeTransferred footprint " +
+  "with transfer counts, first/last timestamps, and concentration labels, " +
   "get_account_axon_removals its per-subnet AxonInfoRemoved teardown footprint " +
   "with removal counts, first/last timestamps, and concentration labels, " +
   "get_account_prometheus its per-subnet PrometheusServed telemetry footprint " +
@@ -4533,6 +4543,54 @@ export const MCP_TOOLS = [
         );
       }
       const { data } = await loadAccountStakeMoves(mcpD1Runner(ctx), ss58, {
+        windowLabel: window,
+      });
+      return data;
+    },
+  },
+  {
+    name: "get_account_stake_transfers",
+    title: "Get an account's stake-transfer footprint",
+    description:
+      "Fetch one account's StakeTransferred footprint per subnet over the " +
+      "requested window (7d, 30d, or 90d; default 30d): each subnet's transfer " +
+      "count with the first and last StakeTransferred timestamps, plus account " +
+      "totals, an HHI concentration of where its stake-transfer activity is " +
+      "focused, and the dominant subnet. StakeTransferred relocates stake between " +
+      "coldkeys without unstaking — distinct from re-delegation churn (see " +
+      "get_account_stake_moves). The account-level companion to " +
+      "get_chain_stake_transfers and get_subnet_stake_transfers. Mirrors GET " +
+      "/api/v1/accounts/{ss58}/stake-transfers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 coldkey address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ACCOUNT_STAKE_TRANSFERS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_ACCOUNT_STAKE_TRANSFERS_WINDOW}).`,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const window =
+        optionalString(args, "window") ??
+        DEFAULT_ACCOUNT_STAKE_TRANSFERS_WINDOW;
+      if (!Object.hasOwn(ACCOUNT_STAKE_TRANSFERS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${ACCOUNT_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const { data } = await loadAccountStakeTransfers(mcpD1Runner(ctx), ss58, {
         windowLabel: window,
       });
       return data;
@@ -9399,6 +9457,47 @@ const TOOL_OUTPUT_SCHEMAS = {
             movements: { type: "integer" },
             first_moved_at: NULLABLE_STRING,
             last_moved_at: NULLABLE_STRING,
+          },
+        },
+      },
+    },
+  },
+  get_account_stake_transfers: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "address",
+      "window",
+      "total_transfers",
+      "subnet_count",
+      "subnets",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      address: { type: "string" },
+      window: NULLABLE_STRING,
+      total_transfers: { type: "integer" },
+      subnet_count: { type: "integer" },
+      // Herfindahl-Hirschman index of StakeTransferred events across subnets: 1
+      // means all transfers on one subnet; null when the account has no transfers.
+      concentration: { type: ["number", "null"] },
+      dominant_netuid: NULLABLE_INT,
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "netuid",
+            "transfers",
+            "first_transferred_at",
+            "last_transferred_at",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            transfers: { type: "integer" },
+            first_transferred_at: NULLABLE_STRING,
+            last_transferred_at: NULLABLE_STRING,
           },
         },
       },
