@@ -98,6 +98,12 @@ import {
   loadSourceSnapshotsList,
 } from "./source-snapshots-mcp.mjs";
 import {
+  LIST_SURFACES_INSTRUCTIONS,
+  LIST_SURFACES_MCP_TOOL,
+  LIST_SURFACES_OUTPUT_SCHEMA,
+  loadSurfacesList,
+} from "./surfaces-mcp.mjs";
+import {
   LIST_ENDPOINT_POOLS_INSTRUCTIONS,
   LIST_ENDPOINT_POOLS_MCP_TOOL,
   LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
@@ -784,8 +790,8 @@ export const MCP_INSTRUCTIONS =
   GET_AGENT_RESOURCES_INSTRUCTIONS +
   "get_agent_catalog the capability catalog, " +
   LIST_PROVIDERS_INSTRUCTIONS +
-  "list_surfaces the " +
-  "network-wide catalog of curated public surfaces, list_candidates the " +
+  LIST_SURFACES_INSTRUCTIONS +
+  "list_candidates the " +
   "unpromoted candidate surfaces still pending review, list_endpoints the " +
   "network-wide monitored endpoint-resource catalog, " +
   LIST_EVIDENCE_INSTRUCTIONS +
@@ -6186,67 +6192,9 @@ export const MCP_TOOLS = [
     },
   },
   {
-    name: "list_surfaces",
-    title: "List curated public surfaces",
-    description:
-      "Fetch the catalog of curated public surfaces across all subnets: each " +
-      "surface's subnet (netuid), kind, provider, title, url, and review " +
-      "state. Use it to discover what machine-readable data surfaces the " +
-      "registry publishes network-wide, then drill into one subnet with " +
-      "get_subnet or list_subnet_apis. Optionally filter by netuid/kind/" +
-      "provider and page with limit/offset — the full catalog can be large. " +
-      "Mirrors GET /api/v1/surfaces.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        kind: {
-          type: "string",
-          enum: QUERY_ENUMS.surfaceKind,
-          description: "Surface kind, e.g. 'openapi' or 'subnet-api'.",
-        },
-        provider: {
-          type: "string",
-          description: "Provider slug, e.g. 'datura'.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max surfaces to return. Omit for the full list.",
-          minimum: 1,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset into the (filtered) list. Default 0.",
-          minimum: 0,
-        },
-      },
-      additionalProperties: false,
-    },
+    ...LIST_SURFACES_MCP_TOOL,
     async handler(args, ctx) {
-      const netuid = optionalNonNegativeInt(args, "netuid");
-      const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
-      const provider = optionalString(args, "provider");
-      const limit = optionalPositiveInt(args, "limit");
-      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
-      const data = await loadArtifactData(ctx, "/metagraph/surfaces.json");
-      const all = Array.isArray(data.surfaces) ? data.surfaces : [];
-      const filtered = all.filter(
-        (s) =>
-          (netuid === null || s.netuid === netuid) &&
-          (kind === null || s.kind === kind) &&
-          (provider === null || s.provider === provider),
-      );
-      const page =
-        limit === null
-          ? filtered.slice(offset)
-          : filtered.slice(offset, offset + limit);
-      return {
-        ...data,
-        surfaces: page,
-        total: filtered.length,
-        returned: page.length,
-        offset,
-      };
+      return loadSurfacesList(ctx, args);
     },
   },
   {
@@ -10229,16 +10177,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     },
   },
   list_providers: LIST_PROVIDERS_OUTPUT_SCHEMA,
-  list_surfaces: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      surfaces: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  list_surfaces: LIST_SURFACES_OUTPUT_SCHEMA,
   list_candidates: {
     type: "object",
     additionalProperties: true,

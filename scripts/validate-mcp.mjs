@@ -352,6 +352,14 @@ assert.ok(
   Array.isArray(providersPage.providers),
   "list_providers must return providers[]",
 );
+const surfacesPage = await callOk("list_surfaces", {
+  limit: 3,
+  kind: "openapi",
+});
+assert.ok(
+  Array.isArray(surfacesPage.surfaces),
+  "list_surfaces must return surfaces[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),
