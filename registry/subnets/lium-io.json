@@ -80,6 +80,29 @@
       "schema_url": "https://lium.io/api/openapi.json",
       "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
       "url": "https://lium.io/api/version"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-reclaims-api",
+      "kind": "subnet-api",
+      "name": "Lium reclaims API",
+      "notes": "Public no-auth GET /reclaims on the Lium Backend API (served at /api/reclaims) returning a JSON array of collateral reclaims with status, expiration, executor_id, and collateral_amount for the SN51 lium.io compute marketplace. Documented in the registered OpenAPI spec on the same host as the existing machines and version subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "schema_url": "https://lium.io/api/openapi.json",
+      "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
+      "url": "https://lium.io/api/reclaims"
     }
   ],
   "source_repo": "https://github.com/Datura-ai/lium-io"
