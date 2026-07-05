@@ -290,6 +290,25 @@
         "https://verathos.ai/docs"
       ],
       "url": "https://api.verathos.ai/v1/supply/circulating"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-subnet-config",
+      "kind": "subnet-api",
+      "name": "Verathos subnet-config API",
+      "notes": "Public no-auth GET returning the subnet's scoring and epoch configuration (scoring weight basis points, epoch block lengths, canary sampling rate, emission-burn rate, GPU class compute parameters). Documented in the subnet's own OpenAPI (api.verathos.ai/openapi.json); same host as the existing /v1/models and /v1/supply/circulating subnet-api surfaces.",
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://api.verathos.ai/openapi.json",
+        "https://verathos.ai/docs"
+      ],
+      "url": "https://api.verathos.ai/v1/subnet-config"
     }
   ],
   "website_url": "https://verathos.ai/"
