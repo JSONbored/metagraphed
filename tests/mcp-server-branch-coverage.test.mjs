@@ -1404,6 +1404,23 @@ describe("get_changelog — branch coverage", () => {
   });
 });
 
+// ── list_coverage_depth — coverage-depth list artifact ────────────────────
+describe("list_coverage_depth — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("list_coverage_depth", { limit: 1 }, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /coverage-depth\.json/);
+  });
+});
+
 // ── get_build — build summary artifact ────────────────────────────────────
 describe("get_build — branch coverage", () => {
   test("surfaces non-not_found artifact failures", async () => {

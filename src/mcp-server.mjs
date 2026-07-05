@@ -50,6 +50,12 @@ import {
   loadEndpointIncidentsList,
 } from "./endpoint-incidents-mcp.mjs";
 import {
+  LIST_COVERAGE_DEPTH_INSTRUCTIONS,
+  LIST_COVERAGE_DEPTH_MCP_TOOL,
+  LIST_COVERAGE_DEPTH_OUTPUT_SCHEMA,
+  loadCoverageDepthList,
+} from "./coverage-depth-mcp.mjs";
+import {
   GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
@@ -429,7 +435,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.66.0";
+export const MCP_SERVER_VERSION = "1.67.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -534,6 +540,7 @@ export const MCP_INSTRUCTIONS =
   GET_BUILD_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   LIST_GAPS_INSTRUCTIONS +
+  LIST_COVERAGE_DEPTH_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
   "get_subnet_gaps for one subnet's interface gap priorities and contributor " +
@@ -6604,6 +6611,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_COVERAGE_DEPTH_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadCoverageDepthList(ctx, args);
+    },
+  },
+  {
     name: "list_enrichment_targets",
     title: "List ranked enrichment targets",
     description:
@@ -9989,6 +10002,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   },
   list_curation: LIST_CURATION_OUTPUT_SCHEMA,
   list_gaps: LIST_GAPS_OUTPUT_SCHEMA,
+  list_coverage_depth: LIST_COVERAGE_DEPTH_OUTPUT_SCHEMA,
   list_endpoint_pools: LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
   list_endpoint_incidents: LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   get_lineage: {

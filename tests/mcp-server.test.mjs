@@ -1429,6 +1429,81 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_coverage_depth returns filtered scorecard rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/coverage-depth.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        rows: [
+          {
+            netuid: 7,
+            name: "Allways",
+            tier: "machine-usable",
+            agent_status: "callable",
+            blocker_level: "none",
+            score: 77,
+          },
+          {
+            netuid: 31,
+            name: "Recall",
+            tier: "missing-interface",
+            agent_status: "blocked",
+            blocker_level: "missing-data",
+            score: 18,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_coverage_depth",
+      { tier: "machine-usable" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.rows[0].netuid, 7);
+    assert.equal(out.rows[0].tier, "machine-usable");
+  });
+
+  test("list_coverage_depth reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_coverage_depth", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Coverage-depth scorecard unavailable/,
+    );
+  });
+
+  test("list_coverage_depth rejects invalid tier filters", async () => {
+    const deps = makeDeps({
+      "/metagraph/coverage-depth.json": {
+        rows: [{ netuid: 7, tier: "machine-usable" }],
+      },
+    });
+    const res = await callTool(
+      "list_coverage_depth",
+      { tier: "not-a-tier" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /tier/);
+  });
+
+  test("list_coverage_depth payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_coverage_depth",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/coverage-depth.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        notes: "ok",
+        rows: [{ netuid: 7, tier: "machine-usable", score: 77 }],
+      },
+    });
+    const res = await callTool("list_coverage_depth", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoint_pools returns filtered pool rows", async () => {
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {
