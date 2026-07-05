@@ -49,6 +49,25 @@
       },
       "source_urls": ["https://huggingface.co/404-Gen"],
       "url": "https://huggingface.co/datasets/404-Gen/404mini"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-17-404-gen-health",
+      "kind": "subnet-api",
+      "name": "404—GEN portal health",
+      "notes": "Public no-auth GET /api/health on gen.404.xyz returning portal liveness JSON (observed: {\"status\":\"ok\",\"time\":\"...\"}). Same host where users obtain gateway API keys (gen.404.xyz/account); gateway client docs in 404-Repo/gateway-rs reference this portal.",
+      "provider": "404-gen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanksi"
+      },
+      "source_urls": [
+        "https://github.com/404-Repo/gateway-rs/blob/main/docs/api/client_api.md",
+        "https://gen.404.xyz/api/health"
+      ],
+      "url": "https://gen.404.xyz/api/health"
     }
   ],
   "website_url": "https://www.404.xyz/"
