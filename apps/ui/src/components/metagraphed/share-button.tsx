@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { classNames } from "@/lib/metagraphed/format";
+import { useCopy } from "@/hooks/use-copy";
 
 interface Props {
   /** Optional explicit URL; defaults to current window.location.href. */
@@ -11,27 +12,26 @@ interface Props {
 }
 
 export function ShareButton({ url, label = "Share view", className }: Props) {
-  const [copied, setCopied] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const { copied, copy } = useCopy({ toastOnSuccess: false, resetAfter: 1400 });
 
   const onClick = async () => {
-    try {
-      const href = url ?? (typeof window !== "undefined" ? window.location.href : "");
-      if (!href) return;
-      await navigator.clipboard.writeText(href);
-      setCopied(true);
+    const href = url ?? (typeof window !== "undefined" ? window.location.href : "");
+    if (!href) return;
+    const ok = await copy(href);
+    if (ok) {
       setAnnouncement(`Link copied to clipboard: ${href}`);
       toast.success("Link copied", {
         description: "Filters, sort, and pagination are preserved in the URL.",
       });
-      window.setTimeout(() => setCopied(false), 1400);
       window.setTimeout(() => setAnnouncement(""), 2000);
-    } catch {
-      toast.error("Couldn't copy link", {
-        description: "Your browser blocked clipboard access.",
-      });
-      setAnnouncement("Couldn't copy link to clipboard.");
+      return;
     }
+    toast.dismiss();
+    toast.error("Couldn't copy link", {
+      description: "Your browser blocked clipboard access.",
+    });
+    setAnnouncement("Couldn't copy link to clipboard.");
   };
 
   return (
