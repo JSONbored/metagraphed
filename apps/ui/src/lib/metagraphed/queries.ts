@@ -92,6 +92,7 @@ import type {
   SchemaInfo,
   Subnet,
   SubnetAxonRemovals,
+  SubnetDeregistrations,
   SubnetStakeMoves,
   SubnetServing,
   SubnetPrometheus,
@@ -105,6 +106,7 @@ import type {
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
   SubnetStakeTransfers,
+  SubnetRegistrations,
   MetagraphNeuron,
   SubnetMetagraph,
   SubnetValidators,
@@ -3077,6 +3079,74 @@ export const subnetPrometheusQuery = (netuid: number, window = "30d") =>
       );
       return {
         data: normalizeSubnetPrometheus(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #1657: per-subnet neuron-registration event volume over a 7d/30d window. A flat
+// summary card from the account_events NeuronRegistered stream; counts fall
+// through to 0 and the average to null (never NaN) on a cold store or junk cell.
+export function normalizeSubnetRegistrations(netuid: number, raw: unknown): SubnetRegistrations {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_registrants: firstFiniteNumber(rec.distinct_registrants) ?? 0,
+    registrations: firstFiniteNumber(rec.registrations) ?? 0,
+    registrations_per_registrant: firstFiniteNumber(rec.registrations_per_registrant) ?? null,
+  };
+}
+
+export const subnetRegistrationsQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-registrations", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetRegistrations>>(
+        `/api/v1/subnets/${netuid}/registrations`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetRegistrations(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #1657: per-subnet neuron-deregistration (eviction) event volume over a 7d/30d
+// window — the eviction-side complement of the registrations card above.
+export function normalizeSubnetDeregistrations(
+  netuid: number,
+  raw: unknown,
+): SubnetDeregistrations {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_deregistered_hotkeys: firstFiniteNumber(rec.distinct_deregistered_hotkeys) ?? 0,
+    deregistrations: firstFiniteNumber(rec.deregistrations) ?? 0,
+    deregistrations_per_hotkey: firstFiniteNumber(rec.deregistrations_per_hotkey) ?? null,
+  };
+}
+
+export const subnetDeregistrationsQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-deregistrations", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetDeregistrations>>(
+        `/api/v1/subnets/${netuid}/deregistrations`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetDeregistrations(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };

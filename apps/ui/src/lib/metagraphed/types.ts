@@ -1221,6 +1221,36 @@ export interface SubnetPrometheus {
   announcements_per_exporter: number | null;
 }
 
+/**
+ * Per-subnet neuron-registration event volume over a 7d/30d window (#1657), from
+ * /api/v1/subnets/{netuid}/registrations — raw NeuronRegistered activity, distinct
+ * from the turnover snapshot-diff. Zeroed when the subnet had none in the window.
+ */
+export interface SubnetRegistrations {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_registrants: number;
+  registrations: number;
+  registrations_per_registrant: number | null;
+}
+
+/**
+ * Per-subnet neuron-deregistration (eviction) event volume over a 7d/30d window
+ * (#1657), from /api/v1/subnets/{netuid}/deregistrations — the eviction-side
+ * complement of {@link SubnetRegistrations}. Zeroed when cold.
+ */
+export interface SubnetDeregistrations {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_deregistered_hotkeys: number;
+  deregistrations: number;
+  deregistrations_per_hotkey: number | null;
+}
+
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
 export interface SubnetNeuronHistoryPoint {
   snapshot_date: string;
