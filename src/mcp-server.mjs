@@ -56,6 +56,12 @@ import {
   loadRegistryCoverage,
 } from "./registry-coverage.mjs";
 import {
+  GET_CHANGELOG_INSTRUCTIONS,
+  GET_CHANGELOG_MCP_TOOL,
+  GET_CHANGELOG_OUTPUT_SCHEMA,
+  loadChangelog,
+} from "./changelog-mcp.mjs";
+import {
   GET_AGENT_RESOURCES_INSTRUCTIONS,
   GET_AGENT_RESOURCES_MCP_TOOL,
   GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
@@ -407,7 +413,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.61.0";
+export const MCP_SERVER_VERSION = "1.63.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -508,6 +514,7 @@ export const MCP_INSTRUCTIONS =
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
   GET_COVERAGE_INSTRUCTIONS +
+  GET_CHANGELOG_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   LIST_GAPS_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
@@ -6356,6 +6363,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_CHANGELOG_MCP_TOOL,
+    async handler(_args, ctx) {
+      return loadChangelog(ctx);
+    },
+  },
+  {
     name: "get_agent_catalog",
     title: "Get the agent capability catalog",
     description:
@@ -9930,6 +9943,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       generated_at: NULLABLE_STRING,
     },
   },
+  get_changelog: GET_CHANGELOG_OUTPUT_SCHEMA,
   get_agent_catalog: {
     // Two shapes: the global index (no netuid) and a single-subnet catalog
     // (with a netuid). They share few keys, so nothing is required; the
