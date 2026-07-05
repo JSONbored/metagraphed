@@ -122,19 +122,10 @@ describe("handleChainPerformance happy path", () => {
     assert.equal(body.data.incentive.holders, 3);
     assert.equal(body.data.dividends.holders, 2);
     assert.equal(body.data.trust.count, 3);
-    assert.equal(
-      body.data.captured_at,
-      new Date(CAPTURED_MS).toISOString(),
-    );
+    assert.equal(body.data.captured_at, new Date(CAPTURED_MS).toISOString());
     assert.equal(body.meta.source, "metagraph-snapshot");
-    assert.equal(
-      body.meta.artifact_path,
-      "/metagraph/chain/performance.json",
-    );
-    assert.equal(
-      body.meta.generated_at,
-      new Date(CAPTURED_MS).toISOString(),
-    );
+    assert.equal(body.meta.artifact_path, "/metagraph/chain/performance.json");
+    assert.equal(body.meta.generated_at, new Date(CAPTURED_MS).toISOString());
     await assertValidComponent("ChainPerformanceArtifact", body.data);
     const captured = capture[0];
     assert.ok(captured);
