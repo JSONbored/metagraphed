@@ -295,6 +295,14 @@ assert.ok(
   Array.isArray(adapterCandidatesPage.candidates),
   "list_adapter_candidates must return candidates[]",
 );
+const profileCompletenessPage = await callOk("list_profile_completeness", {
+  limit: 3,
+  identity_level: "partial",
+});
+assert.ok(
+  Array.isArray(profileCompletenessPage.profiles),
+  "list_profile_completeness must return profiles[]",
+);
 const enrichmentEvidencePage = await callOk("list_enrichment_evidence", {
   limit: 3,
   evidence_action: "replace-stale-evidence",

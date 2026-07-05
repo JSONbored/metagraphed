@@ -1,0 +1,364 @@
+import assert from "node:assert/strict";
+import { describe, test, vi } from "vitest";
+import Ajv2020 from "ajv/dist/2020.js";
+import * as listQuery from "../workers/list-query.mjs";
+import {
+  LIST_PROFILE_COMPLETENESS_INSTRUCTIONS,
+  LIST_PROFILE_COMPLETENESS_MCP_TOOL,
+  LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
+  PROFILE_COMPLETENESS_ARTIFACT,
+  loadProfileCompletenessList,
+  profileCompletenessMcpError,
+  profileCompletenessQueryUrl,
+} from "../src/profile-completeness-mcp.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+
+const SAMPLE_BLOB = {
+  generated_at: "2026-07-01T00:00:00.000Z",
+  summary: { profile_count: 2 },
+  profiles: [
+    {
+      netuid: 7,
+      name: "Allways",
+      profile_level: "identity-partial",
+      identity_level: "partial",
+      confidence: "medium",
+      priority_score: 88,
+    },
+    {
+      netuid: 12,
+      name: "Compute",
+      profile_level: "operational",
+      identity_level: "complete",
+      confidence: "high",
+      priority_score: 40,
+    },
+  ],
+};
+
+function readArtifact(_env, path) {
+  if (path === PROFILE_COMPLETENESS_ARTIFACT) {
+    return Promise.resolve({ ok: true, data: SAMPLE_BLOB });
+  }
+  return Promise.resolve({ ok: false, code: "artifact_not_found" });
+}
+
+describe("profile-completeness-mcp", () => {
+  test("profileCompletenessMcpError is shaped for MCP toolError handling", () => {
+    const err = profileCompletenessMcpError("invalid_params", "bad sort");
+    assert.equal(err.code, "invalid_params");
+    assert.equal(err.toolError, true);
+  });
+
+  test("profileCompletenessQueryUrl validates filters and cursor", () => {
+    const url = profileCompletenessQueryUrl({
+      netuid: 7,
+      profile_level: "identity-partial",
+      confidence: "medium",
+      identity_level: "partial",
+      identity_promotion_kinds: "openapi",
+      native_name_quality: "chain",
+      sort: "priority_score",
+      order: "desc",
+      fields: "netuid,priority_score",
+      limit: 10,
+      cursor: 5,
+    });
+    assert.equal(url.searchParams.get("netuid"), "7");
+    assert.equal(url.searchParams.get("profile_level"), "identity-partial");
+    assert.equal(url.searchParams.get("identity_level"), "partial");
+    assert.equal(url.searchParams.get("sort"), "priority_score");
+    assert.equal(url.searchParams.get("limit"), "10");
+    assert.equal(url.searchParams.get("cursor"), "5");
+  });
+
+  test("profileCompletenessQueryUrl rejects invalid netuid and profile_level", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ netuid: -1 }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => profileCompletenessQueryUrl({ profile_level: "partial" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl rejects invalid confidence and identity_level", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ confidence: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => profileCompletenessQueryUrl({ identity_level: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl rejects invalid promotion kinds and native_name_quality", () => {
+    assert.throws(
+      () =>
+        profileCompletenessQueryUrl({ identity_promotion_kinds: "not-a-kind" }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => profileCompletenessQueryUrl({ native_name_quality: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl rejects empty fields and invalid sort", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ fields: "   " }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => profileCompletenessQueryUrl({ sort: "not_a_column" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl rejects invalid order", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ order: "sideways" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl clamps a non-numeric limit to the default", () => {
+    const url = profileCompletenessQueryUrl({ limit: "lots" });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("profileCompletenessQueryUrl clamps a sub-minimum numeric limit to the default", () => {
+    const url = profileCompletenessQueryUrl({ limit: 0 });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("profileCompletenessQueryUrl rejects a fractional netuid and cursor", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ netuid: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => profileCompletenessQueryUrl({ cursor: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl rejects negative cursor", () => {
+    assert.throws(
+      () => profileCompletenessQueryUrl({ cursor: -1 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("profileCompletenessQueryUrl clamps limit above the MCP maximum", () => {
+    const url = profileCompletenessQueryUrl({ limit: 500 });
+    assert.equal(url.searchParams.get("limit"), "100");
+  });
+
+  test("loadProfileCompletenessList returns filtered rows with pagination meta", async () => {
+    const out = await loadProfileCompletenessList(
+      { env: {}, readArtifact },
+      { identity_level: "partial" },
+    );
+    assert.equal(out.returned, 1);
+    assert.equal(out.profiles[0].netuid, 7);
+  });
+
+  test("loadProfileCompletenessList sorts and pages the collection", async () => {
+    const out = await loadProfileCompletenessList(
+      { env: {}, readArtifact },
+      { sort: "priority_score", order: "desc", limit: 1 },
+    );
+    assert.equal(out.returned, 1);
+    assert.equal(out.total, 2);
+    assert.equal(out.next_cursor, 1);
+  });
+
+  test("loadProfileCompletenessList combines filters with AND semantics", async () => {
+    const out = await loadProfileCompletenessList(
+      { env: {}, readArtifact },
+      { netuid: 7, profile_level: "identity-partial" },
+    );
+    assert.equal(out.returned, 1);
+    assert.equal(out.profiles[0].name, "Allways");
+  });
+
+  test("loadProfileCompletenessList uses an injected readArtifact dep", async () => {
+    const out = await loadProfileCompletenessList(
+      { env: {}, readArtifact: async () => ({ ok: false }) },
+      {},
+      {
+        readArtifact: async () => ({
+          ok: true,
+          data: {
+            profiles: [{ netuid: 99, profile_level: "operational" }],
+          },
+        }),
+      },
+    );
+    assert.equal(out.profiles[0].netuid, 99);
+  });
+
+  test("loadProfileCompletenessList maps artifact_not_found to not_found", async () => {
+    await assert.rejects(
+      () =>
+        loadProfileCompletenessList(
+          {
+            env: {},
+            readArtifact: async () => ({
+              ok: false,
+              code: "artifact_not_found",
+            }),
+          },
+          {},
+        ),
+      (err) => err.code === "not_found",
+    );
+  });
+
+  test("loadProfileCompletenessList surfaces other artifact failures", async () => {
+    await assert.rejects(
+      () =>
+        loadProfileCompletenessList(
+          {
+            env: {},
+            readArtifact: async () => ({
+              ok: false,
+              code: "artifact_timeout",
+            }),
+          },
+          {},
+        ),
+      (err) =>
+        err.code === "artifact_timeout" &&
+        /profile-completeness\.json/.test(err.message),
+    );
+  });
+
+  test("loadProfileCompletenessList rejects invalid list-query params from REST parity", async () => {
+    await assert.rejects(
+      () =>
+        loadProfileCompletenessList(
+          { env: {}, readArtifact },
+          { fields: "not_a_column" },
+        ),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("loadProfileCompletenessList projects row fields when requested", async () => {
+    const out = await loadProfileCompletenessList(
+      { env: {}, readArtifact },
+      { netuid: 7, fields: "netuid,priority_score" },
+    );
+    assert.deepEqual(out.profiles[0], {
+      netuid: 7,
+      priority_score: 88,
+    });
+  });
+
+  test("loadProfileCompletenessList omits nullable artifact metadata when absent", async () => {
+    const out = await loadProfileCompletenessList(
+      {
+        env: {},
+        readArtifact: async () => ({
+          ok: true,
+          data: { profiles: [{ netuid: 0 }] },
+        }),
+      },
+      {},
+    );
+    assert.equal(out.generated_at, null);
+    assert.equal(out.summary, null);
+  });
+
+  test("loadProfileCompletenessList treats a non-array profiles key as empty", async () => {
+    const out = await loadProfileCompletenessList(
+      {
+        env: {},
+        readArtifact: async () => ({
+          ok: true,
+          data: { profiles: null },
+        }),
+      },
+      {},
+    );
+    assert.deepEqual(out.profiles, []);
+    assert.equal(out.total, 0);
+  });
+
+  test("loadProfileCompletenessList falls back when pagination meta is absent", async () => {
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { profiles: [{ netuid: 1 }, { netuid: 2 }] },
+      meta: {},
+    });
+    try {
+      const out = await loadProfileCompletenessList(
+        { env: {}, readArtifact },
+        {},
+      );
+      assert.equal(out.total, 2);
+      assert.equal(out.returned, 2);
+      assert.equal(out.limit, 2);
+      assert.equal(out.cursor, 0);
+      assert.equal(out.next_cursor, null);
+      assert.equal(out.sort, null);
+      assert.equal(out.order, null);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("loadProfileCompletenessList rejects a malformed artifact payload", async () => {
+    await assert.rejects(
+      () =>
+        loadProfileCompletenessList(
+          {
+            env: {},
+            readArtifact: async () => ({ ok: true, data: null }),
+          },
+          {},
+        ),
+      (err) => err.code === "not_found",
+    );
+  });
+
+  test("loadProfileCompletenessList defaults code when the read result is bare", async () => {
+    await assert.rejects(
+      () =>
+        loadProfileCompletenessList(
+          {
+            env: {},
+            readArtifact: async () => ({ ok: false }),
+          },
+          {},
+        ),
+      (err) => err.code === "artifact_unavailable",
+    );
+  });
+
+  test("MCP tool metadata and outputSchema compile", () => {
+    assert.equal(
+      LIST_PROFILE_COMPLETENESS_MCP_TOOL.name,
+      "list_profile_completeness",
+    );
+    assert.match(
+      LIST_PROFILE_COMPLETENESS_INSTRUCTIONS,
+      /list_profile_completeness/,
+    );
+    assert.ok(
+      new Ajv2020({ strict: false }).compile(
+        LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
+      ),
+    );
+  });
+
+  test("MCP server exports wire list_profile_completeness", () => {
+    assert.match(MCP_INSTRUCTIONS, /list_profile_completeness/);
+    const tool = MCP_TOOLS.find((t) => t.name === "list_profile_completeness");
+    assert.ok(tool);
+    assert.equal(tool.title, "List subnet profile-completeness gaps");
+  });
+});

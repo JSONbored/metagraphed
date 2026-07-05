@@ -14500,22 +14500,178 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_profile_completeness returns filtered profile rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        profiles: [
+          {
+            netuid: 7,
+            name: "Allways",
+            profile_level: "identity-partial",
+            identity_level: "partial",
+            priority_score: 88,
+          },
+          {
+            netuid: 12,
+            name: "Compute",
+            profile_level: "operational",
+            identity_level: "complete",
+            priority_score: 40,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { identity_level: "partial", limit: 5 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.profiles[0].netuid, 7);
+    assert.equal(out.generated_at, "2026-07-01T00:00:00.000Z");
+  });
+
+  test("list_profile_completeness reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_profile_completeness",
+      {},
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Profile completeness snapshot unavailable/,
+    );
+  });
+
+  test("list_profile_completeness payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_profile_completeness",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        profiles: [
+          {
+            netuid: 7,
+            profile_level: "identity-partial",
+            priority_score: 50,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_profile_completeness returns the profile-completeness artifact", async () => {
     const deps = makeDeps({
       "/metagraph/review/profile-completeness.json": {
         generated_at: "2026-01-01T00:00:00Z",
-        subnets: [{ netuid: 7, profile_level: "partial" }],
+        profiles: [
+          { netuid: 7, profile_level: "identity-partial", priority_score: 50 },
+        ],
       },
     });
     const res = await callTool("list_profile_completeness", {}, { deps });
     const out = res.body.result.structuredContent;
-    assert.equal(out.subnets[0].netuid, 7);
+    assert.equal(out.profiles[0].netuid, 7);
     assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
   });
 
-  test("list_profile_completeness rejects an unexpected argument", async () => {
-    const res = await callTool("list_profile_completeness", { netuid: 7 });
+  test("list_profile_completeness filters by netuid and profile_level", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        profiles: [
+          {
+            netuid: 7,
+            profile_level: "identity-partial",
+            priority_score: 88,
+          },
+          {
+            netuid: 12,
+            profile_level: "operational",
+            priority_score: 40,
+          },
+        ],
+      },
+    });
+    const byNetuid = (
+      await callTool("list_profile_completeness", { netuid: 12 }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byNetuid.total, 1);
+    assert.equal(byNetuid.profiles[0].netuid, 12);
+
+    const byLevel = (
+      await callTool(
+        "list_profile_completeness",
+        { profile_level: "identity-partial" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(byLevel.total, 1);
+    assert.equal(byLevel.profiles[0].netuid, 7);
+  });
+
+  test("list_profile_completeness paginates the filtered list with limit/cursor", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        profiles: [
+          { netuid: 7, name: "Alpha", priority_score: 90 },
+          { netuid: 12, name: "Beta", priority_score: 80 },
+          { netuid: 19, name: "Gamma", priority_score: 70 },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { sort: "name", order: "asc", limit: 1, cursor: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 1);
+    assert.equal(out.cursor, 1);
+    assert.equal(out.profiles[0].name, "Beta");
+  });
+
+  test("list_profile_completeness rejects an unknown profile_level enum value", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        profiles: [{ netuid: 7, profile_level: "identity-partial" }],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { profile_level: "partial" },
+      { deps },
+    );
     assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("list_profile_completeness rejects an unexpected argument", async () => {
+    const res = await callTool("list_profile_completeness", { bogus: 1 });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("list_profile_completeness is schema-stable when the artifact has no profiles array", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+      },
+    });
+    const res = await callTool("list_profile_completeness", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.profiles, []);
+    assert.equal(out.total, 0);
+    assert.equal(out.returned, 0);
   });
 
   test("list_rpc_pools returns the rpc pools artifact", async () => {

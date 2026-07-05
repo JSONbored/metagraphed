@@ -44,6 +44,12 @@ import {
   loadEnrichmentQueueList,
 } from "./enrichment-queue-mcp.mjs";
 import {
+  LIST_PROFILE_COMPLETENESS_INSTRUCTIONS,
+  LIST_PROFILE_COMPLETENESS_MCP_TOOL,
+  LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
+  loadProfileCompletenessList,
+} from "./profile-completeness-mcp.mjs";
+import {
   LIST_ADAPTER_CANDIDATES_INSTRUCTIONS,
   LIST_ADAPTER_CANDIDATES_MCP_TOOL,
   LIST_ADAPTER_CANDIDATES_OUTPUT_SCHEMA,
@@ -644,6 +650,7 @@ export const MCP_INSTRUCTIONS =
   LIST_GAPS_INSTRUCTIONS +
   LIST_ENRICHMENT_QUEUE_INSTRUCTIONS +
   LIST_ADAPTER_CANDIDATES_INSTRUCTIONS +
+  LIST_PROFILE_COMPLETENESS_INSTRUCTIONS +
   LIST_ENRICHMENT_EVIDENCE_INSTRUCTIONS +
   LIST_REVIEW_GAPS_INSTRUCTIONS +
   LIST_REVIEW_ENRICHMENT_TARGETS_INSTRUCTIONS +
@@ -6395,24 +6402,9 @@ export const MCP_TOOLS = [
     },
   },
   {
-    name: "list_profile_completeness",
-    title: "List subnet profile-completeness gaps",
-    description:
-      "Fetch the contributor review queue of subnet profile-completeness gaps: " +
-      "which subnets have incomplete public-safe profiles (missing identity, " +
-      "native name, confidence, or promotion signals) and are worth profile " +
-      "enrichment. Use it to find high-value profile contributions. Mirrors " +
-      "GET /api/v1/review/profile-completeness.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
-    async handler(_args, ctx) {
-      return loadArtifactData(
-        ctx,
-        "/metagraph/review/profile-completeness.json",
-      );
+    ...LIST_PROFILE_COMPLETENESS_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadProfileCompletenessList(ctx, args);
     },
   },
   {
@@ -10254,16 +10246,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: ["string", "integer", "null"] },
     },
   },
-  list_profile_completeness: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      subnets: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  list_profile_completeness: LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
   list_source_snapshots: LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
   list_rpc_endpoints: {
     type: "object",
