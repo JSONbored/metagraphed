@@ -135,6 +135,31 @@
         "https://bitsota.ai/docs/autoresearch-backend-routes"
       ],
       "url": "https://autoresearch.bitsota.com/api/v1/claims"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-disclaimer-api",
+      "kind": "subnet-api",
+      "name": "Bitsota disclaimer API",
+      "notes": "Public no-auth GET returning the Bitsota no-reward-guarantee disclaimer payload (code, version, title, summary, must_display, url). Documented in the subnet's own OpenAPI (autoresearch.bitsota.com/openapi.json, path /api/v1/disclaimer); same host as the existing tasks, dashboard, and claims surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://autoresearch.bitsota.com/openapi.json",
+        "https://bitsota.ai/docs/autoresearch-backend-routes"
+      ],
+      "url": "https://autoresearch.bitsota.com/api/v1/disclaimer"
     }
   ],
   "contact": "info@bitsota.ai"
