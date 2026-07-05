@@ -46,6 +46,16 @@ class PushAuthFatalTest(unittest.TestCase):
                 _se.push("https://api.metagraph.sh/api/v1/internal/events", {})
         self.assertEqual(cm.exception.code, 1)
 
+    def test_permanent_http_error_returns_false_without_retrying(self):
+        with patch.object(
+            _se.urllib.request, "urlopen", side_effect=_http_error(413)
+        ) as urlopen:
+            with patch.object(_se.time, "sleep") as sleep:
+                result = _se.push("https://api.metagraph.sh/api/v1/internal/blocks", {})
+        self.assertFalse(result)
+        self.assertEqual(urlopen.call_count, 1)
+        sleep.assert_not_called()
+
     def test_other_http_error_retries_before_returning(self):
         ok_response = Mock()
         ok_response.__enter__ = Mock(return_value=ok_response)

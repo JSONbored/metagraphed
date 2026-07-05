@@ -63,6 +63,7 @@ PUSH_RETRY_MAX_SECONDS = max(
     PUSH_RETRY_INITIAL_SECONDS,
     int(os.environ.get("EVENTS_PUSH_RETRY_MAX_SECONDS", "60")),
 )
+RETRYABLE_HTTP_STATUS = {408, 429}
 SUMMARY_EVERY = max(1, int(os.environ.get("EVENTS_SUMMARY_EVERY_BLOCKS", "20")))
 MAX_BACKOFF = 60
 # Mirrors the Worker's own caps (workers/config.mjs MAX_EVENTS_INGEST_ROWS /
@@ -235,6 +236,14 @@ def push(url, payload):
                     body,
                 )
                 sys.exit(1)
+            if 400 <= e.code < 500 and e.code not in RETRYABLE_HTTP_STATUS:
+                log.error(
+                    "ingest push rejected (HTTP %s): %s — permanent client error; "
+                    "dropping this payload instead of retrying forever",
+                    e.code,
+                    body,
+                )
+                return False
             log.warning(
                 "ingest push rejected (HTTP %s): %s — retrying in %ss before advancing",
                 e.code,
