@@ -344,6 +344,14 @@ assert.ok(
   Array.isArray(searchIndexPage.documents),
   "list_search_index must return documents[]",
 );
+const sourceSnapshotsPage = await callOk("list_source_snapshots", {
+  limit: 3,
+  q: "native",
+});
+assert.ok(
+  Array.isArray(sourceSnapshotsPage.sources),
+  "list_source_snapshots must return sources[]",
+);
 const endpointPoolsPage = await callOk("list_endpoint_pools", { limit: 3 });
 assert.ok(
   Array.isArray(endpointPoolsPage.pools),

@@ -14339,22 +14339,64 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
-  test("list_source_snapshots returns the source-snapshot artifact", async () => {
+  test("list_source_snapshots returns filtered source rows", async () => {
     const deps = makeDeps({
       "/metagraph/source-snapshots.json": {
         generated_at: "2026-01-01T00:00:00Z",
-        sources: [{ id: "chain", hash: "0xabc", record_count: 42 }],
+        schema_version: 1,
+        summary: { source_count: 2 },
+        sources: [
+          {
+            id: "native-subnets",
+            kind: "native",
+            path: "/native/subnets",
+            record_count: 42,
+          },
+          {
+            id: "chain",
+            kind: "chain",
+            path: "/chain",
+            record_count: 10,
+          },
+        ],
       },
     });
-    const res = await callTool("list_source_snapshots", {}, { deps });
+    const res = await callTool(
+      "list_source_snapshots",
+      { q: "native", limit: 5 },
+      { deps },
+    );
     const out = res.body.result.structuredContent;
-    assert.equal(out.sources[0].id, "chain");
+    assert.equal(out.returned, 1);
+    assert.equal(out.sources[0].id, "native-subnets");
     assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
   });
 
-  test("list_source_snapshots rejects an unexpected argument", async () => {
-    const res = await callTool("list_source_snapshots", { netuid: 7 });
+  test("list_source_snapshots reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_source_snapshots",
+      {},
+      { deps: makeDeps() },
+    );
     assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Source snapshots ledger unavailable/,
+    );
+  });
+
+  test("list_source_snapshots payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_source_snapshots",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/source-snapshots.json": {
+        sources: [{ id: "chain", hash: "0xabc", record_count: 42 }],
+      },
+    });
+    const res = await callTool("list_source_snapshots", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
   });
 
   test("list_profile_completeness returns the profile-completeness artifact", async () => {

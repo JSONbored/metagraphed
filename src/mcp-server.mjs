@@ -86,6 +86,12 @@ import {
   loadSearchIndexList,
 } from "./search-index-mcp.mjs";
 import {
+  LIST_SOURCE_SNAPSHOTS_INSTRUCTIONS,
+  LIST_SOURCE_SNAPSHOTS_MCP_TOOL,
+  LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
+  loadSourceSnapshotsList,
+} from "./source-snapshots-mcp.mjs";
+import {
   LIST_ENDPOINT_POOLS_INSTRUCTIONS,
   LIST_ENDPOINT_POOLS_MCP_TOOL,
   LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
@@ -770,8 +776,9 @@ export const MCP_INSTRUCTIONS =
   "unpromoted candidate surfaces still pending review, list_endpoints the " +
   "network-wide monitored endpoint-resource catalog, list_evidence the public " +
   "provenance/verification evidence ledger, list_rpc_endpoints the monitored " +
-  "Bittensor RPC endpoint catalog, list_source_snapshots the per-source " +
-  "input-hash/record-count ledger, list_rpc_pools the load-balanced RPC pool " +
+  "Bittensor RPC endpoint catalog, " +
+  LIST_SOURCE_SNAPSHOTS_INSTRUCTIONS +
+  "list_rpc_pools the load-balanced RPC pool " +
   "scores, " +
   LIST_ENDPOINT_POOLS_INSTRUCTIONS +
   LIST_ENDPOINT_INCIDENTS_INSTRUCTIONS +
@@ -6493,21 +6500,9 @@ export const MCP_TOOLS = [
     },
   },
   {
-    name: "list_source_snapshots",
-    title: "List source input snapshots",
-    description:
-      "Fetch the source-snapshot ledger: the per-source input hash and record " +
-      "count captured for each registry data source at ingest time. Use it to " +
-      "detect when a source's underlying data changed (hash drift) or to see " +
-      "how many records each source contributed. Mirrors " +
-      "GET /api/v1/source-snapshots.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
-    async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/source-snapshots.json");
+    ...LIST_SOURCE_SNAPSHOTS_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadSourceSnapshotsList(ctx, args);
     },
   },
   {
@@ -10398,16 +10393,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: ["string", "integer", "null"] },
     },
   },
-  list_source_snapshots: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      sources: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  list_source_snapshots: LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
   list_rpc_endpoints: {
     type: "object",
     additionalProperties: true,
