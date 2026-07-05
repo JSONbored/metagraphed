@@ -322,6 +322,15 @@ assert.ok(
   Array.isArray(reviewEnrichmentTargetsPage.targets),
   "list_review_enrichment_targets must return targets[]",
 );
+const subnetEndpointsPage = await callOk("list_subnet_endpoints", {
+  netuid: 7,
+  limit: 3,
+  kind: "subnet-api",
+});
+assert.ok(
+  Array.isArray(subnetEndpointsPage.endpoints),
+  "list_subnet_endpoints must return endpoints[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),

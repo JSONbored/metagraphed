@@ -1758,6 +1758,71 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_subnet_endpoints returns filtered endpoint rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/endpoints/7.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        netuid: 7,
+        endpoints: [
+          {
+            id: "allways-api",
+            netuid: 7,
+            kind: "subnet-api",
+            status: "ok",
+          },
+          {
+            id: "allways-openapi",
+            netuid: 7,
+            kind: "openapi",
+            status: "degraded",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_subnet_endpoints",
+      { netuid: 7, kind: "subnet-api" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.endpoints[0].kind, "subnet-api");
+    assert.equal(out.netuid, 7);
+  });
+
+  test("list_subnet_endpoints reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_subnet_endpoints",
+      { netuid: 7 },
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /No endpoint snapshot exists for netuid 7/,
+    );
+  });
+
+  test("list_subnet_endpoints payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_subnet_endpoints",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/endpoints/7.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        netuid: 7,
+        endpoints: [{ id: "allways-api", netuid: 7, kind: "subnet-api" }],
+      },
+    });
+    const res = await callTool(
+      "list_subnet_endpoints",
+      { netuid: 7, limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoint_pools returns filtered pool rows", async () => {
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {
