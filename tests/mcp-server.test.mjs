@@ -14654,6 +14654,179 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  function profileCompletenessDeps() {
+    return makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        profiles: [
+          {
+            netuid: 7,
+            name: "Allways",
+            profile_level: "directory-only",
+            confidence: "low",
+            identity_level: "none",
+            native_name_quality: "empty",
+            identity_promotion_kinds: ["openapi", "docs"],
+          },
+          {
+            netuid: 12,
+            name: "Compute",
+            profile_level: "operational",
+            confidence: "high",
+            identity_level: "complete",
+            native_name_quality: "chain",
+            identity_promotion_kinds: [],
+          },
+          {
+            netuid: 64,
+            name: "Chutes",
+            profile_level: "directory-only",
+            confidence: "medium",
+            identity_level: "partial",
+            native_name_quality: "placeholder",
+            identity_promotion_kinds: ["subnet-api"],
+          },
+        ],
+      },
+    });
+  }
+
+  test("list_profile_completeness returns the review queue artifact", async () => {
+    const deps = profileCompletenessDeps();
+    const res = await callTool("list_profile_completeness", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+  });
+
+  test("list_profile_completeness filters by netuid, profile_level, confidence, identity_level, and native_name_quality", async () => {
+    const deps = profileCompletenessDeps();
+    const byNetuid = (
+      await callTool("list_profile_completeness", { netuid: 12 }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byNetuid.total, 1);
+    assert.equal(byNetuid.profiles[0].name, "Compute");
+
+    const byLevel = (
+      await callTool(
+        "list_profile_completeness",
+        { profile_level: "directory-only" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(byLevel.total, 2);
+
+    const byConfidence = (
+      await callTool(
+        "list_profile_completeness",
+        { confidence: "high" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(byConfidence.total, 1);
+    assert.equal(byConfidence.profiles[0].netuid, 12);
+
+    const byIdentity = (
+      await callTool(
+        "list_profile_completeness",
+        { identity_level: "partial" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(byIdentity.total, 1);
+    assert.equal(byIdentity.profiles[0].netuid, 64);
+
+    const byNameQuality = (
+      await callTool(
+        "list_profile_completeness",
+        { native_name_quality: "placeholder" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(byNameQuality.total, 1);
+    assert.equal(byNameQuality.profiles[0].netuid, 64);
+  });
+
+  test("list_profile_completeness filters by identity_promotion_kind (array membership)", async () => {
+    const deps = profileCompletenessDeps();
+    const res = await callTool(
+      "list_profile_completeness",
+      { identity_promotion_kind: "docs" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 1);
+    assert.equal(out.profiles[0].netuid, 7);
+  });
+
+  test("list_profile_completeness combines filters (AND) and reports total vs returned", async () => {
+    const deps = profileCompletenessDeps();
+    const res = await callTool(
+      "list_profile_completeness",
+      { profile_level: "directory-only", confidence: "medium" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 1);
+    assert.equal(out.returned, 1);
+    assert.equal(out.profiles[0].netuid, 64);
+  });
+
+  test("list_profile_completeness paginates the filtered list with limit/offset", async () => {
+    const deps = profileCompletenessDeps();
+    const res = await callTool(
+      "list_profile_completeness",
+      { limit: 1, offset: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 1);
+    assert.equal(out.offset, 1);
+    assert.equal(out.profiles[0].netuid, 12);
+  });
+
+  test("list_profile_completeness rejects an unknown enum value for each enum arg", async () => {
+    const deps = profileCompletenessDeps();
+    for (const args of [
+      { profile_level: "not-a-level" },
+      { confidence: "not-a-confidence" },
+      { identity_level: "not-a-level" },
+      { native_name_quality: "not-a-quality" },
+      { identity_promotion_kind: "not-a-kind" },
+    ]) {
+      const res = await callTool("list_profile_completeness", args, { deps });
+      assert.equal(
+        res.body.result.isError,
+        true,
+        `expected isError for ${JSON.stringify(args)}`,
+      );
+    }
+  });
+
+  test("list_profile_completeness rejects an unexpected argument", async () => {
+    const deps = profileCompletenessDeps();
+    const res = await callTool(
+      "list_profile_completeness",
+      { bogus: 1 },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("list_profile_completeness is schema-stable when the artifact has no profiles array", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+      },
+    });
+    const res = await callTool("list_profile_completeness", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.profiles, []);
+    assert.equal(out.total, 0);
+    assert.equal(out.returned, 0);
+  });
+
   test("get_subnet_endpoints returns one subnet's endpoints artifact", async () => {
     const deps = makeDeps({
       "/metagraph/endpoints/5.json": {

@@ -6401,18 +6401,113 @@ export const MCP_TOOLS = [
       "Fetch the contributor review queue of subnet profile-completeness gaps: " +
       "which subnets have incomplete public-safe profiles (missing identity, " +
       "native name, confidence, or promotion signals) and are worth profile " +
-      "enrichment. Use it to find high-value profile contributions. Mirrors " +
+      "enrichment. Use it to find high-value profile contributions. Optionally " +
+      "filter by netuid/profile_level/confidence/identity_level/" +
+      "native_name_quality/identity_promotion_kind and page with limit/offset " +
+      "— the full queue can be large. Mirrors " +
       "GET /api/v1/review/profile-completeness.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        profile_level: {
+          type: "string",
+          enum: QUERY_ENUMS.profileLevel,
+          description: "Profile depth, e.g. 'directory-only' or 'operational'.",
+        },
+        confidence: {
+          type: "string",
+          enum: ["low", "medium", "high"],
+          description: "Identity confidence tier.",
+        },
+        identity_level: {
+          type: "string",
+          enum: ["none", "directory", "partial", "complete"],
+          description: "How complete the subnet's identity evidence is.",
+        },
+        native_name_quality: {
+          type: "string",
+          enum: ["chain", "placeholder", "empty"],
+          description: "Quality of the on-chain native name signal.",
+        },
+        identity_promotion_kind: {
+          type: "string",
+          enum: QUERY_ENUMS.surfaceKind,
+          description:
+            "Only subnets that still need identity promotion for this " +
+            "surface kind (checks the row's identity_promotion_kinds list).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max rows to return. Omit for the full queue.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset into the (filtered) list. Default 0.",
+          minimum: 0,
+        },
+      },
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadArtifactData(
+    async handler(args, ctx) {
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      const profileLevel = optionalEnum(
+        args,
+        "profile_level",
+        QUERY_ENUMS.profileLevel,
+      );
+      const confidence = optionalEnum(args, "confidence", [
+        "low",
+        "medium",
+        "high",
+      ]);
+      const identityLevel = optionalEnum(args, "identity_level", [
+        "none",
+        "directory",
+        "partial",
+        "complete",
+      ]);
+      const nativeNameQuality = optionalEnum(args, "native_name_quality", [
+        "chain",
+        "placeholder",
+        "empty",
+      ]);
+      const identityPromotionKind = optionalEnum(
+        args,
+        "identity_promotion_kind",
+        QUERY_ENUMS.surfaceKind,
+      );
+      const limit = optionalPositiveInt(args, "limit");
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const data = await loadArtifactData(
         ctx,
         "/metagraph/review/profile-completeness.json",
       );
+      const all = Array.isArray(data.profiles) ? data.profiles : [];
+      const filtered = all.filter(
+        (p) =>
+          (netuid === null || p.netuid === netuid) &&
+          (profileLevel === null || p.profile_level === profileLevel) &&
+          (confidence === null || p.confidence === confidence) &&
+          (identityLevel === null || p.identity_level === identityLevel) &&
+          (nativeNameQuality === null ||
+            p.native_name_quality === nativeNameQuality) &&
+          (identityPromotionKind === null ||
+            (Array.isArray(p.identity_promotion_kinds) &&
+              p.identity_promotion_kinds.includes(identityPromotionKind))),
+      );
+      const page =
+        limit === null
+          ? filtered.slice(offset)
+          : filtered.slice(offset, offset + limit);
+      return {
+        ...data,
+        profiles: page,
+        total: filtered.length,
+        returned: page.length,
+        offset,
+      };
     },
   },
   {
