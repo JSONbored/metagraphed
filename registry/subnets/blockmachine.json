@@ -183,6 +183,25 @@
         "https://api.blockmachine.io/openapi.json"
       ],
       "url": "https://api.blockmachine.io/epochs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-health",
+      "kind": "subnet-api",
+      "name": "BlockMachine API health",
+      "notes": "Public no-auth GET /health returning BlockMachine API status and version. Documented in the subnet's OpenAPI spec on the same host as the existing leaderboard and epoch snapshot surfaces.",
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.blockmachine.io/openapi.json",
+        "https://blockmachine.io/"
+      ],
+      "url": "https://api.blockmachine.io/health"
     }
   ],
   "website_url": "https://blockmachine.io/"
