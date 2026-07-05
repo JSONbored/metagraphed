@@ -92,7 +92,9 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
   const sourceRef = extrinsicHashPathSegment(hash);
   const extrinsic = useSuspenseQuery(extrinsicQuery(hash)).data.data;
   const callArgs = extrinsic?.call_args;
-  const events = (extrinsic?.events ?? []).slice(0, 100);
+  const allEvents = extrinsic?.events ?? [];
+  const events = allEvents.slice(0, EVENTS_RENDER_CAP);
+  const callArgsTotal = callArgsCount(callArgs);
 
   if (!extrinsic) {
     return (
@@ -213,11 +215,25 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         id="call-args"
         title="Call arguments"
         subtitle="The decoded parameters passed to this extrinsic."
+        right={
+          callArgsTotal > CALL_ARGS_RENDER_CAP ? (
+            <TruncationNotice shown={CALL_ARGS_RENDER_CAP} total={callArgsTotal} />
+          ) : undefined
+        }
       >
         {renderCallArgs(callArgs)}
       </SectionAnchor>
 
-      <SectionAnchor id="events" title="Emitted events" tone="accent">
+      <SectionAnchor
+        id="events"
+        title="Emitted events"
+        tone="accent"
+        right={
+          allEvents.length > EVENTS_RENDER_CAP ? (
+            <TruncationNotice shown={EVENTS_RENDER_CAP} total={allEvents.length} />
+          ) : undefined
+        }
+      >
         {events.length > 0 ? (
           <div className="overflow-x-auto rounded border border-border bg-card">
             <table className="w-full text-left text-sm">
@@ -320,9 +336,31 @@ function fmtTao(v: number): string {
   return `${v.toFixed(4)} τ`;
 }
 
+const EVENTS_RENDER_CAP = 100;
+const CALL_ARGS_RENDER_CAP = 64;
+
+function callArgsCount(callArgs: unknown): number {
+  if (Array.isArray(callArgs)) return callArgs.length;
+  if (callArgs && typeof callArgs === "object") return Object.keys(callArgs).length;
+  return 0;
+}
+
+function TruncationNotice({ shown, total }: { shown: number; total: number }) {
+  if (total <= shown) return null;
+  const omitted = total - shown;
+  return (
+    <span className="font-mono text-[10px] text-ink-muted">
+      Showing {shown} of {total} — {omitted} more not shown
+    </span>
+  );
+}
+
 function renderCallArgs(callArgs: unknown) {
   if (Array.isArray(callArgs)) {
-    const args = (callArgs as Array<{ name?: string | null; value?: unknown }>).slice(0, 64);
+    const args = (callArgs as Array<{ name?: string | null; value?: unknown }>).slice(
+      0,
+      CALL_ARGS_RENDER_CAP,
+    );
     if (args.length === 0) {
       return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
     }
@@ -353,7 +391,10 @@ function renderCallArgs(callArgs: unknown) {
   }
 
   if (callArgs && typeof callArgs === "object") {
-    const entries = Object.entries(callArgs as Record<string, unknown>).slice(0, 64);
+    const entries = Object.entries(callArgs as Record<string, unknown>).slice(
+      0,
+      CALL_ARGS_RENDER_CAP,
+    );
     if (entries.length === 0) {
       return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
     }
