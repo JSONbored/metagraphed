@@ -320,6 +320,25 @@
         "https://docs.nepher.ai/"
       ],
       "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/id"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-active-tournament-ids-api",
+      "kind": "subnet-api",
+      "name": "Nepher active tournament IDs API",
+      "notes": "Public no-auth GET returning the UUIDs of all currently active tournaments (tournament_ids array). Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/active/ids); same host as existing tournament surfaces. Distinct from the singular active/id endpoint and the active-tournaments list.",
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://docs.nepher.ai/"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/ids"
     }
   ],
   "website_url": "https://nepher.ai"
