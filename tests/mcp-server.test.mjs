@@ -1578,6 +1578,53 @@ describe("MCP tools (injected deps)", () => {
     );
   });
 
+  test("get_changelog returns the changelog artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/changelog.json": {
+        source: "generated-artifact-diff",
+        summary: { artifact_added_count: 3 },
+        artifacts: {
+          added: [{ path: "/metagraph/foo.json" }],
+          modified: [],
+          removed: [],
+        },
+        subnets: { added: [], removed: [], renamed: [] },
+        notes: ["publish-time diff"],
+      },
+    });
+    const res = await callTool("get_changelog", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "generated-artifact-diff");
+    assert.equal(out.summary.artifact_added_count, 3);
+    assert.equal(out.artifacts.added.length, 1);
+  });
+
+  test("get_changelog reports not_found when the artifact is absent", async () => {
+    const res = await callTool("get_changelog", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /unavailable in this environment/,
+    );
+  });
+
+  test("get_changelog payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_changelog",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/changelog.json": {
+        source: "generated-artifact-diff",
+        summary: { artifact_added_count: 0 },
+        artifacts: { added: [], modified: [], removed: [] },
+        subnets: { added: [], removed: [], renamed: [] },
+      },
+    });
+    const res = await callTool("get_changelog", {}, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_enrichment_targets returns ranked coverage-depth targets", async () => {
     const res = await callTool(
       "list_enrichment_targets",

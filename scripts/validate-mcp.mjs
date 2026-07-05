@@ -293,6 +293,15 @@ assert.ok(
 );
 await callOk("registry_summary", {});
 await callOk("get_coverage", {});
+const changelog = await callOk("get_changelog", {});
+assert.equal(
+  changelog.source,
+  "generated-artifact-diff",
+  "get_changelog must return the publish-time diff payload",
+);
+assert.ok(changelog.summary && typeof changelog.summary === "object");
+assert.ok(changelog.artifacts && typeof changelog.artifacts === "object");
+assert.ok(changelog.subnets && typeof changelog.subnets === "object");
 
 // Per-subnet gap artifacts are R2-only (review/gaps/{netuid}.json); the cold
 // env has them only after `npm run build` stages dist/. Exercise the happy path

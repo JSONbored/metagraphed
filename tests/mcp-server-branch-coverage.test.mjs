@@ -1386,3 +1386,20 @@ describe("rankSubnetsForTask — keyword docs array fallback", () => {
     assert.match(out.note, /No callable subnet/);
   });
 });
+
+// ── get_changelog — changelog artifact ────────────────────────────────────
+describe("get_changelog — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("get_changelog", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /changelog\.json/);
+  });
+});
