@@ -32,7 +32,12 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { surfacesInfiniteQuery, providersQuery, subnetsQuery } from "@/lib/metagraphed/queries";
-import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
+import {
+  matchesQuery,
+  sortBy,
+  TABLE_FILTER_NAV_OPTS,
+  tableSearchSchema,
+} from "@/lib/metagraphed/url-state";
 import type { Surface, Provider, Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/surfaces")({
@@ -180,11 +185,13 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
+      ...TABLE_FILTER_NAV_OPTS,
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
     });
 
   const onSort = (field: string) =>
     navigate({
+      ...TABLE_FILTER_NAV_OPTS,
       search: (prev: { sort?: string; order?: "asc" | "desc" }) =>
         ({
           ...prev,

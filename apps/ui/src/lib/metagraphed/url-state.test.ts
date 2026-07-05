@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { joinHealth, matchesQuery, sortBy, paginate } from "./url-state";
+import { joinHealth, matchesQuery, sortBy, paginate, TABLE_FILTER_NAV_OPTS } from "./url-state";
 
 describe("matchesQuery", () => {
   it("matches everything for an empty needle", () => {
@@ -115,5 +115,11 @@ describe("paginate", () => {
 
   it("returns an empty slice past the end", () => {
     expect(paginate(rows, 4, 3)).toEqual([]);
+  });
+});
+
+describe("TABLE_FILTER_NAV_OPTS", () => {
+  it("opts table filter navigations out of TanStack Router scroll reset (#3691)", () => {
+    expect(TABLE_FILTER_NAV_OPTS).toEqual({ resetScroll: false });
   });
 });

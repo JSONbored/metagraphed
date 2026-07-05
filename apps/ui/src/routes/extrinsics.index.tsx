@@ -18,6 +18,7 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
+import { TABLE_FILTER_NAV_OPTS } from "@/lib/metagraphed/url-state";
 import { extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -107,7 +108,10 @@ function ExtrinsicsTable() {
   const hasNext = rows.length === search.limit;
 
   const setSearch = (patch: Record<string, unknown>) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never });
+    navigate({
+      ...TABLE_FILTER_NAV_OPTS,
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+    });
 
   const goPrev = () => setSearch({ offset: Math.max(0, search.offset - search.limit) });
   const goNext = () => setSearch({ offset: search.offset + search.limit });

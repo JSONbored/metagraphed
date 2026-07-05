@@ -40,7 +40,13 @@ import {
   agentCatalogMapQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
-import { joinHealth, matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
+import {
+  joinHealth,
+  matchesQuery,
+  sortBy,
+  TABLE_FILTER_NAV_OPTS,
+  tableSearchSchema,
+} from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { AgentCatalogSummary, Subnet } from "@/lib/metagraphed/types";
 
@@ -282,11 +288,13 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
+      ...TABLE_FILTER_NAV_OPTS,
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
     });
 
   const onSort = (field: string) =>
     navigate({
+      ...TABLE_FILTER_NAV_OPTS,
       search: (prev: { sort?: string; order?: "asc" | "desc" }) =>
         ({
           ...prev,
