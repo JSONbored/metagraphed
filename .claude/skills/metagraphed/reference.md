@@ -24,6 +24,15 @@ together (trivial dedup), and redundant/split PRs touching the same file are clo
 `community` / `registry-observed`) + the per-surface `review.state` tell the API and the gate how much
 to trust a surface. "community-submitted" ≠ verified truth until the gate/build promote it.
 
+**The filename is the slugified name, not the netuid.** Correct: `registry/subnets/zeus.json`. Wrong:
+`registry/subnets/sn-18.json`. The `sn-<netuid>` form is only correct as a fallback for the rare subnet
+whose name doesn't produce a usable slug — see `scripts/subnet-new.mjs`, the only correct way to
+scaffold a new subnet file (`npm run subnet:new -- --netuid <n> --name "<Real Name>" --write`). Never
+hand-name a new file, including during an ad-hoc enrichment pass (e.g. a taostats identity gap-fill) run
+interactively rather than through a committed script — always scaffold through `subnet:new`. `npm run
+validate` fails CI if any subnet filename doesn't match the slugified name (the machine-owned
+`registry/subnets/generated/` directory is exempt).
+
 ---
 
 ## 1. The surface object (`schemas/subnet-manifest.schema.json` → `$defs.surface`)
