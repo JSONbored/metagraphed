@@ -901,6 +901,61 @@ export interface AccountSubnets {
   [key: string]: unknown;
 }
 
+/**
+ * One neuron position a wallet holds on a subnet, from
+ * /api/v1/accounts/{ss58}/portfolio: its economics plus emission/stake yield.
+ * Score cells are null when absent; `yield` is null with zero stake.
+ */
+export interface PortfolioPosition {
+  netuid: number;
+  uid: number | null;
+  role: "validator" | "miner" | null;
+  active?: boolean;
+  stake_tao: number | null;
+  emission_tao: number | null;
+  rank: number | null;
+  trust: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  /** Emission-per-stake return (a fraction; null with zero stake). */
+  yield: number | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Stake-concentration lens over a wallet's per-subnet stake (Gini / normalized
+ * HHI / Nakamoto coefficient), from the portfolio's `stake_concentration`. Null
+ * when the wallet holds no stake (a cold or all-zero distribution).
+ */
+export interface PortfolioConcentration {
+  holders: number | null;
+  gini: number | null;
+  hhi_normalized: number | null;
+  nakamoto_coefficient: number | null;
+  [key: string]: unknown;
+}
+
+/**
+ * A wallet's cross-subnet neuron portfolio from /api/v1/accounts/{ss58}/portfolio:
+ * every position's economics + yield plus wallet-level aggregates (totals, role
+ * counts, overall return, stake concentration). Richer than the registrations-only
+ * AccountSubnets footprint.
+ */
+export interface AccountPortfolio {
+  ss58: string;
+  captured_at?: string | null;
+  subnet_count: number;
+  position_count: number;
+  validator_count: number;
+  miner_count: number;
+  total_stake_tao: number | null;
+  total_emission_tao: number | null;
+  overall_yield: number | null;
+  stake_concentration: PortfolioConcentration | null;
+  positions: PortfolioPosition[];
+  [key: string]: unknown;
+}
+
 /** Cross-subnet activity summary for one account from /api/v1/accounts/{ss58}. */
 export interface AccountSummary {
   ss58: string;

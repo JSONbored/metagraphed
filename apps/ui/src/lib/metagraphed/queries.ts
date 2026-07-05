@@ -32,9 +32,12 @@ import type {
   AccountEvent,
   AccountEventsPage,
   AccountHistory,
+  AccountPortfolio,
   AccountRegistration,
   AccountSubnets,
   AccountSummary,
+  PortfolioConcentration,
+  PortfolioPosition,
   Block,
   ChainActivity,
   ChainActivityDay,
@@ -142,6 +145,7 @@ const MAX_EXTRINSIC_VALUE_DEPTH = 8;
 const MAX_EXTRINSIC_COLLECTION_ENTRIES = 64;
 const MAX_EXTRINSIC_STRING_LENGTH = 2_000;
 const MAX_ACCOUNT_REGISTRATIONS = 100;
+const MAX_ACCOUNT_POSITIONS = 256;
 const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
@@ -1749,6 +1753,51 @@ function normalizeAccountRegistration(raw: unknown): AccountRegistration | null 
   return registration.netuid != null || registration.uid != null ? registration : null;
 }
 
+// One cross-subnet neuron position (#3491). Strict on render fields — object/junk
+// economic cells coerce to null (never NaN or `[object Object]`), an unknown role
+// drops to null — and a row with no numeric netuid is discarded.
+export function normalizePortfolioPosition(raw: unknown): PortfolioPosition | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  const role = firstString(raw.role);
+  return {
+    ...(raw as object),
+    netuid,
+    uid: firstFiniteNumber(raw.uid) ?? null,
+    role: role === "validator" || role === "miner" ? role : null,
+    active: booleanValue(raw.active),
+    stake_tao: firstFiniteNumber(raw.stake_tao) ?? null,
+    emission_tao: firstFiniteNumber(raw.emission_tao) ?? null,
+    rank: firstFiniteNumber(raw.rank) ?? null,
+    trust: firstFiniteNumber(raw.trust) ?? null,
+    incentive: firstFiniteNumber(raw.incentive) ?? null,
+    dividends: firstFiniteNumber(raw.dividends) ?? null,
+    yield: firstFiniteNumber(raw.yield) ?? null,
+  };
+}
+
+// The portfolio's stake-concentration lens (#3491).
+export function normalizePortfolioConcentration(raw: unknown): PortfolioConcentration | null {
+  if (!isRecord(raw)) return null;
+  const holders = firstFiniteNumber(raw.holders) ?? null;
+  const gini = firstFiniteNumber(raw.gini) ?? null;
+  const hhi_normalized = firstFiniteNumber(raw.hhi_normalized) ?? null;
+  const nakamoto_coefficient = firstFiniteNumber(raw.nakamoto_coefficient) ?? null;
+  // Cold / empty distribution: a zero-holder object, or one with no populated
+  // lens fields (e.g. `{}` or all-null), is not a real concentration card — the
+  // backend emits null there, and so do we (the ConcentrationMetrics
+  // null-when-empty contract). Guards a malformed body from rendering a non-null
+  // card built entirely from nulls.
+  if (
+    holders === 0 ||
+    (holders == null && gini == null && hhi_normalized == null && nakamoto_coefficient == null)
+  ) {
+    return null;
+  }
+  return { ...(raw as object), holders, gini, hhi_normalized, nakamoto_coefficient };
+}
+
 function accountEventString(value: unknown): string | undefined {
   if (typeof value === "string") return value.trim() ? value : undefined;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -2063,6 +2112,44 @@ export const accountSubnetsQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountSubnets>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3491: the economics-rich companion to accountSubnetsQuery — every neuron
+// position under this hotkey with stake/emission/yield, plus wallet aggregates.
+// Non-blocking on the entity page; a cold wallet returns an empty positions[].
+export const accountPortfolioQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-portfolio", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/portfolio`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const positions = Array.isArray(d.positions)
+        ? d.positions.slice(0, MAX_ACCOUNT_POSITIONS).flatMap((position) => {
+            const normalized = normalizePortfolioPosition(position);
+            return normalized ? [normalized] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          captured_at: firstString(d.captured_at) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? positions.length,
+          position_count: firstFiniteNumber(d.position_count) ?? positions.length,
+          validator_count: firstFiniteNumber(d.validator_count) ?? 0,
+          miner_count: firstFiniteNumber(d.miner_count) ?? 0,
+          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? null,
+          total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? null,
+          overall_yield: firstFiniteNumber(d.overall_yield) ?? null,
+          stake_concentration: normalizePortfolioConcentration(d.stake_concentration),
+          positions,
+        } as AccountPortfolio,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountPortfolio>;
     },
     staleTime: STALE_MED,
   });
