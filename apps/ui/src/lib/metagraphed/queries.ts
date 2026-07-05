@@ -109,6 +109,9 @@ import type {
   SubnetConcentration,
   ConcentrationHistoryPoint,
   SubnetConcentrationHistory,
+  SubnetPerformance,
+  PerformanceHistoryPoint,
+  SubnetPerformanceHistory,
   SubnetProfile,
   Surface,
   SurfaceLatencyPercentiles,
@@ -3251,6 +3254,125 @@ export const chainPerformanceQuery = () =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainPerformance>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3477: reward-distribution + score-spread for one subnet — the reward-flow
+// twin of the stake/emission concentration above. /performance reuses the same
+// ConcentrationMetrics scorecard (Gini/HHI/Nakamoto/top-share) over incentive +
+// dividends, and adds the 0-1 trust/consensus/validator_trust score spread.
+function normalizeScoreDistribution(raw: unknown): ScoreDistribution | undefined {
+  if (!isRecord(raw)) return undefined;
+  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
+  return {
+    count: coerceFiniteNumber(raw.count),
+    mean: nullableNum(raw.mean),
+    min: nullableNum(raw.min),
+    max: nullableNum(raw.max),
+    p10: nullableNum(raw.p10),
+    p25: nullableNum(raw.p25),
+    p50: nullableNum(raw.p50),
+    p75: nullableNum(raw.p75),
+    p90: nullableNum(raw.p90),
+  };
+}
+
+function normalizeSubnetPerformance(netuid: number, raw: unknown): SubnetPerformance {
+  const d = isRecord(raw) ? raw : {};
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    neuron_count: coerceFiniteNumber(d.neuron_count),
+    active_count: coerceFiniteNumber(d.active_count),
+    validator_count: coerceFiniteNumber(d.validator_count),
+    captured_at: coerceString(d.captured_at),
+    incentive: normalizeConcentrationMetrics(d.incentive),
+    dividends: normalizeConcentrationMetrics(d.dividends),
+    trust: normalizeScoreDistribution(d.trust),
+    consensus: normalizeScoreDistribution(d.consensus),
+    validator_trust: normalizeScoreDistribution(d.validator_trust),
+  };
+}
+
+function normalizePerformanceHistoryPoint(raw: unknown): PerformanceHistoryPoint | undefined {
+  if (!isRecord(raw)) return undefined;
+  const snapshotDate = coerceString(raw.snapshot_date);
+  if (!snapshotDate) return undefined;
+  // Nullable-by-design: the early window has no reward metrics yet — keep null
+  // (not undefined) so the chart can render a gap rather than dropping the day.
+  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
+  return {
+    ...(raw as object),
+    snapshot_date: snapshotDate,
+    neuron_count: coerceFiniteNumber(raw.neuron_count),
+    active_count: coerceFiniteNumber(raw.active_count),
+    validator_count: coerceFiniteNumber(raw.validator_count),
+    incentive_gini: nullableNum(raw.incentive_gini),
+    incentive_nakamoto_coefficient: nullableNum(raw.incentive_nakamoto_coefficient),
+    incentive_top_10pct_share: nullableNum(raw.incentive_top_10pct_share),
+    dividends_gini: nullableNum(raw.dividends_gini),
+    dividends_nakamoto_coefficient: nullableNum(raw.dividends_nakamoto_coefficient),
+    dividends_top_10pct_share: nullableNum(raw.dividends_top_10pct_share),
+    trust_mean: nullableNum(raw.trust_mean),
+    trust_median: nullableNum(raw.trust_median),
+    consensus_mean: nullableNum(raw.consensus_mean),
+    consensus_median: nullableNum(raw.consensus_median),
+    validator_trust_mean: nullableNum(raw.validator_trust_mean),
+    validator_trust_median: nullableNum(raw.validator_trust_median),
+  };
+}
+
+function normalizeSubnetPerformanceHistory(netuid: number, raw: unknown): SubnetPerformanceHistory {
+  const d = isRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_HISTORY_POINTS).flatMap((point) => {
+        const normalized = normalizePerformanceHistoryPoint(point);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    window: coerceString(d.window),
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    points,
+  };
+}
+
+/** Reward-distribution scorecard (incentive/dividends concentration + trust/consensus spread). */
+export const subnetPerformanceQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-performance", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetPerformance>>(
+        `/api/v1/subnets/${netuid}/performance`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetPerformance(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetPerformance>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Daily reward-flow drift (incentive/dividends Gini/Nakamoto/top-10%, trust/consensus mean/median). */
+export const subnetPerformanceHistoryQuery = (
+  netuid: number,
+  window: "7d" | "30d" | "90d" = "30d",
+) =>
+  queryOptions({
+    queryKey: k("subnet-performance-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetPerformanceHistory>>(
+        `/api/v1/subnets/${netuid}/performance/history`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetPerformanceHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetPerformanceHistory>;
     },
     staleTime: STALE_MED,
   });

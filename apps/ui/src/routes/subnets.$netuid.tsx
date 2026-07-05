@@ -28,7 +28,7 @@ import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-s
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
-import { ConcentrationLoader } from "@/components/metagraphed/concentration-panel";
+import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
 import { NeuronDetailCard } from "@/components/metagraphed/neuron-detail-card";
 import { NeuronHistoryChart } from "@/components/metagraphed/neuron-history-chart";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
@@ -805,14 +805,12 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
       <SectionAnchor
         id="concentration"
         title="Concentration"
-        subtitle="Stake- and emission-distribution metrics: Gini, HHI, Nakamoto coefficient, and top-percentile shares with daily drift."
-        info="GET /api/v1/subnets/{netuid}/concentration and /concentration/history — how concentrated stake and emission are across neurons."
+        subtitle="Stake, emission, and reward distribution: Gini, HHI, Nakamoto coefficient, and top-percentile shares with daily drift."
+        info="GET /api/v1/subnets/{netuid}/concentration and /performance (plus their /history) — how concentrated stake, emission, and rewards (incentive/dividends) are across neurons."
         tone="muted"
       >
         <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-            <ConcentrationLoader netuid={netuid} />
-          </Suspense>
+          <DistributionPanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
     </div>
