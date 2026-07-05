@@ -4036,6 +4036,84 @@
         },
         "additionalProperties": false
       },
+      "ChainStakeTransferVolumeArtifact": {
+        "type": "object",
+        "description": "Network-wide stake-transfer VOLUME over a 7d/30d window across the subnets with observed transfer activity: a per-subnet leaderboard (total TAO transferred, transfer count, and average TAO per transfer) ranked by volume, a network rollup with the total transferred TAO, and a distribution of per-subnet volume. The value companion to the count-based /api/v1/chain/stake-transfers — that route counts StakeTransferred events and distinct senders per subnet, this sums the TAO value moved (transfer_stake relocates staked alpha between coldkeys on the same hotkey, origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/chain/stake-transfer-volume (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "volume_distribution",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": ["string", "null"], "enum": ["7d", "30d", null] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "volume_distribution": {
+            "type": ["object", "null"],
+            "description": "Spread of the per-subnet transfer volume (TAO) across the subnets that saw a transfer in the window (null when no subnet saw a transfer). subnet_count and this distribution cover only subnets with observed StakeTransferred activity, not every registered subnet.",
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "properties": {
+              "count": { "type": "integer", "minimum": 0 },
+              "mean": { "type": "number", "minimum": 0 },
+              "min": { "type": "number", "minimum": 0 },
+              "p25": { "type": "number", "minimum": 0 },
+              "median": { "type": "number", "minimum": 0 },
+              "p75": { "type": "number", "minimum": 0 },
+              "p90": { "type": "number", "minimum": 0 },
+              "max": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "network": {
+            "type": "object",
+            "description": "Rollup over the window: the total TAO transferred across all subnets, the total transfer count, and the network average TAO per transfer (null when no stake transferred).",
+            "required": ["total_volume_tao", "transfers", "avg_transfer_tao"],
+            "properties": {
+              "total_volume_tao": { "type": "number", "minimum": 0 },
+              "transfers": { "type": "integer", "minimum": 0 },
+              "avg_transfer_tao": { "type": ["number", "null"], "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "volume_tao",
+                "transfers",
+                "avg_transfer_tao"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "volume_tao": { "type": "number", "minimum": 0 },
+                "transfers": { "type": "integer", "minimum": 0 },
+                "avg_transfer_tao": {
+                  "type": ["number", "null"],
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "ChainStakeTransfersArtifact": {
         "type": "object",
         "description": "Network-wide stake-transfer activity over a 7d/30d window across the subnets with observed transfer activity: a per-subnet leaderboard (distinct senders, StakeTransferred count, transfers per sender) plus a network rollup with the true distinct sender count and a distribution of per-subnet transfer intensity. The between-coldkeys companion to the within-account re-delegation churn of /api/v1/chain/stake-moves — StakeTransferred (transfer_stake) relocates staked alpha from one account to another on the same hotkey, so it moves ownership rather than net capital or delegation; keyed on the origin subnet and sending account (origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/chain/stake-transfers (no static file); subnet_count 0 and the leaderboard empty when cold.",

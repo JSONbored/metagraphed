@@ -101,6 +101,11 @@ import {
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
 } from "../../src/chain-stake-transfers.mjs";
 import {
+  loadChainStakeTransferVolume,
+  CHAIN_STAKE_TRANSFER_VOLUME_LIMIT_DEFAULT,
+  CHAIN_STAKE_TRANSFER_VOLUME_LIMIT_MAX,
+} from "../../src/chain-stake-transfer-volume.mjs";
+import {
   loadChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,
@@ -871,6 +876,13 @@ const CHAIN_STAKE_TRANSFERS_CSV_COLUMNS = [
   "distinct_senders",
   "transfers",
   "transfers_per_sender",
+];
+
+const CHAIN_STAKE_TRANSFER_VOLUME_CSV_COLUMNS = [
+  "netuid",
+  "volume_tao",
+  "transfers",
+  "avg_transfer_tao",
 ];
 
 // CSV column order for the /api/v1/chain/transfer-pairs top corridors (the
@@ -1846,6 +1858,74 @@ export async function handleChainStakeTransfers(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/stake-transfers.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// GET /api/v1/chain/stake-transfer-volume: network-wide stake-transfer VOLUME across every subnet over
+// a 7d/30d window, read from the account_events StakeTransferred stream. The value companion to
+// chain/stake-transfers (which counts transfers); mirrors it: window + limit params, HEAD probes
+// normalized through the GET cache key so they cannot bypass the edge cache and repeatedly force the
+// network-wide aggregations. The leaderboard is fixed to highest-volume-first (total TAO transferred).
+export async function handleChainStakeTransferVolume(
+  request,
+  env,
+  url,
+  ctx = {},
+) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_STAKE_TRANSFER_VOLUME_LIMIT_DEFAULT,
+    maxLimit: CHAIN_STAKE_TRANSFER_VOLUME_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-stake-transfer-volume",
+    async () => {
+      const data = await loadChainStakeTransferVolume(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
+      // volume_distribution stay JSON-only (mirrors chain-stake-transfers).
+      if (csv) {
+        return csvResponse(
+          data.subnets,
+          "chain-stake-transfer-volume",
+          "short",
+          cacheRequest,
+          CHAIN_STAKE_TRANSFER_VOLUME_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/stake-transfer-volume.json",
             data.observed_at,
           ),
         },

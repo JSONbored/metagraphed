@@ -1247,6 +1247,88 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.network.transfers, 70);
   });
 
+  test("chain stake-transfer-volume samples keep avg-transfer-tao consistent", () => {
+    const volumeProps = {
+      volume_tao: { type: "number" },
+      transfers: { type: "integer" },
+      avg_transfer_tao: { type: ["number", "null"] },
+    };
+    const volumeSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "subnet_count",
+        "network",
+        "volume_distribution",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          required: ["total_volume_tao", "transfers", "avg_transfer_tao"],
+          properties: {
+            total_volume_tao: { type: "number" },
+            transfers: { type: "integer" },
+            avg_transfer_tao: { type: ["number", "null"] },
+          },
+        },
+        volume_distribution: {
+          type: ["object", "null"],
+          properties: {
+            count: { type: "integer" },
+            mean: { type: "number" },
+            min: { type: "number" },
+            p25: { type: "number" },
+            median: { type: "number" },
+            p75: { type: "number" },
+            p90: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["netuid", "volume_tao", "transfers", "avg_transfer_tao"],
+            properties: { netuid: { type: "integer" }, ...volumeProps },
+          },
+        },
+      },
+    };
+    const sample = s(volumeSchema, "data");
+
+    // The worked example is internally consistent: each subnet's avg_transfer_tao equals its
+    // volume_tao / transfers, and the network rollup does the same.
+    for (const subnet of sample.subnets) {
+      assert.equal(
+        subnet.avg_transfer_tao,
+        subnet.volume_tao / subnet.transfers,
+      );
+    }
+    assert.equal(
+      sample.network.avg_transfer_tao,
+      sample.network.total_volume_tao / sample.network.transfers,
+    );
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.volume_distribution.count, sample.subnets.length);
+
+    // A shape whose network lacks total_volume_tao is not a volume artifact and is left untouched.
+    const notVolume = JSON.parse(JSON.stringify(volumeSchema));
+    delete notVolume.properties.network.properties.total_volume_tao;
+    notVolume.properties.network.required =
+      notVolume.properties.network.required.filter(
+        (key) => key !== "total_volume_tao",
+      );
+    const untouched = s(notVolume, "data");
+    assert.notEqual(untouched.network.transfers, 8);
+  });
+
   test("subnet stake-transfers samples keep transfers-per-sender consistent", () => {
     const subnetStakeTransfersSchema = {
       type: "object",

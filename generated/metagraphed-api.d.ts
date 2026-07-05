@@ -786,6 +786,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/stake-transfer-volume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide stake-transfer VOLUME over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (total TAO transferred, transfer count, and average TAO per transfer) ranked by volume, a network rollup with the total transferred TAO, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet volume. `limit` caps the leaderboard (default 20, max 100). The value companion to the count-based GET /api/v1/chain/stake-transfers — that route counts transfers and distinct senders, this sums the TAO value moved (transfer_stake relocates staked alpha between coldkeys on the same hotkey, origin leg only). Computed live from the account_events StakeTransferred stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + volume distribution stay JSON-only). */
+        get: operations["chainStakeTransferVolume"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/stake-transfers": {
         parameters: {
             query?: never;
@@ -3726,6 +3743,38 @@ export interface components {
                 transfers: number;
                 transfers_per_sender: number | null;
             }[];
+            /** @enum {string|null} */
+            window: "7d" | "30d" | null;
+        };
+        /** @description Network-wide stake-transfer VOLUME over a 7d/30d window across the subnets with observed transfer activity: a per-subnet leaderboard (total TAO transferred, transfer count, and average TAO per transfer) ranked by volume, a network rollup with the total transferred TAO, and a distribution of per-subnet volume. The value companion to the count-based /api/v1/chain/stake-transfers — that route counts StakeTransferred events and distinct senders per subnet, this sums the TAO value moved (transfer_stake relocates staked alpha between coldkeys on the same hotkey, origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/chain/stake-transfer-volume (no static file); subnet_count 0 and the leaderboard empty when cold. */
+        ChainStakeTransferVolumeArtifact: {
+            /** @description Rollup over the window: the total TAO transferred across all subnets, the total transfer count, and the network average TAO per transfer (null when no stake transferred). */
+            network: {
+                avg_transfer_tao: number | null;
+                total_volume_tao: number;
+                transfers: number;
+            };
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: {
+                avg_transfer_tao: number | null;
+                netuid: number;
+                transfers: number;
+                volume_tao: number;
+            }[];
+            /** @description Spread of the per-subnet transfer volume (TAO) across the subnets that saw a transfer in the window (null when no subnet saw a transfer). subnet_count and this distribution cover only subnets with observed StakeTransferred activity, not every registered subnet. */
+            volume_distribution: {
+                count: number;
+                max: number;
+                mean: number;
+                median: number;
+                min: number;
+                p25: number;
+                p75: number;
+                p90: number;
+            } | null;
             /** @enum {string|null} */
             window: "7d" | "30d" | null;
         };
@@ -13012,6 +13061,147 @@ export interface operations {
                     /**
                      * @example netuid,distinct_movers,movements,movements_per_mover
                      *     1,4,40,10
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainStakeTransferVolume: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "network": {
+                     *           "avg_transfer_tao": 15,
+                     *           "total_volume_tao": 120,
+                     *           "transfers": 8
+                     *         },
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 2,
+                     *         "subnets": [
+                     *           {
+                     *             "avg_transfer_tao": 20,
+                     *             "netuid": 1,
+                     *             "transfers": 4,
+                     *             "volume_tao": 80
+                     *           },
+                     *           {
+                     *             "avg_transfer_tao": 10,
+                     *             "netuid": 2,
+                     *             "transfers": 4,
+                     *             "volume_tao": 40
+                     *           }
+                     *         ],
+                     *         "volume_distribution": {
+                     *           "count": 2,
+                     *           "max": 80,
+                     *           "mean": 60,
+                     *           "median": 40,
+                     *           "min": 40,
+                     *           "p25": 40,
+                     *           "p75": 80,
+                     *           "p90": 80
+                     *         },
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainStakeTransferVolumeArtifact"];
+                    };
+                    /**
+                     * @example netuid,volume_tao,transfers,avg_transfer_tao
+                     *     1,1250.5,40,31.2625
                      */
                     "text/csv": string;
                 };

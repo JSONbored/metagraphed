@@ -5560,6 +5560,160 @@
         ],
         "type": "object"
       },
+      "ChainStakeTransferVolumeArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide stake-transfer VOLUME over a 7d/30d window across the subnets with observed transfer activity: a per-subnet leaderboard (total TAO transferred, transfer count, and average TAO per transfer) ranked by volume, a network rollup with the total transferred TAO, and a distribution of per-subnet volume. The value companion to the count-based /api/v1/chain/stake-transfers — that route counts StakeTransferred events and distinct senders per subnet, this sums the TAO value moved (transfer_stake relocates staked alpha between coldkeys on the same hotkey, origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/chain/stake-transfer-volume (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "properties": {
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the window: the total TAO transferred across all subnets, the total transfer count, and the network average TAO per transfer (null when no stake transferred).",
+            "properties": {
+              "avg_transfer_tao": {
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total_volume_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "transfers": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total_volume_tao",
+              "transfers",
+              "avg_transfer_tao"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "avg_transfer_tao": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "transfers": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "volume_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "netuid",
+                "volume_tao",
+                "transfers",
+                "avg_transfer_tao"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "volume_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet transfer volume (TAO) across the subnets that saw a transfer in the window (null when no subnet saw a transfer). subnet_count and this distribution cover only subnets with observed StakeTransferred activity, not every registered subnet.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "mean": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "min": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p25": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p75": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p90": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "volume_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainTransferPair": {
         "additionalProperties": false,
         "description": "One directed sender -> receiver pair on the chain-transfer-pairs leaderboard. Rows are well-formed non-self Balances.Transfer events with both account addresses and a non-negative amount.",
