@@ -66,6 +66,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Quantum Compute source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-48-quantum-compute-health-api",
+      "kind": "subnet-api",
+      "name": "Quantum Compute health API",
+      "notes": "Public no-auth GET /api/health on www.qbittensorlabs.com returning JSON liveness (observed: {\"status\":\"ok\"}). Served on the official qBittensor Labs website host alongside the existing website and source-repo surfaces for SN48.",
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/qbittensor-labs/quantum-compute",
+        "https://www.qbittensorlabs.com/"
+      ],
+      "url": "https://www.qbittensorlabs.com/api/health"
     }
   ],
   "social": {
