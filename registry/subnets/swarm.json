@@ -12,7 +12,28 @@
   "social": {
     "x": "https://x.com/swarmsubnet"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-health",
+      "kind": "subnet-api",
+      "name": "Swarm backend API health",
+      "notes": "Public no-auth GET /health on api.swarm124.com returning application liveness JSON (observed: {\"status\":\"healthy\"}). Served on the SN124 Swarm backend API host documented as the default SWARM_BACKEND_API_URL in the official swarm-subnet CLI and validator backend API client.",
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm/blob/main/swarm/cli.py",
+        "https://github.com/swarm-subnet/swarm/blob/main/swarm/validator/backend_api.py",
+        "https://github.com/swarm-subnet/swarm/blob/main/docs/miner.md"
+      ],
+      "url": "https://api.swarm124.com/health"
+    }
+  ],
   "source_repo": "https://github.com/swarm-subnet/swarm",
   "website_url": "https://www.swarm124.com/",
   "contact": "admin@swarm124.com"
