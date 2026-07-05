@@ -835,6 +835,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-stake-transfer-volume",
+      "path": "/metagraph/chain/stake-transfer-volume.json",
+      "schema_ref": "#/components/schemas/ChainStakeTransferVolumeArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-stake-transfers",
       "path": "/metagraph/chain/stake-transfers.json",
       "schema_ref": "#/components/schemas/ChainStakeTransfersArtifact",
@@ -7071,6 +7078,48 @@
       "id": "chain-deregistrations",
       "method": "GET",
       "path": "/api/v1/chain/deregistrations",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/stake-transfer-volume.json",
+      "cache": "short",
+      "description": "Fetch network-wide stake-transfer VOLUME over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (total TAO transferred, transfer count, and average TAO per transfer) ranked by volume, a network rollup with the total transferred TAO, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet volume. `limit` caps the leaderboard (default 20, max 100). The value companion to the count-based GET /api/v1/chain/stake-transfers — that route counts transfers and distinct senders, this sums the TAO value moved (transfer_stake relocates staked alpha between coldkeys on the same hotkey, origin leg only). Computed live from the account_events StakeTransferred stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + volume distribution stay JSON-only).",
+      "id": "chain-stake-transfer-volume",
+      "method": "GET",
+      "path": "/api/v1/chain/stake-transfer-volume",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

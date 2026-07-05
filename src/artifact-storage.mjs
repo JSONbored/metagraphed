@@ -166,6 +166,9 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide stake-transfer (between-coldkeys) activity across every subnet, computed live from
   // the account_events StakeTransferred stream at /api/v1/chain/stake-transfers — never a file.
   /^chain\/stake-transfers\.json$/,
+  // Network-wide stake-transfer VOLUME (SUM amount_tao) across every subnet, computed live from the
+  // account_events StakeTransferred stream at /api/v1/chain/stake-transfer-volume — never a file.
+  /^chain\/stake-transfer-volume\.json$/,
   // Network-wide concentration aggregated across every subnet's neurons, computed
   // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
   /^chain\/concentration\.json$/,
