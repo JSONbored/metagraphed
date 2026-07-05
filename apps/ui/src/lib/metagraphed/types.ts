@@ -1116,6 +1116,32 @@ export interface SubnetIdentityHistory {
   next_cursor: string | null;
 }
 
+/** One validator's weight-setting activity for a subnet over the window (#1657). */
+export interface SubnetWeightSetter {
+  hotkey: string | null;
+  uid: number | null;
+  weight_sets: number;
+  share: number | null;
+  first_set_at: string | null;
+  last_set_at: string | null;
+}
+
+/**
+ * Per-subnet weight-setters leaderboard over a 7d/30d window (#1657), from
+ * /api/v1/subnets/{netuid}/weights/setters — the individual validators behind the
+ * subnet's WeightsSet activity, ranked by weight-set count. Zeroed when cold.
+ */
+export interface SubnetWeightSetters {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_setters: number;
+  weight_sets: number;
+  setter_count: number;
+  setters: SubnetWeightSetter[];
+}
+
 /**
  * Per-subnet axon-removal (teardown) activity over a 7d/30d window (#1657), from
  * /api/v1/subnets/{netuid}/axon-removals — the removal-side complement of the

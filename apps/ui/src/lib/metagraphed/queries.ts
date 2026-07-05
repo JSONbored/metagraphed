@@ -96,6 +96,8 @@ import type {
   SubnetHistory,
   SubnetHistoryPoint,
   SubnetIdentityHistory,
+  SubnetWeightSetter,
+  SubnetWeightSetters,
   SubnetIdentityHistoryEntry,
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
@@ -2848,6 +2850,62 @@ export const subnetIdentityHistoryQuery = (netuid: number) =>
       );
       return {
         data: normalizeSubnetIdentityHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// One validator's weight-setting row (#1657). Identified by hotkey or uid — a row
+// with neither is dropped; the count falls through to 0 and share to null on junk.
+export function normalizeSubnetWeightSetter(raw: unknown): SubnetWeightSetter | null {
+  if (!isRecord(raw)) return null;
+  const hotkey = firstString(raw.hotkey) ?? null;
+  const uid = firstFiniteNumber(raw.uid) ?? null;
+  if (hotkey == null && uid == null) return null;
+  return {
+    hotkey,
+    uid,
+    weight_sets: firstFiniteNumber(raw.weight_sets) ?? 0,
+    share: firstFiniteNumber(raw.share) ?? null,
+    first_set_at: firstString(raw.first_set_at) ?? null,
+    last_set_at: firstString(raw.last_set_at) ?? null,
+  };
+}
+
+const MAX_SUBNET_WEIGHT_SETTERS = 256;
+
+function normalizeSubnetWeightSetters(netuid: number, raw: unknown): SubnetWeightSetters {
+  const rec = isRecord(raw) ? raw : {};
+  const setters = (Array.isArray(rec.setters) ? rec.setters : [])
+    .map(normalizeSubnetWeightSetter)
+    .filter((setter): setter is SubnetWeightSetter => setter != null)
+    .slice(0, MAX_SUBNET_WEIGHT_SETTERS);
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_setters: firstFiniteNumber(rec.distinct_setters) ?? 0,
+    weight_sets: firstFiniteNumber(rec.weight_sets) ?? 0,
+    setter_count: firstFiniteNumber(rec.setter_count) ?? setters.length,
+    setters,
+  };
+}
+
+// #1657: per-subnet weight-setters leaderboard over a 7d/30d window — the
+// individual validators behind the subnet's WeightsSet activity, newest first.
+export const subnetWeightSettersQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-weight-setters", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetWeightSetters>>(
+        `/api/v1/subnets/${netuid}/weights/setters`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetWeightSetters(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };
