@@ -114,6 +114,70 @@ describe("coverage-depth-mcp", () => {
     );
   });
 
+  test("coverageDepthQueryUrl rejects invalid agent_status", () => {
+    assert.throws(
+      () => coverageDepthQueryUrl({ agent_status: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("coverageDepthQueryUrl rejects invalid blocker_level", () => {
+    assert.throws(
+      () => coverageDepthQueryUrl({ blocker_level: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("coverageDepthQueryUrl rejects invalid sort", () => {
+    assert.throws(
+      () => coverageDepthQueryUrl({ sort: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("coverageDepthQueryUrl rejects a fractional netuid", () => {
+    assert.throws(
+      () => coverageDepthQueryUrl({ netuid: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("coverageDepthQueryUrl rejects empty q search", () => {
+    assert.throws(
+      () => coverageDepthQueryUrl({ q: "   " }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("coverageDepthQueryUrl rejects non-string fields", () => {
+    assert.throws(
+      () => coverageDepthQueryUrl({ fields: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("coverageDepthQueryUrl rejects empty fields projection", () => {
+    assert.throws(
+      () => coverageDepthQueryUrl({ fields: "   " }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("coverageDepthQueryUrl trims and forwards a fields projection", () => {
+    const url = coverageDepthQueryUrl({ fields: " netuid,tier " });
+    assert.equal(url.searchParams.get("fields"), "netuid,tier");
+  });
+
+  test("coverageDepthQueryUrl clamps a non-numeric limit to the default", () => {
+    const url = coverageDepthQueryUrl({ limit: "lots" });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("coverageDepthQueryUrl clamps a sub-minimum numeric limit to the default", () => {
+    const url = coverageDepthQueryUrl({ limit: 0 });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
   test("coverageDepthQueryUrl clamps limit above the MCP maximum", () => {
     const url = coverageDepthQueryUrl({ limit: 500 });
     assert.equal(url.searchParams.get("limit"), "100");
@@ -138,6 +202,85 @@ describe("coverage-depth-mcp", () => {
     assert.equal(out.total, 2);
     assert.equal(out.rows[0].netuid, 7);
     assert.equal(out.next_cursor, 1);
+  });
+
+  test("loadCoverageDepthList uses an injected readArtifact dep", async () => {
+    const out = await loadCoverageDepthList(
+      { env: {}, readArtifact: async () => ({ ok: false }) },
+      {},
+      {
+        readArtifact: async () => ({
+          ok: true,
+          data: { rows: [{ netuid: 0 }] },
+        }),
+      },
+    );
+    assert.equal(out.rows[0].netuid, 0);
+  });
+
+  test("loadCoverageDepthList surfaces other artifact failures", async () => {
+    await assert.rejects(
+      () =>
+        loadCoverageDepthList(
+          {
+            env: {},
+            readArtifact: async () => ({
+              ok: false,
+              code: "artifact_timeout",
+            }),
+          },
+          {},
+        ),
+      (err) =>
+        err.code === "artifact_timeout" &&
+        /coverage-depth\.json/.test(err.message),
+    );
+  });
+
+  test("loadCoverageDepthList preserves array notes from the artifact", async () => {
+    const out = await loadCoverageDepthList(
+      {
+        env: {},
+        readArtifact: async () => ({
+          ok: true,
+          data: {
+            notes: ["advisory only"],
+            rows: [{ netuid: 7 }],
+          },
+        }),
+      },
+      {},
+    );
+    assert.deepEqual(out.notes, ["advisory only"]);
+  });
+
+  test("loadCoverageDepthList omits nullable artifact metadata when absent", async () => {
+    const out = await loadCoverageDepthList(
+      {
+        env: {},
+        readArtifact: async () => ({
+          ok: true,
+          data: { rows: [{ netuid: 0 }] },
+        }),
+      },
+      {},
+    );
+    assert.equal(out.generated_at, null);
+    assert.equal(out.notes, null);
+  });
+
+  test("loadCoverageDepthList defaults code when the read result is bare", async () => {
+    await assert.rejects(
+      () =>
+        loadCoverageDepthList(
+          {
+            env: {},
+            readArtifact: async () => ({ ok: false }),
+          },
+          {},
+        ),
+      (err) => err.code === "artifact_unavailable",
+    );
   });
 
   test("loadCoverageDepthList maps artifact_not_found to not_found", async () => {
