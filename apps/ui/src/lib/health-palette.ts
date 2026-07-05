@@ -102,13 +102,13 @@ const STORAGE_KEY = "mg-health-palette";
 const STYLE_ID = "mg-health-palette-style";
 const DEFAULT_ID: HealthPaletteId = "traffic-light";
 
-function readId(): HealthPaletteId {
+export function readId(): HealthPaletteId {
   if (typeof window === "undefined") return DEFAULT_ID;
   const v = window.localStorage.getItem(STORAGE_KEY);
   return (HEALTH_PALETTES.find((p) => p.id === v)?.id ?? DEFAULT_ID) as HealthPaletteId;
 }
 
-function cssFor(p: HealthPaletteDef): string {
+export function cssFor(p: HealthPaletteDef): string {
   return (
     `:root{--health-ok:${p.light.ok};--health-warn:${p.light.warn};--health-down:${p.light.down};--health-unknown:${p.light.unknown};}` +
     `.dark{--health-ok:${p.dark.ok};--health-warn:${p.dark.warn};--health-down:${p.dark.down};--health-unknown:${p.dark.unknown};}`
