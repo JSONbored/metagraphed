@@ -14633,6 +14633,22 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.source, "build-prober");
   });
 
+  test("list_rpc_pools reports operational_observed_at:null when the live snapshot has no last_run_at", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/rpc/pools.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          pools: [{ network: "finney", endpoints: [] }],
+        },
+      },
+      { [KV_HEALTH_RPC_POOL]: { endpoints: [{ id: "a", status: "ok" }] } },
+    );
+    const res = await callTool("list_rpc_pools", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "live-cron-prober");
+    assert.equal(out.operational_observed_at, null);
+  });
+
   test("list_rpc_pools rejects an unexpected argument", async () => {
     const res = await callTool("list_rpc_pools", { netuid: 7 });
     assert.equal(res.body.result.isError, true);
