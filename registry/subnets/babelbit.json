@@ -30,6 +30,25 @@
         "https://api.babelbit.ai/docs"
       ],
       "url": "https://api.babelbit.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-59-babelbit-health",
+      "kind": "subnet-api",
+      "name": "Babelbit utterance engine health",
+      "notes": "Public no-auth GET /health on api.babelbit.ai returning utterance-engine liveness JSON (observed: {\"status\":\"healthy\",\"active_sessions\":{\"source_audio\":N,\"target_audio\":N,\"solo\":N}}). The API root advertises /health under public_endpoints and the official babelbit_subnet README documents it (\"arena health checks expect GET /health\"); it is a no-security GET in the OpenAPI schema. Served on the same host as the existing openapi surface.",
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "e11734937-beep"
+      },
+      "source_urls": [
+        "https://github.com/babelbit/babelbit_subnet/blob/main/README.md",
+        "https://api.babelbit.ai/openapi.json"
+      ],
+      "url": "https://api.babelbit.ai/health"
     }
   ]
 }
