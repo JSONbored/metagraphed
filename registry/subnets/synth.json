@@ -1,0 +1,52 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Synth",
+  "netuid": 50,
+  "schema_version": 1,
+  "slug": "sn-50",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-50-synth-openapi",
+      "kind": "openapi",
+      "name": "Synth API OpenAPI spec",
+      "notes": "Public Swagger 2.0 spec for the Synth API (48 unauthenticated GET endpoints — probabilistic price forecasts, market insights, leaderboards). The official synth-subnet README documents the API docs at api.synthdata.co/docs.",
+      "provider": "synth",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.synthdata.co/swagger.json",
+      "source_urls": [
+        "https://github.com/synthdataco/synth-subnet/blob/main/README.md"
+      ],
+      "url": "https://api.synthdata.co/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-50-synth-subnet-api",
+      "kind": "subnet-api",
+      "name": "Synth API",
+      "notes": "Public no-auth REST API at api.synthdata.co exposing Synth's probabilistic price forecasts, leaderboards, and market insights; the /v2/leaderboard/latest endpoint returns JSON with no authentication. Documented in the official synth-subnet README.",
+      "provider": "synth",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": [
+        "https://github.com/synthdataco/synth-subnet/blob/main/README.md"
+      ],
+      "url": "https://api.synthdata.co/v2/leaderboard/latest"
+    }
+  ]
+}
