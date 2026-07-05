@@ -109,7 +109,7 @@ const curationLabel: Record<CurationLevel, string> = {
 const curationCls: Record<CurationLevel, string> = {
   native: "bg-transparent text-ink-strong border-ink-strong/40",
   "candidate-discovered": "bg-transparent text-ink-muted border-dashed border-ink-subtle",
-  "community-seeded": "bg-transparent text-ink-muted border-curation-seeded/40",
+  "community-seeded": "bg-transparent text-curation-seeded border-curation-seeded/40",
   "machine-verified": "bg-transparent text-ink-muted border-border",
   "maintainer-reviewed": "bg-primary-soft text-curation-verified border-accent/40",
   "adapter-backed": "bg-primary-soft text-curation-pilot border-accent/50",

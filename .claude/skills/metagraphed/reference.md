@@ -289,7 +289,12 @@ local paths, env dumps, or private notes.
   version isn't bumped in a contributor PR.
 - **`packages/client` is an npm workspace (#3066), with no lockfile of its own.** `apps/ui` consumes it
   as a live workspace link (`"@jsonbored/metagraphed": "*"` in `apps/ui/package.json`, resolved from
-  `packages/client` directly) instead of round-tripping through the published npm package — editing
+  `packages/client` directly) instead of round-tripping through the published npm package. Verified
+  this does NOT silently fall back to a registry-fetched copy even when installing from directly
+  inside `apps/ui` (`cd apps/ui && npm install`, no `--workspace` flag) — npm still walks up to the
+  root `package.json`'s `workspaces` field and links `node_modules/@jsonbored/metagraphed` as a real
+  symlink to `packages/client`, matching a root-scoped `npm ci --workspace=apps/ui` install exactly
+  (confirmed by identical package counts and a real symlink check). Editing
   `packages/client/src/*` and rebuilding (`npm run build --workspace=packages/client`) is immediately
   visible to `apps/ui`, no publish needed. `packages/client`'s own `typescript` devDependency must stay
   aligned with the root/`apps/ui` range (`^5.9.3`): `tsup` (its build tool) is hoisted to the _root_
