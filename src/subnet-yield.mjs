@@ -21,6 +21,16 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// A finite TAO cell, or null when absent/blank/non-numeric. Blank D1 cells coerce via
+// Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
+// zero-yield readings (mirrors nullableNumber in metagraph-neurons.mjs).
+function nullableTao(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 // Sum a subnet's per-UID stake_tao/emission_tao in rao-integer BigInt space, not
 // float space -- a subnet's neuron set is often hundreds to thousands of rows, and
 // plain `+=` float accumulation compounds rounding error across the sum even when
@@ -62,9 +72,11 @@ function toIso(value) {
 }
 
 // Emission-per-stake return rate; null when stake is 0 (return is undefined with no
-// stake to earn on), so zero-stake UIDs are excluded from the distribution.
+// stake to earn on) or emission is unknown, so zero-stake / blank-emission UIDs are
+// excluded from the distribution.
 function computeYieldValue(emission, stake) {
   if (!(stake > 0)) return null;
+  if (emission == null) return null;
   return round9(emission / stake);
 }
 
@@ -120,20 +132,21 @@ export function buildSubnetYield(rows, netuid) {
         blockNumber = Number.isFinite(block) ? block : null;
       }
     }
-    const stake = toNumber(row?.stake_tao);
-    const emission = toNumber(row?.emission_tao);
+    const stake = nullableTao(row?.stake_tao);
+    if (stake == null) continue;
+    const emission = nullableTao(row?.emission_tao);
     // Match the sibling neuron formatter's SQLite 0/1 convention: only an integer 1
     // is a validator, so a numeric-string "0" cannot slip through as truthy.
     const isValidator = Number(row?.validator_permit) === 1;
     totalStakeRao += toRaoBig(stake);
-    totalEmissionRao += toRaoBig(emission);
+    if (emission != null) totalEmissionRao += toRaoBig(emission);
     if (isValidator) validatorCount += 1;
     neurons.push({
       uid,
       hotkey: row?.hotkey ?? null,
       role: isValidator ? "validator" : "miner",
       stake_tao: round9(stake),
-      emission_tao: round9(emission),
+      emission_tao: emission != null ? round9(emission) : null,
       yield: computeYieldValue(emission, stake),
     });
   }
@@ -255,12 +268,15 @@ function yieldHistoryPoint(date, dayRows) {
   let totalStakeRao = 0n;
   let totalEmissionRao = 0n;
   let validatorCount = 0;
+  let neuronCount = 0;
   const definedYields = [];
   for (const row of dayRows) {
-    const stake = toNumber(row?.stake_tao);
-    const emission = toNumber(row?.emission_tao);
+    const stake = nullableTao(row?.stake_tao);
+    if (stake == null) continue;
+    neuronCount += 1;
+    const emission = nullableTao(row?.emission_tao);
     totalStakeRao += toRaoBig(stake);
-    totalEmissionRao += toRaoBig(emission);
+    if (emission != null) totalEmissionRao += toRaoBig(emission);
     if (Number(row?.validator_permit) === 1) validatorCount += 1;
     const y = computeYieldValue(emission, stake);
     if (y != null) definedYields.push(y);
@@ -276,7 +292,7 @@ function yieldHistoryPoint(date, dayRows) {
       : null;
   return {
     snapshot_date: date,
-    neuron_count: dayRows.length,
+    neuron_count: neuronCount,
     validator_count: validatorCount,
     yield_count: definedYields.length,
     subnet_yield: totalStake > 0 ? round9(totalEmission / totalStake) : null,

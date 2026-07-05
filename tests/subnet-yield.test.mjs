@@ -160,7 +160,7 @@ describe("buildSubnetYield", () => {
     assert.equal(d.median_yield, 0.2); // only the defined yield counts
   });
 
-  test("skips a malformed uid and coerces non-numeric stake/emission/stamp to 0/null", () => {
+  test("skips a malformed uid and coerces non-numeric stamp to null", () => {
     const d = buildSubnetYield(
       [
         { uid: null, validator_permit: 1, stake_tao: 9, emission_tao: 9 },
@@ -174,11 +174,32 @@ describe("buildSubnetYield", () => {
       ],
       7,
     );
-    assert.equal(d.neuron_count, 1); // only uid 2 survived
-    assert.equal(d.total_stake_tao, 0); // non-numeric -> 0
-    assert.equal(d.neurons[0].yield, null); // 0 stake -> null
-    assert.equal(d.captured_at, null); // non-finite stamp -> null
-    assert.equal(d.block_number, null); // non-finite block -> null
+    assert.equal(d.neuron_count, 0);
+    assert.equal(d.captured_at, null);
+    assert.equal(d.block_number, null);
+  });
+
+  test("reject blank stake_tao/emission_tao cells that coerce to 0", () => {
+    for (const blank of ["", "   "]) {
+      const skippedStake = buildSubnetYield(
+        [neuron(1, { stake: blank, emission: 2 })],
+        7,
+      );
+      assert.equal(
+        skippedStake.neuron_count,
+        0,
+        `stake ${JSON.stringify(blank)}`,
+      );
+
+      const blankEmission = buildSubnetYield(
+        [neuron(2, { stake: 10, emission: blank })],
+        7,
+      );
+      assert.equal(blankEmission.neuron_count, 1);
+      assert.equal(blankEmission.neurons[0].emission_tao, null);
+      assert.equal(blankEmission.neurons[0].yield, null);
+      assert.equal(blankEmission.total_emission_tao, 0);
+    }
   });
 
   test("a null D1 block_number stays null, not a fabricated genesis 0", () => {
@@ -446,6 +467,27 @@ describe("buildSubnetYieldHistory", () => {
       assert.deepEqual(empty.points, []);
       assert.equal(empty.window, "30d");
     }
+  });
+
+  test("reject blank stake_tao/emission_tao cells in daily history points", () => {
+    const data = buildSubnetYieldHistory(
+      [
+        { snapshot_date: "2026-06-27", stake_tao: "", emission_tao: 10 },
+        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: "   " },
+        {
+          snapshot_date: "2026-06-27",
+          stake_tao: 100,
+          emission_tao: 10,
+          validator_permit: 1,
+        },
+      ],
+      7,
+      { window: "7d" },
+    );
+    assert.equal(data.point_count, 1);
+    assert.equal(data.points[0].neuron_count, 2);
+    assert.equal(data.points[0].yield_count, 1);
+    assert.equal(data.points[0].median_yield, 0.1);
   });
 
   test("a day with no staked UIDs yields null distribution metrics", () => {
