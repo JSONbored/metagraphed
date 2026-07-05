@@ -1856,7 +1856,11 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_provider_endpoints rejects a missing slug", async () => {
-    const res = await callTool("list_provider_endpoints", {}, { deps: makeDeps() });
+    const res = await callTool(
+      "list_provider_endpoints",
+      {},
+      { deps: makeDeps() },
+    );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /slug/);
   });

@@ -138,10 +138,7 @@ describe("provider-endpoints-mcp", () => {
   test("loadProviderEndpointsList reports not_found when the artifact is absent", async () => {
     await assert.rejects(
       () =>
-        loadProviderEndpointsList(
-          { env: {}, readArtifact },
-          { slug: "ghost" },
-        ),
+        loadProviderEndpointsList({ env: {}, readArtifact }, { slug: "ghost" }),
       (err) => err.code === "not_found",
     );
   });
@@ -227,7 +224,10 @@ describe("provider-endpoints-mcp", () => {
       LIST_PROVIDER_ENDPOINTS_MCP_TOOL.name,
       "list_provider_endpoints",
     );
-    assert.match(LIST_PROVIDER_ENDPOINTS_INSTRUCTIONS, /list_provider_endpoints/);
+    assert.match(
+      LIST_PROVIDER_ENDPOINTS_INSTRUCTIONS,
+      /list_provider_endpoints/,
+    );
     assert.ok(
       new Ajv2020({ strict: false }).compile(
         LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
