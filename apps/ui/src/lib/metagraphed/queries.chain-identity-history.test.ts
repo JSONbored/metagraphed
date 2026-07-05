@@ -77,4 +77,14 @@ describe("chainIdentityHistoryQuery", () => {
       description: "updated copy",
     });
   });
+
+  it("clamps the request limit to the API maximum", async () => {
+    resolveWith({ schema_version: 1, count: 0, subnet_count: 0, changes: [] });
+
+    await runQuery(9999);
+    expect(mockedApiFetch).toHaveBeenCalledWith("/api/v1/chain/identity-history", {
+      params: { limit: 200 },
+      signal: expect.any(AbortSignal),
+    });
+  });
 });

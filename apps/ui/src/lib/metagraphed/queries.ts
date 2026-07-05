@@ -2957,24 +2957,29 @@ function normalizeChainIdentityHistory(raw: unknown): ChainIdentityHistory {
   return {
     schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
     count: firstFiniteNumber(rec.count) ?? changes.length,
-    subnet_count:
-      subnetCount ??
-      new Set(changes.map((change) => change.netuid)).size,
+    subnet_count: subnetCount ?? new Set(changes.map((change) => change.netuid)).size,
     changes,
   };
+}
+
+function clampChainIdentityHistoryLimit(limit: number): number {
+  const n = Math.floor(limit);
+  if (!Number.isFinite(n) || n <= 0) return 10;
+  return Math.min(n, MAX_CHAIN_IDENTITY_HISTORY_CHANGES);
 }
 
 // Network-wide subnet identity change feed (#3474) — newest SubnetIdentitiesV3
 // snapshots across every subnet. Distinct from subnetIdentityHistoryQuery, which
 // scopes to one netuid.
-export const chainIdentityHistoryQuery = (limit = 10) =>
-  queryOptions({
-    queryKey: k("chain-identity-history", limit),
+export const chainIdentityHistoryQuery = (limit = 10) => {
+  const boundedLimit = clampChainIdentityHistoryLimit(limit);
+  return queryOptions({
+    queryKey: k("chain-identity-history", boundedLimit),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Partial<ChainIdentityHistory>>(
-        "/api/v1/chain/identity-history",
-        { params: { limit }, signal },
-      );
+      const res = await apiFetch<Partial<ChainIdentityHistory>>("/api/v1/chain/identity-history", {
+        params: { limit: boundedLimit },
+        signal,
+      });
       return {
         data: normalizeChainIdentityHistory(res.data),
         meta: res.meta,
@@ -2983,6 +2988,7 @@ export const chainIdentityHistoryQuery = (limit = 10) =>
     },
     staleTime: STALE_MED,
   });
+};
 
 // One validator's weight-setting row (#1657). Identified by hotkey or uid — a row
 // with neither is dropped; the count falls through to 0 and share to null on junk.
