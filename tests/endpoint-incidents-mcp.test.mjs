@@ -377,7 +377,7 @@ describe("endpoint-incidents-mcp", () => {
   });
 
   test("MCP server exports wire list_endpoint_incidents at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.64.0");
+    assert.equal(MCP_SERVER_VERSION, "1.66.0");
     assert.match(MCP_INSTRUCTIONS, /list_endpoint_incidents/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_endpoint_incidents");
     assert.ok(tool);

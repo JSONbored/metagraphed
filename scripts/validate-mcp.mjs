@@ -302,6 +302,9 @@ assert.equal(
 assert.ok(changelog.summary && typeof changelog.summary === "object");
 assert.ok(changelog.artifacts && typeof changelog.artifacts === "object");
 assert.ok(changelog.subnets && typeof changelog.subnets === "object");
+const build = await callOk("get_build", {});
+assert.equal(typeof build.artifact_count, "number");
+assert.ok(Array.isArray(build.artifacts), "get_build must return artifacts[]");
 
 // Per-subnet gap artifacts are R2-only (review/gaps/{netuid}.json); the cold
 // env has them only after `npm run build` stages dist/. Exercise the happy path
