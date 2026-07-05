@@ -186,6 +186,25 @@
         "https://hippius.com/"
       ],
       "url": "https://api.hippius.com/api/models/formats/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-health",
+      "kind": "subnet-api",
+      "name": "Hippius registry health",
+      "notes": "Public no-auth GET /api/registry/health/ returning Hippius registry reachability JSON (observed: {\"ok\":true,\"latency_ms\":133}). Documented in the subnet swagger.json as a lightweight Harbor reachability check on the same api.hippius.com host as the existing models subnet-api surface.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.hippius.com/swagger.json",
+        "https://hippius.com/"
+      ],
+      "url": "https://api.hippius.com/api/registry/health/"
     }
   ],
   "website_url": "https://hippius.com/"
