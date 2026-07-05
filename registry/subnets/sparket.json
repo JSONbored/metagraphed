@@ -69,6 +69,28 @@
         "timeout_ms": 10000
       },
       "notes": "Official Sparket source repository."
+    },
+    {
+      "id": "sn-57-sparket-subnet-api",
+      "name": "Sparket API health",
+      "kind": "subnet-api",
+      "url": "https://sparket.ai/api/v1/health",
+      "provider": "sparket",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://sparket.ai/"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "notes": "Public no-auth GET returning the Sparket (SN57) backend API health as JSON (status, db connectivity, version, and sync lag). Served on the subnet's own registered website domain sparket.ai under /api/v1/. Fills the file's noted missing public-API-endpoint gap."
     }
   ]
 }
