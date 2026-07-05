@@ -55,7 +55,7 @@ if (typegen.status !== 0) {
   errors.push("openapi-typescript failed.");
 } else {
   for (const relativePath of [
-    "generated/metagraphed-api.d.ts",
+    "packages/contract/index.d.ts",
     "public/metagraph/types.d.ts",
   ]) {
     const current = await fs.readFile(

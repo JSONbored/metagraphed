@@ -334,6 +334,26 @@ local paths, env dumps, or private notes.
   Deliberately NOT a package.json "prepare" script even for the drift-check purpose: that would
   auto-run on every `npm install`/`ci` repo-wide, which a security scan already flagged once as
   unnecessary install-time code execution (#3066 review).
+- **`packages/contract` is a types-only npm workspace (#3067) holding the OpenAPI-derived contract
+  types** — `openapi-typescript`'s output (`scripts/generate-types.mjs`/`validate-types.mjs`/
+  `validate-contract-drift.mjs` all write/check `packages/contract/index.d.ts` now, no longer
+  `generated/metagraphed-api.d.ts`, which no longer exists). `packages/client` depends on it as a
+  real `devDependency` (`"metagraphed-contract": "*"`) and imports `type { components, paths } from
+"metagraphed-contract"` directly — no more copying it into `packages/client/src` first (unlike
+  `generated/metagraphed-client.ts`, the hand-templated SDK helper logic, which is unrelated contract
+  content and still gets copied there exactly as before). **`packages/client`'s build command MUST
+  keep the `--dts-resolve` flag** (`tsup ... --dts --dts-resolve ...`): without it, `tsup` leaves a
+  bare `import { components, paths } from 'metagraphed-contract'` in the PUBLISHED package's own
+  `dist/index.d.ts`/`index.d.cts` instead of inlining the 1.1 MB of actual type content — since
+  `metagraphed-contract` is `"private": true` and never published to npm, every external SDK consumer's
+  TypeScript compiler would fail outright trying to resolve that import. Verified directly: without
+  `--dts-resolve`, the published output shrinks from ~1.13 MB to ~8.7 KB (the tell that nothing got
+  inlined) and literally contains that import line; with it, the output is back to ~1.13 MB with zero
+  occurrences of `metagraphed-contract` anywhere in it. `packages/contract` needs no build step of its
+  own (no runtime code, nothing to bundle) and is a required trigger for the `ui` CI job's drift check
+  same as `packages/client/**` (see the `changes` job comment above) — a schema-only PR can regenerate
+  `packages/contract/index.d.ts` (caught by `checks`' `validate:contract-drift`) without anyone
+  rebuilding+committing `packages/client/dist` to match, and only that job's drift check would catch it.
 - **`vite` must stay an explicit ROOT-level devDependency**, even though the backend never imports it.
   Cloudflare Workers Builds' automatic dependency-install step runs scoped to `--workspace=apps/ui`
   only (never a full monorepo install — confirmed by matching package counts against a real Cloudflare

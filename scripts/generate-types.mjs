@@ -3,10 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.mjs";
 
-const generatedOutputPath = path.join(
-  repoRoot,
-  "generated/metagraphed-api.d.ts",
-);
+const generatedOutputPath = path.join(repoRoot, "packages/contract/index.d.ts");
 const publicOutputPath = path.join(repoRoot, "public/metagraph/types.d.ts");
 const openapiTypescriptCli = path.join(
   repoRoot,

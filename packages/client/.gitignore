@@ -1,6 +1,8 @@
 node_modules
 # Synced from the repo root at build time (see scripts/sync-generated.mjs).
-src/metagraphed-api.ts
+# The contract types (formerly also synced here as src/metagraphed-api.ts)
+# come from the metagraphed-contract workspace package instead (#3067) --
+# nothing to gitignore for those anymore.
 src/metagraphed-client.ts
 
 # dist/index.js + dist/index.cjs (the RUNTIME bundle only) ARE committed here

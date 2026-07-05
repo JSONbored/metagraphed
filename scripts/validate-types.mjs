@@ -4,7 +4,7 @@ import path from "node:path";
 import { repoRoot } from "./lib.mjs";
 
 const outputPaths = [
-  path.join(repoRoot, "generated/metagraphed-api.d.ts"),
+  path.join(repoRoot, "packages/contract/index.d.ts"),
   path.join(repoRoot, "public/metagraph/types.d.ts"),
 ];
 const result = spawnSync(

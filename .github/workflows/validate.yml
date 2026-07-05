@@ -84,17 +84,23 @@ jobs:
   #
   # A third, same-shape flag: `run_ui_validation` gates the `ui` job below
   # (apps/ui, the TanStack Start/Vite frontend folded in as an npm workspace —
-  # #3062). Matches `^apps/ui/` OR `^packages/client/` -- the latter is
-  # required, not optional: packages/client/dist/index.js + index.cjs are
-  # committed (#3066/#3294), and the ui job's "Build packages/client (drift
-  # check)" step is the ONLY place that verifies those committed files still
-  # match a fresh build from src. A packages/client-only PR (no apps/ui
-  # touch) would otherwise skip that check entirely, letting stale or
-  # directly-tampered committed runtime code merge unverified (a real P1
-  # finding from Superagent on #3294 — this was fixed in response to that,
-  # not written correctly the first time). Neither directory's validation
-  # touches anything outside these two, so this flag isn't registry-adjacent
-  # either, same reasoning as the two flags above.
+  # #3062). Matches `^apps/ui/` OR `^packages/client/` OR `^packages/contract/`
+  # -- the latter two are required, not optional: packages/client/dist/
+  # index.js + index.cjs are committed (#3066/#3294), and the ui job's "Build
+  # packages/client (drift check)" step is the ONLY place that verifies those
+  # committed files still match a fresh build from src. A packages/client-only
+  # PR (no apps/ui touch) would otherwise skip that check entirely, letting
+  # stale or directly-tampered committed runtime code merge unverified (a real
+  # P1 finding from Superagent on #3294 — this was fixed in response to that,
+  # not written correctly the first time). packages/contract/** (#3067, the
+  # shared OpenAPI-derived contract types packages/client bundles) needs the
+  # same trigger for the same reason: a schema-only PR can regenerate
+  # packages/contract/index.d.ts (caught fresh by `checks`' own
+  # validate:contract-drift) without anyone rebuilding+committing
+  # packages/client/dist to match, and that drift would only ever be caught
+  # here. None of these three directories' validation touches anything outside
+  # themselves, so this flag isn't registry-adjacent either, same reasoning as
+  # the two flags above.
   changes:
     name: changes
     runs-on: ubuntu-latest
@@ -164,7 +170,7 @@ jobs:
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^apps/ui/|^packages/client/' changed-files.txt; then
+          if grep -qE '^apps/ui/|^packages/client/|^packages/contract/' changed-files.txt; then
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"

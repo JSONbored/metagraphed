@@ -66,7 +66,7 @@ jobs:
             echo "last SDK bump commit: ${last_bump}"
             if git diff --quiet "${last_bump}" HEAD -- \
               public/metagraph/openapi.json \
-              generated/metagraphed-api.d.ts \
+              packages/contract/index.d.ts \
               generated/metagraphed-client.ts; then
               echo "no contract changes since ${last_bump}; skipping version bump"
               echo "changed=false" >> "$GITHUB_OUTPUT"

@@ -37,10 +37,11 @@
   },
   "scripts": {
     "sync": "node scripts/sync-generated.mjs",
-    "build": "npm run sync && tsup src/index.ts --format esm,cjs --dts --clean --treeshake",
+    "build": "npm run sync && tsup src/index.ts --format esm,cjs --dts --dts-resolve --clean --treeshake",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "metagraphed-contract": "*",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },

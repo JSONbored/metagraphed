@@ -23,7 +23,7 @@ export function generateClientSource() {
  * Do not make direct changes to the file.
  */
 
-import type { components, paths } from "./metagraphed-api";
+import type { components, paths } from "metagraphed-contract";
 
 export type ApiPaths = paths;
 export type ApiComponents = components;

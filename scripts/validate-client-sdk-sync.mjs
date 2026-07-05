@@ -27,7 +27,7 @@ import { repoRoot } from "./lib.mjs";
 // package's openapi tracking.
 export const CONTRACT_PATHS = [
   "public/metagraph/openapi.json",
-  "generated/metagraphed-api.d.ts",
+  "packages/contract/index.d.ts",
   "generated/metagraphed-client.ts",
 ];
 

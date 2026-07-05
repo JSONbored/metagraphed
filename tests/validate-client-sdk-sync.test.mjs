@@ -60,11 +60,11 @@ describe("client-SDK drift gate (diff logic)", () => {
 
   it("normalizes Windows-style separators and ignores blanks", () => {
     const result = evaluateClientSdkSync({
-      changedFiles: ["", "  ", "generated\\metagraphed-api.d.ts"],
+      changedFiles: ["", "  ", "packages\\contract\\index.d.ts"],
       versionChanged: false,
     });
     expect(result.contractChanged).toBe(true);
-    expect(result.contractFiles).toContain("generated/metagraphed-api.d.ts");
+    expect(result.contractFiles).toContain("packages/contract/index.d.ts");
   });
 
   it("treats a contract change with a version bump as in-sync regardless of order", () => {
