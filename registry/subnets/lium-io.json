@@ -12,5 +12,57 @@
   "social": {
     "x": "https://x.com/lium_io"
   },
-  "surfaces": []
+  "website_url": "https://lium.io/",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-io-openapi",
+      "kind": "openapi",
+      "name": "Lium Backend API OpenAPI schema",
+      "notes": "Public machine-readable OpenAPI 3.1.0 document for the Lium Backend API (title \"Lium Backend API\", version 1.0.0) powering the SN51 lium.io GPU-compute marketplace. Fetched 200 with a real paths object (e.g. GET /machines, /executors, /volumes, /version). No auth required to retrieve the schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://lium.io/api/openapi.json",
+      "source_urls": ["https://lium.io/", "https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-io-machines-api",
+      "kind": "subnet-api",
+      "name": "Lium machines API",
+      "notes": "Public no-auth GET /api/machines on lium.io returning a JSON array of available GPU machine types with live pricing and utilization (name, price, rental_rate, total_gpu_count, per-epoch cost estimates) for the SN51 lium.io compute marketplace. Verified 200 application/json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "schema_url": "https://lium.io/api/openapi.json",
+      "source_urls": [
+        "https://lium.io/api/machines",
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/machines"
+    }
+  ]
 }
