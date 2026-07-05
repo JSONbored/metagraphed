@@ -64,6 +64,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Compelle validator repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-82-compelle-health",
+      "kind": "subnet-api",
+      "name": "Compelle aggregation health",
+      "notes": "Public no-auth GET /api/health on compelle.com returning aggregation-service liveness JSON (observed: {\"ok\":true,\"db_size_bytes\":...,\"games\":...,\"miners\":...}). Served on the official Compelle SN82 debate arena host linked from the validator repository.",
+      "provider": "compelle",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/compelle/compelle-validator",
+        "https://compelle.com/"
+      ],
+      "url": "https://compelle.com/api/health"
     }
   ]
 }
