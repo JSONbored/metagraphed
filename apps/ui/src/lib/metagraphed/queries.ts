@@ -3441,6 +3441,12 @@ async function fetchInfinitePage<T>(
   return { ...res, meta, cursorInvalid: v.invalid };
 }
 
+/** Read the validated next cursor stashed on infinite-list meta by fetchInfinitePage. */
+export function getNextPageParam(last: { meta?: Record<string, unknown> }): string | undefined {
+  const nc = last.meta?._next_cursor as string | null | undefined;
+  return nc ?? undefined;
+}
+
 /** Server-driven cursor-paginated subnets. */
 export const subnetsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
   infiniteQueryOptions({
@@ -3456,10 +3462,7 @@ export const subnetsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor
       );
       return { ...page, data: page.data.map(normalizeSubnet) } as typeof page;
     },
-    getNextPageParam: (last) => {
-      const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
-      return nc ?? undefined;
-    },
+    getNextPageParam,
     staleTime: STALE_MED,
   });
 
@@ -3481,10 +3484,7 @@ export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCurso
       // are populated — same mapping the non-paginated surfacesQuery applies.
       return { ...page, data: page.data.map(normalizeSurface) } as InfinitePage<Surface>;
     },
-    getNextPageParam: (last) => {
-      const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
-      return nc ?? undefined;
-    },
+    getNextPageParam,
     staleTime: STALE_MED,
   });
 
