@@ -390,7 +390,7 @@ describe("review-enrichment-targets-mcp", () => {
   });
 
   test("MCP server exports wire list_review_enrichment_targets at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+    assert.equal(MCP_SERVER_VERSION, "1.76.0");
     assert.match(MCP_INSTRUCTIONS, /list_review_enrichment_targets/);
     const tool = MCP_TOOLS.find(
       (t) => t.name === "list_review_enrichment_targets",

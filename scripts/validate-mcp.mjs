@@ -331,6 +331,15 @@ assert.ok(
   Array.isArray(subnetEndpointsPage.endpoints),
   "list_subnet_endpoints must return endpoints[]",
 );
+const subnetCandidatesPage = await callOk("list_subnet_candidates", {
+  netuid: 7,
+  limit: 3,
+  state: "schema-valid",
+});
+assert.ok(
+  Array.isArray(subnetCandidatesPage.candidates),
+  "list_subnet_candidates must return candidates[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),

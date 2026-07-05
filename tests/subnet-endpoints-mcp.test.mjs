@@ -386,7 +386,7 @@ describe("subnet-endpoints-mcp", () => {
   });
 
   test("MCP server exports wire list_subnet_endpoints at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+    assert.equal(MCP_SERVER_VERSION, "1.76.0");
     assert.match(MCP_INSTRUCTIONS, /list_subnet_endpoints/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_subnet_endpoints");
     assert.ok(tool);
