@@ -10,9 +10,9 @@
   },
   "scripts": {
     "build:client": "cd ../../packages/client && npm run build",
-    "dev": "npm run build:client && vite dev",
-    "build": "npm run build:client && vite build",
-    "build:dev": "npm run build:client && vite build --mode development",
+    "dev": "vite dev",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

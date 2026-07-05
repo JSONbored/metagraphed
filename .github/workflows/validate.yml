@@ -659,16 +659,29 @@ jobs:
         run: npm ci
 
       # apps/ui consumes packages/client as a live workspace link (#3066), not
-      # a published package -- packages/client's dist/ is gitignored, so it
-      # must be built before anything importing @jsonbored/metagraphed can
-      # resolve real content. Deliberately NOT a package.json "prepare"
-      # script: that would auto-run the build (sync + tsup) on every `npm
-      # install`/`ci` for anyone in the repo, which a security scan flagged
-      # as unnecessary install-time code execution (#3066 review). Building
-      # explicitly here, only where it's actually needed, avoids that.
-      - name: Build packages/client
+      # a published package. packages/client/dist/ IS committed (unlike a
+      # typical build artifact) specifically so Cloudflare Workers Builds'
+      # live deploy never has to build it: that build depends on `tsup`
+      # resolving correctly via PATH inside a `cd`'d-into workspace directory,
+      # which real Workers Builds runs hit failing in ways this repo's own
+      # environment never reproduced (npm hoisting/caching differences
+      # between environments) -- eliminating the build-at-deploy-time step
+      # entirely removes that whole failure class. Deliberately NOT a
+      # package.json "prepare" script either: that would auto-run the build
+      # on every `npm install`/`ci` for anyone in the repo, which a security
+      # scan flagged as unnecessary install-time code execution (#3066
+      # review). This step exists purely as a DRIFT CHECK: rebuild fresh and
+      # diff against the committed copy, so an edit to packages/client/src
+      # without a matching `npm run build --workspace=packages/client` +
+      # commit fails loudly here rather than shipping stale contract types.
+      - name: Build packages/client (drift check)
         if: env.RUN_UI_VALIDATION == 'true'
-        run: npm run build --workspace=packages/client
+        run: |
+          npm run build --workspace=packages/client
+          if ! git diff --exit-code -- packages/client/dist; then
+            echo "::error::packages/client/dist is stale -- run 'npm run build --workspace=packages/client' and commit the result."
+            exit 1
+          fi
 
       - name: Lint (ESLint + Prettier)
         if: env.RUN_UI_VALIDATION == 'true'
