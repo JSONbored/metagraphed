@@ -200,6 +200,26 @@ describe("buildSubnetYield", () => {
       assert.equal(blankEmission.neurons[0].yield, null);
       assert.equal(blankEmission.total_emission_tao, 0);
     }
+
+    const nullStake = buildSubnetYield(
+      [neuron(3, { stake: null, emission: 2 })],
+      7,
+    );
+    assert.equal(nullStake.neuron_count, 0);
+
+    const nullEmission = buildSubnetYield(
+      [neuron(4, { stake: 10, emission: null })],
+      7,
+    );
+    assert.equal(nullEmission.neuron_count, 1);
+    assert.equal(nullEmission.neurons[0].emission_tao, null);
+    assert.equal(nullEmission.neurons[0].yield, null);
+
+    const negativeStake = buildSubnetYield(
+      [neuron(5, { stake: -1, emission: 2 })],
+      7,
+    );
+    assert.equal(negativeStake.neuron_count, 0);
   });
 
   test("a null D1 block_number stays null, not a fabricated genesis 0", () => {
@@ -472,6 +492,7 @@ describe("buildSubnetYieldHistory", () => {
   test("reject blank stake_tao/emission_tao cells in daily history points", () => {
     const data = buildSubnetYieldHistory(
       [
+        { snapshot_date: "2026-06-27", stake_tao: null, emission_tao: 10 },
         { snapshot_date: "2026-06-27", stake_tao: "", emission_tao: 10 },
         { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: "   " },
         {
