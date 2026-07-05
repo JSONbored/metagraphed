@@ -46837,6 +46837,19 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -46895,9 +46908,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "snapshot_date,neuron_count,validator_count,yield_count,subnet_yield,mean_yield,median_yield,p25_yield,p75_yield,p90_yield\r\n2026-06-27,2,1,2,0.075,0.075,0.075,0.05,0.1,0.1",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -46954,7 +46973,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily D1 rollup). The time-series companion to /yield and the return-rate twin of /concentration/history — the per-UID yield distribution is not reconstructable from the stake+emission totals in /history.",
+        "summary": "Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily D1 rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV.",
         "tags": [
           "subnets",
           "analytics"

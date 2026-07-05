@@ -13,6 +13,10 @@ export const ROUTE_CSV_EXAMPLES = {
     "uid,hotkey,role,stake_tao,emission_tao,yield,vs_median",
     "0,hk_sample,validator,1000,22.1,0.0221,above",
   ].join("\r\n"),
+  "subnet-yield-history": [
+    "snapshot_date,neuron_count,validator_count,yield_count,subnet_yield,mean_yield,median_yield,p25_yield,p75_yield,p90_yield",
+    "2026-06-27,2,1,2,0.075,0.075,0.075,0.05,0.1,0.1",
+  ].join("\r\n"),
   "subnet-events": EVENTS_CSV_EXAMPLE,
   "account-events": EVENTS_CSV_EXAMPLE,
   // The Postgres all-events feed: flat scalar columns of each raw pallet.method

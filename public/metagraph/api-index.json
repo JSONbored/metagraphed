@@ -5339,7 +5339,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/yield/history.json",
       "cache": "short",
-      "description": "Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily D1 rollup). The time-series companion to /yield and the return-rate twin of /concentration/history — the per-UID yield distribution is not reconstructable from the stake+emission totals in /history.",
+      "description": "Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily D1 rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV.",
       "id": "subnet-yield-history",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/yield/history",
@@ -5354,6 +5354,17 @@
               "7d",
               "30d",
               "90d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
             ],
             "type": "string"
           }

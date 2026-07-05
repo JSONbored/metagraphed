@@ -651,7 +651,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-day emission-yield distribution trend (subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/yield/history (no static file). The time-series companion to /yield and the return-rate twin of /concentration/history.",
+      "description": "Per-day emission-yield distribution trend (subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/yield/history; pass ?format=csv to download the per-day series as CSV (no static file). The time-series companion to /yield and the return-rate twin of /concentration/history.",
       "id": "subnet-yield-history",
       "path": "/metagraph/subnets/{netuid}/yield/history.json",
       "schema_ref": "#/components/schemas/SubnetYieldHistoryArtifact",
