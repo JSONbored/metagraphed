@@ -14321,22 +14321,61 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
-  test("list_rpc_endpoints returns the rpc endpoints artifact", async () => {
+  test("list_rpc_endpoints returns filtered endpoint rows", async () => {
     const deps = makeDeps({
       "/metagraph/rpc-endpoints.json": {
-        generated_at: "2026-01-01T00:00:00Z",
+        generated_at: "2026-07-01T00:00:00.000Z",
+        schema_version: 1,
+        endpoints: [
+          {
+            id: "finney-wss",
+            url: "wss://rpc.finney.example",
+            network: "finney",
+            layer: "bittensor-base",
+            status: "ok",
+          },
+          {
+            id: "finney-https",
+            url: "https://rpc.finney.example",
+            network: "finney",
+            layer: "bittensor-base",
+            status: "degraded",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_rpc_endpoints",
+      { status: "ok", limit: 5 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.endpoints[0].status, "ok");
+    assert.equal(out.generated_at, "2026-07-01T00:00:00.000Z");
+  });
+
+  test("list_rpc_endpoints reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_rpc_endpoints", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Bittensor RPC endpoint catalog unavailable/,
+    );
+  });
+
+  test("list_rpc_endpoints payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_rpc_endpoints",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/rpc-endpoints.json": {
         endpoints: [{ url: "wss://rpc.example", network: "finney" }],
       },
     });
-    const res = await callTool("list_rpc_endpoints", {}, { deps });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.endpoints[0].network, "finney");
-    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
-  });
-
-  test("list_rpc_endpoints rejects an unexpected argument", async () => {
-    const res = await callTool("list_rpc_endpoints", { netuid: 7 });
-    assert.equal(res.body.result.isError, true);
+    const res = await callTool("list_rpc_endpoints", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
   });
 
   test("list_source_snapshots returns filtered source rows", async () => {
