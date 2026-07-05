@@ -32,5 +32,7 @@
       ],
       "url": "https://api.minotaursubnet.com/health"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/subnet112/minotaur_subnet",
+  "website_url": "https://minotaursubnet.com/"
 }

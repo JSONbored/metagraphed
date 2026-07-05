@@ -81,5 +81,6 @@
       "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
       "url": "https://lium.io/api/version"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/Datura-ai/lium-io"
 }

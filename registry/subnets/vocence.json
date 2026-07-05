@@ -50,5 +50,7 @@
       ],
       "url": "https://api.vocence.ai/openapi.json"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/vocence-78/vocence",
+  "website_url": "https://www.vocence.ai/"
 }

@@ -12,5 +12,8 @@
   "social": {
     "x": "https://x.com/leadpoetai"
   },
-  "surfaces": []
+  "surfaces": [],
+  "source_repo": "https://github.com/leadpoet/leadpoet",
+  "website_url": "https://leadpoet.com/",
+  "contact": "hello@leadpoet.com"
 }

@@ -91,5 +91,8 @@
       ],
       "url": "https://zipcode.ai/api/dashboard/stats/emissions"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/resi-labs-ai/RESI-models",
+  "website_url": "https://zipcode.ai/",
+  "contact": "support@resilabs.ai"
 }

@@ -53,5 +53,8 @@
       ],
       "url": "https://api.babelbit.ai/health"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/babelbit/babelbit_subnet",
+  "website_url": "https://babelbit.ai/",
+  "contact": "mk@babelbit.ai"
 }

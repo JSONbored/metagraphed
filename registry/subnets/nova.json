@@ -86,5 +86,7 @@
       ],
       "url": "https://huggingface.co/datasets/Metanova/Proteins"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/metanova-labs/nova",
+  "website_url": "https://www.metanova-labs.ai/"
 }

@@ -12,5 +12,8 @@
   "social": {
     "x": "https://x.com/swarmsubnet"
   },
-  "surfaces": []
+  "surfaces": [],
+  "source_repo": "https://github.com/swarm-subnet/swarm",
+  "website_url": "https://www.swarm124.com/",
+  "contact": "admin@swarm124.com"
 }

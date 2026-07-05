@@ -12,5 +12,8 @@
   "social": {
     "x": "https://x.com/harnyx_ai"
   },
-  "surfaces": []
+  "surfaces": [],
+  "source_repo": "https://github.com/harnyx/harnyx",
+  "website_url": "https://harnyx.ai/",
+  "contact": "harnyx@brightmount.co"
 }

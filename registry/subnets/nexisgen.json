@@ -12,5 +12,7 @@
   "social": {
     "x": "https://x.com/nexisgen_ai"
   },
-  "surfaces": []
+  "surfaces": [],
+  "source_repo": "https://github.com/RendixNetwork/nexisgen",
+  "website_url": "https://nexisgen.ai/"
 }

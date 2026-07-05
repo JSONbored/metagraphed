@@ -12,5 +12,8 @@
   "social": {
     "x": "https://x.com/yanez__ai"
   },
-  "surfaces": []
+  "surfaces": [],
+  "source_repo": "https://github.com/yanez-compliance/MIID-subnet",
+  "website_url": "https://www.yanez.ai/",
+  "contact": "jose@yanezcompliance.com"
 }

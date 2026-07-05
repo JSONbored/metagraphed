@@ -32,5 +32,8 @@
       ],
       "url": "https://api.talkhead.ai/health"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/talkheadai/talkhead-subnet",
+  "website_url": "https://www.talkhead.ai/",
+  "contact": "contact@talkhead.ai"
 }

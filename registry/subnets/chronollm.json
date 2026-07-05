@@ -61,5 +61,7 @@
       ],
       "url": "https://huggingface.co/datasets/manelalab/ChronoInstruct-SFT-v1"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/chronollm/sn38",
+  "contact": "crew@crunchdao.com"
 }

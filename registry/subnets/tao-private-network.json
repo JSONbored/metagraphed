@@ -12,5 +12,8 @@
   "social": {
     "x": "https://x.com/tpn_labs"
   },
-  "surfaces": []
+  "surfaces": [],
+  "source_repo": "https://github.com/taofu-labs/tpn-subnet",
+  "website_url": "https://tpn.taofu.xyz/",
+  "contact": "contact@taoprivatenetwork.com"
 }
