@@ -49,6 +49,25 @@
         "https://api.zeussubnet.com/openapi.json"
       ],
       "url": "https://api.zeussubnet.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-18-zeus-health",
+      "kind": "subnet-api",
+      "name": "Zeus BOREAS Edge API health",
+      "notes": "Public no-auth health probe for the Zeus BOREAS Edge API; GET /v1/health returns {\"status\":\"ok\"} per the machine-readable OpenAPI spec on the same host as the existing /v1/meta subnet-api surface.",
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.zeussubnet.com/openapi.json",
+        "https://docs.zeussubnet.com/docs/introduction"
+      ],
+      "url": "https://api.zeussubnet.com/v1/health"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"
