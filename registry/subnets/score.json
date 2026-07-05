@@ -25,6 +25,46 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Current SN44 validator/miner base code, linked as both \"GitHub\" and \"Documentation\" from the official wearescore.com site. Distinct from the legacy turbovision repo."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-44-score-openapi",
+      "kind": "openapi",
+      "name": "Score Subnet API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the Score SN44 backend (title: Score Subnet API). Served publicly at api.scorevision.io; documents challenge/task routes and the no-auth GET /health probe.",
+      "provider": "score",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.scorevision.io/openapi.json",
+      "source_urls": [
+        "https://github.com/score-technologies/score-vision/blob/main/validator/config.py",
+        "https://api.scorevision.io/openapi.json"
+      ],
+      "url": "https://api.scorevision.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-44-score-subnet-api",
+      "kind": "subnet-api",
+      "name": "Score API health",
+      "notes": "Public no-auth GET /health on api.scorevision.io returning backend liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /health in the subnet OpenAPI spec; api.scorevision.io is the SCORE_VISION_API host configured in the score-vision validator source.",
+      "provider": "score",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://api.scorevision.io/openapi.json",
+        "https://github.com/score-technologies/score-vision/blob/main/validator/config.py"
+      ],
+      "url": "https://api.scorevision.io/health"
     }
   ],
   "social": {
