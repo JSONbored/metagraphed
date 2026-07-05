@@ -4665,6 +4665,109 @@ describe("MCP get_subnet_stake_moves", () => {
     const res = await callTool("get_subnet_stake_moves", { window: "7d" });
     assert.equal(res.body.result.isError, true);
   });
+
+  test("get_subnet_stake_moves payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_subnet_stake_moves",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_subnet_stake_moves",
+      { netuid: 5 },
+      {
+        env: stakeMovesD1({
+          movements: 6,
+          distinct_movers: 2,
+          newest_observed: 1_717_500_000_000,
+        }),
+      },
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+});
+
+describe("MCP get_subnet_stake_transfers", () => {
+  function stakeTransfersD1(row = null, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  return { results: row ? [row] : [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("summarizes per-subnet stake-transfer activity", async () => {
+    const res = await callTool(
+      "get_subnet_stake_transfers",
+      { netuid: 5, window: "7d" },
+      {
+        env: stakeTransfersD1({
+          transfers: 8,
+          distinct_senders: 4,
+          newest_observed: 1_717_500_000_000,
+        }),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 5);
+    assert.equal(out.transfers, 8);
+    assert.equal(out.distinct_senders, 4);
+    assert.equal(out.transfers_per_sender, 2);
+  });
+
+  test("cold subnet degrades to a schema-stable empty summary", async () => {
+    const res = await callTool(
+      "get_subnet_stake_transfers",
+      { netuid: 5 },
+      { env: stakeTransfersD1(null) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.transfers, 0);
+    assert.equal(out.distinct_senders, 0);
+    assert.equal(out.transfers_per_sender, null);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_stake_transfers", {
+      netuid: 5,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_stake_transfers", { window: "7d" });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_stake_transfers payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_subnet_stake_transfers",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_subnet_stake_transfers",
+      { netuid: 5 },
+      {
+        env: stakeTransfersD1({
+          transfers: 3,
+          distinct_senders: 1,
+          newest_observed: 1_717_500_000_000,
+        }),
+      },
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
 });
 
 describe("MCP get_subnet_registrations", () => {

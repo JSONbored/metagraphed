@@ -336,6 +336,11 @@ import {
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
 } from "./subnet-stake-moves.mjs";
 import {
+  loadSubnetStakeTransfers,
+  SUBNET_STAKE_TRANSFERS_WINDOWS,
+  DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
+} from "./subnet-stake-transfers.mjs";
+import {
   loadSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
@@ -476,7 +481,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.73.0";
+export const MCP_SERVER_VERSION = "1.74.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -529,6 +534,10 @@ const SUBNET_SERVING_WINDOW_KEYS = Object.keys(SUBNET_SERVING_WINDOWS);
 const SUBNET_PROMETHEUS_WINDOW_KEYS = Object.keys(SUBNET_PROMETHEUS_WINDOWS);
 const SUBNET_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
   SUBNET_DEREGISTRATIONS_WINDOWS,
+);
+const SUBNET_STAKE_MOVES_WINDOW_KEYS = Object.keys(SUBNET_STAKE_MOVES_WINDOWS);
+const SUBNET_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
+  SUBNET_STAKE_TRANSFERS_WINDOWS,
 );
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
@@ -627,6 +636,10 @@ export const MCP_INSTRUCTIONS =
   "(the validators behind /weights ranked by activity — the setter-level drill-in of get_subnet_weights), " +
   "get_subnet_registrations the per-subnet neuron-registration activity, " +
   "get_subnet_stake_moves the per-subnet stake-relocation activity, " +
+  "get_subnet_stake_transfers the per-subnet stake-transfer (between-coldkeys) " +
+  "activity (distinct senders, StakeTransferred count, transfers per sender — " +
+  "the between-coldkeys sibling of get_subnet_stake_moves and the per-subnet " +
+  "drill-in of get_chain_stake_transfers), " +
   "get_subnet_axon_removals the per-subnet AxonInfoRemoved teardown activity " +
   "(distinct removers, event count, removals per remover — the removal-side " +
   "companion to get_subnet_serving), get_subnet_serving the per-subnet AxonServed " +
@@ -3315,7 +3328,7 @@ export const MCP_TOOLS = [
         netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
         window: {
           type: "string",
-          enum: Object.keys(SUBNET_STAKE_MOVES_WINDOWS),
+          enum: SUBNET_STAKE_MOVES_WINDOW_KEYS,
           description: `Lookback window (default ${DEFAULT_SUBNET_STAKE_MOVES_WINDOW}).`,
         },
       },
@@ -3329,12 +3342,52 @@ export const MCP_TOOLS = [
       if (!Object.hasOwn(SUBNET_STAKE_MOVES_WINDOWS, window)) {
         throw toolError(
           "invalid_params",
-          `window must be one of: ${Object.keys(SUBNET_STAKE_MOVES_WINDOWS).join(", ")}.`,
+          `window must be one of: ${SUBNET_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
         );
       }
       return await loadSubnetStakeMoves(mcpD1Runner(ctx), netuid, {
         windowLabel: window,
         windowDays: SUBNET_STAKE_MOVES_WINDOWS[window],
+      });
+    },
+  },
+  {
+    name: "get_subnet_stake_transfers",
+    title: "Get subnet stake-transfer activity",
+    description:
+      "Fetch one subnet's stake-transfer activity over a 7d or 30d window " +
+      "(default 7d): the StakeTransferred event count, the number of distinct " +
+      "senders (coldkeys), and the transfers-per-sender intensity, computed " +
+      "live from the account_events StakeTransferred stream. The between-coldkeys " +
+      "sibling of get_subnet_stake_moves (within-account re-delegation churn) " +
+      "and the per-subnet drill-in of get_chain_stake_transfers. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/stake-transfers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: SUBNET_STAKE_TRANSFERS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW}).`,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
+      if (!Object.hasOwn(SUBNET_STAKE_TRANSFERS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${SUBNET_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      return await loadSubnetStakeTransfers(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+        windowDays: SUBNET_STAKE_TRANSFERS_WINDOWS[window],
       });
     },
   },
@@ -8689,6 +8742,20 @@ const TOOL_OUTPUT_SCHEMAS = {
       distinct_movers: { type: "integer" },
       movements: { type: "integer" },
       movements_per_mover: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_stake_transfers: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "window", "distinct_senders", "transfers"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      distinct_senders: { type: "integer" },
+      transfers: { type: "integer" },
+      transfers_per_sender: { type: ["number", "null"] },
     },
   },
   get_subnet_registrations: {
