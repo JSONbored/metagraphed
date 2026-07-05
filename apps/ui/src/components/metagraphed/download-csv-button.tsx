@@ -1,10 +1,6 @@
 import { Download } from "lucide-react";
 import { classNames } from "@/lib/metagraphed/format";
-import {
-  buildCsvDownloadUrl,
-  startCsvDownload,
-  type QueryParams,
-} from "@/lib/metagraphed/client";
+import { buildCsvDownloadUrl, startCsvDownload, type QueryParams } from "@/lib/metagraphed/client";
 
 interface Props {
   /** API path, e.g. `/api/v1/subnets`. */
