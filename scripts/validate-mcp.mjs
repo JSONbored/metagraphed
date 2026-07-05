@@ -293,6 +293,12 @@ assert.ok(
 );
 await callOk("registry_summary", {});
 await callOk("get_coverage", {});
+const contracts = await callOk("get_contracts", {});
+assert.equal(contracts.schema_version, 1);
+assert.ok(
+  Array.isArray(contracts.artifacts) && contracts.artifacts.length > 0,
+  "get_contracts must return artifacts[]",
+);
 const changelog = await callOk("get_changelog", {});
 assert.equal(
   changelog.source,

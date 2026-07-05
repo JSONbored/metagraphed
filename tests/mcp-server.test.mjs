@@ -13476,6 +13476,44 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.links[0].mainnet_netuid, 1);
   });
 
+  test("get_contracts returns the contracts artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/contracts.json": {
+        schema_version: 1,
+        contract_version: "2026-07-03.2",
+        artifacts: [{ id: "subnets", path: "/metagraph/subnets.json" }],
+      },
+    });
+    const res = await callTool("get_contracts", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.artifacts[0].id, "subnets");
+  });
+
+  test("get_contracts reports not_found when the artifact is absent", async () => {
+    const res = await callTool("get_contracts", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /unavailable in this environment/,
+    );
+  });
+
+  test("get_contracts payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_contracts",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/contracts.json": {
+        schema_version: 1,
+        artifacts: [{ id: "contracts", path: "/metagraph/contracts.json" }],
+      },
+    });
+    const res = await callTool("get_contracts", {}, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("get_source_health returns the source-health artifact", async () => {
     const deps = makeDeps({
       "/metagraph/source-health.json": {

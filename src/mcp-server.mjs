@@ -62,6 +62,12 @@ import {
   loadRegistryCoverage,
 } from "./registry-coverage.mjs";
 import {
+  GET_CONTRACTS_INSTRUCTIONS,
+  GET_CONTRACTS_MCP_TOOL,
+  GET_CONTRACTS_OUTPUT_SCHEMA,
+  loadContracts,
+} from "./contracts-mcp.mjs";
+import {
   GET_CHANGELOG_INSTRUCTIONS,
   GET_CHANGELOG_MCP_TOOL,
   GET_CHANGELOG_OUTPUT_SCHEMA,
@@ -423,7 +429,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.64.0";
+export const MCP_SERVER_VERSION = "1.67.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -524,6 +530,7 @@ export const MCP_INSTRUCTIONS =
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
   GET_COVERAGE_INSTRUCTIONS +
+  GET_CONTRACTS_INSTRUCTIONS +
   GET_CHANGELOG_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   LIST_GAPS_INSTRUCTIONS +
@@ -6400,6 +6407,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_CONTRACTS_MCP_TOOL,
+    async handler(_args, ctx) {
+      return loadContracts(ctx);
+    },
+  },
+  {
     name: "get_source_health",
     title: "Get per-provider source health",
     description:
@@ -10002,6 +10015,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       generated_at: NULLABLE_STRING,
     },
   },
+  get_contracts: GET_CONTRACTS_OUTPUT_SCHEMA,
   get_source_health: {
     type: "object",
     additionalProperties: true,
