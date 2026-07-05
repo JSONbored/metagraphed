@@ -30,6 +30,25 @@
         "https://api.babelbit.ai/docs"
       ],
       "url": "https://api.babelbit.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-59-babelbit-health",
+      "kind": "subnet-api",
+      "name": "Babelbit utterance engine health",
+      "notes": "Public no-auth GET /health on api.babelbit.ai returning utterance-engine liveness JSON (observed: {\"status\":\"healthy\",...}). Documented in the registered OpenAPI schema on the same host; distinct from validator-authenticated challenge endpoints.",
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://api.babelbit.ai/openapi.json",
+        "https://github.com/babelbit/babelbit_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.babelbit.ai/health"
     }
   ]
 }
