@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "netuid": 99,
+  "name": "Leoma",
+  "slug": "sn-99",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/leoma_ai"
+  },
+  "website_url": "https://leoma.ai/",
+  "source_repo": "https://github.com/RendixNetwork/leoma",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-health",
+      "kind": "subnet-api",
+      "name": "Leoma API health",
+      "notes": "Public no-auth GET /health on api.leoma.ai returning application liveness JSON (observed: status, version, database, metagraph_synced, last_sync). Documented in the subnet OpenAPI spec and implemented in the official RendixNetwork/leoma health route used by validator API clients.",
+      "provider": "leoma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/leoma/delivery/http/routes/health.py",
+        "https://github.com/RendixNetwork/leoma/blob/main/leoma/infra/remote_api.py",
+        "https://api.leoma.ai/openapi.json"
+      ],
+      "url": "https://api.leoma.ai/health"
+    }
+  ]
+}
