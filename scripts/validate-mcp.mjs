@@ -339,6 +339,11 @@ assert.ok(
   Array.isArray(subnetEvidencePage.claims),
   "list_subnet_evidence must return claims[]",
 );
+const evidencePage = await callOk("list_evidence", { limit: 3, q: "openapi" });
+assert.ok(
+  Array.isArray(evidencePage.claims),
+  "list_evidence must return claims[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),

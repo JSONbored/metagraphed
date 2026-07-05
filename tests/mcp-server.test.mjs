@@ -14303,22 +14303,58 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.returned, 0);
   });
 
-  test("list_evidence returns the evidence ledger artifact", async () => {
+  test("list_evidence returns filtered claim rows", async () => {
     const deps = makeDeps({
       "/metagraph/evidence-ledger.json": {
-        generated_at: "2026-01-01T00:00:00Z",
-        claims: [{ netuid: 7, check: "openapi", outcome: "verified" }],
+        generated_at: "2026-07-01T00:00:00.000Z",
+        schema_version: 1,
+        summary: { claim_count: 2 },
+        claims: [
+          {
+            subject: "SN7 openapi",
+            claim: "SN7 publishes machine-readable OpenAPI",
+            source_url: "https://example.com/openapi.json",
+          },
+          {
+            subject: "SN8 website",
+            claim: "SN8 website documents integration",
+            source_url: "https://example.com/docs",
+          },
+        ],
       },
     });
-    const res = await callTool("list_evidence", {}, { deps });
+    const res = await callTool(
+      "list_evidence",
+      { q: "openapi", limit: 5 },
+      { deps },
+    );
     const out = res.body.result.structuredContent;
-    assert.equal(out.claims[0].netuid, 7);
-    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+    assert.equal(out.returned, 1);
+    assert.match(out.claims[0].claim, /OpenAPI/);
+    assert.equal(out.generated_at, "2026-07-01T00:00:00.000Z");
   });
 
-  test("list_evidence rejects an unexpected argument", async () => {
-    const res = await callTool("list_evidence", { netuid: 7 });
+  test("list_evidence reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_evidence", {}, { deps: makeDeps() });
     assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Public evidence ledger snapshot unavailable/,
+    );
+  });
+
+  test("list_evidence payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_evidence",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/evidence-ledger.json": {
+        claims: [{ subject: "SN7", claim: "verified openapi" }],
+      },
+    });
+    const res = await callTool("list_evidence", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
   });
 
   test("list_rpc_endpoints returns the rpc endpoints artifact", async () => {

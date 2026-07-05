@@ -80,6 +80,12 @@ import {
   loadSubnetEvidenceList,
 } from "./subnet-evidence-mcp.mjs";
 import {
+  LIST_EVIDENCE_INSTRUCTIONS,
+  LIST_EVIDENCE_MCP_TOOL,
+  LIST_EVIDENCE_OUTPUT_SCHEMA,
+  loadEvidenceList,
+} from "./evidence-mcp.mjs";
+import {
   LIST_SEARCH_INDEX_INSTRUCTIONS,
   LIST_SEARCH_INDEX_MCP_TOOL,
   LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
@@ -774,8 +780,9 @@ export const MCP_INSTRUCTIONS =
   "registered data providers/sources backing the registry, list_surfaces the " +
   "network-wide catalog of curated public surfaces, list_candidates the " +
   "unpromoted candidate surfaces still pending review, list_endpoints the " +
-  "network-wide monitored endpoint-resource catalog, list_evidence the public " +
-  "provenance/verification evidence ledger, list_rpc_endpoints the monitored " +
+  "network-wide monitored endpoint-resource catalog, " +
+  LIST_EVIDENCE_INSTRUCTIONS +
+  "list_rpc_endpoints the monitored " +
   "Bittensor RPC endpoint catalog, " +
   LIST_SOURCE_SNAPSHOTS_INSTRUCTIONS +
   "list_rpc_pools the load-balanced RPC pool " +
@@ -6466,20 +6473,9 @@ export const MCP_TOOLS = [
     },
   },
   {
-    name: "list_evidence",
-    title: "List the public evidence ledger",
-    description:
-      "Fetch the public evidence ledger: the append-only record of the " +
-      "provenance and verification evidence behind registry surfaces (what was " +
-      "checked, for which subnet, and the outcome). Use it to audit how a " +
-      "surface's authenticity was established. Mirrors GET /api/v1/evidence.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
-    async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/evidence-ledger.json");
+    ...LIST_EVIDENCE_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadEvidenceList(ctx, args);
     },
   },
   {
@@ -10404,16 +10400,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: ["string", "integer", "null"] },
     },
   },
-  list_evidence: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      claims: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  list_evidence: LIST_EVIDENCE_OUTPUT_SCHEMA,
   list_fixtures: {
     type: "object",
     additionalProperties: true,
