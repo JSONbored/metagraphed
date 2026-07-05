@@ -145,6 +145,25 @@
         "https://subnet90.com/"
       ],
       "url": "https://api.subnet90.com/api/test/progress"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-health",
+      "kind": "subnet-api",
+      "name": "DegenBrain API health",
+      "notes": "Public no-auth GET / on api.subnet90.com returning Brain-API service info JSON (observed: service Brain-API, version 1.0.0, description for Bittensor Subnet 90). Documented in the subnet OpenAPI spec as \"Health check and service info\" on the same host as the existing markets and resolutions subnet-api surfaces.",
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/"
     }
   ],
   "website_url": "https://subnet90.com/"
