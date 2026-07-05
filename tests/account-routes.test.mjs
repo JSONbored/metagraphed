@@ -610,6 +610,26 @@ test("GET /accounts/{ss58}/stake-transfers rejects an unsupported window with 40
   assert.equal(res.status, 400);
 });
 
+test("GET /accounts/{ss58}/stake-transfers defaults to the 30d window when omitted", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/stake-transfers`),
+    dbWith({ events: [] }),
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.window, "30d");
+});
+
+test("GET /accounts/{ss58}/stake-transfers rejects an unknown query param with 400", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/stake-transfers?foo=bar`),
+    dbWith({}),
+    {},
+  );
+  assert.equal(res.status, 400);
+});
+
 test("GET /accounts/{ss58}/weight-setters routes to the per-account weight-setters handler", async () => {
   const env = dbWith({
     events: [
