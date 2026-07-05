@@ -13555,6 +13555,71 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("get_adapter returns the adapter snapshot artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/adapters/gittensor.json": {
+        schema_version: 1,
+        slug: "gittensor",
+        netuid: 74,
+        snapshot: { status: "captured" },
+        extensions: { generic_adapter: { kind: "generic-openapi" } },
+      },
+    });
+    const res = await callTool("get_adapter", { slug: "gittensor" }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.slug, "gittensor");
+    assert.equal(out.netuid, 74);
+    assert.equal(out.snapshot.status, "captured");
+  });
+
+  test("get_adapter reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "get_adapter",
+      { slug: "missing" },
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /No adapter snapshot exists/i,
+    );
+  });
+
+  test("get_adapter rejects invalid slug characters", async () => {
+    const deps = makeDeps({
+      "/metagraph/adapters/gittensor.json": {
+        schema_version: 1,
+        slug: "gittensor",
+      },
+    });
+    const res = await callTool("get_adapter", { slug: "Gittensor" }, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /slug must match/);
+  });
+
+  test("get_adapter rejects a missing slug argument", async () => {
+    const res = await callTool("get_adapter", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /slug/i);
+  });
+
+  test("get_adapter payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_adapter",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/adapters/gittensor.json": {
+        schema_version: 1,
+        slug: "gittensor",
+        netuid: 74,
+        snapshot: { status: "captured" },
+      },
+    });
+    const res = await callTool("get_adapter", { slug: "gittensor" }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("get_source_health returns the source-health artifact", async () => {
     const deps = makeDeps({
       "/metagraph/source-health.json": {

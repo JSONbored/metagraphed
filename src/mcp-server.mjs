@@ -80,6 +80,12 @@ import {
   loadBuildSummary,
 } from "./build-mcp.mjs";
 import {
+  GET_ADAPTER_INSTRUCTIONS,
+  GET_ADAPTER_MCP_TOOL,
+  GET_ADAPTER_OUTPUT_SCHEMA,
+  loadAdapter,
+} from "./adapters-mcp.mjs";
+import {
   GET_AGENT_RESOURCES_INSTRUCTIONS,
   GET_AGENT_RESOURCES_MCP_TOOL,
   GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
@@ -435,7 +441,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.67.0";
+export const MCP_SERVER_VERSION = "1.68.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -538,6 +544,7 @@ export const MCP_INSTRUCTIONS =
   GET_CONTRACTS_INSTRUCTIONS +
   GET_CHANGELOG_INSTRUCTIONS +
   GET_BUILD_INSTRUCTIONS +
+  GET_ADAPTER_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   LIST_GAPS_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
@@ -6449,6 +6456,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_ADAPTER_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadAdapter(ctx, args);
+    },
+  },
+  {
     name: "get_agent_catalog",
     title: "Get the agent capability catalog",
     description:
@@ -10039,6 +10052,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   },
   get_changelog: GET_CHANGELOG_OUTPUT_SCHEMA,
   get_build: GET_BUILD_OUTPUT_SCHEMA,
+  get_adapter: GET_ADAPTER_OUTPUT_SCHEMA,
   get_agent_catalog: {
     // Two shapes: the global index (no netuid) and a single-subnet catalog
     // (with a netuid). They share few keys, so nothing is required; the

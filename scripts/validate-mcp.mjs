@@ -311,6 +311,31 @@ assert.ok(changelog.subnets && typeof changelog.subnets === "object");
 const build = await callOk("get_build", {});
 assert.equal(typeof build.artifact_count, "number");
 assert.ok(Array.isArray(build.artifacts), "get_build must return artifacts[]");
+const adapterArtifactPath = artifactFilePath("adapters/gittensor.json");
+if (existsSync(adapterArtifactPath)) {
+  const adapter = await callOk("get_adapter", { slug: "gittensor" });
+  assert.equal(
+    adapter.slug,
+    "gittensor",
+    "get_adapter must return the requested adapter slug",
+  );
+  assert.ok(
+    adapter.snapshot && typeof adapter.snapshot === "object",
+    "get_adapter must return snapshot object when staged",
+  );
+} else {
+  const adapterCold = await call("get_adapter", { slug: "gittensor" });
+  assert.equal(
+    adapterCold.isError,
+    true,
+    "get_adapter must isError when the R2 adapter artifact is absent",
+  );
+  assert.match(
+    adapterCold.content[0]?.text,
+    /No adapter snapshot exists/i,
+    "get_adapter must report not_found when the artifact is missing",
+  );
+}
 
 // Per-subnet gap artifacts are R2-only (review/gaps/{netuid}.json); the cold
 // env has them only after `npm run build` stages dist/. Exercise the happy path

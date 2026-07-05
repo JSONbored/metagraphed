@@ -1421,6 +1421,23 @@ describe("get_changelog — branch coverage", () => {
   });
 });
 
+// ── get_adapter — adapter snapshot artifact ───────────────────────────────
+describe("get_adapter — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("get_adapter", { slug: "gittensor" }, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /adapters\/gittensor\.json/);
+  });
+});
+
 // ── get_build — build summary artifact ────────────────────────────────────
 describe("get_build — branch coverage", () => {
   test("surfaces non-not_found artifact failures", async () => {
