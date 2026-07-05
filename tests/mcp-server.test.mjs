@@ -8553,6 +8553,128 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  function chainWeightSettersD1(
+    { leaderboardRows = [], totalsRow = null } = {},
+    capture = [],
+  ) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: {
+          prepare(sql) {
+            return {
+              bind(...params) {
+                capture.push({ sql, params });
+                return {
+                  async all() {
+                    if (/GROUP BY/.test(sql)) {
+                      return { results: leaderboardRows };
+                    }
+                    return { results: totalsRow ? [totalsRow] : [] };
+                  },
+                };
+              },
+            };
+          },
+        },
+      },
+    };
+  }
+
+  test("get_chain_weight_setters ranks setters with network-wide shares", async () => {
+    const res = await callTool(
+      "get_chain_weight_setters",
+      { window: "7d", limit: 10 },
+      chainWeightSettersD1({
+        leaderboardRows: [
+          {
+            hotkey: "5Val1",
+            uid: 3,
+            weight_sets: 6,
+            first_set: 1_717_000_000_000,
+            last_set: 1_717_500_000_000,
+          },
+          {
+            hotkey: "5Val2",
+            uid: 7,
+            weight_sets: 4,
+            first_set: 1_717_100_000_000,
+            last_set: 1_717_400_000_000,
+          },
+        ],
+        totalsRow: {
+          weight_sets: 10,
+          distinct_setters: 2,
+          newest_observed: 1_717_500_000_000,
+        },
+      }),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.weight_sets, 10);
+    assert.equal(out.distinct_setters, 2);
+    assert.equal(out.setter_count, 2);
+    assert.equal(out.setters[0].hotkey, "5Val1");
+    assert.equal(out.setters[0].share, 0.6);
+  });
+
+  test("get_chain_weight_setters returns schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_weight_setters", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.weight_sets, 0);
+    assert.equal(out.distinct_setters, 0);
+    assert.equal(out.setter_count, 0);
+    assert.deepEqual(out.setters, []);
+  });
+
+  test("get_chain_weight_setters rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_weight_setters", { window: "90d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_chain_weight_setters caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_weight_setters",
+      { limit: 1 },
+      chainWeightSettersD1({
+        leaderboardRows: [
+          { hotkey: "5Val1", uid: 3, weight_sets: 6 },
+          { hotkey: "5Val2", uid: 7, weight_sets: 4 },
+        ],
+        totalsRow: {
+          weight_sets: 10,
+          distinct_setters: 2,
+          newest_observed: 1_717_500_000_000,
+        },
+      }),
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.distinct_setters, 2);
+    assert.equal(out.setter_count, 1);
+    assert.equal(out.setters.length, 1);
+  });
+
+  test("get_chain_weight_setters payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_weight_setters",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_weight_setters",
+      {},
+      chainWeightSettersD1({
+        leaderboardRows: [{ hotkey: "5Val1", uid: 3, weight_sets: 6 }],
+        totalsRow: {
+          weight_sets: 6,
+          distinct_setters: 1,
+          newest_observed: 1_717_500_000_000,
+        },
+      }),
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   // The network-wide aggregate row loadChainStakeMoves reads first (its
   // COUNT(DISTINCT coldkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
