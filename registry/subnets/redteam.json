@@ -107,6 +107,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official RedTeam source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-61-redteam-health",
+      "kind": "subnet-api",
+      "name": "RedTeam dashboard health",
+      "notes": "Public no-auth GET /healthz on dashboard.theredteam.io returning gateway liveness (observed plain-text response: ok). Served on the official RedTeam dashboard host registered in this manifest and linked from the RedTeam source repository README.",
+      "provider": "redteam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/RedTeamSubnet/RedTeam",
+        "https://dashboard.theredteam.io/"
+      ],
+      "url": "https://dashboard.theredteam.io/healthz"
     }
   ],
   "contact": "oscar@theredteam.io"
