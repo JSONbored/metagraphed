@@ -1335,6 +1335,38 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
   });
 
+  test("coerces D1 numeric-string cells on the fallback path (status_code/latency/timestamps)", async () => {
+    // D1 can return INTEGER/REAL columns as numeric strings; a bare
+    // Number.isInteger/Number.isFinite guard would drop status_code/latency to
+    // null and (via isoFromMs) null out last_checked/last_ok too.
+    const db = d1With([
+      {
+        surface_id: "7:subnet-api:x",
+        surface_key: "srf-stringcells000",
+        netuid: 7,
+        kind: "subnet-api",
+        provider: "x",
+        url: "https://x",
+        status: "ok",
+        classification: "up",
+        latency_ms: "10",
+        status_code: "200",
+        last_checked: "1700000000000",
+        last_ok: "1699000000000",
+      },
+    ]);
+    const live = await resolveLiveHealth({
+      readHealthKv: async () => null,
+      env: {},
+      db,
+      now: () => 1_700_000_600_000,
+    });
+    assert.equal(live.surfaces[0].status_code, 200);
+    assert.equal(live.surfaces[0].latency_ms, 10);
+    assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
+    assert.match(live.surfaces[0].last_ok, /^20\d\d-/);
+  });
+
   test("D1 fallback survives an out-of-range last_checked/last_ok (no RangeError)", async () => {
     // A finite but out-of-range epoch-ms (beyond the ±8.64e15 JS Date limit)
     // would make new Date().toISOString() throw a RangeError and 500 the live

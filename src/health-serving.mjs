@@ -1306,8 +1306,12 @@ export async function loadReliabilityAggregate({
 // on one corrupt last_checked/last_ok cell. Range-guard via getTime() and drop
 // to null, preserving the existing non-finite -> null behavior.
 function isoFromMs(ms) {
-  if (!Number.isFinite(ms)) return null;
-  const date = new Date(ms);
+  // D1 can surface an INTEGER epoch-ms column as a numeric string, so coerce
+  // before the finite guard. Guard null explicitly first: Number(null) === 0
+  // would otherwise turn an absent timestamp into 1970-01-01.
+  const n = ms == null ? Number.NaN : Number(ms);
+  if (!Number.isFinite(n)) return null;
+  const date = new Date(n);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
@@ -1321,8 +1325,11 @@ function liveFromD1Rows(rows) {
     url: r.url,
     status: normalizeProbeStatus(r.status),
     classification: r.classification,
-    latency_ms: Number.isFinite(r.latency_ms) ? r.latency_ms : null,
-    status_code: Number.isInteger(r.status_code) ? r.status_code : null,
+    // D1 often returns INTEGER/REAL cells as numeric strings; coerce (null-safe)
+    // so a live surface's status_code/latency are not dropped to null on the
+    // D1-fallback path (mirrors formatTrajectory's roundInt handling above).
+    latency_ms: toFiniteOrNull(r.latency_ms),
+    status_code: toFiniteOrNull(r.status_code),
     last_checked: isoFromMs(r.last_checked),
     last_ok: isoFromMs(r.last_ok),
   }));
