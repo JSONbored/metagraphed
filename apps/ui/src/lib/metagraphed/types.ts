@@ -1658,6 +1658,32 @@ export interface ChainTransferPairs {
   pairs: ChainTransferPair[];
 }
 
+/** One account on the chain native-TAO transfers leaderboard (#3475). */
+export interface ChainTransferParty {
+  address: string;
+  volume_tao: number;
+  transfer_count: number;
+}
+
+/**
+ * Network-wide native-TAO transfer analytics over a 7d/30d window (#3475), from
+ * GET /api/v1/chain/transfers — total volume/count, distinct senders/receivers,
+ * top senders and receivers by volume, and top-sender concentration share.
+ * Zeroed with empty leaderboards when the store is cold.
+ */
+export interface ChainTransfers {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  total_volume_tao: number;
+  transfer_count: number;
+  unique_senders: number;
+  unique_receivers: number;
+  top_sender_share: number | null;
+  top_senders: ChainTransferParty[];
+  top_receivers: ChainTransferParty[];
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;
