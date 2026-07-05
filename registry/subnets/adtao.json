@@ -65,6 +65,59 @@
         "timeout_ms": 10000
       },
       "notes": "Official AdTAO source repository."
+    },
+    {
+      "id": "sn-21-adtao-validator-openapi",
+      "name": "AdTAO SN21 Validator OpenAPI schema",
+      "kind": "openapi",
+      "url": "https://validator.adtao.io/openapi.json",
+      "provider": "adtao",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://validator.adtao.io/openapi.json",
+      "source_urls": [
+        "https://github.com/ippcteam/SN21-adtao",
+        "https://validator.adtao.io/openapi.json"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Machine-readable OpenAPI 3.1.0 schema (title \"SN21 Validator\", version 0.1.0) served by the official AdTAO validator API on the operator's validator.adtao.io host. Documents the public epoch/episode, prediction, commitment, verification, scores, and training routes plus /health. Unauthenticated GET returns the full paths object."
+    },
+    {
+      "id": "sn-21-adtao-validator-api",
+      "name": "AdTAO SN21 Validator API",
+      "kind": "subnet-api",
+      "url": "https://validator.adtao.io/health",
+      "provider": "adtao",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "schema_url": "https://validator.adtao.io/openapi.json",
+      "source_urls": [
+        "https://github.com/ippcteam/SN21-adtao",
+        "https://validator.adtao.io/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official public AdTAO (SN21) validator API on the operator's validator.adtao.io host. An unauthenticated GET on /health returns live JSON service status (service, current epoch label, episodes loaded, submission window, deadline). The /v1/epochs routes are described in the linked OpenAPI schema."
     }
   ],
   "social": { "x": "https://x.com/ppcrebel" },
