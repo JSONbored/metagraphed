@@ -10,7 +10,32 @@ describe("safeExternalUrl", () => {
   it("blocks non-http schemes and credentialed URLs", () => {
     expect(safeExternalUrl("javascript:alert(1)")).toBeUndefined();
     expect(safeExternalUrl("data:text/html,hi")).toBeUndefined();
+    expect(safeExternalUrl("file:///etc/passwd")).toBeUndefined();
     expect(safeExternalUrl("https://user:pass@example.com/")).toBeUndefined();
+    expect(safeExternalUrl("https://user@example.com/")).toBeUndefined();
+  });
+
+  it("returns undefined for missing, empty, or malformed input without throwing", () => {
+    expect(safeExternalUrl(undefined)).toBeUndefined();
+    expect(safeExternalUrl("")).toBeUndefined();
+    expect(safeExternalUrl("   ")).toBeUndefined();
+    expect(() => safeExternalUrl("not a url")).not.toThrow();
+    expect(safeExternalUrl("not a url")).toBeUndefined();
+    expect(() => safeExternalUrl("//evil.com/no-protocol")).not.toThrow();
+    expect(safeExternalUrl("//evil.com/no-protocol")).toBeUndefined();
+    expect(() => safeExternalUrl("http://")).not.toThrow();
+    expect(safeExternalUrl("http://")).toBeUndefined();
+  });
+
+  it("trims surrounding whitespace before parsing", () => {
+    expect(safeExternalUrl("  https://example.com/  ")).toBe("https://example.com/");
+  });
+
+  it("normalizes hostname case and trailing dot before matching private hosts", () => {
+    expect(safeExternalUrl("http://LOCALHOST/")).toBeUndefined();
+    expect(safeExternalUrl("http://localhost./")).toBeUndefined();
+    expect(safeExternalUrl("http://sub.localhost/")).toBeUndefined();
+    expect(safeExternalUrl("http://EXAMPLE.com/")).toBe("http://example.com/");
   });
 
   it("blocks private, reserved, and local host targets", () => {
