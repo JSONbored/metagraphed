@@ -12,7 +12,9 @@ const listeners = new Set<Listener>();
 let cachedRaw: string | null = null;
 let cachedValue: number[] = [];
 
-function parseRaw(raw: string | null): number[] {
+// parseRaw / readSnapshot / writeRaw / subscribe are the store primitives the hook composes; they
+// are exported for unit testing (#3414). The public component API stays `useCompareSelection`.
+export function parseRaw(raw: string | null): number[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -23,7 +25,7 @@ function parseRaw(raw: string | null): number[] {
   }
 }
 
-function readSnapshot(): number[] {
+export function readSnapshot(): number[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(KEY);
@@ -39,7 +41,7 @@ function readSnapshot(): number[] {
   }
 }
 
-function writeRaw(next: number[]) {
+export function writeRaw(next: number[]) {
   if (typeof window === "undefined") return;
   const clean = next.filter((n): n is number => Number.isFinite(n)).slice(0, MAX);
   const raw = JSON.stringify(clean);
@@ -53,7 +55,7 @@ function writeRaw(next: number[]) {
   for (const l of listeners) l();
 }
 
-function subscribe(l: Listener) {
+export function subscribe(l: Listener) {
   listeners.add(l);
   if (typeof window !== "undefined") {
     const onStorage = (e: StorageEvent) => {
