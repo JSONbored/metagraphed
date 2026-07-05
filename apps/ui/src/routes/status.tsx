@@ -28,6 +28,12 @@ const ONGOING_MS = 10 * 60_000;
 const WINDOWS = ["7d", "30d"] as const;
 type IncidentWindow = (typeof WINDOWS)[number];
 
+function isGlobalIncidentOngoing(s: GlobalIncidentSurface, observedAt?: string | null): boolean {
+  const observedMs = observedAt ? Date.parse(observedAt) : Date.now();
+  const latest = s.incidents.reduce((max, i) => Math.max(max, i.ended_at || 0), 0);
+  return latest > 0 && observedMs - latest < ONGOING_MS;
+}
+
 export const Route = createFileRoute("/status")({
   head: () => ({
     meta: [
@@ -249,19 +255,18 @@ function RecentIncidents() {
   // resolved past event. This separates "what's down right now" from "what's
   // flapped over the window", so the window count never reads as a live outage.
   const { surfaces, ongoingCount } = useMemo(() => {
-    const observedMs = ledger?.observed_at ? Date.parse(ledger.observed_at) : Date.now();
-    const isOngoing = (s: GlobalIncidentSurface) => {
-      const latest = s.incidents.reduce((max, i) => Math.max(max, i.ended_at || 0), 0);
-      return latest > 0 && observedMs - latest < ONGOING_MS;
-    };
     const list = [...(ledger?.surfaces ?? [])];
     list.sort(
       (a, b) =>
-        Number(isOngoing(b)) - Number(isOngoing(a)) ||
+        Number(isGlobalIncidentOngoing(b, ledger?.observed_at)) -
+          Number(isGlobalIncidentOngoing(a, ledger?.observed_at)) ||
         b.incident_count - a.incident_count ||
         b.downtime_ms - a.downtime_ms,
     );
-    return { surfaces: list, ongoingCount: list.filter(isOngoing).length };
+    return {
+      surfaces: list,
+      ongoingCount: list.filter((s) => isGlobalIncidentOngoing(s, ledger?.observed_at)).length,
+    };
   }, [ledger]);
   const summary = ledger?.summary;
   const affected = summary?.affected_surface_count ?? surfaces.length;
@@ -314,7 +319,11 @@ function RecentIncidents() {
         <>
           <ul className="space-y-2">
             {(showAll ? surfaces : surfaces.slice(0, SURFACES_INITIAL)).map((s) => (
-              <SurfaceRow key={`${s.netuid}/${s.surface_id}`} surface={s} ongoing={isOngoing(s)} />
+              <SurfaceRow
+                key={`${s.netuid}/${s.surface_id}`}
+                surface={s}
+                ongoing={isGlobalIncidentOngoing(s, ledger?.observed_at)}
+              />
             ))}
           </ul>
           {surfaces.length > SURFACES_INITIAL ? (
