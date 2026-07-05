@@ -155,6 +155,22 @@
         "submitted_by": "davion-knight"
       },
       "notes": "Public no-auth JSON of Eirel's active evaluation environment windows per capability (capability, family_id, enabled, min_completeness, weight, evaluation_split, window membership version); GET /v1/env-windows in the OpenAPI spec. Distinct endpoint from the registered /api/v1/dashboard/*, /v1/metagraph/status, and /v1/workflow-specs routes."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-healthz",
+      "kind": "subnet-api",
+      "name": "Eirel API healthz",
+      "notes": "Public no-auth GET /healthz on api.eirel.ai returning Eirel owner-api liveness JSON (observed: {\"status\":\"ok\",\"mode\":\"managed-execution\",\"checks\":{\"database\":\"ok\",\"redis\":\"ok\"}}). Documented as GET /healthz in the subnet OpenAPI spec alongside the registered dashboard and metagraph subnet-api surfaces.",
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json", "https://eirel.ai/"],
+      "url": "https://api.eirel.ai/healthz"
     }
   ],
   "social": {
