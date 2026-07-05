@@ -49,8 +49,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
     queryFn: async ({ pageParam, signal }) => {
       const params: Record<string, string | number> = { limit: pageSize };
       if (pageParam != null) params.cursor = pageParam;
-      const path =
-        netuid != null ? `/api/v1/subnets/${netuid}/evidence` : "/api/v1/evidence";
+      const path = netuid != null ? `/api/v1/subnets/${netuid}/evidence` : "/api/v1/evidence";
       const res = await apiFetch<unknown>(path, { params, signal });
       const items = parseEvidenceListPayload(res.data);
       return { items, meta: res.meta as ApiMeta };
