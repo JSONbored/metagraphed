@@ -470,7 +470,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.72.0";
+export const MCP_SERVER_VERSION = "1.73.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -6072,18 +6072,68 @@ export const MCP_TOOLS = [
     name: "list_providers",
     title: "List providers and sources",
     description:
-      "Fetch the full index of registered data providers/sources backing the " +
+      "Fetch the index of registered data providers/sources backing the " +
       "registry: each provider's id, kind, authority, name, and the subnets, " +
       "surfaces, and endpoints it backs. This is the list counterpart to " +
-      "get_provider_detail (which fetches one provider by slug). Mirrors " +
+      "get_provider_detail (which fetches one provider by slug). Optionally " +
+      "filter by id/kind/authority and page with limit/offset. Mirrors " +
       "GET /api/v1/providers.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        id: { type: "string", description: "Provider slug, e.g. 'datura'." },
+        kind: {
+          type: "string",
+          enum: QUERY_ENUMS.providerKind,
+          description: "Provider kind, e.g. 'data-provider' or 'registry'.",
+        },
+        authority: {
+          type: "string",
+          enum: QUERY_ENUMS.providerAuthority,
+          description: "Trust authority, e.g. 'official' or 'community'.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max providers to return. Omit for the full list.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset into the (filtered) list. Default 0.",
+          minimum: 0,
+        },
+      },
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/providers.json");
+    async handler(args, ctx) {
+      const id = optionalString(args, "id");
+      const kind = optionalEnum(args, "kind", QUERY_ENUMS.providerKind);
+      const authority = optionalEnum(
+        args,
+        "authority",
+        QUERY_ENUMS.providerAuthority,
+      );
+      const limit = optionalPositiveInt(args, "limit");
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const data = await loadArtifactData(ctx, "/metagraph/providers.json");
+      const all = Array.isArray(data.providers) ? data.providers : [];
+      const filtered = all.filter(
+        (p) =>
+          (id === null || p.id === id) &&
+          (kind === null || p.kind === kind) &&
+          (authority === null || p.authority === authority),
+      );
+      const page =
+        limit === null
+          ? filtered.slice(offset)
+          : filtered.slice(offset, offset + limit);
+      return {
+        ...data,
+        providers: page,
+        total: filtered.length,
+        returned: page.length,
+        offset,
+      };
     },
   },
   {

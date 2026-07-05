@@ -13415,6 +13415,112 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  function providersDeps() {
+    return makeDeps({
+      "/metagraph/providers.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        providers: [
+          {
+            id: "datura",
+            kind: "data-provider",
+            authority: "official",
+            name: "Datura",
+          },
+          {
+            id: "chutes",
+            kind: "infrastructure-provider",
+            authority: "official",
+            name: "Chutes",
+          },
+          {
+            id: "community-x",
+            kind: "data-provider",
+            authority: "community",
+            name: "Community X",
+          },
+        ],
+      },
+    });
+  }
+
+  test("list_providers filters by id, kind, and authority", async () => {
+    const deps = providersDeps();
+    const byId = (await callTool("list_providers", { id: "chutes" }, { deps }))
+      .body.result.structuredContent;
+    assert.equal(byId.total, 1);
+    assert.equal(byId.providers[0].name, "Chutes");
+
+    const byKind = (
+      await callTool(
+        "list_providers",
+        { kind: "infrastructure-provider" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(byKind.total, 1);
+    assert.equal(byKind.providers[0].id, "chutes");
+
+    const byAuthority = (
+      await callTool("list_providers", { authority: "official" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byAuthority.total, 2);
+  });
+
+  test("list_providers combines filters (AND) and reports total vs returned", async () => {
+    const deps = providersDeps();
+    const res = await callTool(
+      "list_providers",
+      { kind: "data-provider", authority: "community" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 1);
+    assert.equal(out.returned, 1);
+    assert.equal(out.providers[0].id, "community-x");
+  });
+
+  test("list_providers paginates the filtered list with limit/offset", async () => {
+    const deps = providersDeps();
+    const res = await callTool(
+      "list_providers",
+      { limit: 1, offset: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 1);
+    assert.equal(out.offset, 1);
+    assert.equal(out.providers[0].id, "chutes");
+  });
+
+  test("list_providers rejects an unknown kind/authority enum value", async () => {
+    const deps = providersDeps();
+    const badKind = await callTool(
+      "list_providers",
+      { kind: "not-a-kind" },
+      { deps },
+    );
+    assert.equal(badKind.body.result.isError, true);
+
+    const badAuthority = await callTool(
+      "list_providers",
+      { authority: "not-an-authority" },
+      { deps },
+    );
+    assert.equal(badAuthority.body.result.isError, true);
+  });
+
+  test("list_providers is schema-stable when the artifact has no providers array", async () => {
+    const deps = makeDeps({
+      "/metagraph/providers.json": { generated_at: "2026-01-01T00:00:00Z" },
+    });
+    const res = await callTool("list_providers", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.providers, []);
+    assert.equal(out.total, 0);
+    assert.equal(out.returned, 0);
+  });
+
   test("list_surfaces returns the surfaces catalog artifact", async () => {
     const deps = makeDeps({
       "/metagraph/surfaces.json": {

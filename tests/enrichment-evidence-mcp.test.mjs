@@ -365,7 +365,7 @@ describe("enrichment-evidence-mcp", () => {
   });
 
   test("MCP server exports wire list_enrichment_evidence at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.72.0");
+    assert.equal(MCP_SERVER_VERSION, "1.73.0");
     assert.match(MCP_INSTRUCTIONS, /list_enrichment_evidence/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_enrichment_evidence");
     assert.ok(tool);
