@@ -596,6 +596,25 @@
         "https://chutes.ai/docs"
       ],
       "url": "https://api.chutes.ai/fmv"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-tao-payment-totals-api",
+      "kind": "subnet-api",
+      "name": "Chutes TAO payment totals API",
+      "notes": "Public no-auth GET returning aggregate TAO payment totals (today, this_month, total). Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /payments/summary/tao); same host as the existing pricing, bounties, fmv, and LLM-stats subnet-api surfaces.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.chutes.ai/openapi.json",
+        "https://chutes.ai/docs"
+      ],
+      "url": "https://api.chutes.ai/payments/summary/tao"
     }
   ],
   "website_url": "https://chutes.ai/"
