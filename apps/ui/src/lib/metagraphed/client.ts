@@ -59,6 +59,24 @@ function buildUrl(path: string, params?: QueryParams): string {
   return url.toString();
 }
 
+/** Build an absolute API URL for a CSV download (`?format=csv`). */
+export function buildCsvDownloadUrl(path: string, params?: QueryParams): string {
+  return buildUrl(path, { ...params, format: "csv" });
+}
+
+/** Start a browser download for a CSV URL produced by the API. */
+export function startCsvDownload(url: string, filename?: string): void {
+  if (typeof document === "undefined") return;
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  if (filename) anchor.download = filename;
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 function redactUrlForError(url: string): string {
   const redacted = new URL(url);
   redacted.search = "";
