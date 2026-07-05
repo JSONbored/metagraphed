@@ -62,6 +62,12 @@ import {
   loadReviewGapsList,
 } from "./review-gaps-mcp.mjs";
 import {
+  LIST_SUBNET_SURFACES_INSTRUCTIONS,
+  LIST_SUBNET_SURFACES_MCP_TOOL,
+  LIST_SUBNET_SURFACES_OUTPUT_SCHEMA,
+  loadSubnetSurfacesList,
+} from "./subnet-surfaces-mcp.mjs";
+import {
   LIST_SEARCH_INDEX_INSTRUCTIONS,
   LIST_SEARCH_INDEX_MCP_TOOL,
   LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
@@ -476,7 +482,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.73.0";
+export const MCP_SERVER_VERSION = "1.74.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -738,6 +744,7 @@ export const MCP_INSTRUCTIONS =
   LIST_ENDPOINT_POOLS_INSTRUCTIONS +
   LIST_ENDPOINT_INCIDENTS_INSTRUCTIONS +
   "get_subnet_endpoints one subnet\u0027s endpoint resources, " +
+  LIST_SUBNET_SURFACES_INSTRUCTIONS +
   "get_subnet_candidates its pending candidate surfaces, get_subnet_evidence " +
   "its provenance evidence claims, and list_fixtures " +
   "live request/response examples. All data is public and " +
@@ -6468,6 +6475,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_SUBNET_SURFACES_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadSubnetSurfacesList(ctx, args);
+    },
+  },
+  {
     name: "get_subnet_candidates",
     title: "Get one subnet's candidate surfaces",
     description:
@@ -10201,6 +10214,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: ["string", "integer", "null"] },
     },
   },
+  list_subnet_surfaces: LIST_SUBNET_SURFACES_OUTPUT_SCHEMA,
   list_rpc_pools: {
     type: "object",
     additionalProperties: true,

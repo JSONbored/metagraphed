@@ -311,6 +311,15 @@ assert.ok(
   Array.isArray(reviewGapsPage.priorities),
   "list_review_gaps must return priorities[]",
 );
+const subnetSurfacesPage = await callOk("list_subnet_surfaces", {
+  netuid: 7,
+  limit: 3,
+  kind: "subnet-api",
+});
+assert.ok(
+  Array.isArray(subnetSurfacesPage.surfaces),
+  "list_subnet_surfaces must return surfaces[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),
