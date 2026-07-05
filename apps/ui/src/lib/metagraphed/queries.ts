@@ -91,6 +91,7 @@ import type {
   RpcUsage,
   SchemaInfo,
   Subnet,
+  SubnetAxonRemovals,
   SubnetEconomics,
   SubnetHistory,
   SubnetHistoryPoint,
@@ -2847,6 +2848,40 @@ export const subnetIdentityHistoryQuery = (netuid: number) =>
       );
       return {
         data: normalizeSubnetIdentityHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #1657: per-subnet axon-removal (teardown) activity over a 7d/30d window. A flat
+// summary card — count/distinct-remover/average — from the account_events
+// AxonInfoRemoved stream. Every numeric cell coerces defensively: counts fall
+// through to 0 and the average to null (never NaN) on a cold store or junk.
+export function normalizeSubnetAxonRemovals(netuid: number, raw: unknown): SubnetAxonRemovals {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_removers: firstFiniteNumber(rec.distinct_removers) ?? 0,
+    removals: firstFiniteNumber(rec.removals) ?? 0,
+    removals_per_remover: firstFiniteNumber(rec.removals_per_remover) ?? null,
+  };
+}
+
+export const subnetAxonRemovalsQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-axon-removals", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetAxonRemovals>>(
+        `/api/v1/subnets/${netuid}/axon-removals`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetAxonRemovals(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };

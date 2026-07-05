@@ -1116,6 +1116,22 @@ export interface SubnetIdentityHistory {
   next_cursor: string | null;
 }
 
+/**
+ * Per-subnet axon-removal (teardown) activity over a 7d/30d window (#1657), from
+ * /api/v1/subnets/{netuid}/axon-removals — the removal-side complement of the
+ * AxonServed announcement activity in /subnets/{netuid}/serving. Zeroed when the
+ * subnet had no AxonInfoRemoved events in the window.
+ */
+export interface SubnetAxonRemovals {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_removers: number;
+  removals: number;
+  removals_per_remover: number | null;
+}
+
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
 export interface SubnetNeuronHistoryPoint {
   snapshot_date: string;
