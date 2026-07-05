@@ -12,6 +12,7 @@ import {
   normalizeAccountEvent,
   normalizeExtrinsic,
   normalizeAgentCatalogDetail,
+  getNextPageParam,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
@@ -637,5 +638,17 @@ describe("normalizeProvider", () => {
     );
     expect(out.name).toBe("Acme");
     expect((out as Record<string, unknown>).extra_field).toBe("kept");
+  });
+});
+
+describe("getNextPageParam", () => {
+  it("returns the stashed cursor from infinite-list meta", () => {
+    expect(getNextPageParam({ meta: { _next_cursor: "cursor-abc" } })).toBe("cursor-abc");
+  });
+
+  it("returns undefined when the cursor is null or absent", () => {
+    expect(getNextPageParam({ meta: { _next_cursor: null } })).toBeUndefined();
+    expect(getNextPageParam({ meta: {} })).toBeUndefined();
+    expect(getNextPageParam({})).toBeUndefined();
   });
 });

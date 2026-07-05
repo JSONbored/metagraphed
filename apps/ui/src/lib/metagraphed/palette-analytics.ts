@@ -47,7 +47,7 @@ function write(state: PaletteAnalytics): void {
   }
 }
 
-function trim(map: Record<string, number>, max: number): Record<string, number> {
+export function trim(map: Record<string, number>, max: number): Record<string, number> {
   const entries = Object.entries(map)
     .sort((a, b) => b[1] - a[1])
     .slice(0, max);

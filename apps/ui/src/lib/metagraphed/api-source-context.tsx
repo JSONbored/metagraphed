@@ -14,6 +14,20 @@ export interface ApiSource {
   label?: string;
 }
 
+/** Merges registered source groups with first-wins path deduplication. */
+export function dedupeApiSources(groups: Iterable<ApiSource[]>): ApiSource[] {
+  const out: ApiSource[] = [];
+  const seen = new Set<string>();
+  for (const arr of groups) {
+    for (const s of arr) {
+      if (seen.has(s.path)) continue;
+      seen.add(s.path);
+      out.push(s);
+    }
+  }
+  return out;
+}
+
 interface Ctx {
   sources: ApiSource[];
   register: (s: ApiSource[]) => () => void;
@@ -44,18 +58,7 @@ export function ApiSourceProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const sources = useMemo(() => {
-    const out: ApiSource[] = [];
-    const seen = new Set<string>();
-    for (const arr of registry.values()) {
-      for (const s of arr) {
-        if (seen.has(s.path)) continue;
-        seen.add(s.path);
-        out.push(s);
-      }
-    }
-    return out;
-  }, [registry]);
+  const sources = useMemo(() => dedupeApiSources(registry.values()), [registry]);
 
   const value = useMemo<Ctx>(
     () => ({ sources, register, isOpen, setOpen, open: () => setOpen(true) }),
