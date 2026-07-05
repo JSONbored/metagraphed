@@ -1,5 +1,17 @@
 import { useEffect, useState } from "react";
 
+/** Initial revealed state before any timer fires. */
+export function resolveInitialDelayedReveal(when: boolean, delayMs: number): boolean {
+  if (!when) return false;
+  if (delayMs <= 0) return true;
+  return false;
+}
+
+/** Whether the hook should arm a timeout instead of resolving immediately. */
+export function shouldDelayReveal(when: boolean, delayMs: number): boolean {
+  return when && delayMs > 0;
+}
+
 /**
  * Returns `true` after `delayMs` has elapsed since mount. SSR-safe.
  *
@@ -10,12 +22,8 @@ import { useEffect, useState } from "react";
 export function useDelayedReveal(delayMs = 120, when = true): boolean {
   const [revealed, setRevealed] = useState(false);
   useEffect(() => {
-    if (!when) {
-      setRevealed(false);
-      return;
-    }
-    if (delayMs <= 0) {
-      setRevealed(true);
+    if (!shouldDelayReveal(when, delayMs)) {
+      setRevealed(resolveInitialDelayedReveal(when, delayMs));
       return;
     }
     const t = window.setTimeout(() => setRevealed(true), delayMs);
