@@ -264,7 +264,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
               id="evidence"
               title="Evidence & sources"
               subtitle="Every claim should be traceable."
-              info="Source URLs and timestamps for verified registry entries."
+              info="GET /api/v1/subnets/{netuid}/evidence"
             >
               <EvidencePanel netuid={netuid} />
             </SectionAnchor>
@@ -367,7 +367,7 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         id="evidence"
         title="Sources & evidence"
         subtitle="Primary links and recorded evidence backing this profile."
-        info="GET /api/v1/evidence"
+        info="GET /api/v1/subnets/{netuid}/evidence"
         tone="muted"
       >
         <EvidencePanel netuid={netuid} />

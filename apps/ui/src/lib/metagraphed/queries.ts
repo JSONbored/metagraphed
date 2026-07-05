@@ -4264,6 +4264,40 @@ export const evidenceQuery = (params?: QueryParams) =>
     staleTime: STALE_LONG,
   });
 
+/** Map a subnet-scoped evidence claim (GET /api/v1/subnets/{netuid}/evidence) to a render row. */
+export function normalizeEvidenceClaim(raw: unknown, netuid?: number): EvidenceItem | null {
+  if (!isRecord(raw)) return null;
+  const subject = optionalString(raw.subject)?.trim();
+  if (!subject) return null;
+  return {
+    id: subject,
+    netuid,
+    source: optionalString(raw.source_type),
+    url: optionalString(raw.source_url),
+    recorded_at: optionalString(raw.verified_at),
+    note: optionalString(raw.claim) ?? optionalString(raw.support_summary),
+  };
+}
+
+export function parseEvidenceListPayload(raw: unknown): EvidenceItem[] {
+  if (Array.isArray(raw)) return raw as EvidenceItem[];
+  if (!isRecord(raw)) return [];
+  for (const key of ["evidence", "entries", "items", "claims"] as const) {
+    const candidate = raw[key];
+    if (Array.isArray(candidate)) {
+      if (key === "claims") {
+        const netuid = optionalNumber(raw.netuid);
+        return candidate.flatMap((row) => {
+          const item = normalizeEvidenceClaim(row, netuid);
+          return item ? [item] : [];
+        });
+      }
+      return candidate as EvidenceItem[];
+    }
+  }
+  return [];
+}
+
 type ChangelogEntry = { id: string; at?: string; title?: string; kind?: string };
 
 function normalizeChangelogEntries(raw: unknown[]): ChangelogEntry[] {

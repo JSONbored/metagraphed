@@ -13,6 +13,8 @@ import {
   normalizeExtrinsic,
   normalizeAgentCatalogDetail,
   getNextPageParam,
+  normalizeEvidenceClaim,
+  parseEvidenceListPayload,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
@@ -650,5 +652,55 @@ describe("getNextPageParam", () => {
     expect(getNextPageParam({ meta: { _next_cursor: null } })).toBeUndefined();
     expect(getNextPageParam({ meta: {} })).toBeUndefined();
     expect(getNextPageParam({})).toBeUndefined();
+  });
+});
+
+describe("subnet evidence helpers (#3347)", () => {
+  it("normalizeEvidenceClaim maps a claim row to a render item", () => {
+    const out = normalizeEvidenceClaim(
+      {
+        subject: "candidate:sn-7-website",
+        source_type: "website",
+        source_url: "https://example.com",
+        claim: "Example claim",
+        support_summary: "Summary",
+        verified_at: "2026-06-01T00:00:00.000Z",
+      },
+      7,
+    );
+    expect(out).toMatchObject({
+      id: "candidate:sn-7-website",
+      netuid: 7,
+      source: "website",
+      url: "https://example.com",
+      note: "Example claim",
+      recorded_at: "2026-06-01T00:00:00.000Z",
+    });
+  });
+
+  it("parseEvidenceListPayload reads claims from the subnet-scoped envelope", () => {
+    const items = parseEvidenceListPayload({
+      netuid: 7,
+      claims: [
+        {
+          subject: "a",
+          source_type: "docs",
+          source_url: "https://a.test",
+          claim: "A",
+          support_summary: "A",
+        },
+      ],
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBe("a");
+    expect(items[0]?.netuid).toBe(7);
+  });
+
+  it("parseEvidenceListPayload still reads the network-wide evidence array", () => {
+    const items = parseEvidenceListPayload({
+      evidence: [{ id: "e1", source: "docs", url: "https://e.test" }],
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]?.id).toBe("e1");
   });
 });
