@@ -191,7 +191,7 @@ function normalizeEconomicsSubnets(value: unknown): SubnetEconomics[] {
   if (!Array.isArray(value)) return [];
 
   return value.flatMap((item) => {
-    if (!isRecord(item)) return [];
+    if (!isPlainRecord(item)) return [];
 
     const netuid = optionalNumber(item.netuid);
     if (netuid == null) return [];
@@ -271,6 +271,7 @@ function finiteTimestamp(value: unknown): string | undefined {
   return Number.isFinite(Date.parse(value)) ? value : undefined;
 }
 
+/** Shared non-array object guard used across query normalizers. */
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
@@ -537,16 +538,12 @@ export const coverageQuery = () =>
     staleTime: STALE_MED,
   });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
 function normalizeLineageLink(value: unknown): LineageLink | null {
-  if (!isRecord(value)) return null;
+  if (!isPlainRecord(value)) return null;
   const { mainnet_netuid: mainnetNetuid, testnet_netuid: testnetNetuid } = value;
   if (typeof mainnetNetuid !== "number" || typeof testnetNetuid !== "number") return null;
 
@@ -562,7 +559,7 @@ function normalizeLineageLink(value: unknown): LineageLink | null {
 }
 
 function normalizeLineage(data: Partial<Lineage> | undefined): Lineage {
-  const d = isRecord(data) ? data : {};
+  const d = isPlainRecord(data) ? data : {};
   const links = Array.isArray(d.links)
     ? d.links.flatMap((link) => {
         const normalized = normalizeLineageLink(link);
@@ -1428,9 +1425,9 @@ export const subnetQuery = (netuid: number) =>
 // Block explorer (chain-direct event poller). The list is offset-paginated and
 // returns newest-first; the detail accepts a numeric block_number OR a 0x hash.
 function normalizeBlock(raw: unknown): Block | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   if (raw.block === null) return null;
-  const wrapped = isRecord(raw.block) ? (raw.block as Record<string, unknown>) : null;
+  const wrapped = isPlainRecord(raw.block) ? (raw.block as Record<string, unknown>) : null;
   const blockData = wrapped ?? raw;
 
   const blockNumber = firstFiniteNumber(blockData.block_number);
@@ -1459,7 +1456,7 @@ function normalizeBlockExtrinsic(raw: unknown): Extrinsic | null {
 }
 
 function normalizeBlockExtrinsics(raw: unknown): BlockExtrinsics {
-  const d = isRecord(raw) ? raw : {};
+  const d = isPlainRecord(raw) ? raw : {};
   const rows = Array.isArray(d.extrinsics)
     ? d.extrinsics.flatMap((x) => {
         const normalized = normalizeBlockExtrinsic(x);
@@ -1478,7 +1475,7 @@ function normalizeBlockExtrinsics(raw: unknown): BlockExtrinsics {
 }
 
 function normalizeBlockEvent(raw: unknown): BlockEvent | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const amount =
     firstFiniteNumber(raw.amount_tao) ??
     firstFiniteNumber(raw.amount) ??
@@ -1500,7 +1497,7 @@ function normalizeBlockEvent(raw: unknown): BlockEvent | null {
 }
 
 function normalizeBlockEvents(raw: unknown): BlockEvents {
-  const d = isRecord(raw) ? raw : {};
+  const d = isPlainRecord(raw) ? raw : {};
   const rows = Array.isArray(d.events)
     ? d.events.flatMap((x) => {
         const normalized = normalizeBlockEvent(x);
@@ -1579,7 +1576,7 @@ function normalizeExtrinsicCallArgs(raw: unknown): Extrinsic["call_args"] {
   if (Array.isArray(raw)) {
     return raw
       .slice(0, MAX_EXTRINSIC_CALL_ARGS)
-      .filter(isRecord)
+      .filter(isPlainRecord)
       .map(
         (arg) =>
           ({
@@ -1589,7 +1586,7 @@ function normalizeExtrinsicCallArgs(raw: unknown): Extrinsic["call_args"] {
       );
   }
 
-  if (isRecord(raw)) {
+  if (isPlainRecord(raw)) {
     return Object.fromEntries(
       Object.entries(raw)
         .slice(0, MAX_EXTRINSIC_CALL_ARGS)
@@ -1645,7 +1642,7 @@ function truncateString(value: string | null | undefined, limit = MAX_EXTRINSIC_
 // Extrinsic (transaction) explorer — the block explorer's sibling feed. The list
 // is offset-paginated and newest-first; the detail is keyed by 0x extrinsic_hash.
 export function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const blockNumber = firstFiniteNumber(raw.block_number);
   const extrinsicHash = firstString(raw.extrinsic_hash);
   // A row needs at least a hash or a (block, index) coordinate to key/link on.
@@ -1665,7 +1662,7 @@ export function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic
   const events = Array.isArray(eventsSource)
     ? eventsSource
         .slice(0, MAX_EXTRINSIC_EVENTS)
-        .filter(isRecord)
+        .filter(isPlainRecord)
         .map((event) => {
           return {
             block_number: firstFiniteNumber(event.block_number) ?? null,
@@ -1723,11 +1720,11 @@ export const extrinsicQuery = (hash: string) =>
         signal,
       });
       const payload = res.data as unknown;
-      const payloadRecord = isRecord(payload) ? payload : {};
+      const payloadRecord = isPlainRecord(payload) ? payload : {};
       const rawExtrinsic =
         payloadRecord.extrinsic === null
           ? null
-          : isRecord(payloadRecord.extrinsic)
+          : isPlainRecord(payloadRecord.extrinsic)
             ? (payloadRecord.extrinsic as Record<string, unknown>)
             : payloadRecord;
       const events = Array.isArray(payloadRecord.events) ? payloadRecord.events : undefined;
@@ -1744,7 +1741,7 @@ export const extrinsicQuery = (hash: string) =>
 // recent-events sample (schema-stable zero for a cold/unknown account, never an
 // error), so one query drives the whole detail page.
 function normalizeAccountRegistration(raw: unknown): AccountRegistration | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const registration: AccountRegistration = {
     ...(raw as object),
     netuid: firstFiniteNumber(raw.netuid) ?? null,
@@ -1760,7 +1757,7 @@ function normalizeAccountRegistration(raw: unknown): AccountRegistration | null 
 // economic cells coerce to null (never NaN or `[object Object]`), an unknown role
 // drops to null — and a row with no numeric netuid is discarded.
 export function normalizePortfolioPosition(raw: unknown): PortfolioPosition | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const netuid = firstFiniteNumber(raw.netuid);
   if (netuid == null) return null;
   const role = firstString(raw.role);
@@ -1782,7 +1779,7 @@ export function normalizePortfolioPosition(raw: unknown): PortfolioPosition | nu
 
 // The portfolio's stake-concentration lens (#3491).
 export function normalizePortfolioConcentration(raw: unknown): PortfolioConcentration | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const holders = firstFiniteNumber(raw.holders) ?? null;
   const gini = firstFiniteNumber(raw.gini) ?? null;
   const hhi_normalized = firstFiniteNumber(raw.hhi_normalized) ?? null;
@@ -1808,7 +1805,7 @@ function accountEventString(value: unknown): string | undefined {
 }
 
 export function normalizeAccountEvent(raw: unknown): AccountEvent | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
 
   const blockNumber = coerceFiniteNumber(raw.block_number);
   const eventIndex = coerceFiniteNumber(raw.event_index);
@@ -1843,10 +1840,10 @@ function normalizeAccountEvents(raw: unknown, limit = MAX_ACCOUNT_EVENTS): Accou
 }
 
 export function normalizeAccountSummary(raw: unknown, ss58: string): AccountSummary {
-  const d = isRecord(raw) ? raw : {};
+  const d = isPlainRecord(raw) ? raw : {};
   const eventKinds = Array.isArray(d.event_kinds)
     ? d.event_kinds
-        .filter(isRecord)
+        .filter(isPlainRecord)
         .map((kind) => ({
           kind: firstString(kind.kind) ?? "",
           count: firstFiniteNumber(kind.count) ?? 0,
@@ -1874,7 +1871,7 @@ export function normalizeAccountSummary(raw: unknown, ss58: string): AccountSumm
 }
 
 function normalizeAccountDay(raw: unknown): AccountDay | undefined {
-  if (!isRecord(raw)) return undefined;
+  if (!isPlainRecord(raw)) return undefined;
   const day = firstString(raw.day);
   if (!day) return undefined;
   return {
@@ -1889,7 +1886,7 @@ function normalizeAccountDay(raw: unknown): AccountDay | undefined {
 }
 
 export function normalizeAccountHistory(raw: unknown, ss58: string): AccountHistory {
-  const d = isRecord(raw) ? raw : {};
+  const d = isPlainRecord(raw) ? raw : {};
   const days = Array.isArray(d.days)
     ? d.days.slice(0, MAX_ACCOUNT_HISTORY_DAYS).flatMap((day) => {
         const normalized = normalizeAccountDay(day);
@@ -1970,7 +1967,7 @@ export const accountBalanceQuery = (ss58: string) =>
       const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/balance`, {
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
+      const d = isPlainRecord(res.data) ? res.data : {};
       return {
         data: {
           ss58: firstString(d.ss58) ?? ss58,
@@ -2006,7 +2003,7 @@ export const accountExtrinsicsQuery = (ss58: string, params?: QueryParams) =>
 
 /** One native-TAO Balances.Transfer row → a clean directional Transfer. */
 function normalizeTransfer(raw: unknown): Transfer | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const blockNumber = firstFiniteNumber(raw.block_number);
   const eventIndex = firstFiniteNumber(raw.event_index);
   if (blockNumber == null && eventIndex == null) return null;
@@ -2069,7 +2066,7 @@ export const accountEventsQuery = (ss58: string, params: AccountEventsParams = {
         params,
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
+      const d = isPlainRecord(res.data) ? res.data : {};
       const events = normalizeAccountEvents(d.events, params.limit ?? MAX_ACCOUNT_EVENTS);
       return {
         data: {
@@ -2099,7 +2096,7 @@ export const accountSubnetsQuery = (ss58: string) =>
       const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/subnets`, {
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
+      const d = isPlainRecord(res.data) ? res.data : {};
       const subnets = Array.isArray(d.subnets)
         ? d.subnets.slice(0, MAX_ACCOUNT_REGISTRATIONS).flatMap((registration) => {
             const normalized = normalizeAccountRegistration(registration);
@@ -2129,7 +2126,7 @@ export const accountPortfolioQuery = (ss58: string) =>
       const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/portfolio`, {
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
+      const d = isPlainRecord(res.data) ? res.data : {};
       const positions = Array.isArray(d.positions)
         ? d.positions.slice(0, MAX_ACCOUNT_POSITIONS).flatMap((position) => {
             const normalized = normalizePortfolioPosition(position);
@@ -2164,7 +2161,7 @@ export const accountPortfolioQuery = (ss58: string) =>
 type ChainWindow = "7d" | "30d";
 
 function normalizeChainActivityDay(raw: unknown): ChainActivityDay | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const day = firstString(raw.day);
   const blockCount = coerceFiniteNumber(raw.block_count);
   const extrinsicCount = coerceFiniteNumber(raw.extrinsic_count);
@@ -2193,7 +2190,7 @@ function normalizeChainActivityDay(raw: unknown): ChainActivityDay | null {
 }
 
 function normalizeChainCallEntry(raw: unknown): ChainCallEntry | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const callModule = firstString(raw.call_module);
   const count = coerceFiniteNumber(raw.count);
   if (!callModule || count == null) return null;
@@ -2206,7 +2203,7 @@ function normalizeChainCallEntry(raw: unknown): ChainCallEntry | null {
 }
 
 function normalizeChainSignerEntry(raw: unknown): ChainSignerEntry | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const signer = firstString(raw.signer);
   const txCount = coerceFiniteNumber(raw.tx_count);
   const totalFeeTao = coerceFiniteNumber(raw.total_fee_tao);
@@ -2230,7 +2227,7 @@ function normalizeChainSignerEntry(raw: unknown): ChainSignerEntry | null {
 }
 
 function normalizeChainFeeDay(raw: unknown): ChainFeeDay | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const day = firstString(raw.day);
   const extrinsicCount = coerceFiniteNumber(raw.extrinsic_count);
   const totalFeeTao = coerceFiniteNumber(raw.total_fee_tao);
@@ -2247,7 +2244,7 @@ function normalizeChainFeeDay(raw: unknown): ChainFeeDay | null {
 }
 
 function normalizeChainFeePayer(raw: unknown): ChainFeePayer | null {
-  if (!isRecord(raw)) return null;
+  if (!isPlainRecord(raw)) return null;
   const signer = firstString(raw.signer);
   const totalFeeTao = coerceFiniteNumber(raw.total_fee_tao);
   const totalTipTao = coerceFiniteNumber(raw.total_tip_tao);
@@ -2289,7 +2286,7 @@ export const chainActivityQuery = (window: ChainWindow = "7d") =>
         params: { window },
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
+      const d = isPlainRecord(res.data) ? res.data : {};
       return {
         data: {
           schema_version: 1,
@@ -2313,7 +2310,7 @@ export const chainCallsQuery = (window: ChainWindow = "7d") =>
         params: { window, limit: 12 },
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
+      const d = isPlainRecord(res.data) ? res.data : {};
       return {
         data: {
           schema_version: 1,
@@ -2339,7 +2336,7 @@ export const chainSignersQuery = (window: ChainWindow = "7d") =>
         params: { window, limit: 20 },
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
+      const d = isPlainRecord(res.data) ? res.data : {};
       return {
         data: {
           schema_version: 1,
@@ -2363,7 +2360,7 @@ export const chainFeesQuery = (window: ChainWindow = "7d") =>
         params: { window, limit: 12 },
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
+      const d = isPlainRecord(res.data) ? res.data : {};
       return {
         data: {
           schema_version: 1,
@@ -2393,6 +2390,7 @@ const READINESS_COMPONENT_KEYS = [
   "active_lifecycle",
 ] as const;
 
+/** Stricter than isPlainRecord: only null-prototype or Object.prototype bags. */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object") return false;
   const proto = Object.getPrototypeOf(value);
@@ -4380,7 +4378,7 @@ type ChangelogEntry = { id: string; at?: string; title?: string; kind?: string }
 
 function normalizeChangelogEntries(raw: unknown[]): ChangelogEntry[] {
   return raw.flatMap((entry, index) => {
-    if (!isRecord(entry)) return [];
+    if (!isPlainRecord(entry)) return [];
 
     const id = optionalString(entry.id)?.trim() || `entry-${index}`;
     const title = optionalString(entry.title)?.trim() || id;
