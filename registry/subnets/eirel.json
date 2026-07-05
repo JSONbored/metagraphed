@@ -171,6 +171,22 @@
       },
       "source_urls": ["https://api.eirel.ai/openapi.json", "https://eirel.ai/"],
       "url": "https://api.eirel.ai/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-36-eirel-runs-current-api",
+      "kind": "subnet-api",
+      "name": "Eirel current run API",
+      "notes": "Public no-auth GET /v1/runs/current on api.eirel.ai returning the active benchmark run status. Documented in the subnet OpenAPI on the same host as existing Eirel API surfaces.",
+      "provider": "eirel",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://api.eirel.ai/openapi.json", "https://eirel.ai/"],
+      "url": "https://api.eirel.ai/v1/runs/current"
     }
   ],
   "social": {
