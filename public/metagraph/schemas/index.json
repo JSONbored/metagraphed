@@ -210,6 +210,19 @@
       "url": "https://api.oroagents.com/openapi.json"
     },
     {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 18,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://api.zeussubnet.com/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-18",
+      "surface_id": "sn-18-zeus-openapi",
+      "url": "https://api.zeussubnet.com/openapi.json"
+    },
+    {
       "content_type": "application/json",
       "drift_status": "new",
       "hash": "5c60724c84b6d33faac06ec456790403e22b02b03737201e148b4d0b61e5e5e5",
@@ -390,6 +403,19 @@
       "url": "https://desearch.ai/openapi.json"
     },
     {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 28,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://saygm.com/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "gm",
+      "surface_id": "sn-28-gm-openapi",
+      "url": "https://saygm.com/openapi.json"
+    },
+    {
       "content_type": "application/json",
       "drift_status": "new",
       "hash": "824b617328a81e246dd32d2a96b70ffafa46ef39a0cb698b50a4a723890ad8f0",
@@ -473,6 +499,32 @@
       "url": "https://api.bitmind.ai/openapi.json"
     },
     {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 36,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://api.eirel.ai/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-openapi",
+      "url": "https://api.eirel.ai/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 37,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://new-collector-api-production.up.railway.app/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-37",
+      "surface_id": "sn-37-aurelius-openapi",
+      "url": "https://new-collector-api-production.up.railway.app/openapi.json"
+    },
+    {
       "content_type": "application/json",
       "drift_status": "new",
       "hash": "c3cda8197ba4bfc73655f40b8d062f2d63af37081259965fe1a793884f08c5cf",
@@ -511,48 +563,16 @@
       "url": "https://api.graphite-ai.net/openapi.json"
     },
     {
-      "content_type": "application/json; charset=utf-8",
-      "drift_status": "new",
-      "hash": "706a053f891659d31c62f8069c87acf4a85bb367bf8d3af5b66448dc1982931c",
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
       "netuid": 46,
-      "path": "/metagraph/schemas/sn-46-website-common-openapi-json.json",
+      "path": null,
       "previous_hash": null,
       "schema_url": "https://zipcode.ai/openapi.json",
-      "snapshot": {
-        "auth_detail": {
-          "location": "header",
-          "name": "Hotkey",
-          "scheme": "api-key",
-          "value_format": "<api-key>"
-        },
-        "auth_required": true,
-        "auth_schemes": [
-          "apiKey"
-        ],
-        "component_schema_count": 3,
-        "contract_version": "2026-06-06.1",
-        "drift_status": "new",
-        "generated_at": "1970-01-01T00:00:00.000Z",
-        "hash": "706a053f891659d31c62f8069c87acf4a85bb367bf8d3af5b66448dc1982931c",
-        "netuid": 46,
-        "observed_at": "2026-06-24T07:53:18.375Z",
-        "openapi_version": "3.0.0",
-        "path_count": 41,
-        "previous_hash": null,
-        "schema_url": "https://zipcode.ai/openapi.json",
-        "schema_version": 1,
-        "server_count": 1,
-        "subnet_name": "Zipcode",
-        "subnet_slug": "sn-46",
-        "surface_id": "sn-46-website-common-openapi-json",
-        "surface_url": "https://zipcode.ai/openapi.json",
-        "tag_count": 5,
-        "title": "Zip Code Portal API",
-        "version": "1.0.0"
-      },
-      "status": "captured",
+      "status": "not-captured",
       "subnet_slug": "sn-46",
-      "surface_id": "sn-46-website-common-openapi-json",
+      "surface_id": "sn-46-zipcode-openapi",
       "url": "https://zipcode.ai/openapi.json"
     },
     {
@@ -682,6 +702,32 @@
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-handshake58-openapi",
       "url": "https://handshake58.com/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 59,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://api.babelbit.ai/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-59",
+      "surface_id": "sn-59-babelbit-openapi",
+      "url": "https://api.babelbit.ai/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 62,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-62",
+      "surface_id": "sn-62-ridges-openapi",
+      "url": "https://agent-upload.ridges.ai/openapi.json"
     },
     {
       "content_type": "application/json",
@@ -819,6 +865,19 @@
       "url": "https://api.hippius.com/swagger.json"
     },
     {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 78,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://api.vocence.ai/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-78",
+      "surface_id": "sn-78-vocence-openapi",
+      "url": "https://api.vocence.ai/openapi.json"
+    },
+    {
       "content_type": "application/json",
       "drift_status": "new",
       "hash": "5f5fc745d277cbcd790ab8d57cab3777c0a052ad2ed69ec593e48abdb99da610",
@@ -900,6 +959,19 @@
       "subnet_slug": "sn-90",
       "surface_id": "sn-90-degenbrain-openapi",
       "url": "https://api.subnet90.com/openapi.json"
+    },
+    {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 94,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://autoresearch.bitsota.com/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-94",
+      "surface_id": "sn-94-alveus-labs-openapi",
+      "url": "https://autoresearch.bitsota.com/openapi.json"
     },
     {
       "content_type": "application/json",
@@ -1026,12 +1098,14 @@
   "source": "openapi-snapshot",
   "summary": {
     "by_drift_status": {
-      "new": 24
+      "new": 23,
+      "not-captured": 9
     },
     "by_status": {
-      "captured": 24
+      "captured": 23,
+      "not-captured": 9
     },
-    "schema_count": 24,
-    "surface_count": 24
+    "schema_count": 23,
+    "surface_count": 32
   }
 }
