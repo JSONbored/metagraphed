@@ -387,13 +387,14 @@ export function parseConcentrationHistoryWindow(value) {
 // (not nested) fields keep a time series trivial to plot. Null-safe — a cold/empty
 // day yields null metrics, never throws.
 function concentrationHistoryPoint(date, dayRows) {
-  const stake = computeConcentration(dayRows.map((row) => row?.stake_tao));
+  const accepted = stakeAcceptedRows(dayRows);
+  const stake = computeConcentration(accepted.map((row) => row?.stake_tao));
   const emission = computeConcentration(
-    dayRows.map((row) => row?.emission_tao),
+    accepted.map((row) => row?.emission_tao),
   );
   return {
     snapshot_date: date,
-    neuron_count: dayRows.length,
+    neuron_count: accepted.length,
     stake_gini: stake?.gini ?? null,
     stake_nakamoto_coefficient: stake?.nakamoto_coefficient ?? null,
     stake_top_10pct_share: stake?.top_10pct_share ?? null,

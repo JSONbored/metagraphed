@@ -352,6 +352,18 @@ describe("buildConcentrationHistory", () => {
       assert.deepEqual(empty.points, []);
     }
   });
+
+  test("reject blank stake_tao cells in daily history points", () => {
+    const rows = [
+      { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
+      { snapshot_date: "2026-06-27", stake_tao: "", emission_tao: 50 },
+      { snapshot_date: "2026-06-27", stake_tao: null, emission_tao: 40 },
+    ];
+    const data = buildConcentrationHistory(rows, 7, { window: "30d" });
+    assert.equal(data.points[0].neuron_count, 1);
+    assert.equal(data.points[0].emission_gini, 0);
+    assert.equal(data.points[0].stake_nakamoto_coefficient, 1);
+  });
 });
 
 describe("concentration loaders", () => {
