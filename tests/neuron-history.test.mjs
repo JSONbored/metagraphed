@@ -9,6 +9,7 @@ import {
   coldArchiveKey,
   isValidSnapshotDate,
   NEURON_DAILY_RETENTION_DAYS,
+  NEURON_DAILY_ARCHIVE_BATCH_DAYS,
   neuronDailyUpsertStatements,
   validNeuronDailyRows,
   buildNeuronHistory,
@@ -880,6 +881,49 @@ describe("R2 cold archive + prune (PR-A2)", () => {
     assert.equal(puts.includes(coldArchiveKey(9, latestDay)), false);
   });
 
+  test("archivePrunableNeuronDaily caps each cron batch and marks it incomplete", async () => {
+    const days = Array.from(
+      { length: NEURON_DAILY_ARCHIVE_BATCH_DAYS },
+      (_, i) => `2026-03-${String(i + 1).padStart(2, "0")}`,
+    );
+    const captured = {};
+    const db = {
+      prepare(sql) {
+        if (sql.includes("DISTINCT snapshot_date")) captured.sql = sql;
+        return {
+          bind(...params) {
+            if (sql.includes("DISTINCT snapshot_date")) {
+              captured.params = params;
+            }
+            return {
+              all: () => {
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({
+                    results: days.map((day) => ({ day })),
+                  });
+                }
+                return Promise.resolve({
+                  results: [{ netuid: 7, uid: 0, snapshot_date: params[0] }],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const bucket = { put: () => Promise.resolve() };
+    const res = await archivePrunableNeuronDaily(
+      {},
+      { db, bucket, now: Date.parse("2026-06-22T00:00:00Z") },
+    );
+
+    assert.equal(res.archived, true);
+    assert.equal(res.complete, false);
+    assert.deepEqual(res.days, days);
+    assert.match(captured.sql, /LIMIT \?/);
+    assert.equal(captured.params[1], NEURON_DAILY_ARCHIVE_BATCH_DAYS);
+  });
+
   test("archivePrunableNeuronDaily no-ops without bindings", async () => {
     assert.deepEqual(await archivePrunableNeuronDaily({}), {
       archived: false,
@@ -955,6 +999,34 @@ describe("R2 cold archive + prune (PR-A2)", () => {
       .toISOString()
       .slice(0, 10);
     assert.deepEqual(cap.params, [expectedCutoff]);
+  });
+
+  test("pruneNeuronDaily can delete only confirmed archived backlog days", async () => {
+    const captured = {};
+    const db = {
+      prepare(sql) {
+        captured.sql = sql;
+        return {
+          bind(...params) {
+            captured.params = params;
+            return { run: () => Promise.resolve({ meta: { changes: 2 } }) };
+          },
+        };
+      },
+    };
+
+    const res = await pruneNeuronDaily(
+      { METAGRAPH_HEALTH_DB: db },
+      {
+        now: Date.parse("2026-06-22T00:00:00Z"),
+        days: ["2026-03-20", "2026-03-21"],
+      },
+    );
+
+    assert.equal(res.pruned, true);
+    assert.deepEqual(res.days, ["2026-03-20", "2026-03-21"]);
+    assert.match(captured.sql, /snapshot_date IN \(\?, \?\)/);
+    assert.deepEqual(captured.params, ["2026-03-20", "2026-03-21"]);
   });
 
   test("pruneNeuronDaily no-ops without a DB binding (returns no-db, never throws)", async () => {
@@ -1106,6 +1178,67 @@ describe("handleScheduled rollup cron (#1345)", () => {
     assert.equal(result.archivedPrunable.archived, true);
     assert.equal(result.pruned.pruned, true);
     assert.equal(deleted, true);
+  });
+
+  test("prunes only the archived backlog batch when more prunable days remain", async () => {
+    const latestDay = "2026-06-21";
+    const oldDays = Array.from(
+      { length: NEURON_DAILY_ARCHIVE_BATCH_DAYS },
+      (_, i) => `2026-03-${String(i + 1).padStart(2, "0")}`,
+    );
+    const capturedDeletes = [];
+    const db = {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            return {
+              run: () => {
+                if (sql.startsWith("DELETE")) {
+                  capturedDeletes.push({ sql, params });
+                }
+                return Promise.resolve({ meta: { changes: 1 } });
+              },
+              all: () => {
+                if (sql.includes("MAX(snapshot_date)")) {
+                  return Promise.resolve({ results: [{ day: latestDay }] });
+                }
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({
+                    results: oldDays.map((day) => ({ day })),
+                  });
+                }
+                return Promise.resolve({
+                  results: [
+                    {
+                      netuid: 7,
+                      uid: 0,
+                      snapshot_date: params[0],
+                      stake_tao: 1,
+                    },
+                  ],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      METAGRAPH_ARCHIVE: { put: () => Promise.resolve() },
+    };
+
+    const result = await handleScheduled(
+      { cron: NEURON_HISTORY_ROLLUP_CRON },
+      env,
+      ctx,
+    );
+
+    assert.equal(result.archivedPrunable.complete, false);
+    assert.equal(result.pruned.pruned, true);
+    assert.deepEqual(result.pruned.days, oldDays);
+    assert.match(capturedDeletes[0].sql, /snapshot_date IN/);
+    assert.deepEqual(capturedDeletes[0].params, oldDays);
   });
 
   test("isolates a rejected backlog archive and skips the gated prune", async () => {

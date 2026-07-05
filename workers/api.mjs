@@ -924,7 +924,10 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     }));
     const pruned =
       archived.archived && archivedPrunable.archived
-        ? await pruneNeuronDaily(env, { now }).catch(() => ({ pruned: false }))
+        ? await pruneNeuronDaily(env, {
+            now,
+            days: archivedPrunable.complete ? undefined : archivedPrunable.days,
+          }).catch(() => ({ pruned: false }))
         : { pruned: false, reason: "archive-not-confirmed" };
     return { rolled, archived, archivedPrunable, pruned };
   }

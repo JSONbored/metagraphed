@@ -117,6 +117,9 @@ export async function rollupNeuronDaily(env, { now = Date.now() } = {}) {
 // because the write outage is the more severe problem. Raise this once the raw
 // chain data moves to self-hosted Postgres (no cap) per ADR 0013, not before.
 export const NEURON_DAILY_RETENTION_DAYS = 90;
+// Bound cold-archive work per cron tick so a large retention cut/backlog cannot
+// consume the whole Worker invocation before any D1 space is recovered.
+export const NEURON_DAILY_ARCHIVE_BATCH_DAYS = 7;
 
 // R2 cold-archive key: one immutable gzip-NDJSON object per subnet per UTC day.
 export function coldArchiveKey(netuid, day) {
@@ -193,25 +196,34 @@ function neuronDailyRetentionCutoff(now = Date.now()) {
     .slice(0, 10);
 }
 
-async function prunableDays(db, cutoff) {
+async function prunableDays(
+  db,
+  cutoff,
+  limit = NEURON_DAILY_ARCHIVE_BATCH_DAYS,
+) {
   const res = await db
     .prepare(
       "SELECT DISTINCT snapshot_date AS day FROM neuron_daily " +
-        "WHERE snapshot_date < ? ORDER BY snapshot_date",
+        "WHERE snapshot_date < ? ORDER BY snapshot_date LIMIT ?",
     )
-    .bind(cutoff)
+    .bind(cutoff, limit)
     .all();
   return (res?.results ?? []).map((r) => r.day).filter(Boolean);
 }
 
 /**
- * Archive every neuron_daily day that would be removed by the retention prune.
+ * Archive a bounded batch of neuron_daily days eligible for the retention prune.
  * This closes the data-loss gap where a successful latest-day archive could gate
  * deletion of older days that had never been written to R2.
  */
 export async function archivePrunableNeuronDaily(
   env,
-  { now = Date.now(), db, bucket } = {},
+  {
+    now = Date.now(),
+    db,
+    bucket,
+    limit = NEURON_DAILY_ARCHIVE_BATCH_DAYS,
+  } = {},
 ) {
   const database = db || env?.METAGRAPH_HEALTH_DB;
   const r2 = bucket || env?.METAGRAPH_ARCHIVE;
@@ -219,7 +231,7 @@ export async function archivePrunableNeuronDaily(
     return { archived: false, reason: "no-binding" };
   }
   const cutoff = neuronDailyRetentionCutoff(now);
-  const days = await prunableDays(database, cutoff);
+  const days = await prunableDays(database, cutoff, limit);
   let rows = 0;
   let subnets = 0;
   const archivedDays = [];
@@ -243,7 +255,14 @@ export async function archivePrunableNeuronDaily(
     rows += res.rows ?? 0;
     subnets += res.subnets ?? 0;
   }
-  return { archived: true, cutoff, days: archivedDays, subnets, rows };
+  return {
+    archived: true,
+    cutoff,
+    days: archivedDays,
+    complete: days.length < limit,
+    subnets,
+    rows,
+  };
 }
 
 /**
@@ -251,10 +270,26 @@ export async function archivePrunableNeuronDaily(
  * gates this on a successful archive so a day is never deleted before it exists
  * in the R2 cold tier. Returns {pruned, cutoff, rows}.
  */
-export async function pruneNeuronDaily(env, { now = Date.now() } = {}) {
+export async function pruneNeuronDaily(env, { now = Date.now(), days } = {}) {
   const db = env?.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return { pruned: false, reason: "no-db" };
   const cutoff = neuronDailyRetentionCutoff(now);
+  const archivedDays = Array.isArray(days) ? days.filter(Boolean) : [];
+  if (archivedDays.length > 0) {
+    const placeholders = archivedDays.map(() => "?").join(", ");
+    const res = await db
+      .prepare(
+        `DELETE FROM neuron_daily WHERE snapshot_date IN (${placeholders})`,
+      )
+      .bind(...archivedDays)
+      .run();
+    return {
+      pruned: true,
+      cutoff,
+      days: archivedDays,
+      rows: res?.meta?.changes ?? null,
+    };
+  }
   const res = await db
     .prepare("DELETE FROM neuron_daily WHERE snapshot_date < ?")
     .bind(cutoff)
