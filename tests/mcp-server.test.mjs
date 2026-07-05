@@ -11445,7 +11445,10 @@ describe("MCP account tools (get_account + events + subnets)", () => {
   // rows. Order matters: GROUP BY (kinds) before COUNT (agg), as in the REST
   // account-routes test. `capture` records each bound (sql, params) so a test can
   // assert the clamped LIMIT/OFFSET actually reached the query.
-  function accountD1({ agg, kinds, registrations, events } = {}, capture = []) {
+  function accountD1(
+    { agg, kinds, registrations, events, daily } = {},
+    capture = [],
+  ) {
     return {
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
@@ -11458,6 +11461,8 @@ describe("MCP account tools (get_account + events + subnets)", () => {
                     return Promise.resolve({ results: kinds || [] });
                   if (/COUNT\(\*\) AS c/.test(sql))
                     return Promise.resolve({ results: agg ? [agg] : [] });
+                  if (/FROM neuron_daily/.test(sql))
+                    return Promise.resolve({ results: daily || [] });
                   if (/FROM neurons/.test(sql))
                     return Promise.resolve({ results: registrations || [] });
                   if (/FROM account_events/.test(sql))
@@ -11765,6 +11770,68 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.position_count, 0);
     assert.equal(out.stake_concentration, null);
+  });
+
+  test("get_account_portfolio_history rolls the daily rows into per-day points", async () => {
+    const env = accountD1({
+      daily: [
+        {
+          snapshot_date: "2026-06-02",
+          netuid: 7,
+          uid: 3,
+          stake_tao: 1000,
+          emission_tao: 50,
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          netuid: 7,
+          uid: 3,
+          stake_tao: 900,
+          emission_tao: 40,
+          validator_permit: 1,
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_account_portfolio_history",
+      { ss58: SS58, window: "7d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.point_count, 2);
+    assert.equal(out.points[0].snapshot_date, "2026-06-02"); // newest first
+    assert.equal(out.points[0].total_stake_tao, 1000);
+    assert.equal(out.points[0].validator_count, 1);
+    // Default window is applied when omitted.
+    const dflt = await callTool(
+      "get_account_portfolio_history",
+      { ss58: SS58 },
+      { env: accountD1({ daily: [] }) },
+    );
+    assert.equal(dflt.body.result.structuredContent.window, "30d");
+  });
+
+  test("get_account_portfolio_history rejects an unsupported window", async () => {
+    const res = await callTool(
+      "get_account_portfolio_history",
+      { ss58: SS58, window: "1y" },
+      { env: accountD1({ daily: [] }) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_account_portfolio_history returns an empty series on cold D1", async () => {
+    const res = await callTool(
+      "get_account_portfolio_history",
+      { ss58: SS58 },
+      { env: accountD1({ daily: [] }) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
   });
 
   test("get_account_events rejects a non-string kind", async () => {

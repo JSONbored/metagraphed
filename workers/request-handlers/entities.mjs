@@ -82,6 +82,7 @@ import {
   loadAccountSubnets,
 } from "../../src/account-events.mjs";
 import { loadAccountPortfolio } from "../../src/account-portfolio.mjs";
+import { loadAccountPortfolioHistory } from "../../src/account-portfolio-history.mjs";
 import {
   isFinneySs58Address,
   loadAccountBalance,
@@ -2702,6 +2703,35 @@ export async function handleAccountPortfolio(request, env, ss58) {
         env,
         `/metagraph/accounts/${ss58}/portfolio.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/portfolio-history: the wallet's portfolio timeline over a 7d/30d/90d
+// window — per snapshot_date the hotkey's footprint (subnet/position/validator/miner counts) and
+// standing economics (total stake/emission, overall return), rolled up from the neuron_daily D1
+// rollup. The point-in-time companion to /portfolio. Cold/absent store → schema-stable empty series.
+export async function handleAccountPortfolioHistory(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const window = parseConcentrationHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (window.error) return analyticsQueryError(window.error);
+  const data = await loadAccountPortfolioHistory(d1Runner(env), ss58, {
+    windowLabel: window.label,
+    windowDays: window.days,
+  });
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/portfolio-history.json`,
+        data.points[0]?.snapshot_date ?? null,
       ),
     },
     "short",

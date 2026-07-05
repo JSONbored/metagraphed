@@ -379,6 +379,7 @@ import {
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "./subnet-deregistrations.mjs";
 import { loadAccountPortfolio } from "./account-portfolio.mjs";
+import { loadAccountPortfolioHistory } from "./account-portfolio-history.mjs";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -499,7 +500,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.76.0";
+export const MCP_SERVER_VERSION = "1.77.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -691,7 +692,8 @@ export const MCP_INSTRUCTIONS =
   "get_account_events returns its chain-event history (optional kind filter), and " +
   "get_account_subnets the subnets where it is registered, get_account_portfolio " +
   "its cross-subnet neuron portfolio (per-position economics + yield and wallet " +
-  "aggregates), get_account_stake_flow " +
+  "aggregates), get_account_portfolio_history its per-day portfolio timeline " +
+  "(footprint + standing economics over a window), get_account_stake_flow " +
   "its per-subnet staking flow with direction and concentration labels, " +
   "get_account_stake_moves its per-subnet StakeMoved re-delegation footprint " +
   "with movement counts, first/last timestamps, and concentration labels, " +
@@ -4403,6 +4405,48 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
       return loadAccountPortfolio(mcpD1Runner(ctx), ss58);
+    },
+  },
+  {
+    name: "get_account_portfolio_history",
+    title: "Get a wallet's portfolio timeline",
+    description:
+      "A wallet's portfolio timeline (by SS58 hotkey; newest first) over the " +
+      "requested window (7d, 30d, or 90d; default 30d): for each snapshot_date " +
+      "the hotkey's footprint (subnet/position/validator/miner counts) and " +
+      "standing economics (total stake, total emission, overall return), rolled " +
+      "up from the neuron_daily rollup. The point-in-time companion to " +
+      "get_account_portfolio; use it to see whether a wallet's stake/emission/" +
+      "reach is growing or shrinking. An unregistered address returns an empty " +
+      "series, not an error. Mirrors GET /api/v1/accounts/{ss58}/portfolio-history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's hotkey SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const parsed = parseConcentrationHistoryWindow(args?.window);
+      if (parsed.error) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      return loadAccountPortfolioHistory(mcpD1Runner(ctx), ss58, {
+        windowLabel: parsed.label,
+        windowDays: parsed.days,
+      });
     },
   },
   {
@@ -9326,6 +9370,18 @@ const TOOL_OUTPUT_SCHEMAS = {
       overall_yield: { type: ["number", "null"] },
       stake_concentration: { type: ["object", "null"] },
       positions: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_account_portfolio_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "window", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: { type: "array", items: { type: "object" } },
     },
   },
   get_account_events: {

@@ -71,6 +71,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-deregistrations",
   "account-subnets",
   "account-portfolio",
+  "account-portfolio-history",
   "account-balance",
   "blocks-feed",
   "blocks-summary",
