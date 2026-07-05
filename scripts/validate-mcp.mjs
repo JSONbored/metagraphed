@@ -303,6 +303,14 @@ assert.ok(
   Array.isArray(enrichmentEvidencePage.entries),
   "list_enrichment_evidence must return entries[]",
 );
+const reviewGapsPage = await callOk("list_review_gaps", {
+  limit: 3,
+  curation_level: "candidate-discovered",
+});
+assert.ok(
+  Array.isArray(reviewGapsPage.priorities),
+  "list_review_gaps must return priorities[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),
