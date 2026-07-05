@@ -13767,22 +13767,59 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  test("list_providers returns the providers index artifact", async () => {
+  test("list_providers returns filtered provider rows", async () => {
     const deps = makeDeps({
       "/metagraph/providers.json": {
-        generated_at: "2026-01-01T00:00:00Z",
-        providers: [{ id: "datura", kind: "api", name: "Datura" }],
+        generated_at: "2026-07-01T00:00:00.000Z",
+        schema_version: 1,
+        providers: [
+          {
+            id: "datura",
+            kind: "data-provider",
+            authority: "official",
+            name: "Datura",
+          },
+          {
+            id: "community-x",
+            kind: "data-provider",
+            authority: "community",
+            name: "Community X",
+          },
+        ],
       },
     });
-    const res = await callTool("list_providers", {}, { deps });
+    const res = await callTool(
+      "list_providers",
+      { authority: "official", limit: 5 },
+      { deps },
+    );
     const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
     assert.equal(out.providers[0].id, "datura");
-    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+    assert.equal(out.generated_at, "2026-07-01T00:00:00.000Z");
   });
 
-  test("list_providers rejects an unexpected argument", async () => {
-    const res = await callTool("list_providers", { netuid: 7 });
+  test("list_providers reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_providers", {}, { deps: makeDeps() });
     assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Providers index unavailable/,
+    );
+  });
+
+  test("list_providers payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_providers",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/providers.json": {
+        providers: [{ id: "datura", kind: "data-provider", name: "Datura" }],
+      },
+    });
+    const res = await callTool("list_providers", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
   });
 
   function providersDeps() {
@@ -13849,18 +13886,18 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.providers[0].id, "community-x");
   });
 
-  test("list_providers paginates the filtered list with limit/offset", async () => {
+  test("list_providers paginates the filtered list with limit/cursor", async () => {
     const deps = providersDeps();
     const res = await callTool(
       "list_providers",
-      { limit: 1, offset: 1 },
+      { sort: "name", order: "asc", limit: 1, cursor: 1 },
       { deps },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.total, 3);
     assert.equal(out.returned, 1);
-    assert.equal(out.offset, 1);
-    assert.equal(out.providers[0].id, "chutes");
+    assert.equal(out.cursor, 1);
+    assert.equal(out.providers[0].id, "community-x");
   });
 
   test("list_providers rejects an unknown kind/authority enum value", async () => {

@@ -344,6 +344,14 @@ assert.ok(
   Array.isArray(evidencePage.claims),
   "list_evidence must return claims[]",
 );
+const providersPage = await callOk("list_providers", {
+  limit: 3,
+  authority: "official",
+});
+assert.ok(
+  Array.isArray(providersPage.providers),
+  "list_providers must return providers[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),

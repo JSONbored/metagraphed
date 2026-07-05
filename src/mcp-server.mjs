@@ -116,6 +116,12 @@ import {
   loadProviderEndpointsList,
 } from "./provider-endpoints-mcp.mjs";
 import {
+  LIST_PROVIDERS_INSTRUCTIONS,
+  LIST_PROVIDERS_MCP_TOOL,
+  LIST_PROVIDERS_OUTPUT_SCHEMA,
+  loadProvidersList,
+} from "./providers-mcp.mjs";
+import {
   GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
@@ -776,8 +782,9 @@ export const MCP_INSTRUCTIONS =
   "list_chain_events the raw recent decoded event feed (filterable by " +
   "pallet/method/block). For agent bootstrap, " +
   GET_AGENT_RESOURCES_INSTRUCTIONS +
-  "get_agent_catalog the capability catalog, list_providers the full index of " +
-  "registered data providers/sources backing the registry, list_surfaces the " +
+  "get_agent_catalog the capability catalog, " +
+  LIST_PROVIDERS_INSTRUCTIONS +
+  "list_surfaces the " +
   "network-wide catalog of curated public surfaces, list_candidates the " +
   "unpromoted candidate surfaces still pending review, list_endpoints the " +
   "network-wide monitored endpoint-resource catalog, " +
@@ -6173,71 +6180,9 @@ export const MCP_TOOLS = [
     },
   },
   {
-    name: "list_providers",
-    title: "List providers and sources",
-    description:
-      "Fetch the index of registered data providers/sources backing the " +
-      "registry: each provider's id, kind, authority, name, and the subnets, " +
-      "surfaces, and endpoints it backs. This is the list counterpart to " +
-      "get_provider_detail (which fetches one provider by slug). Optionally " +
-      "filter by id/kind/authority and page with limit/offset. Mirrors " +
-      "GET /api/v1/providers.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Provider slug, e.g. 'datura'." },
-        kind: {
-          type: "string",
-          enum: QUERY_ENUMS.providerKind,
-          description: "Provider kind, e.g. 'data-provider' or 'registry'.",
-        },
-        authority: {
-          type: "string",
-          enum: QUERY_ENUMS.providerAuthority,
-          description: "Trust authority, e.g. 'official' or 'community'.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max providers to return. Omit for the full list.",
-          minimum: 1,
-        },
-        offset: {
-          type: "integer",
-          description: "Pagination offset into the (filtered) list. Default 0.",
-          minimum: 0,
-        },
-      },
-      additionalProperties: false,
-    },
+    ...LIST_PROVIDERS_MCP_TOOL,
     async handler(args, ctx) {
-      const id = optionalString(args, "id");
-      const kind = optionalEnum(args, "kind", QUERY_ENUMS.providerKind);
-      const authority = optionalEnum(
-        args,
-        "authority",
-        QUERY_ENUMS.providerAuthority,
-      );
-      const limit = optionalPositiveInt(args, "limit");
-      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
-      const data = await loadArtifactData(ctx, "/metagraph/providers.json");
-      const all = Array.isArray(data.providers) ? data.providers : [];
-      const filtered = all.filter(
-        (p) =>
-          (id === null || p.id === id) &&
-          (kind === null || p.kind === kind) &&
-          (authority === null || p.authority === authority),
-      );
-      const page =
-        limit === null
-          ? filtered.slice(offset)
-          : filtered.slice(offset, offset + limit);
-      return {
-        ...data,
-        providers: page,
-        total: filtered.length,
-        returned: page.length,
-        offset,
-      };
+      return loadProvidersList(ctx, args);
     },
   },
   {
@@ -10283,16 +10228,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       endpoints: { type: ["object", "array", "null"] },
     },
   },
-  list_providers: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      providers: { type: "array", items: { type: "object" } },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  list_providers: LIST_PROVIDERS_OUTPUT_SCHEMA,
   list_surfaces: {
     type: "object",
     additionalProperties: true,
