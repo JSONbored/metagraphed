@@ -12,7 +12,24 @@
   "social": {
     "x": "https://x.com/harnyx_ai"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-67-harnyx-healthz-api",
+      "kind": "subnet-api",
+      "name": "Harnyx healthz API",
+      "notes": "Public no-auth GET /healthz on harnyx.ai returning plain-text liveness (observed: ok). Served on the official Harnyx website host linked from the SN67 source repository; the repo documents API flows under docs/api/.",
+      "provider": "harnyx",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://github.com/harnyx/harnyx", "https://harnyx.ai/"],
+      "url": "https://harnyx.ai/healthz"
+    }
+  ],
   "source_repo": "https://github.com/harnyx/harnyx",
   "website_url": "https://harnyx.ai/",
   "contact": "harnyx@brightmount.co"
