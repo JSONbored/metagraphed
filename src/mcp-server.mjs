@@ -10344,7 +10344,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     required: [],
     properties: {
       netuid: { type: ["integer", "null"] },
-      evidence: { type: "array", items: { type: "object" } },
+      claims: { type: "array", items: { type: "object" } },
       generated_at: NULLABLE_STRING,
       schema_version: { type: ["string", "integer", "null"] },
     },
