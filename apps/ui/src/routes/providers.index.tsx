@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo, type ReactNode } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Globe, Github, BookOpen, Radio, Layers, Network, Search, X } from "lucide-react";
+import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -12,7 +12,11 @@ import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
 import { ShareButton } from "@/components/metagraphed/share-button";
-import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
+import {
+  ResetFiltersButton,
+  SearchInput,
+  SelectFilter,
+} from "@/components/metagraphed/table-controls";
 import { providersQuery, endpointsQuery, type ProviderCounts } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
@@ -267,44 +271,34 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
 
       {/* Toolbar */}
       <div className="sticky top-14 z-10 -mx-1 px-1 py-2 backdrop-blur bg-paper/85 border-b border-border/60 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px] max-w-sm">
-          <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-ink-muted" />
-          <input
-            value={q}
-            onChange={(e) => setSearch({ q: e.target.value })}
-            placeholder="Search providers, slugs, hosts…"
-            className="w-full rounded border border-border bg-card pl-7 pr-2 py-1.5 text-[12px] focus:outline-none focus:border-ink/30"
-            aria-label="Search providers"
-          />
-        </div>
-        <Selector
+        <SearchInput
+          value={q}
+          onChange={(v) => setSearch({ q: v })}
+          placeholder="Search providers, slugs, hosts…"
+        />
+        <SelectFilter
           label="Kind"
           value={kind}
           onChange={(v) => setSearch({ kind: v })}
-          options={kinds}
+          options={kinds.map((v) => ({ value: v, label: v }))}
         />
-        <Selector
+        <SelectFilter
           label="Authority"
           value={authority}
           onChange={(v) => setSearch({ authority: v })}
-          options={authorityOptions}
+          options={authorityOptions.map((v) => ({ value: v, label: v }))}
         />
-        <Selector
+        <SelectFilter
           label="Sort"
           value={sortKey}
           onChange={(v) => setSearch({ sort: v as ProviderSortKey })}
-          options={[...providerSortKeys]}
+          options={providerSortKeys.map((v) => ({ value: v, label: v }))}
           allowEmpty={false}
         />
-        {hasFilters ? (
-          <button
-            type="button"
-            onClick={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
-            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[11px] text-ink-muted hover:text-ink-strong"
-          >
-            <X className="size-3" /> Clear
-          </button>
-        ) : null}
+        <ResetFiltersButton
+          active={hasFilters}
+          onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
+        />
         <span className="ml-auto font-mono text-[10px] text-ink-muted">
           {sorted.length} of {rows.length} providers
         </span>
@@ -488,38 +482,6 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
         </div>
       )}
     </div>
-  );
-}
-
-function Selector({
-  label,
-  value,
-  onChange,
-  options,
-  allowEmpty = true,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  allowEmpty?: boolean;
-}) {
-  return (
-    <label className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
-      <span className="font-mono uppercase tracking-widest text-[10px]">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-border bg-card px-1.5 py-1 text-[11px] text-ink focus:outline-none focus:border-ink/30"
-      >
-        {allowEmpty ? <option value="">all</option> : null}
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 

@@ -91,11 +91,13 @@ export function SelectFilter({
   onChange,
   options,
   label,
+  allowEmpty = true,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: Array<{ value: string; label: string }>;
   label: string;
+  allowEmpty?: boolean;
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
@@ -107,7 +109,7 @@ export function SelectFilter({
         onChange={(e) => onChange(e.target.value)}
         className="bg-transparent text-ink-strong text-xs focus:outline-none"
       >
-        <option value="">all</option>
+        {allowEmpty ? <option value="">all</option> : null}
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
