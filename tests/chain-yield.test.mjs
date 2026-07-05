@@ -152,14 +152,56 @@ describe("buildChainYield", () => {
       },
       {
         validator_permit: 0,
-        stake_tao: "junk", // non-numeric → coerced to 0
+        stake_tao: "junk",
         emission_tao: "junk",
         netuid: 3,
       },
     ]);
-    assert.equal(out.total_stake_tao, 200); // the junk cell contributes 0
+    assert.equal(out.neuron_count, 1);
+    assert.equal(out.total_stake_tao, 200);
     assert.equal(out.network_yield, 0.1);
-    assert.equal(out.validator_count, 1); // "1" → integer validator
+    assert.equal(out.validator_count, 1);
+  });
+
+  test("reject blank stake_tao/emission_tao cells that coerce to 0", () => {
+    for (const blank of ["", "   "]) {
+      const skippedStake = buildChainYield([
+        { stake_tao: blank, emission_tao: 2, netuid: 1 },
+      ]);
+      assert.equal(
+        skippedStake.neuron_count,
+        0,
+        `stake ${JSON.stringify(blank)}`,
+      );
+
+      const blankEmission = buildChainYield([
+        { stake_tao: 10, emission_tao: blank, netuid: 1 },
+      ]);
+      assert.equal(blankEmission.neuron_count, 1);
+      assert.equal(blankEmission.total_emission_tao, 0);
+      assert.equal(blankEmission.network_yield, null);
+    }
+
+    const nullStake = buildChainYield([
+      { stake_tao: null, emission_tao: 2, netuid: 1 },
+    ]);
+    assert.equal(nullStake.neuron_count, 0);
+
+    const negativeStake = buildChainYield([
+      { stake_tao: -1, emission_tao: 2, netuid: 1 },
+    ]);
+    assert.equal(negativeStake.neuron_count, 0);
+  });
+
+  test("network_yield ignores blank-emission stake in the aggregate denominator", () => {
+    const out = buildChainYield([
+      { stake_tao: 100, emission_tao: "   ", netuid: 1, validator_permit: 0 },
+      { stake_tao: 100, emission_tao: 10, netuid: 1, validator_permit: 0 },
+    ]);
+    assert.equal(out.total_stake_tao, 200);
+    assert.equal(out.total_emission_tao, 10);
+    assert.equal(out.network_yield, 0.1);
+    assert.equal(out.miner_yield, 0.1);
   });
 
   test("cold/empty network → schema-stable zero (yields + distribution null)", () => {

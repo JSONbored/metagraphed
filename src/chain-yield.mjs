@@ -22,13 +22,17 @@ const YIELD_PERCENTILES = [10, 25, 75, 90];
 // noise below the rao floor while keeping small emission/stake ratios meaningful.
 const SCALE = 1e9;
 function round9(value) {
-  return Math.round(value * SCALE) / SCALE;
+  return Math.round(Number(value) * SCALE) / SCALE;
 }
 
-// Coerce a D1 numeric cell (number, numeric string, or null) to a finite number.
-function toNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+// A finite TAO cell, or null when absent/blank/non-numeric. Blank D1 cells coerce via
+// Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
+// zero-yield readings (mirrors subnet-yield.mjs / metagraph-neurons.mjs).
+function nullableTao(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 // Sum in rao-integer BigInt space, not float space -- summing potentially
@@ -36,8 +40,7 @@ function toNumber(value) {
 // compounds rounding error across the accumulation even when each individual
 // value is itself exact (metagraphed#2922, mirrors the toRao pattern already
 // proven in src/account-balance.mjs for #2070). Convert back to TAO only
-// once, at the very end. Callers always pass an already-finite toNumber()
-// result, so no isFinite guard here.
+// once, at the very end. Callers pass finite nullableTao() results into toRaoBig.
 function toRaoBig(tao) {
   return BigInt(Math.round(tao * 1e9));
 }
@@ -74,9 +77,11 @@ function captureStamp(value) {
 }
 
 // Emission-per-stake return rate; null when stake is 0 (the return is undefined
-// with no stake to earn on), so zero-stake neurons are excluded from the spread.
+// with no stake to earn on) or emission is unknown, so zero-stake / blank-emission
+// neurons are excluded from the spread.
 function computeYieldValue(emission, stake) {
   if (!(stake > 0)) return null;
+  if (emission == null) return null;
   return round9(emission / stake);
 }
 
@@ -131,10 +136,15 @@ export function buildChainYield(rows) {
   const list = Array.isArray(rows) ? rows : [];
   let capturedAt = null;
   let validatorCount = 0;
+  let neuronCount = 0;
   let totalStakeRao = 0n;
   let totalEmissionRao = 0n;
-  let validatorStakeRao = 0n;
-  let validatorEmissionRao = 0n;
+  let yieldStakeRao = 0n;
+  let yieldEmissionRao = 0n;
+  let yieldValidatorStakeRao = 0n;
+  let yieldValidatorEmissionRao = 0n;
+  let yieldMinerStakeRao = 0n;
+  let yieldMinerEmissionRao = 0n;
   const netuids = new Set();
   const yields = [];
   for (const row of list) {
@@ -144,44 +154,58 @@ export function buildChainYield(rows) {
     }
     const netuid = subnetNetuid(row?.netuid);
     if (netuid != null) netuids.add(netuid);
-    const stake = toNumber(row?.stake_tao);
-    const emission = toNumber(row?.emission_tao);
+    const stake = nullableTao(row?.stake_tao);
+    if (stake == null) continue;
+    neuronCount += 1;
+    const emission = nullableTao(row?.emission_tao);
     // Match the neuron formatter's SQLite 0/1 convention: only an integer 1 is a
     // validator, so a numeric-string "0" cannot slip through as truthy.
     const isValidator = Number(row?.validator_permit) === 1;
-    const stakeRao = toRaoBig(stake);
-    const emissionRao = toRaoBig(emission);
-    totalStakeRao += stakeRao;
-    totalEmissionRao += emissionRao;
-    if (isValidator) {
-      validatorCount += 1;
-      validatorStakeRao += stakeRao;
-      validatorEmissionRao += emissionRao;
+    totalStakeRao += toRaoBig(stake);
+    if (emission != null) {
+      totalEmissionRao += toRaoBig(emission);
+      if (stake > 0) {
+        yieldStakeRao += toRaoBig(stake);
+        yieldEmissionRao += toRaoBig(emission);
+        if (isValidator) {
+          yieldValidatorStakeRao += toRaoBig(stake);
+          yieldValidatorEmissionRao += toRaoBig(emission);
+        } else {
+          yieldMinerStakeRao += toRaoBig(stake);
+          yieldMinerEmissionRao += toRaoBig(emission);
+        }
+      }
     }
+    if (isValidator) validatorCount += 1;
     const value = computeYieldValue(emission, stake);
     if (value != null) yields.push(value);
   }
   const totalStake = raoBigToTao(totalStakeRao);
   const totalEmission = raoBigToTao(totalEmissionRao);
-  const validatorStake = raoBigToTao(validatorStakeRao);
-  const validatorEmission = raoBigToTao(validatorEmissionRao);
-  const minerStake = raoBigToTao(totalStakeRao - validatorStakeRao);
-  const minerEmission = raoBigToTao(totalEmissionRao - validatorEmissionRao);
+  const yieldStake = raoBigToTao(yieldStakeRao);
+  const yieldEmission = raoBigToTao(yieldEmissionRao);
+  const yieldValidatorStake = raoBigToTao(yieldValidatorStakeRao);
+  const yieldValidatorEmission = raoBigToTao(yieldValidatorEmissionRao);
+  const yieldMinerStake = raoBigToTao(yieldMinerStakeRao);
+  const yieldMinerEmission = raoBigToTao(yieldMinerEmissionRao);
   return {
     schema_version: 1,
     subnet_count: netuids.size,
-    neuron_count: list.length,
+    neuron_count: neuronCount,
     validator_count: validatorCount,
-    miner_count: list.length - validatorCount,
+    miner_count: neuronCount - validatorCount,
     captured_at: capturedAt?.value ?? null,
     total_stake_tao: round9(totalStake),
     total_emission_tao: round9(totalEmission),
-    // Network aggregate return: total emission per total stake (null with no stake).
-    network_yield: totalStake > 0 ? round9(totalEmission / totalStake) : null,
+    // Network aggregate return over neurons with known stake + emission only.
+    network_yield: yieldStake > 0 ? round9(yieldEmission / yieldStake) : null,
     // The same aggregate return split by role.
     validator_yield:
-      validatorStake > 0 ? round9(validatorEmission / validatorStake) : null,
-    miner_yield: minerStake > 0 ? round9(minerEmission / minerStake) : null,
+      yieldValidatorStake > 0
+        ? round9(yieldValidatorEmission / yieldValidatorStake)
+        : null,
+    miner_yield:
+      yieldMinerStake > 0 ? round9(yieldMinerEmission / yieldMinerStake) : null,
     // Distribution of the per-neuron return rate across the whole network.
     distribution: yieldDistribution(yields),
   };
