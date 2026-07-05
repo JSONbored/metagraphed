@@ -306,7 +306,12 @@ local paths, env dumps, or private notes.
   "Build packages/client" step covers GitHub Actions; **any Cloudflare Workers Builds "Build command"
   for `apps/ui` must ALSO explicitly build `packages/client` first** (Cloudflare's automatic dependency
   install is scoped to `--workspace=apps/ui` only — confirmed by matching package counts against a real
-  build log — so it never touches `packages/client` on its own).
+  build log — so it never touches `packages/client` on its own). Cloudflare's Build command executes
+  as one shell chain with cwd = Root Directory (`apps/ui`) throughout, including every step after the
+  first `&&` — `npm run build --workspace=packages/client` fails there with `npm error No workspaces
+found` (confirmed against a real build log) because `--workspace=` only resolves when npm is invoked
+  from the true repo root, not from inside another workspace's own directory; use a relative `cd`
+  instead: `(cd ../../packages/client && npm run build)`.
 - **`vite` must stay an explicit ROOT-level devDependency**, even though the backend never imports it.
   Cloudflare Workers Builds' automatic dependency-install step runs scoped to `--workspace=apps/ui`
   only (never a full monorepo install — confirmed by matching package counts against a real Cloudflare
