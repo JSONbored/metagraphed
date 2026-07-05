@@ -295,6 +295,26 @@ local paths, env dumps, or private notes.
   aligned with the root/`apps/ui` range (`^5.9.3`): `tsup` (its build tool) is hoisted to the _root_
   `node_modules` and resolves `typescript` from there regardless of which workspace invokes it, so a
   workspace-local TypeScript version pin silently gets ignored by `tsup --dts` — don't reintroduce one.
+  `packages/client`'s `dist/` is gitignored and must be built explicitly before anything consuming it
+  — deliberately NOT a `package.json` "prepare" script (that would auto-run on every `npm install`/`ci`
+  repo-wide; a security scan flagged this as unnecessary install-time code execution). The `ui` CI job's
+  "Build packages/client" step covers GitHub Actions; **any Cloudflare Workers Builds "Build command"
+  for `apps/ui` must ALSO explicitly build `packages/client` first** (Cloudflare's automatic dependency
+  install is scoped to `--workspace=apps/ui` only — confirmed by matching package counts against a real
+  build log — so it never touches `packages/client` on its own).
+- **`vite` must stay an explicit ROOT-level devDependency**, even though the backend never imports it.
+  Cloudflare Workers Builds' automatic dependency-install step runs scoped to `--workspace=apps/ui`
+  only (never a full monorepo install — confirmed by matching package counts against a real Cloudflare
+  build log, ~470 vs. a full install's ~560), which never touches root's own devDependencies. Without
+  `vite` declared at root, nothing gives npm a reason to hoist `apps/ui`'s own `vite` up to the bare
+  root `node_modules` during that scoped install, so anything ALSO hoisted to root with only a _peer_
+  (not direct) range on vite — e.g. `@lovable.dev/vite-tanstack-config`, which `vite.config.ts` needs —
+  can't find it (`Error: Cannot find module 'vite'`, real Workers Builds failure, #3183). A worktree
+  nested under the main checkout can mask this locally: Node's resolution silently falls back to a
+  stray `node_modules/vite` in an ancestor directory outside the repo, so a real reproduction needs a
+  genuinely isolated clone (no parent `node_modules` anywhere in its ancestry) plus the exact
+  `npm ci --workspace=apps/ui` command Cloudflare runs — a plain full `npm ci`/`install` won't surface
+  this class of bug at all.
 - **MCP server card is worker-computed — no committed artifact.** Adding or changing tools in
   `src/mcp-server.mjs` does NOT require regenerating `public/.well-known/mcp/server-card.json` (that
   file no longer exists in git). The card is served dynamically by `mcpServerCardResponse` in

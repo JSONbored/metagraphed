@@ -38,8 +38,7 @@
   "scripts": {
     "sync": "node scripts/sync-generated.mjs",
     "build": "npm run sync && tsup src/index.ts --format esm,cjs --dts --clean --treeshake",
-    "prepublishOnly": "npm run build",
-    "prepare": "npm run build"
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "tsup": "^8.5.1",

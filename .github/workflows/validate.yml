@@ -651,11 +651,24 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      # Installs the whole workspace tree (root + apps/ui) from the one root
-      # lockfile -- there is no way to `npm ci` a single workspace in isolation.
+      # Installs the whole workspace tree (root + apps/ui + packages/client)
+      # from the one root lockfile -- there is no way to `npm ci` a single
+      # workspace in isolation.
       - name: Install
         if: env.RUN_UI_VALIDATION == 'true'
         run: npm ci
+
+      # apps/ui consumes packages/client as a live workspace link (#3066), not
+      # a published package -- packages/client's dist/ is gitignored, so it
+      # must be built before anything importing @jsonbored/metagraphed can
+      # resolve real content. Deliberately NOT a package.json "prepare"
+      # script: that would auto-run the build (sync + tsup) on every `npm
+      # install`/`ci` for anyone in the repo, which a security scan flagged
+      # as unnecessary install-time code execution (#3066 review). Building
+      # explicitly here, only where it's actually needed, avoids that.
+      - name: Build packages/client
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm run build --workspace=packages/client
 
       - name: Lint (ESLint + Prettier)
         if: env.RUN_UI_VALIDATION == 'true'
