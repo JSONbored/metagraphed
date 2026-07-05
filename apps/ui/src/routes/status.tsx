@@ -19,6 +19,7 @@ import {
   HealthHistoryDrilldown,
   SourceHealthTable,
 } from "@/components/metagraphed/status-diagnostics";
+import { NetworkDecentralizationPanel } from "@/components/metagraphed/network-decentralization-panel";
 
 const REFRESH_MS = 60_000;
 const SURFACES_INITIAL = 10;
@@ -79,6 +80,20 @@ function StatusPage() {
           </QueryErrorBoundary>
         </section>
 
+        {/* #3471: network-scope decentralization scorecard — stake &
+            emission concentration (Gini / HHI / Nakamoto / entropy / top-1%)
+            plus the trust/consensus score spread, mirroring the per-subnet
+            concentration panel at chain scope. */}
+        <section>
+          <SectionHeading
+            title="Network decentralization"
+            intro="Chain-wide stake & emission concentration (Gini, HHI, Nakamoto coefficient, entropy, top-1% share) and the trust/consensus score spread, computed across every subnet from the metagraph snapshot."
+          />
+          <QueryErrorBoundary>
+            <NetworkDecentralizationPanel />
+          </QueryErrorBoundary>
+        </section>
+
         {/* #8: operational diagnostics — a per-day probe drill-down and a
             provider verification rollup, both probe-derived. */}
         <section>
@@ -111,6 +126,8 @@ function StatusPage() {
           "/api/v1/incidents",
           "/api/v1/health/history/{date}",
           "/api/v1/source-health",
+          "/api/v1/chain/concentration",
+          "/api/v1/chain/performance",
         ]}
       />
     </AppShell>
