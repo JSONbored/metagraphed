@@ -196,6 +196,25 @@
         "https://www.green-compute.com/"
       ],
       "url": "https://api.green-compute.com/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-110-green-compute-billing-bonus-rates-api",
+      "kind": "subnet-api",
+      "name": "Green Compute billing bonus rates API",
+      "notes": "Public no-auth GET returning platform billing bonus rates by payment method (stripe, usdt, usdc, tao, alpha). Documented in the subnet's own OpenAPI (api.green-compute.com/openapi.json, path /platform/billing/bonus-rates); same host as the existing healthz and openapi surfaces.",
+      "provider": "green-compute",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.green-compute.com/openapi.json",
+        "https://www.green-compute.com/"
+      ],
+      "url": "https://api.green-compute.com/platform/billing/bonus-rates"
     }
   ],
   "social": {
