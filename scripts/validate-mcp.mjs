@@ -279,6 +279,13 @@ assert.ok(
 );
 const gapsPage = await callOk("list_gaps", { limit: 3 });
 assert.ok(Array.isArray(gapsPage.gaps), "list_gaps must return gaps[]");
+const profileCompletenessPage = await callOk("list_profile_completeness", {
+  limit: 3,
+});
+assert.ok(
+  Array.isArray(profileCompletenessPage.profiles),
+  "list_profile_completeness must return profiles[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),
@@ -843,19 +850,6 @@ assert.equal(
   accountDeregistrations.address,
   SS58,
   "get_account_deregistrations must echo the address",
-);
-const accountWeightSetters = await callOk("get_account_weight_setters", {
-  ss58: SS58,
-  window: "30d",
-});
-assert.ok(
-  Array.isArray(accountWeightSetters.subnets),
-  "get_account_weight_setters must return subnets[]",
-);
-assert.equal(
-  accountWeightSetters.address,
-  SS58,
-  "get_account_weight_setters must echo the address",
 );
 const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
 assert.ok(

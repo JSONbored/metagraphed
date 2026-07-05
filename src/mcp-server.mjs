@@ -38,6 +38,12 @@ import {
   loadGapsList,
 } from "./gaps-mcp.mjs";
 import {
+  LIST_PROFILE_COMPLETENESS_INSTRUCTIONS,
+  LIST_PROFILE_COMPLETENESS_MCP_TOOL,
+  LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
+  loadProfileCompletenessList,
+} from "./profile-completeness-mcp.mjs";
+import {
   LIST_SEARCH_INDEX_INSTRUCTIONS,
   LIST_SEARCH_INDEX_MCP_TOOL,
   LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
@@ -403,11 +409,6 @@ import {
   DEFAULT_DEREGISTRATION_WINDOW as DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW,
 } from "./account-deregistrations.mjs";
 import {
-  loadAccountWeightSetters,
-  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
-  DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "./account-weight-setters.mjs";
-import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
   MOVERS_SORTS,
@@ -457,7 +458,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.69.0";
+export const MCP_SERVER_VERSION = "1.70.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -495,9 +496,6 @@ const ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
 const ACCOUNT_SERVING_WINDOW_KEYS = Object.keys(SERVING_WINDOWS);
 const ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
   ACCOUNT_DEREGISTRATION_WINDOWS,
-);
-const ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
-  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
 );
 const SUBNET_EVENT_SUMMARY_WINDOW_KEYS = Object.keys(
   SUBNET_EVENT_SUMMARY_WINDOWS,
@@ -569,6 +567,7 @@ export const MCP_INSTRUCTIONS =
   GET_ADAPTER_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   LIST_GAPS_INSTRUCTIONS +
+  LIST_PROFILE_COMPLETENESS_INSTRUCTIONS +
   LIST_SEARCH_INDEX_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
@@ -654,9 +653,7 @@ export const MCP_INSTRUCTIONS =
   "get_account_serving its per-subnet AxonServed axon-endpoint serving footprint " +
   "with announcement counts, first/last timestamps, and concentration labels, " +
   "get_account_deregistrations its per-subnet NeuronDeregistered eviction footprint " +
-  "with deregistration counts, first/last timestamps, and concentration labels, " +
-  "get_account_weight_setters its per-subnet WeightsSet weight-setting footprint " +
-  "with weight-set counts, first/last timestamps, and concentration labels. For chain-wide " +
+  "with deregistration counts, first/last timestamps, and concentration labels. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
   "fee/tip market series plus top payers, get_chain_registrations the " +
@@ -4696,52 +4693,6 @@ export const MCP_TOOLS = [
     },
   },
   {
-    name: "get_account_weight_setters",
-    title: "Get an account's weight-setting footprint",
-    description:
-      "Fetch one account's WeightsSet (weight-setting) footprint per subnet " +
-      "over the requested window (7d or 30d; default 7d): each subnet's " +
-      "weight-set count with the first and last WeightsSet timestamps, plus " +
-      "account totals, an HHI concentration of where its weight-setting " +
-      "activity is focused, and the dominant subnet. WeightsSet is a validator " +
-      "(hotkey) submitting its weight vector for a subnet's consensus. The " +
-      "account-level companion to get_chain_weight_setters and " +
-      "get_subnet_weight_setters. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ss58: {
-          type: "string",
-          description:
-            "The account's SS58 hotkey address, base58, 47-48 chars.",
-          pattern: SS58_PATTERN_SOURCE,
-        },
-        window: {
-          type: "string",
-          enum: ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS,
-          description: `Lookback window (default ${DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW}).`,
-        },
-      },
-      required: ["ss58"],
-      additionalProperties: false,
-    },
-    async handler(args, ctx) {
-      const ss58 = requireSs58(args);
-      const window =
-        optionalString(args, "window") ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
-      if (!Object.hasOwn(ACCOUNT_WEIGHT_SETTERS_WINDOWS, window)) {
-        throw toolError(
-          "invalid_params",
-          `window must be one of: ${ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
-        );
-      }
-      const { data } = await loadAccountWeightSetters(mcpD1Runner(ctx), ss58, {
-        windowLabel: window,
-      });
-      return data;
-    },
-  },
-  {
     name: "get_account_history",
     title: "Get an account's daily activity history",
     description:
@@ -6493,6 +6444,12 @@ export const MCP_TOOLS = [
     ...LIST_GAPS_MCP_TOOL,
     async handler(args, ctx) {
       return loadGapsList(ctx, args);
+    },
+  },
+  {
+    ...LIST_PROFILE_COMPLETENESS_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadProfileCompletenessList(ctx, args);
     },
   },
   {
@@ -9451,42 +9408,6 @@ const TOOL_OUTPUT_SCHEMAS = {
       },
     },
   },
-  get_account_weight_setters: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "address",
-      "window",
-      "total_weight_sets",
-      "subnet_count",
-      "subnets",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      address: { type: "string" },
-      window: NULLABLE_STRING,
-      total_weight_sets: { type: "integer" },
-      subnet_count: { type: "integer" },
-      // Herfindahl-Hirschman index of WeightsSet events across subnets: 1 means
-      // all weight sets on one subnet; null when the account has none.
-      concentration: { type: ["number", "null"] },
-      dominant_netuid: NULLABLE_INT,
-      subnets: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["netuid", "weight_sets", "first_set_at", "last_set_at"],
-          properties: {
-            netuid: { type: "integer" },
-            weight_sets: { type: "integer" },
-            first_set_at: NULLABLE_STRING,
-            last_set_at: NULLABLE_STRING,
-          },
-        },
-      },
-    },
-  },
   get_account_history: {
     type: "object",
     additionalProperties: true,
@@ -10209,6 +10130,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_search_index: LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
   list_curation: LIST_CURATION_OUTPUT_SCHEMA,
   list_gaps: LIST_GAPS_OUTPUT_SCHEMA,
+  list_profile_completeness: LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
   list_endpoint_pools: LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
   list_endpoint_incidents: LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   get_lineage: {

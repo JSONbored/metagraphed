@@ -1429,6 +1429,73 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_profile_completeness returns filtered profile rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        summary: { profile_count: 2 },
+        profiles: [
+          {
+            netuid: 7,
+            profile_level: "identity-partial",
+            identity_level: "partial",
+            completeness_score: 45,
+            missing_critical_count: 3,
+          },
+          {
+            netuid: 31,
+            profile_level: "operational",
+            identity_level: "complete",
+            completeness_score: 92,
+            missing_critical_count: 0,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { netuid: 7 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.profiles[0].netuid, 7);
+    assert.equal(out.profiles[0].completeness_score, 45);
+  });
+
+  test("list_profile_completeness reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_profile_completeness",
+      {},
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Profile completeness snapshot unavailable/,
+    );
+  });
+
+  test("list_profile_completeness payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_profile_completeness",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        summary: { profile_count: 1 },
+        profiles: [{ netuid: 7, completeness_score: 45 }],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoint_pools returns filtered pool rows", async () => {
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {
@@ -3895,33 +3962,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  function accountWeightSettersD1(rows = [], capture = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  if (
-                    /idx_account_events_hotkey/.test(sql) &&
-                    /AS weight_sets/.test(sql) &&
-                    /first_observed/.test(sql) &&
-                    params[1] === "WeightsSet"
-                  ) {
-                    return { results: rows };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
   test("get_account_deregistrations shapes per-subnet deregistration counts and concentration", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
@@ -4003,97 +4043,6 @@ describe("MCP stake-flow and movers economics tools", () => {
           {
             netuid: 7,
             deregistrations: 2,
-            first_observed: 1_717_000_000_000,
-            last_observed: 1_717_500_000_000,
-          },
-        ]),
-      },
-    );
-    const validate = new Ajv2020().compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
-  });
-
-  test("get_account_weight_setters shapes per-subnet weight-set counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_weight_setters",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountWeightSettersD1([
-            {
-              netuid: 7,
-              weight_sets: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              weight_sets: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_weight_sets, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].weight_sets, 3);
-      assert.equal(
-        out.subnets[0].first_set_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  test("get_account_weight_setters rejects a missing ss58", async () => {
-    const res = await callTool("get_account_weight_setters", {});
-    assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /ss58/i);
-  });
-
-  test("get_account_weight_setters rejects an unsupported window", async () => {
-    const res = await callTool("get_account_weight_setters", {
-      ss58: SS58,
-      window: "90d",
-    });
-    assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /window must be one of/);
-  });
-
-  test("get_account_weight_setters degrades to zeros on cold D1", async () => {
-    const res = await callTool("get_account_weight_setters", { ss58: SS58 });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.address, SS58);
-    assert.equal(out.window, "7d");
-    assert.equal(out.total_weight_sets, 0);
-    assert.equal(out.subnet_count, 0);
-    assert.equal(out.concentration, null);
-    assert.equal(out.dominant_netuid, null);
-    assert.deepEqual(out.subnets, []);
-  });
-
-  test("get_account_weight_setters payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_weight_setters",
-    )?.outputSchema;
-    const res = await callTool(
-      "get_account_weight_setters",
-      { ss58: SS58 },
-      {
-        env: accountWeightSettersD1([
-          {
-            netuid: 7,
-            weight_sets: 2,
             first_observed: 1_717_000_000_000,
             last_observed: 1_717_500_000_000,
           },
@@ -4310,16 +4259,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       assert.ok(
         validatorFor("get_account_deregistrations")(
           accountDeregistrations.body.result.structuredContent,
-        ),
-      );
-      const accountWeightSetters = await callTool(
-        "get_account_weight_setters",
-        { ss58: SS58 },
-        { env: accountWeightSettersD1([]) },
-      );
-      assert.ok(
-        validatorFor("get_account_weight_setters")(
-          accountWeightSetters.body.result.structuredContent,
         ),
       );
       const movers = await callTool(
