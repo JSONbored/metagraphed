@@ -1606,6 +1606,25 @@ export interface ChainSigners {
   signer_count: number;
   signers: ChainSignerEntry[];
 }
+
+/** One pallet.method bucket from GET /api/v1/chain-events/stats (#3489). */
+export interface ChainEventEntry {
+  pallet: string | null;
+  method: string | null;
+  count: number;
+}
+
+/**
+ * Postgres all-events pallet.method distribution over the most recent N blocks
+ * (#3489), from GET /api/v1/chain-events/stats — distinct from the D1-backed
+ * chain/activity and chain/calls aggregates. Empty when the backfill is cold.
+ */
+export interface ChainEventsStats {
+  window_blocks: number;
+  groups: number;
+  activity: ChainEventEntry[];
+}
+
 export interface ChainFeeDay {
   day: string;
   extrinsic_count: number;

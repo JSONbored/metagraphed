@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Activity, Boxes, Coins, Layers, Zap } from "lucide-react";
+import { Activity, Boxes, Coins, Database, Layers, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -16,15 +16,22 @@ import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import {
   chainActivityQuery,
   chainCallsQuery,
+  chainEventsStatsQuery,
   chainFeesQuery,
   chainSignersQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import type { ChainCalls } from "@/lib/metagraphed/types";
+import type { ChainCalls, ChainEventEntry, ChainEventsStats } from "@/lib/metagraphed/types";
+
+const EVENT_BLOCK_WINDOWS = [1000, 2500, 5000] as const;
+type EventBlockWindow = (typeof EVENT_BLOCK_WINDOWS)[number];
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
+  eventBlocks: fallback(z.union([z.literal(1000), z.literal(2500), z.literal(5000)]), 1000).default(
+    1000,
+  ),
 });
 
 export const Route = createFileRoute("/explorer")({
@@ -35,13 +42,13 @@ export const Route = createFileRoute("/explorer")({
       {
         name: "description",
         content:
-          "Bittensor network at a glance: daily extrinsic/block/event activity, fees, call mix, and the most active accounts — chain-direct analytics.",
+          "Bittensor network at a glance: daily extrinsic/block/event activity, fees, Postgres pallet-event mix, call mix, and the most active accounts — chain-direct analytics.",
       },
       { property: "og:title", content: "Chain explorer — Metagraphed" },
       {
         property: "og:description",
         content:
-          "Bittensor network at a glance: daily activity, fees, call mix, and the most active accounts.",
+          "Bittensor network at a glance: daily activity, fees, Postgres pallet-event mix, call mix, and the most active accounts.",
       },
     ],
   }),
@@ -66,7 +73,7 @@ function ExplorerPage() {
         eyebrow="Explorer"
         live
         title="Chain explorer"
-        description="The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers."
+        description="The Bittensor network at a glance — daily activity, fees, Postgres all-events mix, call mix, and the most active accounts, computed live from the chain-direct tiers."
         actions={<ShareButton />}
       />
       <QueryErrorBoundary>
@@ -78,6 +85,7 @@ function ExplorerPage() {
         paths={[
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
+          "/api/v1/chain-events/stats",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
         ]}
@@ -87,6 +95,118 @@ function ExplorerPage() {
 }
 
 const TH = "px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+
+function eventEntryLabel(entry: ChainEventEntry): string {
+  if (entry.pallet && entry.method) return `${entry.pallet}.${entry.method}`;
+  return entry.pallet ?? entry.method ?? "unknown";
+}
+
+function EventMixSection({
+  stats,
+  blocks,
+  onBlocksChange,
+}: {
+  stats: ChainEventsStats;
+  blocks: EventBlockWindow;
+  onBlocksChange: (blocks: EventBlockWindow) => void;
+}) {
+  const rows = stats.activity.slice(0, 12);
+  const totalEvents = sum(stats.activity.map((row) => row.count));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Pallet event mix
+          </h2>
+          <p className="mt-1 font-mono text-[10px] text-ink-muted">
+            Postgres all-events tier · distinct from D1 chain/activity &amp; chain/calls
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {EVENT_BLOCK_WINDOWS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onBlocksChange(n)}
+              className={
+                n === blocks
+                  ? "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent"
+                  : "rounded-full border border-border bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30"
+              }
+            >
+              {formatNumber(n)} blk
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <StatTile
+          icon={Database}
+          eyebrow="Event groups"
+          value={formatNumber(stats.groups)}
+          hint={`top ${formatNumber(stats.activity.length)} shown`}
+        />
+        <StatTile
+          icon={Activity}
+          eyebrow="Events counted"
+          value={formatNumber(totalEvents)}
+          hint={`last ${formatNumber(stats.window_blocks)} blocks`}
+          tone="accent"
+        />
+        <StatTile
+          icon={Layers}
+          eyebrow="Window"
+          value={formatNumber(stats.window_blocks)}
+          hint="block lookback"
+        />
+      </div>
+
+      {rows.length > 0 ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <BarMini
+            data={rows.map((row) => ({
+              label: eventEntryLabel(row),
+              value: row.count,
+            }))}
+          />
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Pallet.method</th>
+                <th className={`${TH} text-right`}>Count</th>
+                <th className={`${TH} text-right`}>Share</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((row) => {
+                const label = eventEntryLabel(row);
+                const share = totalEvents > 0 ? row.count / totalEvents : null;
+                return (
+                  <tr key={label} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px] text-ink-strong">{label}</td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(row.count)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {share == null ? "—" : `${(share * 100).toFixed(1)}%`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">
+          No all-events stats yet — the Postgres backfill populates this feed.
+        </p>
+      )}
+    </section>
+  );
+}
 
 /**
  * One labeled mini-sparkline cell for a daily series. Aligns `days` labels to
@@ -226,9 +346,11 @@ function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const win = search.window;
+  const eventBlocks = search.eventBlocks;
 
   const activity = useSuspenseQuery(chainActivityQuery(win)).data.data;
   const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
+  const eventStats = useSuspenseQuery(chainEventsStatsQuery(eventBlocks)).data.data;
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
 
@@ -251,7 +373,7 @@ function ExplorerDashboard() {
           <button
             key={w}
             type="button"
-            onClick={() => navigate({ search: { window: w } })}
+            onClick={() => navigate({ search: (prev) => ({ ...prev, window: w }) })}
             className={
               w === win
                 ? "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent"
@@ -352,6 +474,14 @@ function ExplorerDashboard() {
           </p>
         )}
       </section>
+
+      <EventMixSection
+        stats={eventStats}
+        blocks={eventBlocks}
+        onBlocksChange={(blocks) =>
+          navigate({ search: (prev) => ({ ...prev, eventBlocks: blocks }) })
+        }
+      />
 
       {/* fees: daily series + tip series + top payers */}
       <div className="grid gap-6 lg:grid-cols-2">

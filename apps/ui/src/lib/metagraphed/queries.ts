@@ -43,6 +43,8 @@ import type {
   ChainActivityDay,
   ChainCalls,
   ChainCallEntry,
+  ChainEventEntry,
+  ChainEventsStats,
   ChainFees,
   ChainFeeDay,
   ChainFeePayer,
@@ -174,6 +176,7 @@ const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
 const MAX_CHAIN_TRANSFER_PAIRS = 100;
+const MAX_CHAIN_EVENT_STATS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -2455,6 +2458,44 @@ export const chainTransferPairsQuery = (
       };
     },
     staleTime: STALE_MED,
+  });
+
+function normalizeChainEventEntry(raw: unknown): ChainEventEntry | null {
+  if (!isRecord(raw)) return null;
+  const pallet = firstString(raw.pallet);
+  const method = firstString(raw.method);
+  if (!pallet && !method) return null;
+  return {
+    pallet: pallet ?? null,
+    method: method ?? null,
+    count: firstFiniteNumber(raw.count) ?? 0,
+  };
+}
+
+export function normalizeChainEventsStats(raw: unknown): ChainEventsStats {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    window_blocks: firstFiniteNumber(rec.window_blocks) ?? 1000,
+    groups: firstFiniteNumber(rec.groups) ?? 0,
+    activity: normalizeChainRows(rec.activity, MAX_CHAIN_EVENT_STATS, normalizeChainEventEntry),
+  };
+}
+
+export const chainEventsStatsQuery = (blocks = 1000) =>
+  queryOptions({
+    queryKey: k("chain-events-stats", blocks),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainEventsStats>>("/api/v1/chain-events/stats", {
+        params: { blocks },
+        signal,
+      });
+      return {
+        data: normalizeChainEventsStats(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_SHORT,
   });
 
 const READINESS_COMPONENT_KEYS = [
