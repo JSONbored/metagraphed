@@ -143,6 +143,7 @@ import {
   handleAccountCounterparties,
   handleAccountStakeFlow,
   handleAccountStakeMoves,
+  handleAccountStakeTransfers,
   handleAccountWeightSetters,
   handleAccountRegistrations,
   handleAccountServing,
@@ -286,6 +287,7 @@ import {
   ACCOUNT_COUNTERPARTIES_PATH_PATTERN,
   ACCOUNT_STAKE_FLOW_PATH_PATTERN,
   ACCOUNT_STAKE_MOVES_PATH_PATTERN,
+  ACCOUNT_STAKE_TRANSFERS_PATH_PATTERN,
   ACCOUNT_WEIGHT_SETTERS_PATH_PATTERN,
   ACCOUNT_REGISTRATIONS_PATH_PATTERN,
   ACCOUNT_SERVING_PATH_PATTERN,
@@ -1987,6 +1989,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    const accountStakeTransfersMatch =
+      ACCOUNT_STAKE_TRANSFERS_PATH_PATTERN.exec(resolved.url.pathname);
+    if (accountStakeTransfersMatch) {
+      return handleAccountStakeTransfers(
+        request,
+        env,
+        accountStakeTransfersMatch[1],
+        resolved.url,
+      );
+    }
     const accountWeightSettersMatch = ACCOUNT_WEIGHT_SETTERS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2348,6 +2360,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_COUNTERPARTIES_PATH_PATTERN.test(pathname) ||
     ACCOUNT_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     ACCOUNT_STAKE_MOVES_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_STAKE_TRANSFERS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_WEIGHT_SETTERS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_REGISTRATIONS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_SERVING_PATH_PATTERN.test(pathname) ||
