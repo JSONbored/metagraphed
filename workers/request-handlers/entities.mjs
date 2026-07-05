@@ -112,6 +112,7 @@ import {
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import { loadChainPerformance } from "../../src/chain-performance.mjs";
+import { loadChainColdkeys } from "../../src/chain-coldkeys.mjs";
 import { loadChainYield } from "../../src/chain-yield.mjs";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
@@ -831,6 +832,31 @@ export async function handleChainConcentration(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/chain/concentration.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/coldkeys: the network-wide coldkeys ownership leaderboard — who controls
+// Bittensor across every subnet. Rolls all neurons up by controlling coldkeys (subnet reach, UID
+// count, validator/miner split, total stake/emission, network stake share) ranked by stake, plus
+// a network ownership-concentration scorecard. The named-entity drill-in of /chain/concentration
+// (which reports the metrics with coldkeys collapsed but never names the owners) and the network-wide
+// companion to /subnets/{netuid}/coldkeys. Computed from the neurons D1 tier; a cold/absent store
+// → 200 with an empty card (schema-stable, never 404).
+export async function handleChainColdkeys(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadChainColdkeys(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/coldkeys.json",
         data.captured_at,
       ),
     },

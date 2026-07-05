@@ -93,6 +93,7 @@ import {
   handleSubnetPerformanceHistory,
   handleSubnetYieldHistory,
   handleChainConcentration,
+  handleChainColdkeys,
   handleChainPerformance,
   handleChainIdentityHistory,
   canonicalChainIdentityHistoryCachePath,
@@ -2177,6 +2178,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
       );
     }
+    // GET /api/v1/chain/coldkeys: network-wide coldkeys ownership leaderboard — edge-cache
+    // busts on the newest neuron captured_at across ALL subnets (like chain/concentration).
+    if (resolved.url.pathname === "/api/v1/chain/coldkeys") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-coldkeys",
+        () => handleChainColdkeys(request, env, resolved.url),
+        null,
+        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      );
+    }
     // GET /api/v1/chain/performance: network-wide reward-distribution & score-spread
     // aggregate — edge-cache busts on the newest neuron captured_at across ALL
     // subnets (like chain/concentration, but the reward-flow lens).
@@ -2309,6 +2323,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/stake-moves" ||
     pathname === "/api/v1/chain/stake-transfers" ||
     pathname === "/api/v1/chain/concentration" ||
+    pathname === "/api/v1/chain/coldkeys" ||
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/identity-history" ||
     pathname === "/api/v1/chain/yield" ||

@@ -169,6 +169,8 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide concentration aggregated across every subnet's neurons, computed
   // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
   /^chain\/concentration\.json$/,
+  // Network-wide coldkeys ownership leaderboard, computed live from the neurons D1 tier.
+  /^chain\/coldkeys\.json$/,
   // Network-wide reward distribution & score spread, computed live from the
   // neurons D1 tier at /api/v1/chain/performance — never a file.
   /^chain\/performance\.json$/,

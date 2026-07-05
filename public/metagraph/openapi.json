@@ -3862,6 +3862,122 @@
         ],
         "type": "object"
       },
+      "ChainColdkeysArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide coldkeys ownership leaderboard from the neurons D1 tier: who controls Bittensor across every subnet. All neurons rolled up by controlling coldkeys (subnet reach, UID count, validator/miner split, total stake & emission, share of the network's stake) ranked by stake, plus a network ownership-concentration scorecard over the coldkeys' stakes. The named-entity drill-in of /chain/concentration and the network-wide companion to /subnets/{netuid}/coldkeys, served live at /api/v1/chain/coldkeys (no static file); an empty card when the store is cold.",
+        "properties": {
+          "block_number": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "coldkeys": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "coldkey": {
+                  "type": "string"
+                },
+                "miner_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_share": {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "subnet_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total_emission_tao": {
+                  "type": "number"
+                },
+                "total_stake_tao": {
+                  "type": "number"
+                },
+                "uid_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validator_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "coldkey",
+                "subnet_count",
+                "uid_count",
+                "validator_count",
+                "miner_count",
+                "total_stake_tao",
+                "total_emission_tao",
+                "stake_share"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ownership_concentration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Concentration of ownership across the network's coldkeys (Gini/HHI/Nakamoto over the coldkeys' stakes), or null for a cold store / a network with no staked coldkeys. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site."
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_emission_tao": {
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "captured_at",
+          "block_number",
+          "subnet_count",
+          "neuron_count",
+          "coldkey_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "ownership_concentration",
+          "coldkeys"
+        ],
+        "type": "object"
+      },
       "ChainConcentrationArtifact": {
         "additionalProperties": true,
         "description": "Network-wide stake and emission concentration metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier across three lenses: per-UID (stake, emission), per-entity (entity_stake, entity_emission, with coldkeys collapsed across subnets into the network-level control distribution), and validator-only consensus power (validator_stake). subnet_count reports how many subnets the snapshot spans; every lens and stamp field is always present as a value or null.",
@@ -25894,6 +26010,157 @@
           }
         },
         "summary": "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/coldkeys": {
+      "get": {
+        "operationId": "chainColdkeys",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "block_number": 5000000,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "coldkey_count": 1,
+                    "coldkeys": [
+                      {
+                        "coldkey": "example",
+                        "miner_count": 1,
+                        "stake_share": 0.5,
+                        "subnet_count": 1,
+                        "total_emission_tao": 0.5,
+                        "total_stake_tao": 0.5,
+                        "uid_count": 1,
+                        "validator_count": 1
+                      }
+                    ],
+                    "neuron_count": 1,
+                    "ownership_concentration": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    },
+                    "schema_version": 1,
+                    "subnet_count": 1,
+                    "total_emission_tao": 0.5,
+                    "total_stake_tao": 0.5
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainColdkeysArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the network-wide coldkeys ownership leaderboard — who controls Bittensor across every subnet: all neurons rolled up by controlling coldkeys (subnet reach, UID count, validator/miner split, total stake & emission, share of the network's stake) ranked by stake, plus a network ownership-concentration scorecard (Gini/HHI/Nakamoto over the coldkeys' stakes). The named-entity drill-in of GET /api/v1/chain/concentration (which reports the coldkeys-collapsed metrics but never names the owners) and the network-wide companion to /api/v1/subnets/{netuid}/coldkeys; computed live from the neurons D1 tier.",
         "tags": [
           "chain",
           "analytics"

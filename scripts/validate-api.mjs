@@ -953,6 +953,21 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/coldkeys",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.neuron_count, "number");
+      assert.equal(typeof body.data.coldkey_count, "number");
+      assert.equal(Array.isArray(body.data.coldkeys), true);
+      assert.equal(
+        body.data.ownership_concentration === null ||
+          typeof body.data.ownership_concentration === "object",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/chain/turnover",
     (body) => {
       assert.equal(body.data.schema_version, 1);

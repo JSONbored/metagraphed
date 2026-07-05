@@ -160,6 +160,7 @@ import {
   loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
+import { loadChainColdkeys } from "./chain-coldkeys.mjs";
 import {
   CHAIN_SIGNERS_SORTS,
   loadChainSigners,
@@ -499,7 +500,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.76.0";
+export const MCP_SERVER_VERSION = "1.77.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -721,6 +722,8 @@ export const MCP_INSTRUCTIONS =
   "(directed pairs ranked by volume or count) with a network volume rollup, " +
   "get_chain_concentration " +
   "the network-wide stake/emission decentralization scorecard across all subnets, " +
+  "get_chain_coldkeys the network-wide coldkeys ownership leaderboard (who controls " +
+  "Bittensor across every subnet), " +
   "get_chain_performance the network-wide reward-distribution and trust/consensus " +
   "score spread across all subnets, get_chain_identity_history the network-wide " +
   "recent subnet-identity-change feed across all subnets, " +
@@ -2417,6 +2420,28 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadChainConcentration(mcpD1Runner(ctx));
+    },
+  },
+  {
+    name: "get_chain_coldkeys",
+    title: "Get network-wide coldkeys ownership leaderboard",
+    description:
+      "Fetch the network-wide coldkeys ownership leaderboard — who controls " +
+      "Bittensor across every subnet: all neurons rolled up by controlling " +
+      "coldkeys (subnet reach, UID count, validator/miner split, total stake and " +
+      "emission, share of the network's stake) ranked by stake, plus a network " +
+      "ownership-concentration scorecard (Gini/HHI/Nakamoto over the coldkeys' " +
+      "stakes). The named-entity drill-in of get_chain_concentration, which " +
+      "reports the coldkeys-collapsed metrics but never names the owners, and the " +
+      "network-wide companion of get_subnet_coldkeys. Mirrors GET " +
+      "/api/v1/chain/coldkeys.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadChainColdkeys(mcpD1Runner(ctx));
     },
   },
   {
@@ -7976,6 +8001,35 @@ const TOOL_OUTPUT_SCHEMAS = {
       entity_stake: { type: ["object", "null"] },
       entity_emission: { type: ["object", "null"] },
       validator_stake: { type: ["object", "null"] },
+    },
+  },
+  get_chain_coldkeys: {
+    type: "object",
+    additionalProperties: true,
+    // Mirror the always-emitted fields the REST ChainColdkeysArtifact requires.
+    required: [
+      "schema_version",
+      "captured_at",
+      "block_number",
+      "subnet_count",
+      "neuron_count",
+      "coldkey_count",
+      "total_stake_tao",
+      "total_emission_tao",
+      "ownership_concentration",
+      "coldkeys",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      subnet_count: { type: "integer" },
+      neuron_count: { type: "integer" },
+      coldkey_count: { type: "integer" },
+      total_stake_tao: { type: "number" },
+      total_emission_tao: { type: "number" },
+      ownership_concentration: { type: ["object", "null"] },
+      coldkeys: { type: "array", items: { type: "object" } },
     },
   },
   get_chain_performance: {

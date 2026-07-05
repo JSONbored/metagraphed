@@ -353,6 +353,26 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("chain coldkeys routes through the worker with the neurons-stamp edge cache", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+
+    // No params — the worker dispatches to handleChainColdkeys through withEdgeCache
+    // whose resolveCacheStamp reads the neuron captured_at stamp (not the prober tick).
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/coldkeys"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.schema_version, 1);
+    assert.equal(typeof body.data.coldkey_count, "number");
+  });
+
   test("stake-flow canonicalizes omitted and explicit default window to the same cache key", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

@@ -599,6 +599,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/coldkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide coldkeys ownership leaderboard — who controls Bittensor across every subnet: all neurons rolled up by controlling coldkeys (subnet reach, UID count, validator/miner split, total stake & emission, share of the network's stake) ranked by stake, plus a network ownership-concentration scorecard (Gini/HHI/Nakamoto over the coldkeys' stakes). The named-entity drill-in of GET /api/v1/chain/concentration (which reports the coldkeys-collapsed metrics but never names the owners) and the network-wide companion to /api/v1/subnets/{netuid}/coldkeys; computed live from the neurons D1 tier. */
+        get: operations["chainColdkeys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/concentration": {
         parameters: {
             query?: never;
@@ -3344,6 +3361,31 @@ export interface components {
             schema_version: number;
             total_extrinsics: number;
             window: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Network-wide coldkeys ownership leaderboard from the neurons D1 tier: who controls Bittensor across every subnet. All neurons rolled up by controlling coldkeys (subnet reach, UID count, validator/miner split, total stake & emission, share of the network's stake) ranked by stake, plus a network ownership-concentration scorecard over the coldkeys' stakes. The named-entity drill-in of /chain/concentration and the network-wide companion to /subnets/{netuid}/coldkeys, served live at /api/v1/chain/coldkeys (no static file); an empty card when the store is cold. */
+        ChainColdkeysArtifact: {
+            block_number: number | null;
+            captured_at: string | null;
+            coldkey_count: number;
+            coldkeys: {
+                coldkey: string;
+                miner_count: number;
+                stake_share: number | null;
+                subnet_count: number;
+                total_emission_tao: number;
+                total_stake_tao: number;
+                uid_count: number;
+                validator_count: number;
+            }[];
+            neuron_count: number;
+            /** @description Concentration of ownership across the network's coldkeys (Gini/HHI/Nakamoto over the coldkeys' stakes), or null for a cold store / a network with no staked coldkeys. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site. */
+            ownership_concentration: components["schemas"]["ConcentrationMetrics"] | null;
+            schema_version: number;
+            subnet_count: number;
+            total_emission_tao: number;
+            total_stake_tao: number;
         } & {
             [key: string]: unknown;
         };
@@ -11458,6 +11500,138 @@ export interface operations {
                      *     SubtensorModule,8200,0.5467
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainColdkeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "coldkey_count": 1,
+                     *         "coldkeys": [
+                     *           {
+                     *             "coldkey": "example",
+                     *             "miner_count": 1,
+                     *             "stake_share": 0.5,
+                     *             "subnet_count": 1,
+                     *             "total_emission_tao": 0.5,
+                     *             "total_stake_tao": 0.5,
+                     *             "uid_count": 1,
+                     *             "validator_count": 1
+                     *           }
+                     *         ],
+                     *         "neuron_count": 1,
+                     *         "ownership_concentration": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "total_emission_tao": 0.5,
+                     *         "total_stake_tao": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainColdkeysArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

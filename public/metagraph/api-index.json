@@ -863,6 +863,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-coldkeys",
+      "path": "/metagraph/chain/coldkeys.json",
+      "schema_ref": "#/components/schemas/ChainColdkeysArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-performance",
       "path": "/metagraph/chain/performance.json",
       "schema_ref": "#/components/schemas/ChainPerformanceArtifact",
@@ -7246,6 +7253,18 @@
       "id": "chain-concentration",
       "method": "GET",
       "path": "/api/v1/chain/concentration",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/coldkeys.json",
+      "cache": "short",
+      "description": "Fetch the network-wide coldkeys ownership leaderboard — who controls Bittensor across every subnet: all neurons rolled up by controlling coldkeys (subnet reach, UID count, validator/miner split, total stake & emission, share of the network's stake) ranked by stake, plus a network ownership-concentration scorecard (Gini/HHI/Nakamoto over the coldkeys' stakes). The named-entity drill-in of GET /api/v1/chain/concentration (which reports the coldkeys-collapsed metrics but never names the owners) and the network-wide companion to /api/v1/subnets/{netuid}/coldkeys; computed live from the neurons D1 tier.",
+      "id": "chain-coldkeys",
+      "method": "GET",
+      "path": "/api/v1/chain/coldkeys",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
