@@ -368,7 +368,7 @@ describe("endpoint-pools-mcp", () => {
   });
 
   test("MCP server exports wire list_endpoint_pools at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.62.0");
+    assert.equal(MCP_SERVER_VERSION, "1.63.0");
     assert.match(MCP_INSTRUCTIONS, /list_endpoint_pools/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_endpoint_pools");
     assert.ok(tool);

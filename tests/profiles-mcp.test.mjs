@@ -295,7 +295,7 @@ describe("profiles-mcp — MCP metadata", () => {
   });
 
   test("MCP server exports wire profile tools at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.62.0");
+    assert.equal(MCP_SERVER_VERSION, "1.63.0");
     assert.match(MCP_INSTRUCTIONS, /list_profiles/);
     assert.match(MCP_INSTRUCTIONS, /get_subnet_profile/);
     for (const name of ["list_profiles", "get_subnet_profile"]) {
