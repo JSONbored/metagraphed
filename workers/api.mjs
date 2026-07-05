@@ -53,6 +53,7 @@ import {
   handleChainTransferPairs,
   handleChainTransfers,
   handleChainStakeFlow,
+  handleChainAlphaFlow,
   handleChainWeights,
   handleChainWeightSetters,
   handleChainServing,
@@ -2136,6 +2137,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/stake-flow") {
       return handleChainStakeFlow(request, env, resolved.url, ctx);
     }
+    if (resolved.url.pathname === "/api/v1/chain/alpha-flow") {
+      return handleChainAlphaFlow(request, env, resolved.url, ctx);
+    }
     if (resolved.url.pathname === "/api/v1/chain/weights") {
       return handleChainWeights(request, env, resolved.url, ctx);
     }
@@ -2299,6 +2303,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/transfers" ||
     pathname === "/api/v1/chain/transfer-pairs" ||
     pathname === "/api/v1/chain/stake-flow" ||
+    pathname === "/api/v1/chain/alpha-flow" ||
     pathname === "/api/v1/chain/weights" ||
     pathname === "/api/v1/chain/weights/setters" ||
     pathname === "/api/v1/chain/serving" ||

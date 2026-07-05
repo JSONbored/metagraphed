@@ -1284,6 +1284,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainTransferPairsArtifact",
   ),
   artifact(
+    "chain-alpha-flow",
+    "/metagraph/chain/alpha-flow.json",
+    "Network-wide cross-subnet ALPHA flow over a 7d or 30d window: every subnet that moved alpha in the window ranked by net alpha minted (StakeAdded) minus burned (StakeRemoved) (subnets with no alpha swaps in the window are excluded), with per-subnet in/out/net/gross alpha totals + a direction label, a network rollup, and a distribution of the per-subnet net alpha flow, computed live from the account_events stake stream at /api/v1/chain/alpha-flow. The alpha-denominated companion to /api/v1/chain/stake-flow (which sums the TAO capital leg of the same swaps); alpha price floats per subnet, so alpha volume is not derivable from the TAO flow. Pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
+    "ChainAlphaFlowArtifact",
+  ),
+  artifact(
     "chain-stake-flow",
     "/metagraph/chain/stake-flow.json",
     "Network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded), with per-subnet staked/unstaked/net/gross totals + a direction label, a network rollup, and a distribution of the per-subnet net flow, computed live from the account_events stake stream at /api/v1/chain/stake-flow (no static file).",
@@ -2956,6 +2962,20 @@ export const API_ROUTES = [
         name: "sort",
         schema: { type: "string", enum: ["volume", "count"] },
       },
+    ]),
+    [],
+  ),
+  route(
+    "chain-alpha-flow",
+    "GET",
+    "/api/v1/chain/alpha-flow",
+    "/metagraph/chain/alpha-flow.json",
+    "Fetch network-wide cross-subnet ALPHA flow over a 7d or 30d window: every subnet that moved alpha in the window ranked by net alpha minted (StakeAdded) minus burned (StakeRemoved) (subnets with no alpha swaps in the window are excluded) (biggest net expansion first, ?limit <=100), with per-subnet in/out/net/gross alpha totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net alpha flow. The alpha-denominated companion to GET /api/v1/chain/stake-flow (which sums the TAO capital leg of the same swaps); alpha price floats per subnet, so alpha volume is not derivable from the TAO flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + net-flow distribution stay JSON-only).",
+    "short",
+    ["chain", "analytics"],
+    csvRouteQuery([
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
     ]),
     [],
   ),

@@ -3350,6 +3350,110 @@
         },
         "additionalProperties": false
       },
+      "ChainAlphaFlowArtifact": {
+        "type": "object",
+        "description": "Cross-subnet ALPHA flow over a 7d/30d window: every subnet that moved alpha in the window ranked by net alpha minted (StakeAdded) minus burned (StakeRemoved), with per-subnet in/out/net/gross alpha totals + a direction label, a network rollup, and a distribution of the per-subnet net alpha flow. The alpha-denominated companion to /api/v1/chain/stake-flow (which sums the TAO capital leg of the same swaps); alpha price floats per subnet, so alpha volume is not derivable from the TAO flow. subnet_count, the rollup, and the distribution cover only subnets with alpha swaps in the window (quiet subnets are excluded). Served live from the account_events D1 tier at /api/v1/chain/alpha-flow (no static file); zeros + empty leaderboard when cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "net_flow_distribution",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", null]
+          },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "network": {
+            "type": "object",
+            "required": [
+              "total_alpha_in",
+              "total_alpha_out",
+              "net_alpha_flow",
+              "gross_alpha_flow",
+              "stake_events",
+              "unstake_events",
+              "expanding",
+              "contracting",
+              "flat"
+            ],
+            "properties": {
+              "total_alpha_in": { "type": "number", "minimum": 0 },
+              "total_alpha_out": { "type": "number", "minimum": 0 },
+              "net_alpha_flow": { "type": "number" },
+              "gross_alpha_flow": { "type": "number", "minimum": 0 },
+              "stake_events": { "type": "integer", "minimum": 0 },
+              "unstake_events": { "type": "integer", "minimum": 0 },
+              "expanding": { "type": "integer", "minimum": 0 },
+              "contracting": { "type": "integer", "minimum": 0 },
+              "flat": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "net_flow_distribution": {
+            "type": ["object", "null"],
+            "description": "Spread of the per-subnet net alpha flow (can be negative) across every subnet in the window; null when no subnet moved alpha.",
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "properties": {
+              "count": { "type": "integer", "minimum": 0 },
+              "mean": { "type": "number" },
+              "min": { "type": "number" },
+              "p25": { "type": "number" },
+              "median": { "type": "number" },
+              "p75": { "type": "number" },
+              "p90": { "type": "number" },
+              "max": { "type": "number" }
+            },
+            "additionalProperties": false
+          },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "total_alpha_in",
+                "total_alpha_out",
+                "net_alpha_flow",
+                "gross_alpha_flow",
+                "stake_events",
+                "unstake_events",
+                "direction"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "total_alpha_in": { "type": "number", "minimum": 0 },
+                "total_alpha_out": { "type": "number", "minimum": 0 },
+                "net_alpha_flow": { "type": "number" },
+                "gross_alpha_flow": { "type": "number", "minimum": 0 },
+                "stake_events": { "type": "integer", "minimum": 0 },
+                "unstake_events": { "type": "integer", "minimum": 0 },
+                "direction": {
+                  "type": "string",
+                  "enum": ["expanding", "contracting", "balanced"]
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "ChainStakeFlowArtifact": {
         "type": "object",
         "description": "Cross-subnet capital flow over a 7d/30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO, with per-subnet staked/unstaked/net/gross totals + a direction label, a network rollup, and a distribution of the per-subnet net flow. subnet_count, the rollup, and the distribution cover only subnets with stake events in the window (quiet subnets are excluded). Served live from the account_events D1 tier at /api/v1/chain/stake-flow (no static file); zeros + empty leaderboard when cold.",

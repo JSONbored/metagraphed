@@ -763,6 +763,21 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/alpha-flow?window=7d&limit=5",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.network, "object");
+      assert.equal(typeof body.data.network.net_alpha_flow, "number");
+      assert.equal(
+        body.data.net_flow_distribution === null ||
+          typeof body.data.net_flow_distribution === "object",
+        true,
+      );
+      assert.equal(Array.isArray(body.data.subnets), true);
+    },
+  ],
+  [
     "/api/v1/chain/fees",
     (body) => {
       assert.equal(Array.isArray(body.data.daily), true);

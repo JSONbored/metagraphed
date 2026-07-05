@@ -59,6 +59,11 @@ export const ROUTE_CSV_EXAMPLES = {
     "netuid,distinct_registrants,registrations,registrations_per_registrant",
     "1,4,40,10",
   ].join("\r\n"),
+  // The /chain/alpha-flow per-subnet alpha-flow (mint vs burn) leaderboard rows.
+  "chain-alpha-flow": [
+    "netuid,total_alpha_in,total_alpha_out,net_alpha_flow,gross_alpha_flow,stake_events,unstake_events,direction",
+    "1,100,30,70,130,5,2,expanding",
+  ].join("\r\n"),
   // The /chain/stake-moves per-subnet stake-movement (re-delegation) leaderboard rows.
   "chain-stake-moves": [
     "netuid,distinct_movers,movements,movements_per_mover",

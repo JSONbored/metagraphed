@@ -115,6 +115,11 @@ import {
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
 } from "../../src/chain-stake-flow.mjs";
+import {
+  loadChainAlphaFlow,
+  CHAIN_ALPHA_FLOW_LIMIT_DEFAULT,
+  CHAIN_ALPHA_FLOW_LIMIT_MAX,
+} from "../../src/chain-alpha-flow.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -801,6 +806,17 @@ const CHAIN_STAKE_FLOW_CSV_COLUMNS = [
   "direction",
 ];
 
+const CHAIN_ALPHA_FLOW_CSV_COLUMNS = [
+  "netuid",
+  "total_alpha_in",
+  "total_alpha_out",
+  "net_alpha_flow",
+  "gross_alpha_flow",
+  "stake_events",
+  "unstake_events",
+  "direction",
+];
+
 // CSV column order for the /api/v1/chain/weights per-subnet leaderboard rows
 // (the row-shaped `subnets` array). The network rollup + intensity_distribution
 // stay JSON-only, mirroring chain-stake-flow.
@@ -1275,6 +1291,70 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/stake-flow.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// Network-wide cross-subnet ALPHA flow: rank every subnet by net alpha minted - burned over the
+// window from the account_events StakeAdded/StakeRemoved stream (the alpha leg of the swap), with a
+// network rollup and a net-flow distribution. The alpha-denominated companion to chain/stake-flow;
+// edge-cached like it (account_events-derived, analytics cron freshness).
+export async function handleChainAlphaFlow(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_ALPHA_FLOW_LIMIT_DEFAULT,
+    maxLimit: CHAIN_ALPHA_FLOW_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
+
+  // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
+  // repeatedly force the network-wide account_events aggregation (mirrors chain-stake-flow).
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-alpha-flow",
+    async () => {
+      const data = await loadChainAlphaFlow(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
+      // net_flow_distribution stay JSON-only (mirrors chain-stake-flow).
+      if (csv) {
+        return csvResponse(
+          data.subnets,
+          "chain-alpha-flow",
+          "short",
+          cacheRequest,
+          CHAIN_ALPHA_FLOW_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/alpha-flow.json",
             data.observed_at,
           ),
         },

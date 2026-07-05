@@ -565,6 +565,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/alpha-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide cross-subnet ALPHA flow over a 7d or 30d window: every subnet that moved alpha in the window ranked by net alpha minted (StakeAdded) minus burned (StakeRemoved) (subnets with no alpha swaps in the window are excluded) (biggest net expansion first, ?limit <=100), with per-subnet in/out/net/gross alpha totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net alpha flow. The alpha-denominated companion to GET /api/v1/chain/stake-flow (which sums the TAO capital leg of the same swaps); alpha price floats per subnet, so alpha volume is not derivable from the TAO flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + net-flow distribution stay JSON-only). */
+        get: operations["chainAlphaFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/axon-removals": {
         parameters: {
             query?: never;
@@ -3294,6 +3311,48 @@ export interface components {
             success_rate: number | null;
             successful_extrinsics: number;
             unique_signers: number;
+        };
+        /** @description Cross-subnet ALPHA flow over a 7d/30d window: every subnet that moved alpha in the window ranked by net alpha minted (StakeAdded) minus burned (StakeRemoved), with per-subnet in/out/net/gross alpha totals + a direction label, a network rollup, and a distribution of the per-subnet net alpha flow. The alpha-denominated companion to /api/v1/chain/stake-flow (which sums the TAO capital leg of the same swaps); alpha price floats per subnet, so alpha volume is not derivable from the TAO flow. subnet_count, the rollup, and the distribution cover only subnets with alpha swaps in the window (quiet subnets are excluded). Served live from the account_events D1 tier at /api/v1/chain/alpha-flow (no static file); zeros + empty leaderboard when cold. */
+        ChainAlphaFlowArtifact: {
+            /** @description Spread of the per-subnet net alpha flow (can be negative) across every subnet in the window; null when no subnet moved alpha. */
+            net_flow_distribution: {
+                count: number;
+                max: number;
+                mean: number;
+                median: number;
+                min: number;
+                p25: number;
+                p75: number;
+                p90: number;
+            } | null;
+            network: {
+                contracting: number;
+                expanding: number;
+                flat: number;
+                gross_alpha_flow: number;
+                net_alpha_flow: number;
+                stake_events: number;
+                total_alpha_in: number;
+                total_alpha_out: number;
+                unstake_events: number;
+            };
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: {
+                /** @enum {string} */
+                direction: "expanding" | "contracting" | "balanced";
+                gross_alpha_flow: number;
+                net_alpha_flow: number;
+                netuid: number;
+                stake_events: number;
+                total_alpha_in: number;
+                total_alpha_out: number;
+                unstake_events: number;
+            }[];
+            /** @enum {string|null} */
+            window: "7d" | "30d" | null;
         };
         /** @description Network-wide axon-removal activity over a 7d/30d window across the subnets with observed removal activity: a per-subnet leaderboard (distinct removers, AxonInfoRemoved count, removals per remover) plus a network rollup with the true distinct remover count and a distribution of per-subnet re-teardown intensity. The teardown-side companion to /api/v1/chain/serving (axon announcements) and the network-wide companion to /api/v1/subnets/{netuid}/axon-removals, served live from the account_events AxonInfoRemoved stream at /api/v1/chain/axon-removals (no static file); subnet_count 0 and the leaderboard empty when cold. */
         ChainAxonRemovalsArtifact: {
@@ -11191,6 +11250,151 @@ export interface operations {
                     /**
                      * @example day,block_count,extrinsic_count,event_count,successful_extrinsics,success_rate,unique_signers
                      *     2026-07-01,7200,15000,42000,14950,0.9967,320
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainAlphaFlow: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "net_flow_distribution": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "network": {
+                     *           "contracting": 1,
+                     *           "expanding": 1,
+                     *           "flat": 1,
+                     *           "gross_alpha_flow": 0.5,
+                     *           "net_alpha_flow": 0.5,
+                     *           "stake_events": 1,
+                     *           "total_alpha_in": 0.5,
+                     *           "total_alpha_out": 0.5,
+                     *           "unstake_events": 1
+                     *         },
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "direction": "expanding",
+                     *             "gross_alpha_flow": 0.5,
+                     *             "net_alpha_flow": 0.5,
+                     *             "netuid": 7,
+                     *             "stake_events": 1,
+                     *             "total_alpha_in": 0.5,
+                     *             "total_alpha_out": 0.5,
+                     *             "unstake_events": 1
+                     *           }
+                     *         ],
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainAlphaFlowArtifact"];
+                    };
+                    /**
+                     * @example netuid,total_alpha_in,total_alpha_out,net_alpha_flow,gross_alpha_flow,stake_events,unstake_events,direction
+                     *     1,100,30,70,130,5,2,expanding
                      */
                     "text/csv": string;
                 };
