@@ -248,12 +248,12 @@ function RecentIncidents() {
   // ends within a few probe cycles of the latest snapshot; everything else is a
   // resolved past event. This separates "what's down right now" from "what's
   // flapped over the window", so the window count never reads as a live outage.
-  const observedMs = ledger?.observed_at ? Date.parse(ledger.observed_at) : Date.now();
-  const isOngoing = (s: GlobalIncidentSurface) => {
-    const latest = s.incidents.reduce((max, i) => Math.max(max, i.ended_at || 0), 0);
-    return latest > 0 && observedMs - latest < ONGOING_MS;
-  };
-  const surfaces = useMemo(() => {
+  const { surfaces, ongoingCount } = useMemo(() => {
+    const observedMs = ledger?.observed_at ? Date.parse(ledger.observed_at) : Date.now();
+    const isOngoing = (s: GlobalIncidentSurface) => {
+      const latest = s.incidents.reduce((max, i) => Math.max(max, i.ended_at || 0), 0);
+      return latest > 0 && observedMs - latest < ONGOING_MS;
+    };
     const list = [...(ledger?.surfaces ?? [])];
     list.sort(
       (a, b) =>
@@ -261,12 +261,10 @@ function RecentIncidents() {
         b.incident_count - a.incident_count ||
         b.downtime_ms - a.downtime_ms,
     );
-    return list;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return { surfaces: list, ongoingCount: list.filter(isOngoing).length };
   }, [ledger]);
   const summary = ledger?.summary;
   const affected = summary?.affected_surface_count ?? surfaces.length;
-  const ongoingCount = surfaces.filter(isOngoing).length;
 
   return (
     <div className="space-y-3">

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo } from "react";
 import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
@@ -300,11 +300,14 @@ function SchemaExplorer() {
 
   const stale = isStaleFreshness(data.meta?.generated_at);
 
-  const setSearch = (patch: Partial<typeof search>) =>
-    navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
-      replace: true,
-    });
+  const setSearch = useCallback(
+    (patch: Partial<typeof search>) =>
+      navigate({
+        search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+        replace: true,
+      }),
+    [navigate],
+  );
 
   // Esc clears the selected schema on desktop (mobile uses the explicit "back"
   // button inside the viewer). Skips when focus is in an input/textarea so it
@@ -319,8 +322,7 @@ function SchemaExplorer() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.open]);
+  }, [search.open, setSearch]);
 
   return (
     <div className="space-y-4">

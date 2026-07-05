@@ -86,6 +86,8 @@ export function useRegisterApiSource(paths: string[], artifacts: string[] = []) 
       ...artifacts.map((p) => ({ path: p, artifact: p })),
     ];
     return register(items);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // paths/artifacts omitted on purpose: pathsKey/artifactsKey capture content changes
+    // without re-registering when the parent passes a fresh array identity each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic deps are the keys
   }, [pathsKey, artifactsKey, register]);
 }
