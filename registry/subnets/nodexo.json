@@ -116,6 +116,25 @@
         "submitted_by": "seekmistar01"
       },
       "notes": "Public Nodexo (SN106) GPU marketplace inventory API. Returns live JSON offers with GPU model, VRAM, pricing (USDC/hour), availability, and reliability metrics. No auth required."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-106-nodexo-health",
+      "kind": "subnet-api",
+      "name": "Nodexo app health",
+      "notes": "Public no-auth GET /api/health on nodexo.ai returning app liveness JSON with database, redis, and validator checks (observed: {\"ok\":true,\"service\":\"nodexo-app\",...}). Served on the same host as the existing inventory subnet-api surface.",
+      "provider": "nodexo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/nodexo-ai/nodexo",
+        "https://nodexo.ai/"
+      ],
+      "url": "https://nodexo.ai/api/health"
     }
   ]
 }
