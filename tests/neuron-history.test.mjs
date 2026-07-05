@@ -1029,6 +1029,22 @@ describe("R2 cold archive + prune (PR-A2)", () => {
     assert.deepEqual(captured.params, ["2026-03-20", "2026-03-21"]);
   });
 
+  test("pruneNeuronDaily reports rows:null for a backlog-days delete that omits meta.changes", async () => {
+    const db = {
+      prepare() {
+        return { bind: () => ({ run: () => Promise.resolve({}) }) };
+      },
+    };
+
+    const res = await pruneNeuronDaily(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: Date.parse("2026-06-22T00:00:00Z"), days: ["2026-03-20"] },
+    );
+
+    assert.equal(res.pruned, true);
+    assert.equal(res.rows, null);
+  });
+
   test("pruneNeuronDaily no-ops without a DB binding (returns no-db, never throws)", async () => {
     assert.deepEqual(await pruneNeuronDaily({}), {
       pruned: false,
