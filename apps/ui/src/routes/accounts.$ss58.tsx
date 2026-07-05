@@ -30,6 +30,7 @@ import {
   accountBalanceQuery,
   accountEventsQuery,
   accountExtrinsicsQuery,
+  accountPortfolioQuery,
   accountQuery,
   accountSubnetsQuery,
   accountTransfersQuery,
@@ -121,6 +122,12 @@ function fmtTao(v: number): string {
   if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
   if (v >= 1) return `${v.toFixed(2)} τ`;
   return `${v.toFixed(4)} τ`;
+}
+
+// Render an emission/stake yield ratio (a fraction) as a percentage.
+function fmtPct(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  return `${(v * 100).toFixed(2)}%`;
 }
 
 function ValidAccountDetail({ ss58 }: { ss58: string }) {
@@ -242,6 +249,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
 
+      <AccountPortfolioSection ss58={ss58} />
+
       {account.event_kinds.length > 0 ? (
         <SectionAnchor
           id="kinds"
@@ -299,6 +308,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
             { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
             { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
+            { label: "portfolio", path: `/api/v1/accounts/${sourceRef}/portfolio` },
           ]}
         />
       </SectionAnchor>
@@ -309,6 +319,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           `/api/v1/accounts/${sourceRef}/history`,
           `/api/v1/accounts/${sourceRef}/events`,
           `/api/v1/accounts/${sourceRef}/subnets`,
+          `/api/v1/accounts/${sourceRef}/portfolio`,
         ]}
       />
     </>
@@ -604,6 +615,114 @@ function AccountFootprintSection({
                       idle
                     </span>
                   )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </DataPanel>
+    </SectionAnchor>
+  );
+}
+
+// Cross-subnet neuron portfolio — the /portfolio economics companion to the
+// footprint above. Non-blocking; stays hidden for a cold wallet (no positions)
+// so it never renders an empty shell or stalls the page.
+function AccountPortfolioSection({ ss58 }: { ss58: string }) {
+  const portfolio = useQuery(accountPortfolioQuery(ss58)).data?.data;
+  const positions = portfolio?.positions ?? [];
+  if (positions.length === 0) return null;
+
+  const concentration = portfolio?.stake_concentration ?? null;
+
+  return (
+    <SectionAnchor
+      id="portfolio"
+      title="Neuron portfolio"
+      subtitle="Cross-subnet neuron positions with per-position stake, emission, and yield — the economics view behind the registration footprint."
+      tone="accent"
+      info="Yield is emission per stake for each position (null with zero stake). Neuron-registration analytics, not wallet PnL."
+      right={<SectionBadge tone="accent">{formatNumber(positions.length)} positions</SectionBadge>}
+    >
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <StatTile
+          eyebrow="Positions"
+          tone="accent"
+          value={formatNumber(portfolio?.position_count ?? positions.length)}
+          hint={`${formatNumber(portfolio?.subnet_count ?? positions.length)} subnets`}
+        />
+        <StatTile
+          eyebrow="Roles"
+          value={`${formatNumber(portfolio?.validator_count ?? 0)} / ${formatNumber(
+            portfolio?.miner_count ?? 0,
+          )}`}
+          hint="validators / miners"
+        />
+        <StatTile
+          eyebrow="Overall yield"
+          value={fmtPct(portfolio?.overall_yield)}
+          hint="emission / stake"
+        />
+        <StatTile eyebrow="Total stake" value={fmtTao(portfolio?.total_stake_tao ?? 0)} />
+        <StatTile eyebrow="Total emission" value={fmtTao(portfolio?.total_emission_tao ?? 0)} />
+        <StatTile
+          eyebrow="Stake concentration"
+          value={concentration?.gini != null ? concentration.gini.toFixed(3) : "—"}
+          hint={
+            concentration?.nakamoto_coefficient != null
+              ? `Gini · Nakamoto ${formatNumber(concentration.nakamoto_coefficient)}`
+              : "Gini across subnets"
+          }
+        />
+      </div>
+      <DataPanel>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-surface/50">
+            <tr>
+              <th className={TH}>Subnet</th>
+              <th className={TH}>Role</th>
+              <th className={`${TH} text-right`}>UID</th>
+              <th className={`${TH} text-right`}>Stake</th>
+              <th className={`${TH} text-right`}>Emission</th>
+              <th className={`${TH} text-right`}>Yield</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {positions.map((p) => (
+              <tr key={`${p.netuid}-${p.uid}`} className="hover:bg-surface/30">
+                <td className="px-5 py-4 font-mono text-[12px]">
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: p.netuid }}
+                    className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                  >
+                    SN{p.netuid}
+                  </Link>
+                </td>
+                <td className="px-5 py-4 font-mono text-[11px]">
+                  {p.role === "validator" ? (
+                    <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-500">
+                      validator
+                    </span>
+                  ) : p.role === "miner" ? (
+                    <span className="inline-flex rounded-full bg-surface px-2 py-0.5 text-ink-muted">
+                      miner
+                    </span>
+                  ) : (
+                    <span className="text-ink-muted">—</span>
+                  )}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                  {p.uid != null ? formatNumber(p.uid) : "—"}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                  {fmtStake(p.stake_tao)}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                  {fmtStake(p.emission_tao)}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                  {fmtPct(p.yield)}
                 </td>
               </tr>
             ))}
