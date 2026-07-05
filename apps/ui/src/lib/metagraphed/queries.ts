@@ -46,6 +46,8 @@ import type {
   ChainFees,
   ChainFeeDay,
   ChainFeePayer,
+  ChainTransferPair,
+  ChainTransferPairs,
   ChainConcentration,
   ChainPerformance,
   ChainSigners,
@@ -169,6 +171,7 @@ const MAX_CHAIN_CALLS = 12;
 const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
+const MAX_CHAIN_TRANSFER_PAIRS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -2390,6 +2393,66 @@ export const chainFeesQuery = (window: ChainWindow = "7d") =>
       } as ApiResult<ChainFees>;
     },
     staleTime: STALE_SHORT,
+  });
+
+function normalizeChainTransferPair(raw: unknown): ChainTransferPair | null {
+  if (!isRecord(raw)) return null;
+  const from = firstString(raw.from);
+  const to = firstString(raw.to);
+  if (!from || !to) return null;
+  return {
+    from,
+    to,
+    volume_tao: firstFiniteNumber(raw.volume_tao) ?? 0,
+    transfer_count: firstFiniteNumber(raw.transfer_count) ?? 0,
+    last_block: firstFiniteNumber(raw.last_block) ?? null,
+    last_observed_at: firstString(raw.last_observed_at) ?? null,
+  };
+}
+
+function normalizeChainTransferPairSort(raw: unknown): "volume" | "count" {
+  return raw === "count" ? "count" : "volume";
+}
+
+// #3476: network-wide directed native-TAO transfer-pair corridors over a 7d/30d
+// window — the data layer for a sender→receiver flow/sankey view on the explorer.
+// Every numeric cell coerces defensively: counts fall through to 0, shares/averages
+// to null (never NaN), and malformed pair rows are dropped on a cold store or junk.
+export function normalizeChainTransferPairs(raw: unknown): ChainTransferPairs {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    sort: normalizeChainTransferPairSort(rec.sort),
+    total_volume_tao: firstFiniteNumber(rec.total_volume_tao) ?? 0,
+    transfer_count: firstFiniteNumber(rec.transfer_count) ?? 0,
+    unique_pairs: firstFiniteNumber(rec.unique_pairs) ?? 0,
+    pair_count: firstFiniteNumber(rec.pair_count) ?? 0,
+    top_pair_share: firstFiniteNumber(rec.top_pair_share) ?? null,
+    pairs: normalizeChainRows(rec.pairs, MAX_CHAIN_TRANSFER_PAIRS, normalizeChainTransferPair),
+  };
+}
+
+export const chainTransferPairsQuery = (
+  window = "30d",
+  limit = 25,
+  sort: "volume" | "count" = "volume",
+) =>
+  queryOptions({
+    queryKey: k("chain-transfer-pairs", window, limit, sort),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainTransferPairs>>("/api/v1/chain/transfer-pairs", {
+        params: { window, limit, sort },
+        signal,
+      });
+      return {
+        data: normalizeChainTransferPairs(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
   });
 
 const READINESS_COMPONENT_KEYS = [

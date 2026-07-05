@@ -1599,6 +1599,35 @@ export interface ChainFees {
   top_fee_payers: ChainFeePayer[];
 }
 
+/** One directed sender→receiver pair on the chain transfer-pairs leaderboard (#3476). */
+export interface ChainTransferPair {
+  from: string;
+  to: string;
+  volume_tao: number;
+  transfer_count: number;
+  last_block: number | null;
+  last_observed_at: string | null;
+}
+
+/**
+ * Network-wide directed native-TAO transfer-pair analytics over a 7d/30d window
+ * (#3476), from GET /api/v1/chain/transfer-pairs — top sender→receiver corridors
+ * ranked by volume or count, plus window rollup (unique pairs, top-pair share).
+ * Zeroed with an empty pairs list when the store is cold.
+ */
+export interface ChainTransferPairs {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  sort: "volume" | "count";
+  total_volume_tao: number;
+  transfer_count: number;
+  unique_pairs: number;
+  pair_count: number;
+  top_pair_share: number | null;
+  pairs: ChainTransferPair[];
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;
