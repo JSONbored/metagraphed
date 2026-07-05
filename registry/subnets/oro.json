@@ -279,6 +279,25 @@
         "https://oroagents.com/"
       ],
       "url": "https://api.oroagents.com/v1/public/races/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-health-deep",
+      "kind": "subnet-api",
+      "name": "ORO API deep health",
+      "notes": "Public no-auth GET /health/deep returning deep readiness JSON (status, version) that exercises the SQLAlchemy connection pool. Documented in the subnet's own OpenAPI (api.oroagents.com/openapi.json, path /health/deep); same host as the existing /health and public API surfaces. Distinct from the lightweight /health liveness endpoint.",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/openapi.json",
+        "https://oroagents.com/"
+      ],
+      "url": "https://api.oroagents.com/health/deep"
     }
   ],
   "website_url": "https://oroagents.com/"
