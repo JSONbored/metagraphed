@@ -279,6 +279,11 @@ assert.ok(
 );
 const gapsPage = await callOk("list_gaps", { limit: 3 });
 assert.ok(Array.isArray(gapsPage.gaps), "list_gaps must return gaps[]");
+const endpointPoolsPage = await callOk("list_endpoint_pools", { limit: 3 });
+assert.ok(
+  Array.isArray(endpointPoolsPage.pools),
+  "list_endpoint_pools must return pools[]",
+);
 await callOk("registry_summary", {});
 await callOk("get_coverage", {});
 

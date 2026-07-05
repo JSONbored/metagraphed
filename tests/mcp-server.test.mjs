@@ -1429,6 +1429,61 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_endpoint_pools returns filtered pool rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/endpoint-pools.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        pools: [
+          {
+            id: "finney-rpc",
+            kind: "subtensor-rpc",
+            eligible_count: 2,
+            endpoint_count: 5,
+          },
+          {
+            id: "finney-wss",
+            kind: "subtensor-wss",
+            eligible_count: 8,
+            endpoint_count: 10,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_endpoint_pools",
+      { kind: "subtensor-rpc" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.pools[0].id, "finney-rpc");
+  });
+
+  test("list_endpoint_pools reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_endpoint_pools", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Endpoint pool snapshot unavailable/,
+    );
+  });
+
+  test("list_endpoint_pools payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_endpoint_pools",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/endpoint-pools.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        notes: "ok",
+        pools: [{ id: "finney-rpc", eligible_count: 2 }],
+      },
+    });
+    const res = await callTool("list_endpoint_pools", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("registry_summary returns the summary artifact", async () => {
     const res = await callTool("registry_summary", {}, { deps });
     assert.equal(res.body.result.structuredContent.completeness, 0.42);
