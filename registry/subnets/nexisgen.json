@@ -12,7 +12,63 @@
   "social": {
     "x": "https://x.com/nexisgen_ai"
   },
-  "surfaces": [],
   "source_repo": "https://github.com/RendixNetwork/nexisgen",
-  "website_url": "https://nexisgen.ai/"
+  "website_url": "https://nexisgen.ai/",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-openapi",
+      "kind": "openapi",
+      "name": "NexisGen Validator API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema (title \"Nexis Validator API\", version 2.0.0) for the public validation API at api.nexisgen.ai. Documents no-auth routes including GET /healthz and GET /v1/invalid-hotkeys plus validator-facing POST endpoints.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nexisgen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.nexisgen.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/RendixNetwork/nexisgen/blob/main/.env.example",
+        "https://github.com/RendixNetwork/nexisgen/blob/main/README.md",
+        "https://api.nexisgen.ai/openapi.json"
+      ],
+      "url": "https://api.nexisgen.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-healthz-api",
+      "kind": "subnet-api",
+      "name": "NexisGen validation API health",
+      "notes": "Public no-auth GET /healthz on api.nexisgen.ai returning liveness JSON (observed: {\"status\":\"ok\"}). Documented in the subnet OpenAPI spec; validators reference NEXIS_VALIDATION_API_URL in the official nexisgen repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nexisgen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "schema_url": "https://api.nexisgen.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/RendixNetwork/nexisgen/blob/main/.env.example",
+        "https://api.nexisgen.ai/openapi.json",
+        "https://api.nexisgen.ai/healthz"
+      ],
+      "url": "https://api.nexisgen.ai/healthz"
+    }
+  ]
 }
