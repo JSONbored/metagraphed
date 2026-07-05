@@ -127,7 +127,7 @@ describe("build-mcp", () => {
   });
 
   test("MCP server exports wire get_build at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.71.0");
+    assert.equal(MCP_SERVER_VERSION, "1.72.0");
     assert.match(MCP_INSTRUCTIONS, /get_build/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_build");
     assert.ok(tool);

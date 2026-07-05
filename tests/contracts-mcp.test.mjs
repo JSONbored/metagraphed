@@ -132,7 +132,7 @@ describe("contracts-mcp", () => {
   });
 
   test("MCP server exports wire get_contracts at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.71.0");
+    assert.equal(MCP_SERVER_VERSION, "1.72.0");
     assert.match(MCP_INSTRUCTIONS, /get_contracts/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_contracts");
     assert.ok(tool);

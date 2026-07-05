@@ -1557,6 +1557,76 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_profile_completeness returns filtered profile rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        summary: { average_score: 60 },
+        profiles: [
+          {
+            netuid: 73,
+            completeness_score: 25,
+            identity_level: "partial",
+            priority_score: 119,
+          },
+          {
+            netuid: 1,
+            completeness_score: 85,
+            identity_level: "complete",
+            priority_score: 10,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { identity_level: "partial" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.profiles[0].netuid, 73);
+    assert.equal(out.profiles[0].priority_score, 119);
+  });
+
+  test("list_profile_completeness reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_profile_completeness",
+      {},
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Profile completeness snapshot unavailable/,
+    );
+  });
+
+  test("list_profile_completeness payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_profile_completeness",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        profiles: [
+          {
+            netuid: 73,
+            completeness_score: 25,
+            identity_level: "partial",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_profile_completeness",
+      { limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoint_pools returns filtered pool rows", async () => {
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {
