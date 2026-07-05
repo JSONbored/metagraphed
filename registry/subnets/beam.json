@@ -12,7 +12,48 @@
   "social": {
     "x": "https://x.com/b1m_ai"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-openapi",
+      "kind": "openapi",
+      "name": "BeamCore API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.0 schema for the BeamCore control-plane HTTP API (title: BeamCore API). Served publicly at beamcore.b1m.ai; documents orchestrator, worker, validator, and health routes for SN105 Beam.",
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://beamcore.b1m.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/Beam-Network/beam/blob/main/README.md",
+        "https://beamcore.b1m.ai/openapi.json"
+      ],
+      "url": "https://beamcore.b1m.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-health",
+      "kind": "subnet-api",
+      "name": "BeamCore API health",
+      "notes": "Public no-auth GET /health on beamcore.b1m.ai returning control-plane liveness JSON (ok, db, schema, metagraph sync). Documented in the subnet OpenAPI spec on the same host; beamcore.b1m.ai is the CORE_SERVER_URL configured in the official Beam README.",
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://beamcore.b1m.ai/openapi.json",
+        "https://github.com/Beam-Network/beam/blob/main/README.md"
+      ],
+      "url": "https://beamcore.b1m.ai/health"
+    }
+  ],
   "source_repo": null,
   "website_url": "https://b1m.ai/",
   "contact": "info@b1m.ai"
