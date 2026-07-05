@@ -3872,10 +3872,7 @@ export function normalizeSubnetYieldHistory(netuid: number, raw: unknown): Subne
 }
 
 /** Daily emission-yield distribution drift (subnet return + per-UID yield percentiles). */
-export const subnetYieldHistoryQuery = (
-  netuid: number,
-  window: "7d" | "30d" | "90d" = "30d",
-) =>
+export const subnetYieldHistoryQuery = (netuid: number, window: "7d" | "30d" | "90d" = "30d") =>
   queryOptions({
     queryKey: k("subnet-yield-history", netuid, window),
     queryFn: async ({ signal }) => {
