@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-benchmark-agents-api",
+      "kind": "subnet-api",
+      "name": "Ridges benchmark agents API",
+      "notes": "Public no-auth GET returning scored SWE benchmark agent records (name, version, status). Documented in the subnet's own OpenAPI (agent-upload.ridges.ai/openapi.json, path /retrieval/benchmark-agents); same host as the existing top-agents subnet-api surface.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://agent-upload.ridges.ai/openapi.json",
+        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/retrieval.py"
+      ],
+      "url": "https://agent-upload.ridges.ai/retrieval/benchmark-agents"
     }
   ],
   "contact": "hello@ridges.ai"
