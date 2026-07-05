@@ -431,6 +431,20 @@ assert.ok(
     chainWeights.network != null,
   "get_chain_weights must return subnet_count + network + subnets[]",
 );
+const subnetWeights = await callOk("get_subnet_weights", {
+  netuid: 7,
+  window: "7d",
+});
+assert.equal(
+  subnetWeights.netuid,
+  7,
+  "get_subnet_weights must echo the netuid",
+);
+assert.ok(
+  Number.isInteger(subnetWeights.distinct_setters) &&
+    Number.isInteger(subnetWeights.weight_sets),
+  "get_subnet_weights must return distinct_setters + weight_sets",
+);
 const chainStakeMoves = await callOk("get_chain_stake_moves", {
   window: "7d",
   limit: 5,

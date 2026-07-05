@@ -248,6 +248,11 @@ import {
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
 } from "./subnet-weight-setters.mjs";
 import {
+  loadSubnetWeights,
+  SUBNET_WEIGHTS_WINDOWS,
+  DEFAULT_SUBNET_WEIGHTS_WINDOW,
+} from "./subnet-weights.mjs";
+import {
   loadSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
@@ -389,7 +394,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.59.0";
+export const MCP_SERVER_VERSION = "1.60.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -429,6 +434,7 @@ const SUBNET_EVENT_SUMMARY_WINDOW_KEYS = Object.keys(
 const SUBNET_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
   SUBNET_WEIGHT_SETTERS_WINDOWS,
 );
+const SUBNET_WEIGHTS_WINDOW_KEYS = Object.keys(SUBNET_WEIGHTS_WINDOWS);
 const SUBNET_AXON_REMOVALS_WINDOW_KEYS = Object.keys(
   SUBNET_AXON_REMOVALS_WINDOWS,
 );
@@ -519,8 +525,10 @@ export const MCP_INSTRUCTIONS =
   "boundary snapshots, get_subnet_stake_flow net capital in/out for one " +
   "subnet (StakeAdded vs StakeRemoved), get_subnet_event_summary the windowed " +
   "account-event summary for one subnet (per-kind counts plus a recent-events " +
-  "tail), get_subnet_weight_setters the per-subnet weight-setter leaderboard " +
-  "(the validators behind /weights ranked by activity), " +
+  "tail), get_subnet_weights the per-subnet weight-setting activity card " +
+  "(distinct setters, WeightsSet count, sets per setter — the per-subnet " +
+  "companion to get_chain_weights), get_subnet_weight_setters the per-subnet weight-setter leaderboard " +
+  "(the validators behind /weights ranked by activity — the setter-level drill-in of get_subnet_weights), " +
   "get_subnet_registrations the per-subnet neuron-registration activity, " +
   "get_subnet_stake_moves the per-subnet stake-relocation activity, " +
   "get_subnet_axon_removals the per-subnet AxonInfoRemoved teardown activity " +
@@ -2982,6 +2990,45 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_weights",
+    title: "Get subnet weight-setting activity",
+    description:
+      "Fetch one subnet's validator weight-setting activity over a 7d or 30d " +
+      "window (default 7d): the distinct weight-setting validators, WeightsSet " +
+      "event count, and average updates per validator, computed live from the " +
+      "account_events WeightsSet stream. The per-subnet companion to " +
+      "get_chain_weights — use get_subnet_weight_setters for the setter-level " +
+      "leaderboard drill-in. Mirrors GET /api/v1/subnets/{netuid}/weights.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: SUBNET_WEIGHTS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_SUBNET_WEIGHTS_WINDOW}).`,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
+      if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${SUBNET_WEIGHTS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      return await loadSubnetWeights(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+        windowDays: SUBNET_WEIGHTS_WINDOWS[window],
+      });
+    },
+  },
+  {
     name: "get_subnet_weight_setters",
     title: "Get subnet weight-setter leaderboard",
     description:
@@ -2989,8 +3036,8 @@ export const MCP_TOOLS = [
       "window (default 7d): the individual validators behind /weights ranked " +
       "by activity, each with its WeightsSet count, its share of the subnet's " +
       "total weight-setting, and its first/last set times, computed live from " +
-      "the account_events WeightsSet stream. The setter-level drill-in of the " +
-      "aggregate get_chain_weights / subnet weights. " +
+      "the account_events WeightsSet stream. The setter-level drill-in of " +
+      "get_subnet_weights / get_chain_weights. " +
       "Mirrors GET /api/v1/subnets/{netuid}/weights/setters.",
     inputSchema: {
       type: "object",
@@ -8268,6 +8315,26 @@ const TOOL_OUTPUT_SCHEMAS = {
       distinct_registrants: { type: "integer" },
       registrations: { type: "integer" },
       registrations_per_registrant: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_weights: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "window",
+      "distinct_setters",
+      "weight_sets",
+      "sets_per_setter",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      distinct_setters: { type: "integer" },
+      weight_sets: { type: "integer" },
+      sets_per_setter: { type: ["number", "null"] },
     },
   },
   get_subnet_weight_setters: {

@@ -4134,6 +4134,95 @@ describe("MCP get_subnet_registrations", () => {
   });
 });
 
+describe("MCP get_subnet_weights", () => {
+  function weightsD1(row = null, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  return { results: row ? [row] : [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("reports weight-setting activity for one subnet over the window", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_subnet_weights",
+      { netuid: 5, window: "7d" },
+      {
+        env: weightsD1(
+          {
+            distinct_setters: 2,
+            weight_sets: 20,
+            newest_observed: 1_750_000_000_000,
+          },
+          capture,
+        ),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 5);
+    assert.equal(out.window, "7d");
+    assert.equal(out.distinct_setters, 2);
+    assert.equal(out.weight_sets, 20);
+    assert.equal(out.sets_per_setter, 10);
+    assert.equal(capture[0].params[0], 5);
+  });
+
+  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+    const res = await callTool("get_subnet_weights", { netuid: 5 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.distinct_setters, 0);
+    assert.equal(out.weight_sets, 0);
+    assert.equal(out.sets_per_setter, null);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_weights", {
+      netuid: 5,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_weights", { window: "7d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+
+  test("get_subnet_weights payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_subnet_weights",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_subnet_weights",
+      { netuid: 5 },
+      {
+        env: weightsD1({
+          distinct_setters: 1,
+          weight_sets: 3,
+          newest_observed: 1_750_000_000_000,
+        }),
+      },
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+});
+
 describe("MCP get_subnet_weight_setters", () => {
   // The loader runs two reads: the per-setter leaderboard (GROUP BY the
   // hotkey-or-uid identity) and the subnet-wide totals row. Route by SQL shape.
