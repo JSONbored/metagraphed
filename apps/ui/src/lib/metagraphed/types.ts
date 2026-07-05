@@ -1173,6 +1173,36 @@ export interface SubnetStakeMoves {
   movements_per_mover: number | null;
 }
 
+/**
+ * Per-subnet axon-serving announcement activity over a 7d/30d window, from
+ * /api/v1/subnets/{netuid}/serving. Zeroed when the subnet had no AxonServed
+ * events in the window.
+ */
+export interface SubnetServing {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_servers: number;
+  announcements: number;
+  announcements_per_server: number | null;
+}
+
+/**
+ * Per-subnet Prometheus-endpoint serving activity over a 7d/30d window, from
+ * /api/v1/subnets/{netuid}/prometheus. Zeroed when the subnet had no
+ * PrometheusServed events in the window.
+ */
+export interface SubnetPrometheus {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_exporters: number;
+  announcements: number;
+  announcements_per_exporter: number | null;
+}
+
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
 export interface SubnetNeuronHistoryPoint {
   snapshot_date: string;

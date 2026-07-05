@@ -93,6 +93,8 @@ import type {
   Subnet,
   SubnetAxonRemovals,
   SubnetStakeMoves,
+  SubnetServing,
+  SubnetPrometheus,
   SubnetEconomics,
   SubnetHistory,
   SubnetHistoryPoint,
@@ -2978,6 +2980,68 @@ export const subnetStakeMovesQuery = (netuid: number, window = "30d") =>
       );
       return {
         data: normalizeSubnetStakeMoves(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-subnet axon-serving announcement activity over a 7d/30d window.
+export function normalizeSubnetServing(netuid: number, raw: unknown): SubnetServing {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_servers: firstFiniteNumber(rec.distinct_servers) ?? 0,
+    announcements: firstFiniteNumber(rec.announcements) ?? 0,
+    announcements_per_server: firstFiniteNumber(rec.announcements_per_server) ?? null,
+  };
+}
+
+export const subnetServingQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-serving", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetServing>>(`/api/v1/subnets/${netuid}/serving`, {
+        params: { window },
+        signal,
+      });
+      return {
+        data: normalizeSubnetServing(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-subnet Prometheus-endpoint serving activity over a 7d/30d window.
+export function normalizeSubnetPrometheus(netuid: number, raw: unknown): SubnetPrometheus {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_exporters: firstFiniteNumber(rec.distinct_exporters) ?? 0,
+    announcements: firstFiniteNumber(rec.announcements) ?? 0,
+    announcements_per_exporter: firstFiniteNumber(rec.announcements_per_exporter) ?? null,
+  };
+}
+
+export const subnetPrometheusQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-prometheus", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetPrometheus>>(
+        `/api/v1/subnets/${netuid}/prometheus`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetPrometheus(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };
