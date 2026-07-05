@@ -262,6 +262,25 @@
         "https://cacheon.ai/docs/miners/api-contract"
       ],
       "url": "https://api.cacheon.ai/api/leader/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-evaluations-api",
+      "kind": "subnet-api",
+      "name": "Cacheon evaluation records API",
+      "notes": "Public no-auth GET returning all evaluation records with challenger UID, scores, speed improvement, image metadata, and commit blocks. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/evaluations); same host as the existing /api/status, /api/leader, /api/rounds, and /api/leader/history subnet-api surfaces.",
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.cacheon.ai/openapi.json",
+        "https://cacheon.ai/docs/miners/api-contract"
+      ],
+      "url": "https://api.cacheon.ai/api/evaluations"
     }
   ],
   "website_url": "https://cacheon.ai/"
