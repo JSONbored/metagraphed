@@ -1087,6 +1087,35 @@ export interface SubnetHistory {
   points: SubnetHistoryPoint[];
 }
 
+/**
+ * One observed on-chain SubnetIdentitiesV3 snapshot for a subnet (#1647), from
+ * /api/v1/subnets/{netuid}/identity-history. Operator-controlled untrusted data —
+ * every field but the stable `identity_hash` may be null.
+ */
+export interface SubnetIdentityHistoryEntry {
+  identity_hash: string;
+  block_number: number | null;
+  observed_at: string | null;
+  subnet_name: string | null;
+  symbol: string | null;
+  description: string | null;
+  github_repo: string | null;
+  subnet_url: string | null;
+  logo_url: string | null;
+  discord: string | null;
+}
+
+/** Append-only on-chain identity timeline for one subnet (#1647), newest first. */
+export interface SubnetIdentityHistory {
+  schema_version: number;
+  netuid: number;
+  entry_count: number;
+  entries: SubnetIdentityHistoryEntry[];
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+}
+
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
 export interface SubnetNeuronHistoryPoint {
   snapshot_date: string;

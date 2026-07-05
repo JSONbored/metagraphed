@@ -94,6 +94,8 @@ import type {
   SubnetEconomics,
   SubnetHistory,
   SubnetHistoryPoint,
+  SubnetIdentityHistory,
+  SubnetIdentityHistoryEntry,
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
   MetagraphNeuron,
@@ -2786,6 +2788,68 @@ export const subnetHistoryQuery = (netuid: number, window = "90d") =>
         signal,
       });
       return { data: normalizeSubnetHistory(netuid, res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// One observed on-chain SubnetIdentitiesV3 snapshot (#1647). Operator-controlled
+// untrusted data: every field but the stable `identity_hash` coerces to null on
+// junk, and a row without an identity_hash (the keyset anchor) is discarded.
+export function normalizeSubnetIdentityHistoryEntry(
+  raw: unknown,
+): SubnetIdentityHistoryEntry | null {
+  if (!isRecord(raw)) return null;
+  const identityHash = firstString(raw.identity_hash);
+  if (identityHash == null) return null;
+  return {
+    identity_hash: identityHash,
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+    subnet_name: firstString(raw.subnet_name) ?? null,
+    symbol: firstString(raw.symbol) ?? null,
+    description: firstString(raw.description) ?? null,
+    github_repo: firstString(raw.github_repo) ?? null,
+    subnet_url: firstString(raw.subnet_url) ?? null,
+    logo_url: firstString(raw.logo_url) ?? null,
+    discord: firstString(raw.discord) ?? null,
+  };
+}
+
+const MAX_SUBNET_IDENTITY_HISTORY_ENTRIES = 1000;
+
+function normalizeSubnetIdentityHistory(netuid: number, raw: unknown): SubnetIdentityHistory {
+  const rec = isRecord(raw) ? raw : {};
+  const entries = (Array.isArray(rec.entries) ? rec.entries : [])
+    .map(normalizeSubnetIdentityHistoryEntry)
+    .filter((entry): entry is SubnetIdentityHistoryEntry => entry != null)
+    .slice(0, MAX_SUBNET_IDENTITY_HISTORY_ENTRIES);
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    entry_count: firstFiniteNumber(rec.entry_count) ?? entries.length,
+    entries,
+    limit: firstFiniteNumber(rec.limit) ?? null,
+    offset: firstFiniteNumber(rec.offset) ?? null,
+    next_cursor: firstString(rec.next_cursor) ?? null,
+  };
+}
+
+// #1647: append-only on-chain identity timeline for one subnet (newest first),
+// from the subnet_identity_history D1 tier. No paging params surfaced yet — the
+// default page (limit<=1000) is enough for the profile tab that consumes this.
+export const subnetIdentityHistoryQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-identity-history", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetIdentityHistory>>(
+        `/api/v1/subnets/${netuid}/identity-history`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetIdentityHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
     },
     staleTime: STALE_MED,
   });
