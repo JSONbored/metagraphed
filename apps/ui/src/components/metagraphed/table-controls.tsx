@@ -69,6 +69,9 @@ export function SearchInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder ?? "Search…"}
+      // Give the control an accessible name (a placeholder is not one for assistive tech); mirrors
+      // the aria-labelled sibling controls (SortButton, PageSizeSelect) in this file.
+      aria-label={placeholder ?? "Search"}
       className="flex-1 min-w-[180px] rounded border border-border bg-paper px-2.5 py-1.5 text-sm placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
     />
   );
