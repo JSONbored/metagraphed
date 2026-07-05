@@ -9,7 +9,30 @@
     "level": "candidate-discovered",
     "review_state": "unreviewed"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "id": "sn-26-perturb-subnet-api",
+      "name": "Perturb API health",
+      "kind": "subnet-api",
+      "url": "https://api.perturbai.io/health",
+      "provider": "perturb",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://www.perturbai.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "notes": "Public no-auth GET returning the Perturb (SN26) backend API health as JSON (status + server timestamp). Hosted on api.perturbai.io, the API subdomain of the subnet's registered website perturbai.io."
+    }
+  ],
   "social": {
     "x": "https://x.com/perturbaix"
   },
