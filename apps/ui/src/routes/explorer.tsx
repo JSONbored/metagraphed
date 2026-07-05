@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Activity, Boxes, Coins, Layers, Zap } from "lucide-react";
+import { Activity, ArrowLeftRight, Boxes, Coins, Layers, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -18,10 +18,11 @@ import {
   chainCallsQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainTransfersQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import type { ChainCalls } from "@/lib/metagraphed/types";
+import type { ChainCalls, ChainTransferParty } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -35,13 +36,13 @@ export const Route = createFileRoute("/explorer")({
       {
         name: "description",
         content:
-          "Bittensor network at a glance: daily extrinsic/block/event activity, fees, call mix, and the most active accounts — chain-direct analytics.",
+          "Bittensor network at a glance: daily extrinsic/block/event activity, fees, native-TAO transfers, call mix, and the most active accounts — chain-direct analytics.",
       },
       { property: "og:title", content: "Chain explorer — Metagraphed" },
       {
         property: "og:description",
         content:
-          "Bittensor network at a glance: daily activity, fees, call mix, and the most active accounts.",
+          "Bittensor network at a glance: daily activity, fees, native-TAO transfers, call mix, and the most active accounts.",
       },
     ],
   }),
@@ -66,7 +67,7 @@ function ExplorerPage() {
         eyebrow="Explorer"
         live
         title="Chain explorer"
-        description="The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers."
+        description="The Bittensor network at a glance — daily activity, fees, native-TAO transfers, call mix, and the most active accounts, computed live from the chain-direct tiers."
         actions={<ShareButton />}
       />
       <QueryErrorBoundary>
@@ -78,6 +79,7 @@ function ExplorerPage() {
         paths={[
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
+          "/api/v1/chain/transfers",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
         ]}
@@ -87,6 +89,62 @@ function ExplorerPage() {
 }
 
 const TH = "px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+
+function TransferLeaderboard({
+  title,
+  rows,
+  empty,
+}: {
+  title: string;
+  rows: ChainTransferParty[];
+  empty: string;
+}) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          {title}
+        </h3>
+        <span className="font-mono text-[11px] text-ink-muted">{rows.length} accounts</span>
+      </div>
+      {rows.length > 0 ? (
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th className={TH}>Account</th>
+              <th className={`${TH} text-right`}>Volume</th>
+              <th className={`${TH} text-right`}>Transfers</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row) => (
+              <tr key={row.address} className="hover:bg-surface/40">
+                <td className="px-4 py-2 font-mono text-[11px]">
+                  <Link
+                    to="/accounts/$ss58"
+                    params={{ ss58: row.address }}
+                    className="text-ink-strong hover:text-accent hover:underline"
+                    title={row.address}
+                  >
+                    {shortHash(row.address) ?? row.address}
+                  </Link>
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {fmtTao(row.volume_tao)}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {formatNumber(row.transfer_count)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">{empty}</p>
+      )}
+    </div>
+  );
+}
 
 /**
  * One labeled mini-sparkline cell for a daily series. Aligns `days` labels to
@@ -229,6 +287,7 @@ function ExplorerDashboard() {
 
   const activity = useSuspenseQuery(chainActivityQuery(win)).data.data;
   const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
+  const transfers = useSuspenseQuery(chainTransfersQuery(win, 12)).data.data;
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
 
@@ -450,6 +509,61 @@ function ExplorerDashboard() {
           )}
         </section>
       </div>
+
+      {/* native-TAO transfers */}
+      <section className="rounded-lg border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Native TAO transfers
+          </h2>
+          <span className="font-mono text-[11px] text-ink-muted">
+            Balances.Transfer · {win} window
+          </span>
+        </div>
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatTile
+            icon={ArrowLeftRight}
+            eyebrow="Transfer volume"
+            value={fmtTao(transfers.total_volume_tao)}
+            hint={`${win} total`}
+            tone="accent"
+          />
+          <StatTile
+            icon={Activity}
+            eyebrow="Transfers"
+            value={formatNumber(transfers.transfer_count)}
+            hint={`${formatNumber(transfers.unique_senders)} senders · ${formatNumber(transfers.unique_receivers)} receivers`}
+          />
+          <StatTile
+            icon={Layers}
+            eyebrow="Top-sender share"
+            value={
+              transfers.top_sender_share == null
+                ? "—"
+                : `${(transfers.top_sender_share * 100).toFixed(1)}%`
+            }
+            hint="of window volume"
+          />
+          <StatTile
+            icon={Coins}
+            eyebrow="Leaderboard rows"
+            value={formatNumber(transfers.top_senders.length + transfers.top_receivers.length)}
+            hint="top senders + receivers"
+          />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <TransferLeaderboard
+            title="Top senders"
+            rows={transfers.top_senders}
+            empty="No senders in this window yet."
+          />
+          <TransferLeaderboard
+            title="Top receivers"
+            rows={transfers.top_receivers}
+            empty="No receivers in this window yet."
+          />
+        </div>
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* call mix */}
