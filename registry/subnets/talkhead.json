@@ -12,5 +12,25 @@
   "social": {
     "x": "https://x.com/talkheadai"
   },
-  "surfaces": []
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-108-talkhead-health",
+      "kind": "subnet-api",
+      "name": "TalkHead API health",
+      "notes": "Public no-auth GET /health on api.talkhead.ai returning application liveness (observed plain-text response: Healthy). Served on the TalkHead subnet API host documented in the talkhead-subnet repository README for miner and validator submission flows.",
+      "provider": "talkhead",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/talkheadai/talkhead-subnet",
+        "https://www.talkhead.ai/"
+      ],
+      "url": "https://api.talkhead.ai/health"
+    }
+  ]
 }
