@@ -278,6 +278,25 @@
         "https://huggingface.co/desearch"
       ],
       "url": "https://huggingface.co/datasets/desearch/dataset"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-22-desearch-health",
+      "kind": "subnet-api",
+      "name": "Desearch API health",
+      "notes": "Public no-auth GET /health on api.desearch.ai returning API liveness JSON (observed: {\"status\":\"health\"}). Served on the API host advertised by the Desearch OpenAPI schemas (www.desearch.ai/openapi.json and api.desearch.ai/openapi.json) alongside the existing sn-22-desearch-api surface.",
+      "provider": "desearch",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.desearch.ai/openapi.json",
+        "https://www.desearch.ai/openapi.json"
+      ],
+      "url": "https://api.desearch.ai/health"
     }
   ],
   "website_url": "https://www.desearch.ai/"
