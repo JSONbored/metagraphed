@@ -561,6 +561,22 @@
         "https://chutes.ai/docs"
       ],
       "url": "https://api.chutes.ai/ping"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-health",
+      "kind": "subnet-api",
+      "name": "Chutes website health",
+      "notes": "Public no-auth GET /api/health on chutes.ai returning application liveness JSON. Served on the official Chutes website host registered in this manifest.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": ["https://chutes.ai/", "https://chutes.ai/docs"],
+      "url": "https://chutes.ai/api/health"
     }
   ],
   "website_url": "https://chutes.ai/"
