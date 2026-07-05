@@ -337,6 +337,31 @@
         "https://api.all-ways.io/swagger"
       ],
       "url": "https://api.all-ways.io/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-history-state-api",
+      "kind": "subnet-api",
+      "name": "Allways network history state API",
+      "notes": "Public no-auth GET /history/state on api.all-ways.io returning time-series active node counts and in-flight swap concurrency per bucket. Documented in the subnet OpenAPI (api.all-ways.io/swagger-json, path /history/state); same host as existing Allways subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/history/state"
     }
   ],
   "website_url": "https://all-ways.io/"
