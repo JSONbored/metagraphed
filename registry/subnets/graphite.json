@@ -155,6 +155,25 @@
         "https://api.graphite-ai.net/docs"
       ],
       "url": "https://api.graphite-ai.net/api/v1/stats/coverage"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-health",
+      "kind": "subnet-api",
+      "name": "Graphite API health",
+      "notes": "Public no-auth GET /health returning Graphite API status plus knowledge-graph entity/relationship/fact counts. Documented as GET /health in the subnet's OpenAPI spec on the same host as the existing stats subnet-api surface.",
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.graphite-ai.net/openapi.json",
+        "https://api.graphite-ai.net/docs"
+      ],
+      "url": "https://api.graphite-ai.net/health"
     }
   ],
   "website_url": "https://graphite-ai.net/"
