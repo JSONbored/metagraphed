@@ -694,7 +694,14 @@ describe("validateNextCursor", () => {
   });
 
   it("marks unexpected cursor shapes invalid", () => {
-    expect(validateNextCursor({ pagination: { next_cursor: { bad: true } } }, undefined)).toEqual({
+    expect(
+      validateNextCursor(
+        { pagination: { next_cursor: { bad: true } } } as unknown as Parameters<
+          typeof validateNextCursor
+        >[0],
+        undefined,
+      ),
+    ).toEqual({
       cursor: null,
       invalid: true,
     });
