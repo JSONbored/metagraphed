@@ -13,6 +13,7 @@ import {
   normalizeExtrinsic,
   normalizeAgentCatalogDetail,
   getNextPageParam,
+  validateNextCursor,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
@@ -650,5 +651,56 @@ describe("getNextPageParam", () => {
     expect(getNextPageParam({ meta: { _next_cursor: null } })).toBeUndefined();
     expect(getNextPageParam({ meta: {} })).toBeUndefined();
     expect(getNextPageParam({})).toBeUndefined();
+  });
+});
+
+describe("validateNextCursor", () => {
+  it("returns null when next_cursor is absent, null, blank, or whitespace-only", () => {
+    expect(validateNextCursor({}, undefined)).toEqual({ cursor: null });
+    expect(validateNextCursor({ pagination: { next_cursor: null } }, undefined)).toEqual({
+      cursor: null,
+    });
+    expect(validateNextCursor({ pagination: { next_cursor: "" } }, undefined)).toEqual({
+      cursor: null,
+    });
+    expect(validateNextCursor({ pagination: { next_cursor: "   " } }, undefined)).toEqual({
+      cursor: null,
+    });
+  });
+
+  it("trims string cursors and reads pagination.next_cursor or meta.next_cursor", () => {
+    expect(
+      validateNextCursor({ pagination: { next_cursor: "  cursor-abc  " } }, undefined),
+    ).toEqual({ cursor: "cursor-abc" });
+    expect(validateNextCursor({ next_cursor: "legacy-cursor" }, undefined)).toEqual({
+      cursor: "legacy-cursor",
+    });
+  });
+
+  it("coerces finite numeric cursors to strings", () => {
+    expect(validateNextCursor({ pagination: { next_cursor: 42 } }, undefined)).toEqual({
+      cursor: "42",
+    });
+  });
+
+  it("stops pagination when the API echoes the sent cursor", () => {
+    expect(
+      validateNextCursor({ pagination: { next_cursor: "same-cursor" } }, "same-cursor"),
+    ).toEqual({ cursor: null, invalid: true });
+    expect(validateNextCursor({ pagination: { next_cursor: 99 } }, "99")).toEqual({
+      cursor: null,
+      invalid: true,
+    });
+  });
+
+  it("marks unexpected cursor shapes invalid", () => {
+    expect(validateNextCursor({ pagination: { next_cursor: { bad: true } } }, undefined)).toEqual({
+      cursor: null,
+      invalid: true,
+    });
+    expect(validateNextCursor({ pagination: { next_cursor: Number.NaN } }, undefined)).toEqual({
+      cursor: null,
+      invalid: true,
+    });
   });
 });
