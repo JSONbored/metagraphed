@@ -360,6 +360,14 @@ assert.ok(
   Array.isArray(surfacesPage.surfaces),
   "list_surfaces must return surfaces[]",
 );
+const candidatesPage = await callOk("list_candidates", {
+  limit: 3,
+  state: "verified",
+});
+assert.ok(
+  Array.isArray(candidatesPage.candidates),
+  "list_candidates must return candidates[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),

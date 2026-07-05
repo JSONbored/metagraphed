@@ -14054,6 +14054,63 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.returned, 0);
   });
 
+  test("list_candidates returns filtered candidate rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/candidates.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        schema_version: 1,
+        candidates: [
+          {
+            netuid: 7,
+            kind: "openapi",
+            provider: "datura",
+            state: "verified",
+          },
+          {
+            netuid: 12,
+            kind: "openapi",
+            provider: "datura",
+            state: "stale",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_candidates",
+      { state: "verified", limit: 5 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.candidates[0].netuid, 7);
+    assert.equal(out.generated_at, "2026-07-01T00:00:00.000Z");
+  });
+
+  test("list_candidates reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_candidates", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Candidate surfaces catalog unavailable/,
+    );
+  });
+
+  test("list_candidates payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_candidates",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/candidates.json": {
+        candidates: [
+          { netuid: 7, kind: "openapi", provider: "datura", state: "verified" },
+        ],
+      },
+    });
+    const res = await callTool("list_candidates", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_candidates returns the candidates catalog artifact", async () => {
     const deps = makeDeps({
       "/metagraph/candidates.json": {
@@ -14139,18 +14196,19 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.candidates[0].kind, "openapi");
   });
 
-  test("list_candidates paginates the filtered list with limit/offset", async () => {
+  test("list_candidates paginates the filtered list with limit/cursor", async () => {
     const deps = candidatesDeps();
     const res = await callTool(
       "list_candidates",
-      { limit: 1, offset: 1 },
+      { sort: "provider", order: "asc", limit: 1, cursor: 1 },
       { deps },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.total, 3);
     assert.equal(out.returned, 1);
-    assert.equal(out.offset, 1);
-    assert.equal(out.candidates[0].provider, "chutes");
+    assert.equal(out.cursor, 1);
+    assert.equal(out.candidates[0].provider, "datura");
+    assert.equal(out.candidates[0].netuid, 7);
   });
 
   test("list_candidates rejects an unknown kind/state enum value", async () => {
