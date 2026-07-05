@@ -926,7 +926,10 @@ export function canonicalSubnetHistoryCachePath(url) {
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 
-export function canonicalSubnetConcentrationHistoryCachePath(url, request = null) {
+export function canonicalSubnetConcentrationHistoryCachePath(
+  url,
+  request = null,
+) {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
