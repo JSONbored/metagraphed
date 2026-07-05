@@ -12,7 +12,33 @@
   "social": {
     "x": "https://x.com/leadpoetai"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-71-leadpoet-health-api",
+      "kind": "subnet-api",
+      "name": "Leadpoet web health API",
+      "notes": "Public no-auth GET /api/health on leadpoet.com returning JSON liveness (observed: {\"status\":\"ok\",\"service\":\"leadpoet-web\",...}). Documented in the subnet's own OpenAPI (leadpoet.com/api/openapi.json, path /api/health); same host as the official Leadpoet website linked from the SN71 source repository README.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leadpoet",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://leadpoet.com/api/openapi.json",
+        "https://github.com/leadpoet/leadpoet"
+      ],
+      "url": "https://leadpoet.com/api/health"
+    }
+  ],
   "source_repo": "https://github.com/leadpoet/leadpoet",
   "website_url": "https://leadpoet.com/",
   "contact": "hello@leadpoet.com"
