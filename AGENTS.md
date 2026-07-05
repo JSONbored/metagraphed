@@ -33,7 +33,10 @@ process evolves — edits to those files improve both Claude Code and Codex.
    `npm run build`, commit the regenerated `openapi.json` + generated types in the same PR, or
    `validate:contract-drift` fails CI. Never hand-edit generated artifacts under `public/`. Do **not**
    bump `packages/client/package.json` in your PR — the `sync-client-version` workflow handles that
-   post-merge. MCP tool additions do **not** require a server-card regen (it's worker-computed).
+   post-merge. Likewise, do **not** hand-bump `MCP_SERVER_VERSION` (`src/mcp-server.mjs`) or
+   `server.json`'s `"version"` — `sync-mcp-version` bumps both automatically after a tool-registry
+   change lands on main. MCP tool additions do **not** require a server-card regen (it's
+   worker-computed).
 5. **House rules:** Conventional Commits, **no AI/Claude/agent attribution** in commits or PR text; no
    secrets / PATs / wallet paths / private URLs anywhere; health/uptime/latency is **probe-derived
    only** (never hand-set); one focused change per PR. **UI/frontend work now lives in this repo**

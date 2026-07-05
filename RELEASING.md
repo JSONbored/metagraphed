@@ -35,8 +35,12 @@ is listed in three registries. **Run these after changing MCP tools / prompts /
 resources or `server.json` metadata** so the listings reflect the live server:
 
 1. **Canonical** — `registry.modelcontextprotocol.io`
-   - First **bump `version` in `server.json`** (the registry rejects re-publishing
-     an existing version).
+   - `sync-mcp-version.yml` bumps `server.json`'s `version` (and the matching
+     `MCP_SERVER_VERSION`) automatically once a tool-registry change lands on
+     main, so it's normally already ahead of the last-published version by the
+     time you run this. If it isn't (e.g. a metadata-only `server.json` edit
+     the automation doesn't watch), bump `version` in `server.json` yourself
+     first — the registry rejects re-publishing an existing version.
    - Actions → **Publish MCP Registry** (`publish-mcp-registry.yml`). GitHub OIDC,
      no secret.
 2. **Smithery** — `smithery.ai/servers/metagraphed/metagraphed`

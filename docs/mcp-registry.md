@@ -40,11 +40,15 @@ door; the server-card remains the authoritative, always-current description.
 
 ### Re-publishing / version bumps
 
-The registry **rejects a re-publish of an existing `version`**. To ship a
-change, bump `version` in `server.json` (it is an independent listing version —
-not the live `serverInfo.version`, which tracks the API contract) and re-run the
-workflow. Editing `server.json` without bumping the version will fail the
-publish step, by design.
+The registry **rejects a re-publish of an existing `version`**. `server.json`'s
+`version` must equal the live `MCP_SERVER_VERSION` / `serverInfo.version` —
+`scripts/validate-mcp.mjs` enforces this in CI, so the three can't drift apart.
+The [`sync-mcp-version`](../.github/workflows/sync-mcp-version.yml) workflow
+keeps `server.json` bumped in lockstep with `MCP_SERVER_VERSION` automatically
+whenever the tool registry changes on main, so by the time you dispatch this
+publish workflow `server.json` is normally already ahead of the last-published
+`version` — just run it. Editing `server.json` without bumping the version
+will fail the publish step, by design.
 
 ## Verifying a published listing
 

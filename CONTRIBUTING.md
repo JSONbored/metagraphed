@@ -32,6 +32,15 @@ The contract is generated, so you never edit it by hand:
 
 Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the source of truth; everything downstream follows.
 
+## Don't hand-bump version fields
+
+These are bumped automatically after your PR merges — leave them alone:
+
+- `packages/client/package.json`'s `"version"`.
+- `src/mcp-server.mjs`'s `MCP_SERVER_VERSION` and the matching `"version"` in `server.json`.
+
+CI never requires you to bump these yourself — a PR that changes the contract or adds an MCP tool is valid without touching either. Bumping one of them in your own PR doesn't help and risks a version conflict with the automation's own follow-up PR; expect it to be closed with a request to resubmit without that edit.
+
 ## Where to start
 
 - **Enrich a subnet** (the best first PR) — we track one scoped task per subnet under the [surface-enrichment epic #427](https://github.com/JSONbored/metagraphed/issues/427). Browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) + [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted): pick a subnet, find its real public API / OpenAPI / data artifact, and add it as a surface on the subnet's file ([Community submissions](#community-submissions) below). Each issue links the `surface:add` command and flags `subnet:new` when the subnet file does not exist yet.
