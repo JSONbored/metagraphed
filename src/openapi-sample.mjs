@@ -499,6 +499,44 @@ function normalizeChainWeightSettersSample(out) {
   return out;
 }
 
+function normalizeChainServingServersSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    "netuid" in out ||
+    !("distinct_servers" in out) ||
+    !("announcements" in out) ||
+    !Array.isArray(out.servers)
+  ) {
+    return out;
+  }
+  // An internally consistent worked example: two servers whose AxonServed counts (30 and 10) sum
+  // to the network total of 40, so their shares read 30/40 = 0.75 and 10/40 = 0.25. The generic
+  // per-field generator cannot satisfy this announcements/total ratio on its own.
+  out.servers = [
+    {
+      hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      uid: 3,
+      announcements: 30,
+      share: 0.75,
+      first_served_at: ISO,
+      last_served_at: ISO,
+    },
+    {
+      hotkey: null,
+      uid: 8,
+      announcements: 10,
+      share: 0.25,
+      first_served_at: ISO,
+      last_served_at: ISO,
+    },
+  ];
+  out.distinct_servers = 2;
+  out.announcements = 40;
+  out.server_count = 2;
+  return out;
+}
+
 function normalizeChainAxonRemovalsSample(out) {
   if (
     !out ||
@@ -834,6 +872,7 @@ function normalizeObjectSample(out) {
   normalizeChainTransferPairsSample(out);
   normalizeChainWeightsSample(out);
   normalizeChainWeightSettersSample(out);
+  normalizeChainServingServersSample(out);
   normalizeChainServingSample(out);
   normalizeChainPrometheusSample(out);
   normalizeChainAxonRemovalsSample(out);

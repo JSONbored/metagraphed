@@ -88,6 +88,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "chain-stake-flow",
   "chain-weights",
   "chain-weight-setters",
+  "chain-serving-servers",
   "chain-serving",
   "chain-prometheus",
   "chain-axon-removals",

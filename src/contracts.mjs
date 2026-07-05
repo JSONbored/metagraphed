@@ -1302,6 +1302,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainWeightSettersArtifact",
   ),
   artifact(
+    "chain-serving-servers",
+    "/metagraph/chain/serving/servers.json",
+    "Network-wide axon-server leaderboard over a 7d or 30d window: the individual servers announcing axon endpoints across every subnet, each with its total AxonServed count (summed across every subnet it operates on), its share of the network total, and its first/last announcement time, ranked into a leaderboard (limit caps the page, default 20, max 100; distinct_servers always reports the true network-wide total). Computed live from the account_events AxonServed stream at /api/v1/chain/serving/servers. The individual-server drill-in behind /api/v1/chain/serving (the same relationship /chain/weights/setters has to /chain/weights); pass ?format=csv to download the leaderboard as CSV (no static file).",
+    "ChainServingServersArtifact",
+  ),
+  artifact(
     "chain-serving",
     "/metagraph/chain/serving.json",
     "Network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): each subnet's AxonServed event count, distinct servers (hotkeys announcing an axon), and average announcements per server ranked into a leaderboard, a network rollup with the true distinct server count (not a per-subnet sum) and total announcements, and a distribution summary of the per-subnet re-announcement intensity (count, mean, min, p25, median, p75, p90, max), computed live from the account_events AxonServed stream at /api/v1/chain/serving; pass ?format=csv to download the per-subnet leaderboard as CSV (no static file).",
@@ -3005,6 +3011,20 @@ export const API_ROUTES = [
     "/api/v1/chain/weights/setters",
     "/metagraph/chain/weights/setters.json",
     "Fetch the network-wide weight-setter leaderboard over a 7d or 30d window: the individual validators driving consensus across every subnet ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time. `limit` caps the returned page (default 20, max 100); `distinct_setters` always reports the true network-wide total regardless of `limit`. The network-wide companion to GET /api/v1/subnets/{netuid}/weights/setters. Computed live from the account_events WeightsSet stream; schema-stable empty leaderboard when cold. Pass ?format=csv to download the leaderboard as CSV.",
+    "short",
+    ["chain", "analytics"],
+    csvRouteQuery([
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ]),
+    [],
+  ),
+  route(
+    "chain-serving-servers",
+    "GET",
+    "/api/v1/chain/serving/servers",
+    "/metagraph/chain/serving/servers.json",
+    "Fetch the network-wide axon-server leaderboard over a 7d or 30d window: the individual servers announcing axon endpoints across every subnet ranked by activity, each with its total AxonServed count (summed across every subnet it operates on), its share of the network total, and its first/last announcement time. `limit` caps the returned page (default 20, max 100); `distinct_servers` always reports the true network-wide total regardless of `limit`. The individual-server drill-in behind GET /api/v1/chain/serving (the same relationship /chain/weights/setters has to /chain/weights). Computed live from the account_events AxonServed stream; schema-stable empty leaderboard when cold. Pass ?format=csv to download the leaderboard as CSV.",
     "short",
     ["chain", "analytics"],
     csvRouteQuery([

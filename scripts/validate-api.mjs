@@ -795,6 +795,16 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/serving/servers",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.distinct_servers, "number");
+      assert.equal(typeof body.data.announcements, "number");
+      assert.equal(typeof body.data.server_count, "number");
+      assert.equal(Array.isArray(body.data.servers), true);
+    },
+  ],
+  [
     "/api/v1/chain/serving",
     (body) => {
       assert.equal(body.data.schema_version, 1);

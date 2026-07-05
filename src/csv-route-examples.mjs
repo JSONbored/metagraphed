@@ -39,6 +39,11 @@ export const ROUTE_CSV_EXAMPLES = {
     "hotkey,uid,weight_sets,share,first_set_at,last_set_at",
     "5Grw_sample,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z",
   ].join("\r\n"),
+  // The /chain/serving/servers network-wide axon-server leaderboard rows.
+  "chain-serving-servers": [
+    "hotkey,uid,announcements,share,first_served_at,last_served_at",
+    "5Grw_sample,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z",
+  ].join("\r\n"),
   // The /chain/serving per-subnet axon-serving leaderboard rows.
   "chain-serving": [
     "netuid,distinct_servers,announcements,announcements_per_server",

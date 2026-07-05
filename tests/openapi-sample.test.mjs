@@ -818,6 +818,57 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.weight_sets, 40);
   });
 
+  test("chain serving-servers samples keep share consistent with announcements/total", () => {
+    const serverProps = {
+      hotkey: { type: ["string", "null"] },
+      uid: { type: ["integer", "null"] },
+      announcements: { type: "integer" },
+      share: { type: ["number", "null"] },
+      first_served_at: { type: ["string", "null"], format: "date-time" },
+      last_served_at: { type: ["string", "null"], format: "date-time" },
+    };
+    const serversSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "distinct_servers",
+        "announcements",
+        "server_count",
+        "servers",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        distinct_servers: { type: "integer" },
+        announcements: { type: "integer" },
+        server_count: { type: "integer" },
+        servers: {
+          type: "array",
+          items: { type: "object", properties: serverProps },
+        },
+      },
+    };
+    const sample = s(serversSchema, "data");
+
+    // The worked example is internally consistent: each server's share equals its announcements
+    // divided by the network-wide announcements total.
+    for (const server of sample.servers) {
+      assert.equal(server.share, server.announcements / sample.announcements);
+    }
+    assert.equal(sample.server_count, sample.servers.length);
+
+    // A shape carrying `netuid` is a per-subnet sibling, not this network-wide artifact, and must
+    // be left untouched (guard branch).
+    const subnetShaped = JSON.parse(JSON.stringify(serversSchema));
+    subnetShaped.required = [...subnetShaped.required, "netuid"];
+    subnetShaped.properties.netuid = { type: "integer" };
+    const untouched = s(subnetShaped, "data");
+    assert.notEqual(untouched.announcements, 40);
+  });
+
   test("chain axon-removals samples keep removals-per-remover consistent", () => {
     const removerProps = {
       distinct_removers: { type: "integer" },

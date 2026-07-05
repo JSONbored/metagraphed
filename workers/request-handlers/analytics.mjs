@@ -111,6 +111,11 @@ import {
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
 } from "../../src/chain-weight-setters.mjs";
 import {
+  loadChainServingServers,
+  CHAIN_SERVING_SERVERS_LIMIT_DEFAULT,
+  CHAIN_SERVING_SERVERS_LIMIT_MAX,
+} from "../../src/chain-serving-servers.mjs";
+import {
   loadChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
@@ -820,6 +825,15 @@ const CHAIN_WEIGHT_SETTERS_CSV_COLUMNS = [
   "first_set_at",
   "last_set_at",
 ];
+// CSV column order for the /api/v1/chain/serving/servers network-wide leaderboard rows.
+const CHAIN_SERVING_SERVERS_CSV_COLUMNS = [
+  "hotkey",
+  "uid",
+  "announcements",
+  "share",
+  "first_served_at",
+  "last_served_at",
+];
 
 // CSV column order for the /api/v1/chain/serving per-subnet leaderboard rows (the
 // row-shaped `subnets` array). The network rollup + intensity_distribution stay
@@ -1401,6 +1415,69 @@ export async function handleChainWeightSetters(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/weights/setters.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    `${canonicalAnalyticsCacheRoute(url, ["limit"])}${csv ? "&format=csv" : ""}`,
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// GET /api/v1/chain/serving/servers: the network-wide axon-server leaderboard — the individual
+// servers announcing axon endpoints across every subnet, read from the account_events AxonServed
+// stream. The network-wide drill-in behind /api/v1/chain/serving (the same relationship
+// /chain/weights/setters has to /chain/weights); mirrors chain-weights: window + limit params, HEAD
+// probes normalized through the GET cache key so they cannot bypass the edge cache and repeatedly
+// force the network-wide aggregation. The leaderboard is fixed to most-active-first (total
+// AxonServed events). Pass ?format=csv to download the leaderboard as CSV.
+export async function handleChainServingServers(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "format"]);
+  if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_SERVING_SERVERS_LIMIT_DEFAULT,
+    maxLimit: CHAIN_SERVING_SERVERS_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const csv = csvRequested(url, request);
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-serving-servers",
+    async () => {
+      const data = await loadChainServingServers(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      if (csv) {
+        return csvResponse(
+          data.servers,
+          "chain-serving-servers",
+          "short",
+          cacheRequest,
+          CHAIN_SERVING_SERVERS_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/serving/servers.json",
             data.observed_at,
           ),
         },

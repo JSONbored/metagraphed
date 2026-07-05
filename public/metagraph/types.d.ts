@@ -735,6 +735,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/serving/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide axon-server leaderboard over a 7d or 30d window: the individual servers announcing axon endpoints across every subnet ranked by activity, each with its total AxonServed count (summed across every subnet it operates on), its share of the network total, and its first/last announcement time. `limit` caps the returned page (default 20, max 100); `distinct_servers` always reports the true network-wide total regardless of `limit`. The individual-server drill-in behind GET /api/v1/chain/serving (the same relationship /chain/weights/setters has to /chain/weights). Computed live from the account_events AxonServed stream; schema-stable empty leaderboard when cold. Pass ?format=csv to download the leaderboard as CSV. */
+        get: operations["chainServingServers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/signers": {
         parameters: {
             query?: never;
@@ -3598,6 +3615,27 @@ export interface components {
                 announcements_per_server: number | null;
                 distinct_servers: number;
                 netuid: number;
+            }[];
+            /** @enum {string|null} */
+            window: "7d" | "30d" | null;
+        };
+        /** @description Network-wide axon-server leaderboard over a 7d/30d window: the individual servers announcing axon endpoints across EVERY subnet, ranked by activity, each with its total AxonServed count (summed across every subnet it operates on), its share of the network total, and its first/last announcement time. The individual-server drill-in behind /api/v1/chain/serving (the same relationship /api/v1/chain/weights/setters has to /api/v1/chain/weights), served live from the account_events AxonServed stream at /api/v1/chain/serving/servers (no static file); an empty leaderboard when cold. */
+        ChainServingServersArtifact: {
+            announcements: number;
+            distinct_servers: number;
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            server_count: number;
+            servers: {
+                announcements: number;
+                /** Format: date-time */
+                first_served_at: string | null;
+                hotkey: string | null;
+                /** Format: date-time */
+                last_served_at: string | null;
+                share: number | null;
+                uid: number | null;
             }[];
             /** @enum {string|null} */
             window: "7d" | "30d" | null;
@@ -12602,6 +12640,138 @@ export interface operations {
                     /**
                      * @example netuid,distinct_servers,announcements,announcements_per_server
                      *     1,4,40,10
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainServingServers: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "announcements": 40,
+                     *         "distinct_servers": 2,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "server_count": 2,
+                     *         "servers": [
+                     *           {
+                     *             "announcements": 30,
+                     *             "first_served_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "last_served_at": "2026-06-01T00:00:00.000Z",
+                     *             "share": 0.75,
+                     *             "uid": 3
+                     *           },
+                     *           {
+                     *             "announcements": 10,
+                     *             "first_served_at": "2026-06-01T00:00:00.000Z",
+                     *             "hotkey": null,
+                     *             "last_served_at": "2026-06-01T00:00:00.000Z",
+                     *             "share": 0.25,
+                     *             "uid": 8
+                     *           }
+                     *         ],
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainServingServersArtifact"];
+                    };
+                    /**
+                     * @example hotkey,uid,announcements,share,first_served_at,last_served_at
+                     *     5Grw_sample,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z
                      */
                     "text/csv": string;
                 };

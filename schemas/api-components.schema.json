@@ -4981,6 +4981,110 @@
         ],
         "type": "object"
       },
+      "ChainServingServersArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide axon-server leaderboard over a 7d/30d window: the individual servers announcing axon endpoints across EVERY subnet, ranked by activity, each with its total AxonServed count (summed across every subnet it operates on), its share of the network total, and its first/last announcement time. The individual-server drill-in behind /api/v1/chain/serving (the same relationship /api/v1/chain/weights/setters has to /api/v1/chain/weights), served live from the account_events AxonServed stream at /api/v1/chain/serving/servers (no static file); an empty leaderboard when cold.",
+        "properties": {
+          "announcements": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "distinct_servers": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "server_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "servers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "announcements": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "first_served_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "hotkey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "last_served_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "share": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "uid": {
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "hotkey",
+                "uid",
+                "announcements",
+                "share",
+                "first_served_at",
+                "last_served_at"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "distinct_servers",
+          "announcements",
+          "server_count",
+          "servers"
+        ],
+        "type": "object"
+      },
       "ChainSignerEntry": {
         "additionalProperties": false,
         "description": "One leaderboard row: an account (extrinsic signer) with its windowed activity.",
