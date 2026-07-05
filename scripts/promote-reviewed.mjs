@@ -4,6 +4,7 @@ import {
   loadSubnets,
   readJson,
   repoRoot,
+  slugify,
   stableStringify,
   writeJson,
 } from "./lib.mjs";
@@ -33,10 +34,13 @@ const overlaysByNetuid = new Map(
   allOverlays.map((overlay) => [
     overlay.netuid,
     manualOverlaysByNetuid.get(overlay.netuid) || {
+      // Same convention as scripts/subnet-new.mjs: slug the display name, not
+      // the internal sn-<netuid> slug field (which would just echo back
+      // sn-<netuid> as the FILENAME too, reintroducing the drift this fixes).
       filePath: path.join(
         repoRoot,
         "registry/subnets",
-        `${safeSlug(overlay.slug)}.json`,
+        `${slugify(overlay.name) || `sn-${overlay.netuid}`}.json`,
       ),
       materialized: true,
       overlay,
@@ -92,11 +96,3 @@ console.log(
     results,
   }),
 );
-
-function safeSlug(value) {
-  const normalized = String(value || "subnet")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return normalized || "subnet";
-}

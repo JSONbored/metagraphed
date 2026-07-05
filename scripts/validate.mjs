@@ -17,6 +17,7 @@ import {
   normalizePublicHttpUrl,
   nativeDisplayName,
   nativeNameQuality,
+  listJsonFiles,
   listJsonFilesRecursive,
   cleanDescription,
   deriveDomainTags,
@@ -1465,6 +1466,31 @@ const registryVerificationEvidence = {
 };
 const candidateIds = new Set();
 const candidateLocators = new Set();
+
+// Guard the single-file naming convention itself: registry/subnets/<slug>.json's
+// filename must equal slugify(name), falling back to sn-<netuid> ONLY when the
+// name doesn't produce a usable slug (scripts/subnet-new.mjs's exact rule). Two
+// independent code paths (an old ad-hoc taostats-enrich pass, and a bug in
+// scripts/promote-reviewed.mjs's local safeSlug()) both drifted into naming new
+// files sn-<netuid>.json even when the subnet had a perfectly good name — this
+// fails closed so a filename mismatch can never silently recur (registry/subnets/
+// generated/** is machine-owned and intentionally sn-<netuid>-only; excluded by
+// only listing the top-level directory, not recursing into it).
+const manualOverlayFiles = await listJsonFiles(
+  path.join(repoRoot, "registry/subnets"),
+);
+for (const filePath of manualOverlayFiles) {
+  const doc = await readJson(filePath);
+  const actualSlug = path.basename(filePath, ".json");
+  const expectedSlug = slugify(doc.name) || `sn-${doc.netuid}`;
+  assert(
+    actualSlug === expectedSlug,
+    `registry/subnets/${actualSlug}.json: filename must match slugify(name) ` +
+      `("${expectedSlug}") — rename the file (git mv) to keep the single-file ` +
+      `naming convention consistent; sn-<netuid>.json is only correct when the ` +
+      `name itself doesn't produce a usable slug.`,
+  );
+}
 
 for (const provider of providers) {
   validateProvider(provider);
