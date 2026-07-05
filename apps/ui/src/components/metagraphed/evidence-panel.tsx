@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/metagraphed/client";
-import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
+import { metagraphedQueryKey, parseEvidenceListPayload } from "@/lib/metagraphed/queries";
 import { ExternalLink } from "./external-link";
 import { HoverPreview } from "./hover-preview";
 import { EmptyState, Skeleton } from "./states";
@@ -30,9 +30,11 @@ function nextEvidenceCursor(meta?: ApiMeta): string | number | undefined {
 /**
  * Grouped evidence/source panel.
  *
- * Uses cursor-based pagination (?limit=&cursor=) against /api/v1/evidence and
- * exposes a "Load more" control that walks the next cursor returned in API
- * metadata. The panel also supports a source-type filter and group sort.
+ * Uses cursor-based pagination (?limit=&cursor=) against the canonical route:
+ * GET /api/v1/subnets/{netuid}/evidence when scoped to a subnet, otherwise the
+ * network-wide GET /api/v1/evidence ledger. Exposes a "Load more" control that
+ * walks the next cursor returned in API metadata, plus source-type filter and
+ * group sort.
  */
 export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   const [sourceFilter, setSourceFilter] = useState<string>("");
@@ -47,16 +49,10 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
     queryFn: async ({ pageParam, signal }) => {
       const params: Record<string, string | number> = { limit: pageSize };
       if (pageParam != null) params.cursor = pageParam;
-      if (netuid != null) params.netuid = netuid;
-      const res = await apiFetch<unknown>("/api/v1/evidence", { params, signal });
-      const raw = res.data as unknown;
-      let items: EvidenceItem[] = [];
-      if (Array.isArray(raw)) items = raw as EvidenceItem[];
-      else if (raw && typeof raw === "object") {
-        const obj = raw as Record<string, unknown>;
-        const candidate = obj.evidence ?? obj.entries ?? obj.items;
-        if (Array.isArray(candidate)) items = candidate as EvidenceItem[];
-      }
+      const path =
+        netuid != null ? `/api/v1/subnets/${netuid}/evidence` : "/api/v1/evidence";
+      const res = await apiFetch<unknown>(path, { params, signal });
+      const items = parseEvidenceListPayload(res.data);
       return { items, meta: res.meta as ApiMeta };
     },
     getNextPageParam: (last) => nextEvidenceCursor(last.meta),
