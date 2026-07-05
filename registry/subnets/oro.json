@@ -222,6 +222,25 @@
         "https://oroagents.com/"
       ],
       "url": "https://api.oroagents.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-current-suite-api",
+      "kind": "subnet-api",
+      "name": "ORO current active suite API",
+      "notes": "Public no-auth GET returning the currently active ORO evaluation problem suite (suite_id, suite_version, is_active). Documented in the subnet's own OpenAPI (api.oroagents.com/openapi.json, path /v1/public/suites/current); same host as the existing suites catalog and leaderboard surfaces.",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/openapi.json",
+        "https://oroagents.com/"
+      ],
+      "url": "https://api.oroagents.com/v1/public/suites/current"
     }
   ],
   "website_url": "https://oroagents.com/"
