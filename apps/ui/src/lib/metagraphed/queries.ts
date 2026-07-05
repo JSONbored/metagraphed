@@ -92,6 +92,7 @@ import type {
   SchemaInfo,
   Subnet,
   SubnetAxonRemovals,
+  SubnetStakeMoves,
   SubnetEconomics,
   SubnetHistory,
   SubnetHistoryPoint,
@@ -2943,6 +2944,40 @@ export const subnetAxonRemovalsQuery = (netuid: number, window = "30d") =>
       );
       return {
         data: normalizeSubnetAxonRemovals(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-subnet stake-movement (re-delegation) activity over a 7d/30d window. A flat
+// summary card — count/distinct-mover/average — from the account_events
+// StakeMoved stream. Every numeric cell coerces defensively: counts fall through
+// to 0 and the average to null (never NaN) on a cold store or junk.
+export function normalizeSubnetStakeMoves(netuid: number, raw: unknown): SubnetStakeMoves {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_movers: firstFiniteNumber(rec.distinct_movers) ?? 0,
+    movements: firstFiniteNumber(rec.movements) ?? 0,
+    movements_per_mover: firstFiniteNumber(rec.movements_per_mover) ?? null,
+  };
+}
+
+export const subnetStakeMovesQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-stake-moves", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetStakeMoves>>(
+        `/api/v1/subnets/${netuid}/stake-moves`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetStakeMoves(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };

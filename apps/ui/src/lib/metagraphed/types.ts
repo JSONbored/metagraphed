@@ -1158,6 +1158,21 @@ export interface SubnetAxonRemovals {
   removals_per_remover: number | null;
 }
 
+/**
+ * Per-subnet stake-movement (re-delegation) activity over a 7d/30d window, from
+ * /api/v1/subnets/{netuid}/stake-moves — the per-subnet drill-in of chain
+ * stake-moves. Zeroed when the subnet had no StakeMoved events in the window.
+ */
+export interface SubnetStakeMoves {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_movers: number;
+  movements: number;
+  movements_per_mover: number | null;
+}
+
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
 export interface SubnetNeuronHistoryPoint {
   snapshot_date: string;
