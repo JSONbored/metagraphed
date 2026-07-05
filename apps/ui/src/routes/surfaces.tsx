@@ -66,6 +66,7 @@ function SurfacesPage() {
       // Keep page size and view on reset so the chosen layout survives.
       search: { limit: search.limit, view: search.view } as never,
       replace: true,
+      resetScroll: false,
     });
   const viewMode: "table" | "grid" = search.view === "grid" ? "grid" : "table";
   return (
@@ -86,6 +87,7 @@ function SurfacesPage() {
                   navigate({
                     search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
                     replace: true,
+                    resetScroll: false,
                   })
                 }
               />
@@ -181,6 +183,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
+      resetScroll: false,
     });
 
   const onSort = (field: string) =>
@@ -192,6 +195,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
           cursor: "",
         }) as never,
+      resetScroll: false,
     });
 
   const filtered = all.filter((s) => {

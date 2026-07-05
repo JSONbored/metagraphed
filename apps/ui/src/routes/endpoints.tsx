@@ -394,6 +394,7 @@ function EndpointsTable() {
       search: (prev: Record<string, unknown>) =>
         ({ ...prev, ...patch, ...(resetsPage ? { page: 1 } : {}) }) as never,
       replace: true,
+      resetScroll: false,
     });
   };
 
@@ -536,6 +537,7 @@ function EndpointsTable() {
     navigate({
       search: { pageSize: search.pageSize, view: search.view } as never,
       replace: true,
+      resetScroll: false,
     });
 
   if (rows.length === 0)

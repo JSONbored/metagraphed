@@ -107,7 +107,10 @@ function ExtrinsicsTable() {
   const hasNext = rows.length === search.limit;
 
   const setSearch = (patch: Record<string, unknown>) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never });
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      resetScroll: false,
+    });
 
   const goPrev = () => setSearch({ offset: Math.max(0, search.offset - search.limit) });
   const goNext = () => setSearch({ offset: search.offset + search.limit });

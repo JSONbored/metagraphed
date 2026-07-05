@@ -107,11 +107,13 @@ function SubnetsPage() {
     navigate({
       search: { limit: search.limit, view: search.view } as never,
       replace: true,
+      resetScroll: false,
     });
   const setView = (v: ViewMode) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
       replace: true,
+      resetScroll: false,
     });
   const isMobile = useIsMobile();
   const effectiveDensity: Density =
@@ -124,6 +126,7 @@ function SubnetsPage() {
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
       replace: true,
+      resetScroll: false,
     });
   return (
     <AppShell>
@@ -283,6 +286,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
+      resetScroll: false,
     });
 
   const onSort = (field: string) =>
@@ -294,6 +298,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
           cursor: "",
         }) as never,
+      resetScroll: false,
     });
 
   const filtersActive = !!(

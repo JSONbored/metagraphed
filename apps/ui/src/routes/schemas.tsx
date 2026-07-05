@@ -161,6 +161,7 @@ function SchemaDriftDetailHost() {
           navigate({
             search: (p: Record<string, unknown>) => ({ ...p, driftDetail: "" }) as never,
             replace: true,
+            resetScroll: false,
           });
         }
       }}
@@ -168,6 +169,7 @@ function SchemaDriftDetailHost() {
         navigate({
           search: (p: Record<string, unknown>) => ({ ...p, driftDetail: "", open: id }) as never,
           replace: true,
+          resetScroll: false,
         })
       }
     />
@@ -305,6 +307,7 @@ function SchemaExplorer() {
       navigate({
         search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
         replace: true,
+        resetScroll: false,
       }),
     [navigate],
   );
@@ -451,6 +454,7 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                 navigate({
                   search: (p: Record<string, unknown>) => ({ ...p, open: "" }) as never,
                   replace: true,
+                  resetScroll: false,
                 })
               }
               className="lg:hidden inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong mb-2"

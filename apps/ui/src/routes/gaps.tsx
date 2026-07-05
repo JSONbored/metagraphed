@@ -457,6 +457,7 @@ function OpenGapsSection() {
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
       replace: true,
+      resetScroll: false,
     });
 
   const missingSet = useMemo<Set<string>>(
@@ -540,7 +541,7 @@ function OpenGapsSection() {
       {hasFilters ? (
         <button
           type="button"
-          onClick={() => navigate({ search: {} as never, replace: true })}
+          onClick={() => navigate({ search: {} as never, replace: true, resetScroll: false })}
           className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong"
         >
           <X className="size-3" /> Clear
