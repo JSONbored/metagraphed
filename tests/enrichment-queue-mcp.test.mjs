@@ -61,7 +61,7 @@ describe("enrichment-queue-mcp", () => {
       evidence_action: "submit-new-evidence",
       identity_level: "partial",
       curation_level: "maintainer-reviewed",
-      profile_level: "partial",
+      profile_level: "identity-partial",
       direct_submission_kinds: "openapi",
       missing_kinds: "openapi",
       manual_review_required: "true",
@@ -76,6 +76,7 @@ describe("enrichment-queue-mcp", () => {
     assert.equal(url.searchParams.get("q"), "openapi");
     assert.equal(url.searchParams.get("netuid"), "7");
     assert.equal(url.searchParams.get("lane"), "direct-submission");
+    assert.equal(url.searchParams.get("profile_level"), "identity-partial");
     assert.equal(url.searchParams.get("sort"), "priority_score");
     assert.equal(url.searchParams.get("limit"), "10");
     assert.equal(url.searchParams.get("cursor"), "5");
