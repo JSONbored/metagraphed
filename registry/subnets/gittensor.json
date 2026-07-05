@@ -397,6 +397,25 @@
       },
       "source_urls": ["https://api.gittensor.io/swagger-json"],
       "url": "https://api.gittensor.io/prs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-health",
+      "kind": "subnet-api",
+      "name": "Gittensor API root health",
+      "notes": "Public no-auth GET / on api.gittensor.io returning API liveness (observed plain-text response: Hello World!). Documented as AppController_getHello at path / in the subnet swagger-json OpenAPI spec on the same host as the existing miners and dash subnet-api surfaces.",
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.gittensor.io/swagger-json",
+        "https://api.gittensor.io/swagger"
+      ],
+      "url": "https://api.gittensor.io/"
     }
   ],
   "website_url": "https://gittensor.io/"
