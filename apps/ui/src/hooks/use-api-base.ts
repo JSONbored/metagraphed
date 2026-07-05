@@ -12,6 +12,21 @@ import {
   type ChainNetwork,
 } from "@/lib/metagraphed/config";
 
+/** Query root both runtime hooks invalidate when origin or network changes. */
+export const METAGRAPHED_QUERY_ROOT = ["metagraphed"] as const;
+
+export function metagraphedQueryInvalidationTarget() {
+  return { queryKey: METAGRAPHED_QUERY_ROOT };
+}
+
+export function isDefaultApiBase(base: string): boolean {
+  return base === DEFAULT_API_BASE;
+}
+
+export function isDefaultChainNetwork(network: ChainNetwork): boolean {
+  return network.id === DEFAULT_NETWORK.id;
+}
+
 /**
  * Subscribe to the runtime API base. Returns the current value plus a
  * `change()` helper that persists, broadcasts, and invalidates queries
@@ -26,10 +41,10 @@ export function useApiBase() {
   const change = (next: string) => {
     setApiBase(next);
     // Drop everything; we just changed origins.
-    qc.invalidateQueries({ queryKey: ["metagraphed"] });
+    qc.invalidateQueries(metagraphedQueryInvalidationTarget());
   };
 
-  return { base, change, isDefault: base === DEFAULT_API_BASE };
+  return { base, change, isDefault: isDefaultApiBase(base) };
 }
 
 /**
@@ -45,8 +60,8 @@ export function useNetwork() {
 
   const change = (id: string) => {
     setNetwork(id);
-    qc.invalidateQueries({ queryKey: ["metagraphed"] });
+    qc.invalidateQueries(metagraphedQueryInvalidationTarget());
   };
 
-  return { network, change, isDefault: network.id === DEFAULT_NETWORK.id };
+  return { network, change, isDefault: isDefaultChainNetwork(network) };
 }
