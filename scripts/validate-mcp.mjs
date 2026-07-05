@@ -279,6 +279,14 @@ assert.ok(
 );
 const gapsPage = await callOk("list_gaps", { limit: 3 });
 assert.ok(Array.isArray(gapsPage.gaps), "list_gaps must return gaps[]");
+const enrichmentQueuePage = await callOk("list_enrichment_queue", {
+  limit: 3,
+  lane: "direct-submission",
+});
+assert.ok(
+  Array.isArray(enrichmentQueuePage.queue),
+  "list_enrichment_queue must return queue[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),

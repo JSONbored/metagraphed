@@ -1429,6 +1429,65 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_enrichment_queue returns filtered queue rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/enrichment-queue.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        queue: [
+          {
+            netuid: 7,
+            lane: "direct-submission",
+            priority_score: 88,
+            missing_kinds: ["openapi"],
+          },
+          {
+            netuid: 12,
+            lane: "maintainer-review",
+            priority_score: 72,
+            missing_kinds: ["website"],
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_enrichment_queue",
+      { lane: "direct-submission" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.queue[0].netuid, 7);
+    assert.equal(out.queue[0].lane, "direct-submission");
+  });
+
+  test("list_enrichment_queue reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_enrichment_queue",
+      {},
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Enrichment queue snapshot unavailable/,
+    );
+  });
+
+  test("list_enrichment_queue payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_enrichment_queue",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/review/enrichment-queue.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        queue: [{ netuid: 7, lane: "direct-submission", priority_score: 88 }],
+      },
+    });
+    const res = await callTool("list_enrichment_queue", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoint_pools returns filtered pool rows", async () => {
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {
@@ -3752,33 +3811,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  function accountDeregistrationsD1(rows = [], capture = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  if (
-                    /idx_account_events_hotkey/.test(sql) &&
-                    /AS deregistrations/.test(sql) &&
-                    /first_observed/.test(sql) &&
-                    params[1] === "NeuronDeregistered"
-                  ) {
-                    return { results: rows };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
   function accountWeightSettersD1(rows = [], capture = []) {
     return {
       METAGRAPH_HEALTH_DB: {
@@ -3793,6 +3825,33 @@ describe("MCP stake-flow and movers economics tools", () => {
                     /AS weight_sets/.test(sql) &&
                     /first_observed/.test(sql) &&
                     params[1] === "WeightsSet"
+                  ) {
+                    return { results: rows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  function accountDeregistrationsD1(rows = [], capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (
+                    /idx_account_events_hotkey/.test(sql) &&
+                    /AS deregistrations/.test(sql) &&
+                    /first_observed/.test(sql) &&
+                    params[1] === "NeuronDeregistered"
                   ) {
                     return { results: rows };
                   }
