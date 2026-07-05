@@ -311,6 +311,17 @@ assert.ok(
   Array.isArray(reviewGapsPage.priorities),
   "list_review_gaps must return priorities[]",
 );
+const reviewEnrichmentTargetsPage = await callOk(
+  "list_review_enrichment_targets",
+  {
+    limit: 3,
+    target_type: "surface-candidate",
+  },
+);
+assert.ok(
+  Array.isArray(reviewEnrichmentTargetsPage.targets),
+  "list_review_enrichment_targets must return targets[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),
