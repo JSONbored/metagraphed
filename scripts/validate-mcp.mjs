@@ -287,6 +287,14 @@ assert.ok(
   Array.isArray(enrichmentQueuePage.queue),
   "list_enrichment_queue must return queue[]",
 );
+const adapterCandidatesPage = await callOk("list_adapter_candidates", {
+  limit: 3,
+  operational_kinds: "openapi",
+});
+assert.ok(
+  Array.isArray(adapterCandidatesPage.candidates),
+  "list_adapter_candidates must return candidates[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),

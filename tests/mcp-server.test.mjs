@@ -1488,6 +1488,75 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_adapter_candidates returns filtered candidate rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/adapter-candidates.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        candidates: [
+          {
+            netuid: 7,
+            priority_score: 88,
+            operational_kinds: ["openapi"],
+            recommended_adapter_kind: "generic-openapi-or-custom",
+          },
+          {
+            netuid: 12,
+            priority_score: 72,
+            operational_kinds: ["website"],
+            recommended_adapter_kind: "custom-adapter",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_adapter_candidates",
+      { operational_kinds: "openapi" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.candidates[0].netuid, 7);
+    assert.equal(out.candidates[0].priority_score, 88);
+  });
+
+  test("list_adapter_candidates reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_adapter_candidates",
+      {},
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Adapter candidates snapshot unavailable/,
+    );
+  });
+
+  test("list_adapter_candidates payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_adapter_candidates",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/review/adapter-candidates.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        candidates: [
+          {
+            netuid: 7,
+            priority_score: 88,
+            operational_kinds: ["openapi"],
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_adapter_candidates",
+      { limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoint_pools returns filtered pool rows", async () => {
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {
