@@ -46,6 +46,8 @@ import type {
   ChainFees,
   ChainFeeDay,
   ChainFeePayer,
+  ChainTransferParty,
+  ChainTransfers,
   ChainConcentration,
   ChainPerformance,
   ChainSigners,
@@ -169,6 +171,7 @@ const MAX_CHAIN_CALLS = 12;
 const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
+const MAX_CHAIN_TRANSFER_PARTIES = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -2390,6 +2393,62 @@ export const chainFeesQuery = (window: ChainWindow = "7d") =>
       } as ApiResult<ChainFees>;
     },
     staleTime: STALE_SHORT,
+  });
+
+function normalizeChainTransferParty(raw: unknown): ChainTransferParty | null {
+  if (!isRecord(raw)) return null;
+  const address = firstString(raw.address);
+  if (!address || !isValidSs58(address)) return null;
+  return {
+    address: address.trim(),
+    volume_tao: firstFiniteNumber(raw.volume_tao) ?? 0,
+    transfer_count: firstFiniteNumber(raw.transfer_count) ?? 0,
+  };
+}
+
+// #3475: network-wide native-TAO transfer leaderboard over a 7d/30d window — the
+// data layer for the explorer transfers panel. Every numeric cell coerces
+// defensively: counts fall through to 0, concentration share to null (never NaN),
+// and malformed leaderboard rows are dropped on a cold store or junk payload.
+export function normalizeChainTransfers(raw: unknown): ChainTransfers {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    total_volume_tao: firstFiniteNumber(rec.total_volume_tao) ?? 0,
+    transfer_count: firstFiniteNumber(rec.transfer_count) ?? 0,
+    unique_senders: firstFiniteNumber(rec.unique_senders) ?? 0,
+    unique_receivers: firstFiniteNumber(rec.unique_receivers) ?? 0,
+    top_sender_share: firstFiniteNumber(rec.top_sender_share) ?? null,
+    top_senders: normalizeChainRows(
+      rec.top_senders,
+      MAX_CHAIN_TRANSFER_PARTIES,
+      normalizeChainTransferParty,
+    ),
+    top_receivers: normalizeChainRows(
+      rec.top_receivers,
+      MAX_CHAIN_TRANSFER_PARTIES,
+      normalizeChainTransferParty,
+    ),
+  };
+}
+
+export const chainTransfersQuery = (window = "30d", limit = 25) =>
+  queryOptions({
+    queryKey: k("chain-transfers", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainTransfers>>("/api/v1/chain/transfers", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainTransfers(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
   });
 
 const READINESS_COMPONENT_KEYS = [
