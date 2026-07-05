@@ -12,7 +12,48 @@
   "social": {
     "x": "https://x.com/nexisgen_ai"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-openapi",
+      "kind": "openapi",
+      "name": "NexisGen Validation API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.x schema for the NexisGen validation API (title: Nexis Validator API). Served publicly at api.nexisgen.ai; documents public GET /healthz and the validator-facing score routes.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.nexisgen.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/RendixNetwork/nexisgen/blob/main/docker/validation-api.env.example#L13",
+        "https://api.nexisgen.ai/openapi.json"
+      ],
+      "url": "https://api.nexisgen.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-healthz",
+      "kind": "subnet-api",
+      "name": "NexisGen validation API health",
+      "notes": "Public no-auth GET /healthz on api.nexisgen.ai returning liveness JSON (observed: {\"status\":\"ok\"}). Documented in the subnet OpenAPI spec on the same host; api.nexisgen.ai is the public validation API fronted by nginx per the official docker env example.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://api.nexisgen.ai/openapi.json",
+        "https://github.com/RendixNetwork/nexisgen/blob/main/docker/validation-api.env.example#L13"
+      ],
+      "url": "https://api.nexisgen.ai/healthz"
+    }
+  ],
   "source_repo": "https://github.com/RendixNetwork/nexisgen",
   "website_url": "https://nexisgen.ai/"
 }
