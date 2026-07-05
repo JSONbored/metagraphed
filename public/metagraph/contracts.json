@@ -790,7 +790,7 @@
       "id": "account-stake-transfers",
       "path": "/metagraph/accounts/{ss58}/stake-transfers.json",
       "schema_ref": "#/components/schemas/AccountStakeTransfersArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
