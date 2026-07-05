@@ -143,6 +143,25 @@
         "https://vidaio.io/"
       ],
       "url": "https://api.vidaio.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-85-vidaio-ready",
+      "kind": "subnet-api",
+      "name": "Vidaio API readiness health",
+      "notes": "Public no-auth GET /ready returning {\"status\":\"ok\"} when the API can reach its backing database. Documented in the machine-readable OpenAPI spec on the same host as the existing openapi and /health subnet-api surfaces (api.vidaio.io/openapi.json, path /ready). Distinct from the /health liveness endpoint.",
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.vidaio.io/openapi.json",
+        "https://vidaio.io/"
+      ],
+      "url": "https://api.vidaio.io/ready"
     }
   ],
   "website_url": "https://vidaio.io/"
