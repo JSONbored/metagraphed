@@ -53,11 +53,12 @@ jobs:
       # publish job below never runs npm install/build, so a compromised build
       # dependency can't reach the OIDC token (codex #251).
       #
-      # packages/client is an npm workspace (#3066) with no lockfile of its own,
-      # so the install is now root-scoped (installs apps/ui's tree too) — the
-      # build/pack below still only touches packages/client.
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+      # packages/client is an npm workspace (#3066) with no lockfile of its own.
+      # Keep this publish-build install scoped to the SDK workspace and disable
+      # dependency lifecycle scripts, so unrelated workspaces (for example apps/ui)
+      # cannot affect the tarball that the privileged publish job trusts.
+      - name: Install client dependencies
+        run: npm ci --workspace=packages/client --ignore-scripts --no-audit --no-fund
 
       - name: Build package tarball
         working-directory: packages/client
