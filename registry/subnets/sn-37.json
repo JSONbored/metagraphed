@@ -48,6 +48,25 @@
         "submitted_by": "nickmopen"
       },
       "notes": "Machine-readable OpenAPI spec for the mainnet (SN37) Aurelius Central API — the same spec the existing /docs Swagger UI renders. The official README documents this production host as the finney/mainnet api_url (the -staging host is testnet SN455)."
+    },
+    {
+      "id": "sn-37-aurelius-subnet-api",
+      "name": "Aurelius Central API health",
+      "kind": "subnet-api",
+      "url": "https://new-collector-api-production.up.railway.app/health",
+      "provider": "aurelius",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+        "https://new-collector-api-production.up.railway.app/openapi.json"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "notes": "Public no-auth GET returning Central API health (status, db, db_pool, classifier, novelty). Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health); same host as the existing openapi + docs surfaces. The official README documents this production host as the finney/mainnet api_url and recommends curl against /health for connectivity checks."
     }
   ],
   "social": {
