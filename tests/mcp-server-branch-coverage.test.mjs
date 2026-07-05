@@ -711,6 +711,23 @@ describe("get_contracts — branch coverage", () => {
   });
 });
 
+// ── list_search_index — search index artifact list ────────────────────────
+describe("list_search_index — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("list_search_index", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /search-index\.json/);
+  });
+});
+
 // ── get_agent_resources — AI-resources artifact ───────────────────────────
 describe("get_agent_resources — branch coverage", () => {
   test("surfaces non-not_found artifact failures", async () => {

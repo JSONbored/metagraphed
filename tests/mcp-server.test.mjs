@@ -13018,6 +13018,60 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     );
   });
 
+  test("list_search_index returns filtered document rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/search-index.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        documents: [
+          {
+            id: "subnet-7",
+            kind: "subnet",
+            netuid: 7,
+            slug: "sn-7",
+            title: "Subnet Seven",
+          },
+          {
+            id: "provider-datura",
+            kind: "provider",
+            slug: "datura",
+            title: "Datura",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_search_index",
+      { q: "Subnet", limit: 5 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.documents[0].netuid, 7);
+  });
+
+  test("list_search_index reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_search_index", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Search index snapshot unavailable/,
+    );
+  });
+
+  test("list_search_index payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_search_index",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/search-index.json": {
+        documents: [{ id: "subnet-7", title: "Subnet Seven" }],
+      },
+    });
+    const res = await callTool("list_search_index", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_providers returns the providers index artifact", async () => {
     const deps = makeDeps({
       "/metagraph/providers.json": {

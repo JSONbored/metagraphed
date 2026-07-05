@@ -38,6 +38,12 @@ import {
   loadGapsList,
 } from "./gaps-mcp.mjs";
 import {
+  LIST_SEARCH_INDEX_INSTRUCTIONS,
+  LIST_SEARCH_INDEX_MCP_TOOL,
+  LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
+  loadSearchIndexList,
+} from "./search-index-mcp.mjs";
+import {
   LIST_ENDPOINT_POOLS_INSTRUCTIONS,
   LIST_ENDPOINT_POOLS_MCP_TOOL,
   LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
@@ -435,7 +441,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.67.0";
+export const MCP_SERVER_VERSION = "1.68.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -540,6 +546,7 @@ export const MCP_INSTRUCTIONS =
   GET_BUILD_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   LIST_GAPS_INSTRUCTIONS +
+  LIST_SEARCH_INDEX_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
   "get_subnet_gaps for one subnet's interface gap priorities and contributor " +
@@ -6353,6 +6360,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_SEARCH_INDEX_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadSearchIndexList(ctx, args);
+    },
+  },
+  {
     ...LIST_CURATION_MCP_TOOL,
     async handler(args, ctx) {
       return loadCurationList(ctx, args);
@@ -9999,6 +10012,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       notes: NULLABLE_STRING,
     },
   },
+  list_search_index: LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
   list_curation: LIST_CURATION_OUTPUT_SCHEMA,
   list_gaps: LIST_GAPS_OUTPUT_SCHEMA,
   list_endpoint_pools: LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
