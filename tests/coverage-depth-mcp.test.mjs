@@ -235,7 +235,7 @@ describe("coverage-depth-mcp", () => {
   });
 
   test("MCP server exports wire list_coverage_depth at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.65.0");
+    assert.equal(MCP_SERVER_VERSION, "1.67.0");
     assert.match(MCP_INSTRUCTIONS, /list_coverage_depth/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_coverage_depth");
     assert.ok(tool);
