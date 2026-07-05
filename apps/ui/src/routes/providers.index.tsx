@@ -61,7 +61,8 @@ function ProvidersPage() {
   const filtersActive = Boolean(
     search.q || search.kind || search.authority || (search.sort && search.sort !== "name"),
   );
-  const onReset = () => navigate({ search: { view: search.view } as never, replace: true });
+  const onReset = () =>
+    navigate({ search: { view: search.view } as never, replace: true, resetScroll: false });
   return (
     <AppShell>
       <PageHero
@@ -78,6 +79,7 @@ function ProvidersPage() {
                 navigate({
                   search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
                   replace: true,
+                  resetScroll: false,
                 })
               }
             />
@@ -151,6 +153,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
       replace: true,
+      resetScroll: false,
     });
 
   const { data: providersRes } = useSuspenseQuery(providersQuery());

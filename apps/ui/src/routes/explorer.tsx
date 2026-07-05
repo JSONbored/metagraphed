@@ -251,7 +251,7 @@ function ExplorerDashboard() {
           <button
             key={w}
             type="button"
-            onClick={() => navigate({ search: { window: w } })}
+            onClick={() => navigate({ search: { window: w }, resetScroll: false })}
             className={
               w === win
                 ? "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent"
