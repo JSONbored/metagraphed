@@ -68,6 +68,25 @@
         "https://docs.zeussubnet.com/docs/introduction"
       ],
       "url": "https://api.zeussubnet.com/v1/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-18-zeus-ready",
+      "kind": "subnet-api",
+      "name": "Zeus BOREAS Edge API readiness",
+      "notes": "Public no-auth readiness probe for the Zeus BOREAS Edge API; GET /v1/ready reports service readiness per the machine-readable OpenAPI spec on the same host as the existing /v1/meta and /v1/health subnet-api surfaces.",
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.zeussubnet.com/openapi.json",
+        "https://docs.zeussubnet.com/docs/introduction"
+      ],
+      "url": "https://api.zeussubnet.com/v1/ready"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"
