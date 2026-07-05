@@ -1625,6 +1625,47 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("get_build returns the build summary artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/build-summary.json": {
+        schema_version: 1,
+        artifact_count: 99,
+        artifacts: [{ path: "subnets.json", size_bytes: 1000 }],
+        subnet_count: 129,
+      },
+    });
+    const res = await callTool("get_build", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.artifact_count, 99);
+    assert.equal(out.artifacts.length, 1);
+  });
+
+  test("get_build reports not_found when the artifact is absent", async () => {
+    const res = await callTool("get_build", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /unavailable in this environment/,
+    );
+  });
+
+  test("get_build payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_build",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/build-summary.json": {
+        schema_version: 1,
+        artifact_count: 0,
+        artifacts: [],
+      },
+    });
+    const res = await callTool("get_build", {}, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_enrichment_targets returns ranked coverage-depth targets", async () => {
     const res = await callTool(
       "list_enrichment_targets",
