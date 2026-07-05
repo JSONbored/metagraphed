@@ -332,9 +332,9 @@ one PR.
 exceptions:
 
 ```md
-| Page / Feature | Before | After |
-|---|---|---|
-| `/your-route` | [<img src="FULL_IMAGE_URL" width="260">](FULL_IMAGE_URL)<br><sub>before: short caption</sub> | [<img src="FULL_IMAGE_URL" width="260">](FULL_IMAGE_URL)<br><sub>after: short caption</sub> |
+| Page / Feature | Before                                                                                       | After                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `/your-route`  | [<img src="FULL_IMAGE_URL" width="260">](FULL_IMAGE_URL)<br><sub>before: short caption</sub> | [<img src="FULL_IMAGE_URL" width="260">](FULL_IMAGE_URL)<br><sub>after: short caption</sub> |
 ```
 
 One row per page/feature you changed, before **and** after. Screenshots go **inside the table only** —
@@ -347,10 +347,22 @@ skips this — it isn't rendering anything different.
 
 ### Phase C3 — Test + gates locally
 
+The `ui` CI job runs lint, typecheck, test, build, and a bundle-size-budget check, in that order —
+run the same locally before pushing:
+
 ```sh
-npm run test --workspace=apps/ui
+npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
+npm run typecheck --workspace=apps/ui
+npm test --workspace=apps/ui
 npm run build --workspace=apps/ui
 ```
+
+CI also gzip-measures the initial client JS for a cold `/` visit against a budget (currently ~300 KB,
+`.github/workflows/validate.yml`'s "Bundle size budget" step) — keep new dependencies/imports lean; if
+a real feature legitimately grows it, raise the budget deliberately in the same PR. If your PR also
+touches `packages/client`, CI rebuilds it fresh and diffs against the committed
+`packages/client/dist` — run `npm run build --workspace=packages/client` and commit the result if you
+changed `packages/client/src`.
 
 ### Phase C4 — Commit + PR
 
@@ -359,9 +371,9 @@ Conventional Commit (e.g. `feat(ui): add validator directory table`), no AI attr
 
 ### Phase C5 — Review disposition
 
-**Any visual `apps/ui/**` PR is always held for manual review**, regardless of AI-review confidence —
-this is a deliberate exception to the normal one-shot autonomous gate. A non-visual `apps/ui/**` PR
-(data/hooks/tests only) follows the normal auto-merge/auto-close gate like Path A/B.
+**Any visual PR touching `apps/ui/` is always held for manual review**, regardless of AI-review
+confidence — this is a deliberate exception to the normal one-shot autonomous gate. A non-visual
+`apps/ui/` PR (data/hooks/tests only) follows the normal auto-merge/auto-close gate like Path A/B.
 
 ---
 
@@ -404,7 +416,9 @@ this is a deliberate exception to the normal one-shot autonomous gate. A non-vis
       one-off styling.
 - [ ] If visual: a filled before/after screenshot table (mobile + dark-mode captures where relevant) —
       missing/malformed table is an automatic close.
-- [ ] `npm run test --workspace=apps/ui` and `npm run build --workspace=apps/ui` green.
+- [ ] `lint` + `format:check` + `typecheck` + `test` + `build` all green (`--workspace=apps/ui`); bundle
+      size still under budget.
+- [ ] If `packages/client/src` changed: rebuilt and committed `packages/client/dist`.
 - [ ] Conventional Commit (no AI attribution); `Closes #<issue>` if one tracks it (optional).
 
 If every box is checked, the PR has the best chance of a one-shot approve-and-merge. If any box can't
