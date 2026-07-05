@@ -388,7 +388,7 @@
         "https://endure.network/",
         "https://docs.endure.network/"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/endure.json (reviewed_at 2026-06-08T10:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/endure-network.json (reviewed_at 2026-06-08T10:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 31,
@@ -720,7 +720,7 @@
         "https://www.natix.network/vx360-depin-dashcam",
         "https://huggingface.co/natix-network-org"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/streetvision-natix.json (reviewed_at 2026-06-08T08:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/streetvision-by-natix.json (reviewed_at 2026-06-08T08:35:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 73,
@@ -818,7 +818,7 @@
         "https://docs.chipforge.io/",
         "https://github.com/TatsuProject/ChipForge_SN84"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/chipforge.json (reviewed_at 2026-06-08T10:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/ansuz.json (reviewed_at 2026-06-08T10:45:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 85,
@@ -905,7 +905,7 @@
         "https://app.bitstarter.ai/how-it-works/",
         "https://app.bitstarter.ai/submit-a-project/incubator/"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitstarter.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/bitstarter-1.json (reviewed_at 2026-06-08T09:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 92,
@@ -920,7 +920,7 @@
         "https://github.com/tensorclaw/tensorclaw",
         "https://www.tensorclaw.ai/dashboard"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/luis.json (reviewed_at 2026-06-09T12:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/tensorclaw.json (reviewed_at 2026-06-09T12:25:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 95,
@@ -972,7 +972,7 @@
         "https://www.platform.network/docs",
         "https://github.com/PlatformNetwork/platform"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/platform.json (reviewed_at 2026-06-08T19:30:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/pla-form.json (reviewed_at 2026-06-08T19:30:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 101,
@@ -1014,7 +1014,7 @@
       "reviewed_at": "2026-06-08T15:00:00.000Z",
       "confidence": "high",
       "source_urls": [],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/for-sale-uid1.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/for-sale-burn-to-uid1.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     },
     {
       "netuid": 107,
@@ -1200,7 +1200,7 @@
         "https://github.com/Barbariandev/8Ball_miner",
         "https://github.com/Barbariandev/8Ball_miner#readme"
       ],
-      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/eightball.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
+      "notes": "Backfilled during the maintainer-reviews consolidation: this overlay was hand-curated to the maintainer-reviewed tier directly in registry/subnets/8-ball.json (reviewed_at 2026-06-08T15:00:00.000Z). Recording the decision here so the trust tier has an auditable backing — not a fresh re-review."
     }
   ]
 }
