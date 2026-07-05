@@ -236,6 +236,25 @@
         "https://www.gradients.io/"
       ],
       "url": "https://api.gradients.io/v1/network/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-healthz",
+      "kind": "subnet-api",
+      "name": "Gradients API healthz",
+      "notes": "Public no-auth GET /healthz on api.gradients.io returning API liveness JSON (observed: {\"ok\":true}). Served on the Gradients API host documented by the subnet OpenAPI spec alongside the existing performance and network-status subnet-api surfaces.",
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.gradients.io/openapi.json",
+        "https://www.gradients.io/"
+      ],
+      "url": "https://api.gradients.io/healthz"
     }
   ],
   "website_url": "https://www.gradients.io/"
