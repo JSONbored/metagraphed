@@ -71,6 +71,25 @@
         "https://zipcode.ai/api/dashboard/docs"
       ],
       "url": "https://zipcode.ai/api/dashboard/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-46-zipcode-emissions-api",
+      "kind": "subnet-api",
+      "name": "Zipcode daily emissions API",
+      "notes": "Public no-auth GET /api/dashboard/stats/emissions on zipcode.ai returning SN46 daily TAO emissions and block height. Documented in the subnet OpenAPI on the same host as existing dashboard surfaces.",
+      "provider": "zipcode",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://zipcode.ai/openapi.json",
+        "https://zipcode.ai/api/dashboard/docs"
+      ],
+      "url": "https://zipcode.ai/api/dashboard/stats/emissions"
     }
   ]
 }
