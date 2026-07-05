@@ -86,6 +86,25 @@
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
       ],
       "url": "https://new-collector-api-production.up.railway.app/work-token/designated-address"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-37-aurelius-health-live",
+      "kind": "subnet-api",
+      "name": "Aurelius Central API liveness health",
+      "notes": "Public no-auth GET /health/live returning {\"status\":\"ok\"} for lightweight liveness checks. Documented in the subnet's own OpenAPI (new-collector-api-production.up.railway.app/openapi.json, path /health/live); same host as the existing openapi, docs, /health, and work-token subnet-api surfaces. Distinct from the richer /health endpoint that reports db, db_pool, classifier, and novelty subsystems.",
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://new-collector-api-production.up.railway.app/openapi.json",
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "url": "https://new-collector-api-production.up.railway.app/health/live"
     }
   ],
   "social": {
