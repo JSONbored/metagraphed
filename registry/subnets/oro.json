@@ -241,6 +241,25 @@
         "https://oroagents.com/"
       ],
       "url": "https://api.oroagents.com/v1/public/suites/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-races-current-api",
+      "kind": "subnet-api",
+      "name": "ORO current race API",
+      "notes": "Public no-auth GET /v1/public/races/current on api.oroagents.com returning the active evaluation race for the current suite. Documented in the subnet OpenAPI on the same host as existing ORO public API surfaces.",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/openapi.json",
+        "https://oroagents.com/"
+      ],
+      "url": "https://api.oroagents.com/v1/public/races/current"
     }
   ],
   "website_url": "https://oroagents.com/"
