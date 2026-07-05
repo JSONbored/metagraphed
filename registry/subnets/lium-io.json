@@ -63,6 +63,23 @@
         "https://lium.io/api/openapi.json"
       ],
       "url": "https://lium.io/api/machines"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-health",
+      "kind": "subnet-api",
+      "name": "Lium API version health",
+      "notes": "Public no-auth GET /version on the Lium Backend API (served at /api/version) returning liveness JSON with started_at and uptime_seconds. Documented as GET /version in the registered OpenAPI spec on the same host as the existing machines subnet-api surface.",
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "schema_url": "https://lium.io/api/openapi.json",
+      "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
+      "url": "https://lium.io/api/version"
     }
   ]
 }
