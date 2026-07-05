@@ -126,6 +126,8 @@ import type {
   SubnetPerformance,
   PerformanceHistoryPoint,
   SubnetPerformanceHistory,
+  YieldHistoryPoint,
+  SubnetYieldHistory,
   SubnetProfile,
   Surface,
   SurfaceLatencyPercentiles,
@@ -3829,6 +3831,63 @@ export const subnetPerformanceHistoryQuery = (
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetPerformanceHistory>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeYieldHistoryPoint(raw: unknown): YieldHistoryPoint | undefined {
+  if (!isRecord(raw)) return undefined;
+  const snapshotDate = coerceString(raw.snapshot_date);
+  if (!snapshotDate) return undefined;
+  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
+  return {
+    ...(raw as object),
+    snapshot_date: snapshotDate,
+    neuron_count: coerceFiniteNumber(raw.neuron_count),
+    validator_count: coerceFiniteNumber(raw.validator_count),
+    yield_count: coerceFiniteNumber(raw.yield_count),
+    subnet_yield: nullableNum(raw.subnet_yield),
+    mean_yield: nullableNum(raw.mean_yield),
+    median_yield: nullableNum(raw.median_yield),
+    p25_yield: nullableNum(raw.p25_yield),
+    p75_yield: nullableNum(raw.p75_yield),
+    p90_yield: nullableNum(raw.p90_yield),
+  };
+}
+
+export function normalizeSubnetYieldHistory(netuid: number, raw: unknown): SubnetYieldHistory {
+  const d = isRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_HISTORY_POINTS).flatMap((point) => {
+        const normalized = normalizeYieldHistoryPoint(point);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    window: coerceString(d.window),
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    points,
+  };
+}
+
+/** Daily emission-yield distribution drift (subnet return + per-UID yield percentiles). */
+export const subnetYieldHistoryQuery = (
+  netuid: number,
+  window: "7d" | "30d" | "90d" = "30d",
+) =>
+  queryOptions({
+    queryKey: k("subnet-yield-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetYieldHistory>>(
+        `/api/v1/subnets/${netuid}/yield/history`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetYieldHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetYieldHistory>;
     },
     staleTime: STALE_MED,
   });

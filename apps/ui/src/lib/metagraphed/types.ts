@@ -1502,6 +1502,29 @@ export interface SubnetPerformanceHistory {
   points: PerformanceHistoryPoint[];
 }
 
+/** One daily yield-history point from /yield/history. */
+export interface YieldHistoryPoint {
+  snapshot_date: string;
+  neuron_count?: number;
+  validator_count?: number;
+  yield_count?: number;
+  subnet_yield?: number | null;
+  mean_yield?: number | null;
+  median_yield?: number | null;
+  p25_yield?: number | null;
+  p75_yield?: number | null;
+  p90_yield?: number | null;
+  [key: string]: unknown;
+}
+
+/** Emission-yield distribution drift from /api/v1/subnets/{netuid}/yield/history. */
+export interface SubnetYieldHistory {
+  netuid: number;
+  window?: string;
+  point_count?: number;
+  points: YieldHistoryPoint[];
+}
+
 // --- Compile-time contract enforcement ---------------------------------------
 //
 // These are type-only assertions (zero runtime cost). They tie this file's UI
