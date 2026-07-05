@@ -13,6 +13,7 @@ import {
   normalizeExtrinsic,
   normalizeAgentCatalogDetail,
   getNextPageParam,
+  normalizeSubnetGaps,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
@@ -650,5 +651,32 @@ describe("getNextPageParam", () => {
     expect(getNextPageParam({ meta: { _next_cursor: null } })).toBeUndefined();
     expect(getNextPageParam({ meta: {} })).toBeUndefined();
     expect(getNextPageParam({})).toBeUndefined();
+  });
+});
+
+describe("normalizeSubnetGaps (#3348)", () => {
+  it("reads missing_kinds from the subnet gaps priorities row", () => {
+    const out = normalizeSubnetGaps({
+      netuid: 7,
+      priorities: [
+        {
+          netuid: 7,
+          missing_kinds: ["openapi", "docs"],
+          suggested_next_action: "evaluate adapter support",
+        },
+      ],
+      enrichment_queue: [],
+    });
+    expect(out).toMatchObject({
+      netuid: 7,
+      missing_kinds: ["openapi", "docs"],
+      gap_notes: ["evaluate adapter support"],
+      suggested_next_action: "evaluate adapter support",
+    });
+  });
+
+  it("returns null for malformed payloads", () => {
+    expect(normalizeSubnetGaps(null)).toBeNull();
+    expect(normalizeSubnetGaps({ priorities: [] })).toBeNull();
   });
 });
