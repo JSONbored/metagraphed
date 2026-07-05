@@ -352,6 +352,15 @@ assert.equal(
   "allways",
   "list_provider_endpoints must echo the requested slug",
 );
+const subnetCandidatesPage = await callOk("list_subnet_candidates", {
+  netuid: 7,
+  limit: 3,
+  state: "schema-valid",
+});
+assert.ok(
+  Array.isArray(subnetCandidatesPage.candidates),
+  "list_subnet_candidates must return candidates[]",
+);
 await callOk("registry_summary", {});
 await callOk("get_coverage", {});
 const contracts = await callOk("get_contracts", {});
