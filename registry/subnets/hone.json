@@ -137,6 +137,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Hone source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-5-hone-health",
+      "kind": "subnet-api",
+      "name": "Hone API health",
+      "notes": "Public no-auth GET /health on api.hone.training returning application liveness JSON (observed: {\"status\":\"ok\"}). Served on the Hone API subdomain of the official SN5 website host registered in this manifest; the official hone repository defines a no-auth GET /health route on the sandbox-runner load balancer service.",
+      "provider": "hone",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/sandbox_runner/lb/load_balancer.py",
+        "https://www.hone.training/"
+      ],
+      "url": "https://api.hone.training/health"
     }
   ],
   "contact": "devs@manifold.inc"
