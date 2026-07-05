@@ -944,7 +944,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-performance-history",
     "/metagraph/subnets/{netuid}/performance/history.json",
-    "Per-day reward-flow & trust trend (incentive/dividends Gini, Nakamoto coefficient, top-10% share, plus trust/consensus/validator_trust mean & median) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/performance/history (no static file). The reward-flow twin of /concentration/history.",
+    "Per-day reward-flow & trust trend (incentive/dividends Gini, Nakamoto coefficient, top-10% share, plus trust/consensus/validator_trust mean & median) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/performance/history; pass ?format=csv to download the per-day series as CSV (no static file). The reward-flow twin of /concentration/history.",
     "SubnetPerformanceHistoryArtifact",
   ),
   artifact(
@@ -2029,15 +2029,15 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/performance/history",
     "/metagraph/subnets/{netuid}/performance/history.json",
-    "Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily D1 rollup). The reward-flow twin of /concentration/history.",
+    "Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily D1 rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
       },
-    ],
+    ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
