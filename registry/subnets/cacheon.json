@@ -205,6 +205,25 @@
         "https://cacheon.ai/docs/miners/api-contract"
       ],
       "url": "https://api.cacheon.ai/api/leader"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-health",
+      "kind": "subnet-api",
+      "name": "Cacheon API health",
+      "notes": "Public no-auth GET /api/health on api.cacheon.ai returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /api/health in the subnet OpenAPI spec on the same host as the existing /api/status and /api/leader subnet-api surfaces.",
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.cacheon.ai/openapi.json",
+        "https://cacheon.ai/docs/miners/api-contract"
+      ],
+      "url": "https://api.cacheon.ai/api/health"
     }
   ],
   "website_url": "https://cacheon.ai/"
