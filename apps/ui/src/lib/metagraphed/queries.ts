@@ -99,6 +99,7 @@ import type {
   SubnetIdentityHistoryEntry,
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
+  SubnetStakeTransfers,
   MetagraphNeuron,
   SubnetMetagraph,
   SubnetValidators,
@@ -2882,6 +2883,40 @@ export const subnetAxonRemovalsQuery = (netuid: number, window = "30d") =>
       );
       return {
         data: normalizeSubnetAxonRemovals(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3484: per-subnet stake-transfer activity over a 7d/30d window. A flat summary
+// card — StakeTransferred event count/distinct-sender/average — from the
+// account_events transfer_stake stream. Every numeric cell coerces defensively:
+// counts fall through to 0 and the average to null (never NaN) on a cold store or junk.
+export function normalizeSubnetStakeTransfers(netuid: number, raw: unknown): SubnetStakeTransfers {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_senders: firstFiniteNumber(rec.distinct_senders) ?? 0,
+    transfers: firstFiniteNumber(rec.transfers) ?? 0,
+    transfers_per_sender: firstFiniteNumber(rec.transfers_per_sender) ?? null,
+  };
+}
+
+export const subnetStakeTransfersQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-stake-transfers", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetStakeTransfers>>(
+        `/api/v1/subnets/${netuid}/stake-transfers`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetStakeTransfers(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };

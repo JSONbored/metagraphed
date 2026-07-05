@@ -1132,6 +1132,24 @@ export interface SubnetAxonRemovals {
   removals_per_remover: number | null;
 }
 
+/**
+ * Per-subnet stake-transfer activity over a 7d/30d window (#3484), from
+ * /api/v1/subnets/{netuid}/stake-transfers — the per-subnet drill-in of
+ * /api/v1/chain/stake-transfers and the between-accounts sibling of
+ * /subnets/{netuid}/stake-moves (transfer_stake relocates staked alpha between
+ * accounts on the same hotkey; origin leg only). Zeroed when the subnet had no
+ * StakeTransferred events in the window.
+ */
+export interface SubnetStakeTransfers {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_senders: number;
+  transfers: number;
+  transfers_per_sender: number | null;
+}
+
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
 export interface SubnetNeuronHistoryPoint {
   snapshot_date: string;
