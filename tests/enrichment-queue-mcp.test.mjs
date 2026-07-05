@@ -107,6 +107,57 @@ describe("enrichment-queue-mcp", () => {
     );
   });
 
+  test("enrichmentQueueQueryUrl rejects non-string q and invalid order", () => {
+    assert.throws(
+      () => enrichmentQueueQueryUrl({ q: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => enrichmentQueueQueryUrl({ order: "sideways" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("enrichmentQueueQueryUrl rejects empty fields and non-string fields", () => {
+    assert.throws(
+      () => enrichmentQueueQueryUrl({ fields: "   " }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => enrichmentQueueQueryUrl({ fields: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("enrichmentQueueQueryUrl trims and forwards a fields projection", () => {
+    const url = enrichmentQueueQueryUrl({ fields: " netuid,lane " });
+    assert.equal(url.searchParams.get("fields"), "netuid,lane");
+  });
+
+  test("enrichmentQueueQueryUrl clamps a non-numeric limit to the default", () => {
+    const url = enrichmentQueueQueryUrl({ limit: "lots" });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("enrichmentQueueQueryUrl clamps a sub-minimum numeric limit to the default", () => {
+    const url = enrichmentQueueQueryUrl({ limit: 0 });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("enrichmentQueueQueryUrl rejects a fractional netuid", () => {
+    assert.throws(
+      () => enrichmentQueueQueryUrl({ netuid: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("enrichmentQueueQueryUrl rejects a fractional cursor", () => {
+    assert.throws(
+      () => enrichmentQueueQueryUrl({ cursor: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
   test("enrichmentQueueQueryUrl rejects negative cursor", () => {
     assert.throws(
       () => enrichmentQueueQueryUrl({ cursor: -1 }),
