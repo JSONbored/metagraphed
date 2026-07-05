@@ -46,6 +46,25 @@
         "https://github.com/unarbos/albedo/blob/main/website/js/config.js"
       ],
       "url": "https://s3.hippius.com/albedo/data/dashboard.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-97-albedo-health",
+      "kind": "subnet-api",
+      "name": "Albedo King Chat health",
+      "notes": "Public no-auth GET /health on chat.albedo.tech returning King Chat gateway liveness JSON (observed: {\"status\":true}). Documented as GET /health in chat_to_king/gateway.py on the same host as the existing config subnet-api surface.",
+      "provider": "albedo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/unarbos/albedo/blob/main/chat_to_king/gateway.py#L195-L197",
+        "https://github.com/unarbos/albedo/blob/main/website/index.html"
+      ],
+      "url": "https://chat.albedo.tech/health"
     }
   ]
 }
