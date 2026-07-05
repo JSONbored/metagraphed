@@ -7,8 +7,8 @@ apps/ui
 # workspace root before `prettier --check .` runs, so it must not be format-gated.
 validate-route.json
 packages/*/dist
-packages/*/src/metagraphed-api.ts
 packages/*/src/metagraphed-client.ts
+packages/contract/index.d.ts
 public/metagraph
 public/datasets
 public/.assetsignore
