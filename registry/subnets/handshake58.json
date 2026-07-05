@@ -287,6 +287,25 @@
       },
       "source_urls": ["https://handshake58.com/openapi.json"],
       "url": "https://handshake58.com/api/agent"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-58-handshake58-validator-registry-api",
+      "kind": "subnet-api",
+      "name": "Handshake58 validator miner registry API",
+      "notes": "Public no-auth GET returning the lightweight validator miner registry (approved online miners with UID, categories, and model counts). Documented in the subnet's own OpenAPI (handshake58.com/openapi.json, path /api/validator/registry); same host as existing subnet-api surfaces. Distinct from the provider directory and skills endpoints.",
+      "provider": "handshake58",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://handshake58.com/openapi.json",
+        "https://handshake58.com/skill.md"
+      ],
+      "url": "https://handshake58.com/api/validator/registry"
     }
   ],
   "website_url": "https://handshake58.com"
