@@ -1464,6 +1464,85 @@ describe("registry list CSV export", () => {
     assert.ok(subnetCsv.rows.every((row) => row.name !== ""));
   });
 
+  test("candidates CSV export projects kind/provider/state/confidence and honors state filters (#2524)", async () => {
+    const parseCsv = async (res) => {
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get("content-type"), /^text\/csv/);
+      const lines = (await res.text()).split("\r\n").filter(Boolean);
+      const header = lines[0].split(",");
+      const rows = lines.slice(1).map((line) => {
+        const values = line.split(",");
+        return Object.fromEntries(
+          header.map((name, index) => [name, values[index]]),
+        );
+      });
+      return { header, rows };
+    };
+
+    const all = await handleRequest(
+      req(
+        "/api/v1/candidates?format=csv&fields=kind,provider,state,confidence&limit=5",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const allCsv = await parseCsv(all);
+    assert.equal(
+      allCsv.header.join(","),
+      "kind,provider,state,confidence",
+    );
+    assert.ok(allCsv.rows.length > 0);
+    assert.ok(allCsv.rows.every((row) => row.kind !== ""));
+    assert.ok(allCsv.rows.every((row) => row.provider !== ""));
+    assert.ok(allCsv.rows.every((row) => row.state !== ""));
+    assert.ok(allCsv.rows.every((row) => row.confidence !== ""));
+
+    const filtered = await handleRequest(
+      req(
+        "/api/v1/candidates?state=schema-valid&format=csv&fields=kind,provider,state,confidence&limit=5",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const filteredCsv = await parseCsv(filtered);
+    assert.ok(filteredCsv.rows.length > 0);
+    assert.ok(filteredCsv.rows.every((row) => row.state === "schema-valid"));
+
+    const verified = await handleRequest(
+      req(
+        "/api/v1/candidates?state=verified&format=csv&fields=kind,provider,state,confidence&limit=5",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const verifiedCsv = await parseCsv(verified);
+    assert.ok(
+      verifiedCsv.rows.every((row) => row.state === "verified"),
+    );
+
+    const subnet = await handleRequest(
+      req(
+        "/api/v1/subnets/6/candidates?format=csv&fields=kind,provider,state,confidence&limit=5",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(
+      subnet.headers.get("content-disposition"),
+      'attachment; filename="subnet-candidates.csv"',
+    );
+    const subnetCsv = await parseCsv(subnet);
+    assert.equal(
+      subnetCsv.header.join(","),
+      "kind,provider,state,confidence",
+    );
+    assert.ok(subnetCsv.rows.length > 0);
+    assert.ok(subnetCsv.rows.every((row) => row.kind !== ""));
+    assert.ok(subnetCsv.rows.every((row) => row.provider !== ""));
+    assert.ok(subnetCsv.rows.every((row) => row.state !== ""));
+    assert.ok(subnetCsv.rows.every((row) => row.confidence !== ""));
+  });
+
   test("endpoints CSV export filters, projects, and streams the large route path (#2523)", async () => {
     const res = await handleRequest(
       req(
