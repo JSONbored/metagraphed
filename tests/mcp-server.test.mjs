@@ -14649,6 +14649,28 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  test("get_subnet_overview returns one subnet's composed overview artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/overview/5.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        netuid: 5,
+        profile: { slug: "datura" },
+        health: { status: "ok", surface_count: 3 },
+        counts: { surfaces: 3, endpoints: 2 },
+      },
+    });
+    const res = await callTool("get_subnet_overview", { netuid: 5 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 5);
+    assert.equal(out.health.status, "ok");
+    assert.equal(out.counts.surfaces, 3);
+  });
+
+  test("get_subnet_overview rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_overview", {});
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("get_lineage returns the lineage artifact", async () => {
     const deps = makeDeps({
       "/metagraph/lineage.json": {
