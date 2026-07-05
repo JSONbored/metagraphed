@@ -124,6 +124,31 @@
         "https://github.com/vidaio-subnet/vidaio-subnet/blob/b5d60ba7e2f6f9620075558f8d9098a3b2242109/services/video_scheduler/video_samples.yaml"
       ],
       "url": "https://raw.githubusercontent.com/vidaio-subnet/vidaio-subnet/b5d60ba7e2f6f9620075558f8d9098a3b2242109/services/video_scheduler/video_samples.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-85-vidaio-health",
+      "kind": "subnet-api",
+      "name": "Vidaio health API",
+      "notes": "Public no-auth health endpoint of the Vidaio API returning a JSON status object; the path is declared in the subnet's registered OpenAPI schema (api.vidaio.io/openapi.json). Same host as the existing OpenAPI surface, distinct path.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://api.vidaio.io/openapi.json",
+        "https://vidaio.io/"
+      ],
+      "url": "https://api.vidaio.io/health"
     }
   ],
   "website_url": "https://vidaio.io/"
