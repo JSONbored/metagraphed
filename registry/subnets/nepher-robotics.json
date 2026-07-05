@@ -244,6 +244,25 @@
       },
       "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
       "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/list"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournament-health",
+      "kind": "subnet-api",
+      "name": "Nepher tournament API health",
+      "notes": "Public no-auth GET /health returning tournament-backend service health (status, timestamp, service, version). Documented in the subnet's OpenAPI spec on the same host as the existing tournament subnet-api surfaces.",
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://docs.nepher.ai/"
+      ],
+      "url": "https://tournament-api.nepher.ai/health"
     }
   ],
   "website_url": "https://nepher.ai"
