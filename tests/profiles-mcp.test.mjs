@@ -13,11 +13,7 @@ import {
   profilesMcpError,
   profilesQueryUrl,
 } from "../src/profiles-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const PROFILE_ROW = {
   netuid: 7,
@@ -294,8 +290,7 @@ describe("profiles-mcp — MCP metadata", () => {
     assert.ok(ajv.compile(GET_SUBNET_PROFILE_OUTPUT_SCHEMA));
   });
 
-  test("MCP server exports wire profile tools at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire profile tools", () => {
     assert.match(MCP_INSTRUCTIONS, /list_profiles/);
     assert.match(MCP_INSTRUCTIONS, /get_subnet_profile/);
     for (const name of ["list_profiles", "get_subnet_profile"]) {

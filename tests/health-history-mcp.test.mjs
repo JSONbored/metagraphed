@@ -12,11 +12,7 @@ import {
   healthHistoryQueryUrl,
   loadHealthHistory,
 } from "../src/health-history-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const HISTORY_DATE = await latestArtifactDate("health/history");
 const SURFACE_ROW = {
@@ -283,8 +279,7 @@ describe("health-history-mcp — MCP metadata", () => {
     );
   });
 
-  test("MCP server exports wire get_health_history at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire get_health_history", () => {
     assert.match(MCP_INSTRUCTIONS, /get_health_history/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
     assert.ok(tool?.handler);

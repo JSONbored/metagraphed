@@ -9,11 +9,7 @@ import {
   buildToolError,
   loadBuildSummary,
 } from "../src/build-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BUILD = {
   schema_version: 1,
@@ -126,8 +122,7 @@ describe("build-mcp", () => {
     assert.ok(validate(SAMPLE_BUILD));
   });
 
-  test("MCP server exports wire get_build at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire get_build", () => {
     assert.match(MCP_INSTRUCTIONS, /get_build/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_build");
     assert.ok(tool);

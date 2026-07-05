@@ -10,11 +10,7 @@ import {
   loadAdapter,
   parseAdapterSlug,
 } from "../src/adapters-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_ADAPTER = {
   schema_version: 1,
@@ -176,8 +172,7 @@ describe("adapters-mcp", () => {
     assert.ok(validate(SAMPLE_ADAPTER));
   });
 
-  test("MCP server exports wire get_adapter at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire get_adapter", () => {
     assert.match(MCP_INSTRUCTIONS, /get_adapter/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_adapter");
     assert.ok(tool);

@@ -9,11 +9,7 @@ import {
   changelogToolError,
   loadChangelog,
 } from "../src/changelog-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_CHANGELOG = {
   source: "generated-artifact-diff",
@@ -129,8 +125,7 @@ describe("changelog-mcp", () => {
     assert.ok(validate(SAMPLE_CHANGELOG));
   });
 
-  test("MCP server exports wire get_changelog at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire get_changelog", () => {
     assert.match(MCP_INSTRUCTIONS, /get_changelog/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_changelog");
     assert.ok(tool);

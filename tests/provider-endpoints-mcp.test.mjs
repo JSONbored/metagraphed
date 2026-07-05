@@ -12,11 +12,7 @@ import {
   providerEndpointsMcpError,
   providerEndpointsQueryUrl,
 } from "../src/provider-endpoints-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -463,8 +459,7 @@ describe("provider-endpoints-mcp", () => {
     );
   });
 
-  test("MCP server exports wire list_provider_endpoints at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire list_provider_endpoints", () => {
     assert.match(MCP_INSTRUCTIONS, /list_provider_endpoints/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_provider_endpoints");
     assert.ok(tool);

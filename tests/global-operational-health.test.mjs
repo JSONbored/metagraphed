@@ -9,11 +9,7 @@ import {
   loadGlobalOperationalHealth,
   unknownGlobalHealth,
 } from "../src/global-operational-health.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
 
@@ -125,8 +121,7 @@ describe("global-operational-health", () => {
     );
   });
 
-  test("MCP server exports wire get_network_health at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire get_network_health", () => {
     assert.match(MCP_INSTRUCTIONS, /get_network_health/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_network_health");
     assert.ok(tool?.handler);

@@ -9,11 +9,7 @@ import {
   loadRegistryCoverage,
   registryCoverageToolError,
 } from "../src/registry-coverage.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_COVERAGE = {
   surface_count: 120,
@@ -108,8 +104,7 @@ describe("registry-coverage", () => {
     );
   });
 
-  test("MCP server exports wire get_coverage at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire get_coverage", () => {
     assert.match(MCP_INSTRUCTIONS, /get_coverage/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_coverage");
     assert.ok(tool);

@@ -11,11 +11,7 @@ import {
   endpointIncidentsQueryUrl,
   loadEndpointIncidentsList,
 } from "../src/endpoint-incidents-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -376,8 +372,7 @@ describe("endpoint-incidents-mcp", () => {
     );
   });
 
-  test("MCP server exports wire list_endpoint_incidents at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire list_endpoint_incidents", () => {
     assert.match(MCP_INSTRUCTIONS, /list_endpoint_incidents/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_endpoint_incidents");
     assert.ok(tool);

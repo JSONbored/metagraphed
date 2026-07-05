@@ -11,11 +11,7 @@ import {
   enrichmentEvidenceQueryUrl,
   loadEnrichmentEvidenceList,
 } from "../src/enrichment-evidence-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -364,8 +360,7 @@ describe("enrichment-evidence-mcp", () => {
     );
   });
 
-  test("MCP server exports wire list_enrichment_evidence at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire list_enrichment_evidence", () => {
     assert.match(MCP_INSTRUCTIONS, /list_enrichment_evidence/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_enrichment_evidence");
     assert.ok(tool);

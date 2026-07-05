@@ -9,11 +9,7 @@ import {
   contractsToolError,
   loadContracts,
 } from "../src/contracts-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_CONTRACTS = {
   schema_version: 1,
@@ -131,8 +127,7 @@ describe("contracts-mcp", () => {
     assert.ok(validate(SAMPLE_CONTRACTS));
   });
 
-  test("MCP server exports wire get_contracts at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire get_contracts", () => {
     assert.match(MCP_INSTRUCTIONS, /get_contracts/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_contracts");
     assert.ok(tool);

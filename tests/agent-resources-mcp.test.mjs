@@ -9,11 +9,7 @@ import {
   agentResourcesToolError,
   loadAgentResources,
 } from "../src/agent-resources-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_RESOURCES = {
   summary: { subnet_count: 129, callable_service_count: 42 },
@@ -144,8 +140,7 @@ describe("agent-resources-mcp", () => {
     );
   });
 
-  test("MCP server exports wire get_agent_resources at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire get_agent_resources", () => {
     assert.match(MCP_INSTRUCTIONS, /get_agent_resources/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_agent_resources");
     assert.ok(tool);

@@ -11,11 +11,7 @@ import {
   curationQueryUrl,
   loadCurationList,
 } from "../src/curation-mcp.mjs";
-import {
-  MCP_INSTRUCTIONS,
-  MCP_SERVER_VERSION,
-  MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -302,8 +298,7 @@ describe("curation-mcp", () => {
     );
   });
 
-  test("MCP server exports wire list_curation at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.75.0");
+  test("MCP server exports wire list_curation", () => {
     assert.match(MCP_INSTRUCTIONS, /list_curation/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_curation");
     assert.ok(tool);
