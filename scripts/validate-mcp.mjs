@@ -457,6 +457,15 @@ assert.ok(
     Number.isInteger(subnetWeights.weight_sets),
   "get_subnet_weights must return distinct_setters + weight_sets",
 );
+const chainWeightSetters = await callOk("get_chain_weight_setters", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  Number.isInteger(chainWeightSetters.distinct_setters) &&
+    Array.isArray(chainWeightSetters.setters),
+  "get_chain_weight_setters must return distinct_setters + setters[]",
+);
 const chainStakeMoves = await callOk("get_chain_stake_moves", {
   window: "7d",
   limit: 5,
@@ -599,6 +608,20 @@ assert.ok(
   "get_subnet_yield must return neurons[]",
 );
 assert.equal(yieldCard.netuid, 7, "get_subnet_yield must echo the netuid");
+const yieldHistory = await callOk("get_subnet_yield_history", {
+  netuid: 7,
+  window: "7d",
+});
+assert.equal(
+  yieldHistory.netuid,
+  7,
+  "get_subnet_yield_history must echo the netuid",
+);
+assert.ok(
+  Number.isInteger(yieldHistory.point_count) &&
+    Array.isArray(yieldHistory.points),
+  "get_subnet_yield_history must return point_count + points[]",
+);
 const uptimeFiltered = await callOk("get_subnet_uptime", {
   netuid: 7,
   min_samples: 5,

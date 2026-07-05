@@ -123,6 +123,13 @@ import {
   DEFAULT_CHAIN_WEIGHTS_WINDOW,
 } from "./chain-weights.mjs";
 import {
+  loadChainWeightSetters,
+  CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+  CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+  CHAIN_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
+} from "./chain-weight-setters.mjs";
+import {
   loadChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
@@ -304,7 +311,11 @@ import {
 } from "./neuron-history.mjs";
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
-import { loadSubnetYield } from "./subnet-yield.mjs";
+import {
+  loadSubnetYield,
+  loadSubnetYieldHistory,
+  parseSubnetYieldHistoryWindow,
+} from "./subnet-yield.mjs";
 import {
   loadSubnetPerformance,
   loadSubnetPerformanceHistory,
@@ -406,14 +417,16 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.61.0";
-
+export const MCP_SERVER_VERSION = "1.63.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
 const CHAIN_TURNOVER_WINDOW_KEYS = Object.keys(CHAIN_TURNOVER_WINDOWS);
 const CHAIN_STAKE_FLOW_WINDOW_KEYS = Object.keys(CHAIN_STAKE_FLOW_WINDOWS);
 const CHAIN_WEIGHTS_WINDOW_KEYS = Object.keys(CHAIN_WEIGHTS_WINDOWS);
+const CHAIN_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
+  CHAIN_WEIGHT_SETTERS_WINDOWS,
+);
 const CHAIN_STAKE_MOVES_WINDOW_KEYS = Object.keys(CHAIN_STAKE_MOVES_WINDOWS);
 const CHAIN_STAKE_TRANSFERS_WINDOW_KEYS = Object.keys(
   CHAIN_STAKE_TRANSFERS_WINDOWS,
@@ -555,6 +568,8 @@ export const MCP_INSTRUCTIONS =
   "per-day reward-flow and trust trend for one subnet, get_subnet_movers the cross-subnet " +
   "stake/emission/validator momentum leaderboard, get_subnet_yield per-UID " +
   "rates plus distribution percentiles over the current metagraph snapshot, " +
+  "get_subnet_yield_history the per-day emission-yield distribution trend for one " +
+  "subnet (subnet-wide return plus mean/median/p25/p75/p90 of per-UID yields), " +
   "get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, " +
   LIST_PROFILES_INSTRUCTIONS +
@@ -612,7 +627,9 @@ export const MCP_INSTRUCTIONS =
   "(per-subnet net TAO staked/unstaked and direction) across all subnets, " +
   "get_chain_weights the network-wide validator weight-setting leaderboard " +
   "(per-subnet WeightsSet activity, distinct setters, and update intensity) " +
-  "across all subnets, " +
+  "across all subnets, get_chain_weight_setters the network-wide weight-setter " +
+  "leaderboard (individual validators ranked by activity — the setter-level drill-in " +
+  "of get_chain_weights), " +
   "get_chain_stake_moves the network-wide stake-movement (re-delegation) " +
   "leaderboard (per-subnet StakeMoved activity, distinct movers, and " +
   "movements-per-mover intensity) across all subnets, " +
@@ -2478,7 +2495,8 @@ export const MCP_TOOLS = [
       "sets per setter) and the count/mean/min/p25/median/p75/p90/max spread of " +
       "per-subnet intensity, summed live from the account_events stream. The " +
       "consensus-maintenance companion to get_chain_stake_flow (capital) and " +
-      "get_chain_turnover (validator churn). Mirrors GET /api/v1/chain/weights.",
+      "get_chain_turnover (validator churn). Use get_chain_weight_setters for the " +
+      "setter-level leaderboard drill-in. Mirrors GET /api/v1/chain/weights.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2513,6 +2531,56 @@ export const MCP_TOOLS = [
       return loadChainWeights(mcpD1Runner(ctx), {
         windowLabel: window,
         windowDays: CHAIN_WEIGHTS_WINDOWS[window],
+        limit,
+      });
+    },
+  },
+  {
+    name: "get_chain_weight_setters",
+    title: "Get network-wide weight-setter leaderboard",
+    description:
+      "Fetch the network-wide weight-setter leaderboard over a 7d or 30d " +
+      "window (default 7d): the individual validators driving consensus across " +
+      "every subnet, each with its total WeightsSet count (summed across every " +
+      "subnet it operates on), its share of the network total, and its first/last " +
+      "set times, ranked by activity and capped by limit (1-100, default 20). " +
+      "The network-wide drill-in behind get_chain_weights — use " +
+      "get_subnet_weight_setters for one subnet's setter leaderboard. Mirrors GET " +
+      "/api/v1/chain/weights/setters.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_WEIGHT_SETTERS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max setters in the leaderboard (1-${CHAIN_WEIGHT_SETTERS_LIMIT_MAX}, default ${CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW;
+      if (!Object.hasOwn(CHAIN_WEIGHT_SETTERS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+        CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+      );
+      return loadChainWeightSetters(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_WEIGHT_SETTERS_WINDOWS[window],
         limit,
       });
     },
@@ -2894,6 +2962,42 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetYield(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_subnet_yield_history",
+    title: "Get subnet yield history",
+    description:
+      "Fetch the per-day emission-yield distribution trend for one subnet " +
+      "over a 7d, 30d, or 90d window (default 30d): each day's subnet-wide " +
+      "return (total emission over total stake) plus the mean, median, p25, " +
+      "p75, and p90 of the per-UID emission-per-stake yields from the " +
+      "neuron_daily rollup. The time-series companion to get_subnet_yield. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/yield/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "Lookback window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const parsed = parseSubnetYieldHistoryWindow(args?.window);
+      if (args?.window !== undefined && parsed.error) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      const { label, days } = parsed;
+      return await loadSubnetYieldHistory(mcpD1Runner(ctx), netuid, {
+        windowLabel: label,
+        windowDays: days,
+      });
     },
   },
   {
@@ -7803,6 +7907,33 @@ const TOOL_OUTPUT_SCHEMAS = {
       },
     },
   },
+  get_chain_weight_setters: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "window",
+      "distinct_setters",
+      "weight_sets",
+      "setter_count",
+      "setters",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      distinct_setters: { type: "integer" },
+      weight_sets: { type: "integer" },
+      setter_count: { type: "integer" },
+      setters: objectItems({
+        hotkey: NULLABLE_STRING,
+        uid: NULLABLE_INT,
+        weight_sets: { type: "integer" },
+        share: ANY,
+        first_set_at: NULLABLE_STRING,
+        last_set_at: NULLABLE_STRING,
+      }),
+    },
+  },
   get_chain_stake_moves: {
     type: "object",
     additionalProperties: true,
@@ -8241,6 +8372,18 @@ const TOOL_OUTPUT_SCHEMAS = {
       p75_yield: { type: ["number", "null"] },
       p90_yield: { type: ["number", "null"] },
       neurons: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_subnet_yield_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "window", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: { type: "array", items: { type: "object" } },
     },
   },
   get_subnet_stake_flow: {
