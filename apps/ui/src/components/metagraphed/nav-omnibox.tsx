@@ -295,6 +295,11 @@ export function NavOmnibox({ onOpenPalette }: Props) {
   const showResults = open && debounced.length > 0;
   const showSuggestions = open && !debounced;
 
+  // Active option id for aria-activedescendant — only meaningful while the results
+  // listbox is open with option rows (suggestions mode renders links, not options).
+  const activeOptionId =
+    showResults && active < flat.length ? `nav-omnibox-option-${active}` : undefined;
+
   return (
     <div ref={wrapRef} className="relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0">
       {/* Input */}
@@ -315,9 +320,12 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
           placeholder="Search subnets, wallets, blocks, txs…"
+          role="combobox"
           aria-label="Search the registry"
           aria-autocomplete="list"
           aria-expanded={open}
+          aria-controls="nav-omnibox-listbox"
+          aria-activedescendant={activeOptionId}
           className="flex-1 min-w-0 bg-transparent outline-none text-ink-strong placeholder:text-ink-muted text-sm"
         />
         <button
@@ -335,6 +343,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       {/* Dropdown — wider than the input, right-aligned */}
       {open ? (
         <div
+          id="nav-omnibox-listbox"
           role="listbox"
           className="absolute right-0 mt-1.5 w-[600px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-paper shadow-2xl z-50 overflow-hidden"
         >
@@ -426,6 +435,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                       <button
                         key={`nav-${n.to}-${n.label}`}
                         type="button"
+                        id={`nav-omnibox-option-${i}`}
                         role="option"
                         aria-selected={isActive}
                         onMouseEnter={() => setActive(i)}
@@ -481,6 +491,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                             <button
                               key={h.id}
                               type="button"
+                              id={`nav-omnibox-option-${idx}`}
                               role="option"
                               aria-selected={isActive}
                               onMouseEnter={() => setActive(idx)}
@@ -515,6 +526,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                 <div className="px-2 pb-2 border-t border-border pt-2">
                   <button
                     type="button"
+                    id={`nav-omnibox-option-${flat.length - 1}`}
                     role="option"
                     aria-selected={active === flat.length - 1}
                     onMouseEnter={() => setActive(flat.length - 1)}
