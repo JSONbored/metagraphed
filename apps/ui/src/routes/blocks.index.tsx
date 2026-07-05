@@ -107,11 +107,11 @@ function BlocksTable() {
 
   const filtersActive = Boolean(
     search.author ||
-      search.spec_version ||
-      search.block_start ||
-      search.block_end ||
-      search.min_extrinsics ||
-      search.min_events,
+    search.spec_version ||
+    search.block_start ||
+    search.block_end ||
+    search.min_extrinsics ||
+    search.min_events,
   );
 
   const filters = (
