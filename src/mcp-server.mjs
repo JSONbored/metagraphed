@@ -50,6 +50,12 @@ import {
   loadAdapterCandidatesList,
 } from "./adapter-candidates-mcp.mjs";
 import {
+  LIST_ENRICHMENT_EVIDENCE_INSTRUCTIONS,
+  LIST_ENRICHMENT_EVIDENCE_MCP_TOOL,
+  LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA,
+  loadEnrichmentEvidenceList,
+} from "./enrichment-evidence-mcp.mjs";
+import {
   LIST_SEARCH_INDEX_INSTRUCTIONS,
   LIST_SEARCH_INDEX_MCP_TOOL,
   LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
@@ -464,7 +470,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.71.0";
+export const MCP_SERVER_VERSION = "1.72.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -575,6 +581,7 @@ export const MCP_INSTRUCTIONS =
   LIST_GAPS_INSTRUCTIONS +
   LIST_ENRICHMENT_QUEUE_INSTRUCTIONS +
   LIST_ADAPTER_CANDIDATES_INSTRUCTIONS +
+  LIST_ENRICHMENT_EVIDENCE_INSTRUCTIONS +
   LIST_SEARCH_INDEX_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
@@ -6466,6 +6473,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_ENRICHMENT_EVIDENCE_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadEnrichmentEvidenceList(ctx, args);
+    },
+  },
+  {
     ...LIST_ENDPOINT_POOLS_MCP_TOOL,
     async handler(args, ctx) {
       return loadEndpointPoolsList(ctx, args);
@@ -10145,6 +10158,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_gaps: LIST_GAPS_OUTPUT_SCHEMA,
   list_enrichment_queue: LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA,
   list_adapter_candidates: LIST_ADAPTER_CANDIDATES_OUTPUT_SCHEMA,
+  list_enrichment_evidence: LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA,
   list_endpoint_pools: LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
   list_endpoint_incidents: LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   get_lineage: {

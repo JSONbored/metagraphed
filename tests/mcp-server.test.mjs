@@ -1557,6 +1557,75 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_enrichment_evidence returns filtered evidence rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/enrichment-evidence.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        entries: [
+          {
+            netuid: 7,
+            evidence_action: "replace-stale-evidence",
+            missing_kinds: ["openapi"],
+            lane: "direct-submission",
+          },
+          {
+            netuid: 12,
+            evidence_action: "submit-new-evidence",
+            missing_kinds: ["website"],
+            lane: "maintainer-review",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_enrichment_evidence",
+      { missing_kinds: "openapi" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.entries[0].netuid, 7);
+    assert.equal(out.entries[0].evidence_action, "replace-stale-evidence");
+  });
+
+  test("list_enrichment_evidence reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_enrichment_evidence",
+      {},
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Enrichment evidence snapshot unavailable/,
+    );
+  });
+
+  test("list_enrichment_evidence payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_enrichment_evidence",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/review/enrichment-evidence.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        entries: [
+          {
+            netuid: 7,
+            evidence_action: "replace-stale-evidence",
+            missing_kinds: ["openapi"],
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_enrichment_evidence",
+      { limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoint_pools returns filtered pool rows", async () => {
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {

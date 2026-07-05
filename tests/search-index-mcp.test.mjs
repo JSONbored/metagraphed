@@ -314,7 +314,7 @@ describe("search-index-mcp", () => {
   });
 
   test("MCP server exports wire list_search_index at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.71.0");
+    assert.equal(MCP_SERVER_VERSION, "1.72.0");
     assert.match(MCP_INSTRUCTIONS, /list_search_index/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_search_index");
     assert.ok(tool);

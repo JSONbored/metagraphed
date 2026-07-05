@@ -295,6 +295,14 @@ assert.ok(
   Array.isArray(adapterCandidatesPage.candidates),
   "list_adapter_candidates must return candidates[]",
 );
+const enrichmentEvidencePage = await callOk("list_enrichment_evidence", {
+  limit: 3,
+  evidence_action: "replace-stale-evidence",
+});
+assert.ok(
+  Array.isArray(enrichmentEvidencePage.entries),
+  "list_enrichment_evidence must return entries[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),
