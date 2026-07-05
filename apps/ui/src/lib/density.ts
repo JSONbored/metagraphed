@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type Density = "comfortable" | "compact";
-const STORAGE_KEY = "mg-density";
+export const DENSITY_STORAGE_KEY = "mg-density";
+
+/** Normalizes a stored/local value to a valid density choice. */
+export function normalizeDensityChoice(value: string | null | undefined): Density {
+  return value === "compact" ? "compact" : "comfortable";
+}
+
+/** Mirrors the pre-hydration bootstrap IIFE for drift tests. */
+export function bootstrapDensity(stored: string | null): Density {
+  return stored === "compact" ? "compact" : "comfortable";
+}
+
+const STORAGE_KEY = DENSITY_STORAGE_KEY;
 
 function readChoice(): Density {
   if (typeof window === "undefined") return "comfortable";
-  const v = window.localStorage.getItem(STORAGE_KEY);
-  return v === "compact" ? "compact" : "comfortable";
+  return normalizeDensityChoice(window.localStorage.getItem(STORAGE_KEY));
 }
 
 function apply(d: Density) {
