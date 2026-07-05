@@ -3560,7 +3560,7 @@ export const subnetCandidatesQuery = (netuid: number) =>
  *   { cursor: null }   — explicit end of list
  *   { invalid: true }  — API returned something but we can't trust it
  */
-function validateNextCursor(
+export function validateNextCursor(
   meta: ApiResult<unknown>["meta"],
   sentCursor: string | undefined,
 ): { cursor: string | null; invalid?: boolean } {
