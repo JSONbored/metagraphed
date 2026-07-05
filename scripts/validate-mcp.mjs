@@ -339,6 +339,19 @@ assert.ok(
   Array.isArray(endpointIncidentsPage.incidents),
   "list_endpoint_incidents must return incidents[]",
 );
+const providerEndpointsPage = await callOk("list_provider_endpoints", {
+  slug: "allways",
+  limit: 3,
+});
+assert.ok(
+  Array.isArray(providerEndpointsPage.endpoints),
+  "list_provider_endpoints must return endpoints[]",
+);
+assert.equal(
+  providerEndpointsPage.slug,
+  "allways",
+  "list_provider_endpoints must echo the requested slug",
+);
 await callOk("registry_summary", {});
 await callOk("get_coverage", {});
 const contracts = await callOk("get_contracts", {});
