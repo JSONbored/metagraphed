@@ -224,6 +224,25 @@
         "https://cacheon.ai/docs/miners/api-contract"
       ],
       "url": "https://api.cacheon.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-rounds-api",
+      "kind": "subnet-api",
+      "name": "Cacheon evaluation rounds API",
+      "notes": "Public no-auth GET returning evaluation round history with challenger counts, scores, speed improvement, and per-round evaluation metadata. Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/rounds); same host as the existing /api/status and /api/leader subnet-api surfaces.",
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.cacheon.ai/openapi.json",
+        "https://cacheon.ai/docs/miners/api-contract"
+      ],
+      "url": "https://api.cacheon.ai/api/rounds"
     }
   ],
   "website_url": "https://cacheon.ai/"
