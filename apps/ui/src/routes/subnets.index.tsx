@@ -283,6 +283,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
+      // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
+      resetScroll: false,
     });
 
   const onSort = (field: string) =>

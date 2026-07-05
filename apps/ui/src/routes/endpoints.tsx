@@ -393,6 +393,8 @@ function EndpointsTable() {
     navigate({
       search: (prev: Record<string, unknown>) =>
         ({ ...prev, ...patch, ...(resetsPage ? { page: 1 } : {}) }) as never,
+      // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
+      resetScroll: false,
       replace: true,
     });
   };
