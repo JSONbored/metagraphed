@@ -470,7 +470,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.72.0";
+export const MCP_SERVER_VERSION = "1.73.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -6090,18 +6090,64 @@ export const MCP_TOOLS = [
     name: "list_surfaces",
     title: "List curated public surfaces",
     description:
-      "Fetch the full catalog of curated public surfaces across all subnets: " +
-      "each surface's subnet (netuid), kind, provider, title, url, and review " +
+      "Fetch the catalog of curated public surfaces across all subnets: each " +
+      "surface's subnet (netuid), kind, provider, title, url, and review " +
       "state. Use it to discover what machine-readable data surfaces the " +
       "registry publishes network-wide, then drill into one subnet with " +
-      "get_subnet or list_subnet_apis. Mirrors GET /api/v1/surfaces.",
+      "get_subnet or list_subnet_apis. Optionally filter by netuid/kind/" +
+      "provider and page with limit/offset — the full catalog can be large. " +
+      "Mirrors GET /api/v1/surfaces.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        kind: {
+          type: "string",
+          enum: QUERY_ENUMS.surfaceKind,
+          description: "Surface kind, e.g. 'openapi' or 'subnet-api'.",
+        },
+        provider: {
+          type: "string",
+          description: "Provider slug, e.g. 'datura'.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max surfaces to return. Omit for the full list.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset into the (filtered) list. Default 0.",
+          minimum: 0,
+        },
+      },
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/surfaces.json");
+    async handler(args, ctx) {
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
+      const provider = optionalString(args, "provider");
+      const limit = optionalPositiveInt(args, "limit");
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const data = await loadArtifactData(ctx, "/metagraph/surfaces.json");
+      const all = Array.isArray(data.surfaces) ? data.surfaces : [];
+      const filtered = all.filter(
+        (s) =>
+          (netuid === null || s.netuid === netuid) &&
+          (kind === null || s.kind === kind) &&
+          (provider === null || s.provider === provider),
+      );
+      const page =
+        limit === null
+          ? filtered.slice(offset)
+          : filtered.slice(offset, offset + limit);
+      return {
+        ...data,
+        surfaces: page,
+        total: filtered.length,
+        returned: page.length,
+        offset,
+      };
     },
   },
   {
