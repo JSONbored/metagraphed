@@ -800,6 +800,19 @@ assert.equal(
   SS58,
   "get_account_registrations must echo the address",
 );
+const accountWeightSetters = await callOk("get_account_weight_setters", {
+  ss58: SS58,
+  window: "7d",
+});
+assert.ok(
+  Array.isArray(accountWeightSetters.subnets),
+  "get_account_weight_setters must return subnets[]",
+);
+assert.equal(
+  accountWeightSetters.address,
+  SS58,
+  "get_account_weight_setters must echo the address",
+);
 const accountServing = await callOk("get_account_serving", {
   ss58: SS58,
   window: "30d",

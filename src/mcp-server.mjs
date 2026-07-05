@@ -382,6 +382,11 @@ import {
   DEFAULT_REGISTRATION_WINDOW,
 } from "./account-registrations.mjs";
 import {
+  loadAccountWeightSetters,
+  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+} from "./account-weight-setters.mjs";
+import {
   loadAccountServing,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
@@ -441,7 +446,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.68.0";
+export const MCP_SERVER_VERSION = "1.69.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -473,6 +478,9 @@ const ACCOUNT_STAKE_MOVES_WINDOW_KEYS = Object.keys(
 const ACCOUNT_AXON_REMOVALS_WINDOW_KEYS = Object.keys(AXON_REMOVAL_WINDOWS);
 const ACCOUNT_PROMETHEUS_WINDOW_KEYS = Object.keys(PROMETHEUS_WINDOWS);
 const ACCOUNT_REGISTRATIONS_WINDOW_KEYS = Object.keys(REGISTRATION_WINDOWS);
+const ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
+  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+);
 const ACCOUNT_SERVING_WINDOW_KEYS = Object.keys(SERVING_WINDOWS);
 const ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
   ACCOUNT_DEREGISTRATION_WINDOWS,
@@ -626,6 +634,8 @@ export const MCP_INSTRUCTIONS =
   "with announcement counts, first/last timestamps, and concentration labels, " +
   "get_account_registrations its per-subnet NeuronRegistered registration footprint " +
   "with registration counts, first/last timestamps, and concentration labels, " +
+  "get_account_weight_setters its per-subnet WeightsSet weight-setting footprint " +
+  "with weight-set counts, first/last timestamps, and concentration labels, " +
   "get_account_serving its per-subnet AxonServed axon-endpoint serving footprint " +
   "with announcement counts, first/last timestamps, and concentration labels, " +
   "get_account_deregistrations its per-subnet NeuronDeregistered eviction footprint " +
@@ -4523,6 +4533,51 @@ export const MCP_TOOLS = [
         );
       }
       const { data } = await loadAccountRegistrations(mcpD1Runner(ctx), ss58, {
+        windowLabel: window,
+      });
+      return data;
+    },
+  },
+  {
+    name: "get_account_weight_setters",
+    title: "Get an account's weight-setting footprint",
+    description:
+      "Fetch one account's (validator hotkey's) WeightsSet weight-setting footprint " +
+      "per subnet over the requested window (7d or 30d; default 7d): each subnet's " +
+      "weight-set count with the first and last WeightsSet timestamps, plus account " +
+      "totals, an HHI concentration of where its weight-setting activity is focused, " +
+      "and the dominant subnet. WeightsSet is a validator submitting its weight vector " +
+      "for a subnet's consensus. The account-level companion to get_chain_weight_setters " +
+      "and get_subnet_weight_setters. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 hotkey address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW}).`,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
+      if (!Object.hasOwn(ACCOUNT_WEIGHT_SETTERS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const { data } = await loadAccountWeightSetters(mcpD1Runner(ctx), ss58, {
         windowLabel: window,
       });
       return data;
@@ -9206,6 +9261,40 @@ const TOOL_OUTPUT_SCHEMAS = {
             registrations: { type: "integer" },
             first_registered_at: NULLABLE_STRING,
             last_registered_at: NULLABLE_STRING,
+          },
+        },
+      },
+    },
+  },
+  get_account_weight_setters: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "address",
+      "window",
+      "total_weight_sets",
+      "subnet_count",
+      "subnets",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      address: { type: "string" },
+      window: NULLABLE_STRING,
+      total_weight_sets: { type: "integer" },
+      subnet_count: { type: "integer" },
+      concentration: { type: ["number", "null"] },
+      dominant_netuid: NULLABLE_INT,
+      subnets: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["netuid", "weight_sets", "first_set_at", "last_set_at"],
+          properties: {
+            netuid: { type: "integer" },
+            weight_sets: { type: "integer" },
+            first_set_at: NULLABLE_STRING,
+            last_set_at: NULLABLE_STRING,
           },
         },
       },
