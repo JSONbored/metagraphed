@@ -1279,6 +1279,49 @@ export interface SubnetConcentrationHistory {
   points: ConcentrationHistoryPoint[];
 }
 
+/** Reward-distribution & score-spread metrics from /api/v1/subnets/{netuid}/performance. */
+export interface SubnetPerformance {
+  netuid: number;
+  neuron_count?: number;
+  active_count?: number;
+  validator_count?: number;
+  captured_at?: string;
+  incentive?: ConcentrationMetrics;
+  dividends?: ConcentrationMetrics;
+  trust?: ScoreDistribution;
+  consensus?: ScoreDistribution;
+  validator_trust?: ScoreDistribution;
+}
+
+/** One daily performance-history point from /performance/history. */
+export interface PerformanceHistoryPoint {
+  snapshot_date: string;
+  neuron_count?: number;
+  active_count?: number;
+  validator_count?: number;
+  incentive_gini?: number | null;
+  incentive_nakamoto_coefficient?: number | null;
+  incentive_top_10pct_share?: number | null;
+  dividends_gini?: number | null;
+  dividends_nakamoto_coefficient?: number | null;
+  dividends_top_10pct_share?: number | null;
+  trust_mean?: number | null;
+  trust_median?: number | null;
+  consensus_mean?: number | null;
+  consensus_median?: number | null;
+  validator_trust_mean?: number | null;
+  validator_trust_median?: number | null;
+  [key: string]: unknown;
+}
+
+/** Reward-flow drift from /api/v1/subnets/{netuid}/performance/history. */
+export interface SubnetPerformanceHistory {
+  netuid: number;
+  window?: string;
+  point_count?: number;
+  points: PerformanceHistoryPoint[];
+}
+
 // --- Compile-time contract enforcement ---------------------------------------
 //
 // These are type-only assertions (zero runtime cost). They tie this file's UI
