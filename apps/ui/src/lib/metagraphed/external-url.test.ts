@@ -1,16 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { safeExternalUrl } from "./external-link";
+import { safeExternalUrl } from "./external-url";
 
 describe("safeExternalUrl", () => {
+  it("returns undefined for missing or blank input", () => {
+    expect(safeExternalUrl(undefined)).toBeUndefined();
+    expect(safeExternalUrl("")).toBeUndefined();
+    expect(safeExternalUrl("   ")).toBeUndefined();
+  });
+
   it("allows ordinary public http(s) URLs", () => {
     expect(safeExternalUrl("https://example.com/path?q=1")).toBe("https://example.com/path?q=1");
     expect(safeExternalUrl("http://docs.example.com/")).toBe("http://docs.example.com/");
+    expect(safeExternalUrl("  https://example.com/  ")).toBe("https://example.com/");
+    expect(safeExternalUrl("https://8.8.8.8/dns")).toBe("https://8.8.8.8/dns");
   });
 
   it("blocks non-http schemes and credentialed URLs", () => {
     expect(safeExternalUrl("javascript:alert(1)")).toBeUndefined();
     expect(safeExternalUrl("data:text/html,hi")).toBeUndefined();
+    expect(safeExternalUrl("file:///etc/passwd")).toBeUndefined();
     expect(safeExternalUrl("https://user:pass@example.com/")).toBeUndefined();
+    expect(safeExternalUrl("https://user@example.com/")).toBeUndefined();
   });
 
   it("blocks private, reserved, and local host targets", () => {
@@ -39,5 +49,10 @@ describe("safeExternalUrl", () => {
     for (const href of unsafe) {
       expect(safeExternalUrl(href), href).toBeUndefined();
     }
+  });
+
+  it("rejects malformed URLs", () => {
+    expect(safeExternalUrl("not-a-url")).toBeUndefined();
+    expect(safeExternalUrl("://missing-scheme")).toBeUndefined();
   });
 });
