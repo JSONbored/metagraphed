@@ -13372,12 +13372,12 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     const deps = makeDeps({
       "/metagraph/evidence-ledger.json": {
         generated_at: "2026-01-01T00:00:00Z",
-        evidence: [{ netuid: 7, check: "openapi", outcome: "verified" }],
+        claims: [{ netuid: 7, check: "openapi", outcome: "verified" }],
       },
     });
     const res = await callTool("list_evidence", {}, { deps });
     const out = res.body.result.structuredContent;
-    assert.equal(out.evidence[0].netuid, 7);
+    assert.equal(out.claims[0].netuid, 7);
     assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
   });
 

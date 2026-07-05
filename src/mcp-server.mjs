@@ -9961,7 +9961,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     additionalProperties: true,
     required: [],
     properties: {
-      evidence: { type: "array", items: { type: "object" } },
+      claims: { type: "array", items: { type: "object" } },
       generated_at: NULLABLE_STRING,
       schema_version: { type: ["string", "integer", "null"] },
     },
