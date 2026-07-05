@@ -39,6 +39,7 @@ import {
   subnetHealthQuery,
   subnetCandidatesQuery,
   subnetEventsQuery,
+  subnetGapsQuery,
   fixturesIndexQuery,
   lineageQuery,
   agentCatalogDetailQuery,
@@ -188,16 +189,18 @@ function SubnetDetailPage() {
 
 function ProfileShell({ netuid }: { netuid: number }) {
   const { data: profile, meta } = useSuspenseQuery(subnetProfileQuery(netuid)).data;
+  const { data: gapsResult } = useQuery(subnetGapsQuery(netuid));
+  const subnetGaps = gapsResult?.data;
   const stale = meta?.stale || isStaleFreshness(meta?.generated_at);
   const tab = useActiveTab("overview");
   useHashScroll(tab, SECTION_TO_TAB);
 
-  // Counts shown next to tab labels
+  const gapsCount = subnetGaps?.missing_kinds.length ?? profile?.missing_kinds?.length ?? 0;
   const tabsWithCounts = TABS.map((t) => {
     if (t.id === "surfaces") return { ...t, count: profile?.surface_count };
     if (t.id === "endpoints") return { ...t, count: profile?.endpoint_count };
     if (t.id === "candidates") return { ...t, count: profile?.candidate_count };
-    if (t.id === "gaps") return { ...t, count: (profile?.missing_kinds?.length ?? 0) || undefined };
+    if (t.id === "gaps") return { ...t, count: gapsCount || undefined };
     return { ...t };
   });
 
@@ -258,7 +261,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
           {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
           {tab === "schemas" ? <SchemasPanel netuid={netuid} /> : null}
           {tab === "candidates" ? <CandidatesPanel netuid={netuid} /> : null}
-          {tab === "gaps" ? <GapsPanel profile={profile} /> : null}
+          {tab === "gaps" ? <GapsPanel netuid={netuid} /> : null}
           {tab === "evidence" ? (
             <SectionAnchor
               id="evidence"
@@ -300,6 +303,8 @@ function DetailSkeleton() {
 //   8 — Sources & evidence (UI's EvidencePanel, NOT evidence-clusters)
 //   9 — Open incidents (deep-linkable timeline)
 function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
+  const { data: gapsResult } = useQuery(subnetGapsQuery(netuid));
+  const subnetGaps = gapsResult?.data;
   return (
     <div className="space-y-6">
       {/* 1 — Readiness scorecard: the "can I build on this, where do I start?"
@@ -378,8 +383,10 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         <IncidentTimeline netuid={netuid} />
       </QueryErrorBoundary>
 
-      {(profile?.missing_kinds?.length ?? 0) > 0 || (profile?.gap_notes?.length ?? 0) > 0 ? (
-        <GapsPanel profile={profile} compact />
+      {(subnetGaps?.missing_kinds.length ?? 0) > 0 ||
+      (subnetGaps?.gap_notes.length ?? 0) > 0 ||
+      (profile?.gap_notes?.length ?? 0) > 0 ? (
+        <GapsPanel netuid={netuid} compact />
       ) : null}
     </div>
   );
@@ -910,9 +917,29 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
   );
 }
 
-function GapsPanel({ profile, compact }: { profile?: SubnetProfile; compact?: boolean }) {
-  const missing = profile?.missing_kinds ?? [];
-  const notes = profile?.gap_notes ?? [];
+function GapsPanel({ netuid, compact }: { netuid: number; compact?: boolean }) {
+  const { data: gapsResult, isLoading, error } = useQuery(subnetGapsQuery(netuid));
+  const gaps = gapsResult?.data;
+  const missing = gaps?.missing_kinds ?? [];
+  const notes = gaps?.gap_notes ?? [];
+  if (isLoading) {
+    return (
+      <SectionAnchor id="gaps" title={compact ? "Known gaps" : "Gaps"}>
+        <Skeleton className="h-24 w-full" />
+      </SectionAnchor>
+    );
+  }
+  if (error) {
+    return (
+      <SectionAnchor id="gaps" title={compact ? "Known gaps" : "Gaps"}>
+        <EmptyState
+          title="Gaps unavailable"
+          description="The subnet gaps endpoint did not respond."
+          action={RECOVERY.gaps}
+        />
+      </SectionAnchor>
+    );
+  }
   if (missing.length === 0 && notes.length === 0) {
     return (
       <SectionAnchor id="gaps" title="Gaps">
@@ -929,7 +956,7 @@ function GapsPanel({ profile, compact }: { profile?: SubnetProfile; compact?: bo
       id="gaps"
       title={compact ? "Known gaps" : "Gaps"}
       subtitle="Missing resources, profile incompleteness, and curation notes."
-      info="Submit a PR against the public registry to help close any of these gaps."
+      info="GET /api/v1/subnets/{netuid}/gaps"
     >
       <div className="rounded-lg border border-border bg-card p-4 space-y-3">
         {missing.length > 0 ? (
@@ -968,6 +995,7 @@ function ApiPanel({ netuid }: { netuid: number }) {
     { label: "surfaces", path: `/api/v1/subnets/${netuid}/surfaces` },
     { label: "endpoints", path: `/api/v1/subnets/${netuid}/endpoints` },
     { label: "candidates", path: `/api/v1/subnets/${netuid}/candidates` },
+    { label: "gaps", path: `/api/v1/subnets/${netuid}/gaps` },
     { label: "health", path: `/api/v1/subnets/${netuid}/health` },
     { label: "agent-catalog", path: `/api/v1/agent-catalog/${netuid}` },
     { label: "artifact", path: `/metagraph/subnets/${netuid}.json` },

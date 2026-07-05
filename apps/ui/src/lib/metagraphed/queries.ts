@@ -4177,6 +4177,38 @@ export const evidenceQuery = (params?: QueryParams) =>
     staleTime: STALE_LONG,
   });
 
+export type SubnetGapsView = {
+  netuid: number;
+  missing_kinds: string[];
+  gap_notes: string[];
+  suggested_next_action?: string;
+};
+
+/** Normalize GET /api/v1/subnets/{netuid}/gaps for the subnet Gaps tab (#3348). */
+export function normalizeSubnetGaps(raw: unknown): SubnetGapsView | null {
+  if (!isRecord(raw)) return null;
+  const netuid = optionalNumber(raw.netuid);
+  if (netuid == null) return null;
+  const priorities = Array.isArray(raw.priorities) ? raw.priorities : [];
+  const primary = isRecord(priorities[0]) ? priorities[0] : null;
+  const missing_kinds = stringArrayFromUnknown(primary?.missing_kinds);
+  const suggested_next_action = optionalString(primary?.suggested_next_action);
+  const gap_notes = suggested_next_action ? [suggested_next_action] : [];
+  return { netuid, missing_kinds, gap_notes, suggested_next_action };
+}
+
+export const subnetGapsQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-gaps", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/gaps`, { signal });
+      const data = normalizeSubnetGaps(res.data);
+      if (!data) throw new Error("Invalid subnet gaps response");
+      return { ...res, data };
+    },
+    staleTime: STALE_MED,
+  });
+
 type ChangelogEntry = { id: string; at?: string; title?: string; kind?: string };
 
 function normalizeChangelogEntries(raw: unknown[]): ChangelogEntry[] {
