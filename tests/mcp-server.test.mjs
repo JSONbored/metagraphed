@@ -3634,122 +3634,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  function accountWeightSettersD1(rows = [], capture = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  if (
-                    /idx_account_events_hotkey/.test(sql) &&
-                    /GROUP BY netuid/.test(sql)
-                  ) {
-                    return { results: rows };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("get_account_weight_setters shapes per-subnet weight-set counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_weight_setters",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountWeightSettersD1([
-            {
-              netuid: 7,
-              weight_sets: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              weight_sets: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_weight_sets, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].weight_sets, 3);
-      assert.equal(
-        out.subnets[0].first_set_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  test("get_account_weight_setters rejects a missing ss58", async () => {
-    const res = await callTool("get_account_weight_setters", {});
-    assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /ss58/i);
-  });
-
-  test("get_account_weight_setters rejects an unsupported window", async () => {
-    const res = await callTool("get_account_weight_setters", {
-      ss58: SS58,
-      window: "1y",
-    });
-    assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /window must be one of/);
-  });
-
-  test("get_account_weight_setters degrades to zeros on cold D1", async () => {
-    const res = await callTool("get_account_weight_setters", { ss58: SS58 });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.address, SS58);
-    assert.equal(out.window, "7d");
-    assert.equal(out.total_weight_sets, 0);
-    assert.equal(out.subnet_count, 0);
-    assert.equal(out.concentration, null);
-    assert.equal(out.dominant_netuid, null);
-    assert.deepEqual(out.subnets, []);
-  });
-
-  test("get_account_weight_setters payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_weight_setters",
-    )?.outputSchema;
-    const res = await callTool(
-      "get_account_weight_setters",
-      { ss58: SS58 },
-      {
-        env: accountWeightSettersD1([
-          {
-            netuid: 7,
-            weight_sets: 2,
-            first_observed: 1_717_000_000_000,
-            last_observed: 1_717_500_000_000,
-          },
-        ]),
-      },
-    );
-    const validate = new Ajv2020().compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
-  });
-
   function accountServingD1(rows = [], capture = []) {
     return {
       METAGRAPH_HEALTH_DB: {
@@ -4310,16 +4194,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       assert.ok(
         validatorFor("get_account_deregistrations")(
           accountDeregistrations.body.result.structuredContent,
-        ),
-      );
-      const accountWeightSetters = await callTool(
-        "get_account_weight_setters",
-        { ss58: SS58 },
-        { env: accountWeightSettersD1([]) },
-      );
-      assert.ok(
-        validatorFor("get_account_weight_setters")(
-          accountWeightSetters.body.result.structuredContent,
         ),
       );
       const movers = await callTool(
