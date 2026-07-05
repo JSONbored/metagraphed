@@ -13,6 +13,7 @@ import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import { healthQuery, globalIncidentsQuery } from "@/lib/metagraphed/queries";
 import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";
+import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
 import type { GlobalIncidentSurface } from "@/lib/metagraphed/types";
 import {
   HealthHistoryDrilldown,
@@ -153,12 +154,7 @@ function Verdict() {
     down: "border-health-down/40",
   }[verdict.tone];
 
-  const segs = [
-    { label: "OK", value: ok, color: "var(--health-ok, #22c55e)" },
-    { label: "Degraded", value: warn, color: "var(--health-warn, #f59e0b)" },
-    { label: "Down", value: down, color: "var(--health-down, #ef4444)" },
-    { label: "Unknown", value: unknown, color: "var(--ink-muted, #94a3b8)" },
-  ].filter((s) => s.value > 0);
+  const segs = healthStatusSegments({ ok, warn, down, unknown });
   // /api/v1/health carries no real 24h uptime series — this is the share of
   // surfaces healthy in the latest snapshot (ok / total), so label it as such.
   const healthyRatio = total > 0 ? ok / total : null;

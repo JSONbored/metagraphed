@@ -1116,6 +1116,32 @@ export interface SubnetIdentityHistory {
   next_cursor: string | null;
 }
 
+/** One validator's weight-setting activity for a subnet over the window (#1657). */
+export interface SubnetWeightSetter {
+  hotkey: string | null;
+  uid: number | null;
+  weight_sets: number;
+  share: number | null;
+  first_set_at: string | null;
+  last_set_at: string | null;
+}
+
+/**
+ * Per-subnet weight-setters leaderboard over a 7d/30d window (#1657), from
+ * /api/v1/subnets/{netuid}/weights/setters — the individual validators behind the
+ * subnet's WeightsSet activity, ranked by weight-set count. Zeroed when cold.
+ */
+export interface SubnetWeightSetters {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_setters: number;
+  weight_sets: number;
+  setter_count: number;
+  setters: SubnetWeightSetter[];
+}
+
 /**
  * Per-subnet axon-removal (teardown) activity over a 7d/30d window (#1657), from
  * /api/v1/subnets/{netuid}/axon-removals — the removal-side complement of the
@@ -1130,6 +1156,21 @@ export interface SubnetAxonRemovals {
   distinct_removers: number;
   removals: number;
   removals_per_remover: number | null;
+}
+
+/**
+ * Per-subnet stake-movement (re-delegation) activity over a 7d/30d window, from
+ * /api/v1/subnets/{netuid}/stake-moves — the per-subnet drill-in of chain
+ * stake-moves. Zeroed when the subnet had no StakeMoved events in the window.
+ */
+export interface SubnetStakeMoves {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_movers: number;
+  movements: number;
+  movements_per_mover: number | null;
 }
 
 /**
@@ -1148,6 +1189,36 @@ export interface SubnetStakeTransfers {
   distinct_senders: number;
   transfers: number;
   transfers_per_sender: number | null;
+}
+
+/**
+ * Per-subnet axon-serving announcement activity over a 7d/30d window, from
+ * /api/v1/subnets/{netuid}/serving. Zeroed when the subnet had no AxonServed
+ * events in the window.
+ */
+export interface SubnetServing {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_servers: number;
+  announcements: number;
+  announcements_per_server: number | null;
+}
+
+/**
+ * Per-subnet Prometheus-endpoint serving activity over a 7d/30d window, from
+ * /api/v1/subnets/{netuid}/prometheus. Zeroed when the subnet had no
+ * PrometheusServed events in the window.
+ */
+export interface SubnetPrometheus {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_exporters: number;
+  announcements: number;
+  announcements_per_exporter: number | null;
 }
 
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
@@ -1340,6 +1411,49 @@ export interface SubnetConcentrationHistory {
   window?: string;
   point_count?: number;
   points: ConcentrationHistoryPoint[];
+}
+
+/** Reward-distribution & score-spread metrics from /api/v1/subnets/{netuid}/performance. */
+export interface SubnetPerformance {
+  netuid: number;
+  neuron_count?: number;
+  active_count?: number;
+  validator_count?: number;
+  captured_at?: string;
+  incentive?: ConcentrationMetrics;
+  dividends?: ConcentrationMetrics;
+  trust?: ScoreDistribution;
+  consensus?: ScoreDistribution;
+  validator_trust?: ScoreDistribution;
+}
+
+/** One daily performance-history point from /performance/history. */
+export interface PerformanceHistoryPoint {
+  snapshot_date: string;
+  neuron_count?: number;
+  active_count?: number;
+  validator_count?: number;
+  incentive_gini?: number | null;
+  incentive_nakamoto_coefficient?: number | null;
+  incentive_top_10pct_share?: number | null;
+  dividends_gini?: number | null;
+  dividends_nakamoto_coefficient?: number | null;
+  dividends_top_10pct_share?: number | null;
+  trust_mean?: number | null;
+  trust_median?: number | null;
+  consensus_mean?: number | null;
+  consensus_median?: number | null;
+  validator_trust_mean?: number | null;
+  validator_trust_median?: number | null;
+  [key: string]: unknown;
+}
+
+/** Reward-flow drift from /api/v1/subnets/{netuid}/performance/history. */
+export interface SubnetPerformanceHistory {
+  netuid: number;
+  window?: string;
+  point_count?: number;
+  points: PerformanceHistoryPoint[];
 }
 
 // --- Compile-time contract enforcement ---------------------------------------

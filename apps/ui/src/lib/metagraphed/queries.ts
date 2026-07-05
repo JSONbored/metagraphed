@@ -92,10 +92,15 @@ import type {
   SchemaInfo,
   Subnet,
   SubnetAxonRemovals,
+  SubnetStakeMoves,
+  SubnetServing,
+  SubnetPrometheus,
   SubnetEconomics,
   SubnetHistory,
   SubnetHistoryPoint,
   SubnetIdentityHistory,
+  SubnetWeightSetter,
+  SubnetWeightSetters,
   SubnetIdentityHistoryEntry,
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
@@ -113,6 +118,9 @@ import type {
   SubnetConcentration,
   ConcentrationHistoryPoint,
   SubnetConcentrationHistory,
+  SubnetPerformance,
+  PerformanceHistoryPoint,
+  SubnetPerformanceHistory,
   SubnetProfile,
   Surface,
   SurfaceLatencyPercentiles,
@@ -2856,6 +2864,62 @@ export const subnetIdentityHistoryQuery = (netuid: number) =>
     staleTime: STALE_MED,
   });
 
+// One validator's weight-setting row (#1657). Identified by hotkey or uid — a row
+// with neither is dropped; the count falls through to 0 and share to null on junk.
+export function normalizeSubnetWeightSetter(raw: unknown): SubnetWeightSetter | null {
+  if (!isRecord(raw)) return null;
+  const hotkey = firstString(raw.hotkey) ?? null;
+  const uid = firstFiniteNumber(raw.uid) ?? null;
+  if (hotkey == null && uid == null) return null;
+  return {
+    hotkey,
+    uid,
+    weight_sets: firstFiniteNumber(raw.weight_sets) ?? 0,
+    share: firstFiniteNumber(raw.share) ?? null,
+    first_set_at: firstString(raw.first_set_at) ?? null,
+    last_set_at: firstString(raw.last_set_at) ?? null,
+  };
+}
+
+const MAX_SUBNET_WEIGHT_SETTERS = 256;
+
+function normalizeSubnetWeightSetters(netuid: number, raw: unknown): SubnetWeightSetters {
+  const rec = isRecord(raw) ? raw : {};
+  const setters = (Array.isArray(rec.setters) ? rec.setters : [])
+    .map(normalizeSubnetWeightSetter)
+    .filter((setter): setter is SubnetWeightSetter => setter != null)
+    .slice(0, MAX_SUBNET_WEIGHT_SETTERS);
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_setters: firstFiniteNumber(rec.distinct_setters) ?? 0,
+    weight_sets: firstFiniteNumber(rec.weight_sets) ?? 0,
+    setter_count: firstFiniteNumber(rec.setter_count) ?? setters.length,
+    setters,
+  };
+}
+
+// #1657: per-subnet weight-setters leaderboard over a 7d/30d window — the
+// individual validators behind the subnet's WeightsSet activity, newest first.
+export const subnetWeightSettersQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-weight-setters", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetWeightSetters>>(
+        `/api/v1/subnets/${netuid}/weights/setters`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetWeightSetters(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
 // #1657: per-subnet axon-removal (teardown) activity over a 7d/30d window. A flat
 // summary card — count/distinct-remover/average — from the account_events
 // AxonInfoRemoved stream. Every numeric cell coerces defensively: counts fall
@@ -2890,6 +2954,40 @@ export const subnetAxonRemovalsQuery = (netuid: number, window = "30d") =>
     staleTime: STALE_MED,
   });
 
+// Per-subnet stake-movement (re-delegation) activity over a 7d/30d window. A flat
+// summary card — count/distinct-mover/average — from the account_events
+// StakeMoved stream. Every numeric cell coerces defensively: counts fall through
+// to 0 and the average to null (never NaN) on a cold store or junk.
+export function normalizeSubnetStakeMoves(netuid: number, raw: unknown): SubnetStakeMoves {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_movers: firstFiniteNumber(rec.distinct_movers) ?? 0,
+    movements: firstFiniteNumber(rec.movements) ?? 0,
+    movements_per_mover: firstFiniteNumber(rec.movements_per_mover) ?? null,
+  };
+}
+
+export const subnetStakeMovesQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-stake-moves", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetStakeMoves>>(
+        `/api/v1/subnets/${netuid}/stake-moves`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetStakeMoves(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
 // #3484: per-subnet stake-transfer activity over a 7d/30d window. A flat summary
 // card — StakeTransferred event count/distinct-sender/average — from the
 // account_events transfer_stake stream. Every numeric cell coerces defensively:
@@ -2917,6 +3015,68 @@ export const subnetStakeTransfersQuery = (netuid: number, window = "30d") =>
       );
       return {
         data: normalizeSubnetStakeTransfers(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-subnet axon-serving announcement activity over a 7d/30d window.
+export function normalizeSubnetServing(netuid: number, raw: unknown): SubnetServing {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_servers: firstFiniteNumber(rec.distinct_servers) ?? 0,
+    announcements: firstFiniteNumber(rec.announcements) ?? 0,
+    announcements_per_server: firstFiniteNumber(rec.announcements_per_server) ?? null,
+  };
+}
+
+export const subnetServingQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-serving", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetServing>>(`/api/v1/subnets/${netuid}/serving`, {
+        params: { window },
+        signal,
+      });
+      return {
+        data: normalizeSubnetServing(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-subnet Prometheus-endpoint serving activity over a 7d/30d window.
+export function normalizeSubnetPrometheus(netuid: number, raw: unknown): SubnetPrometheus {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_exporters: firstFiniteNumber(rec.distinct_exporters) ?? 0,
+    announcements: firstFiniteNumber(rec.announcements) ?? 0,
+    announcements_per_exporter: firstFiniteNumber(rec.announcements_per_exporter) ?? null,
+  };
+}
+
+export const subnetPrometheusQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-prometheus", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetPrometheus>>(
+        `/api/v1/subnets/${netuid}/prometheus`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetPrometheus(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };
@@ -3385,6 +3545,125 @@ export const chainPerformanceQuery = () =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainPerformance>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3477: reward-distribution + score-spread for one subnet — the reward-flow
+// twin of the stake/emission concentration above. /performance reuses the same
+// ConcentrationMetrics scorecard (Gini/HHI/Nakamoto/top-share) over incentive +
+// dividends, and adds the 0-1 trust/consensus/validator_trust score spread.
+function normalizeScoreDistribution(raw: unknown): ScoreDistribution | undefined {
+  if (!isRecord(raw)) return undefined;
+  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
+  return {
+    count: coerceFiniteNumber(raw.count),
+    mean: nullableNum(raw.mean),
+    min: nullableNum(raw.min),
+    max: nullableNum(raw.max),
+    p10: nullableNum(raw.p10),
+    p25: nullableNum(raw.p25),
+    p50: nullableNum(raw.p50),
+    p75: nullableNum(raw.p75),
+    p90: nullableNum(raw.p90),
+  };
+}
+
+function normalizeSubnetPerformance(netuid: number, raw: unknown): SubnetPerformance {
+  const d = isRecord(raw) ? raw : {};
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    neuron_count: coerceFiniteNumber(d.neuron_count),
+    active_count: coerceFiniteNumber(d.active_count),
+    validator_count: coerceFiniteNumber(d.validator_count),
+    captured_at: coerceString(d.captured_at),
+    incentive: normalizeConcentrationMetrics(d.incentive),
+    dividends: normalizeConcentrationMetrics(d.dividends),
+    trust: normalizeScoreDistribution(d.trust),
+    consensus: normalizeScoreDistribution(d.consensus),
+    validator_trust: normalizeScoreDistribution(d.validator_trust),
+  };
+}
+
+function normalizePerformanceHistoryPoint(raw: unknown): PerformanceHistoryPoint | undefined {
+  if (!isRecord(raw)) return undefined;
+  const snapshotDate = coerceString(raw.snapshot_date);
+  if (!snapshotDate) return undefined;
+  // Nullable-by-design: the early window has no reward metrics yet — keep null
+  // (not undefined) so the chart can render a gap rather than dropping the day.
+  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
+  return {
+    ...(raw as object),
+    snapshot_date: snapshotDate,
+    neuron_count: coerceFiniteNumber(raw.neuron_count),
+    active_count: coerceFiniteNumber(raw.active_count),
+    validator_count: coerceFiniteNumber(raw.validator_count),
+    incentive_gini: nullableNum(raw.incentive_gini),
+    incentive_nakamoto_coefficient: nullableNum(raw.incentive_nakamoto_coefficient),
+    incentive_top_10pct_share: nullableNum(raw.incentive_top_10pct_share),
+    dividends_gini: nullableNum(raw.dividends_gini),
+    dividends_nakamoto_coefficient: nullableNum(raw.dividends_nakamoto_coefficient),
+    dividends_top_10pct_share: nullableNum(raw.dividends_top_10pct_share),
+    trust_mean: nullableNum(raw.trust_mean),
+    trust_median: nullableNum(raw.trust_median),
+    consensus_mean: nullableNum(raw.consensus_mean),
+    consensus_median: nullableNum(raw.consensus_median),
+    validator_trust_mean: nullableNum(raw.validator_trust_mean),
+    validator_trust_median: nullableNum(raw.validator_trust_median),
+  };
+}
+
+function normalizeSubnetPerformanceHistory(netuid: number, raw: unknown): SubnetPerformanceHistory {
+  const d = isRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_HISTORY_POINTS).flatMap((point) => {
+        const normalized = normalizePerformanceHistoryPoint(point);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    window: coerceString(d.window),
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    points,
+  };
+}
+
+/** Reward-distribution scorecard (incentive/dividends concentration + trust/consensus spread). */
+export const subnetPerformanceQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-performance", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetPerformance>>(
+        `/api/v1/subnets/${netuid}/performance`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetPerformance(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetPerformance>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Daily reward-flow drift (incentive/dividends Gini/Nakamoto/top-10%, trust/consensus mean/median). */
+export const subnetPerformanceHistoryQuery = (
+  netuid: number,
+  window: "7d" | "30d" | "90d" = "30d",
+) =>
+  queryOptions({
+    queryKey: k("subnet-performance-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetPerformanceHistory>>(
+        `/api/v1/subnets/${netuid}/performance/history`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetPerformanceHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetPerformanceHistory>;
     },
     staleTime: STALE_MED,
   });
