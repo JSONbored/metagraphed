@@ -65,6 +65,22 @@
       },
       "source_urls": ["https://saygm.com/", "https://saygm.com/openapi.json"],
       "url": "https://api.saygm.com/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-28-gm-health",
+      "kind": "subnet-api",
+      "name": "gm gateway health",
+      "notes": "Public no-auth GET /healthz on saygm.com returning gateway liveness (observed plain-text response: ok). Served on the same host as the registered OpenAPI spec and website surface.",
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": ["https://saygm.com/", "https://saygm.com/openapi.json"],
+      "url": "https://saygm.com/healthz"
     }
   ],
   "social": {
