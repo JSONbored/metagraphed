@@ -3768,9 +3768,15 @@ function aiClientKey(request, scope) {
 }
 
 async function readBoundedRequestText(request, maxBytes) {
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > maxBytes) {
-    return { ok: false, text: "" };
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null) {
+    const contentLength = Number(declaredLength);
+    if (!Number.isFinite(contentLength) || contentLength < 0) {
+      return { ok: false, code: "invalid_content_length" };
+    }
+    if (contentLength > maxBytes) {
+      return { ok: false, code: "payload_too_large" };
+    }
   }
 
   if (!request.body) {
@@ -3791,7 +3797,7 @@ async function readBoundedRequestText(request, maxBytes) {
       bytes += chunk.byteLength;
       if (bytes > maxBytes) {
         await reader.cancel();
-        return { ok: false, text: "" };
+        return { ok: false, code: "payload_too_large" };
       }
       text += decoder.decode(chunk, { stream: true });
     }
@@ -3866,6 +3872,13 @@ async function handleAskRequest(request, env) {
       MAX_ASK_BODY_BYTES,
     );
     if (!boundedBody.ok) {
+      if (boundedBody.code === "invalid_content_length") {
+        return errorResponse(
+          "invalid_content_length",
+          "Invalid Content-Length header.",
+          400,
+        );
+      }
       return errorResponse(
         "payload_too_large",
         "Ask request body exceeds the size limit.",

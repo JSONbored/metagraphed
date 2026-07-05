@@ -948,6 +948,48 @@ describe("AI routes through the Worker dispatch", () => {
     assert.equal((await res.json()).error.code, "payload_too_large");
   });
 
+  test("ask rejects invalid Content-Length before parsing", async () => {
+    const env = aiWorkerEnv({
+      AI: { run: () => Promise.reject(new Error("body should not parse")) },
+    });
+    for (const contentLength of ["not-a-number", "-1"]) {
+      const res = await handleRequest(
+        new Request(ASK_URL, {
+          method: "POST",
+          headers: { "content-length": contentLength },
+          body: JSON.stringify({ question: "x" }),
+        }),
+        env,
+        {},
+      );
+      assert.equal(res.status, 400, contentLength);
+      assert.equal(
+        (await res.json()).error.code,
+        "invalid_content_length",
+        contentLength,
+      );
+    }
+  });
+
+  test("ask accepts a finite Content-Length within the cap before parsing", async () => {
+    const payload = { question: "Which subnet does images?" };
+    const body = JSON.stringify(payload);
+    const res = await handleRequest(
+      new Request(ASK_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": String(new TextEncoder().encode(body).byteLength),
+        },
+        body,
+      }),
+      aiWorkerEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.ok((await res.json()).data.citations.length > 0);
+  });
+
   test("ask rejects oversized streamed bodies while reading", async () => {
     const stream = new ReadableStream({
       start(controller) {
