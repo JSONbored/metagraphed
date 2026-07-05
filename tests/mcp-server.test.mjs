@@ -14182,6 +14182,70 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.returned, 0);
   });
 
+  test("list_endpoints returns filtered endpoint rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/endpoints.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        schema_version: 1,
+        endpoints: [
+          {
+            netuid: 7,
+            kind: "subnet-api",
+            provider: "datura",
+            status: "ok",
+            pool_eligible: false,
+          },
+          {
+            netuid: 12,
+            kind: "subtensor-rpc",
+            provider: "datura",
+            status: "ok",
+            pool_eligible: true,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_endpoints",
+      { pool_eligible: "true", limit: 5 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.endpoints[0].netuid, 12);
+    assert.equal(out.generated_at, "2026-07-01T00:00:00.000Z");
+  });
+
+  test("list_endpoints reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_endpoints", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Endpoints catalog unavailable/,
+    );
+  });
+
+  test("list_endpoints payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_endpoints",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/endpoints.json": {
+        endpoints: [
+          {
+            netuid: 7,
+            kind: "subnet-api",
+            provider: "datura",
+            status: "ok",
+          },
+        ],
+      },
+    });
+    const res = await callTool("list_endpoints", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoints returns the endpoints catalog artifact", async () => {
     const deps = makeDeps({
       "/metagraph/endpoints.json": {
@@ -14283,7 +14347,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(byStatus.total, 1);
 
     const byPoolEligible = (
-      await callTool("list_endpoints", { pool_eligible: true }, { deps })
+      await callTool("list_endpoints", { pool_eligible: "true" }, { deps })
     ).body.result.structuredContent;
     assert.equal(byPoolEligible.total, 1);
     assert.equal(byPoolEligible.endpoints[0].netuid, 12);
@@ -14302,18 +14366,19 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.endpoints[0].provider, "datura");
   });
 
-  test("list_endpoints paginates the filtered list with limit/offset", async () => {
+  test("list_endpoints paginates the filtered list with limit/cursor", async () => {
     const deps = endpointsDeps();
     const res = await callTool(
       "list_endpoints",
-      { limit: 1, offset: 1 },
+      { sort: "provider", order: "asc", limit: 1, cursor: 1 },
       { deps },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.total, 3);
     assert.equal(out.returned, 1);
-    assert.equal(out.offset, 1);
-    assert.equal(out.endpoints[0].provider, "chutes");
+    assert.equal(out.cursor, 1);
+    assert.equal(out.endpoints[0].provider, "datura");
+    assert.equal(out.endpoints[0].netuid, 7);
   });
 
   test("list_endpoints rejects an unknown kind/layer/publication_state/status enum value", async () => {
@@ -14347,7 +14412,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(badStatus.body.result.isError, true);
   });
 
-  test("list_endpoints rejects a non-boolean pool_eligible", async () => {
+  test("list_endpoints rejects an unknown pool_eligible enum value", async () => {
     const deps = endpointsDeps();
     const res = await callTool(
       "list_endpoints",
