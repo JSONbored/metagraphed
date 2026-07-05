@@ -116,6 +116,25 @@
         "submitted_by": "jimcody1995"
       },
       "notes": "Public JSON feed of active SN93 content briefs (id_brief, brief_id, brief text, boost, format). Served from the creator portal host; curl-verified 200 application/json with no auth. Distinct from the HTML briefs dashboard at /briefs."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-health",
+      "kind": "subnet-api",
+      "name": "Bitcast creator portal health",
+      "notes": "Public no-auth GET /api/health on creator.bitcast.network returning portal liveness JSON (observed: {\"status\":\"ok\"}). Served on the same host as the existing briefs subnet-api surface.",
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/bitcast-network/bitcast",
+        "https://creator.bitcast.network/briefs"
+      ],
+      "url": "https://creator.bitcast.network/api/health"
     }
   ]
 }
