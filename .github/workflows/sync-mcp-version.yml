@@ -104,7 +104,7 @@ jobs:
               .match(/export const MCP_SERVER_VERSION = \"([^\"]+)\"/)[1]
           ")
           IFS='.' read -r maj min pat <<< "$current"
-          next="${maj}.${min}.$((pat + 1))"
+          next="${maj}.${min}.$((10#$pat + 1))"
           echo "current=$current" >> "$GITHUB_OUTPUT"
           echo "next=$next" >> "$GITHUB_OUTPUT"
 
