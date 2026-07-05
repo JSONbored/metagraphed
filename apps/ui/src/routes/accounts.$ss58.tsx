@@ -646,7 +646,11 @@ function AccountEventsSection({
   const hasNext = page?.next_cursor != null || events.length === limit;
 
   const setSearch = (patch: Record<string, unknown>) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never });
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
+      resetScroll: false,
+    });
 
   // Cold accounts return a schema-stable zero — never error. While loading the
   // first page, defer to the summary-driven sections above rather than flashing.
