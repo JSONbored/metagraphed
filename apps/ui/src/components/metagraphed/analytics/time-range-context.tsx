@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 export type TimeRange = "1h" | "24h" | "7d" | "30d";
 
@@ -44,11 +44,17 @@ export function TimeRangeProvider({
 }) {
   const [internal, setInternal] = useState<TimeRange>(defaultRange);
   const range = value ?? internal;
-  const setRange = (r: TimeRange) => {
-    if (onChange) onChange(r);
-    else setInternal(r);
-  };
-  const ctx = useMemo(() => ({ range, setRange }), [range]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Stable across renders (rebuilds only when `onChange` changes), so the memo
+  // below can depend on it honestly instead of suppressing exhaustive-deps —
+  // which previously let ctx.setRange capture a stale `onChange`.
+  const setRange = useCallback(
+    (r: TimeRange) => {
+      if (onChange) onChange(r);
+      else setInternal(r);
+    },
+    [onChange],
+  );
+  const ctx = useMemo(() => ({ range, setRange }), [range, setRange]);
   return <TimeRangeCtx.Provider value={ctx}>{children}</TimeRangeCtx.Provider>;
 }
 
