@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Gauge, Layers, Users, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -13,7 +13,8 @@ import { ListShell } from "@/components/metagraphed/list-shell";
 import { PageSizeSelect } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
-import { blocksQuery } from "@/lib/metagraphed/queries";
+import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { blocksQuery, blocksSummaryQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -32,13 +33,13 @@ export const Route = createFileRoute("/blocks/")({
       {
         name: "description",
         content:
-          "Recent Bittensor blocks indexed from the chain — block number, hash, author, extrinsic and event counts, newest first.",
+          "Recent Bittensor blocks indexed from the chain — block-production stats, block number, hash, author, extrinsic and event counts, newest first.",
       },
       { property: "og:title", content: "Blocks — Metagraphed" },
       {
         property: "og:description",
         content:
-          "Recent Bittensor blocks indexed from the chain — block number, hash, author, extrinsic and event counts, newest first.",
+          "Recent Bittensor blocks indexed from the chain — block-production stats, block number, hash, author, extrinsic and event counts, newest first.",
       },
     ],
   }),
@@ -52,16 +53,116 @@ function BlocksPage() {
         eyebrow="Explorer"
         live
         title="Blocks"
-        description="Recent Bittensor blocks indexed directly from the chain — newest first, with author, extrinsic, and event counts."
+        description="Recent Bittensor blocks indexed directly from the chain — production stats over the latest window, then newest-first rows with author, extrinsic, and event counts."
         actions={<ShareButton />}
       />
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+          <BlocksSummaryHeader />
+        </Suspense>
+      </QueryErrorBoundary>
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <BlocksTable />
         </Suspense>
       </QueryErrorBoundary>
-      <ApiSourceFooter paths={["/api/v1/blocks"]} artifacts={["/metagraph/blocks.json"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/blocks", "/api/v1/blocks/summary"]}
+        artifacts={["/metagraph/blocks.json"]}
+      />
     </AppShell>
+  );
+}
+
+function fmtIntervalMs(ms: number | null | undefined): string {
+  if (ms == null) return "—";
+  if (ms >= 60_000) return `${(ms / 60_000).toFixed(1)}m`;
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.round(ms)}ms`;
+}
+
+function BlocksSummaryHeader() {
+  const summary = useSuspenseQuery(blocksSummaryQuery()).data.data;
+  const blockTime = summary.block_time;
+  const throughput = summary.throughput;
+  const nakamoto = summary.author_concentration?.nakamoto_coefficient;
+
+  return (
+    <section className="mb-8 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Block production
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {summary.block_count > 0 && summary.first_block != null && summary.last_block != null
+            ? `#${formatNumber(summary.first_block)}–#${formatNumber(summary.last_block)}`
+            : "recent window"}
+          {summary.latest_spec_version != null
+            ? ` · spec ${formatNumber(summary.latest_spec_version)}`
+            : ""}
+        </span>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <StatTile
+          icon={Layers}
+          eyebrow="Blocks sampled"
+          value={formatNumber(summary.block_count)}
+          hint={
+            summary.distinct_spec_versions > 0
+              ? `${formatNumber(summary.distinct_spec_versions)} spec versions`
+              : undefined
+          }
+        />
+        <StatTile
+          icon={Clock}
+          eyebrow="Mean block time"
+          value={fmtIntervalMs(blockTime?.mean_ms)}
+          hint={
+            blockTime
+              ? `p50 ${fmtIntervalMs(blockTime.p50_ms)} · p90 ${fmtIntervalMs(blockTime.p90_ms)}`
+              : "needs ≥2 intervals"
+          }
+          tone="accent"
+        />
+        <StatTile
+          icon={Zap}
+          eyebrow="Extrinsics / block"
+          value={
+            throughput?.mean_extrinsics_per_block == null
+              ? "—"
+              : throughput.mean_extrinsics_per_block.toFixed(1)
+          }
+          hint={
+            throughput
+              ? `${formatNumber(throughput.total_extrinsics)} total · max ${formatNumber(throughput.max_extrinsics_in_block)}`
+              : undefined
+          }
+        />
+        <StatTile
+          icon={Gauge}
+          eyebrow="Events / block"
+          value={
+            throughput?.mean_events_per_block == null
+              ? "—"
+              : throughput.mean_events_per_block.toFixed(1)
+          }
+          hint={throughput ? `${formatNumber(throughput.total_events)} total events` : undefined}
+        />
+        <StatTile
+          icon={Users}
+          eyebrow="Distinct authors"
+          value={formatNumber(summary.distinct_authors)}
+          hint="block producers in window"
+        />
+        <StatTile
+          icon={Users}
+          eyebrow="Author Nakamoto"
+          value={nakamoto == null ? "—" : formatNumber(nakamoto)}
+          hint="decentralization coefficient"
+          tone={nakamoto != null && nakamoto >= 3 ? "ok" : "default"}
+        />
+      </div>
+    </section>
   );
 }
 

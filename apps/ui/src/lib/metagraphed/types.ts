@@ -1658,6 +1658,44 @@ export interface ChainTransferPairs {
   pairs: ChainTransferPair[];
 }
 
+export interface BlockTimeDistribution {
+  count: number;
+  mean_ms: number | null;
+  min_ms: number | null;
+  max_ms: number | null;
+  p50_ms: number | null;
+  p90_ms: number | null;
+}
+
+/** Extrinsic/event throughput rollup for the blocks summary window (#3488). */
+export interface BlocksSummaryThroughput {
+  total_extrinsics: number;
+  total_events: number;
+  mean_extrinsics_per_block: number | null;
+  mean_events_per_block: number | null;
+  max_extrinsics_in_block: number;
+}
+
+/**
+ * Block-production analytics over recent blocks (#3488), from
+ * GET /api/v1/blocks/summary — inter-block timing, throughput, author
+ * decentralization, and spec-version spread. Zeroed when the store is cold.
+ */
+export interface BlocksSummary {
+  schema_version: number;
+  block_count: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+  distinct_authors: number;
+  distinct_spec_versions: number;
+  latest_spec_version: number | null;
+  block_time: BlockTimeDistribution | null;
+  throughput: BlocksSummaryThroughput | null;
+  author_concentration: ConcentrationMetrics | null;
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;
