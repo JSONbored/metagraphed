@@ -13,6 +13,7 @@ import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import { healthQuery, globalIncidentsQuery } from "@/lib/metagraphed/queries";
 import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";
+import { HEALTH_COLOR, INK_MUTED_COLOR } from "@/lib/metagraphed/health-colors";
 import type { GlobalIncidentSurface } from "@/lib/metagraphed/types";
 import {
   HealthHistoryDrilldown,
@@ -154,10 +155,10 @@ function Verdict() {
   }[verdict.tone];
 
   const segs = [
-    { label: "OK", value: ok, color: "var(--health-ok, #22c55e)" },
-    { label: "Degraded", value: warn, color: "var(--health-warn, #f59e0b)" },
-    { label: "Down", value: down, color: "var(--health-down, #ef4444)" },
-    { label: "Unknown", value: unknown, color: "var(--ink-muted, #94a3b8)" },
+    { label: "OK", value: ok, color: HEALTH_COLOR.ok },
+    { label: "Degraded", value: warn, color: HEALTH_COLOR.warn },
+    { label: "Down", value: down, color: HEALTH_COLOR.down },
+    { label: "Unknown", value: unknown, color: INK_MUTED_COLOR },
   ].filter((s) => s.value > 0);
   // /api/v1/health carries no real 24h uptime series — this is the share of
   // surfaces healthy in the latest snapshot (ok / total), so label it as such.

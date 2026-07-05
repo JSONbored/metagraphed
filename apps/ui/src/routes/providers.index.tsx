@@ -13,6 +13,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
 import { providersQuery, endpointsQuery, type ProviderCounts } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { HEALTH_COLOR, INK_MUTED_COLOR } from "@/lib/metagraphed/health-colors";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
@@ -565,10 +566,10 @@ function ProviderOverview({
     { ok: 0, warn: 0, down: 0, unknown: 0 },
   );
   const statusSegs = [
-    { label: "OK", value: endpointStatus.ok, color: "var(--health-ok, #22c55e)" },
-    { label: "Warn", value: endpointStatus.warn, color: "var(--health-warn, #f59e0b)" },
-    { label: "Down", value: endpointStatus.down, color: "var(--health-down, #ef4444)" },
-    { label: "Unknown", value: endpointStatus.unknown, color: "var(--ink-muted, #94a3b8)" },
+    { label: "OK", value: endpointStatus.ok, color: HEALTH_COLOR.ok },
+    { label: "Warn", value: endpointStatus.warn, color: HEALTH_COLOR.warn },
+    { label: "Down", value: endpointStatus.down, color: HEALTH_COLOR.down },
+    { label: "Unknown", value: endpointStatus.unknown, color: INK_MUTED_COLOR },
   ].filter((s) => s.value > 0);
 
   // Top providers by endpoint count, as a sparkline of counts.

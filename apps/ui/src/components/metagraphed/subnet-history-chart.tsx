@@ -4,6 +4,7 @@ import { subnetHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { HEALTH_COLOR } from "@/lib/metagraphed/health-colors";
 import type { SubnetHistoryPoint } from "@/lib/metagraphed/types";
 
 // Lowercase windows, mirroring the /history API + the inline toggle conventions
@@ -84,17 +85,13 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
             <HistoryRow label="Neurons" series={series.neurons} color="var(--accent, #7aa2ff)" />
           ) : null}
           {series.validators.length > 0 ? (
-            <HistoryRow
-              label="Validators"
-              series={series.validators}
-              color="var(--health-ok, #4ade80)"
-            />
+            <HistoryRow label="Validators" series={series.validators} color={HEALTH_COLOR.ok} />
           ) : null}
           {series.stake.length > 0 ? (
             <HistoryRow
               label="Total stake"
               series={series.stake}
-              color="var(--health-warn, #fbbf24)"
+              color={HEALTH_COLOR.warn}
               format={taoStr}
             />
           ) : null}

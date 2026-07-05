@@ -5,11 +5,12 @@ import { Coins } from "lucide-react";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { economicsQuery, subnetsQuery, subnetTrajectoryQuery } from "@/lib/metagraphed/queries";
+import { HEALTH_COLOR } from "@/lib/metagraphed/health-colors";
 import type { Subnet } from "@/lib/metagraphed/types";
 
-const UP = "var(--health-ok, #4ade80)";
-const DOWN = "var(--health-down, #ef4444)";
-const FLAT = "var(--ink-muted, #8a8f98)";
+const UP = HEALTH_COLOR.ok;
+const DOWN = HEALTH_COLOR.down;
+const FLAT = "var(--ink-muted)";
 
 function priceStr(v?: number) {
   if (v == null || !Number.isFinite(v)) return "—";
