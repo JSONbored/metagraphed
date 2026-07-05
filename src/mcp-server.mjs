@@ -263,6 +263,11 @@ import {
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
 } from "./subnet-axon-removals.mjs";
 import {
+  loadSubnetServing,
+  SUBNET_SERVING_WINDOWS,
+  DEFAULT_SUBNET_SERVING_WINDOW,
+} from "./subnet-serving.mjs";
+import {
   loadSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
@@ -384,7 +389,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.58.0";
+export const MCP_SERVER_VERSION = "1.59.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -427,6 +432,7 @@ const SUBNET_WEIGHT_SETTERS_WINDOW_KEYS = Object.keys(
 const SUBNET_AXON_REMOVALS_WINDOW_KEYS = Object.keys(
   SUBNET_AXON_REMOVALS_WINDOWS,
 );
+const SUBNET_SERVING_WINDOW_KEYS = Object.keys(SUBNET_SERVING_WINDOWS);
 const SUBNET_PROMETHEUS_WINDOW_KEYS = Object.keys(SUBNET_PROMETHEUS_WINDOWS);
 const SUBNET_DEREGISTRATIONS_WINDOW_KEYS = Object.keys(
   SUBNET_DEREGISTRATIONS_WINDOWS,
@@ -519,7 +525,9 @@ export const MCP_INSTRUCTIONS =
   "get_subnet_stake_moves the per-subnet stake-relocation activity, " +
   "get_subnet_axon_removals the per-subnet AxonInfoRemoved teardown activity " +
   "(distinct removers, event count, removals per remover — the removal-side " +
-  "companion to /serving), get_subnet_prometheus the per-subnet PrometheusServed " +
+  "companion to get_subnet_serving), get_subnet_serving the per-subnet AxonServed " +
+  "axon-endpoint activity card (distinct servers, event count, announcements per " +
+  "server — the per-subnet companion to get_chain_serving), get_subnet_prometheus the per-subnet PrometheusServed " +
   "telemetry-endpoint activity card (distinct exporters, event count, announcements " +
   "per exporter — the telemetry-endpoint companion to get_chain_prometheus), " +
   "get_subnet_deregistrations the per-subnet " +
@@ -3128,6 +3136,47 @@ export const MCP_TOOLS = [
       return await loadSubnetAxonRemovals(mcpD1Runner(ctx), netuid, {
         windowLabel: window,
         windowDays: SUBNET_AXON_REMOVALS_WINDOWS[window],
+      });
+    },
+  },
+  {
+    name: "get_subnet_serving",
+    title: "Get subnet axon-endpoint serving activity",
+    description:
+      "Fetch one subnet's axon-endpoint serving activity over a 7d or 30d " +
+      "window (default 7d): the distinct servers (hotkeys), AxonServed event " +
+      "count, and average announcements per server, computed live from the " +
+      "account_events AxonServed stream. AxonServed is emitted when a neuron " +
+      "announces its axon endpoint — the axon-endpoint companion to " +
+      "get_subnet_prometheus (Prometheus telemetry announcements) and the " +
+      "per-subnet companion to get_chain_serving. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/serving.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: SUBNET_SERVING_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_SUBNET_SERVING_WINDOW}).`,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_SUBNET_SERVING_WINDOW;
+      if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${SUBNET_SERVING_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      return await loadSubnetServing(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+        windowDays: SUBNET_SERVING_WINDOWS[window],
       });
     },
   },
@@ -8268,6 +8317,26 @@ const TOOL_OUTPUT_SCHEMAS = {
       distinct_removers: { type: "integer" },
       removals: { type: "integer" },
       removals_per_remover: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_serving: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "window",
+      "distinct_servers",
+      "announcements",
+      "announcements_per_server",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      distinct_servers: { type: "integer" },
+      announcements: { type: "integer" },
+      announcements_per_server: { type: ["number", "null"] },
     },
   },
   get_subnet_prometheus: {

@@ -495,6 +495,20 @@ assert.ok(
     Number.isInteger(subnetPrometheus.announcements),
   "get_subnet_prometheus must return distinct_exporters + announcements",
 );
+const subnetServing = await callOk("get_subnet_serving", {
+  netuid: 7,
+  window: "7d",
+});
+assert.equal(
+  subnetServing.netuid,
+  7,
+  "get_subnet_serving must echo the netuid",
+);
+assert.ok(
+  Number.isInteger(subnetServing.distinct_servers) &&
+    Number.isInteger(subnetServing.announcements),
+  "get_subnet_serving must return distinct_servers + announcements",
+);
 const chainServing = await callOk("get_chain_serving", {
   window: "7d",
   limit: 5,

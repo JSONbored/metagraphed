@@ -4312,6 +4312,95 @@ describe("MCP get_subnet_axon_removals", () => {
   });
 });
 
+describe("MCP get_subnet_serving", () => {
+  function servingD1(row = null, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  return { results: row ? [row] : [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("reports axon serving activity for one subnet over the window", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_subnet_serving",
+      { netuid: 7, window: "7d" },
+      {
+        env: servingD1(
+          {
+            distinct_servers: 2,
+            announcements: 20,
+            newest_observed: 1_750_000_000_000,
+          },
+          capture,
+        ),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "7d");
+    assert.equal(out.distinct_servers, 2);
+    assert.equal(out.announcements, 20);
+    assert.equal(out.announcements_per_server, 10);
+    assert.equal(capture[0].params[0], 7);
+  });
+
+  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+    const res = await callTool("get_subnet_serving", { netuid: 9 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.distinct_servers, 0);
+    assert.equal(out.announcements, 0);
+    assert.equal(out.announcements_per_server, null);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_serving", {
+      netuid: 7,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_serving", { window: "7d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+
+  test("get_subnet_serving payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_subnet_serving",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_subnet_serving",
+      { netuid: 7 },
+      {
+        env: servingD1({
+          distinct_servers: 1,
+          announcements: 3,
+          newest_observed: 1_750_000_000_000,
+        }),
+      },
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+});
+
 describe("MCP get_subnet_prometheus", () => {
   function prometheusD1(row = null, capture = []) {
     return {
