@@ -64,6 +64,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Djinn source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-health",
+      "kind": "subnet-api",
+      "name": "Djinn API health",
+      "notes": "Public no-auth GET /api/health on www.djinn.gg returning application liveness JSON. Implemented in the official Djinn web repository on the same host as the registered website surface.",
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn/blob/main/web/app/api/health/route.ts",
+        "https://www.djinn.gg/"
+      ],
+      "url": "https://www.djinn.gg/api/health"
     }
   ],
   "social": {
