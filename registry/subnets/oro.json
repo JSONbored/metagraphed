@@ -203,6 +203,25 @@
         "https://huggingface.co/oro-ai"
       ],
       "url": "https://huggingface.co/datasets/oro-ai/sn15-shoppingbench-sft-15k"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-health",
+      "kind": "subnet-api",
+      "name": "ORO API health",
+      "notes": "Public no-auth GET /health returning ORO API status and version. Documented in the subnet's OpenAPI spec on the same host as the existing leaderboard, suites, and snapshot surfaces.",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/openapi.json",
+        "https://oroagents.com/"
+      ],
+      "url": "https://api.oroagents.com/health"
     }
   ],
   "website_url": "https://oroagents.com/"
