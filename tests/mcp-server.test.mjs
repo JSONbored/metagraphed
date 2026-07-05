@@ -14357,6 +14357,24 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  test("list_profile_completeness returns the profile-completeness artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/profile-completeness.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        subnets: [{ netuid: 7, profile_level: "partial" }],
+      },
+    });
+    const res = await callTool("list_profile_completeness", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnets[0].netuid, 7);
+    assert.equal(out.generated_at, "2026-01-01T00:00:00Z");
+  });
+
+  test("list_profile_completeness rejects an unexpected argument", async () => {
+    const res = await callTool("list_profile_completeness", { netuid: 7 });
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("list_rpc_pools returns the rpc pools artifact", async () => {
     const deps = makeDeps({
       "/metagraph/rpc/pools.json": {
