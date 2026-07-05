@@ -95,6 +95,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "chain-deregistrations",
   "chain-stake-moves",
   "chain-stake-transfers",
+  "chain-stake-transfer-volume",
   "chain-concentration",
   "chain-performance",
   "chain-identity-history",

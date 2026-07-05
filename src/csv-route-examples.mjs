@@ -69,6 +69,11 @@ export const ROUTE_CSV_EXAMPLES = {
     "netuid,distinct_senders,transfers,transfers_per_sender",
     "1,4,40,10",
   ].join("\r\n"),
+  // The /chain/stake-transfer-volume per-subnet transfer-value leaderboard rows.
+  "chain-stake-transfer-volume": [
+    "netuid,volume_tao,transfers,avg_transfer_tao",
+    "1,1250.5,40,31.2625",
+  ].join("\r\n"),
   // The /chain/transfer-pairs top sender -> receiver corridors.
   "chain-transfer-pairs": [
     "from,to,volume_tao,transfer_count,last_block,last_observed_at",

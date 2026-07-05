@@ -799,6 +799,55 @@ function normalizeChainStakeTransfersSample(out) {
   return out;
 }
 
+function normalizeChainStakeTransferVolumeSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    !out.network ||
+    typeof out.network !== "object" ||
+    !("total_volume_tao" in out.network) ||
+    !("avg_transfer_tao" in out.network) ||
+    !Array.isArray(out.subnets)
+  ) {
+    return out;
+  }
+  // An internally consistent worked example: two subnets transferring 80 TAO over 4 events (avg
+  // 80/4 = 20) and 40 TAO over 4 events (avg 40/4 = 10); the network rolls up 120 TAO over 8
+  // transfers (avg 120/8 = 15) and the distribution summarizes the per-subnet volumes [40, 80]. The
+  // generic per-field generator cannot satisfy avg_transfer_tao = volume_tao / transfers itself.
+  out.subnets = [
+    {
+      netuid: 1,
+      volume_tao: 80,
+      transfers: 4,
+      avg_transfer_tao: 20,
+    },
+    {
+      netuid: 2,
+      volume_tao: 40,
+      transfers: 4,
+      avg_transfer_tao: 10,
+    },
+  ];
+  out.network = {
+    total_volume_tao: 120,
+    transfers: 8,
+    avg_transfer_tao: 15,
+  };
+  out.subnet_count = 2;
+  out.volume_distribution = {
+    count: 2,
+    mean: 60,
+    min: 40,
+    p25: 40,
+    median: 40,
+    p75: 80,
+    p90: 80,
+    max: 80,
+  };
+  return out;
+}
+
 // The per-subnet /chain/stake-transfers drill-in card (SubnetStakeTransfersArtifact) is a flat
 // object (netuid + distinct_senders + transfers + transfers_per_sender), NOT a leaderboard — guard
 // on the top-level netuid so this never matches the chain leaderboard's nested `network` block, and
@@ -841,6 +890,7 @@ function normalizeObjectSample(out) {
   normalizeChainDeregistrationsSample(out);
   normalizeChainStakeMovesSample(out);
   normalizeChainStakeTransfersSample(out);
+  normalizeChainStakeTransferVolumeSample(out);
   normalizeSubnetStakeTransfersSample(out);
   return out;
 }
