@@ -677,6 +677,23 @@ describe("list_endpoint_pools — branch coverage", () => {
   });
 });
 
+// ── list_endpoint_incidents — endpoint incident artifact list ─────────────
+describe("list_endpoint_incidents — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("list_endpoint_incidents", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /endpoint-incidents\.json/);
+  });
+});
+
 // ── get_agent_resources — AI-resources artifact ───────────────────────────
 describe("get_agent_resources — branch coverage", () => {
   test("surfaces non-not_found artifact failures", async () => {

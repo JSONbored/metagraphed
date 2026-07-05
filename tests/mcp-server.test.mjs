@@ -1484,6 +1484,73 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_endpoint_incidents returns filtered incident rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/endpoint-incidents.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        summary: { incident_count: 2 },
+        incidents: [
+          {
+            id: "incident-a",
+            netuid: 7,
+            severity: "critical",
+            state: "active",
+            status: "failed",
+          },
+          {
+            id: "incident-b",
+            netuid: 31,
+            severity: "warning",
+            state: "active",
+            status: "degraded",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_endpoint_incidents",
+      { severity: "critical" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.incidents[0].id, "incident-a");
+  });
+
+  test("list_endpoint_incidents reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_endpoint_incidents",
+      {},
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Endpoint incident snapshot unavailable/,
+    );
+  });
+
+  test("list_endpoint_incidents payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_endpoint_incidents",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/endpoint-incidents.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        notes: ["ok"],
+        summary: { incident_count: 1 },
+        incidents: [{ id: "incident-a", severity: "critical" }],
+      },
+    });
+    const res = await callTool(
+      "list_endpoint_incidents",
+      { limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("registry_summary returns the summary artifact", async () => {
     const res = await callTool("registry_summary", {}, { deps });
     assert.equal(res.body.result.structuredContent.completeness, 0.42);
