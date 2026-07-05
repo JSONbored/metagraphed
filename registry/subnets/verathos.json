@@ -290,6 +290,25 @@
         "https://verathos.ai/docs"
       ],
       "url": "https://api.verathos.ai/v1/supply/circulating"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-health",
+      "kind": "subnet-api",
+      "name": "Verathos API health",
+      "notes": "Public no-auth GET /health returning Verathos API status. Live on api.verathos.ai, the same host as the existing models subnet-api surface; documented in the subnet's OpenAPI spec.",
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://verathos.ai/openapi.json",
+        "https://verathos.ai/docs"
+      ],
+      "url": "https://api.verathos.ai/health"
     }
   ],
   "website_url": "https://verathos.ai/"
