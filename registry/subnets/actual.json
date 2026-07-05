@@ -78,6 +78,22 @@
         "timeout_ms": 10000
       },
       "notes": "Public Actual GGUF model registry page. The page is browser-facing and served publicly; account-specific Actual docs redirect to login and are not listed as public docs."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-95-actual-health",
+      "kind": "subnet-api",
+      "name": "Actual API health",
+      "notes": "Public no-auth GET /api/health on actual.inc returning application liveness JSON. Served on the official Actual Computer website host registered in this manifest.",
+      "provider": "actual-computer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": ["https://actual.inc/"],
+      "url": "https://actual.inc/api/health"
     }
   ],
   "contact": "subnet@actual.inc"
