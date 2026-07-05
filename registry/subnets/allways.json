@@ -312,6 +312,31 @@
       },
       "source_urls": ["https://api.all-ways.io/swagger"],
       "url": "https://api.all-ways.io/swaps"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-history-api",
+      "kind": "subnet-api",
+      "name": "Allways network history API",
+      "notes": "Public no-auth GET returning time-series network volume, swap counts, fees, TPS, success rate, and average settlement time (per-bucket and cumulative). Documented in the subnet's own OpenAPI (api.all-ways.io/swagger-json, path /history); same host as existing subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.all-ways.io/swagger-json",
+        "https://api.all-ways.io/swagger"
+      ],
+      "url": "https://api.all-ways.io/history"
     }
   ],
   "website_url": "https://all-ways.io/"
