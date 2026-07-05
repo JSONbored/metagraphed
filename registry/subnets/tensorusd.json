@@ -86,6 +86,28 @@
         "timeout_ms": 10000
       },
       "notes": "Official TensorUSD source repository."
+    },
+    {
+      "id": "sn-113-tensorusd-subnet-api",
+      "name": "TensorUSD API health",
+      "kind": "subnet-api",
+      "url": "https://api.tensorusd.com/health",
+      "provider": "tensorusd",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://tensorusd.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "notes": "Public no-auth GET returning the TensorUSD (SN113) backend API health (status + component/database connectivity). Hosted on api.tensorusd.com, the API subdomain of the subnet's registered website tensorusd.com."
     }
   ],
   "social": {
