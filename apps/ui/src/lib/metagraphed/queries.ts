@@ -48,6 +48,9 @@ import type {
   ChainFeePayer,
   ChainTransferPair,
   ChainTransferPairs,
+  BlockTimeDistribution,
+  BlocksSummary,
+  BlocksSummaryThroughput,
   ChainConcentration,
   ChainPerformance,
   ChainSigners,
@@ -2455,6 +2458,63 @@ export const chainTransferPairsQuery = (
       };
     },
     staleTime: STALE_MED,
+  });
+
+function normalizeBlockTimeDistribution(raw: unknown): BlockTimeDistribution | null {
+  if (!isRecord(raw)) return null;
+  const count = firstFiniteNumber(raw.count) ?? 0;
+  if (count < 2) return null;
+  return {
+    count,
+    mean_ms: firstFiniteNumber(raw.mean_ms) ?? null,
+    min_ms: firstFiniteNumber(raw.min_ms) ?? null,
+    max_ms: firstFiniteNumber(raw.max_ms) ?? null,
+    p50_ms: firstFiniteNumber(raw.p50_ms) ?? null,
+    p90_ms: firstFiniteNumber(raw.p90_ms) ?? null,
+  };
+}
+
+function normalizeBlocksSummaryThroughput(raw: unknown): BlocksSummaryThroughput | null {
+  if (!isRecord(raw)) return null;
+  return {
+    total_extrinsics: firstFiniteNumber(raw.total_extrinsics) ?? 0,
+    total_events: firstFiniteNumber(raw.total_events) ?? 0,
+    mean_extrinsics_per_block: firstFiniteNumber(raw.mean_extrinsics_per_block) ?? null,
+    mean_events_per_block: firstFiniteNumber(raw.mean_events_per_block) ?? null,
+    max_extrinsics_in_block: firstFiniteNumber(raw.max_extrinsics_in_block) ?? 0,
+  };
+}
+
+export function normalizeBlocksSummary(raw: unknown): BlocksSummary {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    block_count: firstFiniteNumber(rec.block_count) ?? 0,
+    first_block: firstFiniteNumber(rec.first_block) ?? null,
+    last_block: firstFiniteNumber(rec.last_block) ?? null,
+    first_observed_at: firstString(rec.first_observed_at) ?? null,
+    last_observed_at: firstString(rec.last_observed_at) ?? null,
+    distinct_authors: firstFiniteNumber(rec.distinct_authors) ?? 0,
+    distinct_spec_versions: firstFiniteNumber(rec.distinct_spec_versions) ?? 0,
+    latest_spec_version: firstFiniteNumber(rec.latest_spec_version) ?? null,
+    block_time: normalizeBlockTimeDistribution(rec.block_time),
+    throughput: normalizeBlocksSummaryThroughput(rec.throughput),
+    author_concentration: normalizeConcentrationMetricsOrNull(rec.author_concentration),
+  };
+}
+
+export const blocksSummaryQuery = () =>
+  queryOptions({
+    queryKey: k("blocks-summary"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<BlocksSummary>>("/api/v1/blocks/summary", { signal });
+      return {
+        data: normalizeBlocksSummary(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_SHORT,
   });
 
 const READINESS_COMPONENT_KEYS = [
