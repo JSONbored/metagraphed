@@ -7,6 +7,7 @@ import {
   LIST_PROVIDER_ENDPOINTS_MCP_TOOL,
   LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
   loadProviderEndpointsList,
+  parseProviderSlug,
   providerEndpointsArtifactPath,
   providerEndpointsMcpError,
   providerEndpointsQueryUrl,
@@ -54,6 +55,24 @@ function readArtifact(_env, path) {
 }
 
 describe("provider-endpoints-mcp", () => {
+  test("providerEndpointsArtifactPath builds the per-provider artifact key", () => {
+    assert.equal(
+      providerEndpointsArtifactPath("datura"),
+      "/metagraph/providers/datura/endpoints.json",
+    );
+  });
+
+  test("parseProviderSlug trims whitespace and accepts valid slugs", () => {
+    assert.equal(parseProviderSlug({ slug: "  datura  " }), "datura");
+  });
+
+  test("parseProviderSlug rejects an empty slug", () => {
+    assert.throws(
+      () => parseProviderSlug({ slug: "   " }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
   test("providerEndpointsMcpError is shaped for MCP toolError handling", () => {
     const err = providerEndpointsMcpError("invalid_params", "bad sort");
     assert.equal(err.code, "invalid_params");
@@ -100,6 +119,108 @@ describe("provider-endpoints-mcp", () => {
     );
   });
 
+  test("providerEndpointsQueryUrl rejects invalid layer", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ layer: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects invalid publication_state", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ publication_state: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects invalid status", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ status: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects invalid sort", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ sort: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects invalid order", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ order: "bogus" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects invalid netuid", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ netuid: -1 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects a fractional netuid", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ netuid: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects negative cursor", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ cursor: -1 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects empty fields projection", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ fields: "   " }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects non-string fields", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ fields: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl rejects non-numeric range bounds", () => {
+    assert.throws(
+      () => providerEndpointsQueryUrl({ min_latency_ms: "lots" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("providerEndpointsQueryUrl trims and forwards a fields projection", () => {
+    const url = providerEndpointsQueryUrl({ fields: " surface_id,status " });
+    assert.equal(url.searchParams.get("fields"), "surface_id,status");
+  });
+
+  test("providerEndpointsQueryUrl forwards pool_eligible=false", () => {
+    const url = providerEndpointsQueryUrl({ pool_eligible: false });
+    assert.equal(url.searchParams.get("pool_eligible"), "false");
+  });
+
+  test("providerEndpointsQueryUrl clamps a non-numeric limit to the default", () => {
+    const url = providerEndpointsQueryUrl({ limit: "lots" });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("providerEndpointsQueryUrl clamps a sub-minimum numeric limit to the default", () => {
+    const url = providerEndpointsQueryUrl({ limit: 0 });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("providerEndpointsQueryUrl clamps limit above the MCP maximum", () => {
+    const url = providerEndpointsQueryUrl({ limit: 500 });
+    assert.equal(url.searchParams.get("limit"), "100");
+  });
+
   test("providerEndpointsQueryUrl rejects non-boolean pool_eligible", () => {
     assert.throws(
       () => providerEndpointsQueryUrl({ pool_eligible: "yes" }),
@@ -133,6 +254,113 @@ describe("provider-endpoints-mcp", () => {
     assert.equal(out.slug, "datura");
     assert.equal(out.returned, 1);
     assert.equal(out.endpoints[0].surface_id, "datura-api");
+  });
+
+  test("loadProviderEndpointsList sorts and pages the collection", async () => {
+    const out = await loadProviderEndpointsList(
+      { env: {}, readArtifact },
+      { slug: "datura", sort: "latency_ms", order: "desc", limit: 1 },
+    );
+    assert.equal(out.returned, 1);
+    assert.equal(out.total, 2);
+    assert.equal(out.endpoints[0].surface_id, "datura-rpc");
+    assert.equal(out.next_cursor, 1);
+  });
+
+  test("loadProviderEndpointsList uses an injected readArtifact dep", async () => {
+    const out = await loadProviderEndpointsList(
+      { env: {}, readArtifact: async () => ({ ok: false }) },
+      { slug: "solo" },
+      {
+        readArtifact: async () => ({
+          ok: true,
+          data: { endpoints: [{ surface_id: "solo" }] },
+        }),
+      },
+    );
+    assert.equal(out.endpoints[0].surface_id, "solo");
+  });
+
+  test("loadProviderEndpointsList maps artifact_not_found to not_found", async () => {
+    await assert.rejects(
+      () =>
+        loadProviderEndpointsList(
+          {
+            env: {},
+            readArtifact: async () => ({
+              ok: false,
+              code: "artifact_not_found",
+            }),
+          },
+          { slug: "ghost" },
+        ),
+      (err) => err.code === "not_found",
+    );
+  });
+
+  test("loadProviderEndpointsList surfaces other artifact failures", async () => {
+    await assert.rejects(
+      () =>
+        loadProviderEndpointsList(
+          {
+            env: {},
+            readArtifact: async () => ({
+              ok: false,
+              code: "artifact_timeout",
+            }),
+          },
+          { slug: "datura" },
+        ),
+      (err) =>
+        err.code === "artifact_timeout" &&
+        /providers\/datura\/endpoints\.json/.test(err.message),
+    );
+  });
+
+  test("loadProviderEndpointsList rejects invalid list-query params from REST parity", async () => {
+    await assert.rejects(
+      () =>
+        loadProviderEndpointsList(
+          { env: {}, readArtifact },
+          { slug: "datura", fields: "not_a_column" },
+        ),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("loadProviderEndpointsList rejects contradictory latency range bounds", async () => {
+    await assert.rejects(
+      () =>
+        loadProviderEndpointsList(
+          { env: {}, readArtifact },
+          { slug: "datura", min_latency_ms: 500, max_latency_ms: 100 },
+        ),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("loadProviderEndpointsList preserves array notes from the artifact", async () => {
+    const out = await loadProviderEndpointsList(
+      { env: {}, readArtifact },
+      { slug: "datura", limit: 1 },
+    );
+    assert.equal(out.generated_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(out.notes, "test");
+  });
+
+  test("loadProviderEndpointsList omits nullable artifact metadata when absent", async () => {
+    const out = await loadProviderEndpointsList(
+      {
+        env: {},
+        readArtifact: async () => ({
+          ok: true,
+          data: { endpoints: [{ surface_id: "solo" }] },
+        }),
+      },
+      { slug: "solo" },
+    );
+    assert.equal(out.generated_at, null);
+    assert.equal(out.notes, null);
   });
 
   test("loadProviderEndpointsList reports not_found when the artifact is absent", async () => {
