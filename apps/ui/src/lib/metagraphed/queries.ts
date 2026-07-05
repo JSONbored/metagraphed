@@ -126,6 +126,10 @@ import type {
   SubnetPerformance,
   PerformanceHistoryPoint,
   SubnetPerformanceHistory,
+  SubnetYield,
+  SubnetYieldNeuron,
+  YieldHistoryPoint,
+  SubnetYieldHistory,
   SubnetProfile,
   Surface,
   SurfaceLatencyPercentiles,
@@ -3829,6 +3833,125 @@ export const subnetPerformanceHistoryQuery = (
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetPerformanceHistory>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3478: per-UID emission yield (emission/stake return) for one subnet — the
+// return-rate twin of /concentration + /performance. A distribution summary
+// (subnet aggregate, mean, p25/median/p75/p90), a validator/miner split, and the
+// per-UID ranked rows, plus the daily distribution trend from /yield/history.
+function normalizeSubnetYieldNeuron(raw: unknown): SubnetYieldNeuron | undefined {
+  if (!isRecord(raw)) return undefined;
+  const uid = coerceFiniteNumber(raw.uid);
+  if (uid == null) return undefined;
+  const vs = raw.vs_median;
+  return {
+    uid,
+    hotkey: coerceString(raw.hotkey) ?? null,
+    role: raw.role === "validator" ? "validator" : "miner",
+    stake_tao: coerceFiniteNumber(raw.stake_tao) ?? 0,
+    emission_tao: coerceFiniteNumber(raw.emission_tao) ?? 0,
+    yield: coerceFiniteNumber(raw.yield) ?? null,
+    vs_median: vs === "above" || vs === "below" || vs === "at" ? vs : null,
+  };
+}
+
+function normalizeSubnetYield(netuid: number, raw: unknown): SubnetYield {
+  const d = isRecord(raw) ? raw : {};
+  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
+  const neurons = Array.isArray(d.neurons)
+    ? d.neurons.slice(0, MAX_NEURON_ROWS).flatMap((n) => {
+        const normalized = normalizeSubnetYieldNeuron(n);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    captured_at: coerceString(d.captured_at),
+    block_number: coerceFiniteNumber(d.block_number),
+    neuron_count: coerceFiniteNumber(d.neuron_count) ?? neurons.length,
+    validator_count: coerceFiniteNumber(d.validator_count),
+    miner_count: coerceFiniteNumber(d.miner_count),
+    total_stake_tao: coerceFiniteNumber(d.total_stake_tao),
+    total_emission_tao: coerceFiniteNumber(d.total_emission_tao),
+    subnet_yield: nullableNum(d.subnet_yield),
+    mean_yield: nullableNum(d.mean_yield),
+    median_yield: nullableNum(d.median_yield),
+    p25_yield: nullableNum(d.p25_yield),
+    p75_yield: nullableNum(d.p75_yield),
+    p90_yield: nullableNum(d.p90_yield),
+    neurons,
+  };
+}
+
+function normalizeYieldHistoryPoint(raw: unknown): YieldHistoryPoint | undefined {
+  if (!isRecord(raw)) return undefined;
+  const snapshotDate = coerceString(raw.snapshot_date);
+  if (!snapshotDate) return undefined;
+  const nullableNum = (v: unknown): number | null => coerceFiniteNumber(v) ?? null;
+  return {
+    ...(raw as object),
+    snapshot_date: snapshotDate,
+    neuron_count: coerceFiniteNumber(raw.neuron_count),
+    validator_count: coerceFiniteNumber(raw.validator_count),
+    yield_count: coerceFiniteNumber(raw.yield_count),
+    subnet_yield: nullableNum(raw.subnet_yield),
+    mean_yield: nullableNum(raw.mean_yield),
+    median_yield: nullableNum(raw.median_yield),
+    p25_yield: nullableNum(raw.p25_yield),
+    p75_yield: nullableNum(raw.p75_yield),
+    p90_yield: nullableNum(raw.p90_yield),
+  };
+}
+
+function normalizeSubnetYieldHistory(netuid: number, raw: unknown): SubnetYieldHistory {
+  const d = isRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_HISTORY_POINTS).flatMap((point) => {
+        const normalized = normalizeYieldHistoryPoint(point);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    window: coerceString(d.window),
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    points,
+  };
+}
+
+/** Per-UID emission-yield snapshot (distribution summary, validator/miner split, ranked rows). */
+export const subnetYieldQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-yield", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetYield>>(`/api/v1/subnets/${netuid}/yield`, {
+        signal,
+      });
+      return {
+        data: normalizeSubnetYield(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetYield>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Daily emission-yield distribution drift (subnet/mean/median/percentile yields). */
+export const subnetYieldHistoryQuery = (netuid: number, window: "7d" | "30d" | "90d" = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-yield-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetYieldHistory>>(
+        `/api/v1/subnets/${netuid}/yield/history`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetYieldHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetYieldHistory>;
     },
     staleTime: STALE_MED,
   });

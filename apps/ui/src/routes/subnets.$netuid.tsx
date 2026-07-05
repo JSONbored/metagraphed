@@ -29,6 +29,7 @@ import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-char
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
+import { YieldLoader } from "@/components/metagraphed/yield-panel";
 import { NeuronDetailCard } from "@/components/metagraphed/neuron-detail-card";
 import { NeuronHistoryChart } from "@/components/metagraphed/neuron-history-chart";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
@@ -163,6 +164,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   metagraph: "metagraph",
   neuron: "metagraph",
   concentration: "metagraph",
+  yield: "metagraph",
   validators: "validators",
   services: "services",
   "agent-readiness": "services",
@@ -818,6 +820,19 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
       >
         <QueryErrorBoundary>
           <DistributionPanel netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="yield"
+        title="Yield"
+        subtitle="Per-UID emission yield (emission ÷ stake return rate): distribution summary, validator/miner split, and the ranked neuron leaderboard with daily drift."
+        info="GET /api/v1/subnets/{netuid}/yield and /yield/history — the return-rate twin of concentration, computed per-UID from the live neuron snapshot."
+      >
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+            <YieldLoader netuid={netuid} />
+          </Suspense>
         </QueryErrorBoundary>
       </SectionAnchor>
     </div>
