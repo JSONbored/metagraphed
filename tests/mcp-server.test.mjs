@@ -13490,8 +13490,88 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_surfaces rejects an unexpected argument", async () => {
-    const res = await callTool("list_surfaces", { netuid: 7 });
+    const res = await callTool("list_surfaces", { bogus: 1 });
     assert.equal(res.body.result.isError, true);
+  });
+
+  function surfacesDeps() {
+    return makeDeps({
+      "/metagraph/surfaces.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        surfaces: [
+          { netuid: 7, kind: "openapi", provider: "datura" },
+          { netuid: 7, kind: "subnet-api", provider: "chutes" },
+          { netuid: 12, kind: "openapi", provider: "datura" },
+        ],
+      },
+    });
+  }
+
+  test("list_surfaces filters by netuid, kind, and provider", async () => {
+    const deps = surfacesDeps();
+    const byNetuid = (await callTool("list_surfaces", { netuid: 12 }, { deps }))
+      .body.result.structuredContent;
+    assert.equal(byNetuid.total, 1);
+    assert.equal(byNetuid.surfaces[0].provider, "datura");
+
+    const byKind = (
+      await callTool("list_surfaces", { kind: "subnet-api" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byKind.total, 1);
+    assert.equal(byKind.surfaces[0].provider, "chutes");
+
+    const byProvider = (
+      await callTool("list_surfaces", { provider: "datura" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byProvider.total, 2);
+  });
+
+  test("list_surfaces combines filters (AND) and reports total vs returned", async () => {
+    const deps = surfacesDeps();
+    const res = await callTool(
+      "list_surfaces",
+      { netuid: 7, provider: "datura" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 1);
+    assert.equal(out.returned, 1);
+    assert.equal(out.surfaces[0].kind, "openapi");
+  });
+
+  test("list_surfaces paginates the filtered list with limit/offset", async () => {
+    const deps = surfacesDeps();
+    const res = await callTool(
+      "list_surfaces",
+      { limit: 1, offset: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 1);
+    assert.equal(out.offset, 1);
+    assert.equal(out.surfaces[0].provider, "chutes");
+  });
+
+  test("list_surfaces rejects an unknown kind enum value", async () => {
+    const deps = surfacesDeps();
+    const res = await callTool(
+      "list_surfaces",
+      { kind: "not-a-kind" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("list_surfaces is schema-stable when the artifact has no surfaces array", async () => {
+    const deps = makeDeps({
+      "/metagraph/surfaces.json": { generated_at: "2026-01-01T00:00:00Z" },
+    });
+    const res = await callTool("list_surfaces", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.surfaces, []);
+    assert.equal(out.total, 0);
+    assert.equal(out.returned, 0);
   });
 
   test("list_candidates returns the candidates catalog artifact", async () => {
