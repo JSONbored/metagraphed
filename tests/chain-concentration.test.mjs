@@ -146,6 +146,16 @@ describe("buildChainConcentration", () => {
     assert.equal(out.subnet_count, 1); // still only subnet 5
   });
 
+  test("subnet_count ignores skipped blank-stake rows", () => {
+    const out = buildChainConcentration([
+      { stake_tao: "", coldkey: "a", netuid: 12 },
+      { stake_tao: "   ", coldkey: "b", netuid: 99 },
+      { stake_tao: 10, coldkey: "c", netuid: 7 },
+    ]);
+    assert.equal(out.subnet_count, 1);
+    assert.equal(out.neuron_count, 1);
+  });
+
   test("counts root subnet (netuid 0) when explicitly present", () => {
     const out = buildChainConcentration([
       { stake_tao: 1, coldkey: "a", netuid: 0 },

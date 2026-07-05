@@ -50,6 +50,29 @@ function raoBigToTao(rao) {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
+// A finite TAO cell, or null when absent/blank/non-numeric. Blank D1 cells coerce via
+// Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
+// phantom controlling entities (mirrors chain-yield.mjs / subnet-yield.mjs).
+function nullableTao(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+// Rows that carry a known stake_tao cell — the population every concentration lens
+// and neuron/entity count is measured over (junk rows and blank-stake cells drop out).
+function stakeAcceptedRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const accepted = [];
+  for (const row of list) {
+    if (row == null || typeof row !== "object") continue;
+    if (nullableTao(row?.stake_tao) == null) continue;
+    accepted.push(row);
+  }
+  return accepted;
+}
+
 function epochMsStamp(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return null;
   const date = new Date(ms);
@@ -227,10 +250,11 @@ function groupByEntity(rows) {
 // Null-safe on junk/sparse rows — an empty array yields a schema-stable zero
 // (every metric block null).
 export function buildConcentration(rows, netuid) {
-  const list = Array.isArray(rows) ? rows : [];
+  const rawList = Array.isArray(rows) ? rows : [];
+  const list = stakeAcceptedRows(rawList);
   // The rows share one cron capture, but don't assume an order — take the newest.
   let capturedAt = null;
-  for (const row of list) {
+  for (const row of rawList) {
     const captured = captureStamp(row?.captured_at);
     if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
       capturedAt = captured;
@@ -274,15 +298,18 @@ export const CHAIN_CONCENTRATION_READ_COLUMNS =
 // snapshot spans. Null-safe: an empty array yields a schema-stable zero (every
 // metric block null), matching buildConcentration.
 export function buildChainConcentration(rows) {
-  const list = Array.isArray(rows) ? rows : [];
+  const rawList = Array.isArray(rows) ? rows : [];
+  const list = stakeAcceptedRows(rawList);
   // One cron capture underlies the rows, but don't assume order — take the newest.
   let capturedAt = null;
   const netuids = new Set();
-  for (const row of list) {
+  for (const row of rawList) {
     const captured = captureStamp(row?.captured_at);
     if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
       capturedAt = captured;
     }
+  }
+  for (const row of list) {
     const rawNetuid = row?.netuid;
     if (rawNetuid != null) {
       // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.

@@ -177,6 +177,25 @@ describe("buildConcentration", () => {
     assert.equal(data.entity_stake.holders, 3);
   });
 
+  test("reject blank stake_tao cells that coerce to 0 (not phantom neurons/entities)", () => {
+    const data = buildConcentration(
+      [
+        { stake_tao: 10, emission_tao: 1, coldkey: "ck-a" },
+        { stake_tao: "", emission_tao: 2, coldkey: "ck-b" },
+        { stake_tao: "   ", emission_tao: 3, coldkey: "ck-c" },
+        { stake_tao: null, emission_tao: 4, coldkey: "ck-d" },
+      ],
+      7,
+    );
+    assert.equal(data.neuron_count, 1);
+    assert.equal(data.entity_count, 1);
+    assert.equal(data.stake.holders, 1);
+    assert.equal(data.stake.total, 10);
+    // Blank-stake rows must not inflate the emission lens either.
+    assert.equal(data.emission.holders, 1);
+    assert.equal(data.emission.total, 1);
+  });
+
   test("converts D1 epoch-millisecond captured_at values to ISO strings", () => {
     const data = buildConcentration(
       [
@@ -221,14 +240,16 @@ describe("buildConcentration", () => {
   test("tolerates rows missing captured_at / value columns", () => {
     const data = buildConcentration(
       [
-        { stake_tao: 8 },
-        { emission_tao: 2, captured_at: "2026-06-26T03:00:00Z" },
+        { stake_tao: 8, emission_tao: 2 },
+        { emission_tao: 3, captured_at: "2026-06-26T03:00:00Z" },
       ],
       1,
     );
     assert.equal(data.captured_at, "2026-06-26T03:00:00Z");
+    assert.equal(data.neuron_count, 1);
     assert.equal(data.stake.holders, 1);
     assert.equal(data.emission.holders, 1);
+    assert.equal(data.emission.total, 2);
   });
 });
 
