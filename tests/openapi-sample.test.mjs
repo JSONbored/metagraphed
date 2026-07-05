@@ -416,6 +416,69 @@ describe("sampleFromSchema", () => {
     );
   });
 
+  test("account stake-transfer samples keep totals and concentration consistent", () => {
+    const accountStakeTransfersSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "address",
+        "window",
+        "total_transfers",
+        "subnet_count",
+        "concentration",
+        "dominant_netuid",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        address: { type: "string" },
+        window: { type: "string" },
+        total_transfers: { type: "integer" },
+        subnet_count: { type: "integer" },
+        concentration: { type: ["number", "null"] },
+        dominant_netuid: { type: ["integer", "null"] },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "transfers",
+              "first_transferred_at",
+              "last_transferred_at",
+            ],
+            properties: {
+              netuid: { type: "integer" },
+              transfers: { type: "integer" },
+              first_transferred_at: {
+                type: ["string", "null"],
+                format: "date-time",
+              },
+              last_transferred_at: {
+                type: ["string", "null"],
+                format: "date-time",
+              },
+            },
+          },
+        },
+      },
+    };
+    const sample = s(accountStakeTransfersSchema, "data");
+
+    assert.equal(
+      sample.address,
+      "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    );
+    assert.equal(sample.total_transfers, 4);
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.concentration, 1);
+    assert.equal(sample.dominant_netuid, sample.subnets[0].netuid);
+    assert.equal(
+      sample.total_transfers,
+      sample.subnets.reduce((sum, subnet) => sum + subnet.transfers, 0),
+    );
+  });
+
   test("chain transfer-volume samples keep the leaderboard consistent with the total", () => {
     const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
     const partySchema = {
