@@ -159,6 +159,25 @@
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/114"
       ],
       "url": "https://github.com/Level114/level114-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-114-soma-health",
+      "kind": "subnet-api",
+      "name": "SOMA API health",
+      "notes": "Public no-auth GET /api/health on thesoma.ai returning application liveness JSON. Served on the official SN114 website host registered in this manifest and linked from the DendriteHQ/SOMA source repository.",
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/DendriteHQ/SOMA/blob/main/README.md",
+        "https://thesoma.ai/"
+      ],
+      "url": "https://thesoma.ai/api/health"
     }
   ],
   "website_url": "https://thesoma.ai/"
