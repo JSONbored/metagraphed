@@ -46,6 +46,7 @@ import {
   handleAccountCounterparties,
   handleAccountStakeFlow,
   handleAccountStakeMoves,
+  handleAccountStakeTransfers,
   handleAccountSubnets,
   handleSubnetEventSummary,
   handleSubnetEvents,
@@ -251,6 +252,7 @@ function dbWith({
   turnoverRows,
   stakeFlow,
   stakeMoves,
+  stakeTransfers,
   agg,
   kinds,
   registrations,
@@ -344,6 +346,14 @@ function dbWith({
                     /GROUP BY netuid/.test(sql)
                   ) {
                     return { results: stakeMoves || [] };
+                  }
+                  // Account stake-transfer footprint: GROUP BY netuid over StakeTransferred.
+                  if (
+                    /COUNT\(\*\) AS transfers/.test(sql) &&
+                    /event_kind = \?/.test(sql) &&
+                    /GROUP BY netuid/.test(sql)
+                  ) {
+                    return { results: stakeTransfers || [] };
                   }
                   // Account summary aggregates (order matters).
                   if (
@@ -4182,6 +4192,105 @@ describe("handleAccountStakeMoves", () => {
     assert.ok(idx !== -1);
     assert.equal(captures.params[idx][0], SS58);
     assert.equal(captures.params[idx][1], "StakeMoved");
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
+  });
+});
+
+describe("handleAccountStakeTransfers", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountStakeTransfers(
+      req(`/api/v1/accounts/${SS58}/stake-transfers`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-transfers?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleAccountStakeTransfers(
+      req(`/api/v1/accounts/${SS58}/stake-transfers`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-transfers?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns schema-stable zeros on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountStakeTransfers,
+      req(`/api/v1/accounts/${SS58}/stake-transfers`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-transfers`),
+    );
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.total_transfers, 0);
+    assert.equal(body.data.subnet_count, 0);
+    assert.equal(body.data.concentration, null);
+    assert.equal(body.data.dominant_netuid, null);
+    await assertValidComponent("AccountStakeTransfersArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/accounts/${SS58}/stake-transfers.json`,
+    );
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  test("folds per-subnet transfers, bound to the sender + StakeTransferred", async () => {
+    const { env, captures } = dbWith({
+      stakeTransfers: [
+        {
+          netuid: 1,
+          transfers: 5,
+          first_observed: 1717000000000,
+          last_observed: 1717900000000,
+        },
+        {
+          netuid: 7,
+          transfers: 2,
+          first_observed: 1717500000000,
+          last_observed: 1717600000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleAccountStakeTransfers(
+        req(`/api/v1/accounts/${SS58}/stake-transfers`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/stake-transfers?window=90d`),
+      ),
+    );
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.window, "90d");
+    assert.equal(body.data.total_transfers, 7);
+    assert.equal(body.data.subnet_count, 2);
+    assert.equal(body.data.subnets[0].netuid, 1);
+    assert.equal(body.data.dominant_netuid, 1);
+    assert.equal(
+      body.data.subnets[0].first_transferred_at,
+      new Date(1717000000000).toISOString(),
+    );
+    assert.equal(
+      body.data.subnets[0].last_transferred_at,
+      new Date(1717900000000).toISOString(),
+    );
+    await assertValidComponent("AccountStakeTransfersArtifact", body.data);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM account_events INDEXED BY idx_account_events_coldkey WHERE coldkey = \?/.test(
+        s,
+      ),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], SS58);
+    assert.equal(captures.params[idx][1], "StakeTransferred");
     assert.equal(body.meta.source, "chain-events");
     assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });

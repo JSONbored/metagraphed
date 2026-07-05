@@ -259,6 +259,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/stake-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one account's stake-transfer footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeTransferred count with the first and last transfer timestamps, plus account totals, an HHI concentration of where its between-account transfer activity is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-transfers and GET /api/v1/subnets/{netuid}/stake-transfers, distinct from re-delegation churn in GET /api/v1/accounts/{ss58}/stake-moves and net capital flow in GET /api/v1/accounts/{ss58}/stake-flow. */
+        get: operations["accountStakeTransfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/subnets": {
         parameters: {
             query?: never;
@@ -2702,6 +2719,25 @@ export interface components {
                 netuid: number;
             }[];
             total_movements: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
+        };
+        /** @description One account's stake-transfer footprint per subnet over a recent window, from the account_events StakeTransferred stream: per-subnet transfer count with the first/last transfer timestamps, plus account totals, an HHI concentration of where its between-account transfer activity is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-transfers and /api/v1/subnets/{netuid}/stake-transfers, distinct from re-delegation churn in /accounts/{ss58}/stake-moves and net capital flow in /accounts/{ss58}/stake-flow. */
+        AccountStakeTransfersArtifact: {
+            address: string;
+            concentration: number | null;
+            dominant_netuid: number | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: {
+                /** Format: date-time */
+                first_transferred_at: string | null;
+                /** Format: date-time */
+                last_transferred_at: string | null;
+                netuid: number;
+                transfers: number;
+            }[];
+            total_transfers: number;
             /** @enum {string|null} */
             window: "7d" | "30d" | "90d" | null;
         };
@@ -8991,6 +9027,123 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountStakeMovesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountStakeTransfers: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "address": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *         "concentration": 1,
+                     *         "dominant_netuid": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "first_transferred_at": "2026-06-01T00:00:00.000Z",
+                     *             "last_transferred_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 1,
+                     *             "transfers": 4
+                     *           }
+                     *         ],
+                     *         "total_transfers": 4,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountStakeTransfersArtifact"];
                     };
                 };
             };
