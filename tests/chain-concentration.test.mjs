@@ -192,6 +192,7 @@ describe("buildChainConcentration", () => {
     const out = buildChainConcentration([
       null,
       "nope",
+      42,
       {
         stake_tao: 10,
         emission_tao: 1,
