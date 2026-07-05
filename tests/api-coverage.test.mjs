@@ -244,7 +244,10 @@ function createCandidatesCsvEnv() {
   const artifacts = new Map([
     [
       "/metagraph/candidates.json",
-      { generated_at: "2026-01-01T00:00:00Z", candidates: SYNTHETIC_CANDIDATE_ROWS },
+      {
+        generated_at: "2026-01-01T00:00:00Z",
+        candidates: SYNTHETIC_CANDIDATE_ROWS,
+      },
     ],
     [
       "/metagraph/candidates/6.json",
