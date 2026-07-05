@@ -64,6 +64,25 @@
       },
       "source_urls": ["https://autoresearch.bitsota.com/openapi.json"],
       "url": "https://autoresearch.bitsota.com/api/v1/idea-rewards"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-healthz",
+      "kind": "subnet-api",
+      "name": "Bitsota AutoResearch coordinator healthz",
+      "notes": "Public no-auth GET /healthz on autoresearch.bitsota.com returning coordinator liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /healthz in the subnet OpenAPI spec on the same host as the registered tasks and idea-rewards surfaces.",
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://autoresearch.bitsota.com/openapi.json",
+        "https://bitsota.ai/docs/autoresearch-backend-routes"
+      ],
+      "url": "https://autoresearch.bitsota.com/healthz"
     }
   ]
 }

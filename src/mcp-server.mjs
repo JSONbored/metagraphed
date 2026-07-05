@@ -6528,6 +6528,27 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "list_profile_completeness",
+    title: "List subnet profile-completeness gaps",
+    description:
+      "Fetch the contributor review queue of subnet profile-completeness gaps: " +
+      "which subnets have incomplete public-safe profiles (missing identity, " +
+      "native name, confidence, or promotion signals) and are worth profile " +
+      "enrichment. Use it to find high-value profile contributions. Mirrors " +
+      "GET /api/v1/review/profile-completeness.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(
+        ctx,
+        "/metagraph/review/profile-completeness.json",
+      );
+    },
+  },
+  {
     name: "list_rpc_pools",
     title: "List Bittensor RPC pools",
     description:
@@ -10402,6 +10423,16 @@ const TOOL_OUTPUT_SCHEMAS = {
     required: [],
     properties: {
       pools: { type: "array", items: { type: "object" } },
+      generated_at: NULLABLE_STRING,
+      schema_version: { type: ["string", "integer", "null"] },
+    },
+  },
+  list_profile_completeness: {
+    type: "object",
+    additionalProperties: true,
+    required: [],
+    properties: {
+      subnets: { type: "array", items: { type: "object" } },
       generated_at: NULLABLE_STRING,
       schema_version: { type: ["string", "integer", "null"] },
     },
