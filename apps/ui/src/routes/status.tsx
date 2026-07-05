@@ -8,6 +8,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SectionHeading } from "@/components/metagraphed/section-heading";
+import { NetworkDecentralizationScorecard } from "@/components/metagraphed/network-decentralization-scorecard";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { AnimatedNumber } from "@/components/metagraphed/animated-number";
@@ -70,6 +71,19 @@ function StatusPage() {
             <Verdict />
           </Suspense>
         </QueryErrorBoundary>
+        {/* #3471: network-wide decentralization scorecard — stake/emission
+            concentration (Gini/HHI/Nakamoto) + trust/consensus score spread,
+            folded into a composite grade. Its own loading/empty/error states. */}
+        <section>
+          <SectionHeading
+            title="Network decentralization"
+            intro="Stake & emission concentration (Gini / HHI / Nakamoto) and the trust/consensus score spread, folded into a single composite grade."
+          />
+          <QueryErrorBoundary>
+            <NetworkDecentralizationScorecard />
+          </QueryErrorBoundary>
+        </section>
+
         <section>
           <SectionHeading title="Recent incidents" />
           <QueryErrorBoundary>
@@ -109,6 +123,8 @@ function StatusPage() {
         paths={[
           "/api/v1/health",
           "/api/v1/incidents",
+          "/api/v1/chain/concentration",
+          "/api/v1/chain/performance",
           "/api/v1/health/history/{date}",
           "/api/v1/source-health",
         ]}
