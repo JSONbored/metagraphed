@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { economicsQuery, subnetStakeMovesQuery } from "@/lib/metagraphed/queries";
+import {
+  economicsQuery,
+  subnetStakeMovesQuery,
+  subnetStakeTransfersQuery,
+} from "@/lib/metagraphed/queries";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
 import { stakeMovesTileModel } from "@/lib/metagraphed/stake-moves-tile";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { stakeTransfersTileModel } from "@/lib/metagraphed/stake-transfers-tile";
 
 // #1112: per-subnet on-chain economics (emission share, alpha price, stake,
 // validators, volume) from the previously-unused /api/v1/economics. The artifact
@@ -70,6 +75,12 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
   const { data: res, isPending } = useQuery(economicsQuery());
   const e = res?.data.find((x) => x.netuid === netuid);
 
+  // #3484: recent stake-transfer (transfer_stake) activity for this subnet, from
+  // the already-shipped-but-unwired subnetStakeTransfersQuery. Folded into a tile
+  // view-model with safe fallbacks so it renders even on a cold/empty store.
+  const { data: transfers } = useQuery(subnetStakeTransfersQuery(netuid));
+  const xfer = stakeTransfersTileModel(transfers?.data);
+
   if (isPending && !e) return <Notice>Loading economics…</Notice>;
   if (!e) return <Notice>No on-chain economic data for this subnet.</Notice>;
 
@@ -107,6 +118,7 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
         hint={e.registration_allowed === false ? "closed" : "open"}
       />
       <StakeMovesTile netuid={netuid} />
+      <StatTile eyebrow={xfer.eyebrow} tone={xfer.tone} value={xfer.value} hint={xfer.hint} />
     </div>
   );
 }
