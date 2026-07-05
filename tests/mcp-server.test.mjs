@@ -14578,6 +14578,61 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(endpoint.latest_block, 12345);
   });
 
+  test("list_rpc_pools falls back to the static pools when no readHealthKv dep is provided", async () => {
+    const depsNoKvFn = {
+      readArtifact() {
+        return Promise.resolve({
+          ok: true,
+          data: {
+            generated_at: "2026-01-01T00:00:00Z",
+            source: "build-prober",
+            pools: [{ network: "finney", endpoints: [] }],
+          },
+        });
+      },
+    };
+    const res = await callTool("list_rpc_pools", {}, { deps: depsNoKvFn });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "build-prober");
+  });
+
+  test("list_rpc_pools falls back to the static pools when the live snapshot has no endpoints array", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/rpc/pools.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          source: "build-prober",
+          pools: [{ network: "finney", endpoints: [] }],
+        },
+      },
+      { [KV_HEALTH_RPC_POOL]: { last_run_at: "2026-01-01T00:15:00Z" } },
+    );
+    const res = await callTool("list_rpc_pools", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "build-prober");
+  });
+
+  test("list_rpc_pools falls back to the static artifact when its pools field is not an array", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/rpc/pools.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          source: "build-prober",
+          pools: { 0: { network: "finney", endpoints: [] } },
+        },
+      },
+      {
+        [KV_HEALTH_RPC_POOL]: {
+          last_run_at: "2026-01-01T00:15:00Z",
+          endpoints: [{ id: "a", status: "ok" }],
+        },
+      },
+    );
+    const res = await callTool("list_rpc_pools", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "build-prober");
+  });
+
   test("list_rpc_pools rejects an unexpected argument", async () => {
     const res = await callTool("list_rpc_pools", { netuid: 7 });
     assert.equal(res.body.result.isError, true);
