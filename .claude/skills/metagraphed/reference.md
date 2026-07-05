@@ -93,11 +93,16 @@ discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). N
   it adds no wall-clock to the long poles. The same step runs in `publish-python.yml`'s unprivileged
   `build` job before the artifact is built, so a red suite blocks a PyPI publish.
 - **`ui`** — lint + typecheck + test + build + bundle-size-budget for `apps/ui` (the TanStack
-  Start/Vite frontend, folded into this repo as an npm workspace — #3062). Gated on
-  `run_ui_validation` (`^apps/ui/` in the diff) via the same per-step guard pattern `checks` uses for
-  its docs fast lane — never a job-level skip. Entirely independent of the backend's own
-  lint/test/build; a backend-only PR doesn't build or install `apps/ui`'s tree at all, and vice
-  versa. Not part of the Gittensory contributor gate — `apps/ui/**` is a `blockedPaths` entry in
+  Start/Vite frontend, folded into this repo as an npm workspace — #3062), plus a
+  `packages/client/dist` drift check (rebuild fresh, `git diff --exit-code` against the committed
+  runtime bundle — #3066/#3294). Gated on `run_ui_validation` (`^apps/ui/` **or** `^packages/client/`
+  in the diff — the latter is required, not optional: it's the only place that verifies committed
+  `packages/client/dist/index.js`/`index.cjs` still match a fresh build, so a `packages/client`-only
+  PR must also trip this job or stale/tampered committed runtime code could merge unverified) via
+  the same per-step guard pattern `checks` uses for its docs fast lane — never a job-level skip.
+  Entirely independent of the backend's own lint/test/build; a backend-only PR touching neither
+  directory doesn't build or install `apps/ui`'s tree at all, and vice versa. Not part of the
+  Gittensory contributor gate — both `apps/ui/**` and `packages/**` are `blockedPaths` entries in
   `.gittensory.yml`, maintainer-only.
 
 **The docs fast lane (`checks` only) — narrower than, and does not weaken, the "no reduced ugc

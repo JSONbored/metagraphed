@@ -84,9 +84,17 @@ jobs:
   #
   # A third, same-shape flag: `run_ui_validation` gates the `ui` job below
   # (apps/ui, the TanStack Start/Vite frontend folded in as an npm workspace —
-  # #3062). It matches `^apps/ui/` only -- that workspace's lint/typecheck/
-  # test/build never touches anything outside its own directory, same
-  # reasoning as the two flags above, and it isn't registry-adjacent either.
+  # #3062). Matches `^apps/ui/` OR `^packages/client/` -- the latter is
+  # required, not optional: packages/client/dist/index.js + index.cjs are
+  # committed (#3066/#3294), and the ui job's "Build packages/client (drift
+  # check)" step is the ONLY place that verifies those committed files still
+  # match a fresh build from src. A packages/client-only PR (no apps/ui
+  # touch) would otherwise skip that check entirely, letting stale or
+  # directly-tampered committed runtime code merge unverified (a real P1
+  # finding from Superagent on #3294 — this was fixed in response to that,
+  # not written correctly the first time). Neither directory's validation
+  # touches anything outside these two, so this flag isn't registry-adjacent
+  # either, same reasoning as the two flags above.
   changes:
     name: changes
     runs-on: ubuntu-latest
@@ -156,7 +164,7 @@ jobs:
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^apps/ui/' changed-files.txt; then
+          if grep -qE '^apps/ui/|^packages/client/' changed-files.txt; then
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
