@@ -137,6 +137,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Hone source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-5-hone-subnet-api",
+      "kind": "subnet-api",
+      "name": "Hone API health",
+      "notes": "Public no-auth GET /health on api.hone.training returning application liveness JSON (status ok). Served on the Hone subnet API host referenced by the official hone.training dashboard frontend (wss://api.hone.training/ws/dashboard) and documented in the hone source repository README for miner health checks.",
+      "provider": "hone",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://www.hone.training/network",
+        "https://github.com/manifold-inc/hone"
+      ],
+      "url": "https://api.hone.training/health"
     }
   ],
   "contact": "devs@manifold.inc"
