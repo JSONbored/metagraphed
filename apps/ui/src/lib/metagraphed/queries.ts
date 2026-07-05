@@ -46,6 +46,8 @@ import type {
   ChainFees,
   ChainFeeDay,
   ChainFeePayer,
+  ChainConcentration,
+  ChainPerformance,
   ChainSigners,
   ChainSignerEntry,
   Extrinsic,
@@ -103,6 +105,7 @@ import type {
   GlobalValidatorSubnet,
   SubnetNeuronSnapshot,
   ConcentrationMetrics,
+  ScoreDistribution,
   SubnetConcentration,
   ConcentrationHistoryPoint,
   SubnetConcentrationHistory,
@@ -2986,6 +2989,81 @@ function normalizeConcentrationMetrics(raw: unknown): ConcentrationMetrics | und
   };
 }
 
+// Nullable concentration lens: backend emits null on cold/empty stores; malformed
+// all-null objects must not become a non-null card (ConcentrationMetrics contract).
+export function normalizeConcentrationMetricsOrNull(raw: unknown): ConcentrationMetrics | null {
+  if (raw == null) return null;
+  if (!isPlainRecord(raw)) return null;
+  const holders = coerceFiniteNumber(raw.holders);
+  const gini = coerceFiniteNumber(raw.gini);
+  const hhi = coerceFiniteNumber(raw.hhi);
+  const hhi_normalized = coerceFiniteNumber(raw.hhi_normalized);
+  const nakamoto_coefficient = coerceFiniteNumber(raw.nakamoto_coefficient);
+  if (
+    holders === 0 ||
+    (holders == null &&
+      gini == null &&
+      hhi == null &&
+      hhi_normalized == null &&
+      nakamoto_coefficient == null)
+  ) {
+    return null;
+  }
+  return normalizeConcentrationMetrics(raw) ?? null;
+}
+
+export function normalizeScoreDistributionOrNull(raw: unknown): ScoreDistribution | null {
+  if (raw == null) return null;
+  if (!isPlainRecord(raw)) return null;
+  const count = coerceFiniteNumber(raw.count);
+  if (count == null || count === 0) return null;
+  return {
+    count,
+    mean: coerceFiniteNumber(raw.mean) ?? null,
+    min: coerceFiniteNumber(raw.min) ?? null,
+    max: coerceFiniteNumber(raw.max) ?? null,
+    p10: coerceFiniteNumber(raw.p10) ?? null,
+    p25: coerceFiniteNumber(raw.p25) ?? null,
+    p50: coerceFiniteNumber(raw.p50) ?? null,
+    p75: coerceFiniteNumber(raw.p75) ?? null,
+    p90: coerceFiniteNumber(raw.p90) ?? null,
+  };
+}
+
+export function normalizeChainConcentration(raw: unknown): ChainConcentration {
+  const d = isPlainRecord(raw) ? raw : {};
+  return {
+    schema_version: coerceFiniteNumber(d.schema_version) ?? 1,
+    subnet_count: coerceFiniteNumber(d.subnet_count) ?? 0,
+    neuron_count: coerceFiniteNumber(d.neuron_count) ?? 0,
+    entity_count: coerceFiniteNumber(d.entity_count) ?? 0,
+    uids_per_entity: coerceFiniteNumber(d.uids_per_entity) ?? null,
+    captured_at: coerceString(d.captured_at) ?? null,
+    stake: normalizeConcentrationMetricsOrNull(d.stake),
+    emission: normalizeConcentrationMetricsOrNull(d.emission),
+    entity_stake: normalizeConcentrationMetricsOrNull(d.entity_stake),
+    entity_emission: normalizeConcentrationMetricsOrNull(d.entity_emission),
+    validator_stake: normalizeConcentrationMetricsOrNull(d.validator_stake),
+  };
+}
+
+export function normalizeChainPerformance(raw: unknown): ChainPerformance {
+  const d = isPlainRecord(raw) ? raw : {};
+  return {
+    schema_version: coerceFiniteNumber(d.schema_version) ?? 1,
+    subnet_count: coerceFiniteNumber(d.subnet_count) ?? 0,
+    neuron_count: coerceFiniteNumber(d.neuron_count) ?? 0,
+    validator_count: coerceFiniteNumber(d.validator_count),
+    active_count: coerceFiniteNumber(d.active_count),
+    captured_at: coerceString(d.captured_at) ?? null,
+    incentive: normalizeConcentrationMetricsOrNull(d.incentive),
+    dividends: normalizeConcentrationMetricsOrNull(d.dividends),
+    trust: normalizeScoreDistributionOrNull(d.trust),
+    consensus: normalizeScoreDistributionOrNull(d.consensus),
+    validator_trust: normalizeScoreDistributionOrNull(d.validator_trust),
+  };
+}
+
 function normalizeSubnetConcentration(netuid: number, raw: unknown): SubnetConcentration {
   const d = isPlainRecord(raw) ? raw : {};
   return {
@@ -3150,6 +3228,40 @@ export const subnetConcentrationHistoryQuery = (
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetConcentrationHistory>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Network-wide stake/emission concentration (Gini, HHI, Nakamoto, entity lenses). */
+export const chainConcentrationQuery = () =>
+  queryOptions({
+    queryKey: k("chain-concentration"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainConcentration>>("/api/v1/chain/concentration", {
+        signal,
+      });
+      return {
+        data: normalizeChainConcentration(res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainConcentration>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Network-wide reward-distribution & trust/consensus score spread. */
+export const chainPerformanceQuery = () =>
+  queryOptions({
+    queryKey: k("chain-performance"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainPerformance>>("/api/v1/chain/performance", {
+        signal,
+      });
+      return {
+        data: normalizeChainPerformance(res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainPerformance>;
     },
     staleTime: STALE_MED,
   });

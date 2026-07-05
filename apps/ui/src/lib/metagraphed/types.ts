@@ -1231,6 +1231,19 @@ export interface ConcentrationMetrics {
   entropy_normalized?: number;
 }
 
+/** Percentile spread of a 0–1 score across neurons (trust / consensus / validator_trust). */
+export interface ScoreDistribution {
+  count?: number;
+  mean?: number | null;
+  min?: number | null;
+  max?: number | null;
+  p10?: number | null;
+  p25?: number | null;
+  p50?: number | null;
+  p75?: number | null;
+  p90?: number | null;
+}
+
 /** Concentration metrics from /api/v1/subnets/{netuid}/concentration. */
 export interface SubnetConcentration {
   netuid: number;
@@ -1391,6 +1404,36 @@ export interface ChainFees {
   day_count: number;
   daily: ChainFeeDay[];
   top_fee_payers: ChainFeePayer[];
+}
+
+/** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
+export interface ChainConcentration {
+  schema_version: number;
+  subnet_count: number;
+  neuron_count: number;
+  entity_count: number;
+  uids_per_entity: number | null;
+  captured_at: string | null;
+  stake: ConcentrationMetrics | null;
+  emission: ConcentrationMetrics | null;
+  entity_stake: ConcentrationMetrics | null;
+  entity_emission: ConcentrationMetrics | null;
+  validator_stake: ConcentrationMetrics | null;
+}
+
+/** Network-wide reward-distribution & score spread from GET /api/v1/chain/performance. */
+export interface ChainPerformance {
+  schema_version: number;
+  subnet_count: number;
+  neuron_count: number;
+  validator_count?: number;
+  active_count?: number;
+  captured_at: string | null;
+  incentive: ConcentrationMetrics | null;
+  dividends: ConcentrationMetrics | null;
+  trust: ScoreDistribution | null;
+  consensus: ScoreDistribution | null;
+  validator_trust: ScoreDistribution | null;
 }
 
 /* ===================== Theme C: registry & network-health depth ===================== */
