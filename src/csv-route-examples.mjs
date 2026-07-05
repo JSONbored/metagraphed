@@ -13,6 +13,10 @@ export const ROUTE_CSV_EXAMPLES = {
     "snapshot_date,neuron_count,stake_gini,stake_nakamoto_coefficient,stake_top_10pct_share,emission_gini,emission_nakamoto_coefficient,emission_top_10pct_share",
     "2026-06-27,2,0.490099,1,0.990099,0.409091,1,0.909091",
   ].join("\r\n"),
+  "subnet-performance-history": [
+    "snapshot_date,neuron_count,validator_count,active_count,incentive_gini,incentive_nakamoto_coefficient,incentive_top_10pct_share,dividends_gini,dividends_nakamoto_coefficient,dividends_top_10pct_share,trust_mean,trust_median,consensus_mean,consensus_median,validator_trust_mean,validator_trust_median",
+    "2026-06-27,2,1,2,0.447368,1,0.947368,0,1,1,0.5,0.5,0.4,0.4,0.85,0.85",
+  ].join("\r\n"),
   "subnet-yield": [
     "uid,hotkey,role,stake_tao,emission_tao,yield,vs_median",
     "0,hk_sample,validator,1000,22.1,0.0221,above",

@@ -319,6 +319,24 @@ const SUBNET_CONCENTRATION_HISTORY_CSV_COLUMNS = [
   "emission_nakamoto_coefficient",
   "emission_top_10pct_share",
 ];
+const SUBNET_PERFORMANCE_HISTORY_CSV_COLUMNS = [
+  "snapshot_date",
+  "neuron_count",
+  "validator_count",
+  "active_count",
+  "incentive_gini",
+  "incentive_nakamoto_coefficient",
+  "incentive_top_10pct_share",
+  "dividends_gini",
+  "dividends_nakamoto_coefficient",
+  "dividends_top_10pct_share",
+  "trust_mean",
+  "trust_median",
+  "consensus_mean",
+  "consensus_median",
+  "validator_trust_mean",
+  "validator_trust_median",
+];
 
 // CSV projection for the recent-block feed (#2528). The block rows are already
 // flat (formatBlock), so the feed's own fields are the columns in read order.
@@ -967,8 +985,23 @@ export function canonicalSubnetConcentrationHistoryCachePath(
   );
 }
 
-export function canonicalSubnetPerformanceHistoryCachePath(url) {
-  return canonicalWindowedCachePath(url, parseSubnetPerformanceHistoryWindow);
+export function canonicalSubnetPerformanceHistoryCachePath(
+  url,
+  request = null,
+) {
+  const validationError = validateQueryParams(url, ["window", "format"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const formatError = validateResponseFormat(url);
+  if (formatError) return `${url.pathname}${url.search}`;
+  const { label, error } = parseSubnetPerformanceHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return `${url.pathname}${url.search}`;
+  return csvCacheVariant(
+    url,
+    request,
+    `${url.pathname}?window=${encodeURIComponent(label)}`,
+  );
 }
 
 export function canonicalSubnetYieldHistoryCachePath(url, request = null) {
@@ -1241,8 +1274,10 @@ export async function handleSubnetPerformanceHistory(
   netuid,
   url,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateResponseFormat(url);
+  if (formatError) return analyticsQueryError(formatError);
   const { label, days, error } = parseSubnetPerformanceHistoryWindow(
     url.searchParams.get("window"),
   );
@@ -1259,6 +1294,18 @@ export async function handleSubnetPerformanceHistory(
     window: label,
     capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
   });
+  if (csvRequested(url, request)) {
+    const points = [...data.points].sort((a, b) =>
+      String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
+    );
+    return csvResponse(
+      points,
+      `subnet-${netuid}-performance-history`,
+      "short",
+      request,
+      SUBNET_PERFORMANCE_HISTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {

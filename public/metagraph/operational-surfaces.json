@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 79,
+  "surface_count": 80,
   "surfaces": [
     {
       "auth_required": false,
@@ -551,6 +551,24 @@
       "surface_id": "sn-24-website-link-silxinc-com-data-artifact-3",
       "surface_key": "srf-319b61d8ff50a870",
       "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 25,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "Mainframe",
+      "subnet_slug": "sn-25",
+      "surface_id": "sn-25-macrocosm-os-macrobench-benchmark-dataset",
+      "surface_key": "srf-2c94a06dbd4dc428",
+      "url": "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01"
     },
     {
       "auth_required": false,
