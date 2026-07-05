@@ -504,6 +504,25 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/invocations/stats/diffusion"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-bounties-api",
+      "kind": "subnet-api",
+      "name": "Chutes bounty list API",
+      "notes": "Public no-auth GET returning active chute bounty listings (bounty_amount, time_remaining, chute_id). Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /bounties/); same host as the existing pricing and models subnet-api surfaces.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.chutes.ai/openapi.json",
+        "https://chutes.ai/docs"
+      ],
+      "url": "https://api.chutes.ai/bounties/"
     }
   ],
   "website_url": "https://chutes.ai/"
