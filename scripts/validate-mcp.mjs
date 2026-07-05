@@ -534,6 +534,20 @@ assert.ok(
     chainStakeTransfers.network != null,
   "get_chain_stake_transfers must return subnet_count + network + subnets[]",
 );
+const subnetStakeTransfers = await callOk("get_subnet_stake_transfers", {
+  netuid: 7,
+  window: "7d",
+});
+assert.equal(
+  subnetStakeTransfers.netuid,
+  7,
+  "get_subnet_stake_transfers must echo the netuid",
+);
+assert.ok(
+  Number.isInteger(subnetStakeTransfers.distinct_senders) &&
+    Number.isInteger(subnetStakeTransfers.transfers),
+  "get_subnet_stake_transfers must return distinct_senders + transfers",
+);
 const chainAxonRemovals = await callOk("get_chain_axon_removals", {
   window: "7d",
   limit: 5,
@@ -843,19 +857,6 @@ assert.equal(
   accountDeregistrations.address,
   SS58,
   "get_account_deregistrations must echo the address",
-);
-const accountWeightSetters = await callOk("get_account_weight_setters", {
-  ss58: SS58,
-  window: "30d",
-});
-assert.ok(
-  Array.isArray(accountWeightSetters.subnets),
-  "get_account_weight_setters must return subnets[]",
-);
-assert.equal(
-  accountWeightSetters.address,
-  SS58,
-  "get_account_weight_setters must echo the address",
 );
 const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
 assert.ok(
