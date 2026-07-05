@@ -1432,7 +1432,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(concentrationHistoryMatch[1]),
             resolved.url,
           ),
-        canonicalSubnetConcentrationHistoryCachePath(resolved.url),
+        canonicalSubnetConcentrationHistoryCachePath(resolved.url, request),
       );
     }
     const performanceHistoryMatch =

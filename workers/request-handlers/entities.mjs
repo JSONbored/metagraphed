@@ -299,6 +299,16 @@ const SUBNET_YIELD_CSV_COLUMNS = [
   "yield",
   "vs_median",
 ];
+const SUBNET_CONCENTRATION_HISTORY_CSV_COLUMNS = [
+  "snapshot_date",
+  "neuron_count",
+  "stake_gini",
+  "stake_nakamoto_coefficient",
+  "stake_top_10pct_share",
+  "emission_gini",
+  "emission_nakamoto_coefficient",
+  "emission_top_10pct_share",
+];
 
 // CSV projection for the recent-block feed (#2528). The block rows are already
 // flat (formatBlock), so the feed's own fields are the columns in read order.
@@ -916,8 +926,20 @@ export function canonicalSubnetHistoryCachePath(url) {
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 
-export function canonicalSubnetConcentrationHistoryCachePath(url) {
-  return canonicalWindowedCachePath(url, parseConcentrationHistoryWindow);
+export function canonicalSubnetConcentrationHistoryCachePath(url, request = null) {
+  const validationError = validateQueryParams(url, ["window", "format"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const formatError = validateResponseFormat(url);
+  if (formatError) return `${url.pathname}${url.search}`;
+  const { label, error } = parseConcentrationHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return `${url.pathname}${url.search}`;
+  return csvCacheVariant(
+    url,
+    request,
+    `${url.pathname}?window=${encodeURIComponent(label)}`,
+  );
 }
 
 export function canonicalSubnetPerformanceHistoryCachePath(url) {
@@ -1123,8 +1145,10 @@ export async function handleSubnetConcentrationHistory(
   netuid,
   url,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateResponseFormat(url);
+  if (formatError) return analyticsQueryError(formatError);
   const { label, days, error } = parseConcentrationHistoryWindow(
     url.searchParams.get("window"),
   );
@@ -1141,6 +1165,18 @@ export async function handleSubnetConcentrationHistory(
     window: label,
     capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
   });
+  if (csvRequested(url, request)) {
+    const points = [...data.points].sort((a, b) =>
+      String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
+    );
+    return csvResponse(
+      points,
+      `subnet-${netuid}-concentration-history`,
+      "short",
+      request,
+      SUBNET_CONCENTRATION_HISTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {

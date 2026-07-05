@@ -950,7 +950,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-concentration-history",
     "/metagraph/subnets/{netuid}/concentration/history.json",
-    "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history (no static file).",
+    "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history; pass ?format=csv to download the per-day series as CSV (no static file).",
     "SubnetConcentrationHistoryArtifact",
   ),
   artifact(
@@ -2033,15 +2033,15 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/concentration/history",
     "/metagraph/subnets/{netuid}/concentration/history.json",
-    "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
+    "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup). Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
       },
-    ],
+    ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

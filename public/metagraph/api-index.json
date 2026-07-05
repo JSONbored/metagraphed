@@ -4866,7 +4866,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/concentration/history.json",
       "cache": "short",
-      "description": "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
+      "description": "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup). Pass ?format=csv to download the per-day series as CSV.",
       "id": "subnet-concentration-history",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/concentration/history",
@@ -4881,6 +4881,17 @@
               "7d",
               "30d",
               "90d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
             ],
             "type": "string"
           }

@@ -9,6 +9,10 @@ const EVENTS_CSV_EXAMPLE = [
 ].join("\r\n");
 
 export const ROUTE_CSV_EXAMPLES = {
+  "subnet-concentration-history": [
+    "snapshot_date,neuron_count,stake_gini,stake_nakamoto_coefficient,stake_top_10pct_share,emission_gini,emission_nakamoto_coefficient,emission_top_10pct_share",
+    "2026-06-27,2,0.490099,1,0.990099,0.409091,1,0.909091",
+  ].join("\r\n"),
   "subnet-yield": [
     "uid,hotkey,role,stake_tao,emission_tao,yield,vs_median",
     "0,hk_sample,validator,1000,22.1,0.0221,above",
