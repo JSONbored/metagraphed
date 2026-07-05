@@ -13713,6 +13713,106 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     );
   });
 
+  test("list_schemas rejects an unexpected argument", async () => {
+    const res = await callTool("list_schemas", { bogus: 1 });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  function schemasDeps() {
+    return makeDeps({
+      "/metagraph/schemas/index.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        schemas: [
+          {
+            netuid: 6,
+            surface_id: "6:openapi:numinous",
+            status: "captured",
+            drift_status: "new",
+          },
+          {
+            netuid: 6,
+            surface_id: "6:subnet-api:numinous",
+            status: "pending-snapshot",
+            drift_status: "not-captured",
+          },
+          {
+            netuid: 7,
+            surface_id: "7:openapi:allways",
+            status: "captured",
+            drift_status: "changed",
+          },
+        ],
+      },
+    });
+  }
+
+  test("list_schemas filters by netuid, status, and drift_status", async () => {
+    const deps = schemasDeps();
+    const byNetuid = (await callTool("list_schemas", { netuid: 7 }, { deps }))
+      .body.result.structuredContent;
+    assert.equal(byNetuid.total, 1);
+    assert.equal(byNetuid.schemas[0].surface_id, "7:openapi:allways");
+
+    const byStatus = (
+      await callTool("list_schemas", { status: "captured" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byStatus.total, 2);
+
+    const byDrift = (
+      await callTool("list_schemas", { drift_status: "changed" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byDrift.total, 1);
+    assert.equal(byDrift.schemas[0].netuid, 7);
+  });
+
+  test("list_schemas combines filters (AND) and reports total vs returned", async () => {
+    const deps = schemasDeps();
+    const res = await callTool(
+      "list_schemas",
+      { netuid: 6, status: "captured" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 1);
+    assert.equal(out.returned, 1);
+    assert.equal(out.schemas[0].drift_status, "new");
+  });
+
+  test("list_schemas paginates the filtered list with limit/offset", async () => {
+    const deps = schemasDeps();
+    const res = await callTool(
+      "list_schemas",
+      { limit: 1, offset: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 1);
+    assert.equal(out.offset, 1);
+    assert.equal(out.schemas[0].surface_id, "6:subnet-api:numinous");
+  });
+
+  test("list_schemas rejects an unknown drift_status enum value", async () => {
+    const deps = schemasDeps();
+    const res = await callTool(
+      "list_schemas",
+      { drift_status: "not-a-status" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("list_schemas is schema-stable when the artifact has no schemas array", async () => {
+    const deps = makeDeps({
+      "/metagraph/schemas/index.json": { generated_at: "2026-01-01T00:00:00Z" },
+    });
+    const res = await callTool("list_schemas", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.schemas, []);
+    assert.equal(out.total, 0);
+    assert.equal(out.returned, 0);
+  });
+
   test("list_search_index returns filtered document rows", async () => {
     const deps = makeDeps({
       "/metagraph/search-index.json": {

@@ -6577,15 +6577,68 @@ export const MCP_TOOLS = [
       "Fetch the index of captured OpenAPI/Swagger schema snapshots across " +
       "subnets: which surfaces publish a machine-readable schema, its hash, and " +
       "drift status (new/unchanged/changed). Use it to discover which surfaces " +
-      "have a schema, then fetch one with get_api_schema. Mirrors " +
-      "GET /api/v1/schemas.",
+      "have a schema, then fetch one with get_api_schema. Optionally filter by " +
+      "netuid/status/drift_status and page with limit/offset — the full index " +
+      "can be large. Mirrors GET /api/v1/schemas.",
     inputSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        status: {
+          type: "string",
+          description:
+            "Capture status, e.g. 'captured', 'not-captured', or " +
+            "'pending-snapshot'.",
+        },
+        drift_status: {
+          type: "string",
+          enum: ["new", "unchanged", "changed", "not-captured"],
+          description:
+            "Whether the captured schema's hash changed since last snapshot.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max entries to return. Omit for the full index.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset into the (filtered) list. Default 0.",
+          minimum: 0,
+        },
+      },
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/schemas/index.json");
+    async handler(args, ctx) {
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      const status = optionalString(args, "status");
+      const driftStatus = optionalEnum(args, "drift_status", [
+        "new",
+        "unchanged",
+        "changed",
+        "not-captured",
+      ]);
+      const limit = optionalPositiveInt(args, "limit");
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const data = await loadArtifactData(ctx, "/metagraph/schemas/index.json");
+      const all = Array.isArray(data.schemas) ? data.schemas : [];
+      const filtered = all.filter(
+        (s) =>
+          (netuid === null || s.netuid === netuid) &&
+          (status === null || s.status === status) &&
+          (driftStatus === null || s.drift_status === driftStatus),
+      );
+      const page =
+        limit === null
+          ? filtered.slice(offset)
+          : filtered.slice(offset, offset + limit);
+      return {
+        ...data,
+        schemas: page,
+        total: filtered.length,
+        returned: page.length,
+        offset,
+      };
     },
   },
   {
