@@ -251,7 +251,7 @@ function groupByEntity(rows) {
 // (every metric block null).
 export function buildConcentration(rows, netuid) {
   const rawList = Array.isArray(rows) ? rows : [];
-  const list = stakeAcceptedRows(rawList);
+  const list = stakeAcceptedRows(rows);
   // The rows share one cron capture, but don't assume an order — take the newest.
   let capturedAt = null;
   for (const row of rawList) {
@@ -299,7 +299,7 @@ export const CHAIN_CONCENTRATION_READ_COLUMNS =
 // metric block null), matching buildConcentration.
 export function buildChainConcentration(rows) {
   const rawList = Array.isArray(rows) ? rows : [];
-  const list = stakeAcceptedRows(rawList);
+  const list = stakeAcceptedRows(rows);
   // One cron capture underlies the rows, but don't assume order — take the newest.
   let capturedAt = null;
   const netuids = new Set();
