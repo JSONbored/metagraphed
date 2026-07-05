@@ -126,6 +126,25 @@
         "timeout_ms": 10000
       },
       "notes": "Public Grafana evaluation dashboard linked from the Templar repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-health",
+      "kind": "subnet-api",
+      "name": "Templar Grafana health",
+      "notes": "Public no-auth GET /api/health on grafana.tplr.ai returning application liveness JSON. Served on the Templar Grafana host registered as a dashboard surface and linked from the Templar source repository README.",
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/one-covenant/templar",
+        "https://grafana.tplr.ai/"
+      ],
+      "url": "https://grafana.tplr.ai/api/health"
     }
   ],
   "social": {
