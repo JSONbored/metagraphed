@@ -112,6 +112,28 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "ItsAI API repository in the team's It-s-AI org; its README describes a FastAPI app that queries miners in \"Subnet32: It's AI\". Distinct from the registered llm-detection repo."
+    },
+    {
+      "id": "sn-32-itsai-subnet-api",
+      "name": "ItsAI API health",
+      "kind": "subnet-api",
+      "url": "https://api.its-ai.org/api/health",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://its-ai.org/en", "https://docs.its-ai.org/"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "notes": "Public no-auth GET returning the ItsAI (SN32) content-detection API health as JSON. Hosted on api.its-ai.org, the API subdomain of the registered website its-ai.org; the API is documented at docs.its-ai.org and implemented in the team's It-s-AI/api FastAPI repo. Fills the file's noted missing public-API-endpoint gap."
     }
   ],
   "social": { "x": "https://x.com/ai_detection" },
