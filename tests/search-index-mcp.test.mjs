@@ -79,6 +79,43 @@ describe("search-index-mcp", () => {
     );
   });
 
+  test("searchIndexQueryUrl rejects non-string q and invalid order", () => {
+    assert.throws(
+      () => searchIndexQueryUrl({ q: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => searchIndexQueryUrl({ order: "sideways" }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("searchIndexQueryUrl rejects empty fields and non-string fields", () => {
+    assert.throws(
+      () => searchIndexQueryUrl({ fields: "   " }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => searchIndexQueryUrl({ fields: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("searchIndexQueryUrl trims and forwards a fields projection", () => {
+    const url = searchIndexQueryUrl({ fields: " id,title " });
+    assert.equal(url.searchParams.get("fields"), "id,title");
+  });
+
+  test("searchIndexQueryUrl clamps a non-numeric limit to the default", () => {
+    const url = searchIndexQueryUrl({ limit: "lots" });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("searchIndexQueryUrl clamps a sub-minimum numeric limit to the default", () => {
+    const url = searchIndexQueryUrl({ limit: 0 });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
   test("searchIndexQueryUrl clamps limit and rejects negative cursor", () => {
     assert.equal(
       searchIndexQueryUrl({ limit: 500 }).searchParams.get("limit"),
@@ -86,6 +123,10 @@ describe("search-index-mcp", () => {
     );
     assert.throws(
       () => searchIndexQueryUrl({ cursor: -1 }),
+      (err) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => searchIndexQueryUrl({ cursor: 1.5 }),
       (err) => err.code === "invalid_params",
     );
   });
