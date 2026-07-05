@@ -12,5 +12,25 @@
   "social": {
     "x": "https://x.com/minotaursubnet"
   },
-  "surfaces": []
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-health",
+      "kind": "subnet-api",
+      "name": "Minotaur API health",
+      "notes": "Public no-auth GET /health on api.minotaursubnet.com returning application liveness JSON (observed: {\"status\":\"ok\",\"service\":\"app-intents-api\"}). Documented as the production API health probe in the official minotaur_subnet check_validator.sh script and served on the SN112 API host listed in docs/operator/network-reference.md.",
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/main/docs/operator/network-reference.md",
+        "https://github.com/subnet112/minotaur_subnet/blob/main/scripts/check_validator.sh"
+      ],
+      "url": "https://api.minotaursubnet.com/health"
+    }
+  ]
 }
