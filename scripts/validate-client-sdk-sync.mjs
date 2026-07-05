@@ -14,6 +14,15 @@
 // changed versus the merge base BUT `packages/client/package.json` "version" did
 // NOT change, fail with a clear remediation message. It is diff-scoped, so a PR
 // that touches no contract file never fires — only contract changes are gated.
+//
+// The reverse case (a contributor manually bumps the version themselves) is
+// NOT a failure either -- the post-merge sync-client-version workflow does not
+// look at whether the version already moved, only whether a contract file
+// changed since its own last bump commit, so a hand-bump here is at best
+// redundant and at worst a merge conflict with that auto-opened PR. `main()`
+// emits a non-blocking notice for this case; enforcing it against contributor
+// PRs (vs. a maintainer's deliberate off-cycle bump) is a judgment call left to
+// the Gittensory Gate review, not this deterministic CI gate.
 
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -154,6 +163,13 @@ async function main() {
     console.log(
       `✓ Contract changed and packages/client "version" bumped ` +
         `(${baseVersion} → ${headVersion}) — client SDK in sync.`,
+    );
+    console.log(
+      `ℹ Note: this bump was unnecessary -- the post-merge sync-client-version ` +
+        `workflow bumps ${CLIENT_MANIFEST_PATH} automatically whenever a contract ` +
+        `file lands on main. A contributor PR should not hand-bump this; consider ` +
+        `reverting it to avoid a conflicting version once the auto-opened ` +
+        `chore/sync-client-version PR merges.`,
     );
   } else {
     console.log("✓ No contract files changed — client-SDK drift gate N/A.");

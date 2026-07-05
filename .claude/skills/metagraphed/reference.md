@@ -290,8 +290,22 @@ local paths, env dumps, or private notes.
   types/clients. `validate:contract-drift` + `validate:schema-enums` + `validate:committed-seed` guard it.
 - **Client SDK version: do NOT bump in your PR.** `packages/client/package.json` is versioned by the
   post-merge `sync-client-version` workflow, which auto-opens a `chore/sync-client-version` PR whenever
-  a contract file lands on main. `validate:client-sdk-sync` now emits a notice (not a failure) when the
-  version isn't bumped in a contributor PR.
+  a contract file lands on main. `validate:client-sdk-sync` emits a notice (not a failure) either way:
+  when the version isn't bumped in a contributor PR (expected — automation handles it), and _also_ when
+  a contributor bumps it themselves anyway (unnecessary — the workflow's own diff-since-last-bump check
+  doesn't look for a manual bump, only for contract-file changes since its last `chore(client): bump
+SDK` commit, so a hand-bump here is redundant at best and a conflicting version at worst once the
+  auto PR lands).
+- **MCP server version: do NOT bump in your PR, same as the client SDK above.** `MCP_SERVER_VERSION`
+  (`src/mcp-server.mjs`) and `server.json`'s `"version"` are versioned by the post-merge
+  `sync-mcp-version` workflow — same shape as `sync-client-version`, watching `src/mcp-server.mjs` since
+  its last `chore(mcp): bump server version` commit and bumping both files together when a tool was
+  added/changed. `validate:mcp` only checks _internal_ consistency (`MCP_SERVER_VERSION` ==
+  `serverInfo.version` == `server.json`'s version) — it stays green regardless of what number those
+  hold, so a PR that adds an MCP tool without touching either file passes CI fine; the workflow is what
+  actually advances the number, entirely after the fact. A contributor hand-bumping either file is pure
+  unrewarded toil (and setup for a merge conflict with the auto-opened `chore/sync-mcp-version` PR) —
+  flag it in review the same way as a manual client-SDK bump.
 - **`packages/client` is an npm workspace (#3066), with no lockfile of its own.** `apps/ui` consumes it
   as a live workspace link (`"@jsonbored/metagraphed": "*"` in `apps/ui/package.json`, resolved from
   `packages/client` directly) instead of round-tripping through the published npm package. Verified

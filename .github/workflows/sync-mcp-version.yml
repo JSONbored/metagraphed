@@ -1,0 +1,150 @@
+name: Sync MCP server version
+
+# Auto-opens a chore/sync-mcp-version PR whenever the MCP tool registry
+# (src/mcp-server.mjs) changes on main without a matching MCP_SERVER_VERSION
+# bump. This decouples the version bump from the contributor PR, the same
+# way sync-client-version.yml already does for the published SDK --
+# eliminating both the manual toil (every "add an MCP tool" PR previously
+# had to hand-edit src/mcp-server.mjs's MCP_SERVER_VERSION constant AND
+# server.json's "version" field to match) and the merge conflicts that
+# come from many concurrent tool-adding PRs all touching the same
+# version-bump line (this repo gets hundreds of contributor PRs; MCP tool
+# additions are one of the highest-volume categories among them).
+#
+# Contributors should NEVER touch MCP_SERVER_VERSION or server.json's
+# version themselves -- see .claude/skills/metagraphed/reference.md.
+# scripts/validate-mcp.mjs's own check only verifies INTERNAL consistency
+# (MCP_SERVER_VERSION == serverInfo.version == server.json's version), which
+# stays true regardless of what number it currently holds, so a
+# contributor's PR that adds a tool without touching either file still
+# passes CI -- this workflow is what actually advances the number,
+# entirely after the fact.
+#
+# Runs on a schedule rather than on every push to main, and batches
+# multiple tool additions into one bump, for the exact same reasons
+# sync-client-version.yml does (see that workflow's own comment for the
+# full rationale) -- an unconditional per-push bump would be noisy and
+# racy under concurrent merges; the change-detection guard below (diffing
+# since the last bump commit) is what actually prevents a needless bump,
+# not the schedule itself.
+# 07:00 UTC -- after sync-client-version.yml's 06:00 UTC run and before
+# release-please.yml's 09:00 UTC run, so this repo's three post-merge sync
+# workflows (client SDK, MCP server, release-please) run in a fixed,
+# non-overlapping order on the same schedule. workflow_dispatch stays
+# available for an on-demand run.
+on:
+  schedule:
+    - cron: "0 7 */2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-mcp-version
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Open MCP version bump PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # Real change-detection: every MCP tool addition necessarily imports
+      # and registers the new tool in src/mcp-server.mjs's MCP_TOOLS array,
+      # so that file changing since the last bump is a reliable, sufficient
+      # signal -- the same pragmatic "watch the one file everything routes
+      # through" approach sync-client-version.yml uses for its own three
+      # contract paths, not a precise "did the tool count specifically
+      # change" AST diff. No prior bump commit found (first run ever) or a
+      # non-empty diff since the last one ⇒ proceed; an empty diff ⇒ skip
+      # every subsequent step via its `if:` so the job still exits cleanly.
+      - name: Check for MCP tool changes since the last version bump
+        id: mcp-diff
+        run: |
+          last_bump="$(git log --grep '^chore(mcp): bump server version' --format=%H -n 1 main)"
+          if [ -z "$last_bump" ]; then
+            echo "no prior 'chore(mcp): bump server version' commit found; treating as first run"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "last MCP version bump commit: ${last_bump}"
+            if git diff --quiet "${last_bump}" HEAD -- src/mcp-server.mjs; then
+              echo "no MCP tool registry changes since ${last_bump}; skipping version bump"
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "MCP tool registry changes found since ${last_bump}"
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Setup Node
+        if: steps.mcp-diff.outputs.changed == 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+
+      # MCP_SERVER_VERSION lives in a JS source file, not JSON, so this is a
+      # regex extract/replace rather than a JSON.parse/stringify round-trip
+      # (matching the exact literal form the constant is always declared
+      # in: `export const MCP_SERVER_VERSION = "X.Y.Z";`).
+      - name: Compute next patch version
+        if: steps.mcp-diff.outputs.changed == 'true'
+        id: version
+        run: |
+          current=$(node -p "
+            require('fs').readFileSync('src/mcp-server.mjs', 'utf8')
+              .match(/export const MCP_SERVER_VERSION = \"([^\"]+)\"/)[1]
+          ")
+          IFS='.' read -r maj min pat <<< "$current"
+          next="${maj}.${min}.$((pat + 1))"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Bump MCP_SERVER_VERSION in src/mcp-server.mjs
+        if: steps.mcp-diff.outputs.changed == 'true'
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = 'src/mcp-server.mjs';
+          const content = fs.readFileSync(path, 'utf8');
+          const updated = content.replace(
+            /export const MCP_SERVER_VERSION = \"[^\"]+\"/,
+            'export const MCP_SERVER_VERSION = \"${{ steps.version.outputs.next }}\"',
+          );
+          fs.writeFileSync(path, updated, 'utf8');
+          "
+
+      - name: Bump server.json to match
+        if: steps.mcp-diff.outputs.changed == 'true'
+        run: |
+          node -e "
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('server.json', 'utf8'));
+          p.version = '${{ steps.version.outputs.next }}';
+          fs.writeFileSync('server.json', JSON.stringify(p, null, 2) + '\n');
+          "
+
+      - name: Open sync PR (no-op if unchanged)
+        if: steps.mcp-diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/sync-mcp-version
+          delete-branch: true
+          add-paths: |
+            src/mcp-server.mjs
+            server.json
+          title: "chore(mcp): bump server version to ${{ steps.version.outputs.next }}"
+          commit-message: "chore(mcp): bump server version to ${{ steps.version.outputs.next }}"
+          body: |
+            Auto-bumps `MCP_SERVER_VERSION` (and the matching `server.json` MCP Registry listing) from `${{ steps.version.outputs.current }}` to `${{ steps.version.outputs.next }}` because `src/mcp-server.mjs`'s tool registry changed on main.
+          labels: |
+            automation
