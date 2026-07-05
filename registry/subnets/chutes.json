@@ -577,6 +577,25 @@
       },
       "source_urls": ["https://chutes.ai/", "https://chutes.ai/docs"],
       "url": "https://chutes.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-fmv-api",
+      "kind": "subnet-api",
+      "name": "Chutes TAO fair market value API",
+      "notes": "Public no-auth GET returning the platform TAO fair market value used for pricing calculations. Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /fmv); same host as the existing pricing, bounties, and LLM-stats subnet-api surfaces.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.chutes.ai/openapi.json",
+        "https://chutes.ai/docs"
+      ],
+      "url": "https://api.chutes.ai/fmv"
     }
   ],
   "website_url": "https://chutes.ai/"
