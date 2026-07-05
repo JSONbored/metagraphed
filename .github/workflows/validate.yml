@@ -659,21 +659,25 @@ jobs:
         run: npm ci
 
       # apps/ui consumes packages/client as a live workspace link (#3066), not
-      # a published package. packages/client/dist/ IS committed (unlike a
-      # typical build artifact) specifically so Cloudflare Workers Builds'
-      # live deploy never has to build it: that build depends on `tsup`
-      # resolving correctly via PATH inside a `cd`'d-into workspace directory,
-      # which real Workers Builds runs hit failing in ways this repo's own
-      # environment never reproduced (npm hoisting/caching differences
-      # between environments) -- eliminating the build-at-deploy-time step
-      # entirely removes that whole failure class. Deliberately NOT a
-      # package.json "prepare" script either: that would auto-run the build
-      # on every `npm install`/`ci` for anyone in the repo, which a security
-      # scan flagged as unnecessary install-time code execution (#3066
-      # review). This step exists purely as a DRIFT CHECK: rebuild fresh and
-      # diff against the committed copy, so an edit to packages/client/src
-      # without a matching `npm run build --workspace=packages/client` +
-      # commit fails loudly here rather than shipping stale contract types.
+      # a published package. packages/client/dist/index.js + index.cjs (the
+      # RUNTIME bundle only, NOT the .d.ts type declarations -- see
+      # packages/client/.gitignore) ARE committed specifically so Cloudflare
+      # Workers Builds' live deploy never has to build them: that build
+      # depends on `tsup` resolving correctly via PATH inside a `cd`'d-into
+      # workspace directory, which real Workers Builds runs hit failing in
+      # ways this repo's own environment never reproduced (npm
+      # hoisting/caching differences between environments) -- eliminating
+      # the build-at-deploy-time step entirely removes that whole failure
+      # class. Deliberately NOT a package.json "prepare" script either: that
+      # would auto-run the build on every `npm install`/`ci` for anyone in
+      # the repo, which a security scan flagged as unnecessary install-time
+      # code execution (#3066 review). This step exists purely as a DRIFT
+      # CHECK: rebuild fresh and diff against the committed copy (`git diff`
+      # only considers tracked files, so the gitignored .d.ts is naturally
+      # excluded here without any extra scoping), so an edit to
+      # packages/client/src without a matching
+      # `npm run build --workspace=packages/client` + commit of the runtime
+      # bundle fails loudly here rather than shipping stale runtime code.
       - name: Build packages/client (drift check)
         if: env.RUN_UI_VALIDATION == 'true'
         run: |

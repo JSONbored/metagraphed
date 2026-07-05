@@ -300,25 +300,35 @@ local paths, env dumps, or private notes.
   aligned with the root/`apps/ui` range (`^5.9.3`): `tsup` (its build tool) is hoisted to the _root_
   `node_modules` and resolves `typescript` from there regardless of which workspace invokes it, so a
   workspace-local TypeScript version pin silently gets ignored by `tsup --dts` — don't reintroduce one.
-  `packages/client`'s `dist/` IS committed — an exception to the root `.gitignore`'s blanket `dist`
-  rule, explicitly un-ignored in `packages/client/.gitignore`. This is deliberate, not an oversight:
-  Cloudflare Workers Builds' actual production deploy hit two consecutive, unreproducible-locally
-  failures trying to build `packages/client` at deploy time (a `vite`-hoisting split, then
-  `--workspace=` failing from a non-root cwd, then finally `tsup` itself not resolving via PATH in
-  whatever cached state Cloudflare had restored) — each fixed in turn, but the pattern kept recurring
-  because this repo's own environment could never reproduce Cloudflare's exact caching/hoisting
-  behavior to verify a fix with full confidence. Committing `dist/` removes the entire failure class:
-  the live deploy never builds `packages/client`, it just uses what's checked into git via the
-  workspace symlink. **After editing `packages/client/src/*`, you must run
-  `npm run build --workspace=packages/client` and commit the resulting `dist/` in the same PR** — the
-  `ui` CI job's "Build packages/client (drift check)" step rebuilds fresh and fails loudly
-  (`git diff --exit-code`) if the committed copy doesn't match, the same pattern this repo already uses
-  for `openapi.json`/`generated/*.d.ts`. Neither `apps/ui`'s own scripts nor Cloudflare's Build command
-  need to build `packages/client` at all anymore — do NOT reintroduce that (a `(cd ../../packages/client
-&& npm run build)` step, a `prepare` lifecycle script, etc.); it only reintroduces the exact fragility
-  this commits-the-artifact approach was built to eliminate. Deliberately NOT a package.json "prepare"
-  script even for the drift-check purpose: that would auto-run on every `npm install`/`ci` repo-wide,
-  which a security scan already flagged once as unnecessary install-time code execution (#3066 review).
+  `packages/client`'s `dist/index.js` + `dist/index.cjs` (the RUNTIME bundle ONLY) are committed —
+  an explicit, narrow exception to the root `.gitignore`'s blanket `dist` rule, carved out in
+  `packages/client/.gitignore`. This is deliberate, not an oversight: Cloudflare Workers Builds'
+  actual production deploy hit three consecutive, unreproducible-locally failures trying to build
+  `packages/client` at deploy time (a `vite`-hoisting split, then `--workspace=` failing from a
+  non-root cwd, then `tsup` itself not resolving via PATH in whatever cached state Cloudflare had
+  restored) — each fixed in turn, but the pattern kept recurring because this repo's own environment
+  could never reproduce Cloudflare's exact caching/hoisting behavior to verify a fix with full
+  confidence. Committing the runtime bundle removes the entire failure class: the live deploy never
+  builds `packages/client`, it just uses what's checked into git via the workspace symlink.
+  **`dist/index.d.ts`/`dist/index.d.cts` (the type declarations) stay gitignored, built fresh by
+  CI/local dev only** — confirmed directly that `vite build` doesn't need them at all (esbuild strips
+  types without resolving them; a real build with the `.d.ts` files absent succeeds unchanged), and
+  they're the ~1.1 MB majority of this package's output, growing with every new API route added
+  anywhere in the backend — committing them would reintroduce the exact diff-churn-on-every-
+  contract-change problem committing the runtime bundle was meant to avoid (this repo gets hundreds
+  of contributor PRs; anything that churns on unrelated changes is a real ongoing cost, not a one-off
+  annoyance). **After editing `packages/client/src/*`, you must run
+  `npm run build --workspace=packages/client` and commit the resulting `dist/index.js`/`index.cjs`
+  in the same PR** — the `ui` CI job's "Build packages/client (drift check)" step rebuilds fresh and
+  fails loudly (`git diff --exit-code`) if the committed copy doesn't match; `git diff` only
+  considers tracked files, so the gitignored `.d.ts` is naturally excluded from that check with no
+  extra scoping needed. Neither `apps/ui`'s own scripts nor Cloudflare's Build command need to build
+  `packages/client` at all anymore — do NOT reintroduce that (a
+  `(cd ../../packages/client && npm run build)` step, a `prepare` lifecycle script, etc.); it only
+  reintroduces the exact fragility this commits-the-artifact approach was built to eliminate.
+  Deliberately NOT a package.json "prepare" script even for the drift-check purpose: that would
+  auto-run on every `npm install`/`ci` repo-wide, which a security scan already flagged once as
+  unnecessary install-time code execution (#3066 review).
 - **`vite` must stay an explicit ROOT-level devDependency**, even though the backend never imports it.
   Cloudflare Workers Builds' automatic dependency-install step runs scoped to `--workspace=apps/ui`
   only (never a full monorepo install — confirmed by matching package counts against a real Cloudflare

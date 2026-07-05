@@ -3,10 +3,22 @@ node_modules
 src/metagraphed-api.ts
 src/metagraphed-client.ts
 
-# dist IS committed here (unlike the root .gitignore's blanket `dist` rule) --
-# apps/ui consumes this package as a live workspace link, and Cloudflare
-# Workers Builds' live deploy must never depend on rebuilding it (see the
-# "Build packages/client (drift check)" step in .github/workflows/validate.yml
-# for why). Un-ignore it explicitly; CI's drift check keeps it honest.
+# dist/index.js + dist/index.cjs (the RUNTIME bundle only) ARE committed here
+# -- an explicit, narrow exception to the root .gitignore's blanket `dist`
+# rule. apps/ui consumes this package as a live workspace link, and
+# Cloudflare Workers Builds' live deploy must never depend on rebuilding it
+# (see the "Build packages/client (drift check)" step in
+# .github/workflows/validate.yml for why). The .d.ts/.d.cts type
+# declarations stay gitignored, built fresh by CI/local dev only -- they are
+# NOT needed at runtime (`vite build` transpiles via esbuild, which strips
+# types without resolving them; verified this directly against a real build
+# with the .d.ts files absent), they are the ~1.1 MB majority of this
+# package's output size, and unlike the runtime bundle they grow with every
+# new API route added anywhere in the backend -- committing them would
+# reintroduce exactly the diff-churn-on-every-contract-change problem
+# committing the runtime bundle was meant to avoid.
 !dist
-!dist/**
+!dist/index.js
+!dist/index.cjs
+dist/index.d.ts
+dist/index.d.cts
