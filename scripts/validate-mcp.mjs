@@ -284,6 +284,13 @@ assert.ok(
   Array.isArray(endpointPoolsPage.pools),
   "list_endpoint_pools must return pools[]",
 );
+const endpointIncidentsPage = await callOk("list_endpoint_incidents", {
+  limit: 3,
+});
+assert.ok(
+  Array.isArray(endpointIncidentsPage.incidents),
+  "list_endpoint_incidents must return incidents[]",
+);
 await callOk("registry_summary", {});
 await callOk("get_coverage", {});
 

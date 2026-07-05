@@ -44,6 +44,12 @@ import {
   loadEndpointPoolsList,
 } from "./endpoint-pools-mcp.mjs";
 import {
+  LIST_ENDPOINT_INCIDENTS_INSTRUCTIONS,
+  LIST_ENDPOINT_INCIDENTS_MCP_TOOL,
+  LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
+  loadEndpointIncidentsList,
+} from "./endpoint-incidents-mcp.mjs";
+import {
   GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
@@ -400,7 +406,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.60.0";
+export const MCP_SERVER_VERSION = "1.61.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -640,6 +646,7 @@ export const MCP_INSTRUCTIONS =
   "input-hash/record-count ledger, list_rpc_pools the load-balanced RPC pool " +
   "scores, " +
   LIST_ENDPOINT_POOLS_INSTRUCTIONS +
+  LIST_ENDPOINT_INCIDENTS_INSTRUCTIONS +
   "get_subnet_endpoints one subnet\u0027s endpoint resources, " +
   "get_subnet_candidates its pending candidate surfaces, get_subnet_evidence " +
   "its provenance evidence claims, and list_fixtures " +
@@ -6239,6 +6246,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_ENDPOINT_INCIDENTS_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadEndpointIncidentsList(ctx, args);
+    },
+  },
+  {
     name: "get_lineage",
     title: "Get cross-network subnet lineage",
     description:
@@ -9807,6 +9820,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_curation: LIST_CURATION_OUTPUT_SCHEMA,
   list_gaps: LIST_GAPS_OUTPUT_SCHEMA,
   list_endpoint_pools: LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
+  list_endpoint_incidents: LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   get_lineage: {
     type: "object",
     additionalProperties: true,
