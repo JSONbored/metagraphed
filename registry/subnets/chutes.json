@@ -542,6 +542,25 @@
         "https://chutes.ai/docs"
       ],
       "url": "https://api.chutes.ai/invocations/stats/llm"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-ping",
+      "kind": "subnet-api",
+      "name": "Chutes API ping",
+      "notes": "Public no-auth GET /ping on api.chutes.ai returning API liveness (observed plain-text response: ok). Documented as GET /ping in the subnet OpenAPI spec on the same host as the existing pricing, bounties, and LLM-stats subnet-api surfaces.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://api.chutes.ai/openapi.json",
+        "https://chutes.ai/docs"
+      ],
+      "url": "https://api.chutes.ai/ping"
     }
   ],
   "website_url": "https://chutes.ai/"
