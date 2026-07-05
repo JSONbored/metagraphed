@@ -1,7 +1,27 @@
 import { useEffect, useState, useCallback } from "react";
 
 export type ThemeChoice = "light" | "dark" | "system";
-const STORAGE_KEY = "mg-theme";
+export const THEME_STORAGE_KEY = "mg-theme";
+
+/** Normalizes a stored/local value to a valid theme choice. */
+export function normalizeThemeChoice(value: string | null | undefined): ThemeChoice {
+  return value === "light" || value === "dark" || value === "system" ? value : "system";
+}
+
+/** Resolves the document theme from a choice and the current system preference. */
+export function resolveTheme(choice: ThemeChoice, prefersDark: boolean): ResolvedTheme {
+  return choice === "system" ? (prefersDark ? "dark" : "light") : choice;
+}
+
+/** Mirrors the pre-hydration bootstrap IIFE for drift tests. */
+export function bootstrapTheme(stored: string | null, prefersDark: boolean): ResolvedTheme {
+  let choice = stored;
+  if (choice !== "light" && choice !== "dark") choice = "system";
+  const dark = choice === "dark" || (choice === "system" && prefersDark);
+  return dark ? "dark" : "light";
+}
+
+const STORAGE_KEY = THEME_STORAGE_KEY;
 
 /** Resolved mode (what the document actually shows). */
 export type ResolvedTheme = "light" | "dark";
@@ -14,8 +34,7 @@ function systemPrefersDark(): boolean {
 function readChoice(): ThemeChoice {
   if (typeof window === "undefined") return "system";
   try {
-    const v = window.localStorage.getItem(STORAGE_KEY);
-    return v === "light" || v === "dark" || v === "system" ? v : "system";
+    return normalizeThemeChoice(window.localStorage.getItem(STORAGE_KEY));
   } catch {
     return "system";
   }
@@ -23,8 +42,7 @@ function readChoice(): ThemeChoice {
 
 function apply(choice: ThemeChoice): ResolvedTheme {
   if (typeof document === "undefined") return "light";
-  const resolved: ResolvedTheme =
-    choice === "system" ? (systemPrefersDark() ? "dark" : "light") : choice;
+  const resolved = resolveTheme(choice, systemPrefersDark());
   const root = document.documentElement;
   root.classList.toggle("dark", resolved === "dark");
   root.dataset.theme = resolved;

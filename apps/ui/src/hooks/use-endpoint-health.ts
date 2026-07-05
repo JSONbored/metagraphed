@@ -13,7 +13,8 @@ const SLOW_MS = 300; // ok → slow (yellow)
 const BAD_MS = 800; // slow → bad (orange)
 const REFRESH_MS = 30_000;
 
-function classify(ms: number | null): EndpointHealth {
+/** Pure latency bucketing for the footer health dot; exported for unit tests. */
+export function classifyEndpointLatency(ms: number | null): EndpointHealth {
   if (ms == null) return "down";
   if (ms > BAD_MS) return "bad";
   if (ms > SLOW_MS) return "slow";
@@ -47,7 +48,7 @@ export function useEndpointHealth(): EndpointHealthState {
 
     async function check() {
       const ms = await pingMs(url, controller.signal);
-      if (active) setState({ status: classify(ms), ms });
+      if (active) setState({ status: classifyEndpointLatency(ms), ms });
     }
 
     setState({ status: "checking", ms: null });

@@ -32,9 +32,12 @@ import type {
   AccountEvent,
   AccountEventsPage,
   AccountHistory,
+  AccountPortfolio,
   AccountRegistration,
   AccountSubnets,
   AccountSummary,
+  PortfolioConcentration,
+  PortfolioPosition,
   Block,
   ChainActivity,
   ChainActivityDay,
@@ -43,6 +46,8 @@ import type {
   ChainFees,
   ChainFeeDay,
   ChainFeePayer,
+  ChainConcentration,
+  ChainPerformance,
   ChainSigners,
   ChainSignerEntry,
   Extrinsic,
@@ -100,6 +105,7 @@ import type {
   GlobalValidatorSubnet,
   SubnetNeuronSnapshot,
   ConcentrationMetrics,
+  ScoreDistribution,
   SubnetConcentration,
   ConcentrationHistoryPoint,
   SubnetConcentrationHistory,
@@ -142,6 +148,7 @@ const MAX_EXTRINSIC_VALUE_DEPTH = 8;
 const MAX_EXTRINSIC_COLLECTION_ENTRIES = 64;
 const MAX_EXTRINSIC_STRING_LENGTH = 2_000;
 const MAX_ACCOUNT_REGISTRATIONS = 100;
+const MAX_ACCOUNT_POSITIONS = 256;
 const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
@@ -1749,6 +1756,51 @@ function normalizeAccountRegistration(raw: unknown): AccountRegistration | null 
   return registration.netuid != null || registration.uid != null ? registration : null;
 }
 
+// One cross-subnet neuron position (#3491). Strict on render fields — object/junk
+// economic cells coerce to null (never NaN or `[object Object]`), an unknown role
+// drops to null — and a row with no numeric netuid is discarded.
+export function normalizePortfolioPosition(raw: unknown): PortfolioPosition | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  const role = firstString(raw.role);
+  return {
+    ...(raw as object),
+    netuid,
+    uid: firstFiniteNumber(raw.uid) ?? null,
+    role: role === "validator" || role === "miner" ? role : null,
+    active: booleanValue(raw.active),
+    stake_tao: firstFiniteNumber(raw.stake_tao) ?? null,
+    emission_tao: firstFiniteNumber(raw.emission_tao) ?? null,
+    rank: firstFiniteNumber(raw.rank) ?? null,
+    trust: firstFiniteNumber(raw.trust) ?? null,
+    incentive: firstFiniteNumber(raw.incentive) ?? null,
+    dividends: firstFiniteNumber(raw.dividends) ?? null,
+    yield: firstFiniteNumber(raw.yield) ?? null,
+  };
+}
+
+// The portfolio's stake-concentration lens (#3491).
+export function normalizePortfolioConcentration(raw: unknown): PortfolioConcentration | null {
+  if (!isRecord(raw)) return null;
+  const holders = firstFiniteNumber(raw.holders) ?? null;
+  const gini = firstFiniteNumber(raw.gini) ?? null;
+  const hhi_normalized = firstFiniteNumber(raw.hhi_normalized) ?? null;
+  const nakamoto_coefficient = firstFiniteNumber(raw.nakamoto_coefficient) ?? null;
+  // Cold / empty distribution: a zero-holder object, or one with no populated
+  // lens fields (e.g. `{}` or all-null), is not a real concentration card — the
+  // backend emits null there, and so do we (the ConcentrationMetrics
+  // null-when-empty contract). Guards a malformed body from rendering a non-null
+  // card built entirely from nulls.
+  if (
+    holders === 0 ||
+    (holders == null && gini == null && hhi_normalized == null && nakamoto_coefficient == null)
+  ) {
+    return null;
+  }
+  return { ...(raw as object), holders, gini, hhi_normalized, nakamoto_coefficient };
+}
+
 function accountEventString(value: unknown): string | undefined {
   if (typeof value === "string") return value.trim() ? value : undefined;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -2063,6 +2115,44 @@ export const accountSubnetsQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountSubnets>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3491: the economics-rich companion to accountSubnetsQuery — every neuron
+// position under this hotkey with stake/emission/yield, plus wallet aggregates.
+// Non-blocking on the entity page; a cold wallet returns an empty positions[].
+export const accountPortfolioQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-portfolio", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/portfolio`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const positions = Array.isArray(d.positions)
+        ? d.positions.slice(0, MAX_ACCOUNT_POSITIONS).flatMap((position) => {
+            const normalized = normalizePortfolioPosition(position);
+            return normalized ? [normalized] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          captured_at: firstString(d.captured_at) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? positions.length,
+          position_count: firstFiniteNumber(d.position_count) ?? positions.length,
+          validator_count: firstFiniteNumber(d.validator_count) ?? 0,
+          miner_count: firstFiniteNumber(d.miner_count) ?? 0,
+          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? null,
+          total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? null,
+          overall_yield: firstFiniteNumber(d.overall_yield) ?? null,
+          stake_concentration: normalizePortfolioConcentration(d.stake_concentration),
+          positions,
+        } as AccountPortfolio,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountPortfolio>;
     },
     staleTime: STALE_MED,
   });
@@ -2899,6 +2989,81 @@ function normalizeConcentrationMetrics(raw: unknown): ConcentrationMetrics | und
   };
 }
 
+// Nullable concentration lens: backend emits null on cold/empty stores; malformed
+// all-null objects must not become a non-null card (ConcentrationMetrics contract).
+export function normalizeConcentrationMetricsOrNull(raw: unknown): ConcentrationMetrics | null {
+  if (raw == null) return null;
+  if (!isPlainRecord(raw)) return null;
+  const holders = coerceFiniteNumber(raw.holders);
+  const gini = coerceFiniteNumber(raw.gini);
+  const hhi = coerceFiniteNumber(raw.hhi);
+  const hhi_normalized = coerceFiniteNumber(raw.hhi_normalized);
+  const nakamoto_coefficient = coerceFiniteNumber(raw.nakamoto_coefficient);
+  if (
+    holders === 0 ||
+    (holders == null &&
+      gini == null &&
+      hhi == null &&
+      hhi_normalized == null &&
+      nakamoto_coefficient == null)
+  ) {
+    return null;
+  }
+  return normalizeConcentrationMetrics(raw) ?? null;
+}
+
+export function normalizeScoreDistributionOrNull(raw: unknown): ScoreDistribution | null {
+  if (raw == null) return null;
+  if (!isPlainRecord(raw)) return null;
+  const count = coerceFiniteNumber(raw.count);
+  if (count == null || count === 0) return null;
+  return {
+    count,
+    mean: coerceFiniteNumber(raw.mean) ?? null,
+    min: coerceFiniteNumber(raw.min) ?? null,
+    max: coerceFiniteNumber(raw.max) ?? null,
+    p10: coerceFiniteNumber(raw.p10) ?? null,
+    p25: coerceFiniteNumber(raw.p25) ?? null,
+    p50: coerceFiniteNumber(raw.p50) ?? null,
+    p75: coerceFiniteNumber(raw.p75) ?? null,
+    p90: coerceFiniteNumber(raw.p90) ?? null,
+  };
+}
+
+export function normalizeChainConcentration(raw: unknown): ChainConcentration {
+  const d = isPlainRecord(raw) ? raw : {};
+  return {
+    schema_version: coerceFiniteNumber(d.schema_version) ?? 1,
+    subnet_count: coerceFiniteNumber(d.subnet_count) ?? 0,
+    neuron_count: coerceFiniteNumber(d.neuron_count) ?? 0,
+    entity_count: coerceFiniteNumber(d.entity_count) ?? 0,
+    uids_per_entity: coerceFiniteNumber(d.uids_per_entity) ?? null,
+    captured_at: coerceString(d.captured_at) ?? null,
+    stake: normalizeConcentrationMetricsOrNull(d.stake),
+    emission: normalizeConcentrationMetricsOrNull(d.emission),
+    entity_stake: normalizeConcentrationMetricsOrNull(d.entity_stake),
+    entity_emission: normalizeConcentrationMetricsOrNull(d.entity_emission),
+    validator_stake: normalizeConcentrationMetricsOrNull(d.validator_stake),
+  };
+}
+
+export function normalizeChainPerformance(raw: unknown): ChainPerformance {
+  const d = isPlainRecord(raw) ? raw : {};
+  return {
+    schema_version: coerceFiniteNumber(d.schema_version) ?? 1,
+    subnet_count: coerceFiniteNumber(d.subnet_count) ?? 0,
+    neuron_count: coerceFiniteNumber(d.neuron_count) ?? 0,
+    validator_count: coerceFiniteNumber(d.validator_count),
+    active_count: coerceFiniteNumber(d.active_count),
+    captured_at: coerceString(d.captured_at) ?? null,
+    incentive: normalizeConcentrationMetricsOrNull(d.incentive),
+    dividends: normalizeConcentrationMetricsOrNull(d.dividends),
+    trust: normalizeScoreDistributionOrNull(d.trust),
+    consensus: normalizeScoreDistributionOrNull(d.consensus),
+    validator_trust: normalizeScoreDistributionOrNull(d.validator_trust),
+  };
+}
+
 function normalizeSubnetConcentration(netuid: number, raw: unknown): SubnetConcentration {
   const d = isPlainRecord(raw) ? raw : {};
   return {
@@ -3063,6 +3228,40 @@ export const subnetConcentrationHistoryQuery = (
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetConcentrationHistory>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Network-wide stake/emission concentration (Gini, HHI, Nakamoto, entity lenses). */
+export const chainConcentrationQuery = () =>
+  queryOptions({
+    queryKey: k("chain-concentration"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainConcentration>>("/api/v1/chain/concentration", {
+        signal,
+      });
+      return {
+        data: normalizeChainConcentration(res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainConcentration>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Network-wide reward-distribution & trust/consensus score spread. */
+export const chainPerformanceQuery = () =>
+  queryOptions({
+    queryKey: k("chain-performance"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainPerformance>>("/api/v1/chain/performance", {
+        signal,
+      });
+      return {
+        data: normalizeChainPerformance(res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainPerformance>;
     },
     staleTime: STALE_MED,
   });
@@ -3354,6 +3553,12 @@ async function fetchInfinitePage<T>(
   return { ...res, meta, cursorInvalid: v.invalid };
 }
 
+/** Read the validated next cursor stashed on infinite-list meta by fetchInfinitePage. */
+export function getNextPageParam(last: { meta?: Record<string, unknown> }): string | undefined {
+  const nc = last.meta?._next_cursor as string | null | undefined;
+  return nc ?? undefined;
+}
+
 /** Server-driven cursor-paginated subnets. */
 export const subnetsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
   infiniteQueryOptions({
@@ -3369,10 +3574,7 @@ export const subnetsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor
       );
       return { ...page, data: page.data.map(normalizeSubnet) } as typeof page;
     },
-    getNextPageParam: (last) => {
-      const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
-      return nc ?? undefined;
-    },
+    getNextPageParam,
     staleTime: STALE_MED,
   });
 
@@ -3394,10 +3596,7 @@ export const surfacesInfiniteQuery = (baseParams: QueryParams = {}, initialCurso
       // are populated — same mapping the non-paginated surfacesQuery applies.
       return { ...page, data: page.data.map(normalizeSurface) } as InfinitePage<Surface>;
     },
-    getNextPageParam: (last) => {
-      const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
-      return nc ?? undefined;
-    },
+    getNextPageParam,
     staleTime: STALE_MED,
   });
 

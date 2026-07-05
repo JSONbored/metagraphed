@@ -2,6 +2,18 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getApiBase, getNetwork, onApiBaseChange, onNetworkChange } from "@/lib/metagraphed/config";
 
+/** Pure connect-replay guard; exported for unit tests. */
+export function createRegistrySnapshotHandler(invalidate: () => void): () => void {
+  let primed = false;
+  return () => {
+    if (!primed) {
+      primed = true;
+      return;
+    }
+    invalidate();
+  };
+}
+
 /**
  * #1117: subscribe to the registry publish feed (`GET /api/v1/events`, SSE) and
  * invalidate active queries on each `snapshot` event, so views update on publish
@@ -24,7 +36,6 @@ export function useRegistryEvents() {
     if (typeof window === "undefined" || typeof EventSource === "undefined") return;
 
     let es: EventSource | null = null;
-    let primed = false;
 
     const teardown = () => {
       es?.close();
@@ -35,22 +46,15 @@ export function useRegistryEvents() {
       teardown();
       // The publish feed is mainnet-only; on testnet, polling remains the path.
       if (getNetwork().id !== "mainnet") return;
-      primed = false;
       try {
         es = new EventSource(`${getApiBase()}/api/v1/events`);
       } catch {
         es = null;
         return;
       }
-      const onSnapshot = () => {
-        // Skip the snapshot replayed on connect (the route already has it); every
-        // later event is a real publish worth refreshing for.
-        if (!primed) {
-          primed = true;
-          return;
-        }
+      const onSnapshot = createRegistrySnapshotHandler(() => {
         qc.invalidateQueries({ queryKey: ["metagraphed"] });
-      };
+      });
       es.addEventListener("snapshot", onSnapshot);
       // Some proxies deliver SSE as unnamed `message` events — cover both.
       es.onmessage = onSnapshot;

@@ -9,6 +9,23 @@ interface CopyOpts {
   toastOnSuccess?: boolean;
 }
 
+/** Truncates long copied values for toast previews. */
+export function truncateCopyPreview(value: string, max = 64): string {
+  return value.length > max ? value.slice(0, max) + "…" : value;
+}
+
+export function copySuccessTitle(label?: string): string {
+  return label ? `Copied ${label}` : "Copied to clipboard";
+}
+
+export function copyErrorDescription(err: unknown): string {
+  return err instanceof Error ? err.message : "Clipboard unavailable";
+}
+
+export function shouldUseNavigatorClipboard(navigatorValue: Navigator | undefined): boolean {
+  return typeof navigatorValue !== "undefined" && !!navigatorValue.clipboard;
+}
+
 /**
  * Shared copy hook used by every "copy this URL/value" interaction.
  * Returns `copied` (truthy for ~1.4s after success) so callers can swap an
@@ -23,7 +40,7 @@ export function useCopy(opts: CopyOpts = {}) {
     async (value: string) => {
       if (!value) return false;
       try {
-        if (typeof navigator !== "undefined" && navigator.clipboard) {
+        if (shouldUseNavigatorClipboard(typeof navigator !== "undefined" ? navigator : undefined)) {
           await navigator.clipboard.writeText(value);
         } else if (typeof document !== "undefined") {
           // Fallback for older browsers / SSR-safe access pattern.
@@ -38,8 +55,8 @@ export function useCopy(opts: CopyOpts = {}) {
         }
         setCopied(true);
         if (toastOnSuccess) {
-          toast.success(label ? `Copied ${label}` : "Copied to clipboard", {
-            description: value.length > 64 ? value.slice(0, 64) + "…" : value,
+          toast.success(copySuccessTitle(label), {
+            description: truncateCopyPreview(value),
             duration: 1800,
           });
         }
@@ -48,7 +65,7 @@ export function useCopy(opts: CopyOpts = {}) {
         return true;
       } catch (err) {
         toast.error("Copy failed", {
-          description: err instanceof Error ? err.message : "Clipboard unavailable",
+          description: copyErrorDescription(err),
         });
         return false;
       }

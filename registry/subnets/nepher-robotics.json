@@ -282,6 +282,25 @@
         "https://docs.nepher.ai/"
       ],
       "url": "https://tournament-api.nepher.ai/api/v1/tournaments/current-block"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-list-api",
+      "kind": "subnet-api",
+      "name": "Nepher tournaments list API",
+      "notes": "Public no-auth GET returning the full tournament catalog with task names, versions, stages, contest windows, and repository links. Documented in the subnet's own OpenAPI (tournament-api.nepher.ai/openapi.json, path /api/v1/tournaments/list); same host as existing tournament surfaces. Distinct from the active-tournaments list and current-block endpoints.",
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://docs.nepher.ai/"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/list"
     }
   ],
   "website_url": "https://nepher.ai"
