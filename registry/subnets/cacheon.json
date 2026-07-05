@@ -186,6 +186,25 @@
       },
       "source_urls": ["https://cacheon.ai/docs/miners/api-contract"],
       "url": "https://api.cacheon.ai/api/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-leader-api",
+      "kind": "subnet-api",
+      "name": "Cacheon current leader API",
+      "notes": "Public no-auth GET returning the reigning challenger leader record (UID, score, image, per-prompt stats). Documented in the subnet's own OpenAPI (api.cacheon.ai/openapi.json, path /api/leader); same host as the existing /api/status subnet-api surface. Distinct functional endpoint with substantive coordinator data.",
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.cacheon.ai/openapi.json",
+        "https://cacheon.ai/docs/miners/api-contract"
+      ],
+      "url": "https://api.cacheon.ai/api/leader"
     }
   ],
   "website_url": "https://cacheon.ai/"
