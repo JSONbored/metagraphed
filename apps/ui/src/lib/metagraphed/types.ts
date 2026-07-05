@@ -1116,6 +1116,22 @@ export interface SubnetIdentityHistory {
   next_cursor: string | null;
 }
 
+/**
+ * Per-subnet validator weight-setting activity over a 7d/30d window, from
+ * /api/v1/subnets/{netuid}/weights — aggregate WeightsSet counts (distinct
+ * setters, total sets, average). Zeroed when the subnet had no WeightsSet
+ * events in the window. Setter-level drill-in lives at /weights/setters.
+ */
+export interface SubnetWeights {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_setters: number;
+  weight_sets: number;
+  sets_per_setter: number | null;
+}
+
 /** One validator's weight-setting activity for a subnet over the window (#1657). */
 export interface SubnetWeightSetter {
   hotkey: string | null;

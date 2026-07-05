@@ -102,6 +102,7 @@ import type {
   SubnetIdentityHistory,
   SubnetWeightSetter,
   SubnetWeightSetters,
+  SubnetWeights,
   SubnetIdentityHistoryEntry,
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
@@ -3147,6 +3148,37 @@ export const subnetDeregistrationsQuery = (netuid: number, window = "30d") =>
       );
       return {
         data: normalizeSubnetDeregistrations(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-subnet aggregate weight-setting activity over a 7d/30d window.
+export function normalizeSubnetWeights(netuid: number, raw: unknown): SubnetWeights {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_setters: firstFiniteNumber(rec.distinct_setters) ?? 0,
+    weight_sets: firstFiniteNumber(rec.weight_sets) ?? 0,
+    sets_per_setter: firstFiniteNumber(rec.sets_per_setter) ?? null,
+  };
+}
+
+export const subnetWeightsQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-weights", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetWeights>>(`/api/v1/subnets/${netuid}/weights`, {
+        params: { window },
+        signal,
+      });
+      return {
+        data: normalizeSubnetWeights(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };

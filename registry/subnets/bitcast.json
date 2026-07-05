@@ -162,6 +162,25 @@
         "https://bitcast-api.bitcast.network/docs"
       ],
       "url": "https://bitcast-api.bitcast.network/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-api-health-ready",
+      "kind": "subnet-api",
+      "name": "Bitcast API readiness health",
+      "notes": "Public no-auth GET /health/ready on bitcast-api.bitcast.network returning API readiness JSON (status, app_name, version, database connectivity). Documented in the subnet OpenAPI spec on the same host as the existing openapi surface. Distinct from the creator-portal /api/health endpoint on creator.bitcast.network.",
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://bitcast-api.bitcast.network/openapi.json",
+        "https://bitcast-api.bitcast.network/docs"
+      ],
+      "url": "https://bitcast-api.bitcast.network/health/ready"
     }
   ]
 }
