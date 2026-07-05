@@ -309,6 +309,25 @@
         "https://verathos.ai/docs"
       ],
       "url": "https://api.verathos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-supply-info",
+      "kind": "subnet-api",
+      "name": "Verathos supply-info API",
+      "notes": "Public no-auth GET returning the subnet's full alpha-supply breakdown (circulating, total, max, minted, staked, pool) plus price, 24h volume, market-cap, and netuid metrics sourced from taostats. Documented in the subnet's own OpenAPI (api.verathos.ai/openapi.json); a richer companion to the existing /v1/supply/circulating subnet-api surface.",
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://api.verathos.ai/openapi.json",
+        "https://verathos.ai/docs"
+      ],
+      "url": "https://api.verathos.ai/v1/supply/info"
     }
   ],
   "website_url": "https://verathos.ai/"
