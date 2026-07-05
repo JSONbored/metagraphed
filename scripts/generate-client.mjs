@@ -286,6 +286,12 @@ export async function metagraphedRpc<Result = unknown>(
   return (body as { result?: Result })?.result as Result;
 }
 
+// Manual linear-time scan rather than a regex: a regex equivalent to this
+// (matching /\\{([^}]+)\\}/g against a path built from arbitrary segments)
+// was flagged by CodeQL as ReDoS-prone (quadratic backtracking on inputs with
+// many unmatched "{"). This has the same semantics -- an unmatched or empty
+// "{}" is left as literal text, matching the regex's [^}]+ (one-or-more)
+// requirement -- with guaranteed O(n) time.
 function interpolatePath(
   path: string,
   params: Record<string, string | number> | undefined,
@@ -293,13 +299,30 @@ function interpolatePath(
   if (!params) {
     return path;
   }
-  return path.replace(/\\{([^}]+)\\}/g, (_match, key) => {
+  let result = "";
+  let i = 0;
+  while (i < path.length) {
+    const open = path.indexOf("{", i);
+    if (open === -1) {
+      result += path.slice(i);
+      break;
+    }
+    const close = path.indexOf("}", open + 1);
+    if (close === -1 || close === open + 1) {
+      result += path.slice(i, open + 1);
+      i = open + 1;
+      continue;
+    }
+    result += path.slice(i, open);
+    const key = path.slice(open + 1, close);
     const value = params[key];
     if (value === undefined || value === null) {
       throw new Error(\`Missing path parameter: \${key}\`);
     }
-    return encodeURIComponent(String(value));
-  });
+    result += encodeURIComponent(String(value));
+    i = close + 1;
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------

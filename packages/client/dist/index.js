@@ -141,13 +141,30 @@ function interpolatePath(path, params) {
   if (!params) {
     return path;
   }
-  return path.replace(/\{([^}]+)\}/g, (_match, key) => {
+  let result = "";
+  let i = 0;
+  while (i < path.length) {
+    const open = path.indexOf("{", i);
+    if (open === -1) {
+      result += path.slice(i);
+      break;
+    }
+    const close = path.indexOf("}", open + 1);
+    if (close === -1 || close === open + 1) {
+      result += path.slice(i, open + 1);
+      i = open + 1;
+      continue;
+    }
+    result += path.slice(i, open);
+    const key = path.slice(open + 1, close);
     const value = params[key];
     if (value === void 0 || value === null) {
       throw new Error(`Missing path parameter: ${key}`);
     }
-    return encodeURIComponent(String(value));
-  });
+    result += encodeURIComponent(String(value));
+    i = close + 1;
+  }
+  return result;
 }
 var DEFAULT_CACHE_MAX_ENTRIES = 256;
 function createLruEtagCache(maxEntries = DEFAULT_CACHE_MAX_ENTRIES) {
