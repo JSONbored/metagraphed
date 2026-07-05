@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
 import { Boxes, Clock, FileText } from "lucide-react";
@@ -22,6 +22,10 @@ import {
 } from "@/lib/metagraphed/extrinsics";
 
 export const Route = createFileRoute("/extrinsics/$hash")({
+  parseParams: ({ hash }) => {
+    if (!isValidExtrinsicHash(hash)) throw notFound();
+    return { hash };
+  },
   // Prime the shared cache so head() can title with the call name. Non-fatal:
   // any failure falls back to the hash-only copy and the page's own
   // useSuspenseQuery still drives the not-found/empty path.
@@ -53,6 +57,20 @@ export const Route = createFileRoute("/extrinsics/$hash")({
     };
   },
   component: ExtrinsicDetailPage,
+  notFoundComponent: () => (
+    <AppShell>
+      <PageHeading
+        eyebrow="Explorer"
+        title="Invalid extrinsic reference"
+        description="Extrinsic references must be a 0x-prefixed hexadecimal hash."
+      />
+      <EmptyState
+        title="Invalid extrinsic reference"
+        description="Use a 0x-prefixed hexadecimal extrinsic hash."
+        action={{ label: "Back to extrinsics", href: "/extrinsics" }}
+      />
+    </AppShell>
+  ),
 });
 
 function ExtrinsicDetailPage() {
@@ -61,31 +79,11 @@ function ExtrinsicDetailPage() {
     <AppShell>
       <QueryErrorBoundary>
         <Suspense fallback={<DetailSkeleton />}>
-          <ExtrinsicDetail hash={hash} />
+          <ValidExtrinsicDetail hash={hash} />
         </Suspense>
       </QueryErrorBoundary>
     </AppShell>
   );
-}
-
-function ExtrinsicDetail({ hash }: { hash: string }) {
-  if (!isValidExtrinsicHash(hash)) {
-    return (
-      <>
-        <PageHeading
-          eyebrow="Explorer"
-          title="Invalid extrinsic reference"
-          description="Extrinsic references must be a 0x-prefixed hexadecimal hash."
-        />
-        <EmptyState
-          title="Invalid extrinsic reference"
-          description="Use a 0x-prefixed hexadecimal extrinsic hash."
-          action={{ label: "Back to extrinsics", href: "/extrinsics" }}
-        />
-      </>
-    );
-  }
-  return <ValidExtrinsicDetail hash={hash} />;
 }
 
 function ValidExtrinsicDetail({ hash }: { hash: string }) {

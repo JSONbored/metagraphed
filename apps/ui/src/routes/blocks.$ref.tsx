@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
@@ -18,6 +18,10 @@ import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraph
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 
 export const Route = createFileRoute("/blocks/$ref")({
+  parseParams: ({ ref }) => {
+    if (!isValidBlockRef(ref)) throw notFound();
+    return { ref };
+  },
   // Prime the shared cache so head() can title the page with the real block
   // number. Non-fatal: any failure falls back to the ref-only copy and the
   // page's own useSuspenseQuery still drives the not-found/empty path.
@@ -47,6 +51,20 @@ export const Route = createFileRoute("/blocks/$ref")({
     };
   },
   component: BlockDetailPage,
+  notFoundComponent: () => (
+    <AppShell>
+      <PageHeading
+        eyebrow="Explorer"
+        title="Invalid block reference"
+        description="Block references must be a decimal block number or a 0x-prefixed hex hash."
+      />
+      <EmptyState
+        title="Invalid block reference"
+        description="Use a decimal block number or a 0x-prefixed hexadecimal block hash."
+        action={{ label: "Back to blocks", href: "/blocks" }}
+      />
+    </AppShell>
+  ),
 });
 
 function BlockDetailPage() {
@@ -55,32 +73,11 @@ function BlockDetailPage() {
     <AppShell>
       <QueryErrorBoundary>
         <Suspense fallback={<DetailSkeleton />}>
-          <BlockDetail refValue={ref} />
+          <ValidBlockDetail refValue={ref} />
         </Suspense>
       </QueryErrorBoundary>
     </AppShell>
   );
-}
-
-function BlockDetail({ refValue }: { refValue: string }) {
-  if (!isValidBlockRef(refValue)) {
-    return (
-      <>
-        <PageHeading
-          eyebrow="Explorer"
-          title="Invalid block reference"
-          description="Block references must be a decimal block number or a 0x-prefixed hex hash."
-        />
-        <EmptyState
-          title="Invalid block reference"
-          description="Use a decimal block number or a 0x-prefixed hexadecimal block hash."
-          action={{ label: "Back to blocks", href: "/blocks" }}
-        />
-      </>
-    );
-  }
-
-  return <ValidBlockDetail refValue={refValue} />;
 }
 
 function ValidBlockDetail({ refValue }: { refValue: string }) {
