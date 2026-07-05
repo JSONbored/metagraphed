@@ -233,7 +233,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 
 ## Related
 
-- **Frontend** — [JSONbored/metagraphed-ui](https://github.com/JSONbored/metagraphed-ui): the web app at [metagraph.sh](https://metagraph.sh). Vite + React 19 + TanStack Start, deployed as a Cloudflare Worker. Holds no subnet data — it renders what this backend serves.
+- **Frontend** — [`apps/ui/`](./apps/ui) in this repo (folded in from the standalone `metagraphed-ui` repo via monorepo consolidation): the web app at [metagraph.sh](https://metagraph.sh). Vite + React 19 + TanStack Start, deployed as its own independent Cloudflare Worker. Holds no subnet data — it renders what this backend serves.
 
 ## License
 

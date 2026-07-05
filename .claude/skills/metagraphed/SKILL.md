@@ -8,8 +8,11 @@ description: >-
   the Gittensory Gate (the GitHub App that auto-merges/auto-closes) plus a strict CI suite; there
   is no review back-and-forth, so a PR must be correct, in-scope, and green before it is pushed.
   Surfaces live in ONE file per subnet (registry/subnets/<slug>.json) — never per-surface
-  candidate files, never split across multiple PRs. Invoke for any "contribute to / open a PR
-  against / enrich a subnet in / add a surface to / fix a bug in metagraphed" task.
+  candidate files, never split across multiple PRs. Also covers frontend PRs against apps/ui/
+  (the web app, folded into this repo via monorepo consolidation) — visual changes require a
+  before/after screenshot table and are always held for manual review. Invoke for any "contribute
+  to / open a PR against / enrich a subnet in / add a surface to / fix a bug in / add a frontend
+  feature to metagraphed" task.
 ---
 
 # Contributing to metagraphed — the one-shot PR playbook
@@ -34,14 +37,15 @@ says to.
 
 ---
 
-## Two kinds of contribution — pick your path
+## Three kinds of contribution — pick your path
 
 | You are…                                                                                                      | Path                                             | Files you touch                                                                 |
 | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------- |
 | **Adding or enriching a subnet's public surfaces** (API, OpenAPI, docs, repo, dashboard, SDK, data artifact…) | **Path A — Surface contribution** (Phases A0–A5) | **exactly one** `registry/subnets/<slug>.json`                                  |
 | **Changing code, schemas, or build scripts** (Worker API, `schemas/`, `scripts/`, workflows)                  | **Path B — Code/schema PR** (Phases B0–B5)       | `src/`, `workers/`, `schemas/`, `scripts/`, `.github/`, + regenerated artifacts |
+| **Fixing a bug or shipping a feature in the web app** (block explorer, docs pages, dev tools)                 | **Path C — Frontend PR** (below)                 | `apps/ui/**` only                                                               |
 
-Most contributions are **Path A**. Do **not** mix the two in one PR.
+Most contributions are **Path A**. Do **not** mix any of the three in one PR.
 
 ---
 
@@ -94,8 +98,8 @@ contributor.)
    `npm run build` then committing `openapi.json` + types/clients in the same PR, or
    `validate:contract-drift` fails CI.
 8. **Conventional Commits, no AI attribution.** Lowercase scope, specific subject, no trailing period;
-   **no AI/Claude/agent mention** anywhere in commits or PR text. Keep UI/frontend work out of this
-   repo — it lives in [metagraphed-ui](https://github.com/JSONbored/metagraphed-ui).
+   **no AI/Claude/agent mention** anywhere in commits or PR text. Frontend/UI work lives in this repo
+   at `apps/ui/` — see **Path C** below; it is not Path A or Path B.
 
 ---
 
@@ -293,6 +297,74 @@ the PR template with the validation commands you actually ran. Sync with `main` 
 
 ---
 
+## Path C — Frontend PR (`apps/ui/`)
+
+`apps/ui/` is the TanStack Start + Vite + React web app at [metagraph.sh](https://metagraph.sh) —
+folded into this repo as an npm workspace via the monorepo consolidation. It has its own `ui` CI job
+(lint + typecheck + test + build + bundle-budget, see `reference.md §2`) and its own review contract,
+distinct from Path A/B.
+
+### Phase C0 — Bootstrap + pick an issue
+
+```sh
+npm install            # root install wires the apps/ui workspace too (Node 22)
+```
+
+Pick a `gittensor:bug` / `gittensor:feature` issue scoped to `apps/ui/` (Wave 3 milestone). Keep the
+PR **narrow — aim for ≤10 files / ≤1000 LOC**; if an issue looks bigger than that once you're in the
+code, ship the smallest coherent slice and leave a follow-up note rather than bundling everything into
+one PR.
+
+### Phase C1 — Implement (match the house style)
+
+- Reuse existing shared components and the design tokens in `apps/ui/src/styles.css` (the "Bone & Ink"
+  system — warm bone/paper background, deep ink text, mint accent used **sparingly**, flat surfaces
+  with hairline borders, **no shadows or gradients**) instead of inventing new one-off styles.
+- Anchor on an existing analogous page/component before writing a new one — this codebase already has
+  shared primitives (table-controls, chart primitives, copy/share buttons, entity hover-cards,
+  freshness badges) that most issues should compose rather than reimplement.
+- Creative additions beyond an issue's stated scope are welcome but held to a **higher bar** — expect
+  extra scrutiny, and call out explicitly in the PR body anything you added beyond the issue.
+
+### Phase C2 — Screenshot contract (required for any visual change)
+
+**Non-negotiable for any PR that changes rendered output.** PRs without it are auto-closed — no
+exceptions:
+
+```md
+| Page / Feature | Before | After |
+|---|---|---|
+| `/your-route` | [<img src="FULL_IMAGE_URL" width="260">](FULL_IMAGE_URL)<br><sub>before: short caption</sub> | [<img src="FULL_IMAGE_URL" width="260">](FULL_IMAGE_URL)<br><sub>after: short caption</sub> |
+```
+
+One row per page/feature you changed, before **and** after. Screenshots go **inside the table only** —
+drag-and-drop into the PR (GitHub hosts them), never commit image files. If the change affects mobile
+layout, include a mobile-width capture alongside desktop; if it affects theme-aware styling, include a
+dark-mode capture too.
+
+A PR confined to `apps/ui/src/lib/**` / `apps/ui/src/hooks/**` / test files, with **no** visual change,
+skips this — it isn't rendering anything different.
+
+### Phase C3 — Test + gates locally
+
+```sh
+npm run test --workspace=apps/ui
+npm run build --workspace=apps/ui
+```
+
+### Phase C4 — Commit + PR
+
+Conventional Commit (e.g. `feat(ui): add validator directory table`), no AI attribution, `Closes
+#<issue>` if one tracks the work (optional). Fill the screenshot table if the change is visual.
+
+### Phase C5 — Review disposition
+
+**Any visual `apps/ui/**` PR is always held for manual review**, regardless of AI-review confidence —
+this is a deliberate exception to the normal one-shot autonomous gate. A non-visual `apps/ui/**` PR
+(data/hooks/tests only) follows the normal auto-merge/auto-close gate like Path A/B.
+
+---
+
 ## Final pre-push checklist
 
 **Path A (surface):**
@@ -324,6 +396,16 @@ the PR template with the validation commands you actually ran. Sync with `main` 
 - [ ] `git diff --check` clean · `lint` + `format:check` clean · `npm run validate` green ·
       `npm run test:coverage` green · the focused `validate:*` for what you touched green.
 - [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` if an issue tracks it (optional).
+
+**Path C (frontend):**
+
+- [ ] Scoped to `apps/ui/**` only; ≤10 files / ≤1000 LOC where reasonably possible.
+- [ ] Reuses existing design tokens (`apps/ui/src/styles.css`) and shared components rather than
+      one-off styling.
+- [ ] If visual: a filled before/after screenshot table (mobile + dark-mode captures where relevant) —
+      missing/malformed table is an automatic close.
+- [ ] `npm run test --workspace=apps/ui` and `npm run build --workspace=apps/ui` green.
+- [ ] Conventional Commit (no AI attribution); `Closes #<issue>` if one tracks it (optional).
 
 If every box is checked, the PR has the best chance of a one-shot approve-and-merge. If any box can't
 be checked, **keep working — don't push.**

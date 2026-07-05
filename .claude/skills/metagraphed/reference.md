@@ -272,7 +272,7 @@ local paths, env dumps, or private notes.
   SubnetIdentitiesV3 — `validate:surface` rejects it (CI fails → gate closes).
 - Secrets/PATs/wallet paths, private/localhost URLs, real credentials in `auth`.
 - Hand-set health/uptime/`verification` (probe-derived only).
-- UI/frontend changes (those belong in metagraphed-ui).
+- A visual `apps/ui/**` change with no before/after screenshot table in the PR body (or one pasted outside the table) — see Path C in `SKILL.md`. This is the frontend equivalent of the registry gate's deterministic-fail bar.
 - Editing the contract by hand without `npm run build` (contract-drift), or stale committed artifacts.
 - Committing generated artifacts — `public/datasets/*` or any `public/metagraph/*` outside the reviewed
   contract (regenerated on build/deploy; `ci-verify-submitted-artifacts` rejects them).

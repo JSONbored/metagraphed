@@ -97,7 +97,7 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 - Short and focused, Conventional Commit-style titles.
 - Include the validation commands you ran in the PR body.
 - No local paths, machine-specific setup, env dumps, or private notes.
-- Keep UI/frontend work out of this repo — it owns backend data contracts and generated JSON. The web app lives at [metagraphed-ui](https://github.com/JSONbored/metagraphed-ui).
+- Frontend/UI work lives at `apps/ui/` in this same repo (folded in from the former metagraphed-ui repo via monorepo consolidation). Any PR touching visual output (routes, components, styles) requires a before/after screenshot table in the PR body and is always held for manual review, regardless of AI-review confidence — see the `metagraphed` skill's Path C for the full contract. A PR confined to `apps/ui`'s data/hooks layer or tests, with no visual change, follows the normal one-shot gate.
 
 ## How reviews work
 

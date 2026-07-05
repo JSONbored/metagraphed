@@ -36,8 +36,12 @@ process evolves — edits to those files improve both Claude Code and Codex.
    post-merge. MCP tool additions do **not** require a server-card regen (it's worker-computed).
 5. **House rules:** Conventional Commits, **no AI/Claude/agent attribution** in commits or PR text; no
    secrets / PATs / wallet paths / private URLs anywhere; health/uptime/latency is **probe-derived
-   only** (never hand-set); one focused change per PR; UI/frontend work goes in
-   [metagraphed-ui](https://github.com/JSONbored/metagraphed-ui), not here.
+   only** (never hand-set); one focused change per PR. **UI/frontend work now lives in this repo**
+   at `apps/ui/` (folded in from the former `metagraphed-ui` repo via monorepo consolidation,
+   2026-07) — any PR touching visual output (routes, components, styles) **requires a before/after
+   screenshot table and is always held for manual review**, regardless of AI-review confidence; a
+   PR confined to `apps/ui/src/lib/**` / `apps/ui/src/hooks/**` / tests (no visual change) follows
+   the normal gate.
 
 The full procedure, the gate disposition matrix, the surface schema, the validator list, and the
 commit/PR rubric are all in the skill files above — use them.
