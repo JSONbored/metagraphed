@@ -145,7 +145,7 @@ describe("agent-resources-mcp", () => {
   });
 
   test("MCP server exports wire get_agent_resources at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.61.0");
+    assert.equal(MCP_SERVER_VERSION, "1.62.0");
     assert.match(MCP_INSTRUCTIONS, /get_agent_resources/);
     const tool = MCP_TOOLS.find((t) => t.name === "get_agent_resources");
     assert.ok(tool);

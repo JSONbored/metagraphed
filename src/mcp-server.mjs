@@ -305,7 +305,11 @@ import {
 } from "./neuron-history.mjs";
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
-import { loadSubnetYield } from "./subnet-yield.mjs";
+import {
+  loadSubnetYield,
+  loadSubnetYieldHistory,
+  parseSubnetYieldHistoryWindow,
+} from "./subnet-yield.mjs";
 import {
   loadSubnetPerformance,
   loadSubnetPerformanceHistory,
@@ -407,7 +411,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.61.0";
+export const MCP_SERVER_VERSION = "1.62.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -559,6 +563,8 @@ export const MCP_INSTRUCTIONS =
   "per-day reward-flow and trust trend for one subnet, get_subnet_movers the cross-subnet " +
   "stake/emission/validator momentum leaderboard, get_subnet_yield per-UID " +
   "rates plus distribution percentiles over the current metagraph snapshot, " +
+  "get_subnet_yield_history the per-day emission-yield distribution trend for one " +
+  "subnet (subnet-wide return plus mean/median/p25/p75/p90 of per-UID yields), " +
   "get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, " +
   LIST_PROFILES_INSTRUCTIONS +
@@ -2950,6 +2956,42 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetYield(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_subnet_yield_history",
+    title: "Get subnet yield history",
+    description:
+      "Fetch the per-day emission-yield distribution trend for one subnet " +
+      "over a 7d, 30d, or 90d window (default 30d): each day's subnet-wide " +
+      "return (total emission over total stake) plus the mean, median, p25, " +
+      "p75, and p90 of the per-UID emission-per-stake yields from the " +
+      "neuron_daily rollup. The time-series companion to get_subnet_yield. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/yield/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "Lookback window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const parsed = parseSubnetYieldHistoryWindow(args?.window);
+      if (args?.window !== undefined && parsed.error) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      const { label, days } = parsed;
+      return await loadSubnetYieldHistory(mcpD1Runner(ctx), netuid, {
+        windowLabel: label,
+        windowDays: days,
+      });
     },
   },
   {
@@ -8318,6 +8360,18 @@ const TOOL_OUTPUT_SCHEMAS = {
       p75_yield: { type: ["number", "null"] },
       p90_yield: { type: ["number", "null"] },
       neurons: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_subnet_yield_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "window", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: { type: "array", items: { type: "object" } },
     },
   },
   get_subnet_stake_flow: {

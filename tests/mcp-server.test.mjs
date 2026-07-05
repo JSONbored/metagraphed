@@ -4769,6 +4769,101 @@ describe("MCP get_subnet_performance_history", () => {
   });
 });
 
+describe("MCP get_subnet_yield_history", () => {
+  function yieldHistoryD1(rows = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(_sql) {
+          return {
+            bind(..._params) {
+              return {
+                async all() {
+                  return { results: rows };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("returns the per-day yield series", async () => {
+    const res = await callTool(
+      "get_subnet_yield_history",
+      { netuid: 7, window: "7d" },
+      {
+        env: yieldHistoryD1([
+          {
+            snapshot_date: "2026-06-27",
+            stake_tao: 100,
+            emission_tao: 10,
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-27",
+            stake_tao: 100,
+            emission_tao: 5,
+            validator_permit: 0,
+          },
+        ]),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "7d");
+    assert.equal(out.point_count, 1);
+    assert.equal(out.points[0].snapshot_date, "2026-06-27");
+    assert.equal(out.points[0].yield_count, 2);
+    assert.equal(out.points[0].subnet_yield, 0.075);
+  });
+
+  test("defaults to the 30d window on cold D1", async () => {
+    const res = await callTool("get_subnet_yield_history", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_subnet_yield_history", {
+      netuid: 7,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_yield_history", { window: "7d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+
+  test("get_subnet_yield_history payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_subnet_yield_history",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_subnet_yield_history",
+      { netuid: 7 },
+      {
+        env: yieldHistoryD1([
+          {
+            snapshot_date: "2026-06-27",
+            stake_tao: 100,
+            emission_tao: 10,
+            validator_permit: 1,
+          },
+        ]),
+      },
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+});
+
 describe("MCP get_network_activity", () => {
   test("merges extrinsics + blocks tiers from D1", async () => {
     const env = {
