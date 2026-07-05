@@ -108,6 +108,31 @@
         "https://bitsota.ai/docs/autoresearch-backend-routes"
       ],
       "url": "https://autoresearch.bitsota.com/api/v1/dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-claims-api",
+      "kind": "subnet-api",
+      "name": "Bitsota research claims API",
+      "notes": "Public no-auth GET returning research task claims with task IDs, status, descriptions, and participation metadata. Documented in the subnet's own OpenAPI (autoresearch.bitsota.com/openapi.json, path /api/v1/claims); same host as the existing tasks, dashboard, and idea-rewards surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://autoresearch.bitsota.com/openapi.json",
+        "https://bitsota.ai/docs/autoresearch-backend-routes"
+      ],
+      "url": "https://autoresearch.bitsota.com/api/v1/claims"
     }
   ]
 }
