@@ -67,8 +67,15 @@ const RPC_BLOCK_PLAUSIBILITY_TOLERANCE = 10;
 // last_ok for a surface that has never probed OK. Treat any falsy/zero ms as
 // null at the source so consumers don't each need a pre-2000 sentinel guard. A
 // real timestamp (run time, last OK) is always a large positive ms.
-const iso = (ms) =>
-  Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString() : null;
+const iso = (ms) => {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
+  // new Date(ms).toISOString() throw a RangeError, which would tear down the whole
+  // prober run on a single corrupt checked_at_ms/last_ok_ms cell. Drop it to null,
+  // mirroring the getTime() range guard chain-stake-flow.mjs added in #3016.
+  const d = new Date(ms);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : null;
+};
 
 function safeRpcBlockNumber(value) {
   if (value == null) return null;
