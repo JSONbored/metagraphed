@@ -74,6 +74,12 @@ import {
   loadSubnetEndpointsList,
 } from "./subnet-endpoints-mcp.mjs";
 import {
+  LIST_SUBNET_EVIDENCE_INSTRUCTIONS,
+  LIST_SUBNET_EVIDENCE_MCP_TOOL,
+  LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
+  loadSubnetEvidenceList,
+} from "./subnet-evidence-mcp.mjs";
+import {
   LIST_SEARCH_INDEX_INSTRUCTIONS,
   LIST_SEARCH_INDEX_MCP_TOOL,
   LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
@@ -499,7 +505,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.77.0";
+export const MCP_SERVER_VERSION = "1.78.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -773,7 +779,9 @@ export const MCP_INSTRUCTIONS =
   "get_subnet_endpoints one subnet\u0027s endpoint resources, " +
   LIST_SUBNET_ENDPOINTS_INSTRUCTIONS +
   "get_subnet_candidates its pending candidate surfaces, get_subnet_evidence " +
-  "its provenance evidence claims, get_subnet_surfaces its curated public " +
+  "its provenance evidence claims, " +
+  LIST_SUBNET_EVIDENCE_INSTRUCTIONS +
+  "get_subnet_surfaces its curated public " +
   "surfaces, and list_fixtures " +
   "live request/response examples. All data is public and " +
   "read-only. Subnet names, descriptions, and identity text come from " +
@@ -6613,6 +6621,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_SUBNET_EVIDENCE_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadSubnetEvidenceList(ctx, args);
+    },
+  },
+  {
     name: "get_subnet_surfaces",
     title: "Get one subnet's curated surfaces",
     description:
@@ -10340,6 +10354,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: ["string", "integer", "null"] },
     },
   },
+  list_subnet_evidence: LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
   get_subnet_candidates: {
     type: "object",
     additionalProperties: true,

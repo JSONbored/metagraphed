@@ -331,6 +331,14 @@ assert.ok(
   Array.isArray(subnetEndpointsPage.endpoints),
   "list_subnet_endpoints must return endpoints[]",
 );
+const subnetEvidencePage = await callOk("list_subnet_evidence", {
+  netuid: 7,
+  limit: 3,
+});
+assert.ok(
+  Array.isArray(subnetEvidencePage.claims),
+  "list_subnet_evidence must return claims[]",
+);
 const searchIndexPage = await callOk("list_search_index", { limit: 3 });
 assert.ok(
   Array.isArray(searchIndexPage.documents),

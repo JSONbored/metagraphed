@@ -14454,6 +14454,67 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(res.body.result.isError, true);
   });
 
+  test("list_subnet_evidence returns filtered claim rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/evidence/7.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        netuid: 7,
+        claims: [
+          {
+            subject: "SN7 openapi",
+            claim: "SN7 publishes machine-readable OpenAPI",
+          },
+          {
+            subject: "SN7 website",
+            claim: "SN7 website documents integration",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_subnet_evidence",
+      { netuid: 7, q: "openapi" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.match(out.claims[0].claim, /OpenAPI/);
+    assert.equal(out.netuid, 7);
+  });
+
+  test("list_subnet_evidence reports not_found when the artifact is absent", async () => {
+    const res = await callTool(
+      "list_subnet_evidence",
+      { netuid: 7 },
+      { deps: makeDeps() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /No evidence snapshot exists for netuid 7/,
+    );
+  });
+
+  test("list_subnet_evidence payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_subnet_evidence",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/evidence/7.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        netuid: 7,
+        claims: [{ subject: "SN7", claim: "verified openapi" }],
+      },
+    });
+    const res = await callTool(
+      "list_subnet_evidence",
+      { netuid: 7, limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("get_subnet_surfaces returns one subnet's surfaces artifact", async () => {
     const deps = makeDeps({
       "/metagraph/surfaces/5.json": {
