@@ -86,6 +86,12 @@ import {
   loadEvidenceList,
 } from "./evidence-mcp.mjs";
 import {
+  LIST_SEARCH_INSTRUCTIONS,
+  LIST_SEARCH_MCP_TOOL,
+  LIST_SEARCH_OUTPUT_SCHEMA,
+  loadSearchList,
+} from "./search-mcp.mjs";
+import {
   LIST_SEARCH_INDEX_INSTRUCTIONS,
   LIST_SEARCH_INDEX_MCP_TOOL,
   LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
@@ -647,6 +653,7 @@ export const MCP_INSTRUCTIONS =
   LIST_ENRICHMENT_EVIDENCE_INSTRUCTIONS +
   LIST_REVIEW_GAPS_INSTRUCTIONS +
   LIST_REVIEW_ENRICHMENT_TARGETS_INSTRUCTIONS +
+  LIST_SEARCH_INSTRUCTIONS +
   LIST_SEARCH_INDEX_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
@@ -6589,6 +6596,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_SEARCH_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadSearchList(ctx, args);
+    },
+  },
+  {
     ...LIST_SEARCH_INDEX_MCP_TOOL,
     async handler(args, ctx) {
       return loadSearchIndexList(ctx, args);
@@ -10318,6 +10331,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       notes: NULLABLE_STRING,
     },
   },
+  list_search: LIST_SEARCH_OUTPUT_SCHEMA,
   list_search_index: LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
   list_curation: LIST_CURATION_OUTPUT_SCHEMA,
   list_gaps: LIST_GAPS_OUTPUT_SCHEMA,
