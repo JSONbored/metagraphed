@@ -65,6 +65,32 @@
         "timeout_ms": 10000
       },
       "notes": "Official ForeverMoney source repository."
+    },
+    {
+      "id": "sn-98-forevermoney-vaults-tvl-api",
+      "name": "ForeverMoney vault TVL API",
+      "kind": "subnet-api",
+      "url": "https://dashboard.forevermoney.ai/api/vaults/tvl",
+      "provider": "forevermoney",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://forevermoney.ai/",
+        "https://dashboard.forevermoney.ai/api/vaults/tvl"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie",
+        "confidence": "medium"
+      },
+      "notes": "Public no-auth GET returning vault TVL aggregates grouped by trading pair on the official ForeverMoney Insights dashboard API host."
     }
   ],
   "social": {
