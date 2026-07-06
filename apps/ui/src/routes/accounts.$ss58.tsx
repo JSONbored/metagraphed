@@ -11,8 +11,9 @@ import {
   Fingerprint,
   Radar,
   Rows3,
-  Scale,
   Unplug,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
@@ -30,10 +31,11 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import {
   accountAxonRemovalsQuery,
-  accountWeightSettersQuery,
   accountBalanceQuery,
+  accountDeregistrationsQuery,
   accountEventsQuery,
   accountExtrinsicsQuery,
+  accountRegistrationsQuery,
   accountQuery,
   accountSubnetsQuery,
   accountTransfersQuery,
@@ -249,8 +251,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
 
       <AccountTeardownActivitySection ss58={ss58} />
-
-      <AccountWeightSettingSection ss58={ss58} />
+      <AccountRegistrationActivitySection ss58={ss58} />
+      <AccountDeregistrationActivitySection ss58={ss58} />
 
       {account.event_kinds.length > 0 ? (
         <SectionAnchor
@@ -643,24 +645,21 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
 }
 
 /**
- * Validator weight-setting (WeightsSet) footprint over the trailing 30-day
- * window — KPI summary + per-subnet breakdown from /weight-setters. Unlike
- * teardown, always renders: zero activity shows an empty state (typical for
- * non-validator hotkeys), not a hidden section or an error.
+ * Per-account registration (NeuronRegistered) activity over a 7d/30d/90d
+ * window — the onboarding-side complement to the deregistration summary. A flat
+ * KPI card: total registrations + distinct subnets registered on.
  */
-function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
-  const result = useQuery(accountWeightSettersQuery(ss58));
+function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountRegistrationsQuery(ss58));
   const card = result.data?.data;
   const windowLabel = card?.window ?? "30d";
-  const subnets = card?.subnets ?? [];
-  const totalSets = card?.total_weight_sets ?? 0;
 
   if (result.isPending && !card) {
     return (
       <AccountFeedSectionSkeleton
-        id="weight-setting"
-        title="Weight-setting activity"
-        subtitle="Validator WeightsSet events for this account over the trailing 30-day window."
+        id="registrations"
+        title="Registration activity"
+        subtitle="NeuronRegistered events for this account over the trailing 30-day window."
       />
     );
   }
@@ -668,15 +667,15 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
   if (result.isError) {
     return (
       <SectionAnchor
-        id="weight-setting"
-        title="Weight-setting activity"
-        subtitle="Validator WeightsSet events for this account over the trailing 30-day window."
+        id="registrations"
+        title="Registration activity"
+        subtitle="NeuronRegistered events for this account over the trailing 30-day window."
         tone="accent"
       >
         <TableState
           variant="error"
-          title="Could not load weight-setting activity"
-          description="The weight-setters tier is optional enrichment — the rest of the account page is unaffected."
+          title="Could not load registration activity"
+          description="The registrations tier is optional enrichment."
           error={result.error}
           onRetry={() => void result.refetch()}
         />
@@ -684,74 +683,109 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
     );
   }
 
+  const registrations = card?.total_registrations ?? 0;
+  const distinctSubnets = card?.subnet_count ?? 0;
+  if (registrations === 0 && distinctSubnets === 0) return null;
+
   return (
     <SectionAnchor
-      id="weight-setting"
-      title="Weight-setting activity"
-      subtitle="Validator WeightsSet events for this account over the trailing 30-day window — per-subnet breakdown when this hotkey submits weights."
+      id="registrations"
+      title="Registration activity"
+      subtitle="NeuronRegistered events for this account over the trailing 30-day window."
       tone="accent"
-      info="The account-level companion to subnet weight-setter leaderboards — keyed on the validator hotkey submitting its weight vector."
+      info="The onboarding-side complement to account deregistrations — counts how many times this account registered a neuron, and on how many distinct subnets."
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
-      {totalSets === 0 && subnets.length === 0 ? (
-        <TableState
-          variant="empty"
-          title="No weight-setting activity"
-          description="This account has not submitted WeightsSet events in the trailing window — typical for non-validator hotkeys or coldkey-only addresses."
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+        <StatTile
+          icon={UserPlus}
+          eyebrow="Registrations"
+          tone="accent"
+          value={formatNumber(registrations)}
+          hint={`NeuronRegistered · ${windowLabel}`}
+          className={KPI_TILE}
         />
-      ) : (
-        <>
-          <div className="mb-5 grid max-w-2xl gap-4 sm:grid-cols-2">
-            <StatTile
-              icon={Scale}
-              eyebrow="Weight sets"
-              tone="accent"
-              value={formatNumber(totalSets)}
-              hint={`WeightsSet · ${windowLabel}`}
-              className={KPI_TILE}
-            />
-            <StatTile
-              icon={Boxes}
-              eyebrow="Distinct subnets"
-              value={formatNumber(card?.subnet_count ?? subnets.length)}
-              hint="subnets with weight sets"
-              className={KPI_TILE}
-            />
-          </div>
-          <DataPanel>
-            <table className="w-full text-left text-sm">
-              <thead className="bg-surface/50">
-                <tr>
-                  <th className={TH}>Subnet</th>
-                  <th className={`${TH} text-right`}>Weight sets</th>
-                  <th className={`${TH} text-right`}>Last set</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {subnets.map((row) => (
-                  <tr key={row.netuid} className="hover:bg-surface/30">
-                    <td className="px-5 py-4 font-mono text-[12px]">
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: row.netuid }}
-                        className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
-                      >
-                        SN{row.netuid}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
-                      {formatNumber(row.weight_sets)}
-                    </td>
-                    <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
-                      <TimeAgo at={row.last_set_at ?? undefined} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </DataPanel>
-        </>
-      )}
+        <StatTile
+          icon={Boxes}
+          eyebrow="Distinct subnets"
+          value={formatNumber(distinctSubnets)}
+          hint="subnets registered on"
+          className={KPI_TILE}
+        />
+      </div>
+    </SectionAnchor>
+  );
+}
+
+/**
+ * Per-account deregistration (NeuronDeregistered) activity over a 7d/30d/90d
+ * window — the eviction-side complement to the registrations summary. A flat
+ * KPI card: total deregistrations + distinct subnets evicted from.
+ */
+function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountDeregistrationsQuery(ss58));
+  const card = result.data?.data;
+  const windowLabel = card?.window ?? "30d";
+
+  if (result.isPending && !card) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="deregistrations"
+        title="Deregistration activity"
+        subtitle="NeuronDeregistered events for this account over the trailing 30-day window."
+      />
+    );
+  }
+
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="deregistrations"
+        title="Deregistration activity"
+        subtitle="NeuronDeregistered events for this account over the trailing 30-day window."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load deregistration activity"
+          description="The deregistrations tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const deregistrations = card?.total_deregistrations ?? 0;
+  const distinctSubnets = card?.subnet_count ?? 0;
+  if (deregistrations === 0 && distinctSubnets === 0) return null;
+
+  return (
+    <SectionAnchor
+      id="deregistrations"
+      title="Deregistration activity"
+      subtitle="NeuronDeregistered events for this account over the trailing 30-day window."
+      tone="accent"
+      info="The eviction-side complement to account registrations — counts how many times this account was deregistered, and on how many distinct subnets."
+      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+    >
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+        <StatTile
+          icon={UserMinus}
+          eyebrow="Deregistrations"
+          tone="accent"
+          value={formatNumber(deregistrations)}
+          hint={`NeuronDeregistered · ${windowLabel}`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Distinct subnets"
+          value={formatNumber(distinctSubnets)}
+          hint="subnets evicted from"
+          className={KPI_TILE}
+        />
+      </div>
     </SectionAnchor>
   );
 }

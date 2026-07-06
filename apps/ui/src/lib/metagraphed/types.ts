@@ -951,29 +951,51 @@ export interface AccountAxonRemovals {
   subnets: AccountAxonRemovalsSubnet[];
 }
 
-/** Per-subnet WeightsSet row in /api/v1/accounts/{ss58}/weight-setters. */
-export interface AccountWeightSettersSubnet {
+export interface AccountDeregistrationsSubnet {
   netuid: number;
-  weight_sets: number;
-  first_set_at: string | null;
-  last_set_at: string | null;
+  deregistrations: number;
+  first_deregistered_at: string | null;
+  last_deregistered_at: string | null;
 }
 
 /**
- * One account's (validator's) weight-setting footprint over a 7d/30d window, from
- * /api/v1/accounts/{ss58}/weight-setters — the account-level companion to
- * /api/v1/subnets/{netuid}/weights/setters. Zeroed when the account had no
- * WeightsSet events in the window.
+ * One account's deregistration (NeuronDeregistered) footprint over a
+ * 7d/30d/90d window, from /api/v1/accounts/{ss58}/deregistrations —
+ * the eviction-side complement to /accounts/{ss58}/registrations.
+ * Zeroed when the account had no NeuronDeregistered events in the window.
  */
-export interface AccountWeightSetters {
+export interface AccountDeregistrations {
   schema_version: number;
   address: string;
   window: string | null;
-  total_weight_sets: number;
+  total_deregistrations: number;
   subnet_count: number;
   concentration: number | null;
   dominant_netuid: number | null;
-  subnets: AccountWeightSettersSubnet[];
+  subnets: AccountDeregistrationsSubnet[];
+}
+
+export interface AccountRegistrationsSubnet {
+  netuid: number;
+  registrations: number;
+  first_observed: string | null;
+  last_observed: string | null;
+}
+
+/**
+ * One account's registration (NeuronRegistered) footprint over a
+ * 7d/30d/90d window, from /api/v1/accounts/{ss58}/registrations.
+ * Zeroed when the account had no NeuronRegistered events in the window.
+ */
+export interface AccountRegistrations {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_registrations: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountRegistrationsSubnet[];
 }
 
 /**
