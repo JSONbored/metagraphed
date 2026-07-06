@@ -144,7 +144,7 @@ describe("buildAccountWeightSetters", () => {
 });
 
 describe("loadAccountWeightSetters", () => {
-  test("seeks the hotkey index for WeightsSet over the window and shapes it", async () => {
+  test("queries direct and uid-resolved WeightsSet rows over the window and shapes them", async () => {
     let captured;
     const d1 = async (sql, params) => {
       captured = { sql, params };
@@ -159,17 +159,112 @@ describe("loadAccountWeightSetters", () => {
     const { data, generatedAt } = await loadAccountWeightSetters(d1, ADDR, {
       windowLabel: "7d",
     });
+    assert.match(captured.sql, /FROM account_events e/);
     assert.match(
       captured.sql,
-      /FROM account_events INDEXED BY idx_account_events_hotkey/,
+      /LEFT JOIN neurons n ON e\.netuid = n\.netuid AND e\.uid = n\.uid/,
     );
-    assert.match(captured.sql, /WHERE hotkey = \? AND event_kind = \?/);
-    assert.match(captured.sql, /GROUP BY netuid/);
-    assert.equal(captured.params[0], ADDR);
-    assert.equal(captured.params[1], WEIGHTS_EVENT_KIND);
-    assert.equal(typeof captured.params[2], "number"); // epoch-ms cutoff
+    assert.match(captured.sql, /e\.hotkey = \? OR n\.hotkey = \?/);
+    assert.match(captured.sql, /GROUP BY e\.netuid/);
+    assert.equal(captured.params[0], WEIGHTS_EVENT_KIND);
+    assert.equal(typeof captured.params[1], "number"); // epoch-ms cutoff
+    assert.equal(captured.params[2], ADDR);
+    assert.equal(captured.params[3], ADDR);
     assert.equal(data.total_weight_sets, 5);
     assert.equal(generatedAt, new Date(1_700_500_000_000).toISOString());
+  });
+
+  test("counts hotkey-less WeightsSet rows by resolving netuid and uid through neurons", async () => {
+    const now = Date.now();
+    const events = [
+      {
+        event_kind: WEIGHTS_EVENT_KIND,
+        hotkey: null,
+        netuid: 7,
+        uid: 3,
+        observed_at: now - 4_000,
+      },
+      {
+        event_kind: WEIGHTS_EVENT_KIND,
+        hotkey: "",
+        netuid: 7,
+        uid: 3,
+        observed_at: now - 3_000,
+      },
+      {
+        event_kind: WEIGHTS_EVENT_KIND,
+        hotkey: null,
+        netuid: 9,
+        uid: 4,
+        observed_at: now - 2_000,
+      },
+      {
+        event_kind: WEIGHTS_EVENT_KIND,
+        hotkey: null,
+        netuid: 8,
+        uid: 5,
+        observed_at: now - 1_000,
+      },
+      {
+        event_kind: WEIGHTS_EVENT_KIND,
+        hotkey: ADDR,
+        netuid: 11,
+        uid: null,
+        observed_at: now,
+      },
+    ];
+    const neurons = [
+      { netuid: 7, uid: 3, hotkey: ADDR },
+      { netuid: 9, uid: 4, hotkey: ADDR },
+      { netuid: 8, uid: 5, hotkey: "5DifferentHotkey" },
+    ];
+    const d1 = async (sql, params) => {
+      const [kind, cutoff, directHotkey, resolvedHotkey] = params;
+      assert.equal(kind, WEIGHTS_EVENT_KIND);
+      const grouped = events
+        .filter(
+          (event) => event.event_kind === kind && event.observed_at >= cutoff,
+        )
+        .filter((event) => {
+          if (event.hotkey === directHotkey) return true;
+          if (event.hotkey != null && event.hotkey !== "") return false;
+          return neurons.some(
+            (n) =>
+              n.netuid === event.netuid &&
+              n.uid === event.uid &&
+              n.hotkey === resolvedHotkey,
+          );
+        })
+        .reduce((acc, event) => {
+          const row = acc.get(event.netuid) ?? {
+            netuid: event.netuid,
+            weight_sets: 0,
+            first_observed: event.observed_at,
+            last_observed: event.observed_at,
+          };
+          row.weight_sets += 1;
+          row.first_observed = Math.min(row.first_observed, event.observed_at);
+          row.last_observed = Math.max(row.last_observed, event.observed_at);
+          acc.set(event.netuid, row);
+          return acc;
+        }, new Map());
+      return Array.from(grouped.values());
+    };
+
+    const { data, generatedAt } = await loadAccountWeightSetters(d1, ADDR, {
+      windowLabel: "30d",
+    });
+
+    assert.equal(data.total_weight_sets, 4);
+    assert.deepEqual(
+      data.subnets.map((s) => [s.netuid, s.weight_sets]),
+      [
+        [7, 2],
+        [9, 1],
+        [11, 1],
+      ],
+    );
+    assert.equal(generatedAt, new Date(now).toISOString());
   });
 
   test("an unknown window label falls back to the default window days", async () => {
@@ -181,7 +276,7 @@ describe("loadAccountWeightSetters", () => {
     await loadAccountWeightSetters(d1, ADDR, { windowLabel: "bogus" });
     // 7d default cutoff = now - 7d; assert it's within a day of that.
     const expected = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    assert.ok(Math.abs(captured.params[2] - expected) < 24 * 60 * 60 * 1000);
+    assert.ok(Math.abs(captured.params[1] - expected) < 24 * 60 * 60 * 1000);
   });
 
   test("a cold store (no rows) yields a zeroed card + null generatedAt", async () => {

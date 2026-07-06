@@ -118,10 +118,11 @@ export function buildAccountWeightSetters(rows, address, { window } = {}) {
 
 // One account's weight-setting footprint — reads its WeightsSet events from account_events over the
 // window (observed_at >= now - windowDays, epoch ms), grouped per subnet, shaped with
-// buildAccountWeightSetters. The (hotkey) prefix of idx_account_events_hotkey seeks just this
-// account's events; event_kind/observed_at are residual filters on that bounded seek. Returns
-// { data, generatedAt } where generatedAt is the newest weight-set's observed_at as an ISO string
-// (string|null per the envelope contract). Cold/absent D1 -> zeroed card + null.
+// buildAccountWeightSetters. WeightsSet ingestion can omit hotkey and store only (netuid, uid),
+// so fall back through the latest neurons snapshot for those hotkey-less rows instead of silently
+// dropping the validator's activity. Returns { data, generatedAt } where generatedAt is the newest
+// weight-set's observed_at as an ISO string (string|null per the envelope contract). Cold/absent
+// D1 -> zeroed card + null.
 export async function loadAccountWeightSetters(
   d1,
   address,
@@ -132,11 +133,14 @@ export async function loadAccountWeightSetters(
     ACCOUNT_WEIGHT_SETTERS_WINDOWS[DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
   const rows = await d1(
-    "SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed, " +
-      "MAX(observed_at) AS last_observed " +
-      "FROM account_events INDEXED BY idx_account_events_hotkey " +
-      "WHERE hotkey = ? AND event_kind = ? AND observed_at >= ? GROUP BY netuid",
-    [address, WEIGHTS_EVENT_KIND, cutoff],
+    "SELECT e.netuid, COUNT(*) AS weight_sets, MIN(e.observed_at) AS first_observed, " +
+      "MAX(e.observed_at) AS last_observed " +
+      "FROM account_events e " +
+      "LEFT JOIN neurons n ON e.netuid = n.netuid AND e.uid = n.uid " +
+      "AND (e.hotkey IS NULL OR e.hotkey = '') " +
+      "WHERE e.event_kind = ? AND e.observed_at >= ? " +
+      "AND (e.hotkey = ? OR n.hotkey = ?) GROUP BY e.netuid",
+    [WEIGHTS_EVENT_KIND, cutoff, address, address],
   );
   let latestObserved = null;
   for (const row of Array.isArray(rows) ? rows : []) {

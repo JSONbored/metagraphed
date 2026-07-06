@@ -4226,10 +4226,10 @@ describe("MCP stake-flow and movers economics tools", () => {
               return {
                 async all() {
                   if (
-                    /idx_account_events_hotkey/.test(sql) &&
+                    /FROM account_events e/.test(sql) &&
                     /AS weight_sets/.test(sql) &&
                     /first_observed/.test(sql) &&
-                    params[1] === "WeightsSet"
+                    params[0] === "WeightsSet"
                   ) {
                     return { results: rows };
                   }
