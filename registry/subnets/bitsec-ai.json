@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "netuid": 60,
+  "name": "Bitsec.ai",
+  "slug": "sn-60",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-openapi",
+      "kind": "openapi",
+      "name": "Bitsec API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the Bitsec platform API (title: FastAPI). Served publicly at bitsec.ai/api; documents agent submission, jobs, analytics, and other SN60 Bitsec routes.",
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://bitsec.ai/api/openapi.json",
+      "source_urls": [
+        "https://github.com/Bitsec-AI/sandbox/blob/main/config.py#L12",
+        "https://bitsec.ai/api/openapi.json"
+      ],
+      "url": "https://bitsec.ai/api/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-jobs-stats",
+      "kind": "subnet-api",
+      "name": "Bitsec jobs stats API",
+      "notes": "Public no-auth GET /api/jobs/stats on bitsec.ai returning platform stats JSON (observed: agents_created_1w, real_vulns_found, daily_prize_pool). Documented as GET /jobs/stats in the subnet OpenAPI spec; bitsec.ai is the platform_url configured in the official Bitsec sandbox config.",
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://bitsec.ai/api/openapi.json",
+        "https://github.com/Bitsec-AI/sandbox/blob/main/config.py#L12"
+      ],
+      "url": "https://bitsec.ai/api/jobs/stats"
+    }
+  ],
+  "source_repo": "https://github.com/Bitsec-AI/sandbox",
+  "website_url": "https://bitsec.ai/"
+}
