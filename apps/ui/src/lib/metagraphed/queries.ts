@@ -73,6 +73,9 @@ import type {
   ChainEventsFeed,
   Coverage,
   BlockExtrinsics,
+  BlockTimeStats,
+  BlockThroughput,
+  BlocksSummary,
   CurationLevel,
   Endpoint,
   EndpointIncident,
@@ -1679,6 +1682,75 @@ export const blockChainEventsQuery = (ref: string) =>
         data: normalizeBlockChainEvents(res.data),
       } as ApiResult<BlockChainEvents>;
     },
+    staleTime: STALE_SHORT,
+  });
+
+// Block-production summary (#3488): aggregate health of the recent-blocks window —
+// inter-block time distribution, extrinsic/event throughput, block-author
+// decentralization, and the runtime spec-version spread. Null-safe: a cold/absent
+// store degrades to a schema-stable zeroed card (block_count 0, nested objects
+// null), never a throw or 404.
+function normalizeBlockTimeStats(raw: unknown): BlockTimeStats | null {
+  if (!isRecord(raw)) return null;
+  const count = coerceFiniteNumber(raw.count);
+  // No interval to measure (< 2 consecutive blocks) → the whole block collapses.
+  if (count == null || count === 0) return null;
+  return {
+    count,
+    mean_ms: coerceFiniteNumber(raw.mean_ms) ?? 0,
+    min_ms: coerceFiniteNumber(raw.min_ms) ?? 0,
+    max_ms: coerceFiniteNumber(raw.max_ms) ?? 0,
+    p50_ms: coerceFiniteNumber(raw.p50_ms) ?? 0,
+    p90_ms: coerceFiniteNumber(raw.p90_ms) ?? 0,
+  };
+}
+
+function normalizeBlockThroughput(raw: unknown): BlockThroughput | null {
+  if (!isRecord(raw)) return null;
+  const totalExtrinsics = coerceFiniteNumber(raw.total_extrinsics);
+  const totalEvents = coerceFiniteNumber(raw.total_events);
+  // Backend emits null on a cold store; a malformed all-null object collapses too.
+  if (totalExtrinsics == null && totalEvents == null) return null;
+  return {
+    total_extrinsics: totalExtrinsics ?? 0,
+    total_events: totalEvents ?? 0,
+    mean_extrinsics_per_block: coerceFiniteNumber(raw.mean_extrinsics_per_block) ?? 0,
+    mean_events_per_block: coerceFiniteNumber(raw.mean_events_per_block) ?? 0,
+    max_extrinsics_in_block: coerceFiniteNumber(raw.max_extrinsics_in_block) ?? 0,
+  };
+}
+
+export function normalizeBlocksSummary(raw: unknown): BlocksSummary {
+  const d = isRecord(raw) ? raw : {};
+  return {
+    schema_version: coerceFiniteNumber(d.schema_version) ?? 1,
+    block_count: coerceFiniteNumber(d.block_count) ?? 0,
+    first_block: coerceFiniteNumber(d.first_block) ?? null,
+    last_block: coerceFiniteNumber(d.last_block) ?? null,
+    first_observed_at: coerceString(d.first_observed_at) ?? null,
+    last_observed_at: coerceString(d.last_observed_at) ?? null,
+    block_time: normalizeBlockTimeStats(d.block_time),
+    throughput: normalizeBlockThroughput(d.throughput),
+    distinct_authors: coerceFiniteNumber(d.distinct_authors) ?? 0,
+    author_concentration: normalizeConcentrationMetricsOrNull(d.author_concentration),
+    distinct_spec_versions: coerceFiniteNumber(d.distinct_spec_versions) ?? 0,
+    latest_spec_version: coerceFiniteNumber(d.latest_spec_version) ?? null,
+  };
+}
+
+/**
+ * Block-production summary (#3488) — inter-block time, throughput, and
+ * block-author decentralization over the recent-blocks window. Schema-stable
+ * zeroed card on a cold store (never 404/throws).
+ */
+export const blocksSummaryQuery = () =>
+  queryOptions({
+    queryKey: k("blocks-summary"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/blocks/summary", { signal });
+      return { ...res, data: normalizeBlocksSummary(res.data) } as ApiResult<BlocksSummary>;
+    },
+    // Block summary tracks the fast-moving blocks feed — keep this short.
     staleTime: STALE_SHORT,
   });
 
