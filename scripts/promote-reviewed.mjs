@@ -4,6 +4,7 @@ import {
   loadSubnets,
   readJson,
   repoRoot,
+  assertNoSubnetFilePathCollision,
   slugify,
   stableStringify,
   writeJson,
@@ -30,22 +31,40 @@ const allOverlays = await loadSubnets();
 const manualOverlaysByNetuid = new Map(
   manualOverlays.map((entry) => [entry.overlay.netuid, entry]),
 );
+const manualOverlaysByFilePath = new Map(
+  manualOverlays.map((entry) => [entry.filePath, entry]),
+);
 const overlaysByNetuid = new Map(
-  allOverlays.map((overlay) => [
-    overlay.netuid,
-    manualOverlaysByNetuid.get(overlay.netuid) || {
+  allOverlays.map((overlay) => {
+    const manualEntry = manualOverlaysByNetuid.get(overlay.netuid);
+    if (manualEntry) {
+      return [overlay.netuid, manualEntry];
+    }
+
+    const materializedFilePath = path.join(
+      repoRoot,
+      "registry/subnets",
       // Same convention as scripts/subnet-new.mjs: slug the display name, not
       // the internal sn-<netuid> slug field (which would just echo back
       // sn-<netuid> as the FILENAME too, reintroducing the drift this fixes).
-      filePath: path.join(
-        repoRoot,
-        "registry/subnets",
-        `${slugify(overlay.name) || `sn-${overlay.netuid}`}.json`,
-      ),
-      materialized: true,
+      `${slugify(overlay.name) || `sn-${overlay.netuid}`}.json`,
+    );
+    const conflictingEntry = manualOverlaysByFilePath.get(materializedFilePath);
+    assertNoSubnetFilePathCollision({
+      filePath: materializedFilePath,
       overlay,
-    },
-  ]),
+      existingEntry: conflictingEntry,
+    });
+
+    return [
+      overlay.netuid,
+      {
+        filePath: materializedFilePath,
+        materialized: true,
+        overlay,
+      },
+    ];
+  }),
 );
 const results = [];
 

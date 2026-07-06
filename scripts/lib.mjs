@@ -180,6 +180,24 @@ export async function readArtifactJson(relativePath) {
   return readJson(artifactFilePath(relativePath));
 }
 
+export function assertNoSubnetFilePathCollision({
+  filePath,
+  overlay,
+  existingEntry,
+  root = repoRoot,
+}) {
+  if (!existingEntry || existingEntry.overlay.netuid === overlay.netuid) {
+    return;
+  }
+
+  throw new Error(
+    `Refusing to materialize generated subnet netuid ${overlay.netuid} (${overlay.name}) to ${path.relative(
+      root,
+      filePath,
+    )}: that file already belongs to netuid ${existingEntry.overlay.netuid} (${existingEntry.overlay.name})`,
+  );
+}
+
 // Write a file atomically: stage inside a private sibling temp directory (same
 // filesystem, so rename() is atomic) then rename over the target. A concurrent
 // reader always sees a complete old-or-new file, never the zero-length window a

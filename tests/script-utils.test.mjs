@@ -20,6 +20,7 @@ import {
   classifyNativeName,
   artifactFilePath,
   artifactOutputPath,
+  assertNoSubnetFilePathCollision,
   createLocalArtifactEnv,
   flattenSurfaces,
   formatLlmMarkdownText,
@@ -1188,6 +1189,19 @@ describe("script utility contracts", () => {
     assert.equal(
       reviewedOverlaySet.generatedOverlays[0].curation.level,
       "maintainer-reviewed",
+    );
+  });
+
+  test("rejects generated subnet materialization over a different manual subnet file", () => {
+    assert.throws(
+      () =>
+        assertNoSubnetFilePathCollision({
+          filePath: "/repo/registry/subnets/bitmind.json",
+          overlay: { netuid: 41, name: "BitMind" },
+          existingEntry: { overlay: { netuid: 34, name: "BitMind" } },
+          root: "/repo",
+        }),
+      /Refusing to materialize generated subnet netuid 41 .* already belongs to netuid 34/,
     );
   });
 
