@@ -101,6 +101,51 @@
         "timeout_ms": 10000
       },
       "notes": "Official Platform Network source repository. The repository describes Platform as a Bittensor subnet for decentralized collaborative AI research."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-network-openapi",
+      "kind": "openapi",
+      "name": "Plaτform BASE Challenge Proxy OpenAPI",
+      "notes": "OpenAPI 3.1 spec for the BASE challenge proxy public edge at chain.joinbase.ai. The official SN100 source repository (PlatformNetwork/platform README) documents this host as the live public API front door for the multi-challenge subnet platform.",
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://chain.joinbase.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/PlatformNetwork/platform/blob/main/README.md"
+      ],
+      "url": "https://chain.joinbase.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-network-subnet-api",
+      "kind": "subnet-api",
+      "name": "Plaτform challenge registry API",
+      "notes": "Public no-auth GET returning the active BASE challenge registry (network, API version, and challenge slugs with emission percentages). Documented in the subnet's own OpenAPI (chain.joinbase.ai/openapi.json, path /v1/registry); same host as the registered OpenAPI surface. The sibling /v1/weights/latest endpoint on this host returns netuid 100, confirming SN100 ownership.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://chain.joinbase.ai/openapi.json",
+        "https://github.com/PlatformNetwork/platform/blob/main/README.md"
+      ],
+      "url": "https://chain.joinbase.ai/v1/registry"
     }
   ],
   "social": {
