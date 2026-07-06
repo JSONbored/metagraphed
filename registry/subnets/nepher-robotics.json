@@ -358,6 +358,22 @@
         "https://docs.nepher.ai/"
       ],
       "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-api",
+      "kind": "subnet-api",
+      "name": "Nepher tournament evaluations API",
+      "notes": "Public no-auth GET /api/v1/evaluations — per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations"
     }
   ],
   "website_url": "https://nepher.ai"
