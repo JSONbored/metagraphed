@@ -1,0 +1,48 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "CliqueAI",
+  "netuid": 83,
+  "schema_version": 1,
+  "slug": "sn-83",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-cliqueai-openapi",
+      "kind": "openapi",
+      "name": "CliqueAI FastAPI",
+      "provider": "cliqueai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "http://lambda.toptensor.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/toptensor/CliqueAI/blob/main/common/base/consts.py"
+      ],
+      "url": "http://lambda.toptensor.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-cliqueai-subnet-api",
+      "kind": "subnet-api",
+      "name": "CliqueAI subnet-api",
+      "provider": "cliqueai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": ["http://lambda.toptensor.ai/openapi.json"],
+      "url": "http://lambda.toptensor.ai/validator/ip"
+    }
+  ]
+}
