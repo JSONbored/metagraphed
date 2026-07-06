@@ -615,6 +615,28 @@
         "https://chutes.ai/docs"
       ],
       "url": "https://api.chutes.ai/payments/summary/tao"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-tee-measurements-api",
+      "kind": "subnet-api",
+      "name": "Chutes TEE server measurements API",
+      "notes": "Public no-auth GET returning TEE server measurement records (version, hardware name, MRTD, boot RTMR values). Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /servers/tee/measurements); same host as the existing pricing, bounties, fmv, and payment-totals subnet-api surfaces.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/servers/tee/measurements"
     }
   ],
   "website_url": "https://chutes.ai/"
