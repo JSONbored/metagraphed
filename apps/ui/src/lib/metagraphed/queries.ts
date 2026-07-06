@@ -53,6 +53,8 @@ import type {
   ChainTransferPair,
   ChainTransferPairs,
   ChainStakeFlow,
+  ChainStakeFlowDistribution,
+  ChainStakeFlowNetwork,
   ChainStakeFlowSubnet,
   ChainConcentration,
   ChainPerformance,
