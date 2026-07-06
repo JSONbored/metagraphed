@@ -977,6 +977,49 @@ export interface AccountWeightSetters {
 }
 
 /**
+ * Net-flow direction classification for a stake-flow card: accumulating (net in),
+ * exiting (net out), churning (large two-way flow, small net), or idle (no flow).
+ */
+export type StakeFlowDirection = "accumulating" | "exiting" | "churning" | "idle";
+
+/** Per-subnet StakeAdded/StakeRemoved row in /api/v1/accounts/{ss58}/stake-flow. */
+export interface AccountStakeFlowSubnet {
+  netuid: number;
+  staked_tao: number;
+  unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  flow_ratio: number | null;
+  direction: StakeFlowDirection;
+  stake_events: number;
+  unstake_events: number;
+}
+
+/**
+ * One account's net stake-capital flow (StakeAdded/StakeRemoved) per subnet over a
+ * 7d/30d/90d window, from /api/v1/accounts/{ss58}/stake-flow — the account-level
+ * companion to /api/v1/subnets/{netuid}/stake-flow. Zeroed when the account had no
+ * stake events in the window.
+ */
+export interface AccountStakeFlow {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  flow_ratio: number | null;
+  direction: StakeFlowDirection;
+  stake_events: number;
+  unstake_events: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountStakeFlowSubnet[];
+}
+
+/**
  * One neuron position a wallet holds on a subnet, from
  * /api/v1/accounts/{ss58}/portfolio: its economics plus emission/stake yield.
  * Score cells are null when absent; `yield` is null with zero stake.

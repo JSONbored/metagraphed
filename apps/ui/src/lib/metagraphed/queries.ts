@@ -31,6 +31,9 @@ import type {
   AccountAxonRemovalsSubnet,
   AccountWeightSetters,
   AccountWeightSettersSubnet,
+  AccountStakeFlow,
+  AccountStakeFlowSubnet,
+  StakeFlowDirection,
   AccountBalance,
   AccountDay,
   AccountEvent,
@@ -2339,6 +2342,80 @@ export const accountWeightSettersQuery = (ss58: string, window = "30d") =>
       );
       return {
         data: normalizeAccountWeightSetters(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// The stake-flow classifier emits one of four labels; anything else (cold store,
+// junk) degrades to "idle" so the card stays schema-stable.
+function coerceStakeFlowDirection(raw: unknown): StakeFlowDirection {
+  return raw === "accumulating" || raw === "exiting" || raw === "churning" || raw === "idle"
+    ? raw
+    : "idle";
+}
+
+function normalizeAccountStakeFlowSubnet(raw: unknown): AccountStakeFlowSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    staked_tao: firstFiniteNumber(raw.staked_tao) ?? 0,
+    unstaked_tao: firstFiniteNumber(raw.unstaked_tao) ?? 0,
+    net_flow_tao: firstFiniteNumber(raw.net_flow_tao) ?? 0,
+    gross_flow_tao: firstFiniteNumber(raw.gross_flow_tao) ?? 0,
+    flow_ratio: firstFiniteNumber(raw.flow_ratio) ?? null,
+    direction: coerceStakeFlowDirection(raw.direction),
+    stake_events: firstFiniteNumber(raw.stake_events) ?? 0,
+    unstake_events: firstFiniteNumber(raw.unstake_events) ?? 0,
+  };
+}
+
+// Per-account net stake-capital flow (StakeAdded/StakeRemoved) over a 7d/30d/90d
+// window — account totals plus a per-subnet breakdown from the account_events
+// stream. Every numeric cell coerces defensively: TAO totals and event counts fall
+// through to 0, ratios/concentration to null, and direction to "idle" on a cold
+// store or junk.
+export function normalizeAccountStakeFlow(ss58: string, raw: unknown): AccountStakeFlow {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountStakeFlowSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_staked_tao: firstFiniteNumber(rec.total_staked_tao) ?? 0,
+    total_unstaked_tao: firstFiniteNumber(rec.total_unstaked_tao) ?? 0,
+    net_flow_tao: firstFiniteNumber(rec.net_flow_tao) ?? 0,
+    gross_flow_tao: firstFiniteNumber(rec.gross_flow_tao) ?? 0,
+    flow_ratio: firstFiniteNumber(rec.flow_ratio) ?? null,
+    direction: coerceStakeFlowDirection(rec.direction),
+    stake_events: firstFiniteNumber(rec.stake_events) ?? 0,
+    unstake_events: firstFiniteNumber(rec.unstake_events) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountStakeFlowQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-stake-flow", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountStakeFlow>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/stake-flow`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountStakeFlow(ss58, res.data),
         meta: res.meta,
         url: res.url,
       };
