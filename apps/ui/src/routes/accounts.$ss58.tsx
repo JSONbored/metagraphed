@@ -33,6 +33,7 @@ import {
   accountQuery,
   accountSubnetsQuery,
   accountTransfersQuery,
+  accountWeightSettersQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -244,6 +245,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
 
+      <AccountWeightSettersSection ss58={ss58} />
+
       {account.event_kinds.length > 0 ? (
         <SectionAnchor
           id="kinds"
@@ -301,6 +304,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
             { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
             { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
+            { label: "weight-setters", path: `/api/v1/accounts/${sourceRef}/weight-setters` },
           ]}
         />
       </SectionAnchor>
@@ -311,6 +315,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           `/api/v1/accounts/${sourceRef}/history`,
           `/api/v1/accounts/${sourceRef}/events`,
           `/api/v1/accounts/${sourceRef}/subnets`,
+          `/api/v1/accounts/${sourceRef}/weight-setters`,
         ]}
       />
     </>
@@ -654,6 +659,103 @@ function AccountFootprintSection({
           </tbody>
         </table>
       </DataPanel>
+    </SectionAnchor>
+  );
+}
+
+/**
+ * Account-level weight-setting activity (#3731) — the per-subnet WeightsSet
+ * footprint over the last 30 days, the account-level twin of the subnet-level
+ * weight-setters leaderboard (#3480). Only relevant for validator accounts;
+ * non-validator (or currently-inactive-validator) accounts legitimately have
+ * zero rows, so a cold result renders an empty state rather than being hidden
+ * or treated as an error.
+ */
+function AccountWeightSettersSection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountWeightSettersQuery(ss58));
+  const data = result.data?.data;
+  const subnets = data?.subnets ?? [];
+
+  if (result.isPending) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="weight-setters"
+        title="Weight-setting activity"
+        subtitle="Per-subnet WeightsSet footprint for this account over the last 30 days — relevant for validators."
+      />
+    );
+  }
+
+  return (
+    <SectionAnchor
+      id="weight-setters"
+      title="Weight-setting activity"
+      subtitle="Per-subnet WeightsSet footprint for this account over the last 30 days — relevant for validators."
+      tone="accent"
+      right={
+        subnets.length > 0 ? (
+          <SectionBadge>{formatNumber(subnets.length)} subnets</SectionBadge>
+        ) : undefined
+      }
+    >
+      {subnets.length === 0 ? (
+        <TableState
+          variant="empty"
+          title="No weight-setting activity"
+          description="This account hasn't set weights on any subnet in the last 30 days. Expected for non-validator accounts, or a validator outside its active subnets."
+          error={result.error}
+        />
+      ) : (
+        <>
+          <div className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-5 py-4 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]">
+            <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              weight sets by subnet
+            </div>
+            <BarMini
+              data={subnets
+                .slice(0, 12)
+                .map((s) => ({ label: `SN${s.netuid}`, value: s.weight_sets }))}
+              showValue
+            />
+          </div>
+          <DataPanel>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface/50">
+                <tr>
+                  <th className={TH}>Subnet</th>
+                  <th className={`${TH} text-right`}>Weight sets</th>
+                  <th className={TH}>First set</th>
+                  <th className={TH}>Last set</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {subnets.map((s) => (
+                  <tr key={s.netuid} className="hover:bg-surface/30">
+                    <td className="px-5 py-4 font-mono text-[12px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
+                      >
+                        SN{s.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                      {formatNumber(s.weight_sets)}
+                    </td>
+                    <td className="px-5 py-4 font-mono text-[11px] text-ink-muted">
+                      {s.first_set_at ? <TimeAgo at={s.first_set_at} /> : "—"}
+                    </td>
+                    <td className="px-5 py-4 font-mono text-[11px] text-ink-muted">
+                      {s.last_set_at ? <TimeAgo at={s.last_set_at} /> : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </DataPanel>
+        </>
+      )}
     </SectionAnchor>
   );
 }

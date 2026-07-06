@@ -36,6 +36,8 @@ import type {
   AccountRegistration,
   AccountSubnets,
   AccountSummary,
+  AccountWeightSetterSubnet,
+  AccountWeightSetters,
   PortfolioConcentration,
   PortfolioPosition,
   Block,
@@ -2170,6 +2172,61 @@ export const accountPortfolioQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountPortfolio>;
+    },
+    staleTime: STALE_MED,
+  });
+
+const MAX_ACCOUNT_WEIGHT_SETTER_SUBNETS = 256;
+
+function normalizeAccountWeightSetterSubnet(raw: unknown): AccountWeightSetterSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    weight_sets: firstFiniteNumber(raw.weight_sets) ?? 0,
+    first_set_at: firstString(raw.first_set_at) ?? null,
+    last_set_at: firstString(raw.last_set_at) ?? null,
+  };
+}
+
+function normalizeAccountWeightSetters(ss58: string, raw: unknown): AccountWeightSetters {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = (Array.isArray(rec.subnets) ? rec.subnets : [])
+    .slice(0, MAX_ACCOUNT_WEIGHT_SETTER_SUBNETS)
+    .flatMap((row) => {
+      const normalized = normalizeAccountWeightSetterSubnet(row);
+      return normalized ? [normalized] : [];
+    });
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_weight_sets: firstFiniteNumber(rec.total_weight_sets) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+// #3731: one account's (validator's) per-subnet WeightsSet footprint over a
+// 7d/30d window — the account-level twin of subnetWeightSettersQuery. A
+// non-validator or inactive-validator account degrades to a zeroed, empty-subnet
+// card rather than an error.
+export const accountWeightSettersQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-weight-setters", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/weight-setters`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountWeightSetters(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountWeightSetters>;
     },
     staleTime: STALE_MED,
   });

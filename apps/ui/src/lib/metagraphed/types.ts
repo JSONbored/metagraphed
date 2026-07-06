@@ -1158,6 +1158,31 @@ export interface SubnetWeightSetters {
   setters: SubnetWeightSetter[];
 }
 
+/** One subnet's WeightsSet footprint within an account's weight-setters card (#3731). */
+export interface AccountWeightSetterSubnet {
+  netuid: number;
+  weight_sets: number;
+  first_set_at: string | null;
+  last_set_at: string | null;
+}
+
+/**
+ * One account's (validator's) per-subnet WeightsSet footprint over a 7d/30d
+ * window (#3731), from /api/v1/accounts/{ss58}/weight-setters — the account-level
+ * twin of SubnetWeightSetters. Zeroed when the account set no weights in the
+ * window (a non-validator account, or a validator outside its active subnets).
+ */
+export interface AccountWeightSetters {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_weight_sets: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountWeightSetterSubnet[];
+}
+
 /**
  * Per-subnet axon-removal (teardown) activity over a 7d/30d window (#1657), from
  * /api/v1/subnets/{netuid}/axon-removals — the removal-side complement of the
