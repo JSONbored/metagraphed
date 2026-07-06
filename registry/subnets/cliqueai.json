@@ -1,0 +1,55 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "CliqueAI",
+  "netuid": 83,
+  "schema_version": 1,
+  "slug": "sn-83",
+  "source_repo": "https://github.com/toptensor/CliqueAI",
+  "status": "active",
+  "website_url": "https://cliqueai.toptensor.ai/",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-cliqueai-openapi",
+      "kind": "openapi",
+      "name": "CliqueAI lambda OpenAPI",
+      "notes": "Machine-readable OpenAPI 3.1 spec for the SN83 CliqueAI lambda service (observed: FastAPI title, paths including /graph/lambda and /validator/ip). The official toptensor/CliqueAI client pins LAMBDA_URL to http://lambda.toptensor.ai.",
+      "provider": "cliqueai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "http://lambda.toptensor.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/toptensor/CliqueAI/blob/main/common/base/consts.py"
+      ],
+      "url": "http://lambda.toptensor.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-cliqueai-subnet-api",
+      "kind": "subnet-api",
+      "name": "CliqueAI validator IP API",
+      "notes": "Public no-auth GET /validator/ip on lambda.toptensor.ai returning a JSON array of validator host IPs (observed: HTTP 200). Documented in the subnet's OpenAPI spec on the same host; CliqueAI/common/base/consts.py sets LAMBDA_URL to http://lambda.toptensor.ai.",
+      "provider": "cliqueai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/toptensor/CliqueAI/blob/main/common/base/consts.py",
+        "http://lambda.toptensor.ai/openapi.json"
+      ],
+      "url": "http://lambda.toptensor.ai/validator/ip"
+    }
+  ]
+}
