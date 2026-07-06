@@ -751,6 +751,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-event-mix",
+      "path": "/metagraph/chain/event-mix.json",
+      "schema_ref": "#/components/schemas/ChainEventMixArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-calls",
       "path": "/metagraph/chain/calls.json",
       "schema_ref": "#/components/schemas/ChainCallsArtifact",
@@ -6558,6 +6565,40 @@
         },
         {
           "description": "Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/event-mix.json",
+      "cache": "short",
+      "description": "Fetch the decoded chain-event mix over a 7d or 30d window — each account_events event_kind (NeuronRegistered, WeightsSet, StakeAdded, Transfer, AxonServed, …) by count and share of all decoded events, ordered by count descending. Computed live from the account_events D1 tier; the network-wide companion to the per-subnet /api/v1/subnets/{netuid}/event-summary. Schema-stable total_events:0/kinds:[] when the store is cold.",
+      "id": "chain-event-mix",
+      "method": "GET",
+      "path": "/api/v1/chain/event-mix",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the per-kind event mix as text/csv; `json` (default) keeps the response envelope.",
           "name": "format",
           "schema": {
             "enum": [

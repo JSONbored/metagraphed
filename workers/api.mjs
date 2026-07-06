@@ -48,6 +48,7 @@ import {
   handleBulkHealthTrends,
   handleChainActivity,
   handleChainCalls,
+  handleChainEventMix,
   handleChainFees,
   handleChainSigners,
   handleChainTransferPairs,
@@ -2167,6 +2168,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/activity") {
       return handleChainActivity(request, env, resolved.url, ctx);
     }
+    if (resolved.url.pathname === "/api/v1/chain/event-mix") {
+      return handleChainEventMix(request, env, resolved.url, ctx);
+    }
     if (resolved.url.pathname === "/api/v1/chain/calls") {
       return handleChainCalls(request, env, resolved.url, ctx);
     }
@@ -2342,6 +2346,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/incidents" ||
     pathname === "/api/v1/rpc/usage" ||
     pathname === "/api/v1/chain/activity" ||
+    pathname === "/api/v1/chain/event-mix" ||
     pathname === "/api/v1/chain/calls" ||
     pathname === "/api/v1/chain/signers" ||
     pathname === "/api/v1/chain/fees" ||

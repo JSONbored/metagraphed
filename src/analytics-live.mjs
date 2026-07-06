@@ -32,6 +32,7 @@ import {
 import {
   buildChainActivity,
   buildChainCalls,
+  buildChainEventMix,
   buildChainFees,
 } from "./chain-analytics.mjs";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.mjs";
@@ -590,6 +591,41 @@ export async function loadChainCalls(
   return buildChainCalls({
     window: windowLabel,
     groupBy,
+    observedAt,
+    total: totalRows?.[0]?.total ?? 0,
+    rows,
+  });
+}
+
+// Windowed decoded-event mix (#1990 family): the account_events event_kind
+// distribution over the window — count + share per kind — the network-wide
+// companion to the per-subnet event-summary. The share denominator is the
+// full-window event count read separately, mirroring loadChainCalls.
+export async function loadChainEventMix(
+  d1,
+  { window = "7d", observedAt = null, now = Date.now() } = {},
+) {
+  const days = ANALYTICS_WINDOWS[window] ?? ANALYTICS_WINDOWS["7d"];
+  const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const cutoff = now - days * DAY_MS;
+  const [rows, totalRows] = await Promise.all([
+    d1(
+      `SELECT event_kind, COUNT(*) AS count,
+              MIN(observed_at) AS first_observed_at,
+              MAX(observed_at) AS last_observed_at
+       FROM account_events
+       WHERE observed_at >= ? AND event_kind IS NOT NULL
+       GROUP BY event_kind
+       ORDER BY count DESC, event_kind ASC`,
+      [cutoff],
+    ),
+    d1(
+      `SELECT COUNT(*) AS total FROM account_events WHERE observed_at >= ? AND event_kind IS NOT NULL`,
+      [cutoff],
+    ),
+  ]);
+  return buildChainEventMix({
+    window: windowLabel,
     observedAt,
     total: totalRows?.[0]?.total ?? 0,
     rows,

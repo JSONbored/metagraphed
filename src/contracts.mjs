@@ -1260,6 +1260,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainActivityArtifact",
   ),
   artifact(
+    "chain-event-mix",
+    "/metagraph/chain/event-mix.json",
+    "Decoded chain-event mix over a 7d or 30d window: each account_events event_kind by count and share of all decoded events, computed live from the account_events D1 tier at /api/v1/chain/event-mix (no static file). The network-wide companion to the per-subnet /api/v1/subnets/{netuid}/event-summary; total_events:0 and kinds:[] when the store is cold.",
+    "ChainEventMixArtifact",
+  ),
+  artifact(
     "chain-calls",
     "/metagraph/chain/calls.json",
     "Extrinsic call-mix breakdown (count + share per call_module / call_function) over a 7d or 30d window for the block explorer (#1989), computed live from the first-party extrinsics D1 tier at /api/v1/chain/calls (no static file).",
@@ -2866,6 +2872,28 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "chain-event-mix",
+    "GET",
+    "/api/v1/chain/event-mix",
+    "/metagraph/chain/event-mix.json",
+    "Fetch the decoded chain-event mix over a 7d or 30d window — each account_events event_kind (NeuronRegistered, WeightsSet, StakeAdded, Transfer, AxonServed, …) by count and share of all decoded events, ordered by count descending. Computed live from the account_events D1 tier; the network-wide companion to the per-subnet /api/v1/subnets/{netuid}/event-summary. Schema-stable total_events:0/kinds:[] when the store is cold.",
+    "short",
+    ["chain", "analytics"],
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the per-kind event mix as text/csv; `json` (default) keeps the response envelope.",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
+    [],
+  ),
+  route(
     "chain-calls",
     "GET",
     "/api/v1/chain/calls",
@@ -3968,6 +3996,12 @@ function csvExampleForRoute(entry) {
     return [
       "day,block_count,extrinsic_count,event_count,successful_extrinsics,success_rate,unique_signers",
       "2026-07-01,7200,15000,42000,14950,0.9967,320",
+    ].join("\r\n");
+  }
+  if (entry.id === "chain-event-mix") {
+    return [
+      "event_kind,count,share,first_observed_at,last_observed_at",
+      "WeightsSet,42000,0.5478,2026-06-30T00:00:00.000Z,2026-07-06T23:59:00.000Z",
     ].join("\r\n");
   }
   if (entry.id === "chain-calls") {

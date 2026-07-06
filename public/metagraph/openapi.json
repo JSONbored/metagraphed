@@ -4168,6 +4168,98 @@
         ],
         "type": "object"
       },
+      "ChainEventKindEntry": {
+        "additionalProperties": false,
+        "description": "One decoded-event-kind bucket. share is count / total_events over the full window, null when the window is empty. first_observed_at/last_observed_at bound when this kind was seen within the window (null on a cold store).",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kind": {
+            "type": "string"
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "share": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "event_kind",
+          "count",
+          "share",
+          "first_observed_at",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
+      "ChainEventMixArtifact": {
+        "additionalProperties": true,
+        "description": "Decoded chain-event mix over a 7d/30d window: each account_events event_kind (NeuronRegistered, WeightsSet, StakeAdded, Transfer, AxonServed, …) by count and share of all decoded events, newest-observed-first tie-broken by kind. Served live from the account_events D1 tier at /api/v1/chain/event-mix (no static file); total_events is 0 and kinds is empty when the store is cold. The network-wide companion to the per-subnet /api/v1/subnets/{netuid}/event-summary.",
+        "properties": {
+          "distinct_kinds": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "dominant_kind": {
+            "description": "The modal event_kind (highest count) over the window, null when the store is cold.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEventKindEntry"
+            },
+            "type": "array"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "total_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "total_events",
+          "distinct_kinds",
+          "dominant_kind",
+          "kinds"
+        ],
+        "type": "object"
+      },
       "ChainEventsFeedArtifact": {
         "additionalProperties": true,
         "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor (exclusive), while ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). next_cursor is the cursor for the next page (null when the page was not full); next_before is retained for legacy callers. Empty (count:0, events:[]) before the all-events backfill runs.",
@@ -26282,6 +26374,170 @@
           }
         },
         "summary": "Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronDeregistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/event-mix": {
+      "get": {
+        "operationId": "chainEventMix",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the per-kind event mix as text/csv; `json` (default) keeps the response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "distinct_kinds": 1,
+                    "dominant_kind": "example",
+                    "kinds": [
+                      {
+                        "count": 1,
+                        "event_kind": "example",
+                        "first_observed_at": "2026-06-01T00:00:00.000Z",
+                        "last_observed_at": "2026-06-01T00:00:00.000Z",
+                        "share": 0.5
+                      }
+                    ],
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "total_events": 1,
+                    "window": "30d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainEventMixArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "text/csv": {
+                "example": "event_kind,count,share,first_observed_at,last_observed_at\r\nWeightsSet,42000,0.5478,2026-06-30T00:00:00.000Z,2026-07-06T23:59:00.000Z",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the decoded chain-event mix over a 7d or 30d window — each account_events event_kind (NeuronRegistered, WeightsSet, StakeAdded, Transfer, AxonServed, …) by count and share of all decoded events, ordered by count descending. Computed live from the account_events D1 tier; the network-wide companion to the per-subnet /api/v1/subnets/{netuid}/event-summary. Schema-stable total_events:0/kinds:[] when the store is cold.",
         "tags": [
           "chain",
           "analytics"

@@ -47,6 +47,8 @@ import type {
   ChainActivityDay,
   ChainCalls,
   ChainCallEntry,
+  ChainEventMix,
+  ChainEventKindEntry,
   ChainFees,
   ChainFeeDay,
   ChainFeePayer,
@@ -181,6 +183,7 @@ const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
 const MAX_CHAIN_CALLS = 12;
+const MAX_CHAIN_EVENT_KINDS = 48;
 const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
@@ -2535,6 +2538,56 @@ export const chainCallsQuery = (window: ChainWindow = "7d") =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainCalls>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeChainEventKindEntry(raw: unknown): ChainEventKindEntry | null {
+  if (!isRecord(raw)) return null;
+  const eventKind = firstString(raw.event_kind);
+  const count = coerceFiniteNumber(raw.count);
+  if (!eventKind || count == null) return null;
+  return {
+    event_kind: eventKind,
+    count,
+    share: coerceFiniteNumber(raw.share) ?? null,
+    first_observed_at: firstString(raw.first_observed_at) ?? null,
+    last_observed_at: firstString(raw.last_observed_at) ?? null,
+  };
+}
+
+// Decoded-event mix over a 7d/30d window — the account_events event_kind
+// distribution (count + share per kind), the network-wide companion to the
+// per-subnet event-summary. Coerces defensively: a cold or junk store degrades
+// to a schema-stable zeroed card (total_events 0, kinds []).
+export const chainEventMixQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-event-mix", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/event-mix", {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const kinds = normalizeChainRows(
+        d.kinds,
+        MAX_CHAIN_EVENT_KINDS,
+        normalizeChainEventKindEntry,
+      );
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          total_events: firstFiniteNumber(d.total_events) ?? 0,
+          distinct_kinds: firstFiniteNumber(d.distinct_kinds) ?? kinds.length,
+          dominant_kind:
+            firstString(d.dominant_kind) ?? kinds[0]?.event_kind ?? null,
+          kinds,
+        } as ChainEventMix,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainEventMix>;
     },
     staleTime: STALE_SHORT,
   });

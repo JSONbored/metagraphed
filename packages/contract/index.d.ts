@@ -633,6 +633,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/event-mix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the decoded chain-event mix over a 7d or 30d window — each account_events event_kind (NeuronRegistered, WeightsSet, StakeAdded, Transfer, AxonServed, …) by count and share of all decoded events, ordered by count descending. Computed live from the account_events D1 tier; the network-wide companion to the per-subnet /api/v1/subnets/{netuid}/event-summary. Schema-stable total_events:0/kinds:[] when the store is cold. */
+        get: operations["chainEventMix"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/fees": {
         parameters: {
             query?: never;
@@ -3411,6 +3428,30 @@ export interface components {
             count: number;
             method: string | null;
             pallet: string | null;
+        };
+        /** @description One decoded-event-kind bucket. share is count / total_events over the full window, null when the window is empty. first_observed_at/last_observed_at bound when this kind was seen within the window (null on a cold store). */
+        ChainEventKindEntry: {
+            count: number;
+            event_kind: string;
+            /** Format: date-time */
+            first_observed_at: string | null;
+            /** Format: date-time */
+            last_observed_at: string | null;
+            share: number | null;
+        };
+        /** @description Decoded chain-event mix over a 7d/30d window: each account_events event_kind (NeuronRegistered, WeightsSet, StakeAdded, Transfer, AxonServed, …) by count and share of all decoded events, newest-observed-first tie-broken by kind. Served live from the account_events D1 tier at /api/v1/chain/event-mix (no static file); total_events is 0 and kinds is empty when the store is cold. The network-wide companion to the per-subnet /api/v1/subnets/{netuid}/event-summary. */
+        ChainEventMixArtifact: {
+            distinct_kinds: number;
+            /** @description The modal event_kind (highest count) over the window, null when the store is cold. */
+            dominant_kind: string | null;
+            kinds: components["schemas"]["ChainEventKindEntry"][];
+            /** Format: date-time */
+            observed_at?: string | null;
+            schema_version: number;
+            total_events: number;
+            window: string;
+        } & {
+            [key: string]: unknown;
         };
         /** @description Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor (exclusive), while ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). next_cursor is the cursor for the next page (null when the page was not full); next_before is retained for legacy callers. Empty (count:0, events:[]) before the all-events backfill runs. */
         ChainEventsFeedArtifact: {
@@ -11771,6 +11812,128 @@ export interface operations {
                     /**
                      * @example netuid,name
                      *     7,Allways
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainEventMix: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                /** @description Response format override. Use `csv` to download the per-kind event mix as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "distinct_kinds": 1,
+                     *         "dominant_kind": "example",
+                     *         "kinds": [
+                     *           {
+                     *             "count": 1,
+                     *             "event_kind": "example",
+                     *             "first_observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "last_observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "share": 0.5
+                     *           }
+                     *         ],
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "total_events": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainEventMixArtifact"];
+                    };
+                    /**
+                     * @example event_kind,count,share,first_observed_at,last_observed_at
+                     *     WeightsSet,42000,0.5478,2026-06-30T00:00:00.000Z,2026-07-06T23:59:00.000Z
                      */
                     "text/csv": string;
                 };

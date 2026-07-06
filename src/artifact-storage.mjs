@@ -136,6 +136,9 @@ export const R2_ONLY_PATTERNS = [
   /^chain\/fees\.json$/,
   /^chain\/transfers\.json$/,
   /^chain\/transfer-pairs\.json$/,
+  // Network-wide decoded-event mix (event_kind distribution), computed live from
+  // the account_events D1 tier at /api/v1/chain/event-mix — never a file.
+  /^chain\/event-mix\.json$/,
   // Network-wide cross-subnet capital flow, computed live from the account_events
   // stake stream at /api/v1/chain/stake-flow — never a file.
   /^chain\/stake-flow\.json$/,

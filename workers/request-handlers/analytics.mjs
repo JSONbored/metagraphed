@@ -50,6 +50,7 @@ import {
 } from "../../src/health-serving.mjs";
 import {
   loadChainCalls,
+  loadChainEventMix,
   loadChainFees,
   loadNetworkActivity,
   loadSubnetHealthTrends,
@@ -761,6 +762,13 @@ const CHAIN_ACTIVITY_CSV_COLUMNS = [
 // group_by=module rows carry call_function:null, so the default export omits that
 // column; group_by=module_function adds it — keeping the CSV header honest per grouping.
 const CHAIN_CALLS_CSV_COLUMNS = ["call_module", "count", "share"];
+const CHAIN_EVENT_MIX_CSV_COLUMNS = [
+  "event_kind",
+  "count",
+  "share",
+  "first_observed_at",
+  "last_observed_at",
+];
 const CHAIN_CALLS_FUNCTION_CSV_COLUMNS = [
   "call_module",
   "call_function",
@@ -943,6 +951,61 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
     // explicit ?window=<default>, and reordered/duplicate variants all share one
     // entry instead of fragmenting the cache (mirrors the percentiles/incidents/
     // economics-trends windowed routes). `label` is the validated window.
+    `${url.pathname}?window=${encodeURIComponent(label)}${csv ? "&format=csv" : ""}`,
+  );
+}
+
+// Decoded-event mix: the account_events event_kind distribution over a 7d/30d
+// window — count + share per kind — the network-wide companion to the per-subnet
+// /event-summary. The share denominator is the full-window event count read
+// separately, mirroring the call-mix route. ?format=csv downloads the kind rows.
+export async function handleChainEventMix(request, env, url, ctx = {}) {
+  const { label, error } = analyticsWindow(url, ["format"]);
+  if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const csv = csvRequested(url, request);
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-event-mix",
+    async () => {
+      let usedFallback = false;
+      const d1 = async (sql, params) => {
+        const rows = await d1All(env, sql, params);
+        if (hasD1FallbackRows(rows)) usedFallback = true;
+        return rows;
+      };
+      const meta = await readHealthMetaKv(env);
+      const data = await loadChainEventMix(d1, {
+        window: label,
+        observedAt: meta?.last_run_at || null,
+      });
+      if (csv) {
+        const csvRes = await csvResponse(
+          data.kinds,
+          "chain-event-mix",
+          "short",
+          request,
+          CHAIN_EVENT_MIX_CSV_COLUMNS,
+        );
+        return usedFallback ? markD1FallbackResponse(csvRes) : csvRes;
+      }
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/event-mix.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return usedFallback ? markD1FallbackResponse(response) : response;
+    },
     `${url.pathname}?window=${encodeURIComponent(label)}${csv ? "&format=csv" : ""}`,
   );
 }

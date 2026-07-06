@@ -1729,6 +1729,30 @@ export interface ChainCalls {
   call_count: number;
   calls: ChainCallEntry[];
 }
+/** One decoded-event-kind bucket in /api/v1/chain/event-mix. */
+export interface ChainEventKindEntry {
+  event_kind: string;
+  count: number;
+  share: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+}
+/**
+ * Decoded chain-event mix over a 7d/30d window, from /api/v1/chain/event-mix —
+ * each account_events event_kind (NeuronRegistered, WeightsSet, StakeAdded,
+ * Transfer, AxonServed, …) by count and share of all decoded events, ordered by
+ * count descending. The network-wide companion to the per-subnet
+ * /api/v1/subnets/{netuid}/event-summary; zeroed when the store is cold.
+ */
+export interface ChainEventMix {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  total_events: number;
+  distinct_kinds: number;
+  dominant_kind: string | null;
+  kinds: ChainEventKindEntry[];
+}
 export interface ChainSignerEntry {
   signer: string;
   tx_count: number;

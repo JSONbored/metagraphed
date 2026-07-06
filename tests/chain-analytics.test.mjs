@@ -3,6 +3,7 @@ import { test, vi } from "vitest";
 import {
   buildChainActivity,
   buildChainCalls,
+  buildChainEventMix,
   buildChainFees,
   buildChainSigners,
 } from "../src/chain-analytics.mjs";
@@ -340,6 +341,203 @@ test("buildChainCalls drops empty call_module and call_function buckets", () => 
   });
   assert.equal(moduleFunction.call_count, 1);
   assert.equal(moduleFunction.calls[0].call_function, "transfer");
+});
+
+test("buildChainEventMix computes per-kind share against the full-window total", () => {
+  const out = buildChainEventMix({
+    window: "7d",
+    observedAt: "2026-07-01T00:00:00.000Z",
+    total: 1000,
+    rows: [
+      {
+        event_kind: "WeightsSet",
+        count: 600,
+        first_observed_at: Date.UTC(2026, 5, 30),
+        last_observed_at: Date.UTC(2026, 6, 1),
+      },
+      { event_kind: "StakeAdded", count: 150 },
+    ],
+  });
+  assert.equal(out.schema_version, 1);
+  assert.equal(out.window, "7d");
+  assert.equal(out.observed_at, "2026-07-01T00:00:00.000Z");
+  assert.equal(out.total_events, 1000);
+  assert.equal(out.distinct_kinds, 2);
+  assert.equal(out.dominant_kind, "WeightsSet"); // head of the count-desc order
+  assert.equal(out.kinds[0].event_kind, "WeightsSet");
+  assert.equal(out.kinds[0].share, 0.6);
+  // epoch-ms MIN/MAX cells convert to ISO; absent cells stay null.
+  assert.equal(out.kinds[0].first_observed_at, "2026-06-30T00:00:00.000Z");
+  assert.equal(out.kinds[0].last_observed_at, "2026-07-01T00:00:00.000Z");
+  assert.equal(out.kinds[1].share, 0.15);
+  assert.equal(out.kinds[1].first_observed_at, null);
+});
+
+test("buildChainEventMix is cold-stable: share null on empty window, junk dropped", () => {
+  const out = buildChainEventMix({
+    window: "7d",
+    total: 0,
+    rows: [
+      null,
+      { count: 9 },
+      { event_kind: "", count: 4 },
+      { event_kind: "Transfer", count: 3 },
+    ],
+  });
+  assert.equal(out.total_events, 0);
+  assert.equal(out.distinct_kinds, 1); // null, missing-kind, and empty-kind rows dropped
+  assert.equal(out.dominant_kind, "Transfer");
+  assert.equal(out.kinds[0].event_kind, "Transfer");
+  assert.equal(out.kinds[0].share, null); // zero-total denominator
+});
+
+test("buildChainEventMix coerces string counts and defaults to an empty mix", () => {
+  const coerced = buildChainEventMix({
+    window: "30d",
+    total: "10",
+    rows: [{ event_kind: "NeuronRegistered", count: "5" }],
+  });
+  assert.equal(coerced.total_events, 10);
+  assert.equal(coerced.kinds[0].count, 5);
+  assert.equal(coerced.kinds[0].share, 0.5);
+
+  const empty = buildChainEventMix({ window: "7d" });
+  assert.equal(empty.total_events, 0);
+  assert.equal(empty.dominant_kind, null);
+  assert.deepEqual(empty.kinds, []);
+});
+
+test("buildChainEventMix guards every non-positive/junk first/last-seen cell to null", () => {
+  // MIN/MAX(observed_at) over an empty or malformed group can surface null, 0,
+  // negatives, NaN-y strings, or out-of-Date-range values — each must degrade to
+  // a null timestamp rather than leaking "Invalid Date"/NaN into the payload.
+  const junkStamps = [null, undefined, 0, -1, "nope", NaN, "1e400"];
+  const out = buildChainEventMix({
+    window: "7d",
+    total: junkStamps.length,
+    rows: junkStamps.map((stamp, i) => ({
+      event_kind: `Kind${i}`,
+      count: 1,
+      first_observed_at: stamp,
+      last_observed_at: stamp,
+    })),
+  });
+  assert.equal(out.kinds.length, junkStamps.length);
+  for (const kind of out.kinds) {
+    assert.equal(kind.first_observed_at, null);
+    assert.equal(kind.last_observed_at, null);
+  }
+  // A genuine epoch-ms cell alongside the junk still converts cleanly.
+  const mixed = buildChainEventMix({
+    window: "7d",
+    total: 2,
+    rows: [
+      {
+        event_kind: "Good",
+        count: 1,
+        first_observed_at: Date.UTC(2026, 0, 1),
+        last_observed_at: Date.UTC(2026, 0, 2),
+      },
+      {
+        event_kind: "Bad",
+        count: 1,
+        first_observed_at: "x",
+        last_observed_at: -5,
+      },
+    ],
+  });
+  assert.equal(mixed.kinds[0].first_observed_at, "2026-01-01T00:00:00.000Z");
+  assert.equal(mixed.kinds[0].last_observed_at, "2026-01-02T00:00:00.000Z");
+  assert.equal(mixed.kinds[1].first_observed_at, null);
+  assert.equal(mixed.kinds[1].last_observed_at, null);
+});
+
+// A D1 mock that routes the GROUP BY event_kind aggregation and the separate
+// full-window total, so an end-to-end handler test can assert the merged mix.
+function chainEventMixEnv() {
+  return {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind() {
+            const rows = /GROUP BY event_kind/.test(sql)
+              ? [
+                  {
+                    event_kind: "WeightsSet",
+                    count: 600,
+                    first_observed_at: Date.UTC(2026, 5, 20),
+                    last_observed_at: Date.UTC(2026, 6, 5),
+                  },
+                  { event_kind: "StakeAdded", count: 300 },
+                  { event_kind: "Transfer", count: 100 },
+                ]
+              : /COUNT\(\*\) AS total/.test(sql)
+                ? [{ total: 1000 }]
+                : [];
+            return { all: () => Promise.resolve({ results: rows }) };
+          },
+        };
+      },
+    },
+  };
+}
+
+const eventMixReq = (q = "") =>
+  new Request(`https://api.metagraph.sh/api/v1/chain/event-mix${q}`);
+
+test("GET /api/v1/chain/event-mix returns the event_kind mix with honest shares", async () => {
+  const res = await handleRequest(
+    eventMixReq("?window=30d"),
+    chainEventMixEnv(),
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.schema_version, 1);
+  assert.equal(body.data.window, "30d");
+  assert.equal(body.data.total_events, 1000);
+  assert.equal(body.data.distinct_kinds, 3);
+  assert.equal(body.data.dominant_kind, "WeightsSet");
+  assert.deepEqual(body.data.kinds[0], {
+    event_kind: "WeightsSet",
+    count: 600,
+    share: 0.6,
+    first_observed_at: "2026-06-20T00:00:00.000Z",
+    last_observed_at: "2026-07-05T00:00:00.000Z",
+  });
+  assert.equal(body.data.kinds[2].event_kind, "Transfer");
+  assert.equal(body.data.kinds[2].share, 0.1); // 100/1000, honest full-window denominator
+  assert.equal(body.data.kinds[2].first_observed_at, null); // no MIN/MAX cell in the mock row
+});
+
+test("GET /api/v1/chain/event-mix?format=csv streams the per-kind rows", async () => {
+  const res = await handleRequest(
+    eventMixReq("?window=7d&format=csv"),
+    chainEventMixEnv(),
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type") || "", /text\/csv/);
+  const lines = (await res.text()).split("\r\n");
+  assert.equal(
+    lines[0],
+    "event_kind,count,share,first_observed_at,last_observed_at",
+  );
+  assert.equal(
+    lines[1],
+    "WeightsSet,600,0.6,2026-06-20T00:00:00.000Z,2026-07-05T00:00:00.000Z",
+  );
+  assert.equal(lines.length, 4); // header + 3 kinds
+});
+
+test("GET /api/v1/chain/event-mix rejects an unsupported window with 400", async () => {
+  const res = await handleRequest(
+    eventMixReq("?window=90d"),
+    chainEventMixEnv(),
+    {},
+  );
+  assert.equal(res.status, 400);
 });
 
 test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on junk param", async () => {

@@ -44,6 +44,16 @@ function toBlockNumber(value) {
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
 }
 
+// Coerce an epoch-millisecond cell (D1 observed_at) to an ISO-8601 string, or
+// null when the value is missing, non-positive, non-finite, or out of Date range
+// — so a cold MIN/MAX(observed_at) over an empty group never leaks NaN/Invalid.
+function msToIso(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const at = new Date(n);
+  return Number.isNaN(at.getTime()) ? null : at.toISOString();
+}
+
 // Merge the two per-UTC-day aggregations (extrinsics tier + blocks tier) into one
 // newest-first daily series. `extrinsicRows` carries extrinsic_count /
 // successful_extrinsics / unique_signers; `blockRows` carries block_count /
@@ -154,6 +164,45 @@ export function buildChainCalls({
     total_extrinsics: totalExtrinsics,
     call_count: calls.length,
     calls,
+  };
+}
+
+// Windowed decoded-event mix: the account_events event_kind distribution over
+// the window (count + share of all decoded events) — the network-wide companion
+// to the per-subnet event-summary. `rows` is the GROUP BY event_kind result
+// (one row per kind, ordered by count desc); `total` is the full-window event
+// count read separately so a truncated tail never skews the shares.
+export function buildChainEventMix({
+  window,
+  observedAt = null,
+  total = 0,
+  rows = [],
+}) {
+  const totalEvents = toCount(total);
+  const kinds = (Array.isArray(rows) ? rows : [])
+    .filter(
+      (r) => r && typeof r.event_kind === "string" && r.event_kind.length > 0,
+    )
+    .map((r) => {
+      const count = toCount(r.count);
+      return {
+        event_kind: r.event_kind,
+        count,
+        share: totalEvents > 0 ? round4(count / totalEvents) : null,
+        first_observed_at: msToIso(r.first_observed_at),
+        last_observed_at: msToIso(r.last_observed_at),
+      };
+    });
+  return {
+    schema_version: 1,
+    window,
+    observed_at: observedAt,
+    total_events: totalEvents,
+    distinct_kinds: kinds.length,
+    // rows arrive ordered by count desc, so the head is the modal event kind;
+    // null when the window is empty (mirrors dominant_netuid on sibling artifacts).
+    dominant_kind: kinds.length > 0 ? kinds[0].event_kind : null,
+    kinds,
   };
 }
 

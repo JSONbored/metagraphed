@@ -716,6 +716,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/event-mix",
+    (body) => {
+      assert.equal(Array.isArray(body.data.kinds), true);
+      assert.equal(typeof body.data.total_events, "number");
+      assert.equal(typeof body.data.distinct_kinds, "number");
+      assert.equal(typeof body.data.window, "string");
+    },
+  ],
+  [
     "/api/v1/chain/calls",
     (body) => {
       assert.equal(Array.isArray(body.data.calls), true);

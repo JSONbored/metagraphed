@@ -3297,6 +3297,59 @@
           }
         }
       },
+      "ChainEventKindEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One decoded-event-kind bucket. share is count / total_events over the full window, null when the window is empty. first_observed_at/last_observed_at bound when this kind was seen within the window (null on a cold store).",
+        "required": [
+          "event_kind",
+          "count",
+          "share",
+          "first_observed_at",
+          "last_observed_at"
+        ],
+        "properties": {
+          "event_kind": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 },
+          "share": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "first_observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "last_observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        }
+      },
+      "ChainEventMixArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Decoded chain-event mix over a 7d/30d window: each account_events event_kind (NeuronRegistered, WeightsSet, StakeAdded, Transfer, AxonServed, …) by count and share of all decoded events, newest-observed-first tie-broken by kind. Served live from the account_events D1 tier at /api/v1/chain/event-mix (no static file); total_events is 0 and kinds is empty when the store is cold. The network-wide companion to the per-subnet /api/v1/subnets/{netuid}/event-summary.",
+        "required": [
+          "schema_version",
+          "window",
+          "total_events",
+          "distinct_kinds",
+          "dominant_kind",
+          "kinds"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": "string" },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "total_events": { "type": "integer", "minimum": 0 },
+          "distinct_kinds": { "type": "integer", "minimum": 0 },
+          "dominant_kind": {
+            "type": ["string", "null"],
+            "description": "The modal event_kind (highest count) over the window, null when the store is cold."
+          },
+          "kinds": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainEventKindEntry" }
+          }
+        }
+      },
       "ChainSignerEntry": {
         "type": "object",
         "additionalProperties": false,

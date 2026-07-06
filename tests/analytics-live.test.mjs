@@ -8,6 +8,7 @@ import {
   growthRowsFromSamples,
   loadCompareSubnets,
   loadChainCalls,
+  loadChainEventMix,
   loadChainFees,
   loadNetworkActivity,
   loadGlobalIncidents,
@@ -725,6 +726,60 @@ describe("analytics-live loaders", () => {
     });
     assert.equal(data.call_count, 0);
     assert.deepEqual(data.calls, []);
+  });
+
+  test("loadChainEventMix aggregates event_kind rows with an honest share denominator", async () => {
+    const data = await loadChainEventMix(
+      d1({
+        "GROUP BY event_kind": [
+          {
+            event_kind: "WeightsSet",
+            count: 60,
+            first_observed_at: Date.UTC(2026, 5, 1),
+            last_observed_at: Date.UTC(2026, 5, 25),
+          },
+          { event_kind: "Transfer", count: 30 },
+        ],
+        "COUNT\\(\\*\\) AS total": [{ total: 120 }],
+      }),
+      { window: "30d", observedAt: OBSERVED_AT, now: Date.UTC(2026, 5, 26) },
+    );
+    assert.equal(data.window, "30d");
+    assert.equal(data.observed_at, OBSERVED_AT);
+    assert.equal(data.total_events, 120);
+    assert.equal(data.distinct_kinds, 2);
+    assert.equal(data.dominant_kind, "WeightsSet");
+    assert.equal(data.kinds[0].event_kind, "WeightsSet");
+    assert.equal(data.kinds[0].share, 0.5); // 60/120, not 60/90
+    assert.equal(data.kinds[0].first_observed_at, "2026-06-01T00:00:00.000Z");
+    assert.equal(data.kinds[0].last_observed_at, "2026-06-25T00:00:00.000Z");
+  });
+
+  test("loadChainEventMix groups by event_kind and orders by count desc", async () => {
+    const captured = [];
+    const run = async (sql, params) => {
+      captured.push({ sql, params });
+      if (/COUNT\(\*\) AS total/.test(sql)) return [{ total: 0 }];
+      return [];
+    };
+    await loadChainEventMix(run, { window: "7d", now: Date.UTC(2026, 5, 26) });
+    assert.match(
+      captured[0].sql,
+      /GROUP BY event_kind[\s\S]*ORDER BY count DESC, event_kind ASC/,
+    );
+    // the per-kind first/last-seen bounds come from MIN/MAX over observed_at.
+    assert.match(captured[0].sql, /MIN\(observed_at\)[\s\S]*MAX\(observed_at\)/);
+  });
+
+  test("loadChainEventMix falls back to 7d and is cold-stable", async () => {
+    const data = await loadChainEventMix(d1(), {
+      window: "90d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.window, "7d");
+    assert.equal(data.total_events, 0);
+    assert.equal(data.distinct_kinds, 0);
+    assert.deepEqual(data.kinds, []);
   });
 });
 

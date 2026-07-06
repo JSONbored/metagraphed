@@ -19,14 +19,15 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import {
   chainActivityQuery,
   chainCallsQuery,
+  chainEventMixQuery,
   chainEventsInfiniteQuery,
   chainFeesQuery,
   chainSignersQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
-import type { ChainCalls, ChainEvent } from "@/lib/metagraphed/types";
+import type { ChainCalls, ChainEvent, ChainEventMix } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -88,6 +89,7 @@ function ExplorerPage() {
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
+          "/api/v1/chain/event-mix",
           "/api/v1/chain/signers",
           "/api/v1/chain-events",
         ]}
@@ -232,6 +234,71 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 }
 
+// Decoded-event distribution (#chain/event-mix): the account_events event_kind
+// mix over the window, ranked by count with a relative bar and share, the modal
+// (dominant) kind highlighted — the network-wide companion to the call mix.
+function EventMixSection({ mix }: { mix: ChainEventMix }) {
+  const kinds = mix.kinds.slice(0, 12);
+  const cap = Math.max(1, ...kinds.map((k) => k.count));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Event mix
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(mix.total_events)} events · {formatNumber(mix.distinct_kinds)} kinds
+        </span>
+      </div>
+      {kinds.length > 0 ? (
+        <ul className="space-y-1.5">
+          {kinds.map((k) => {
+            const pct = Math.max(2, Math.round((k.count / cap) * 100));
+            const dominant = k.event_kind === mix.dominant_kind;
+            return (
+              <li key={k.event_kind} className="grid grid-cols-[9rem_1fr_auto] items-center gap-2">
+                <span
+                  className={
+                    dominant
+                      ? "truncate font-mono text-[10px] tracking-widest text-accent"
+                      : "truncate font-mono text-[10px] tracking-widest text-ink-muted"
+                  }
+                  title={k.event_kind}
+                >
+                  {k.event_kind}
+                </span>
+                <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{
+                      width: `${pct}%`,
+                      background: dominant ? "var(--accent)" : "var(--chart-1)",
+                    }}
+                  />
+                </span>
+                <span className="text-right font-mono text-[10px] tabular-nums">
+                  <span className="text-ink-strong">{formatNumber(k.count)}</span>
+                  <span className="ml-1 text-ink-muted">
+                    {k.share != null ? `${(k.share * 100).toFixed(1)}%` : "—"}
+                  </span>
+                  {k.last_observed_at ? (
+                    <span className="block text-[9px] font-normal text-ink-muted">
+                      last {formatRelative(k.last_observed_at)}
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No events yet.</p>
+      )}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -240,6 +307,7 @@ function ExplorerDashboard() {
   const activity = useSuspenseQuery(chainActivityQuery(win)).data.data;
   const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
+  const eventMix = useSuspenseQuery(chainEventMixQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
@@ -525,6 +593,8 @@ function ExplorerDashboard() {
           )}
         </section>
       </div>
+
+      <EventMixSection mix={eventMix} />
     </div>
   );
 }

@@ -80,6 +80,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "extrinsics-feed",
   "extrinsic-detail",
   "chain-activity",
+  "chain-event-mix",
   "chain-calls",
   "chain-signers",
   "chain-fees",
