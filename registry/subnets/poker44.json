@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "netuid": 126,
+  "name": "Poker44",
+  "slug": "sn-126",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "social": {
+    "x": "https://x.com/poker44subnet"
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-health",
+      "kind": "subnet-api",
+      "name": "Poker44 platform health API",
+      "notes": "Public no-auth GET /health on api.poker44.net returning platform liveness JSON (observed: status healthy, database and redis connected). Same host as the internal validator routes configured in the official Poker44-subnet validator neuron.",
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/neurons/validator.py",
+        "https://api.poker44.net/health"
+      ],
+      "url": "https://api.poker44.net/health"
+    }
+  ],
+  "source_repo": "https://github.com/Poker44/Poker44-subnet",
+  "website_url": "https://poker44.net/"
+}
