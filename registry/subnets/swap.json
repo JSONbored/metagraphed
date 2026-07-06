@@ -99,6 +99,59 @@
         "timeout_ms": 10000
       },
       "notes": "Official Swap subnet source repository."
+    },
+    {
+      "id": "sn-10-taofi-openapi",
+      "name": "TaoFi API OpenAPI schema",
+      "kind": "openapi",
+      "url": "https://taofi-doc.web.app/openapi.yaml",
+      "provider": "taofi",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://taofi-doc.web.app/openapi.yaml",
+      "source_urls": [
+        "https://docs.taofi.com/",
+        "https://taofi-doc.web.app/openapi.yaml"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official TaoFi (SN10 Swap) OpenAPI 3.0.4 schema (title \"TaoFi - OpenAPI 3.0\", servers host https://taofi-api.web.app/) served behind the public Swagger UI at taofi-doc.web.app. Documents the swap/bridge quote-and-call endpoints (getBuyQuote, getSellQuote, getBalance, getNativeTaoQuote, etc.); no authentication scheme is defined. The taofi-api.web.app host is referenced in TaoFi's own repository (TaoFi-0x/taofi-swap)."
+    },
+    {
+      "id": "sn-10-taofi-api",
+      "name": "TaoFi swap API",
+      "kind": "subnet-api",
+      "url": "https://taofi-api.web.app/",
+      "provider": "taofi",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "schema_url": "https://taofi-doc.web.app/openapi.yaml",
+      "source_urls": [
+        "https://docs.taofi.com/",
+        "https://taofi-doc.web.app/openapi.yaml"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public unauthenticated TaoFi (SN10 Swap) API — the servers host declared in the TaoFi OpenAPI schema. POST endpoints return live swap/bridge quotes and transaction call data (verified: getBuyQuote returned an HTTP 200 JSON quote). Documented at taofi-doc.web.app."
     }
   ]
 }
