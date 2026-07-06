@@ -5,6 +5,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 const sqlCalls = vi.hoisted(() => []);
 const surfaceResult = vi.hoisted(() => ({ current: [{ inserted: true }] }));
+const deleteResult = vi.hoisted(() => ({ surfaces: [], subnets: [] }));
 const failure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
@@ -17,6 +18,12 @@ vi.mock("postgres", () => ({
       }
       if (/INSERT INTO surfaces/.test(text)) {
         return Promise.resolve(surfaceResult.current);
+      }
+      if (/DELETE FROM surfaces/.test(text)) {
+        return Promise.resolve(deleteResult.surfaces);
+      }
+      if (/DELETE FROM subnets/.test(text)) {
+        return Promise.resolve(deleteResult.subnets);
       }
       return Promise.resolve([]);
     };
@@ -76,6 +83,8 @@ const surface = () => ({
 beforeEach(() => {
   sqlCalls.length = 0;
   surfaceResult.current = [{ inserted: true }];
+  deleteResult.surfaces = [];
+  deleteResult.subnets = [];
   failure.error = null;
 });
 
@@ -257,6 +266,73 @@ test("records an update action in surface_history when the row already existed",
     /INSERT INTO surface_history/.test(c.text),
   );
   expect(historyCall.values).toContain("update");
+});
+
+test("prunes surfaces absent from the current subnet payload and records delete history", async () => {
+  deleteResult.surfaces = [
+    {
+      id: "00000000-0000-0000-0000-000000000001",
+      subnet_netuid: 8,
+      overlay: { kind: "docs", url: "https://stale.example/docs" },
+    },
+  ];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [
+              { kind: "docs", url: "https://example.com/docs" },
+            ],
+            source_commit: "def456",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ surfaces_deleted: 1 });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/DELETE FROM surfaces/);
+  const historyCall = sqlCalls.find((c) =>
+    /INSERT INTO surface_history/.test(c.text),
+  );
+  expect(historyCall.values).toContain("delete");
+});
+
+test("deletes a removed subnet after recording delete history for its surfaces", async () => {
+  deleteResult.surfaces = [
+    {
+      id: "00000000-0000-0000-0000-000000000002",
+      subnet_netuid: 9,
+      overlay: { kind: "subnet-api", url: "https://stale.example/api" },
+    },
+  ];
+  deleteResult.subnets = [{ netuid: 9 }];
+
+  const res = await worker.fetch(
+    post(
+      { delete_subnets: [{ netuid: 9, source_commit: "def456" }] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({
+    surfaces_deleted: 1,
+    subnets_deleted: 1,
+  });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/DELETE FROM surfaces/);
+  expect(text).toMatch(/DELETE FROM subnets/);
 });
 
 test("maps a DB failure to a clean 502 instead of throwing", async () => {
