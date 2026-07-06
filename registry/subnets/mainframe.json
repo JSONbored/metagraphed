@@ -74,6 +74,33 @@
         "timeout_ms": 10000
       },
       "notes": "Public MIT-licensed benchmark data artifact published under the Macrocosmos (macrocosm-os) Hugging Face organization, the operator of SN25 Mainframe (github.com/macrocosm-os/mainframe, macrocosmos.ai). Daily parquet snapshots of a multiple-choice question benchmark with per-miner evaluation and voting records, spanning October 2024 through August 2025 in the 100K-1M row range."
+    },
+    {
+      "id": "sn-25-mainframe-pdb-file-api",
+      "name": "Mainframe PDB structure file API",
+      "kind": "subnet-api",
+      "url": "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/macrocosm-os/mainframe/blob/main/folding_api/utility_endpoints.py",
+        "https://github.com/macrocosm-os/mainframe/blob/main/README.md",
+        "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie",
+        "confidence": "medium"
+      },
+      "notes": "Public no-auth GET returning PDB structure text from the official SN25 DigitalOcean Spaces bucket. The folding API utility route checks this host first before falling back to RCSB/PDBe mirrors."
     }
   ],
   "social": { "x": "https://x.com/macrocosmosai" },
