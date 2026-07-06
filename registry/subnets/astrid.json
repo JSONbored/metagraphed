@@ -27,6 +27,26 @@
         "https://github.com/astridintelligence/sn-127/blob/master/README.md"
       ],
       "url": "https://arena-api.astrid.global/public/arena/completed-competitions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-127-astrid-health",
+      "kind": "subnet-api",
+      "name": "Astrid Arena API health",
+      "notes": "Public no-auth GET /health on arena-api.astrid.global returning JSON liveness (observed: {\"status\":\"ok\"}). Served on the SN127 Arena API host documented as ARENA_API_URL in the official astridintelligence/sn-127 README and arena-api.md, on the same host as the registered completed-competitions subnet-api surface.",
+      "provider": "astrid",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/astridintelligence/sn-127/blob/master/README.md",
+        "https://github.com/astridintelligence/sn-127/blob/master/docs/arena-api.md",
+        "https://github.com/astridintelligence/sn-127/blob/master/docs/external-api.md"
+      ],
+      "url": "https://arena-api.astrid.global/health"
     }
   ]
 }
