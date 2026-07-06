@@ -145,6 +145,33 @@
         "timeout_ms": 10000
       },
       "notes": "Public Bitstarter app workflow for incubator project submissions."
+    },
+    {
+      "id": "sn-91-bitstarter-updates-health-api",
+      "name": "Bitstarter updates platform health API",
+      "kind": "subnet-api",
+      "url": "https://updates.bitstarter.ai/api/health",
+      "provider": "bitstarter",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://bitstarter.ai/",
+        "https://app.bitstarter.ai/",
+        "https://updates.bitstarter.ai/api/health"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie",
+        "confidence": "medium"
+      },
+      "notes": "Public no-auth GET returning operational status JSON on the official Bitstarter updates/crowdfund host linked from app.bitstarter.ai project pages."
     }
   ],
   "social": {
