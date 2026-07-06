@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "netuid": 41,
+  "name": "Almanac",
+  "slug": "sn-41",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-41-almanac-health",
+      "kind": "subnet-api",
+      "name": "Almanac API health",
+      "notes": "Public no-auth GET /health on api.almanac.market returning JSON liveness (observed: status healthy, database and redis connected, websocket state). Same host as ALMANAC_API_URL (https://api.almanac.market/api) in the official sportstensor/sn41 api_trading.py trading client. No machine-readable OpenAPI URL found on this host yet (common /openapi.json paths return 404).",
+      "provider": "almanac",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/sportstensor/sn41/blob/main/api_trading.py",
+        "https://api.almanac.market/health"
+      ],
+      "url": "https://api.almanac.market/health"
+    }
+  ],
+  "source_repo": "https://github.com/sportstensor/sn41",
+  "website_url": "https://almanac.market/"
+}
