@@ -1,0 +1,9 @@
+{
+  "authority": "community",
+  "id": "yanez-compliance",
+  "kind": "subnet-team",
+  "name": "Yanez Compliance",
+  "public_notes": "",
+  "schema_version": 1,
+  "website_url": "https://yanez.ai/"
+}
