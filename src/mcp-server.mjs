@@ -10280,7 +10280,8 @@ const TOOL_OUTPUT_SCHEMAS = {
     additionalProperties: true,
     required: [],
     properties: {
-      subnets: { type: "array", items: { type: "object" } },
+      profiles: { type: "array", items: { type: "object" } },
+      summary: { type: "object", additionalProperties: true },
       generated_at: NULLABLE_STRING,
       schema_version: { type: ["string", "integer", "null"] },
     },
