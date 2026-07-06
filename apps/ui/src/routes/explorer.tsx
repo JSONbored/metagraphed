@@ -18,10 +18,11 @@ import {
   chainCallsQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainTransferPairsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import type { ChainCalls } from "@/lib/metagraphed/types";
+import type { ChainCalls, ChainTransferPairs } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -222,6 +223,79 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 }
 
+// Ranked sender→receiver native-TAO transfer corridors (#3476), from
+// GET /api/v1/chain/transfer-pairs — top pairs by volume with a relative bar.
+function TransferPairsSection({ pairs }: { pairs: ChainTransferPairs }) {
+  const rows = pairs.pairs.slice(0, 12);
+  const cap = Math.max(1, ...rows.map((p) => p.volume_tao));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Transfer pairs
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(pairs.unique_pairs)} pairs · {fmtTao(pairs.total_volume_tao)}
+        </span>
+      </div>
+      {rows.length > 0 ? (
+        <ul className="space-y-2">
+          {rows.map((p) => {
+            const pct = Math.max(2, Math.round((p.volume_tao / cap) * 100));
+            return (
+              <li
+                key={`${p.from}-${p.to}`}
+                className="grid grid-cols-[1fr_auto] items-center gap-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1 truncate font-mono text-[11px]">
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: p.from }}
+                      title={p.from}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      {shortHash(p.from) ?? p.from}
+                    </Link>
+                    <span className="text-ink-muted">→</span>
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: p.to }}
+                      title={p.to}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      {shortHash(p.to) ?? p.to}
+                    </Link>
+                  </div>
+                  <span className="relative mt-1 block h-1.5 overflow-hidden rounded-full bg-surface">
+                    <span
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{ width: `${pct}%`, background: "var(--chart-1)" }}
+                    />
+                  </span>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-[11px] tabular-nums text-ink-strong">
+                    {fmtTao(p.volume_tao)}
+                  </div>
+                  <div className="font-mono text-[10px] tabular-nums text-ink-muted">
+                    {formatNumber(p.transfer_count)} tx
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">
+          No transfer pairs in this window yet.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -231,6 +305,7 @@ function ExplorerDashboard() {
   const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
+  const transferPairs = useSuspenseQuery(chainTransferPairsQuery(win)).data.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -515,6 +590,8 @@ function ExplorerDashboard() {
           )}
         </section>
       </div>
+
+      <TransferPairsSection pairs={transferPairs} />
     </div>
   );
 }
