@@ -29,6 +29,8 @@ import type {
   SourceHealthProvider,
   AccountAxonRemovals,
   AccountAxonRemovalsSubnet,
+  AccountStakeMoves,
+  AccountStakeMovesSubnet,
   AccountWeightSetters,
   AccountWeightSettersSubnet,
   AccountBalance,
@@ -2286,6 +2288,59 @@ export const accountAxonRemovalsQuery = (ss58: string, window = "30d") =>
       );
       return {
         data: normalizeAccountAxonRemovals(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountStakeMovesSubnet(raw: unknown): AccountStakeMovesSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    movements: firstFiniteNumber(raw.movements) ?? 0,
+    first_moved_at: firstString(raw.first_moved_at) ?? null,
+    last_moved_at: firstString(raw.last_moved_at) ?? null,
+  };
+}
+
+// Per-account stake-move (re-delegation) footprint over a 7d/30d/90d window. A flat
+// summary card — total movements + distinct subnets — from the account_events
+// StakeMoved stream. Every numeric cell coerces defensively: counts fall through
+// to 0 and concentration to null on a cold store or junk.
+export function normalizeAccountStakeMoves(ss58: string, raw: unknown): AccountStakeMoves {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountStakeMovesSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_movements: firstFiniteNumber(rec.total_movements) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountStakeMovesQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-stake-moves", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountStakeMoves>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/stake-moves`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountStakeMoves(ss58, res.data),
         meta: res.meta,
         url: res.url,
       };

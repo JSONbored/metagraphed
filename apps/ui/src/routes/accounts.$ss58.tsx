@@ -12,6 +12,7 @@ import {
   Radar,
   Rows3,
   Scale,
+  Shuffle,
   Unplug,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -30,6 +31,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import {
   accountAxonRemovalsQuery,
+  accountStakeMovesQuery,
   accountWeightSettersQuery,
   accountBalanceQuery,
   accountEventsQuery,
@@ -247,6 +249,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       ) : null}
 
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+
+      <AccountStakeMovesActivitySection ss58={ss58} />
 
       <AccountTeardownActivitySection ss58={ss58} />
 
@@ -635,6 +639,81 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
           eyebrow="Distinct subnets"
           value={formatNumber(distinctSubnets)}
           hint="subnets with teardown"
+          className={KPI_TILE}
+        />
+      </div>
+    </SectionAnchor>
+  );
+}
+
+/**
+ * Stake-move (re-delegation) footprint over the trailing 30-day window — a flat
+ * count + distinct-subnet summary from /stake-moves. This is the discrete
+ * StakeMoved-event count, distinct from the stake-flow net-series chart.
+ * Non-blocking: while the dedicated query loads (or if it fails), the section
+ * never stalls the page.
+ */
+function AccountStakeMovesActivitySection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountStakeMovesQuery(ss58));
+  const card = result.data?.data;
+  const windowLabel = card?.window ?? "30d";
+
+  if (result.isPending && !card) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="stake-moves"
+        title="Stake-move activity"
+        subtitle="Stake re-delegations (StakeMoved) for this account over the trailing 30-day window."
+      />
+    );
+  }
+
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="stake-moves"
+        title="Stake-move activity"
+        subtitle="Stake re-delegations (StakeMoved) for this account over the trailing 30-day window."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load stake-move activity"
+          description="The stake-moves tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const movements = card?.total_movements ?? 0;
+  const distinctSubnets = card?.subnet_count ?? 0;
+  if (movements === 0 && distinctSubnets === 0) return null;
+
+  return (
+    <SectionAnchor
+      id="stake-moves"
+      title="Stake-move activity"
+      subtitle="Stake re-delegations (StakeMoved) for this account over the trailing 30-day window."
+      tone="accent"
+      info="The account-level companion to subnet stake-move activity — counts how often this account re-delegated stake (StakeMoved), and across how many distinct subnets. Distinct from the net stake-flow series."
+      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+    >
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+        <StatTile
+          icon={Shuffle}
+          eyebrow="Stake moves"
+          tone="accent"
+          value={formatNumber(movements)}
+          hint={`StakeMoved · ${windowLabel}`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Distinct subnets"
+          value={formatNumber(distinctSubnets)}
+          hint="subnets with stake moves"
           className={KPI_TILE}
         />
       </div>

@@ -951,6 +951,31 @@ export interface AccountAxonRemovals {
   subnets: AccountAxonRemovalsSubnet[];
 }
 
+/** Per-subnet StakeMoved row in /api/v1/accounts/{ss58}/stake-moves. */
+export interface AccountStakeMovesSubnet {
+  netuid: number;
+  movements: number;
+  first_moved_at: string | null;
+  last_moved_at: string | null;
+}
+
+/**
+ * One account's stake-move (re-delegation) footprint over a 7d/30d/90d window, from
+ * /api/v1/accounts/{ss58}/stake-moves — the account-level companion to
+ * /api/v1/subnets/{netuid}/stake-moves. Zeroed when the account had no
+ * StakeMoved events in the window.
+ */
+export interface AccountStakeMoves {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_movements: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountStakeMovesSubnet[];
+}
+
 /** Per-subnet WeightsSet row in /api/v1/accounts/{ss58}/weight-setters. */
 export interface AccountWeightSettersSubnet {
   netuid: number;
