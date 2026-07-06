@@ -416,6 +416,22 @@
         "https://api.gittensor.io/swagger"
       ],
       "url": "https://api.gittensor.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repo-commits-api",
+      "kind": "subnet-api",
+      "name": "Gittensor per-repo commits API",
+      "notes": "Public no-auth GET /dash/repos/commits — per-repository contribution stats (repository, emission share, commits, additions/deletions) for the SN74 Gittensor dashboard. Documented in the subnet's openapi and served on the same api.gittensor.io host as the subnet's registered API surfaces.",
+      "provider": "gittensory",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/repos/commits"
     }
   ],
   "website_url": "https://gittensor.io/"
