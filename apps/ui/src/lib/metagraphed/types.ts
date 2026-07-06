@@ -839,6 +839,15 @@ export interface BlockChainEvents {
   [key: string]: unknown;
 }
 
+/** Paginated all-events feed from /api/v1/chain-events (Postgres tier). */
+export interface ChainEventsFeed {
+  count: number;
+  events: ChainEvent[];
+  next_cursor?: string | null;
+  next_before?: number | null;
+  [key: string]: unknown;
+}
+
 export interface ExtrinsicCallArg {
   name?: string | null;
   value?: unknown;

@@ -64,6 +64,7 @@ import type {
   BlockEvents,
   BlockChainEvents,
   ChainEvent,
+  ChainEventsFeed,
   Coverage,
   BlockExtrinsics,
   CurationLevel,
@@ -1575,6 +1576,24 @@ function normalizeBlockChainEvents(raw: unknown): BlockChainEvents {
     count: coerceFiniteNumber(d.count) ?? rows.length,
     events: rows,
   } satisfies BlockChainEvents;
+}
+
+function normalizeChainEventsFeed(raw: unknown): ChainEventsFeed {
+  const d = isRecord(raw) ? raw : {};
+  const rows = Array.isArray(d.events)
+    ? d.events.flatMap((x) => {
+        const normalized = normalizeChainEvent(x, null);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  const nextCursor = firstString(d.next_cursor);
+  return {
+    ...(d as object),
+    count: coerceFiniteNumber(d.count) ?? rows.length,
+    next_cursor: nextCursor ?? null,
+    next_before: coerceFiniteNumber(d.next_before) ?? null,
+    events: rows,
+  } satisfies ChainEventsFeed;
 }
 
 /** Recent blocks feed — newest first, offset-paginated (limit ≤ 100). */
@@ -4365,6 +4384,49 @@ export function getNextPageParam(last: { meta?: Record<string, unknown> }): stri
   const nc = last.meta?._next_cursor as string | null | undefined;
   return nc ?? undefined;
 }
+
+function validateFeedNextCursor(
+  nextCursor: string | null | undefined,
+  sentCursor: string | undefined,
+): { cursor: string | null; invalid?: boolean } {
+  if (nextCursor === undefined || nextCursor === null) return { cursor: null };
+  const trimmed = nextCursor.trim();
+  if (!trimmed) return { cursor: null };
+  if (sentCursor && trimmed === sentCursor) {
+    if (import.meta.env?.DEV)
+      console.warn("[metagraphed] next_cursor echoes sent cursor; stopping pagination");
+    return { cursor: null, invalid: true };
+  }
+  return { cursor: trimmed };
+}
+
+async function fetchChainEventsInfinitePage(
+  baseParams: QueryParams,
+  pageParam: string,
+  signal?: AbortSignal,
+): Promise<InfinitePage<ChainEvent>> {
+  const params: QueryParams = { ...baseParams, limit: baseParams.limit ?? 50 };
+  if (pageParam) params.cursor = pageParam;
+  const res = await apiFetch<unknown>("/api/v1/chain-events", { params, signal });
+  const feed = normalizeChainEventsFeed(res.data);
+  const v = validateFeedNextCursor(feed.next_cursor, pageParam || undefined);
+  const meta = { ...(res.meta ?? {}), _next_cursor: v.cursor };
+  return { data: feed.events, meta, url: res.url, cursorInvalid: v.invalid };
+}
+
+/** Cursor-paginated all-events feed — newest block/event first. */
+export const chainEventsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
+  infiniteQueryOptions({
+    queryKey: k("chain-events-infinite", baseParams, initialCursor),
+    initialPageParam: initialCursor,
+    queryFn: async ({ pageParam, signal }) =>
+      fetchChainEventsInfinitePage(baseParams, pageParam as string, signal),
+    getNextPageParam,
+    staleTime: STALE_SHORT,
+  });
+
+/** Alias for {@link chainEventsInfiniteQuery} — raw /api/v1/chain-events paginator. */
+export const chainEventsQuery = chainEventsInfiniteQuery;
 
 /** Server-driven cursor-paginated subnets. */
 export const subnetsInfiniteQuery = (baseParams: QueryParams = {}, initialCursor = "") =>
