@@ -4,7 +4,8 @@ import { subnetHealthIncidentsQuery, flattenSurfaceIncidents } from "@/lib/metag
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
-import { classNames, durationLabel } from "@/lib/metagraphed/format";
+import { classNames } from "@/lib/metagraphed/format";
+import { incidentDurationLabel } from "@/lib/metagraphed/incident-duration";
 
 function severityIcon(sev?: string) {
   if (sev === "high") return <AlertOctagon className="size-3.5 text-health-down" />;
@@ -39,6 +40,7 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
         <ol className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
           {incidents.slice(0, 12).map((inc, i) => {
             const open = !inc.ended_at;
+            const duration = incidentDurationLabel(inc.started_at, inc.ended_at);
             return (
               <li
                 key={`${inc.surface_id}-${inc.started_at ?? i}`}
@@ -55,9 +57,7 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
                         started <TimeAgo at={inc.started_at} />
                       </span>
                     ) : null}
-                    {inc.started_at ? (
-                      <span>· {durationLabel(inc.started_at, inc.ended_at)}</span>
-                    ) : null}
+                    {duration ? <span>· {duration}</span> : null}
                     {inc.failed_samples != null ? <span>· {inc.failed_samples} failed</span> : null}
                   </div>
                 </div>
