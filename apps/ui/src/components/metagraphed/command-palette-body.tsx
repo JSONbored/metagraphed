@@ -247,8 +247,11 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
   // Semantic (vector-similarity) fallback/complement to the keyword hits above.
   // Isolated in its own query so a 503 (AI disabled) or 502 (AI error) just
   // means an empty group here — it never affects the keyword results.
-  const { data: semanticData, isFetching: isSemanticFetching, isError: isSemanticError } =
-    useQuery({ ...semanticSearchQuery(debounced, SEMANTIC_LIMIT), retry: 0 });
+  const {
+    data: semanticData,
+    isFetching: isSemanticFetching,
+    isError: isSemanticError,
+  } = useQuery({ ...semanticSearchQuery(debounced, SEMANTIC_LIMIT), retry: 0 });
   const semanticHits = isSemanticError ? [] : (semanticData?.data.results ?? []);
 
   // Track zero-result + top queries (only once per settled query)
