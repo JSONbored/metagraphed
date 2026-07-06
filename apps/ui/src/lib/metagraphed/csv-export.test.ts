@@ -1,6 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { buildCsvExportUrl, triggerCsvDownload } from "./csv-export";
+import { buildCsvExportUrl, isAllowedCsvExportUrl, triggerCsvDownload } from "./csv-export";
+
+const API_BASE = "https://api.metagraph.sh";
+
+describe("isAllowedCsvExportUrl", () => {
+  it("allows relative API paths", () => {
+    expect(isAllowedCsvExportUrl("/api/v1/blocks", API_BASE)).toBe(true);
+    expect(isAllowedCsvExportUrl("/api/v1/subnets?limit=25", API_BASE)).toBe(true);
+  });
+
+  it("allows absolute URLs on the API origin", () => {
+    expect(isAllowedCsvExportUrl(`${API_BASE}/api/v1/blocks`, API_BASE)).toBe(true);
+  });
+
+  it("rejects external absolute URLs", () => {
+    expect(isAllowedCsvExportUrl("https://evil.example/phish", API_BASE)).toBe(false);
+  });
+
+  it("rejects dangerous schemes", () => {
+    expect(isAllowedCsvExportUrl("javascript:alert(1)", API_BASE)).toBe(false);
+    expect(isAllowedCsvExportUrl("data:text/html,<script>", API_BASE)).toBe(false);
+  });
+});
 
 describe("buildCsvExportUrl", () => {
   it("appends format=csv to a path with no query string", () => {
@@ -51,7 +73,7 @@ describe("triggerCsvDownload", () => {
       body,
     });
 
-    triggerCsvDownload("/api/v1/blocks?limit=5", "https://metagraph.sh", "blocks.csv");
+    triggerCsvDownload("/api/v1/blocks?limit=5", API_BASE, "blocks.csv");
 
     expect(document.createElement).toHaveBeenCalledWith("a");
     expect(anchor.href).toBe("/api/v1/blocks?limit=5&format=csv");
@@ -60,6 +82,17 @@ describe("triggerCsvDownload", () => {
     expect(anchor.download).toBe("blocks.csv");
     expect(click).toHaveBeenCalledOnce();
     expect(remove).toHaveBeenCalledOnce();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("does not open a tab for disallowed external URLs", () => {
+    const createElement = vi.fn();
+    vi.stubGlobal("document", { createElement });
+
+    triggerCsvDownload("https://evil.example/phish", API_BASE);
+
+    expect(createElement).not.toHaveBeenCalled();
 
     vi.unstubAllGlobals();
   });

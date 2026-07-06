@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Download } from "lucide-react";
+import { getApiBase } from "@/lib/metagraphed/config";
 import { triggerCsvDownload } from "@/lib/metagraphed/csv-export";
 import { classNames } from "@/lib/metagraphed/format";
 
@@ -17,7 +18,7 @@ export function DownloadCsvButton({ url, filename, label = "Download CSV", class
 
   const onClick = () => {
     if (typeof window === "undefined") return;
-    triggerCsvDownload(url, window.location.origin, filename);
+    triggerCsvDownload(url, getApiBase(), filename);
     setAnnouncement("CSV download started");
     window.setTimeout(() => setAnnouncement(""), 2000);
   };

@@ -1,4 +1,23 @@
 /**
+ * True when `url` is a relative API path or an absolute URL on `allowedBase`'s origin.
+ * Blocks open redirects (external http(s) URLs, javascript:, data:, etc.).
+ */
+export function isAllowedCsvExportUrl(url: string, allowedBase: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) && !/^https?:\/\//i.test(trimmed)) return false;
+  try {
+    const base = new URL(allowedBase);
+    const resolved = new URL(trimmed, base);
+    if (!["http:", "https:"].includes(resolved.protocol)) return false;
+    if (!/^https?:\/\//i.test(trimmed)) return true;
+    return resolved.origin === base.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Append `format=csv` to an API URL, preserving any existing query params.
  */
 export function buildCsvExportUrl(url: string, baseUrl = "https://example.com"): string {
@@ -16,6 +35,7 @@ export function buildCsvExportUrl(url: string, baseUrl = "https://example.com"):
  */
 export function triggerCsvDownload(url: string, baseUrl: string, filename?: string): void {
   if (typeof document === "undefined") return;
+  if (!isAllowedCsvExportUrl(url, baseUrl)) return;
   const href = buildCsvExportUrl(url, baseUrl);
   const anchor = document.createElement("a");
   anchor.href = href;
