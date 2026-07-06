@@ -26,9 +26,10 @@ process evolves — edits to those files improve both Claude Code and Codex.
    surface as a different `kind` (that farm is closed — redundant PRs are auto-closed). Adding several
    surfaces for one subnet in one diff is one merge, the way it should be.
 3. **Prove it.** Every surface needs a public `url` **and** a `source_url` that independently proves
-   the subnet publishes it. A linked issue is **optional** — when one tracks the work, reference it
-   (`Closes #<n>`) and the gate verifies the PR against it; a PR with no linked issue is judged on its
-   own merit, never closed for the missing link.
+   the subnet publishes it. A linked issue is **required** — reference it (`Closes #<n>`) and the
+   issue must be **open/unclosed** at the time the PR is submitted; the gate verifies the PR against
+   the linked issue's intent, clause by clause. A PR with no linked issue, or one linked to an issue
+   that's already closed, is auto-closed on that basis alone.
 4. **Schema is the contract; regenerate + commit.** Code/schema changes: edit `schemas/`, run
    `npm run build`, commit the regenerated `openapi.json` + generated types in the same PR, or
    `validate:contract-drift` fails CI. Never hand-edit generated artifacts under `public/`. Do **not**

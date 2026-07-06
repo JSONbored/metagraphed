@@ -89,11 +89,12 @@ contributor.)
 5. **Public-safe only.** No secrets, PATs, wallet/hotkey/coldkey paths, private/localhost URLs, or
    validator-local data anywhere — in files, commits, or PR text. `auth` fields are _placeholders_
    (`Bearer <token>`), never real credentials.
-6. **Link an issue when one exists (optional).** A linked issue is **not required** — a PR with no
-   linked issue is judged on its own merit and is **never** closed for the missing link. When an issue
-   does track the work, reference it (`Closes #<n>` / `Refs #<n>`) in the PR body and the gate verifies
-   the PR against that issue's intent. For surface work, the per-subnet enrichment issues under
-   [epic #427](https://github.com/JSONbored/metagraphed/issues/427) are the natural home to link.
+6. **Link an open issue — required.** Every PR must reference an issue (`Closes #<n>` / `Refs #<n>`)
+   in the PR body, and that issue must be **open/unclosed** at submission time — the gate verifies the
+   PR against that issue's intent, clause by clause. No linked issue, or a linked issue that's already
+   closed, is an automatic close on its own, before content is even scored. For surface work, the
+   per-subnet enrichment issues under [epic #427](https://github.com/JSONbored/metagraphed/issues/427)
+   are the natural home to link — pick one that's still open before you start.
 7. **Schema is the contract — regenerate + commit (Path B).** Editing `schemas/` means
    `npm run build` then committing `openapi.json` + types/clients in the same PR, or
    `validate:contract-drift` fails CI.
@@ -205,8 +206,8 @@ submission lane.)
   `registry/subnets/<slug>.json`.
 - **Commit (Conventional):** `feat(registry): add SN43 Example subnet-api surface (#<issue>)`.
 - **PR body:** fill `.github/pull_request_template.md` honestly — a real Summary, the `url` +
-  `source_url` proof, the validation commands you ran, and **`Closes #<issue>`** if an issue tracks
-  this (optional — not required). No AI attribution.
+  `source_url` proof, the validation commands you ran, and **`Closes #<issue>`** — required, and the
+  issue must still be open. No AI attribution.
 
 ### Phase A5 — Let the gate adjudicate
 
@@ -291,8 +292,8 @@ clean `npm run build` (see the build-gotchas note in `reference.md`).
 
 ### Phase B5 — Commit + PR
 
-Conventional Commit (no AI attribution); `Closes #<issue>` if an issue tracks the work (optional); fill
-the PR template with the validation commands you actually ran. Sync with `main` if it moved
+Conventional Commit (no AI attribution); `Closes #<issue>` — required, and the issue must still be
+open; fill the PR template with the validation commands you actually ran. Sync with `main` if it moved
 (`git fetch upstream && git rebase upstream/main`) — a base conflict closes a contributor PR.
 
 ---
@@ -436,7 +437,7 @@ changed `packages/client/src`.
 ### Phase C4 — Commit + PR
 
 Conventional Commit (e.g. `feat(ui): add validator directory table`), no AI attribution, `Closes
-#<issue>` if one tracks the work (optional). Fill the screenshot table if the change is visual.
+#<issue>` — required, and the issue must still be open. Fill the screenshot table if the change is visual.
 
 ### Phase C5 — Review disposition
 
@@ -461,7 +462,7 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
       still touches only your one subnet file — see the Path B note below on
       `public/metagraph/r2-manifest.json` / `public/metagraph/schemas/index.json`; the Gittensory Gate's
       registry-review lane rejects a PR that bundles either in with your surface change.
-- [ ] Conventional Commit (no AI attribution); PR template filled; **`Closes #<issue>`** if an issue tracks it (optional).
+- [ ] Conventional Commit (no AI attribution); PR template filled; **`Closes #<issue>`** — required, referencing an issue that's still open.
 
 **Path B (code/schema):**
 
@@ -476,7 +477,7 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
       itself warns you if either changed.
 - [ ] `git diff --check` clean · `lint` + `format:check` clean · `npm run validate` green ·
       `npm run test:coverage` green · the focused `validate:*` for what you touched green.
-- [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` if an issue tracks it (optional).
+- [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` — required, referencing an issue that's still open.
 
 **Path C (frontend):**
 
@@ -488,7 +489,7 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
 - [ ] `lint` + `format:check` + `typecheck` + `test` + `build` all green (`--workspace=apps/ui`); bundle
       size still under budget.
 - [ ] If `packages/client/src` changed: rebuilt and committed `packages/client/dist`.
-- [ ] Conventional Commit (no AI attribution); `Closes #<issue>` if one tracks it (optional).
+- [ ] Conventional Commit (no AI attribution); `Closes #<issue>` — required, referencing an issue that's still open.
 
 If every box is checked, the PR has the best chance of a one-shot approve-and-merge. If any box can't
 be checked, **keep working — don't push.**

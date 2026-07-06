@@ -199,9 +199,9 @@ posts `Gittensory Gate` + `Gittensory Context` checks and acts on **contributor*
 `url` owner must match the subnet's registered identity, source repo fresh, no prompt-injection in
 fetched or submitted text. Make the `source_url` an _independent_ proof of ownership.
 
-**Linked issues are optional, not a gate.** A PR with **no linked issue** is judged on its own merit —
-the missing link is **never** a fail/close reason (for contributors or maintainers). When an issue
-tracks the work, link it (`Closes #<n>`) and the gate verifies the PR against that issue's intent,
+**Linked issues are required and are a gate.** A PR with **no linked issue**, or one linked to an
+issue that's already **closed**, is auto-closed on that basis alone — before content is even scored.
+Link an **open** issue (`Closes #<n>`) and the gate verifies the PR against that issue's intent,
 clause by clause. (What the gate does with a linked issue is configured in the gittensory system,
 **not** in this repo.)
 
@@ -267,8 +267,8 @@ fix(health-serving): stamp merged RPC endpoint observed_at with sweep time (#161
 
 **PR body:** GitHub pre-fills `.github/pull_request_template.md`. Fill it — don't replace it: a real
 `## Summary`, the `url` + `source_url` proof (Path A) or the validation commands you ran (Path B), and
-**`Closes #<issue>`** when an issue tracks the work (optional — a missing link never fails a PR). No
-local paths, env dumps, or private notes.
+**`Closes #<issue>`** — required, and the issue must still be open (a missing or already-closed link
+fails the PR on its own). No local paths, env dumps, or private notes.
 
 ---
 
