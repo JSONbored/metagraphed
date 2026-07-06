@@ -1,19 +1,60 @@
 {
-  "schema_version": 1,
-  "netuid": 65,
-  "name": "TAO Private Network",
-  "slug": "sn-65",
-  "status": "active",
   "categories": [],
+  "contact": "contact@taoprivatenetwork.com",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "TAO Private Network",
+  "netuid": 65,
+  "schema_version": 1,
+  "slug": "sn-65",
   "social": {
     "x": "https://x.com/tpn_labs"
   },
-  "surfaces": [],
   "source_repo": "https://github.com/taofu-labs/tpn-subnet",
-  "website_url": "https://tpn.taofu.xyz/",
-  "contact": "contact@taoprivatenetwork.com"
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-65-taofu-labs-openapi",
+      "kind": "openapi",
+      "name": "TAO Private Network TPN API",
+      "notes": "Machine-readable OpenAPI 3.0 spec (TPN API v1.1.0, 13 paths) for SN65 TAO Private Network. The api.taoprivatenetwork.com host matches the subnet's registered contact domain, and its no-auth endpoints are documented at /docs.",
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.taoprivatenetwork.com/api-docs/openapi.json",
+      "source_urls": [
+        "https://github.com/taofu-labs/tpn-subnet",
+        "https://api.taoprivatenetwork.com/docs/getting-started/"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api-docs/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-65-taofu-labs-subnet-api",
+      "kind": "subnet-api",
+      "name": "TAO Private Network subnet-api",
+      "notes": "Public no-auth JSON endpoint (canonical health check → {\"message\":\"OK!\"}) of the SN65 TAO Private Network API; /api/v1/version is a sibling. The full contract is the openapi surface. Served on api.taoprivatenetwork.com, the subnet's registered contact domain.",
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": [
+        "https://github.com/taofu-labs/tpn-subnet",
+        "https://api.taoprivatenetwork.com/docs/getting-started/"
+      ],
+      "url": "https://api.taoprivatenetwork.com/api/v1/health"
+    }
+  ],
+  "website_url": "https://tpn.taofu.xyz/"
 }
