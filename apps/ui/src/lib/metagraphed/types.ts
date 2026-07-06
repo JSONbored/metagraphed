@@ -951,6 +951,31 @@ export interface AccountAxonRemovals {
   subnets: AccountAxonRemovalsSubnet[];
 }
 
+/** Per-subnet WeightsSet row in /api/v1/accounts/{ss58}/weight-setters. */
+export interface AccountWeightSettersSubnet {
+  netuid: number;
+  weight_sets: number;
+  first_set_at: string | null;
+  last_set_at: string | null;
+}
+
+/**
+ * One account's (validator's) weight-setting footprint over a 7d/30d window, from
+ * /api/v1/accounts/{ss58}/weight-setters — the account-level companion to
+ * /api/v1/subnets/{netuid}/weights/setters. Zeroed when the account had no
+ * WeightsSet events in the window.
+ */
+export interface AccountWeightSetters {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_weight_sets: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountWeightSettersSubnet[];
+}
+
 /**
  * One neuron position a wallet holds on a subnet, from
  * /api/v1/accounts/{ss58}/portfolio: its economics plus emission/stake yield.

@@ -29,6 +29,8 @@ import type {
   SourceHealthProvider,
   AccountAxonRemovals,
   AccountAxonRemovalsSubnet,
+  AccountWeightSetters,
+  AccountWeightSettersSubnet,
   AccountBalance,
   AccountDay,
   AccountEvent,
@@ -2284,6 +2286,59 @@ export const accountAxonRemovalsQuery = (ss58: string, window = "30d") =>
       );
       return {
         data: normalizeAccountAxonRemovals(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountWeightSettersSubnet(raw: unknown): AccountWeightSettersSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    weight_sets: firstFiniteNumber(raw.weight_sets) ?? 0,
+    first_set_at: firstString(raw.first_set_at) ?? null,
+    last_set_at: firstString(raw.last_set_at) ?? null,
+  };
+}
+
+// Per-account weight-setting (WeightsSet) footprint over a 7d/30d window — total
+// weight sets + per-subnet breakdown from the account_events stream. Every
+// numeric cell coerces defensively: counts fall through to 0 and concentration
+// to null on a cold store or junk.
+export function normalizeAccountWeightSetters(ss58: string, raw: unknown): AccountWeightSetters {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountWeightSettersSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_weight_sets: firstFiniteNumber(rec.total_weight_sets) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountWeightSettersQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-weight-setters", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountWeightSetters>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/weight-setters`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountWeightSetters(ss58, res.data),
         meta: res.meta,
         url: res.url,
       };
