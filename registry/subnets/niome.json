@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "netuid": 55,
+  "name": "NIOME",
+  "slug": "sn-55",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-55-niome-miner-scores-api",
+      "kind": "subnet-api",
+      "name": "NIOME miner scores API",
+      "notes": "Public no-auth GET /api/miner_scores on niome-api.genomes.io returning paginated miner score records (observed: items with final_score, f1_score, miner_hotkey, task_id, validator_uid). Same host as MINER_SCORE_URL in the official subnet-niome constants; consumed by the NIOME leaderboard frontend (Access-Control-Allow-Origin: niome-leaderboard.genomes.io). No machine-readable OpenAPI URL found on this host yet (conventional /openapi.json paths return 404).",
+      "provider": "niome",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/constants.py",
+        "https://niome-api.genomes.io/api/miner_scores"
+      ],
+      "url": "https://niome-api.genomes.io/api/miner_scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-55-niome-tasks-catalog-api",
+      "kind": "subnet-api",
+      "name": "NIOME tasks catalog API",
+      "notes": "Public no-auth GET /api/tasks on niome-api.genomes.io returning paginated genomic task catalog JSON (observed: items with id, created_at, content.genome_context). Documented backend route in the official subnet-niome constants as TASK_URL; validators POST signed requests to the same path to allocate tasks. Distinct from the miner-scores leaderboard endpoint.",
+      "provider": "niome",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/constants.py",
+        "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/validator/forward.py",
+        "https://niome-api.genomes.io/api/tasks"
+      ],
+      "url": "https://niome-api.genomes.io/api/tasks"
+    }
+  ],
+  "source_repo": "https://github.com/genomesio/subnet-niome",
+  "website_url": "https://niome.genomes.io/"
+}
