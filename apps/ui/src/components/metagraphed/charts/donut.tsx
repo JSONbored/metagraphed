@@ -13,6 +13,15 @@ interface Props {
   centerLabel?: string;
   centerSub?: string;
   className?: string;
+  /** Accessible name; synthesized from `segments` when omitted. */
+  ariaLabel?: string;
+}
+
+function synthesizeDonutAriaLabel(segments: DonutSegment[]): string {
+  if (segments.length === 0) return "Donut chart with no data";
+  const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
+  if (total <= 0) return "Donut chart with no data";
+  return segments.map((s) => `${s.label} ${s.value}`).join(", ");
 }
 
 /**
@@ -26,15 +35,19 @@ export function Donut({
   centerLabel,
   centerSub,
   className,
+  ariaLabel,
 }: Props) {
   const id = useId();
   const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
+  const label = ariaLabel ?? synthesizeDonutAriaLabel(segments);
 
   return (
     <div
+      role="img"
+      aria-label={label}
       className={className}
       style={{ width: size, height: size, position: "relative", flexShrink: 0 }}
     >

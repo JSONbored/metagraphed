@@ -12,6 +12,13 @@ interface Props {
   className?: string;
   /** Show numeric value to the right of each bar. */
   showValue?: boolean;
+  /** Accessible name; synthesized from `data` when omitted. */
+  ariaLabel?: string;
+}
+
+function synthesizeBarMiniAriaLabel(data: BarMiniDatum[]): string {
+  if (data.length === 0) return "Bar chart with no data";
+  return data.map((d) => `${d.label} ${d.value}`).join(", ");
 }
 
 /**
@@ -19,10 +26,11 @@ interface Props {
  * proportional bar + optional value. Used for distribution rows
  * (gaps by severity, surfaces by kind, etc.).
  */
-export function BarMini({ data, max, className, showValue = true }: Props) {
+export function BarMini({ data, max, className, showValue = true, ariaLabel }: Props) {
   const cap = max ?? Math.max(1, ...data.map((d) => d.value));
+  const label = ariaLabel ?? synthesizeBarMiniAriaLabel(data);
   return (
-    <ul className={classNames("space-y-1.5", className)}>
+    <ul role="img" aria-label={label} className={classNames("space-y-1.5", className)}>
       {data.map((d) => {
         const pct = cap > 0 ? Math.max(2, Math.round((d.value / cap) * 100)) : 0;
         return (
