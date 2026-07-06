@@ -18,6 +18,10 @@ describe("isAllowedCsvExportUrl", () => {
     expect(isAllowedCsvExportUrl("https://evil.example/phish", API_BASE)).toBe(false);
   });
 
+  it("rejects protocol-relative URLs to other origins", () => {
+    expect(isAllowedCsvExportUrl("//evil.example/api", API_BASE)).toBe(false);
+  });
+
   it("rejects dangerous schemes", () => {
     expect(isAllowedCsvExportUrl("javascript:alert(1)", API_BASE)).toBe(false);
     expect(isAllowedCsvExportUrl("data:text/html,<script>", API_BASE)).toBe(false);
@@ -26,31 +30,35 @@ describe("isAllowedCsvExportUrl", () => {
 
 describe("buildCsvExportUrl", () => {
   it("appends format=csv to a path with no query string", () => {
-    expect(buildCsvExportUrl("/api/v1/blocks")).toBe("/api/v1/blocks?format=csv");
+    expect(buildCsvExportUrl("/api/v1/blocks", API_BASE)).toBe("/api/v1/blocks?format=csv");
   });
 
   it("preserves existing filters and adds format=csv", () => {
-    expect(buildCsvExportUrl("/api/v1/subnets?limit=25&sort=netuid")).toBe(
+    expect(buildCsvExportUrl("/api/v1/subnets?limit=25&sort=netuid", API_BASE)).toBe(
       "/api/v1/subnets?limit=25&sort=netuid&format=csv",
     );
   });
 
   it("overwrites an existing format param with csv", () => {
-    expect(buildCsvExportUrl("/api/v1/extrinsics?format=json&limit=50")).toBe(
+    expect(buildCsvExportUrl("/api/v1/extrinsics?format=json&limit=50", API_BASE)).toBe(
       "/api/v1/extrinsics?format=csv&limit=50",
     );
   });
 
-  it("keeps absolute URLs absolute", () => {
-    expect(buildCsvExportUrl("https://api.metagraph.sh/api/v1/blocks?limit=10")).toBe(
+  it("keeps absolute URLs absolute on the API origin", () => {
+    expect(buildCsvExportUrl("https://api.metagraph.sh/api/v1/blocks?limit=10", API_BASE)).toBe(
       "https://api.metagraph.sh/api/v1/blocks?limit=10&format=csv",
     );
   });
 
   it("preserves URL fragments", () => {
-    expect(buildCsvExportUrl("/api/v1/blocks?limit=10#tail")).toBe(
+    expect(buildCsvExportUrl("/api/v1/blocks?limit=10#tail", API_BASE)).toBe(
       "/api/v1/blocks?limit=10&format=csv#tail",
     );
+  });
+
+  it("returns null for disallowed URLs", () => {
+    expect(buildCsvExportUrl("https://evil.example/phish", API_BASE)).toBeNull();
   });
 });
 

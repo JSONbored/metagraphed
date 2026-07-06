@@ -10,7 +10,7 @@ export function isAllowedCsvExportUrl(url: string, allowedBase: string): boolean
     const base = new URL(allowedBase);
     const resolved = new URL(trimmed, base);
     if (!["http:", "https:"].includes(resolved.protocol)) return false;
-    if (!/^https?:\/\//i.test(trimmed)) return true;
+    if (resolved.username || resolved.password) return false;
     return resolved.origin === base.origin;
   } catch {
     return false;
@@ -19,8 +19,10 @@ export function isAllowedCsvExportUrl(url: string, allowedBase: string): boolean
 
 /**
  * Append `format=csv` to an API URL, preserving any existing query params.
+ * Returns null when the URL is not allowed for export.
  */
-export function buildCsvExportUrl(url: string, baseUrl = "https://example.com"): string {
+export function buildCsvExportUrl(url: string, baseUrl: string): string | null {
+  if (!isAllowedCsvExportUrl(url, baseUrl)) return null;
   const parsed = new URL(url, baseUrl);
   parsed.searchParams.set("format", "csv");
   if (/^https?:\/\//i.test(url)) {
@@ -35,8 +37,8 @@ export function buildCsvExportUrl(url: string, baseUrl = "https://example.com"):
  */
 export function triggerCsvDownload(url: string, baseUrl: string, filename?: string): void {
   if (typeof document === "undefined") return;
-  if (!isAllowedCsvExportUrl(url, baseUrl)) return;
   const href = buildCsvExportUrl(url, baseUrl);
+  if (!href) return;
   const anchor = document.createElement("a");
   anchor.href = href;
   anchor.target = "_blank";
