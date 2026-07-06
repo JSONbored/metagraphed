@@ -1813,7 +1813,7 @@
                 "hotkey": { "type": ["string", "null"] },
                 "role": { "type": "string", "enum": ["validator", "miner"] },
                 "stake_tao": { "type": "number" },
-                "emission_tao": { "type": "number" },
+                "emission_tao": { "type": ["number", "null"] },
                 "yield": { "type": ["number", "null"] },
                 "vs_median": {
                   "type": ["string", "null"],

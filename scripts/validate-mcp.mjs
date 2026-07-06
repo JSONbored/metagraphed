@@ -120,8 +120,8 @@ assert.equal(init.body.result.serverInfo.name, "metagraphed");
 // CONTRACT_VERSION, and must match the source constant.
 assert.match(
   init.body.result.serverInfo.version,
-  /^\d+\.\d+\.\d+$/,
-  "serverInfo.version must be SemVer (MCP_SERVER_VERSION), not the date-based CONTRACT_VERSION",
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/,
+  "serverInfo.version must be SemVer without leading-zero numeric identifiers (MCP_SERVER_VERSION), not the date-based CONTRACT_VERSION",
 );
 assert.equal(
   init.body.result.serverInfo.version,

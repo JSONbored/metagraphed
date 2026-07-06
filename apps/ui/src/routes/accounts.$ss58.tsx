@@ -11,6 +11,7 @@ import {
   Fingerprint,
   Radar,
   Rows3,
+  Unplug,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
@@ -27,6 +28,7 @@ import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import {
+  accountAxonRemovalsQuery,
   accountBalanceQuery,
   accountEventsQuery,
   accountExtrinsicsQuery,
@@ -243,6 +245,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       ) : null}
 
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+
+      <AccountTeardownActivitySection ss58={ss58} />
 
       {account.event_kinds.length > 0 ? (
         <SectionAnchor
@@ -556,6 +560,82 @@ function AccountTransfersSection({
 function fmtStake(v: number | null | undefined): string {
   if (v == null) return "—";
   return `${formatNumber(v)} τ`;
+}
+
+const KPI_TILE =
+  "rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]";
+
+/**
+ * Axon-removal (teardown) footprint over the trailing 30-day window — a flat
+ * count + distinct-subnet summary from /axon-removals. Non-blocking: while the
+ * dedicated query loads (or if it fails), the section never stalls the page.
+ */
+function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountAxonRemovalsQuery(ss58));
+  const card = result.data?.data;
+  const windowLabel = card?.window ?? "30d";
+
+  if (result.isPending && !card) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="teardown"
+        title="Teardown activity"
+        subtitle="Axon endpoint removals (AxonInfoRemoved) for this account over the trailing 30-day window."
+      />
+    );
+  }
+
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="teardown"
+        title="Teardown activity"
+        subtitle="Axon endpoint removals (AxonInfoRemoved) for this account over the trailing 30-day window."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load teardown activity"
+          description="The axon-removals tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const removals = card?.total_removals ?? 0;
+  const distinctSubnets = card?.subnet_count ?? 0;
+  if (removals === 0 && distinctSubnets === 0) return null;
+
+  return (
+    <SectionAnchor
+      id="teardown"
+      title="Teardown activity"
+      subtitle="Axon endpoint removals (AxonInfoRemoved) for this account over the trailing 30-day window."
+      tone="accent"
+      info="The account-level companion to subnet axon-removal activity — counts how often this hotkey removed an announced axon endpoint, and on how many distinct subnets."
+      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+    >
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+        <StatTile
+          icon={Unplug}
+          eyebrow="Removals"
+          tone="accent"
+          value={formatNumber(removals)}
+          hint={`AxonInfoRemoved · ${windowLabel}`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Distinct subnets"
+          value={formatNumber(distinctSubnets)}
+          hint="subnets with teardown"
+          className={KPI_TILE}
+        />
+      </div>
+    </SectionAnchor>
+  );
 }
 
 /**

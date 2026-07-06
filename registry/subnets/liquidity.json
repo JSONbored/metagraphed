@@ -1,0 +1,32 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Liquidity",
+  "netuid": 77,
+  "schema_version": 1,
+  "slug": "sn-77",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-subnet-api",
+      "kind": "subnet-api",
+      "name": "Liquidity API",
+      "notes": "Public no-auth REST API for SN77 Liquidity (77.creativebuilds.io) exposing Uniswap V3 pool voting, positions, weights, miners, and holders; the /pools endpoint returns JSON with no authentication. Documented in the official creativebuilds/sn77 README.",
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/README.md"
+      ],
+      "url": "https://77.creativebuilds.io/pools"
+    }
+  ]
+}

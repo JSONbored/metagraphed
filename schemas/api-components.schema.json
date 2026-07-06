@@ -18739,7 +18739,10 @@
               "additionalProperties": false,
               "properties": {
                 "emission_tao": {
-                  "type": "number"
+                  "type": [
+                    "number",
+                    "null"
+                  ]
                 },
                 "hotkey": {
                   "type": [

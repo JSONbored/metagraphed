@@ -20,6 +20,12 @@ describe("eventKindCategory", () => {
     expect(eventKindCategory("")).toBe("other");
     expect(eventKindCategory("FutureEventKind")).toBe("other");
   });
+
+  it("treats Object prototype property names as unknown kinds", () => {
+    expect(eventKindCategory("__proto__")).toBe("other");
+    expect(eventKindCategory("constructor")).toBe("other");
+    expect(eventKindCategory("toString")).toBe("other");
+  });
 });
 
 describe("eventKindLabel", () => {
@@ -31,6 +37,12 @@ describe("eventKindLabel", () => {
 
   it("falls back to spaced CamelCase for unknown kinds", () => {
     expect(eventKindLabel("CustomSubnetEvent")).toBe("Custom Subnet Event");
+  });
+
+  it("falls back for Object prototype property names", () => {
+    expect(eventKindLabel("__proto__")).toBe("__proto__");
+    expect(eventKindLabel("constructor")).toBe("Constructor");
+    expect(eventKindLabel("toString")).toBe("To String");
   });
 
   it("returns a stable placeholder for missing kinds", () => {

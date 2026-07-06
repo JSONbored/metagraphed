@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
+import { resolveRefetchInterval, usePageVisible } from "@/hooks/use-refetch-interval";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -59,24 +60,11 @@ export const Route = createFileRoute("/health")({
   component: HealthPage,
 });
 
-/** Returns true when the document is visible (or true in SSR). */
-function usePageVisible(): boolean {
-  const [visible, setVisible] = useState(true);
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const update = () => setVisible(!document.hidden);
-    update();
-    document.addEventListener("visibilitychange", update);
-    return () => document.removeEventListener("visibilitychange", update);
-  }, []);
-  return visible;
-}
-
 function HealthPage() {
   const [enabled, setEnabled] = useState(true);
   const [intervalMs, setIntervalMs] = useState(30_000);
   const visible = usePageVisible();
-  const effectiveInterval = enabled && visible ? intervalMs : false;
+  const effectiveInterval = resolveRefetchInterval(intervalMs, enabled, visible);
   // #1117: push a refresh on each registry publish, on top of the poll interval.
   useRegistryEvents();
 

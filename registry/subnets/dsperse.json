@@ -167,6 +167,24 @@
         "https://huggingface.co/inferencelabs"
       ],
       "url": "https://huggingface.co/datasets/inferencelabs/TruthTensor"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-2-inference-labs-subnet-api",
+      "kind": "subnet-api",
+      "name": "DSperse network stats API",
+      "notes": "Public no-auth GET /stats on sn2-api.inferencelabs.com returning JSON network counters (observed: total_proofs, unique_miners, unique_validators). The official subnet-2 validator client sets DEFAULT_API_URL to https://sn2-api.inferencelabs.com on the same host.",
+      "provider": "inference-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/inference-labs-inc/subnet-2/blob/main/crates/sn2-types/src/constants.rs"
+      ],
+      "url": "https://sn2-api.inferencelabs.com/stats"
     }
   ],
   "website_url": "https://subnet2.inferencelabs.com/"

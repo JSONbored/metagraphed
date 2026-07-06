@@ -1,0 +1,9 @@
+{
+  "authority": "community",
+  "id": "taofu-labs",
+  "kind": "subnet-team",
+  "name": "Taofu Labs",
+  "public_notes": "",
+  "schema_version": 1,
+  "website_url": "https://tpn.taofu.xyz/"
+}

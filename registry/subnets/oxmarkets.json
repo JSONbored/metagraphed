@@ -75,6 +75,46 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Source repository for the 0xMarkets documentation; README states the project is \"built on the Cartha Subnet (SN35)\". Distinct from the cartha-validator repo at the top level."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-openapi",
+      "kind": "openapi",
+      "name": "Cartha Verifier API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the Cartha Verifier API (title: Cartha Verifier). Served publicly at api.cartha.finance; documents SN35 OxMarkets/Cartha miner verification, pool, and lock routes plus the no-auth GET /health probe.",
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.cartha.finance/openapi.json",
+      "source_urls": [
+        "https://github.com/General-Tao-Ventures/cartha-principal-miner-template/blob/main/README.md",
+        "https://api.cartha.finance/openapi.json"
+      ],
+      "url": "https://api.cartha.finance/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-health",
+      "kind": "subnet-api",
+      "name": "Cartha Verifier API health",
+      "notes": "Public no-auth GET /health on api.cartha.finance returning liveness JSON (observed: {\"status\":\"ok\"}). Documented as GET /health in the subnet OpenAPI spec; api.cartha.finance is the default VERIFIER_URL configured in the official Cartha principal miner template.",
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://api.cartha.finance/openapi.json",
+        "https://github.com/General-Tao-Ventures/cartha-principal-miner-template/blob/main/README.md"
+      ],
+      "url": "https://api.cartha.finance/health"
     }
   ],
   "contact": "contact@0xmarkets.io",

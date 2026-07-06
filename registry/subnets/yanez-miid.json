@@ -1,19 +1,60 @@
 {
-  "schema_version": 1,
-  "netuid": 54,
-  "name": "Yanez MIID",
-  "slug": "sn-54",
-  "status": "active",
   "categories": [],
+  "contact": "jose@yanezcompliance.com",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "Yanez MIID",
+  "netuid": 54,
+  "schema_version": 1,
+  "slug": "sn-54",
   "social": {
     "x": "https://x.com/yanez__ai"
   },
-  "surfaces": [],
   "source_repo": "https://github.com/yanez-compliance/MIID-subnet",
-  "website_url": "https://www.yanez.ai/",
-  "contact": "jose@yanezcompliance.com"
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-54-yanez-compliance-openapi",
+      "kind": "openapi",
+      "name": "Yanez MIID Miner Stats API",
+      "notes": "Machine-readable OpenAPI 3.1 spec for the SN54 Yanez MIID public Miner Stats API. The yanezcompliance.net host matches the subnet's registered source-repo org (yanez-compliance) and contact domain, and powers the official leaderboard dashboard linked from the repo README.",
+      "provider": "yanez-compliance",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://miners-stats.yanezcompliance.net/openapi.json",
+      "source_urls": [
+        "https://github.com/yanez-compliance/MIID-subnet",
+        "https://tao-ui-dashboard.yanez.ai/"
+      ],
+      "url": "https://miners-stats.yanezcompliance.net/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-54-yanez-compliance-subnet-api",
+      "kind": "subnet-api",
+      "name": "Yanez MIID subnet-api",
+      "notes": "Public no-auth JSON endpoint of the SN54 Yanez MIID Miner Stats API (latest per-miner quality/similarity scores). Sibling endpoints: /miners and /miners/{miner_uid}; the full contract is the openapi surface. Powers the subnet's official leaderboard dashboard.",
+      "provider": "yanez-compliance",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": [
+        "https://github.com/yanez-compliance/MIID-subnet",
+        "https://tao-ui-dashboard.yanez.ai/"
+      ],
+      "url": "https://miners-stats.yanezcompliance.net/miners_stats"
+    }
+  ],
+  "website_url": "https://www.yanez.ai/"
 }

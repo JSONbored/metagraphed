@@ -1,0 +1,32 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Astrid",
+  "netuid": 127,
+  "schema_version": 1,
+  "slug": "sn-127",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-127-astrid-subnet-api",
+      "kind": "subnet-api",
+      "name": "Astrid Arena API",
+      "notes": "Public no-auth REST API for SN127 Astrid's trading Arena (arena-api.astrid.global) exposing completed competitions, trades, and execution runs; GET /public/arena/completed-competitions returns JSON with no authentication. Documented in the official astridintelligence/sn-127 README.",
+      "provider": "astrid",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": [
+        "https://github.com/astridintelligence/sn-127/blob/master/README.md"
+      ],
+      "url": "https://arena-api.astrid.global/public/arena/completed-competitions"
+    }
+  ]
+}

@@ -60,7 +60,12 @@ function SurfacesPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const filtersActive =
-    !!search.q || !!search.sort || !!search.kind || !!search.provider || !!search.cursor;
+    !!search.q ||
+    !!search.sort ||
+    !!search.kind ||
+    !!search.provider ||
+    !!search.netuid ||
+    !!search.cursor;
   const onReset = () =>
     navigate({
       // Keep page size and view on reset so the chosen layout survives.
@@ -178,6 +183,14 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
       .map((v) => ({ value: v, label: v }));
   }, [all]);
 
+  const netuidOptions = useMemo(() => {
+    const set = new Set<number>();
+    for (const s of all) if (s.netuid != null) set.add(s.netuid);
+    return Array.from(set)
+      .sort((a, b) => a - b)
+      .map((v) => ({ value: String(v), label: String(v) }));
+  }, [all]);
+
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, ...patch, cursor: "" }) as never,
@@ -201,6 +214,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
       return false;
     if (search.kind && s.kind !== search.kind) return false;
     if (search.provider && (s.provider_slug ?? s.provider) !== search.provider) return false;
+    if (search.netuid && String(s.netuid) !== search.netuid) return false;
     return true;
   });
   const rows = sortBy(
@@ -229,11 +243,17 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
         onChange={(v) => setSearch({ provider: v })}
         options={providerOptions}
       />
+      <SelectFilter
+        label="netuid"
+        value={search.netuid}
+        onChange={(v) => setSearch({ netuid: v })}
+        options={netuidOptions}
+      />
       <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
     </>
   );
 
-  const filtersActive = !!(search.q || search.kind || search.provider);
+  const filtersActive = !!(search.q || search.kind || search.provider || search.netuid);
 
   const emptyNode = (
     <RegistryEmpty
@@ -251,7 +271,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           ? [
               {
                 label: "Reset filters",
-                onClick: () => setSearch({ q: "", kind: "", provider: "" }),
+                onClick: () => setSearch({ q: "", kind: "", provider: "", netuid: "" }),
                 primary: true,
               },
               { label: "Open API", href: "/api/v1/surfaces", external: true },

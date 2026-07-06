@@ -90,12 +90,14 @@ function fallbackEventKindLabel(kind: string): string {
 
 export function eventKindCategory(kind: string | null | undefined): EventKindCategory {
   if (!kind) return "other";
-  return EVENT_KIND_CATEGORIES[kind] ?? "other";
+  return Object.hasOwn(EVENT_KIND_CATEGORIES, kind) ? EVENT_KIND_CATEGORIES[kind] : "other";
 }
 
 export function eventKindLabel(kind: string | null | undefined): string {
   if (!kind) return "Unknown event";
-  return EVENT_KIND_LABELS[kind] ?? fallbackEventKindLabel(kind);
+  return Object.hasOwn(EVENT_KIND_LABELS, kind)
+    ? EVENT_KIND_LABELS[kind]
+    : fallbackEventKindLabel(kind);
 }
 
 export function eventKindCategoryLabel(category: EventKindCategory): string {

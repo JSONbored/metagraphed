@@ -170,6 +170,46 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Macrocosmos-published HuggingFace sample of Subnet 1 synthetic Q&A/reasoning data (MIT, public, not gated). The dataset's SAMPLE.md opens \"# Subnet 1: Sample Data\" and the official Macrocosmos org (source) lists it; fills the subnet's noted missing-data-artifact gap."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-orchestrator-openapi",
+      "kind": "openapi",
+      "name": "Apex orchestrator API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.x schema for the Apex SN1 orchestrator (title: FastAPI). Served publicly at apex.api.macrocosmos.ai; documents miner submission, competition, validator scoring, and /healthcheck routes. Mainnet default host in the official apex shared settings (ORCHESTRATOR_HOST).",
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://apex.api.macrocosmos.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/macrocosm-os/apex/blob/main/shared/common/src/common/settings.py",
+        "https://apex.api.macrocosmos.ai/openapi.json"
+      ],
+      "url": "https://apex.api.macrocosmos.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-1-apex-healthcheck",
+      "kind": "subnet-api",
+      "name": "Apex orchestrator healthcheck API",
+      "notes": "Public no-auth GET /healthcheck on apex.api.macrocosmos.ai returning liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /healthcheck in the subnet OpenAPI spec; apex.api.macrocosmos.ai is the mainnet ORCHESTRATOR_HOST (https) in the official apex shared settings.",
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://apex.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/apex/blob/main/shared/common/src/common/settings.py"
+      ],
+      "url": "https://apex.api.macrocosmos.ai/healthcheck"
     }
   ],
   "social": { "x": "https://x.com/macrocosmosai" },
