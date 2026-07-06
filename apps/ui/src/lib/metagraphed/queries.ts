@@ -52,6 +52,9 @@ import type {
   ChainFeePayer,
   ChainTransferPair,
   ChainTransferPairs,
+  ChainStakeTransfers,
+  ChainStakeTransferSubnet,
+  ChainIntensityDistribution,
   ChainConcentration,
   ChainPerformance,
   ChainSigners,
@@ -185,6 +188,7 @@ const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
 const MAX_CHAIN_TRANSFER_PAIRS = 100;
+const MAX_CHAIN_STAKE_TRANSFERS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -2645,6 +2649,78 @@ export const chainTransferPairsQuery = (
       });
       return {
         data: normalizeChainTransferPairs(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeChainStakeTransferSubnet(raw: unknown): ChainStakeTransferSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_senders: firstFiniteNumber(raw.distinct_senders) ?? 0,
+    transfers: firstFiniteNumber(raw.transfers) ?? 0,
+    transfers_per_sender: firstFiniteNumber(raw.transfers_per_sender) ?? null,
+  };
+}
+
+function normalizeChainIntensityDistribution(raw: unknown): ChainIntensityDistribution | null {
+  if (!isRecord(raw)) return null;
+  const count = firstFiniteNumber(raw.count);
+  if (count == null) return null;
+  return {
+    count,
+    mean: firstFiniteNumber(raw.mean) ?? 0,
+    min: firstFiniteNumber(raw.min) ?? 0,
+    p25: firstFiniteNumber(raw.p25) ?? 0,
+    median: firstFiniteNumber(raw.median) ?? 0,
+    p75: firstFiniteNumber(raw.p75) ?? 0,
+    p90: firstFiniteNumber(raw.p90) ?? 0,
+    max: firstFiniteNumber(raw.max) ?? 0,
+  };
+}
+
+// #3467: network-wide stake-transfer leaderboard over a 7d/30d window — the
+// between-coldkeys sibling of /api/v1/chain/stake-moves (within-account
+// re-delegation churn). Every numeric cell coerces defensively: counts fall
+// through to 0, averages to null (never NaN), and malformed subnet rows are
+// dropped on a cold store or junk.
+export function normalizeChainStakeTransfers(raw: unknown): ChainStakeTransfers {
+  const rec = isRecord(raw) ? raw : {};
+  const networkRec = isRecord(rec.network) ? rec.network : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: {
+      distinct_senders: firstFiniteNumber(networkRec.distinct_senders) ?? 0,
+      transfers: firstFiniteNumber(networkRec.transfers) ?? 0,
+      transfers_per_sender: firstFiniteNumber(networkRec.transfers_per_sender) ?? null,
+    },
+    intensity_distribution: normalizeChainIntensityDistribution(rec.intensity_distribution),
+    subnets: normalizeChainRows(
+      rec.subnets,
+      MAX_CHAIN_STAKE_TRANSFERS,
+      normalizeChainStakeTransferSubnet,
+    ),
+  };
+}
+
+export const chainStakeTransfersQuery = (window = "7d", limit = 20) =>
+  queryOptions({
+    queryKey: k("chain-stake-transfers", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainStakeTransfers>>("/api/v1/chain/stake-transfers", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainStakeTransfers(res.data),
         meta: res.meta,
         url: res.url,
       };

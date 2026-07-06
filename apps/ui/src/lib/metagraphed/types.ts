@@ -1795,6 +1795,52 @@ export interface ChainTransferPairs {
   pairs: ChainTransferPair[];
 }
 
+/** One subnet's row on the network-wide stake-transfer leaderboard (#3467). */
+export interface ChainStakeTransferSubnet {
+  netuid: number;
+  distinct_senders: number;
+  transfers: number;
+  transfers_per_sender: number | null;
+}
+
+/** Network-wide stake-transfer rollup — true distinct-sender count (not a per-subnet sum) + total transfers. */
+export interface ChainStakeTransferNetwork {
+  distinct_senders: number;
+  transfers: number;
+  transfers_per_sender: number | null;
+}
+
+/** Distribution summary of per-subnet transfer intensity (count, mean, min, p25, median, p75, p90, max). */
+export interface ChainIntensityDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
+/**
+ * Network-wide stake-transfer leaderboard over a 7d/30d window (#3467), from
+ * GET /api/v1/chain/stake-transfers — subnets ranked by StakeTransferred event
+ * count, distinct senders, and transfers per sender, plus the true network-wide
+ * distinct-sender rollup and a distribution summary of the per-subnet transfer
+ * intensity. The between-coldkeys sibling of /api/v1/chain/stake-moves
+ * (within-account re-delegation churn). Zeroed with an empty subnets list when
+ * the store is cold.
+ */
+export interface ChainStakeTransfers {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainStakeTransferNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainStakeTransferSubnet[];
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;

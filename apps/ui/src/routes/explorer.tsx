@@ -22,6 +22,7 @@ import {
   chainEventsInfiniteQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainStakeTransfersQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -89,6 +90,7 @@ function ExplorerPage() {
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
+          "/api/v1/chain/stake-transfers",
           "/api/v1/chain-events",
         ]}
       />
@@ -241,6 +243,7 @@ function ExplorerDashboard() {
   const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
+  const stakeTransfers = useSuspenseQuery(chainStakeTransfersQuery(win)).data.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -525,6 +528,64 @@ function ExplorerDashboard() {
           )}
         </section>
       </div>
+
+      {/* stake-transfer leaderboard */}
+      <section className="rounded-lg border border-border bg-card p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+              Stake-transfer leaderboard
+            </h2>
+            <p className="mt-1 font-mono text-[11px] text-ink-muted">
+              {formatNumber(stakeTransfers.network.transfers)} transfers across{" "}
+              {formatNumber(stakeTransfers.network.distinct_senders)} senders network-wide
+            </p>
+          </div>
+          <span className="font-mono text-[11px] text-ink-muted">
+            {stakeTransfers.subnets.length} subnets
+          </span>
+        </div>
+        {stakeTransfers.subnets.length > 0 ? (
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Transfers</th>
+                <th className={`${TH} text-right`}>Distinct senders</th>
+                <th className={`${TH} text-right`}>Transfers per sender</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {stakeTransfers.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.transfers)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.distinct_senders)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="font-mono text-[12px] text-ink-muted">
+            No stake transfers in this window yet.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
