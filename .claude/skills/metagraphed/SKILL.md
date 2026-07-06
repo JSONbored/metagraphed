@@ -329,21 +329,90 @@ one PR.
 ### Phase C2 — Screenshot contract (required for any visual change)
 
 **Non-negotiable for any PR that changes rendered output.** PRs without it are auto-closed — no
-exceptions:
+exceptions. Follow the steps below exactly — a real PR (#3757) shipped 10 of its 12 screenshots at
+115,000–142,000px tall (a full-page capture bug, not a display issue) and sat unreviewable until
+recaptured. Don't repeat that.
 
-```md
-| Page / Feature | Before                                                                                       | After                                                                                       |
-| -------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `/your-route`  | [<img src="FULL_IMAGE_URL" width="260">](FULL_IMAGE_URL)<br><sub>before: short caption</sub> | [<img src="FULL_IMAGE_URL" width="260">](FULL_IMAGE_URL)<br><sub>after: short caption</sub> |
+**1. Two dev servers — one for `before`, one for `after`.** Don't reuse a single server for both; run
+the `before` state from a separate worktree so nothing needs stashing/restoring mid-capture:
+
+```sh
+git worktree add ../metagraphed-before $(git merge-base main HEAD)
+cd ../metagraphed-before && npm install && npm run dev --workspace=apps/ui   # note the printed Local URL — this is "before"
+cd -                                                                          # back to your feature branch
+npm run dev --workspace=apps/ui                                              # note this Local URL — this is "after"
 ```
 
-One row per page/feature you changed, before **and** after. Screenshots go **inside the table only** —
-drag-and-drop into the PR (GitHub hosts them), never commit image files. If the change affects mobile
-layout, include a mobile-width capture alongside desktop; if it affects theme-aware styling, include a
-dark-mode capture too.
+**2. Fixed viewport sizes only — never a full-page / `fullPage: true` capture.** A full-scroll-height
+capture is exactly what produced #3757's broken screenshots. Use these three sizes — chosen to straddle
+this app's actual Tailwind breakpoints (`md`=768px, `lg`=1024px, the two most-used responsive prefixes
+in `apps/ui/src`):
+
+| Viewport | Size (px) |
+| -------- | --------- |
+| Mobile   | 375 × 812  |
+| Tablet   | 768 × 1024 |
+| Desktop  | 1280 × 800 |
+
+Capture exactly that viewport, nothing more. If the changed content is below the fold, scroll to it
+first — don't reach for a full-page capture to get there.
+
+**3. Force each theme explicitly — never rely on system/`prefers-color-scheme`** (it varies by capture
+environment, so it isn't reproducible run to run). In the page, before capturing:
+
+```js
+localStorage.setItem("mg-theme", "dark"); // or "light"
+location.reload();
+```
+
+`mg-theme` is `THEME_STORAGE_KEY` in `apps/ui/src/lib/theme.ts` — the only supported mechanism. Reload
+after setting it so the pre-hydration bootstrap script applies it with no flash-of-wrong-theme.
+
+**4. 3 viewports × 2 themes × {before, after} = 12 images**, for a page/feature-level change. Skip a
+combo only if you state in one sentence why it's provably unaffected (e.g. a change gated behind a
+desktop-only code path).
+
+**5. Host the 12 files on a dedicated branch in your own fork — never drag-and-drop, never commit them
+to your feature branch.** Drag-and-drop into the GitHub web editor requires a human browser session,
+which an AI coding tool cannot do end-to-end; a pushed branch is fully scriptable and keeps binary
+images out of your feature branch's diff entirely. Do this from a throwaway worktree, not your feature
+branch's working directory:
+
+```sh
+git worktree add ../metagraphed-screenshots main
+cd ../metagraphed-screenshots
+git checkout --orphan screenshots       # first time; if you already have a `screenshots` branch from a
+git rm -rf . 2>/dev/null                # prior PR, just `git checkout screenshots` instead and skip these two lines
+cp /path/to/your/12/*.png .
+git add *.png && git commit -m "screenshots for PR"
+git push origin screenshots
+cd -    # your feature branch's working directory was never touched
+```
+
+Reference each file as `https://raw.githubusercontent.com/<your-fork-owner>/metagraphed/screenshots/<file>.png`.
+
+**6. Table format — one row per viewport+theme, thumbnail + caption in each cell, both before and
+after:**
+
+```md
+| Viewport · Theme | Before                                                                                      | After                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Desktop · Light   | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
+| Desktop · Dark    | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
+| Tablet · Light    | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
+| Tablet · Dark     | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
+| Mobile · Light    | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
+| Mobile · Dark     | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
+```
+
+Screenshots go **inside the table only** — never pasted loose in the PR body, never committed to the
+feature branch itself.
 
 A PR confined to `apps/ui/src/lib/**` / `apps/ui/src/hooks/**` / test files, with **no** visual change,
-skips this — it isn't rendering anything different.
+skips this entirely — it isn't rendering anything different.
+
+> A devcontainer/scripted capture pipeline that automates all of the above (tracked in #3769) doesn't
+> exist yet — until it lands, follow the steps manually.
 
 ### Phase C3 — Test + gates locally
 
