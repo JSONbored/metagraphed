@@ -175,6 +175,31 @@
         "submitted_by": "jimcody1995"
       },
       "notes": "Public no-auth GET competitions.json on the official SN29 dynamic-configuration repository (github.com/coldint/sn29). Validators poll this URL on COMPETITIONS_URL in constants/__init__.py via requests.get to load live competition parameters without restart."
+    },
+    {
+      "id": "sn-29-coldint-hall-of-fame-config",
+      "name": "Coldint hall of fame configuration",
+      "kind": "data-artifact",
+      "url": "https://github.com/coldint/sn29/raw/main/hall_of_fame.json",
+      "provider": "coldint",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator/blob/main/constants/__init__.py",
+        "https://github.com/coldint/sn29/blob/main/README.md"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "notes": "Public no-auth GET hall_of_fame.json on the official SN29 dynamic-configuration repository (github.com/coldint/sn29). Validators poll this URL on HOF_URL in constants/__init__.py via requests.get to load hall-of-fame reward records alongside competitions.json."
     }
   ]
 }
