@@ -10915,6 +10915,11 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_health_trends aggregates bulk trend rows from D1", async () => {
+    // #NNNN: derive the sample day from the current date so the row always
+    // lands inside the 7d window (a hard-coded date ages out and fails).
+    const recentDay = new Date(Date.now() - 2 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
@@ -10927,7 +10932,7 @@ describe("MCP economics + metagraph data tools", () => {
                     results: [
                       {
                         netuid: 7,
-                        date: "2026-06-28",
+                        date: recentDay,
                         total: 20,
                         ok_count: 18,
                         avg_latency_ms: 42,
