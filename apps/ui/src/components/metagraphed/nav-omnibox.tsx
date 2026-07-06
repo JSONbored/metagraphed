@@ -352,7 +352,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
             <div>
               <div className="px-3 pt-3 pb-2">
                 <p className="mg-label mb-2">Jump to</p>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                   {NAV_LINKS.map((r) => (
                     <Link
                       key={r.to}
