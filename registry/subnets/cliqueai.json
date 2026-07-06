@@ -16,7 +16,7 @@
       "id": "sn-83-cliqueai-dashboard",
       "kind": "dashboard",
       "name": "CliqueAI validator W&B dashboard",
-      "notes": "Public Weights & Biases project for SN83 CliqueAI validator runs (entity toptensor-ai, project CliqueAI). Explicitly documented as the subnet's \"W&B Dashboard\" in the official toptensor/CliqueAI repo (docs/wandb_logging.md). Publicly readable (W&B access USER_READ, 66+ logged validator runs); the same GitHub org (toptensor) owns both the SN83 source repo and this W&B entity.",
+      "notes": "Public Weights & Biases project for SN83 CliqueAI validator runs (entity toptensor-ai, project CliqueAI). Explicitly documented as the subnet's \"W&B Dashboard\" in the official toptensor/CliqueAI repo (docs/wandb_logging.md), which also defines the structured per-run logging schema (WandbRunLogData) written to this project. Publicly readable (W&B access USER_READ, 66+ logged validator runs); the same GitHub org (toptensor) owns both the SN83 source repo and this W&B entity.",
       "provider": "cliqueai",
       "public_safe": true,
       "review": {
