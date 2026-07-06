@@ -27,6 +27,8 @@ import type {
   HealthHistorySurface,
   SourceHealth,
   SourceHealthProvider,
+  AccountAxonRemovals,
+  AccountAxonRemovalsSubnet,
   AccountBalance,
   AccountDay,
   AccountEvent,
@@ -2232,6 +2234,59 @@ export const accountPortfolioQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountPortfolio>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountAxonRemovalsSubnet(raw: unknown): AccountAxonRemovalsSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    removals: firstFiniteNumber(raw.removals) ?? 0,
+    first_removed_at: firstString(raw.first_removed_at) ?? null,
+    last_removed_at: firstString(raw.last_removed_at) ?? null,
+  };
+}
+
+// Per-account axon-removal (teardown) footprint over a 7d/30d/90d window. A flat
+// summary card — total removals + distinct subnets — from the account_events
+// AxonInfoRemoved stream. Every numeric cell coerces defensively: counts fall
+// through to 0 and concentration to null on a cold store or junk.
+export function normalizeAccountAxonRemovals(ss58: string, raw: unknown): AccountAxonRemovals {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountAxonRemovalsSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_removals: firstFiniteNumber(rec.total_removals) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountAxonRemovalsQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-axon-removals", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountAxonRemovals>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/axon-removals`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountAxonRemovals(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
     },
     staleTime: STALE_MED,
   });
