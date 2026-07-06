@@ -31,6 +31,10 @@ import type {
   AccountAxonRemovalsSubnet,
   AccountWeightSetters,
   AccountWeightSettersSubnet,
+  AccountPrometheus,
+  AccountPrometheusSubnet,
+  AccountServing,
+  AccountServingSubnet,
   AccountBalance,
   AccountDay,
   AccountEvent,
@@ -2339,6 +2343,104 @@ export const accountWeightSettersQuery = (ss58: string, window = "30d") =>
       );
       return {
         data: normalizeAccountWeightSetters(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountServingSubnet(raw: unknown): AccountServingSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    announcements: firstFiniteNumber(raw.announcements) ?? 0,
+    first_served_at: firstString(raw.first_served_at) ?? null,
+    last_served_at: firstString(raw.last_served_at) ?? null,
+  };
+}
+
+export function normalizeAccountServing(ss58: string, raw: unknown): AccountServing {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountServingSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_announcements: firstFiniteNumber(rec.total_announcements) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountServingQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-serving", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountServing>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/serving`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountServing(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountPrometheusSubnet(raw: unknown): AccountPrometheusSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    announcements: firstFiniteNumber(raw.announcements) ?? 0,
+    first_announced_at: firstString(raw.first_announced_at) ?? null,
+    last_announced_at: firstString(raw.last_announced_at) ?? null,
+  };
+}
+
+export function normalizeAccountPrometheus(ss58: string, raw: unknown): AccountPrometheus {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountPrometheusSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_announcements: firstFiniteNumber(rec.total_announcements) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountPrometheusQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-prometheus", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountPrometheus>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/prometheus`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountPrometheus(ss58, res.data),
         meta: res.meta,
         url: res.url,
       };
