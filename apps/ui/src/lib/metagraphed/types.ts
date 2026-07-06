@@ -951,6 +951,30 @@ export interface AccountAxonRemovals {
   subnets: AccountAxonRemovalsSubnet[];
 }
 
+export interface AccountDeregistrationsSubnet {
+  netuid: number;
+  deregistrations: number;
+  first_deregistered_at: string | null;
+  last_deregistered_at: string | null;
+}
+
+/**
+ * One account's deregistration (NeuronDeregistered) footprint over a
+ * 7d/30d/90d window, from /api/v1/accounts/{ss58}/deregistrations —
+ * the eviction-side complement to /accounts/{ss58}/registrations.
+ * Zeroed when the account had no NeuronDeregistered events in the window.
+ */
+export interface AccountDeregistrations {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_deregistrations: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountDeregistrationsSubnet[];
+}
+
 /**
  * One neuron position a wallet holds on a subnet, from
  * /api/v1/accounts/{ss58}/portfolio: its economics plus emission/stake yield.

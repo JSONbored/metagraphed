@@ -29,6 +29,8 @@ import type {
   SourceHealthProvider,
   AccountAxonRemovals,
   AccountAxonRemovalsSubnet,
+  AccountDeregistrations,
+  AccountDeregistrationsSubnet,
   AccountBalance,
   AccountDay,
   AccountEvent,
@@ -2284,6 +2286,65 @@ export const accountAxonRemovalsQuery = (ss58: string, window = "30d") =>
       );
       return {
         data: normalizeAccountAxonRemovals(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-account deregistration (NeuronDeregistered) footprint over a 7d/30d/90d
+// window. A flat summary card — total deregistrations + distinct subnets — from
+// the account_events NeuronDeregistered stream. Every numeric cell coerces
+// defensively: counts fall through to 0 and concentration to null on a cold
+// store or junk.
+function normalizeAccountDeregistrationsSubnet(
+  raw: unknown,
+): AccountDeregistrationsSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    deregistrations: firstFiniteNumber(raw.deregistrations) ?? 0,
+    first_deregistered_at: firstString(raw.first_deregistered_at) ?? null,
+    last_deregistered_at: firstString(raw.last_deregistered_at) ?? null,
+  };
+}
+
+export function normalizeAccountDeregistrations(
+  ss58: string,
+  raw: unknown,
+): AccountDeregistrations {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountDeregistrationsSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_deregistrations: firstFiniteNumber(rec.total_deregistrations) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountDeregistrationsQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-deregistrations", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountDeregistrations>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/deregistrations`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountDeregistrations(ss58, res.data),
         meta: res.meta,
         url: res.url,
       };

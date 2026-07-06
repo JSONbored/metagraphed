@@ -12,6 +12,7 @@ import {
   Radar,
   Rows3,
   Unplug,
+  UserMinus,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
@@ -30,6 +31,7 @@ import { AccountHistoryChart } from "@/components/metagraphed/account-history-ch
 import {
   accountAxonRemovalsQuery,
   accountBalanceQuery,
+  accountDeregistrationsQuery,
   accountEventsQuery,
   accountExtrinsicsQuery,
   accountQuery,
@@ -247,6 +249,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
 
       <AccountTeardownActivitySection ss58={ss58} />
+      <AccountDeregistrationActivitySection ss58={ss58} />
 
       {account.event_kinds.length > 0 ? (
         <SectionAnchor
@@ -631,6 +634,79 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
           eyebrow="Distinct subnets"
           value={formatNumber(distinctSubnets)}
           hint="subnets with teardown"
+          className={KPI_TILE}
+        />
+      </div>
+    </SectionAnchor>
+  );
+}
+
+/**
+ * Per-account deregistration (NeuronDeregistered) activity over a 7d/30d/90d
+ * window — the eviction-side complement to the registrations summary. A flat
+ * KPI card: total deregistrations + distinct subnets evicted from.
+ */
+function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountDeregistrationsQuery(ss58));
+  const card = result.data?.data;
+  const windowLabel = card?.window ?? "30d";
+
+  if (result.isPending && !card) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="deregistrations"
+        title="Deregistration activity"
+        subtitle="NeuronDeregistered events for this account over the trailing 30-day window."
+      />
+    );
+  }
+
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="deregistrations"
+        title="Deregistration activity"
+        subtitle="NeuronDeregistered events for this account over the trailing 30-day window."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load deregistration activity"
+          description="The deregistrations tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const deregistrations = card?.total_deregistrations ?? 0;
+  const distinctSubnets = card?.subnet_count ?? 0;
+  if (deregistrations === 0 && distinctSubnets === 0) return null;
+
+  return (
+    <SectionAnchor
+      id="deregistrations"
+      title="Deregistration activity"
+      subtitle="NeuronDeregistered events for this account over the trailing 30-day window."
+      tone="accent"
+      info="The eviction-side complement to account registrations — counts how many times this account was deregistered, and on how many distinct subnets."
+      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+    >
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+        <StatTile
+          icon={UserMinus}
+          eyebrow="Deregistrations"
+          tone="accent"
+          value={formatNumber(deregistrations)}
+          hint={`NeuronDeregistered · ${windowLabel}`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Distinct subnets"
+          value={formatNumber(distinctSubnets)}
+          hint="subnets evicted from"
           className={KPI_TILE}
         />
       </div>
