@@ -51,6 +51,8 @@ import type {
   ChainActivityDay,
   ChainCalls,
   ChainCallEntry,
+  ChainEventsStats,
+  ChainEventsStatsEntry,
   ChainFees,
   ChainFeeDay,
   ChainFeePayer,
@@ -186,6 +188,9 @@ const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
 const MAX_CHAIN_CALLS = 12;
+// The endpoint returns the top 100 pallet.method groups, busiest first.
+const MAX_CHAIN_EVENT_GROUPS = 100;
+const DEFAULT_CHAIN_EVENT_BLOCKS = 1000;
 const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
@@ -2638,6 +2643,49 @@ export const chainCallsQuery = (window: ChainWindow = "7d") =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainCalls>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeChainEventsStatsEntry(raw: unknown): ChainEventsStatsEntry | null {
+  if (!isRecord(raw)) return null;
+  const pallet = firstString(raw.pallet);
+  const count = coerceFiniteNumber(raw.count);
+  if (!pallet || count == null) return null;
+  return {
+    pallet,
+    method: firstString(raw.method) ?? null,
+    count,
+  };
+}
+
+// #3489: raw all-events tier pallet.method distribution from
+// /api/v1/chain-events/stats — the raw-tier sibling of chainCallsQuery's D1
+// /chain/calls aggregate. Takes a block window (default 1000, capped 5000
+// server-side); returns the distinct group count and the busiest-first rows.
+// A cold store (before the all-events backfill) yields groups: 0, activity: [].
+export const chainEventsStatsQuery = (blocks: number = DEFAULT_CHAIN_EVENT_BLOCKS) =>
+  queryOptions({
+    queryKey: k("chain-events-stats", blocks),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain-events/stats", {
+        params: { blocks },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          window_blocks: firstFiniteNumber(d.window_blocks) ?? blocks,
+          groups: firstFiniteNumber(d.groups) ?? 0,
+          activity: normalizeChainRows(
+            d.activity,
+            MAX_CHAIN_EVENT_GROUPS,
+            normalizeChainEventsStatsEntry,
+          ),
+        } as ChainEventsStats,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainEventsStats>;
     },
     staleTime: STALE_SHORT,
   });
