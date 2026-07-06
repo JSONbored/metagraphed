@@ -64,6 +64,50 @@
         "timeout_ms": 10000
       },
       "notes": "Official ConnitoAI source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-102-connito-phase-openapi",
+      "kind": "openapi",
+      "name": "ConnitoAI SN Owner Phase API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.x schema for the Connito SN102 SN Owner Phase Service (FastAPI title: Phase Service). Served at cycle-api.connito.ai; documents no-auth cycle-coordination routes such as GET /get_phase and GET /blocks_until_next_phase per the official SN Owner Phase API reference.",
+      "provider": "connito",
+      "public_safe": true,
+      "rate_limit_notes": "Cloudflare WAF in front of cycle-api.connito.ai may challenge simple automated probes from datacenter IPs; miners and validators use this host as the locked owner_url in official configuration.",
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://cycle-api.connito.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/Connito-AI/Connito/blob/master/connito/shared/config.py",
+        "https://github.com/Connito-AI/Connito/blob/master/docs/miner-faq/miner-config.md",
+        "https://connito.ai/docs/reference/sn-owner-api"
+      ],
+      "url": "https://cycle-api.connito.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-102-connito-phase-get-phase",
+      "kind": "subnet-api",
+      "name": "ConnitoAI SN Owner phase API",
+      "notes": "Public no-auth GET /get_phase on cycle-api.connito.ai returning the current training-cycle phase JSON (block height, phase_name, cycle_length, blocks_remaining_in_phase). Default owner_url in official Connito CycleCfg (config.py) and hard-pinned in miner-config.md; documented in the SN Owner Phase API reference.",
+      "provider": "connito",
+      "public_safe": true,
+      "rate_limit_notes": "Cloudflare WAF in front of cycle-api.connito.ai may challenge simple automated probes from datacenter IPs; the endpoint is the official phase oracle queried by miners and validators.",
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://cycle-api.connito.ai/openapi.json",
+        "https://github.com/Connito-AI/Connito/blob/master/connito/shared/config.py",
+        "https://connito.ai/docs/reference/sn-owner-api"
+      ],
+      "url": "https://cycle-api.connito.ai/get_phase"
     }
   ],
   "social": {
