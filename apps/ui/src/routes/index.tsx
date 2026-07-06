@@ -38,6 +38,7 @@ import {
   coverageQuery,
   freshnessQuery,
   healthQuery,
+  blocksQuery,
   subnetsQuery,
   adapterQuery,
   endpointsQuery,
@@ -45,7 +46,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
-import type { Subnet } from "@/lib/metagraphed/types";
+import type { Block, Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -310,6 +311,11 @@ function HomeHero() {
               Read the API
             </Link>
           </div>
+          <QueryErrorBoundary fallback={() => null}>
+            <Suspense fallback={null}>
+              <ChainHeadTip />
+            </Suspense>
+          </QueryErrorBoundary>
         </div>
         <div className="mg-fade-in mg-fade-in-delay-2 shrink-0">
           <HeroKpis />
@@ -409,6 +415,26 @@ function HeroKpis() {
           Gittensor · SN74
         </Link>
       </div>
+    </div>
+  );
+}
+
+function ChainHeadTip() {
+  const result = useQuery({ ...blocksQuery({ limit: 1 }), retry: 0 });
+  const block = result.data?.data?.[0] as Block | undefined;
+  if (result.isLoading || result.isError || !block) return null;
+
+  return (
+    <div className="mg-fade-in mg-fade-in-delay-3 mt-3 text-[11px] text-ink-muted">
+      <Link
+        to="/blocks/$ref"
+        params={{ ref: String(block.block_number) }}
+        className="inline-flex items-center gap-1 hover:text-accent transition-colors"
+      >
+        <span className="font-mono">head #{block.block_number}</span>
+        <span aria-hidden>·</span>
+        <TimeAgo at={block.observed_at} />
+      </Link>
     </div>
   );
 }
