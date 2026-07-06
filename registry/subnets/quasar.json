@@ -218,6 +218,32 @@
         "https://huggingface.co/silx-ai"
       ],
       "url": "https://huggingface.co/datasets/silx-ai/Quasar-SN3"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-24-quasar-current-run-api",
+      "kind": "subnet-api",
+      "name": "Quasar current training run manifest",
+      "notes": "Public no-auth GET on the subnet's anonymous mainnet S3 bucket (QUASAR_S3_ANONYMOUS=true in QUASAR-SUBNET README) returning the active run_id, status, and checkpoint manifest URI. Miners and validators discover the live run from this object at quasar/netuid=24/runs/current.json per incentive/bucket/paths.py current_run_key(). Distinct from static HuggingFace model/data artifacts.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/incentive/bucket/paths.py",
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/incentive/coordination/current_run.py"
+      ],
+      "url": "https://quasar-incentive-sn24-529337356998-us-east-1.s3.us-east-1.amazonaws.com/quasar/netuid=24/runs/current.json"
     }
   ],
   "website_url": "https://silxinc.com/",
