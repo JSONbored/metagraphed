@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "netuid": 83,
+  "name": "CliqueAI",
+  "slug": "sn-83",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-cliqueai-lambda-openapi",
+      "kind": "openapi",
+      "name": "CliqueAI lambda service OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the CliqueAI SN83 lambda backend (FastAPI). Served at lambda.toptensor.ai; documents graph generation, validator IP listing, and W&B logging routes. The cliqueai.toptensor.ai website is a SPA and does not expose machine-readable OpenAPI at conventional paths.",
+      "provider": "cliqueai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "http://lambda.toptensor.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/toptensor/CliqueAI/blob/main/common/base/consts.py",
+        "https://github.com/toptensor/CliqueAI/blob/main/CliqueAI/graph/client.py",
+        "http://lambda.toptensor.ai/openapi.json"
+      ],
+      "url": "http://lambda.toptensor.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-cliqueai-validator-ips",
+      "kind": "subnet-api",
+      "name": "CliqueAI validator IP catalog API",
+      "notes": "Public no-auth GET /validator/ip on lambda.toptensor.ai returning a JSON array of validator IP addresses (observed: [\"178.156.195.239\", ...]). Documented as GET /validator/ip in the subnet OpenAPI spec; lambda.toptensor.ai is LAMBDA_URL in the official CliqueAI validator graph client.",
+      "provider": "cliqueai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "http://lambda.toptensor.ai/openapi.json",
+        "https://github.com/toptensor/CliqueAI/blob/main/common/base/consts.py"
+      ],
+      "url": "http://lambda.toptensor.ai/validator/ip"
+    }
+  ],
+  "source_repo": "https://github.com/toptensor/CliqueAI",
+  "website_url": "https://cliqueai.toptensor.ai/"
+}
