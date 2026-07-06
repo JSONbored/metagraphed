@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 97,
+  "surface_count": 101,
   "surfaces": [
     {
       "auth_required": false,
@@ -501,6 +501,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 10,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taofi",
+      "public_safe": true,
+      "subnet_name": "Swap",
+      "subnet_slug": "sn-10",
+      "surface_id": "sn-10-taofi-api",
+      "surface_key": "srf-6bf50fe9203db27c",
+      "url": "https://taofi-api.web.app/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "data-artifact",
       "netuid": 14,
       "probe": {
@@ -659,6 +677,24 @@
       "surface_id": "sn-26-perturb-subnet-api",
       "surface_key": "srf-43db9970eda54936",
       "url": "https://api.perturbai.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 29,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "coldint",
+      "public_safe": true,
+      "subnet_name": "Coldint",
+      "subnet_slug": "sn-29",
+      "surface_id": "sn-29-coldint-competitions-api",
+      "surface_key": "srf-54c7d4fac6087976",
+      "url": "https://github.com/coldint/sn29/raw/main/competitions.json"
     },
     {
       "auth_required": false,
@@ -1613,6 +1649,42 @@
       "surface_id": "sn-96-verathos-models-api",
       "surface_key": "srf-4f803cf3db704548",
       "url": "https://api.verathos.ai/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 98,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "forevermoney",
+      "public_safe": true,
+      "subnet_name": "ForeverMoney",
+      "subnet_slug": "sn-98",
+      "surface_id": "sn-98-forevermoney-vaults-tvl-api",
+      "surface_key": "srf-b7903c0191b3c777",
+      "url": "https://dashboard.forevermoney.ai/api/vaults/tvl"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 100,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "platform-network",
+      "public_safe": true,
+      "subnet_name": "Plaτform",
+      "subnet_slug": "sn-100",
+      "surface_id": "sn-100-platform-network-subnet-api",
+      "surface_key": "srf-196044ef4420d344",
+      "url": "https://chain.joinbase.ai/v1/registry"
     },
     {
       "auth_required": false,
