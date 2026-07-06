@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SurfacesRouteImport } from './routes/surfaces'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SchemasRouteImport } from './routes/schemas'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GapsRouteImport } from './routes/gaps'
@@ -38,6 +39,11 @@ const SurfacesRoute = SurfacesRouteImport.update({
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SchemasRoute = SchemasRouteImport.update({
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
   '/schemas': typeof SchemasRoute
+  '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
   '/accounts/$ss58': typeof AccountsSs58Route
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
   '/schemas': typeof SchemasRoute
+  '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
   '/accounts/$ss58': typeof AccountsSs58Route
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
   '/schemas': typeof SchemasRoute
+  '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
   '/accounts/$ss58': typeof AccountsSs58Route
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/gaps'
     | '/health'
     | '/schemas'
+    | '/settings'
     | '/status'
     | '/surfaces'
     | '/accounts/$ss58'
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/gaps'
     | '/health'
     | '/schemas'
+    | '/settings'
     | '/status'
     | '/surfaces'
     | '/accounts/$ss58'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/gaps'
     | '/health'
     | '/schemas'
+    | '/settings'
     | '/status'
     | '/surfaces'
     | '/accounts/$ss58'
@@ -276,6 +288,7 @@ export interface RootRouteChildren {
   GapsRoute: typeof GapsRoute
   HealthRoute: typeof HealthRoute
   SchemasRoute: typeof SchemasRoute
+  SettingsRoute: typeof SettingsRoute
   StatusRoute: typeof StatusRoute
   SurfacesRoute: typeof SurfacesRoute
   AccountsSs58Route: typeof AccountsSs58Route
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/schemas': {
@@ -444,6 +464,7 @@ const rootRouteChildren: RootRouteChildren = {
   GapsRoute: GapsRoute,
   HealthRoute: HealthRoute,
   SchemasRoute: SchemasRoute,
+  SettingsRoute: SettingsRoute,
   StatusRoute: StatusRoute,
   SurfacesRoute: SurfacesRoute,
   AccountsSs58Route: AccountsSs58Route,

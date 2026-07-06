@@ -2130,3 +2130,57 @@ export interface SemanticSearchResponse {
   results: SemanticSearchResult[];
   model: string;
 }
+
+/** Change-feed webhook subscription filters — both narrow, both optional. */
+export interface WebhookSubscriptionFilters {
+  netuids?: number[];
+  kinds?: Array<"subnets" | "artifacts">;
+}
+
+/** Rolled-up delivery health for a subscription, from GET .../webhooks/subscriptions/{id}. */
+export interface WebhookDeliveryStatus {
+  status: "ok" | "retrying" | "dead_letter";
+  pending: number;
+  dead_letter: number;
+  last_failure?: {
+    event_id?: string;
+    attempts?: number;
+    reason?: string;
+    status_code?: number;
+    state?: string;
+    last_attempt_at?: string;
+    next_attempt_at?: string | null;
+  } | null;
+}
+
+/**
+ * POST /api/v1/webhooks/subscriptions response. `secret` is returned exactly
+ * once here — GET never echoes it back.
+ */
+export interface WebhookSubscriptionCreated {
+  id: string;
+  url: string;
+  filters: WebhookSubscriptionFilters;
+  secret: string;
+  active: boolean;
+  created_at: string;
+  delivery: {
+    method: string;
+    content_type: string;
+    signature_header: string;
+    signature_algorithm: string;
+    event_id_header: string;
+    idempotency_header: string;
+    note: string;
+  };
+}
+
+/** GET /api/v1/webhooks/subscriptions/{id} response — no secret. */
+export interface WebhookSubscriptionView {
+  id: string;
+  url: string;
+  filters: WebhookSubscriptionFilters;
+  created_at: string | null;
+  active: boolean;
+  delivery: WebhookDeliveryStatus;
+}

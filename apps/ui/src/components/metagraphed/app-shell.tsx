@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Compass, Github, Menu, X } from "lucide-react";
+import { ChevronRight, Compass, Github, Menu, Webhook, X } from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -146,6 +146,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
                 <NetworkSwitcher />
                 <ShortcutsPopover />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to="/settings"
+                      aria-label="Developer settings"
+                      className="inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-7 min-w-7 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                    >
+                      <Webhook className="size-3.5" aria-hidden="true" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-[11px]">
+                    Developer settings — webhook subscriptions
+                  </TooltipContent>
+                </Tooltip>
                 <SettingsPopover />
                 <Tooltip>
                   <TooltipTrigger asChild>
