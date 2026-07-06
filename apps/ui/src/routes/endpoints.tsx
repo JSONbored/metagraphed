@@ -30,8 +30,10 @@ import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-sc
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EndpointKindTabs } from "@/components/metagraphed/endpoint-kind-tabs";
 import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
+import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { useScrolled } from "@/hooks/use-scrolled";
 import {
   endpointsQuery,
@@ -524,6 +526,10 @@ function EndpointsTable() {
     search.region ||
     search.eligibility;
 
+  // The table filters client-side over the full fetched list; the CSV export
+  // hits the backend route directly (full endpoint snapshot, no client filters).
+  const endpointsCsvUrl = buildUrl("/api/v1/endpoints");
+
   function toggleSort(k: SortKey) {
     if (search.sort === k) {
       setSearch({ order: search.order === "asc" ? "desc" : "asc" });
@@ -630,6 +636,7 @@ function EndpointsTable() {
         >
           <X className="size-3" /> Reset filters
         </button>
+        <DownloadCsvButton url={endpointsCsvUrl} />
         <button
           type="button"
           onClick={() => {

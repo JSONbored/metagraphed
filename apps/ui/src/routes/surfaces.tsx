@@ -13,6 +13,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { ShareButton } from "@/components/metagraphed/share-button";
+import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
 import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
@@ -32,6 +33,7 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { surfacesInfiniteQuery, providersQuery, subnetsQuery } from "@/lib/metagraphed/queries";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import type { Surface, Provider, Subnet } from "@/lib/metagraphed/types";
 
@@ -73,6 +75,13 @@ function SurfacesPage() {
       replace: true,
     });
   const viewMode: "table" | "grid" = search.view === "grid" ? "grid" : "table";
+  const surfacesCsvUrl = buildUrl("/api/v1/surfaces", {
+    q: search.q || undefined,
+    sort: search.sort || undefined,
+    order: search.sort ? search.order : undefined,
+    kind: search.kind || undefined,
+    provider: search.provider || undefined,
+  });
   return (
     <AppShell>
       <TimeRangeProvider defaultRange="7d">
@@ -95,6 +104,7 @@ function SurfacesPage() {
                 }
               />
               <ResetFiltersButton active={filtersActive} onReset={onReset} />
+              <DownloadCsvButton url={surfacesCsvUrl} />
               <ShareButton />
             </>
           }

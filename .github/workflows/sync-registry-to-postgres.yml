@@ -2,24 +2,34 @@ name: Sync registry to Postgres
 
 # Phase 2 of the registry-to-Postgres target architecture: on every push to
 # main that touches registry/subnets/** or registry/providers/**, upsert the
-# changed file(s) into the Postgres tables added in
-# deploy/postgres/schema.sql, via scripts/sync-registry-to-postgres.mjs.
+# changed file(s) into the registry Postgres instance (see
+# deploy/postgres/registry-schema.sql), via
+# scripts/sync-registry-to-postgres.mjs.
 #
 # Contribution/review is completely unchanged by this: a contributor's PR
 # still touches exactly one registry/subnets/<slug>.json file, still gets
 # scored by the Gittensory Gate exactly as today, still merges the same way.
-# This workflow only runs AFTER a merge lands on main -- the credential it
-# uses (REGISTRY_DATABASE_URL) is a repo secret a contributor's fork/PR can
-# never see or trigger a workflow run with (GitHub does not expose secrets to
-# workflows triggered from a fork), and it's scoped to only this table set,
-# not the chain-indexer's Postgres role.
+# This workflow only runs AFTER a merge lands on main -- a contributor's
+# fork/PR can never see these secrets or trigger a workflow run with them
+# (GitHub does not expose secrets to workflows triggered from a fork).
+#
+# The database is a dedicated, separate Postgres instance (not the
+# chain-indexer's), bound to 127.0.0.1 on its host and reachable only via a
+# Cloudflare Tunnel + Workers VPC Service + Hyperdrive -- the exact same path
+# already used for reads. This job never touches that path directly: it POSTs
+# the changed rows to the registry-sync Worker over HTTPS (see
+# workers/registry-sync-api.mjs, reached at /api/v1/internal/registry-sync),
+# authenticated by a single shared secret. There is no Tailscale, SSH, or any
+# other direct network route from CI to the database -- the runner only ever
+# needs the secret and the public HTTPS endpoint.
 #
 # Safe to merge ahead of the real credential existing: with no
-# REGISTRY_DATABASE_URL secret configured, the sync script itself detects
-# that and exits 0 having done nothing (see scripts/sync-registry-to-postgres.mjs).
-# This is deliberately a no-op until someone explicitly provisions the
-# credential and adds it as a secret -- adding this workflow does not, by
-# itself, start writing to any database.
+# REGISTRY_SYNC_SECRET configured, the sync script detects that and exits
+# cleanly having done nothing (see scripts/sync-registry-to-postgres.mjs).
+# This is deliberately a no-op until someone explicitly provisions the secret
+# on both the Worker (`wrangler secret put REGISTRY_SYNC_SECRET`) and this
+# repo (`gh secret set REGISTRY_SYNC_SECRET`) -- adding this workflow does
+# not, by itself, start writing to any database.
 on:
   push:
     branches: [main]
@@ -58,7 +68,7 @@ jobs:
 
       - name: Sync changed registry files
         env:
-          DATABASE_URL: ${{ secrets.REGISTRY_DATABASE_URL }}
+          REGISTRY_SYNC_SECRET: ${{ secrets.REGISTRY_SYNC_SECRET }}
         run: |
           node scripts/sync-registry-to-postgres.mjs \
             --base "${{ github.event.before }}" \

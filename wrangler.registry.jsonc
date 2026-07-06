@@ -1,0 +1,41 @@
+{
+  // Dedicated registry-sync Worker — the sole write path into the registry
+  // Postgres instance (a separate database from the chain-indexer's, see
+  // deploy/postgres/registry-schema.sql). Deployed separately from the main
+  // api.mjs Worker for the same bundle-budget reason wrangler.data.jsonc
+  // already is: the postgres.js driver shouldn't grow every Worker that
+  // merely proxies to it. Reached only via the main Worker's
+  // REGISTRY_SYNC_API service binding (no public routes of its own).
+  // Deploy: wrangler deploy -c wrangler.registry.jsonc
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metagraphed-registry-sync-api",
+  "main": "workers/registry-sync-api.mjs",
+  "compatibility_date": "2026-06-06",
+  "compatibility_flags": ["nodejs_compat"],
+  // This is a write path into a database, unlike wrangler.data.jsonc's
+  // read-only sibling -- explicitly disabled (wrangler otherwise defaults
+  // workers.dev to enabled) so the shared-secret check is the only way in,
+  // not "the shared-secret check, or just don't send one and see".
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+    },
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "8a080e4e39354f96822cf75bcaee668d",
+      "localConnectionString": "postgresql://metagraphed_registry:postgres@localhost:5433/metagraphed_registry",
+    },
+  ],
+}
