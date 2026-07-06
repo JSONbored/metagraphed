@@ -814,6 +814,31 @@ export interface BlockEvents {
   [key: string]: unknown;
 }
 
+/**
+ * One raw pallet-level chain event from /api/v1/blocks/{ref}/chain-events —
+ * every decoded event in the block (not filtered to account-attributed rows
+ * like {@link BlockEvent}), with the runtime pallet.method id and full args.
+ */
+export interface ChainEvent {
+  block_number: number | null;
+  event_index: number | null;
+  pallet: string | null;
+  method: string | null;
+  args?: unknown;
+  phase?: string | null;
+  extrinsic_index?: number | null;
+  observed_at?: string | null; // iso
+  [key: string]: unknown;
+}
+
+/** Decoded chain-events payload from /api/v1/blocks/{ref}/chain-events. */
+export interface BlockChainEvents {
+  block_number: number | null;
+  count: number;
+  events: ChainEvent[];
+  [key: string]: unknown;
+}
+
 export interface ExtrinsicCallArg {
   name?: string | null;
   value?: unknown;

@@ -60,6 +60,8 @@ import type {
   CompareSubnet,
   BlockEvent,
   BlockEvents,
+  BlockChainEvents,
+  ChainEvent,
   Coverage,
   BlockExtrinsics,
   CurationLevel,
@@ -1535,6 +1537,44 @@ function normalizeBlockEvents(raw: unknown): BlockEvents {
   } satisfies BlockEvents;
 }
 
+// The Postgres-backed all-events tier (unlike the first-party D1 blocks/events/
+// extrinsics tiers) serializes bigint columns (block_number, event_index,
+// observed_at) as JSON strings rather than numbers, and the per-block route
+// omits the (redundant, same for every row) block_number on each event —
+// hence coerceFiniteNumber (not firstFiniteNumber) and the fallback below.
+function normalizeChainEvent(raw: unknown, fallbackBlockNumber: number | null): ChainEvent | null {
+  if (!isRecord(raw)) return null;
+  const observedAtMs = coerceFiniteNumber(raw.observed_at);
+  return {
+    ...(raw as object),
+    block_number: coerceFiniteNumber(raw.block_number) ?? fallbackBlockNumber,
+    event_index: coerceFiniteNumber(raw.event_index) ?? null,
+    pallet: firstString(raw.pallet) ?? null,
+    method: firstString(raw.method) ?? null,
+    args: raw.args === undefined ? null : sanitizeExtrinsicValue(raw.args),
+    phase: firstString(raw.phase) ?? null,
+    extrinsic_index: coerceFiniteNumber(raw.extrinsic_index) ?? null,
+    observed_at: observedAtMs != null ? (epochMsToIso(observedAtMs) ?? null) : null,
+  } satisfies ChainEvent;
+}
+
+function normalizeBlockChainEvents(raw: unknown): BlockChainEvents {
+  const d = isRecord(raw) ? raw : {};
+  const blockNumber = coerceFiniteNumber(d.block_number) ?? null;
+  const rows = Array.isArray(d.events)
+    ? d.events.flatMap((x) => {
+        const normalized = normalizeChainEvent(x, blockNumber);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    ...(d as object),
+    block_number: blockNumber,
+    count: coerceFiniteNumber(d.count) ?? rows.length,
+    events: rows,
+  } satisfies BlockChainEvents;
+}
+
 /** Recent blocks feed — newest first, offset-paginated (limit ≤ 100). */
 export const blocksQuery = (params?: QueryParams) =>
   queryOptions({
@@ -1588,6 +1628,28 @@ export const blockEventsQuery = (ref: string, params?: QueryParams) =>
         signal,
       });
       return { ...res, data: normalizeBlockEvents(res.data) } as ApiResult<BlockEvents>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/**
+ * Single block by numeric block_number or 0x block_hash, with every raw
+ * pallet-level chain event from the Postgres-backed all-events tier — a
+ * broader, decoded-args view than {@link blockEventsQuery}'s curated,
+ * account-attributed stream. Takes no query params (the route accepts none).
+ */
+export const blockChainEventsQuery = (ref: string) =>
+  queryOptions({
+    queryKey: k("block-chain-events", ref),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(
+        `/api/v1/blocks/${blockRefPathSegment(ref)}/chain-events`,
+        { signal },
+      );
+      return {
+        ...res,
+        data: normalizeBlockChainEvents(res.data),
+      } as ApiResult<BlockChainEvents>;
     },
     staleTime: STALE_SHORT,
   });

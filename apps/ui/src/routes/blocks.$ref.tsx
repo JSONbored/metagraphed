@@ -12,7 +12,12 @@ import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { blockEventsQuery, blockExtrinsicsQuery, blockQuery } from "@/lib/metagraphed/queries";
+import {
+  blockChainEventsQuery,
+  blockEventsQuery,
+  blockExtrinsicsQuery,
+  blockQuery,
+} from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
@@ -88,9 +93,11 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
   const block = useSuspenseQuery(blockQuery(refValue)).data.data;
   const extrinsicsQuery = useQuery(blockExtrinsicsQuery(refValue, { limit: 100 }));
   const eventsQuery = useQuery(blockEventsQuery(refValue, { limit: 100 }));
+  const chainEventsQuery = useQuery(blockChainEventsQuery(refValue));
 
   const extrinsics = extrinsicsQuery.data?.data.extrinsics ?? [];
   const events = eventsQuery.data?.data.events ?? [];
+  const chainEvents = chainEventsQuery.data?.data.events ?? [];
 
   if (!block) {
     return (
@@ -375,6 +382,69 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         )}
       </SectionAnchor>
 
+      <SectionAnchor
+        id="chain-events"
+        title="Chain events"
+        subtitle="Every raw pallet-level event in this block, decoded from the chain — broader than the curated events above, but without account/amount attribution."
+        tone="accent"
+      >
+        {chainEventsQuery.isPending ? (
+          <Skeleton className="h-44" />
+        ) : chainEventsQuery.error ? (
+          <div className="p-4">
+            <ErrorState
+              error={chainEventsQuery.error}
+              context="block chain events"
+              onRetry={() => {
+                void chainEventsQuery.refetch();
+              }}
+            />
+          </div>
+        ) : chainEvents.length === 0 ? (
+          <EmptyState
+            title="No chain events"
+            description="This block has no decoded pallet events indexed yet, or the all-events backfill hasn't reached it."
+          />
+        ) : (
+          <div className="overflow-x-auto rounded border border-border bg-card">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface/40">
+                <tr>
+                  <th className="px-4 py-2.5">Pallet.method</th>
+                  <th className="px-4 py-2.5">Phase</th>
+                  <th className="px-4 py-2.5 text-right">Extrinsic</th>
+                  <th className="px-4 py-2.5">Args</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {chainEvents.map((event) => (
+                  <tr
+                    key={`${event.block_number}-${event.event_index}`}
+                    className="hover:bg-surface/40"
+                  >
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                      {extrinsicCall(event.pallet, event.method)}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                      {event.phase ?? "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {event.extrinsic_index != null ? formatNumber(event.extrinsic_index) : "—"}
+                    </td>
+                    <td
+                      className="max-w-xs truncate px-4 py-2.5 font-mono text-[11px] text-ink-muted"
+                      title={formatChainEventArgs(event.args)}
+                    >
+                      {formatChainEventArgs(event.args)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionAnchor>
+
       <div className="mt-6">
         <Link
           to="/blocks"
@@ -394,6 +464,10 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
             { label: "block", path: `/api/v1/blocks/${sourceRef}` },
             { label: "extrinsics", path: `/api/v1/blocks/${sourceRef}/extrinsics` },
             { label: "events", path: `/api/v1/blocks/${sourceRef}/events` },
+            {
+              label: "chain events",
+              path: `/api/v1/blocks/${sourceRef}/chain-events`,
+            },
             { label: "artifact", path: `/metagraph/blocks/${sourceRef}.json` },
           ]}
         />
@@ -404,11 +478,21 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           `/api/v1/blocks/${sourceRef}`,
           `/api/v1/blocks/${sourceRef}/extrinsics`,
           `/api/v1/blocks/${sourceRef}/events`,
+          `/api/v1/blocks/${sourceRef}/chain-events`,
         ]}
         artifacts={[`/metagraph/blocks/${sourceRef}.json`]}
       />
     </>
   );
+}
+
+function formatChainEventArgs(args: unknown): string {
+  if (args == null) return "—";
+  try {
+    return JSON.stringify(args) ?? "—";
+  } catch {
+    return "[Unserializable value]";
+  }
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
