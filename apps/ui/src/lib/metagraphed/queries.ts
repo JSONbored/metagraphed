@@ -52,6 +52,8 @@ import type {
   ChainFeePayer,
   ChainTransferPair,
   ChainTransferPairs,
+  ChainStakeFlow,
+  ChainStakeFlowSubnet,
   ChainConcentration,
   ChainPerformance,
   ChainSigners,
@@ -184,6 +186,7 @@ const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
 const MAX_CHAIN_TRANSFER_PAIRS = 100;
+const MAX_CHAIN_STAKE_FLOW_SUBNETS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -2626,6 +2629,94 @@ export const chainTransferPairsQuery = (
       });
       return {
         data: normalizeChainTransferPairs(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeStakeFlowDirection(raw: unknown): ChainStakeFlowSubnet["direction"] {
+  const s = firstString(raw);
+  if (s === "inflow" || s === "outflow" || s === "balanced") return s;
+  return null;
+}
+
+function normalizeChainStakeFlowSubnet(raw: unknown): ChainStakeFlowSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    total_staked_tao: firstFiniteNumber(raw.total_staked_tao) ?? 0,
+    total_unstaked_tao: firstFiniteNumber(raw.total_unstaked_tao) ?? 0,
+    net_flow_tao: firstFiniteNumber(raw.net_flow_tao) ?? 0,
+    gross_flow_tao: firstFiniteNumber(raw.gross_flow_tao) ?? 0,
+    stake_events: firstFiniteNumber(raw.stake_events) ?? 0,
+    unstake_events: firstFiniteNumber(raw.unstake_events) ?? 0,
+    direction: normalizeStakeFlowDirection(raw.direction),
+  };
+}
+
+function normalizeChainStakeFlowDistribution(raw: unknown): ChainStakeFlowDistribution | null {
+  if (!isRecord(raw)) return null;
+  const count = firstFiniteNumber(raw.count) ?? 0;
+  if (count <= 0) return null;
+  return {
+    count,
+    mean: firstFiniteNumber(raw.mean) ?? 0,
+    min: firstFiniteNumber(raw.min) ?? 0,
+    p25: firstFiniteNumber(raw.p25) ?? 0,
+    median: firstFiniteNumber(raw.median) ?? 0,
+    p75: firstFiniteNumber(raw.p75) ?? 0,
+    p90: firstFiniteNumber(raw.p90) ?? 0,
+    max: firstFiniteNumber(raw.max) ?? 0,
+  };
+}
+
+function normalizeChainStakeFlowNetwork(raw: unknown): ChainStakeFlowNetwork {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    total_staked_tao: firstFiniteNumber(rec.total_staked_tao) ?? 0,
+    total_unstaked_tao: firstFiniteNumber(rec.total_unstaked_tao) ?? 0,
+    net_flow_tao: firstFiniteNumber(rec.net_flow_tao) ?? 0,
+    gross_flow_tao: firstFiniteNumber(rec.gross_flow_tao) ?? 0,
+    stake_events: firstFiniteNumber(rec.stake_events) ?? 0,
+    unstake_events: firstFiniteNumber(rec.unstake_events) ?? 0,
+    gaining: firstFiniteNumber(rec.gaining) ?? 0,
+    losing: firstFiniteNumber(rec.losing) ?? 0,
+    flat: firstFiniteNumber(rec.flat) ?? 0,
+  };
+}
+
+export function normalizeChainStakeFlow(raw: unknown): ChainStakeFlow {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: normalizeChainStakeFlowNetwork(rec.network),
+    net_flow_distribution: normalizeChainStakeFlowDistribution(rec.net_flow_distribution),
+    subnets: normalizeChainRows(
+      rec.subnets,
+      MAX_CHAIN_STAKE_FLOW_SUBNETS,
+      normalizeChainStakeFlowSubnet,
+    ),
+  };
+}
+
+/** Network-wide net stake capital flow (StakeAdded vs StakeRemoved) over a 7d/30d window. */
+export const chainStakeFlowQuery = (window: ChainWindow = "30d", limit = 12) =>
+  queryOptions({
+    queryKey: k("chain-stake-flow", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainStakeFlow>>("/api/v1/chain/stake-flow", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainStakeFlow(res.data),
         meta: res.meta,
         url: res.url,
       };
