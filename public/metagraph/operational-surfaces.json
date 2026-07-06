@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 96,
+  "surface_count": 97,
   "surfaces": [
     {
       "auth_required": false,
@@ -893,6 +893,24 @@
       "surface_id": "sn-51-website-common-api",
       "surface_key": "srf-c27814da8fc343a3",
       "url": "https://lium.io/api"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 55,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "niome",
+      "public_safe": true,
+      "subnet_name": "NIOME",
+      "subnet_slug": "sn-55",
+      "surface_id": "sn-55-niome-tasks-api",
+      "surface_key": "srf-acced7c8512e4106",
+      "url": "https://niome-api.genomes.io/api/tasks"
     },
     {
       "auth_required": false,
