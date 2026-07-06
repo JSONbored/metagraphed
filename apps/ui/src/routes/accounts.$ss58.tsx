@@ -9,6 +9,7 @@ import {
   Clock,
   Coins,
   Fingerprint,
+  Gauge,
   Radar,
   Rows3,
   Unplug,
@@ -32,7 +33,9 @@ import {
   accountBalanceQuery,
   accountEventsQuery,
   accountExtrinsicsQuery,
+  accountPrometheusQuery,
   accountQuery,
+  accountServingQuery,
   accountSubnetsQuery,
   accountTransfersQuery,
 } from "@/lib/metagraphed/queries";
@@ -248,6 +251,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 
       <AccountTeardownActivitySection ss58={ss58} />
 
+      <AccountEndpointAnnouncementSection ss58={ss58} />
+
       {account.event_kinds.length > 0 ? (
         <SectionAnchor
           id="kinds"
@@ -305,6 +310,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
             { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
             { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
+            { label: "serving", path: `/api/v1/accounts/${sourceRef}/serving` },
+            { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
           ]}
         />
       </SectionAnchor>
@@ -315,6 +322,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           `/api/v1/accounts/${sourceRef}/history`,
           `/api/v1/accounts/${sourceRef}/events`,
           `/api/v1/accounts/${sourceRef}/subnets`,
+          `/api/v1/accounts/${sourceRef}/serving`,
+          `/api/v1/accounts/${sourceRef}/prometheus`,
         ]}
       />
     </>
@@ -634,6 +643,96 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
           className={KPI_TILE}
         />
       </div>
+    </SectionAnchor>
+  );
+}
+
+/**
+ * Axon + Prometheus endpoint announcement footprint over the trailing 30-day
+ * window — a combined serving/Prometheus summary from /serving and /prometheus.
+ * Non-blocking: shows a graceful empty state when the account announced no
+ * endpoints (typical for non-miner accounts).
+ */
+function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
+  const servingResult = useQuery(accountServingQuery(ss58));
+  const prometheusResult = useQuery(accountPrometheusQuery(ss58));
+  const serving = servingResult.data?.data;
+  const prometheus = prometheusResult.data?.data;
+  const windowLabel = serving?.window ?? prometheus?.window ?? "30d";
+
+  const pending =
+    (servingResult.isPending && !serving) || (prometheusResult.isPending && !prometheus);
+  const bothError = servingResult.isError && prometheusResult.isError && !serving && !prometheus;
+
+  if (pending) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="endpoint-announcements"
+        title="Endpoint announcements"
+        subtitle="Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing 30-day window."
+      />
+    );
+  }
+
+  if (bothError) {
+    return (
+      <SectionAnchor
+        id="endpoint-announcements"
+        title="Endpoint announcements"
+        subtitle="Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing 30-day window."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load endpoint announcement activity"
+          description="The serving and prometheus tiers are optional enrichment — the rest of the account page is unaffected."
+          error={servingResult.error ?? prometheusResult.error}
+          onRetry={() => {
+            void servingResult.refetch();
+            void prometheusResult.refetch();
+          }}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const servingCount = serving?.total_announcements ?? 0;
+  const prometheusCount = prometheus?.total_announcements ?? 0;
+  const isEmpty = servingCount === 0 && prometheusCount === 0;
+
+  return (
+    <SectionAnchor
+      id="endpoint-announcements"
+      title="Endpoint announcements"
+      subtitle="Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing 30-day window."
+      tone="accent"
+      info="The account-level companion to subnet serving + prometheus activity — counts how often this hotkey announced axon and Prometheus endpoints."
+      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+    >
+      {isEmpty ? (
+        <EmptyState
+          title="No endpoint announcements"
+          description="This account had no AxonServed or PrometheusServed events in the window — typical for non-miner accounts or coldkeys without serving activity."
+        />
+      ) : (
+        <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+          <StatTile
+            icon={Radar}
+            eyebrow="Axon serving"
+            tone="accent"
+            value={formatNumber(servingCount)}
+            hint={`AxonServed · ${windowLabel}`}
+            className={KPI_TILE}
+          />
+          <StatTile
+            icon={Gauge}
+            eyebrow="Prometheus"
+            value={formatNumber(prometheusCount)}
+            hint={`PrometheusServed · ${windowLabel}`}
+            className={KPI_TILE}
+          />
+        </div>
+      )}
     </SectionAnchor>
   );
 }

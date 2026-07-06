@@ -951,6 +951,55 @@ export interface AccountAxonRemovals {
   subnets: AccountAxonRemovalsSubnet[];
 }
 
+/** Per-subnet AxonServed row in /api/v1/accounts/{ss58}/serving. */
+export interface AccountServingSubnet {
+  netuid: number;
+  announcements: number;
+  first_served_at: string | null;
+  last_served_at: string | null;
+}
+
+/**
+ * One account's axon-serving footprint over a 7d/30d/90d window, from
+ * /api/v1/accounts/{ss58}/serving — the account-level companion to
+ * /api/v1/subnets/{netuid}/serving. Zeroed when the account had no AxonServed
+ * events in the window.
+ */
+export interface AccountServing {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_announcements: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountServingSubnet[];
+}
+
+/** Per-subnet PrometheusServed row in /api/v1/accounts/{ss58}/prometheus. */
+export interface AccountPrometheusSubnet {
+  netuid: number;
+  announcements: number;
+  first_announced_at: string | null;
+  last_announced_at: string | null;
+}
+
+/**
+ * One account's Prometheus-endpoint serving footprint over a 7d/30d/90d window,
+ * from /api/v1/accounts/{ss58}/prometheus — the account-level companion to
+ * /api/v1/subnets/{netuid}/prometheus. Zeroed when cold.
+ */
+export interface AccountPrometheus {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_announcements: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountPrometheusSubnet[];
+}
+
 /**
  * One neuron position a wallet holds on a subnet, from
  * /api/v1/accounts/{ss58}/portfolio: its economics plus emission/stake yield.
