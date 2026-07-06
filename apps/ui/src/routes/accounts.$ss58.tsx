@@ -106,13 +106,17 @@ function AccountDetail({ ss58 }: { ss58: string }) {
         <PageHeading
           eyebrow="Explorer"
           title="Invalid account address"
-          description="Account addresses must be a valid ss58 (base58) string."
+          description="Account addresses must be a valid ss58 (base58) string — 46–49 characters, starting with 5 for Bittensor."
         />
         <EmptyState
           title="Invalid account address"
-          description="Use a valid hotkey or coldkey ss58 address."
+          description="Valid Bittensor addresses are 46–49 characters from the base58 alphabet (which excludes 0, O, I, and l) and start with 5. Check for a truncated paste or a wrong-chain address, then try one like the example below."
           action={{ label: "Back to accounts", href: "/accounts" }}
         />
+        <p className="mt-3 text-center text-[11px] text-ink-muted">Example valid address</p>
+        <code className="mx-auto mt-1 block max-w-md break-all rounded border border-border bg-surface/50 px-2.5 py-1.5 text-center font-mono text-[11px] text-ink-strong">
+          5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+        </code>
       </>
     );
   }
