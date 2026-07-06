@@ -348,8 +348,8 @@ capture is exactly what produced #3757's broken screenshots. Use these three siz
 this app's actual Tailwind breakpoints (`md`=768px, `lg`=1024px, the two most-used responsive prefixes
 in `apps/ui/src`):
 
-| Viewport | Size (px) |
-| -------- | --------- |
+| Viewport | Size (px)  |
+| -------- | ---------- |
 | Mobile   | 375 × 812  |
 | Tablet   | 768 × 1024 |
 | Desktop  | 1280 × 800 |
@@ -395,14 +395,14 @@ Reference each file as `https://raw.githubusercontent.com/<your-fork-owner>/meta
 after:**
 
 ```md
-| Viewport · Theme | Before                                                                                      | After                                                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Desktop · Light   | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
-| Desktop · Dark    | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
-| Tablet · Light    | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
-| Tablet · Dark     | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
-| Mobile · Light    | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
-| Mobile · Dark     | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub>                       | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub>                         |
+| Viewport · Theme | Before                                                                | After                                                              |
+| ---------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Desktop · Light  | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub> | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub> |
+| Desktop · Dark   | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub> | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub> |
+| Tablet · Light   | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub> | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub> |
+| Tablet · Dark    | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub> | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub> |
+| Mobile · Light   | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub> | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub> |
+| Mobile · Dark    | [<img src="BEFORE_URL" width="260">](BEFORE_URL)<br><sub>before</sub> | [<img src="AFTER_URL" width="260">](AFTER_URL)<br><sub>after</sub> |
 ```
 
 Screenshots go **inside the table only** — never pasted loose in the PR body, never committed to the
