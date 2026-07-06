@@ -191,6 +191,31 @@
         "https://huggingface.co/ReadyAi"
       ],
       "url": "https://huggingface.co/datasets/ReadyAi/organic_query_results_dataset"
+    },
+    {
+      "id": "sn-33-readyai-priorityqueue-request-api",
+      "name": "ReadyAI priority queue domain request API",
+      "kind": "subnet-api",
+      "url": "https://api.readyai.ai/api/v1/priorityqueue/request",
+      "provider": "readyai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.readyai.ai/openapi.json",
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
+      ],
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "notes": "Public no-auth PUT /api/v1/priorityqueue/request on api.readyai.ai for users to request a domain for priority Common Crawl processing (upserts requested_domains). Documented in the subnet OpenAPI spec with no security requirement on PUT; GET on the same path is admin-authenticated, so recurring read probes are intentionally disabled."
     }
   ],
   "website_url": "https://readyai.ai/"
