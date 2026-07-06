@@ -27,7 +27,9 @@ import {
 } from "@/components/metagraphed/charts/stat-with-spark";
 import {
   subnetEndpointsQuery,
+  subnetDeregistrationsQuery,
   subnetHealthPercentilesQuery,
+  subnetRegistrationsQuery,
   subnetTrajectoryQuery,
   subnetUptimeQuery,
 } from "@/lib/metagraphed/queries";
@@ -168,6 +170,10 @@ export function SubnetMasthead({
   const { data: uptimeRes } = useQuery(subnetUptimeQuery(netuid));
   const { data: endpointsRes } = useQuery(subnetEndpointsQuery(netuid));
   const { data: pctRes } = useQuery(subnetHealthPercentilesQuery(netuid));
+  const { data: regRes } = useQuery(subnetRegistrationsQuery(netuid));
+  const { data: deregRes } = useQuery(subnetDeregistrationsQuery(netuid));
+  const reg = regRes?.data;
+  const dereg = deregRes?.data;
 
   // Subnet-wide daily uptime % + median latency, meaned across tracked surfaces.
   const trendWindowKey = uptimeRes?.data?.window ?? "90d";
@@ -407,6 +413,22 @@ export function SubnetMasthead({
           hint="Native chain id"
           full="Native Bittensor metagraph identifier"
           updatedAt={generatedAt}
+        />
+        <StatWithSpark
+          label="Registrations"
+          value={formatNumber(reg?.registrations)}
+          hint={`${formatNumber(reg?.distinct_registrants ?? 0)} registrants`}
+          full="Neuron-registration events on this subnet over the trailing 30-day window."
+          updatedAt={reg?.observed_at ?? null}
+          windowLabel={reg?.window ?? "30d"}
+        />
+        <StatWithSpark
+          label="Deregistrations"
+          value={formatNumber(dereg?.deregistrations)}
+          hint={`${formatNumber(dereg?.distinct_deregistered_hotkeys ?? 0)} hotkeys`}
+          full="Neuron-deregistration (eviction) events on this subnet over the trailing 30-day window."
+          updatedAt={dereg?.observed_at ?? null}
+          windowLabel={dereg?.window ?? "30d"}
         />
         <StatWithSpark
           label="Participants"
