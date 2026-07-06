@@ -814,6 +814,31 @@ export interface BlockEvents {
   [key: string]: unknown;
 }
 
+/**
+ * One raw pallet-level chain event from /api/v1/blocks/{ref}/chain-events —
+ * every decoded event in the block (not filtered to account-attributed rows
+ * like {@link BlockEvent}), with the runtime pallet.method id and full args.
+ */
+export interface ChainEvent {
+  block_number: number | null;
+  event_index: number | null;
+  pallet: string | null;
+  method: string | null;
+  args?: unknown;
+  phase?: string | null;
+  extrinsic_index?: number | null;
+  observed_at?: string | null; // iso
+  [key: string]: unknown;
+}
+
+/** Decoded chain-events payload from /api/v1/blocks/{ref}/chain-events. */
+export interface BlockChainEvents {
+  block_number: number | null;
+  count: number;
+  events: ChainEvent[];
+  [key: string]: unknown;
+}
+
 export interface ExtrinsicCallArg {
   name?: string | null;
   value?: unknown;
@@ -899,6 +924,31 @@ export interface AccountSubnets {
   subnet_count: number;
   subnets: AccountRegistration[];
   [key: string]: unknown;
+}
+
+/** Per-subnet AxonInfoRemoved row in /api/v1/accounts/{ss58}/axon-removals. */
+export interface AccountAxonRemovalsSubnet {
+  netuid: number;
+  removals: number;
+  first_removed_at: string | null;
+  last_removed_at: string | null;
+}
+
+/**
+ * One account's axon-removal (teardown) footprint over a 7d/30d/90d window, from
+ * /api/v1/accounts/{ss58}/axon-removals — the account-level companion to
+ * /api/v1/subnets/{netuid}/axon-removals. Zeroed when the account had no
+ * AxonInfoRemoved events in the window.
+ */
+export interface AccountAxonRemovals {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_removals: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountAxonRemovalsSubnet[];
 }
 
 /**

@@ -64,6 +64,24 @@
         "timeout_ms": 10000
       },
       "notes": "Official Sundae Bar source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-121-sundae-bar-subnet-api",
+      "kind": "subnet-api",
+      "name": "Sundae Bar coordinator API",
+      "notes": "Public no-auth GET on the SN121 coordinator API host documented in the official sb-validator README as API_URL (e.g. https://api.sundaebar.ai/api/v2/validators). Returns JSON liveness (observed: {\"status\":\"ok\"}).",
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/sundae-bar/sb-validator/blob/main/README.md"
+      ],
+      "url": "https://api.sundaebar.ai/api/v2/validators"
     }
   ],
   "social": {

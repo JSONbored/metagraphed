@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
   buildSubnetYield,
@@ -8,6 +9,13 @@ import {
   loadSubnetYieldHistory,
   YIELD_HISTORY_ROW_CAP,
 } from "../src/subnet-yield.mjs";
+
+const apiComponents = JSON.parse(
+  readFileSync(
+    new URL("../schemas/api-components.schema.json", import.meta.url),
+    "utf8",
+  ),
+);
 
 const CAPTURED = 1717000000000;
 
@@ -215,6 +223,11 @@ describe("buildSubnetYield", () => {
     assert.equal(nullEmission.neuron_count, 1);
     assert.equal(nullEmission.neurons[0].emission_tao, null);
     assert.equal(nullEmission.neurons[0].yield, null);
+
+    const emissionSchema =
+      apiComponents.components.schemas.SubnetYieldArtifact.properties.neurons
+        .items.properties.emission_tao;
+    assert.deepEqual(emissionSchema.type, ["number", "null"]);
 
     const negativeStake = buildSubnetYield(
       [neuron(5, { stake: -1, emission: 2 })],

@@ -10915,39 +10915,49 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_health_trends aggregates bulk trend rows from D1", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                async all() {
-                  assert.match(sql, /FROM surface_uptime_daily/);
-                  return {
-                    results: [
-                      {
-                        netuid: 7,
-                        date: "2026-06-28",
-                        total: 20,
-                        ok_count: 18,
-                        avg_latency_ms: 42,
-                      },
-                    ],
-                  };
-                },
-              };
-            },
-          };
+    // loadBulkHealthTrends windows rows by `date >= now - Nd`, so a fixed seed
+    // date must be pinned against a fixed `now` — otherwise the 2026-06-28 row
+    // ages out of the 7d window once wall-clock time passes 2026-07-05 and the
+    // test flakes. Freeze the clock like the sibling D1-window tests above.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const env = {
+        METAGRAPH_HEALTH_DB: {
+          prepare(sql) {
+            return {
+              bind() {
+                return {
+                  async all() {
+                    assert.match(sql, /FROM surface_uptime_daily/);
+                    return {
+                      results: [
+                        {
+                          netuid: 7,
+                          date: "2026-06-28",
+                          total: 20,
+                          ok_count: 18,
+                          avg_latency_ms: 42,
+                        },
+                      ],
+                    };
+                  },
+                };
+              },
+            };
+          },
         },
-      },
-    };
-    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
-    const res = await callTool("get_health_trends", {}, { deps, env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.observed_at, FRESH_RUN);
-    assert.equal(out.windows["7d"].subnet_count, 1);
-    assert.equal(out.windows["7d"].subnets[0].netuid, 7);
-    assert.equal(out.windows["7d"].subnets[0].samples, 20);
+      };
+      const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+      const res = await callTool("get_health_trends", {}, { deps, env });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.observed_at, FRESH_RUN);
+      assert.equal(out.windows["7d"].subnet_count, 1);
+      assert.equal(out.windows["7d"].subnets[0].netuid, 7);
+      assert.equal(out.windows["7d"].subnets[0].samples, 20);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("get_chain_calls returns schema-stable empty calls on cold D1", async () => {

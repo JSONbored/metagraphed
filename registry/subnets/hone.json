@@ -137,6 +137,28 @@
         "timeout_ms": 10000
       },
       "notes": "Official Hone source repository."
+    },
+    {
+      "id": "sn-5-hone-subnet-api",
+      "name": "Hone API health",
+      "kind": "subnet-api",
+      "url": "https://api.hone.training/health",
+      "provider": "hone",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://www.hone.training/"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "notes": "Public no-auth GET returning the Hone (SN5) backend API health as JSON ({\"status\":\"ok\"}). Served on the api.hone.training subdomain of the subnet's registered website hone.training — a live API host distinct from the website-host /health path noted as 404 in this file. Fills the noted missing public-API-endpoint gap."
     }
   ],
   "contact": "devs@manifold.inc"

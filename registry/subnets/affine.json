@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "netuid": 120,
+  "name": "Affine",
+  "slug": "sn-120",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-openapi",
+      "kind": "openapi",
+      "name": "Affine API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the Affine SN120 API (title: Affine API). Served publicly at api.affine.io; documents rank, miner, score, config, and health routes.",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.affine.io/openapi.json",
+      "source_urls": [
+        "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/utils/api_client.py",
+        "https://api.affine.io/openapi.json"
+      ],
+      "url": "https://api.affine.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-health",
+      "kind": "subnet-api",
+      "name": "Affine API health",
+      "notes": "Public no-auth GET /api/v1/health on api.affine.io returning liveness JSON (observed: {\"status\":\"ok\",\"service\":\"affine-api\"}). Documented as GET /api/v1/health in the subnet OpenAPI spec; api.affine.io/api/v1 is the default API_URL in the official affine-cortex API client.",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://api.affine.io/openapi.json",
+        "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/utils/api_client.py"
+      ],
+      "url": "https://api.affine.io/api/v1/health"
+    }
+  ],
+  "source_repo": "https://github.com/AffineFoundation/affine-cortex",
+  "website_url": "https://www.affine.io/"
+}
