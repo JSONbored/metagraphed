@@ -1,0 +1,54 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Bitsec",
+  "netuid": 60,
+  "schema_version": 1,
+  "slug": "sn-60",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-ai-openapi",
+      "kind": "openapi",
+      "name": "Bitsec.ai FastAPI",
+      "notes": "Machine-readable OpenAPI 3.1 spec (FastAPI, 30 paths) for the SN60 Bitsec.ai public API, also rendered as live Swagger UI (/api/docs) and ReDoc (/api/redoc). Served on the official bitsec.ai domain referenced by the subnet's repo README.",
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://bitsec.ai/api/openapi.json",
+      "source_urls": [
+        "https://github.com/Bitsec-AI/subnet",
+        "https://bitsec.ai/api/docs"
+      ],
+      "url": "https://bitsec.ai/api/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-ai-subnet-api",
+      "kind": "subnet-api",
+      "name": "Bitsec.ai subnet-api",
+      "notes": "Public no-auth JSON endpoint of the SN60 Bitsec.ai API (live subnet analytics: rounds, emissions). Sibling endpoints include /api/agents/top/; the full contract is the openapi surface. Served on the official bitsec.ai domain.",
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": [
+        "https://github.com/Bitsec-AI/subnet",
+        "https://bitsec.ai/api/docs"
+      ],
+      "url": "https://bitsec.ai/api/analytics"
+    }
+  ]
+}
