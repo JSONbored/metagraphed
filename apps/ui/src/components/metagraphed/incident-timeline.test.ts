@@ -13,9 +13,9 @@ describe("subnetIncidentDurationText", () => {
   });
 
   it("labels a resolved incident from ISO start/end", () => {
-    expect(
-      subnetIncidentDurationText("2024-01-01T00:00:00.000Z", "2024-01-01T00:01:30.000Z"),
-    ).toBe("1m 30s");
+    expect(subnetIncidentDurationText("2024-01-01T00:00:00.000Z", "2024-01-01T00:01:30.000Z")).toBe(
+      "1m 30s",
+    );
   });
 
   it("returns live elapsed text for open incidents (ended_at omitted)", () => {
