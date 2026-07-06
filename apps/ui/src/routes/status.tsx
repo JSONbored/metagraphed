@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
+import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { Suspense, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -20,7 +21,6 @@ import {
   SourceHealthTable,
 } from "@/components/metagraphed/status-diagnostics";
 
-const REFRESH_MS = 60_000;
 const SURFACES_INITIAL = 10;
 // A downtime event whose last failure is within this of the latest snapshot is
 // treated as still-ongoing (probe cadence is ~2 min, so ~5 cycles).
@@ -119,7 +119,8 @@ function StatusPage() {
 
 /** Overall verdict banner + status mix, derived from /api/v1/health status counts. */
 function Verdict() {
-  const { data: hRes } = useSuspenseQuery({ ...healthQuery(), refetchInterval: REFRESH_MS });
+  const refetchInterval = useRefetchInterval(60_000);
+  const { data: hRes } = useSuspenseQuery({ ...healthQuery(), refetchInterval });
   const h = hRes.data;
   const ok = h?.ok ?? 0;
   const warn = h?.warn ?? 0;
@@ -245,9 +246,10 @@ function Kpi({
 function RecentIncidents() {
   const [window, setWindow] = useState<IncidentWindow>("7d");
   const [showAll, setShowAll] = useState(false);
+  const refetchInterval = useRefetchInterval(60_000);
   const { data } = useSuspenseQuery({
     ...globalIncidentsQuery(window),
-    refetchInterval: REFRESH_MS,
+    refetchInterval,
   });
   const ledger = data.data;
   // A surface is still failing ("ongoing") when its most recent downtime event
