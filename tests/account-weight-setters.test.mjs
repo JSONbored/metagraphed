@@ -159,17 +159,23 @@ describe("loadAccountWeightSetters", () => {
     const { data, generatedAt } = await loadAccountWeightSetters(d1, ADDR, {
       windowLabel: "7d",
     });
-    assert.match(captured.sql, /FROM account_events e/);
     assert.match(
       captured.sql,
-      /LEFT JOIN neurons n ON e\.netuid = n\.netuid AND e\.uid = n\.uid/,
+      /FROM account_events INDEXED BY idx_account_events_hotkey/,
     );
-    assert.match(captured.sql, /e\.hotkey = \? OR n\.hotkey = \?/);
-    assert.match(captured.sql, /GROUP BY e\.netuid/);
-    assert.equal(captured.params[0], WEIGHTS_EVENT_KIND);
-    assert.equal(typeof captured.params[1], "number"); // epoch-ms cutoff
-    assert.equal(captured.params[2], ADDR);
+    assert.match(captured.sql, /FROM neurons n INDEXED BY idx_neurons_hotkey/);
+    assert.match(
+      captured.sql,
+      /JOIN account_events e INDEXED BY idx_account_events_netuid_uid_kind_observed/,
+    );
+    assert.doesNotMatch(captured.sql, /e\.hotkey = \? OR n\.hotkey = \?/);
+    assert.match(captured.sql, /GROUP BY netuid/);
+    assert.equal(captured.params[0], ADDR);
+    assert.equal(captured.params[1], WEIGHTS_EVENT_KIND);
+    assert.equal(typeof captured.params[2], "number"); // epoch-ms cutoff
     assert.equal(captured.params[3], ADDR);
+    assert.equal(captured.params[4], WEIGHTS_EVENT_KIND);
+    assert.equal(typeof captured.params[5], "number"); // epoch-ms cutoff
     assert.equal(data.total_weight_sets, 5);
     assert.equal(generatedAt, new Date(1_700_500_000_000).toISOString());
   });
@@ -219,8 +225,19 @@ describe("loadAccountWeightSetters", () => {
       { netuid: 8, uid: 5, hotkey: "5DifferentHotkey" },
     ];
     const d1 = async (sql, params) => {
-      const [kind, cutoff, directHotkey, resolvedHotkey] = params;
-      assert.equal(kind, WEIGHTS_EVENT_KIND);
+      const [
+        directHotkey,
+        directKind,
+        directCutoff,
+        resolvedHotkey,
+        resolvedKind,
+        resolvedCutoff,
+      ] = params;
+      assert.equal(directKind, WEIGHTS_EVENT_KIND);
+      assert.equal(resolvedKind, WEIGHTS_EVENT_KIND);
+      assert.equal(directCutoff, resolvedCutoff);
+      const kind = directKind;
+      const cutoff = directCutoff;
       const grouped = events
         .filter(
           (event) => event.event_kind === kind && event.observed_at >= cutoff,
@@ -276,7 +293,8 @@ describe("loadAccountWeightSetters", () => {
     await loadAccountWeightSetters(d1, ADDR, { windowLabel: "bogus" });
     // 7d default cutoff = now - 7d; assert it's within a day of that.
     const expected = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    assert.ok(Math.abs(captured.params[1] - expected) < 24 * 60 * 60 * 1000);
+    assert.ok(Math.abs(captured.params[2] - expected) < 24 * 60 * 60 * 1000);
+    assert.ok(Math.abs(captured.params[5] - expected) < 24 * 60 * 60 * 1000);
   });
 
   test("a cold store (no rows) yields a zeroed card + null generatedAt", async () => {
