@@ -20,6 +20,7 @@ import {
   chainActivityQuery,
   chainCallsQuery,
   chainEventsInfiniteQuery,
+  chainEventsStatsQuery,
   chainFeesQuery,
   chainSignersQuery,
   chainStakeTransfersQuery,
@@ -27,7 +28,7 @@ import {
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
-import type { ChainCalls, ChainEvent } from "@/lib/metagraphed/types";
+import type { ChainCalls, ChainEvent, ChainEventsStats } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -92,6 +93,7 @@ function ExplorerPage() {
           "/api/v1/chain/signers",
           "/api/v1/chain/stake-transfers",
           "/api/v1/chain-events",
+          "/api/v1/chain-events/stats",
         ]}
       />
     </AppShell>
@@ -234,6 +236,58 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 }
 
+// #3489: raw all-events tier (ADR 0013) pallet.method distribution from
+// /api/v1/chain-events/stats — the raw-tier sibling of the curated CallMixSection
+// above (D1 /chain/calls). Same ranked-list-with-proportional-bar idiom, capped
+// to the busiest 10 rows; the header reports the distinct group count and the
+// block window scanned. Empty until the all-events backfill runs.
+function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
+  const rows = stats.activity.slice(0, 10);
+  const cap = Math.max(1, ...rows.map((r) => r.count));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Pallet event mix
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(stats.groups)} groups · {formatNumber(stats.window_blocks)} blocks
+        </span>
+      </div>
+      {rows.length > 0 ? (
+        <ul className="space-y-1.5">
+          {rows.map((r) => {
+            const pct = Math.max(2, Math.round((r.count / cap) * 100));
+            const label = r.method ? `${r.pallet}.${r.method}` : r.pallet;
+            return (
+              <li key={label} className="grid grid-cols-[10rem_1fr_auto] items-center gap-2">
+                <span
+                  className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+                  title={label}
+                >
+                  {label}
+                </span>
+                <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{ width: `${pct}%`, background: "var(--chart-1)" }}
+                  />
+                </span>
+                <span className="font-mono text-[10px] tabular-nums text-ink-strong">
+                  {formatNumber(r.count)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No raw pallet events indexed yet.</p>
+      )}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -244,6 +298,7 @@ function ExplorerDashboard() {
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
   const stakeTransfers = useSuspenseQuery(chainStakeTransfersQuery(win)).data.data;
+  const eventMix = useSuspenseQuery(chainEventsStatsQuery()).data.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -586,6 +641,7 @@ function ExplorerDashboard() {
           </p>
         )}
       </section>
+      <PalletEventMixSection stats={eventMix} />
     </div>
   );
 }
