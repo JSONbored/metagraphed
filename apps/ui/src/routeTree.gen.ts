@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SurfacesRouteImport } from './routes/surfaces'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as SchemasRouteImport } from './routes/schemas'
+import { Route as NetworkRouteImport } from './routes/network'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as ExplorerRouteImport } from './routes/explorer'
@@ -43,6 +44,11 @@ const StatusRoute = StatusRouteImport.update({
 const SchemasRoute = SchemasRouteImport.update({
   id: '/schemas',
   path: '/schemas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NetworkRoute = NetworkRouteImport.update({
+  id: '/network',
+  path: '/network',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthRoute = HealthRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
+  '/network': typeof NetworkRoute
   '/schemas': typeof SchemasRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
+  '/network': typeof NetworkRoute
   '/schemas': typeof SchemasRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
@@ -184,6 +192,7 @@ export interface FileRoutesById {
   '/explorer': typeof ExplorerRoute
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
+  '/network': typeof NetworkRoute
   '/schemas': typeof SchemasRoute
   '/status': typeof StatusRoute
   '/surfaces': typeof SurfacesRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/gaps'
     | '/health'
+    | '/network'
     | '/schemas'
     | '/status'
     | '/surfaces'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/gaps'
     | '/health'
+    | '/network'
     | '/schemas'
     | '/status'
     | '/surfaces'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/gaps'
     | '/health'
+    | '/network'
     | '/schemas'
     | '/status'
     | '/surfaces'
@@ -275,6 +287,7 @@ export interface RootRouteChildren {
   ExplorerRoute: typeof ExplorerRoute
   GapsRoute: typeof GapsRoute
   HealthRoute: typeof HealthRoute
+  NetworkRoute: typeof NetworkRoute
   SchemasRoute: typeof SchemasRoute
   StatusRoute: typeof StatusRoute
   SurfacesRoute: typeof SurfacesRoute
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       path: '/schemas'
       fullPath: '/schemas'
       preLoaderRoute: typeof SchemasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/network': {
+      id: '/network'
+      path: '/network'
+      fullPath: '/network'
+      preLoaderRoute: typeof NetworkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health': {
@@ -443,6 +463,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExplorerRoute: ExplorerRoute,
   GapsRoute: GapsRoute,
   HealthRoute: HealthRoute,
+  NetworkRoute: NetworkRoute,
   SchemasRoute: SchemasRoute,
   StatusRoute: StatusRoute,
   SurfacesRoute: SurfacesRoute,
