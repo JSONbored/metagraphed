@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 79,
+  "surface_count": 96,
   "surfaces": [
     {
       "auth_required": false,
@@ -173,6 +173,24 @@
       "surface_id": "sn-4-targon-subnet-api",
       "surface_key": "srf-40be5162d95eb737",
       "url": "https://api.targon.com/tha/v2/inventory"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 5,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
+      "public_safe": true,
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "surface_id": "sn-5-hone-subnet-api",
+      "surface_key": "srf-f943a92bcbeee8ff",
+      "url": "https://api.hone.training/health"
     },
     {
       "auth_required": false,
@@ -432,6 +450,42 @@
       "kind": "subnet-api",
       "netuid": 7,
       "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "sn-7-allways-history-api",
+      "surface_key": "srf-9eafa27eb224284e",
+      "url": "https://api.all-ways.io/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "subnet_name": "Allways",
+      "subnet_slug": "allways",
+      "surface_id": "sn-7-allways-history-state-api",
+      "surface_key": "srf-9a044887ca43513b",
+      "url": "https://api.all-ways.io/history/state"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 7,
+      "probe": {
         "expect": "any",
         "method": "GET",
         "timeout_ms": 10000
@@ -479,6 +533,24 @@
       "surface_id": "sn-14-cacheon-subnet-api",
       "surface_key": "srf-08ad6da0db95e254",
       "url": "https://api.cacheon.ai/api/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 21,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "subnet_name": "AdTAO",
+      "subnet_slug": "sn-21",
+      "surface_id": "sn-21-adtao-validator-api",
+      "surface_key": "srf-34b5c51b4e147eef",
+      "url": "https://validator.adtao.io/health"
     },
     {
       "auth_required": false,
@@ -554,6 +626,42 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 25,
+      "probe": {
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "Mainframe",
+      "subnet_slug": "sn-25",
+      "surface_id": "sn-25-macrocosm-os-macrobench-benchmark-dataset",
+      "surface_key": "srf-2c94a06dbd4dc428",
+      "url": "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 26,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "perturb",
+      "public_safe": true,
+      "subnet_name": "Perturb",
+      "subnet_slug": "sn-26",
+      "surface_id": "sn-26-perturb-subnet-api",
+      "surface_key": "srf-43db9970eda54936",
+      "url": "https://api.perturbai.io/health"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 29,
@@ -569,6 +677,24 @@
       "surface_id": "sn-29-coldint-fineweb-dataset",
       "surface_key": "srf-f51c73d17f954447",
       "url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 32,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "its-ai",
+      "public_safe": true,
+      "subnet_name": "ItsAI",
+      "subnet_slug": "sn-32",
+      "surface_id": "sn-32-itsai-subnet-api",
+      "surface_key": "srf-8dcd0daf38042082",
+      "url": "https://api.its-ai.org/api/health"
     },
     {
       "auth_required": false,
@@ -646,6 +772,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 43,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "subnet_name": "Graphite",
+      "subnet_slug": "sn-43",
+      "surface_id": "sn-43-graphite-miners-stats-api",
+      "surface_key": "srf-ebe9a74d2b26efea",
+      "url": "https://api.graphite-ai.net/api/v1/miners/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 47,
       "probe": {
         "expect": "json",
@@ -695,6 +839,42 @@
       "surface_id": "sn-49-nepher-robotics-data-artifact",
       "surface_key": "srf-af1fcbae9651114b",
       "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/list"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-io-machines-api",
+      "surface_key": "srf-f604cb709cccadea",
+      "url": "https://lium.io/api/machines"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-reclaims-api",
+      "surface_key": "srf-e8a0c274374314a5",
+      "url": "https://lium.io/api/reclaims"
     },
     {
       "auth_required": false,
@@ -803,6 +983,24 @@
       "surface_id": "sn-56-gradients-weight-projection-static",
       "surface_key": "srf-5aa367d8193a4a6a",
       "url": "https://api.gradients.io/v1/performance/weight-projection-static"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 57,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sparket",
+      "public_safe": true,
+      "subnet_name": "Sparket",
+      "subnet_slug": "sn-57",
+      "surface_id": "sn-57-sparket-subnet-api",
+      "surface_key": "srf-8c2c15f893a1216d",
+      "url": "https://sparket.ai/api/v1/health"
     },
     {
       "auth_required": false,
@@ -1040,6 +1238,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 71,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "leadpoet",
+      "public_safe": true,
+      "subnet_name": "Leadpoet",
+      "subnet_slug": "sn-71",
+      "surface_id": "sn-71-leadpoet-health-api",
+      "surface_key": "srf-028d20ae4c3a60fa",
+      "url": "https://leadpoet.com/api/health"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 72,
@@ -1257,6 +1473,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 88,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mobiusfund",
+      "public_safe": true,
+      "subnet_name": "Investing",
+      "subnet_slug": "sn-88",
+      "surface_id": "sn-88-investing-days-api",
+      "surface_key": "srf-8227eef13bef5b65",
+      "url": "https://api.investing88.ai/days"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "data-artifact",
       "netuid": 88,
       "probe": {
@@ -1271,6 +1505,60 @@
       "surface_id": "sn-88-investing-ratio",
       "surface_key": "srf-e606f94442e24006",
       "url": "https://api.investing88.ai/ratio"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 94,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "subnet_name": "Bitsota",
+      "subnet_slug": "sn-94",
+      "surface_id": "sn-94-bitsota-claims-api",
+      "surface_key": "srf-65479b2cf335c52e",
+      "url": "https://autoresearch.bitsota.com/api/v1/claims"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 94,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "subnet_name": "Bitsota",
+      "subnet_slug": "sn-94",
+      "surface_id": "sn-94-bitsota-dashboard-api",
+      "surface_key": "srf-e2ccfe699d7af82e",
+      "url": "https://autoresearch.bitsota.com/api/v1/dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 94,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "subnet_name": "Bitsota",
+      "subnet_slug": "sn-94",
+      "surface_id": "sn-94-bitsota-disclaimer-api",
+      "surface_key": "srf-a477c960fc3c1d2b",
+      "url": "https://autoresearch.bitsota.com/api/v1/disclaimer"
     },
     {
       "auth_required": false,
@@ -1397,6 +1685,24 @@
       "surface_id": "sn-110-website-link-www-green-compute-com-data-artifact-9",
       "surface_key": "srf-ae90870b3452e032",
       "url": "https://www.green-compute.com/models?prefill=meta-llama%2FMeta-Llama-3.1-8B-Instruct"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 113,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "subnet_name": "TensorUSD",
+      "subnet_slug": "sn-113",
+      "surface_id": "sn-113-tensorusd-subnet-api",
+      "surface_key": "srf-af3de99ed4db3abf",
+      "url": "https://api.tensorusd.com/health"
     },
     {
       "auth_required": false,

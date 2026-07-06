@@ -13,7 +13,7 @@ import {
   artifactRelativePath,
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.mjs";
-import { sanitizeChainText } from "./lib/formatting.mjs";
+import { sanitizeChainText, slugify } from "./lib/formatting.mjs";
 
 // Resolve via fileURLToPath rather than `new URL("..").pathname` so the repo
 // root is a valid native path on every OS. On Windows the bare `.pathname` form
@@ -178,6 +178,77 @@ export async function readJson(filePath) {
 
 export async function readArtifactJson(relativePath) {
   return readJson(artifactFilePath(relativePath));
+}
+
+export function assertNoSubnetFilePathCollision({
+  filePath,
+  overlay,
+  existingEntry,
+  root = repoRoot,
+}) {
+  if (!existingEntry || existingEntry.overlay.netuid === overlay.netuid) {
+    return;
+  }
+
+  throw new Error(
+    `Refusing to materialize generated subnet netuid ${overlay.netuid} (${overlay.name}) to ${path.relative(
+      root,
+      filePath,
+    )}: that file already belongs to netuid ${existingEntry.overlay.netuid} (${existingEntry.overlay.name})`,
+  );
+}
+
+// Merges the full generated overlay set with the manually-curated
+// registry/subnets/*.json files, keyed by netuid — the manual file wins where
+// one exists, otherwise the generated overlay materializes to the slug-derived
+// path a fresh `subnet:new` would use. Pulled out of scripts/promote-reviewed.mjs
+// so it's exercised in-process by its own unit tests rather than only via that
+// script's execFileSync entrypoint (which the coverage collector can't see).
+export function buildSubnetOverlaysByNetuid({
+  allOverlays,
+  manualOverlays,
+  root = repoRoot,
+}) {
+  const manualOverlaysByNetuid = new Map(
+    manualOverlays.map((entry) => [entry.overlay.netuid, entry]),
+  );
+  const manualOverlaysByFilePath = new Map(
+    manualOverlays.map((entry) => [entry.filePath, entry]),
+  );
+  return new Map(
+    allOverlays.map((overlay) => {
+      const manualEntry = manualOverlaysByNetuid.get(overlay.netuid);
+      if (manualEntry) {
+        return [overlay.netuid, manualEntry];
+      }
+
+      const materializedFilePath = path.join(
+        root,
+        "registry/subnets",
+        // Same convention as scripts/subnet-new.mjs: slug the display name, not
+        // the internal sn-<netuid> slug field (which would just echo back
+        // sn-<netuid> as the FILENAME too, reintroducing the drift this fixes).
+        `${slugify(overlay.name) || `sn-${overlay.netuid}`}.json`,
+      );
+      const conflictingEntry =
+        manualOverlaysByFilePath.get(materializedFilePath);
+      assertNoSubnetFilePathCollision({
+        filePath: materializedFilePath,
+        overlay,
+        existingEntry: conflictingEntry,
+        root,
+      });
+
+      return [
+        overlay.netuid,
+        {
+          filePath: materializedFilePath,
+          materialized: true,
+          overlay,
+        },
+      ];
+    }),
+  );
 }
 
 // Write a file atomically: stage inside a private sibling temp directory (same

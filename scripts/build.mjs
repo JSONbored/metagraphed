@@ -58,12 +58,16 @@ console.log(
   }),
 );
 
-warnIfDeployOwnedArtifactsChanged();
+revertDeployOwnedArtifactsIfChanged();
 
-function warnIfDeployOwnedArtifactsChanged() {
+function revertDeployOwnedArtifactsIfChanged() {
   // A real publish run (productionBuild) is expected to update these files —
-  // don't warn in that context. Everywhere else (plain local/CI validate
-  // build), a diff here is the footgun this warning exists to catch.
+  // leave them alone in that context. Everywhere else (plain local/CI validate
+  // build), these two files are inherently non-deterministic build output
+  // (their *_artifact_size_bytes totals sum the live R2-only artifacts, which
+  // legitimately vary build-to-build) — never a signal about YOUR change. A
+  // human manually reverting them before every commit was the actual
+  // recurring papercut, so auto-revert them here instead of just warning.
   if (productionBuild) {
     return;
   }
@@ -76,17 +80,35 @@ function warnIfDeployOwnedArtifactsChanged() {
     return;
   }
   const baseRemote = resolveBaseRemote(process.cwd());
-  console.warn(
+  const revert = spawnSync(
+    "git",
+    ["checkout", `${baseRemote}/main`, "--", ...DEPLOY_OWNED_ARTIFACTS],
+    { cwd: process.cwd(), encoding: "utf8" },
+  );
+  if (revert.status !== 0) {
+    // Fall back to the old warning if the auto-revert itself fails (e.g. no
+    // network access to fetch the base remote's latest main) — don't hide a
+    // dirty working tree silently if we couldn't actually clean it up.
+    console.warn(
+      [
+        "",
+        "warning: build modified deploy-owned artifact(s), and auto-revert failed:",
+        ...DEPLOY_OWNED_ARTIFACTS.map((file) => `  - ${file}`),
+        revert.stderr || "",
+        "Revert them manually before committing:",
+        "",
+        `  git checkout ${baseRemote}/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
+        "",
+      ].join("\n"),
+    );
+    return;
+  }
+  console.log(
     [
       "",
-      "warning: build modified deploy-owned artifact(s):",
+      "note: build produced non-deterministic deploy-owned artifact(s), auto-reverted to",
+      `${baseRemote}/main (see DEPLOY_OWNED_ARTIFACTS in scripts/lib.mjs):`,
       ...DEPLOY_OWNED_ARTIFACTS.map((file) => `  - ${file}`),
-      "These reflect the last real publish, not this local/CI build, and will",
-      "always differ for reasons unrelated to your change (see the",
-      '"Verify committed derived artifacts are fresh" step in',
-      ".github/workflows/validate.yml). Revert them before committing:",
-      "",
-      `  git checkout ${baseRemote}/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
       "",
     ].join("\n"),
   );

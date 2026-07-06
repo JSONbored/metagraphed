@@ -4,7 +4,7 @@ import {
   loadSubnets,
   readJson,
   repoRoot,
-  slugify,
+  buildSubnetOverlaysByNetuid,
   stableStringify,
   writeJson,
 } from "./lib.mjs";
@@ -27,26 +27,10 @@ const manualOverlays = await Promise.all(
   })),
 );
 const allOverlays = await loadSubnets();
-const manualOverlaysByNetuid = new Map(
-  manualOverlays.map((entry) => [entry.overlay.netuid, entry]),
-);
-const overlaysByNetuid = new Map(
-  allOverlays.map((overlay) => [
-    overlay.netuid,
-    manualOverlaysByNetuid.get(overlay.netuid) || {
-      // Same convention as scripts/subnet-new.mjs: slug the display name, not
-      // the internal sn-<netuid> slug field (which would just echo back
-      // sn-<netuid> as the FILENAME too, reintroducing the drift this fixes).
-      filePath: path.join(
-        repoRoot,
-        "registry/subnets",
-        `${slugify(overlay.name) || `sn-${overlay.netuid}`}.json`,
-      ),
-      materialized: true,
-      overlay,
-    },
-  ]),
-);
+const overlaysByNetuid = buildSubnetOverlaysByNetuid({
+  allOverlays,
+  manualOverlays,
+});
 const results = [];
 
 for (const decision of decisionsDocument.decisions || []) {

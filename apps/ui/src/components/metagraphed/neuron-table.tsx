@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { Download } from "lucide-react";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { buildUrl } from "@/lib/metagraphed/client";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
 /**
@@ -111,6 +113,13 @@ export function NeuronTable({
       return (sortValue(a, field) - sortValue(b, field)) * dir;
     });
   }, [rows, field, order]);
+
+  const csvUrl = useMemo(() => {
+    const path = isValidator
+      ? `/api/v1/subnets/${netuid}/validators`
+      : `/api/v1/subnets/${netuid}/metagraph`;
+    return buildUrl(path, { format: "csv" });
+  }, [isValidator, netuid]);
 
   const col = (f: SortField, label: string, align: "left" | "right" = "right") => (
     <th
@@ -244,8 +253,20 @@ export function NeuronTable({
           </tbody>
         </table>
       </div>
-      <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
-        {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}
+      <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+        <span>
+          {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}
+        </span>
+        <a
+          href={csvUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Download className="size-3" aria-hidden />
+          Download CSV
+        </a>
       </div>
     </div>
   );

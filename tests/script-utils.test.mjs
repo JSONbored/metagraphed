@@ -20,6 +20,8 @@ import {
   classifyNativeName,
   artifactFilePath,
   artifactOutputPath,
+  assertNoSubnetFilePathCollision,
+  buildSubnetOverlaysByNetuid,
   createLocalArtifactEnv,
   flattenSurfaces,
   formatLlmMarkdownText,
@@ -1188,6 +1190,106 @@ describe("script utility contracts", () => {
     assert.equal(
       reviewedOverlaySet.generatedOverlays[0].curation.level,
       "maintainer-reviewed",
+    );
+  });
+
+  test("rejects generated subnet materialization over a different manual subnet file", () => {
+    assert.throws(
+      () =>
+        assertNoSubnetFilePathCollision({
+          filePath: "/repo/registry/subnets/bitmind.json",
+          overlay: { netuid: 41, name: "BitMind" },
+          existingEntry: { overlay: { netuid: 34, name: "BitMind" } },
+          root: "/repo",
+        }),
+      /Refusing to materialize generated subnet netuid 41 .* already belongs to netuid 34/,
+    );
+  });
+
+  test("allows materialization when no file already occupies the path", () => {
+    assert.doesNotThrow(() =>
+      assertNoSubnetFilePathCollision({
+        filePath: "/repo/registry/subnets/bitmind.json",
+        overlay: { netuid: 41, name: "BitMind" },
+        existingEntry: undefined,
+        root: "/repo",
+      }),
+    );
+  });
+
+  test("allows materialization when the existing file already belongs to the same netuid", () => {
+    assert.doesNotThrow(() =>
+      assertNoSubnetFilePathCollision({
+        filePath: "/repo/registry/subnets/bitmind.json",
+        overlay: { netuid: 41, name: "BitMind" },
+        existingEntry: { overlay: { netuid: 41, name: "BitMind" } },
+        root: "/repo",
+      }),
+    );
+  });
+
+  test("buildSubnetOverlaysByNetuid prefers the manual overlay for a shared netuid", () => {
+    const manualOverlays = [
+      {
+        filePath: "/repo/registry/subnets/bitmind.json",
+        overlay: { netuid: 41, name: "BitMind", curated: true },
+      },
+    ];
+    const allOverlays = [{ netuid: 41, name: "BitMind" }];
+
+    const byNetuid = buildSubnetOverlaysByNetuid({
+      allOverlays,
+      manualOverlays,
+      root: "/repo",
+    });
+
+    assert.equal(byNetuid.get(41), manualOverlays[0]);
+  });
+
+  test("buildSubnetOverlaysByNetuid materializes an unmanualed overlay to its slug path", () => {
+    const allOverlays = [{ netuid: 99, name: "Fresh Subnet" }];
+
+    const byNetuid = buildSubnetOverlaysByNetuid({
+      allOverlays,
+      manualOverlays: [],
+      root: "/repo",
+    });
+
+    const entry = byNetuid.get(99);
+    assert.equal(entry.materialized, true);
+    assert.equal(entry.filePath, "/repo/registry/subnets/fresh-subnet.json");
+    assert.equal(entry.overlay, allOverlays[0]);
+  });
+
+  test("buildSubnetOverlaysByNetuid falls back to sn-<netuid> when the name has no sluggable characters", () => {
+    const allOverlays = [{ netuid: 7, name: "###" }];
+
+    const byNetuid = buildSubnetOverlaysByNetuid({
+      allOverlays,
+      manualOverlays: [],
+      root: "/repo",
+    });
+
+    assert.equal(byNetuid.get(7).filePath, "/repo/registry/subnets/sn-7.json");
+  });
+
+  test("buildSubnetOverlaysByNetuid refuses a generated overlay that collides with a manual file", () => {
+    const manualOverlays = [
+      {
+        filePath: "/repo/registry/subnets/bitmind.json",
+        overlay: { netuid: 34, name: "BitMind" },
+      },
+    ];
+    const allOverlays = [{ netuid: 41, name: "BitMind" }];
+
+    assert.throws(
+      () =>
+        buildSubnetOverlaysByNetuid({
+          allOverlays,
+          manualOverlays,
+          root: "/repo",
+        }),
+      /Refusing to materialize generated subnet netuid 41 .* already belongs to netuid 34/,
     );
   });
 
