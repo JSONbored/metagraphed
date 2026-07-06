@@ -951,6 +951,31 @@ export interface AccountAxonRemovals {
   subnets: AccountAxonRemovalsSubnet[];
 }
 
+/** Per-subnet NeuronDeregistered row in /api/v1/accounts/{ss58}/deregistrations. */
+export interface AccountDeregistrationsSubnet {
+  netuid: number;
+  deregistrations: number;
+  first_deregistered_at: string | null;
+  last_deregistered_at: string | null;
+}
+
+/**
+ * One account's deregistration (eviction) footprint over a 7d/30d/90d window, from
+ * /api/v1/accounts/{ss58}/deregistrations — the account-level companion to
+ * /api/v1/subnets/{netuid}/deregistrations. Zeroed when the account had no
+ * NeuronDeregistered events in the window.
+ */
+export interface AccountDeregistrations {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_deregistrations: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountDeregistrationsSubnet[];
+}
+
 /** Per-subnet WeightsSet row in /api/v1/accounts/{ss58}/weight-setters. */
 export interface AccountWeightSettersSubnet {
   netuid: number;
