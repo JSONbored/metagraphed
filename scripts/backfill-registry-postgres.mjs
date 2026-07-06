@@ -1,10 +1,11 @@
 // Full-resync import of every subnet/provider/surface fact this system
-// currently knows about into the Postgres tables added in
-// deploy/postgres/schema.sql (subnets / providers / surfaces /
-// surface_history) — the registry-to-Postgres target architecture's single
-// source of truth for BOTH the human-authored git tier AND the
-// machine-discovered/promoted tier (see schema.sql's own comment on why
-// these live in the same tables rather than a separate store).
+// currently knows about into the registry Postgres instance (subnets /
+// providers / surfaces / surface_history — see
+// deploy/postgres/registry-schema.sql) — the registry-to-Postgres target
+// architecture's single source of truth for BOTH the human-authored git tier
+// AND the machine-discovered/promoted tier (see that schema file's own
+// comment on why these live in the same tables rather than a separate
+// store).
 //
 // Idempotent and safe to run repeatedly: every write is an upsert keyed on
 // the same identity the data already carries (netuid / provider id /
@@ -22,11 +23,17 @@
 // sibling sync script) are what makes Postgres the single place everything
 // -- human-reviewed or machine-discovered -- ends up queryable together.
 //
-// Usage: DATABASE_URL=postgres://... node scripts/backfill-registry-postgres.mjs [--dry-run]
+// There is no Tailscale, SSH, or direct network path from CI to the database
+// at all: this script POSTs to the registry-sync Worker over HTTPS in
+// row-count-bounded chunks (see workers/registry-sync-api.mjs), never opens
+// a DB connection itself.
+//
+// Usage: REGISTRY_SYNC_SECRET=... node scripts/backfill-registry-postgres.mjs [--dry-run]
 import path from "node:path";
-import postgres from "postgres";
 import {
+  chunkRows,
   listJsonFiles,
+  postRegistrySync,
   readJson,
   repoRoot,
   stableStringify,
@@ -42,13 +49,14 @@ const operationalKindSet = new Set(OPERATIONAL_SURFACE_KINDS);
 async function main() {
   // Graceful no-op (not a failure) when unset -- this same script backs the
   // scheduled resync-registry-postgres.yml workflow, which must be safe to
-  // merge before REGISTRY_DATABASE_URL is actually provisioned (see that
+  // merge before REGISTRY_SYNC_SECRET is actually provisioned (see that
   // workflow's own comment). A manual one-time invocation with a genuinely
-  // missing DATABASE_URL still gets a clear message, just via exit 0 so a
-  // scheduled run before provisioning doesn't show as a failing workflow.
-  if (!dryRun && !process.env.DATABASE_URL) {
+  // missing REGISTRY_SYNC_SECRET still gets a clear message, just via exit 0
+  // so a scheduled run before provisioning doesn't show as a failing
+  // workflow.
+  if (!dryRun && !process.env.REGISTRY_SYNC_SECRET) {
     console.log(
-      "DATABASE_URL not set — registry-to-Postgres sync isn't provisioned yet, nothing to do.",
+      "REGISTRY_SYNC_SECRET not set — registry-to-Postgres sync isn't provisioned yet, nothing to do.",
     );
     return;
   }
@@ -65,7 +73,7 @@ async function main() {
       console.error(`skipping ${filePath}: missing required "id" field`);
       continue;
     }
-    providers.push({ id: overlay.id, overlay });
+    providers.push({ id: overlay.id, overlay, source_commit: sourceCommit });
   }
 
   // manualOverlays here is already baseline-AUGMENTED (candidate-promoted
@@ -77,8 +85,14 @@ async function main() {
 
   const subnets = [];
   const surfaces = [];
-  collectOverlays(manualOverlays, "community", subnets, surfaces);
-  collectOverlays(generatedOverlays, "machine-generated", subnets, surfaces);
+  collectOverlays(manualOverlays, "community", sourceCommit, subnets, surfaces);
+  collectOverlays(
+    generatedOverlays,
+    "machine-generated",
+    sourceCommit,
+    subnets,
+    surfaces,
+  );
 
   console.log(
     stableStringify({
@@ -96,94 +110,37 @@ async function main() {
     return;
   }
 
-  const sql = postgres(process.env.DATABASE_URL, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
+  const summary = {
+    providers_written: 0,
+    subnets_written: 0,
+    surfaces_written: 0,
+  };
 
-  try {
-    // Providers first, then subnets, then surfaces (FK order). A provider a
-    // surface references but whose file is missing/unreadable is left NULL
-    // rather than failing the whole run — surfaces.provider_id is nullable.
-    for (const provider of providers) {
-      await sql`
-        INSERT INTO providers (id, overlay, source_commit)
-        VALUES (${provider.id}, ${sql.json(provider.overlay)}, ${sourceCommit})
-        ON CONFLICT (id) DO UPDATE SET
-          overlay = EXCLUDED.overlay,
-          source_commit = EXCLUDED.source_commit,
-          updated_at = now()`;
-    }
-
-    const knownProviderIds = new Set(providers.map((p) => p.id));
-
-    for (const subnet of subnets) {
-      await sql`
-        INSERT INTO subnets (netuid, slug, name, source, overlay, source_commit)
-        VALUES (${subnet.netuid}, ${subnet.slug}, ${subnet.name}, ${subnet.source}, ${sql.json(subnet.overlay)}, ${sourceCommit})
-        ON CONFLICT (netuid) DO UPDATE SET
-          slug = EXCLUDED.slug,
-          name = EXCLUDED.name,
-          source = EXCLUDED.source,
-          overlay = EXCLUDED.overlay,
-          source_commit = EXCLUDED.source_commit,
-          updated_at = now()`;
-    }
-
-    let inserted = 0;
-    let skippedDuplicates = 0;
-    for (const surface of surfaces) {
-      const providerId = knownProviderIds.has(surface.providerId)
-        ? surface.providerId
-        : null;
-      const result = await sql`
-        INSERT INTO surfaces (
-          subnet_netuid, provider_id, surface_key, kind, url,
-          authority, review_state, probe_eligible, public_safe,
-          overlay, source_commit
-        )
-        VALUES (
-          ${surface.subnetNetuid}, ${providerId}, ${surface.surfaceKey}, ${surface.kind}, ${surface.url},
-          ${surface.authority}, ${surface.reviewState}, ${surface.probeEligible}, ${surface.publicSafe},
-          ${sql.json(surface.overlay)}, ${sourceCommit}
-        )
-        ON CONFLICT (subnet_netuid, kind, url) DO UPDATE SET
-          provider_id = EXCLUDED.provider_id,
-          surface_key = EXCLUDED.surface_key,
-          authority = EXCLUDED.authority,
-          review_state = EXCLUDED.review_state,
-          probe_eligible = EXCLUDED.probe_eligible,
-          public_safe = EXCLUDED.public_safe,
-          overlay = EXCLUDED.overlay,
-          source_commit = EXCLUDED.source_commit,
-          updated_at = now()
-        RETURNING (xmax = 0) AS inserted`;
-      if (result[0]?.inserted) {
-        inserted += 1;
-      } else {
-        skippedDuplicates += 1;
-      }
-      const action = result[0]?.inserted ? "insert" : "update";
-      await sql`
-        INSERT INTO surface_history (subnet_netuid, action, overlay, source_commit)
-        VALUES (${surface.subnetNetuid}, ${action}, ${sql.json(surface.overlay)}, ${sourceCommit})`;
-    }
-
-    console.log(
-      stableStringify({
-        providers_written: providers.length,
-        subnets_written: subnets.length,
-        surfaces_inserted: inserted,
-        surfaces_updated: skippedDuplicates,
-      }),
-    );
-  } finally {
-    await sql.end({ timeout: 5 });
+  // Providers + subnets are small (low hundreds) -- one request each is
+  // plenty. Surfaces are the largest set by far, so they're chunked to stay
+  // under the Worker's rows-per-kind cap regardless of how large the
+  // registry grows.
+  if (providers.length || subnets.length) {
+    const result = await postRegistrySync({ providers, subnets });
+    summary.providers_written += result?.providers_written ?? 0;
+    summary.subnets_written += result?.subnets_written ?? 0;
   }
+  for (const chunk of chunkRows(surfaces)) {
+    if (!chunk.length) continue;
+    const result = await postRegistrySync({ surfaces: chunk });
+    summary.surfaces_written += result?.surfaces_written ?? 0;
+  }
+
+  console.log(stableStringify(summary));
 }
 
-function collectOverlays(overlays, source, subnetsOut, surfacesOut) {
+function collectOverlays(
+  overlays,
+  source,
+  sourceCommit,
+  subnetsOut,
+  surfacesOut,
+) {
   for (const overlay of overlays) {
     if (!Number.isInteger(overlay.netuid) || !overlay.slug || !overlay.name) {
       console.error(
@@ -198,23 +155,25 @@ function collectOverlays(overlays, source, subnetsOut, surfacesOut) {
       name: overlay.name,
       source,
       overlay: subnetOverlay,
+      source_commit: sourceCommit,
     });
     for (const surface of subnetSurfaces) {
       surfacesOut.push({
-        subnetNetuid: overlay.netuid,
-        surfaceKey: subnetSurfaceKey(surface, overlay.netuid),
+        subnet_netuid: overlay.netuid,
+        surface_key: subnetSurfaceKey(surface, overlay.netuid),
         kind: surface.kind,
         url: surface.url,
-        providerId: surface.provider || null,
+        provider_id: surface.provider || null,
         authority: surface.authority || "community",
-        reviewState: surface.review?.state || "community-submitted",
-        probeEligible: Boolean(
+        review_state: surface.review?.state || "community-submitted",
+        probe_eligible: Boolean(
           surface.probe?.enabled &&
           surface.public_safe &&
           operationalKindSet.has(surface.kind),
         ),
-        publicSafe: surface.public_safe !== false,
+        public_safe: surface.public_safe !== false,
         overlay: surface,
+        source_commit: sourceCommit,
       });
     }
   }

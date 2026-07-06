@@ -1,0 +1,271 @@
+// Unit tests for the registry-sync Worker (workers/registry-sync-api.mjs). postgres.js
+// is mocked so the auth/validation/upsert routing is tested with no real DB — the live
+// Hyperdrive path is validated separately.
+import { beforeEach, expect, test, vi } from "vitest";
+
+const sqlCalls = vi.hoisted(() => []);
+const surfaceResult = vi.hoisted(() => ({ current: [{ inserted: true }] }));
+const failure = vi.hoisted(() => ({ error: null }));
+
+vi.mock("postgres", () => ({
+  default: () => {
+    const sql = (strings, ...values) => {
+      const text = Array.from(strings).join("?");
+      sqlCalls.push({ text, values });
+      if (failure.error && /INSERT INTO providers/.test(text)) {
+        return Promise.reject(failure.error);
+      }
+      if (/INSERT INTO surfaces/.test(text)) {
+        return Promise.resolve(surfaceResult.current);
+      }
+      return Promise.resolve([]);
+    };
+    sql.json = (value) => value;
+    sql.end = () => Promise.resolve();
+    return sql;
+  },
+}));
+
+const { default: worker } = await import("../workers/registry-sync-api.mjs");
+
+const SECRET = "test-registry-sync-secret";
+
+function post(body, { secret, method = "POST", raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret) headers["x-registry-sync-token"] = secret;
+  const init = { method, headers };
+  if (method !== "GET" && method !== "HEAD") {
+    init.body = raw !== undefined ? raw : JSON.stringify(body ?? {});
+  }
+  return new Request("https://registry-sync.internal/", init);
+}
+
+function baseEnv(overrides = {}) {
+  return {
+    REGISTRY_SYNC_SECRET: SECRET,
+    HYPERDRIVE: { connectionString: "postgres://mock" },
+    ...overrides,
+  };
+}
+
+const provider = () => ({
+  id: "acme",
+  overlay: { id: "acme", name: "Acme" },
+  source_commit: "abc123",
+});
+
+const subnet = () => ({
+  netuid: 8,
+  slug: "taoshi",
+  name: "Taoshi",
+  source: "community",
+  overlay: { netuid: 8, slug: "taoshi", name: "Taoshi" },
+  source_commit: "abc123",
+});
+
+const surface = () => ({
+  subnet_netuid: 8,
+  provider_id: "acme",
+  surface_key: "sn-8-example",
+  kind: "docs",
+  url: "https://example.com/docs",
+  overlay: { kind: "docs", url: "https://example.com/docs" },
+  source_commit: "abc123",
+});
+
+beforeEach(() => {
+  sqlCalls.length = 0;
+  surfaceResult.current = [{ inserted: true }];
+  failure.error = null;
+});
+
+test("rejects non-POST (405)", async () => {
+  const res = await worker.fetch(post(null, { method: "GET" }), baseEnv(), {});
+  expect(res.status).toBe(405);
+});
+
+test("is disabled (503) when REGISTRY_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    {},
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rejects a missing or wrong token (401)", async () => {
+  const env = baseEnv();
+  const wrong = await worker.fetch(
+    post({ providers: [provider()] }, { secret: "wrong" }),
+    env,
+    {},
+  );
+  expect(wrong.status).toBe(401);
+  const missing = await worker.fetch(
+    post({ providers: [provider()] }),
+    env,
+    {},
+  );
+  expect(missing.status).toBe(401);
+});
+
+test("returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    { REGISTRY_SYNC_SECRET: SECRET },
+    {},
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rejects a body over the byte cap (413)", async () => {
+  const res = await worker.fetch(
+    post(null, { secret: SECRET, raw: "x".repeat(5_000_000) }),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(413);
+});
+
+test("rejects malformed JSON (400)", async () => {
+  const res = await worker.fetch(
+    post(null, { secret: SECRET, raw: "{not json" }),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(400);
+});
+
+test("rejects more than the rows-per-kind cap (413)", async () => {
+  const many = Array.from({ length: 5001 }, (_, i) => ({
+    ...subnet(),
+    netuid: i,
+  }));
+  const res = await worker.fetch(
+    post({ subnets: many }, { secret: SECRET }),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(413);
+});
+
+test("rejects a non-object row (400)", async () => {
+  const res = await worker.fetch(
+    post({ providers: ["not-an-object"] }, { secret: SECRET }),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(400);
+});
+
+test("rejects an empty payload with no rows of any kind (400)", async () => {
+  const res = await worker.fetch(post({}, { secret: SECRET }), baseEnv(), {});
+  expect(res.status).toBe(400);
+});
+
+test("upserts providers + subnets + surfaces and reports written counts", async () => {
+  const res = await worker.fetch(
+    post(
+      { providers: [provider()], subnets: [subnet()], surfaces: [surface()] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({
+    ok: true,
+    providers_written: 1,
+    subnets_written: 1,
+    surfaces_written: 1,
+  });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/INSERT INTO providers/);
+  expect(text).toMatch(/INSERT INTO subnets/);
+  expect(text).toMatch(/INSERT INTO surfaces/);
+  expect(text).toMatch(/INSERT INTO surface_history/);
+});
+
+test("skips rows missing required fields without failing the request", async () => {
+  const res = await worker.fetch(
+    post(
+      {
+        providers: [{ id: "acme" }], // missing overlay/source_commit
+        subnets: [{ netuid: 8 }], // missing slug/name/overlay/source_commit
+        surfaces: [{ subnet_netuid: 8 }], // missing surface_key/kind/url/overlay/source_commit
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({
+    providers_written: 0,
+    subnets_written: 0,
+    surfaces_written: 0,
+  });
+});
+
+test("defaults subnet source and surface provider_id when omitted", async () => {
+  const { source: _source, ...subnetWithoutSource } = subnet();
+  const { provider_id: _providerId, ...surfaceWithoutProvider } = surface();
+  const res = await worker.fetch(
+    post(
+      { subnets: [subnetWithoutSource], surfaces: [surfaceWithoutProvider] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(200);
+  const subnetCall = sqlCalls.find((c) => /INSERT INTO subnets/.test(c.text));
+  expect(subnetCall.values).toContain("community");
+  const surfaceCall = sqlCalls.find((c) => /INSERT INTO surfaces/.test(c.text));
+  expect(surfaceCall.values).toContain(null);
+});
+
+test("does not log surface_history when the surface upsert is a no-op", async () => {
+  // WHERE surfaces.overlay IS DISTINCT FROM EXCLUDED.overlay yields zero
+  // RETURNING rows when the overlay is unchanged -- no history entry, no
+  // surfaces_written increment.
+  surfaceResult.current = [];
+  const res = await worker.fetch(
+    post({ surfaces: [surface()] }, { secret: SECRET }),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.surfaces_written).toBe(0);
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).not.toMatch(/INSERT INTO surface_history/);
+});
+
+test("records an update action in surface_history when the row already existed", async () => {
+  surfaceResult.current = [{ inserted: false }];
+  await worker.fetch(
+    post({ surfaces: [surface()] }, { secret: SECRET }),
+    baseEnv(),
+    {},
+  );
+  // The action is bound as a value, not embedded in the SQL text -- assert it
+  // was passed to the surface_history insert as "update", not "insert".
+  const historyCall = sqlCalls.find((c) =>
+    /INSERT INTO surface_history/.test(c.text),
+  );
+  expect(historyCall.values).toContain("update");
+});
+
+test("maps a DB failure to a clean 502 instead of throwing", async () => {
+  failure.error = new Error("connection reset");
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    baseEnv(),
+    {},
+  );
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});

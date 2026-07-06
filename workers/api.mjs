@@ -1020,6 +1020,42 @@ async function handleChainEventsProxy(request, env, url) {
   );
 }
 
+// Proxies POST /api/v1/internal/registry-sync to the dedicated registry-sync
+// Worker (REGISTRY_SYNC_API service binding), the sole write path into the
+// registry Postgres instance. This function forwards the request as-is
+// (including the x-registry-sync-token header) -- the shared-secret check
+// happens once, downstream in workers/registry-sync-api.mjs, which is the
+// only place the secret needs to be provisioned. There is no bypass path
+// here to defend against: REGISTRY_SYNC_API has no public routes of its own,
+// so this route is the only way to reach it.
+async function handleRegistrySyncProxy(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "Only POST is supported.", 405);
+  }
+  if (!env.REGISTRY_SYNC_API) {
+    return errorResponse(
+      "registry_sync_unavailable",
+      "The registry-sync tier is not bound to this deployment.",
+      503,
+    );
+  }
+  const upstream = await env.REGISTRY_SYNC_API.fetch(request);
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(
+      "registry_sync_unavailable",
+      "The registry-sync tier returned an unreadable response.",
+      502,
+    );
+  }
+  return new Response(JSON.stringify(body), {
+    status: upstream.status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
 export async function handleRequest(request, env = {}, ctx = {}) {
   let url = new URL(request.url);
 
@@ -1114,6 +1150,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   }
   if (url.pathname === "/api/v1/internal/backfill-economics") {
     return handleEconomicsBackfill(request, env);
+  }
+  // The only write path into the registry Postgres instance (a dedicated,
+  // separate database from the chain-indexer's) -- GitHub Actions calls this
+  // over HTTPS from the registry-sync workflows, never touches Postgres
+  // directly. Proxies to the dedicated registry-sync Worker (wrangler.registry.jsonc),
+  // which owns the postgres.js driver + this database's own Hyperdrive
+  // binding, keeping this Worker's bundle lean the same way DATA_API does
+  // for the chain-data tier.
+  if (url.pathname === "/api/v1/internal/registry-sync") {
+    return handleRegistrySyncProxy(request, env);
   }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs

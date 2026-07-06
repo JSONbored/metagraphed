@@ -18,7 +18,11 @@ name: Resync registry to Postgres (full)
 # changes.
 #
 # Safe to merge ahead of the real credential existing -- see
-# scripts/backfill-registry-postgres.mjs's own DATABASE_URL no-op check.
+# scripts/backfill-registry-postgres.mjs's own REGISTRY_SYNC_SECRET no-op
+# check. There is no Tailscale, SSH, or direct network path from this
+# workflow to the database at all: the script POSTs to the registry-sync
+# Worker over HTTPS (see workers/registry-sync-api.mjs); this job only ever
+# needs the shared secret and the public endpoint.
 on:
   schedule:
     - cron: "0 */6 * * *" # matches the existing 6h data-publish cadence
@@ -54,5 +58,5 @@ jobs:
 
       - name: Full resync
         env:
-          DATABASE_URL: ${{ secrets.REGISTRY_DATABASE_URL }}
+          REGISTRY_SYNC_SECRET: ${{ secrets.REGISTRY_SYNC_SECRET }}
         run: node scripts/backfill-registry-postgres.mjs
