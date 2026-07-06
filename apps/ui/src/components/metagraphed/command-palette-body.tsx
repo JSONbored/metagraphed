@@ -39,7 +39,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { searchQuery } from "@/lib/metagraphed/queries";
+import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -160,6 +160,10 @@ const KIND_META: Record<string, { label: string; icon: typeof Layers; cls: strin
   provider: { label: "Provider", icon: Network, cls: "text-curation-machine" },
 };
 
+// Secondary group size — the keyword group already covers 20; semantic is a
+// smaller AI-ranked complement, not a replacement.
+const SEMANTIC_LIMIT = 8;
+
 type Target = { to: string; params?: Record<string, string> } | { external: string };
 
 function targetToHref(target: Target): string {
@@ -239,6 +243,13 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
     retry: 0,
   });
   const allHits = (data?.data ?? []) as SearchHit[];
+
+  // Semantic (vector-similarity) fallback/complement to the keyword hits above.
+  // Isolated in its own query so a 503 (AI disabled) or 502 (AI error) just
+  // means an empty group here — it never affects the keyword results.
+  const { data: semanticData, isFetching: isSemanticFetching, isError: isSemanticError } =
+    useQuery({ ...semanticSearchQuery(debounced, SEMANTIC_LIMIT), retry: 0 });
+  const semanticHits = isSemanticError ? [] : (semanticData?.data.results ?? []);
 
   // Track zero-result + top queries (only once per settled query)
   const lastTracked = useRef<string>("");
@@ -456,7 +467,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
             </button>
           );
         })}
-        {isFetching && debounced ? (
+        {(isFetching || isSemanticFetching) && debounced ? (
           <span className="ml-auto font-mono text-[10px] text-ink-muted">searching…</span>
         ) : null}
       </div>
@@ -619,6 +630,55 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
             </CommandGroup>
           );
         })}
+
+        {semanticHits.length > 0 ? (
+          <CommandGroup heading="Semantic matches">
+            {semanticHits.map((r, i) => {
+              const kind = (r.type ?? "").toLowerCase();
+              const meta = KIND_META[kind] ?? {
+                label: kind || "Match",
+                icon: Sparkles,
+                cls: "text-ink-muted",
+              };
+              const Icon = meta.icon;
+              const target = resolveHref({
+                id: `semantic-${i}`,
+                kind: r.type ?? undefined,
+                netuid: r.netuid ?? undefined,
+                slug: r.slug ?? undefined,
+                url: r.url ?? undefined,
+              });
+              const title = r.title ?? r.url ?? r.slug ?? "Untitled";
+              const subtitle =
+                r.subtitle ?? (r.netuid != null ? `netuid ${r.netuid}` : (r.slug ?? r.url ?? ""));
+              return (
+                <CommandItem
+                  key={`semantic-${i}-${r.url ?? r.title ?? i}`}
+                  value={`semantic ${kind} ${title} ${subtitle}`}
+                  onSelect={() => openTarget(target, kind || "semantic", modifier)}
+                  className="group/item flex items-center gap-3"
+                >
+                  <Icon className={classNames("size-4 shrink-0", meta.cls)} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-ink-strong truncate">{title}</div>
+                    {subtitle ? (
+                      <div className="font-mono text-[10px] text-ink-muted truncate">
+                        {subtitle}
+                      </div>
+                    ) : null}
+                  </div>
+                  <ItemActions
+                    onCopy={() => copyLink(target, String(title))}
+                    onNewTab={() => openInNewTab(target, kind || "semantic")}
+                  />
+                  <CommandShortcut className="font-mono text-[10px] uppercase tracking-widest text-accent">
+                    AI {Math.round(r.score * 100)}%
+                  </CommandShortcut>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        ) : null}
 
         {debounced ? (
           <>

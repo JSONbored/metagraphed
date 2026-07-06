@@ -2075,3 +2075,24 @@ export interface AgentCatalogDetail extends AgentCatalogSummary {
   operational_observed_at?: string;
   health_source?: string;
 }
+
+/** A single vector-similarity hit from /api/v1/search/semantic. */
+export interface SemanticSearchResult {
+  score: number;
+  type: string | null;
+  netuid: number | null;
+  slug: string | null;
+  title: string | null;
+  subtitle: string | null;
+  url: string | null;
+  categories: string[];
+  service_kinds: string[];
+}
+
+/** /api/v1/search/semantic response envelope. */
+export interface SemanticSearchResponse {
+  query: string;
+  count: number;
+  results: SemanticSearchResult[];
+  model: string;
+}

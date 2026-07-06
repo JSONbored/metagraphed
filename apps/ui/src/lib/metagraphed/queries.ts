@@ -96,6 +96,7 @@ import type {
   RpcPool,
   RpcUsage,
   SchemaInfo,
+  SemanticSearchResponse,
   Subnet,
   SubnetAxonRemovals,
   SubnetDeregistrations,
@@ -5258,6 +5259,22 @@ export const searchQuery = (q: string, limit = 20) =>
         { q, limit },
         signal,
       ),
+    enabled: q.trim().length > 0,
+    staleTime: STALE_SHORT,
+  });
+
+// Vector-similarity fallback for the keyword-only /api/v1/search-index above.
+// Response is a single object with `results` nested inside (not a bare list or
+// a { <collection>: T[] } wrapper), so this builds directly on apiFetch rather
+// than the fetchList list-unwrapping helper.
+export const semanticSearchQuery = (q: string, limit = 10, types?: string[]) =>
+  queryOptions({
+    queryKey: k("search-semantic", q, limit, types ?? []),
+    queryFn: ({ signal }) =>
+      apiFetch<SemanticSearchResponse>("/api/v1/search/semantic", {
+        params: { q, limit, type: types },
+        signal,
+      }),
     enabled: q.trim().length > 0,
     staleTime: STALE_SHORT,
   });
