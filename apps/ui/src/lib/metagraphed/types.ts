@@ -1786,6 +1786,57 @@ export interface ChainTransferPairs {
   pairs: ChainTransferPair[];
 }
 
+/** Per-subnet net stake flow row in GET /api/v1/chain/stake-flow. */
+export interface ChainStakeFlowSubnet {
+  netuid: number;
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+  direction: "inflow" | "outflow" | "balanced" | null;
+}
+
+/** Network rollup in GET /api/v1/chain/stake-flow. */
+export interface ChainStakeFlowNetwork {
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+  gaining: number;
+  losing: number;
+  flat: number;
+}
+
+export interface ChainStakeFlowDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
+/**
+ * Network-wide net stake capital flow over a 7d/30d window from
+ * GET /api/v1/chain/stake-flow — StakeAdded vs StakeRemoved TAO, distinct from
+ * stake-transfers (#3467) and stake-moves (#3468).
+ */
+export interface ChainStakeFlow {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainStakeFlowNetwork;
+  net_flow_distribution: ChainStakeFlowDistribution | null;
+  subnets: ChainStakeFlowSubnet[];
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;

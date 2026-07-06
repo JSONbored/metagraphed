@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Activity, Boxes, Coins, Layers, Zap } from "lucide-react";
+import { Activity, ArrowDownUp, Boxes, Coins, Layers, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -18,10 +18,11 @@ import {
   chainCallsQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainStakeFlowQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import type { ChainCalls } from "@/lib/metagraphed/types";
+import type { ChainCalls, ChainStakeFlow } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -80,6 +81,7 @@ function ExplorerPage() {
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
+          "/api/v1/chain/stake-flow",
         ]}
       />
     </AppShell>
@@ -222,6 +224,155 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 }
 
+/**
+ * Network-wide net stake flow — StakeAdded vs StakeRemoved TAO over the window.
+ * Distinct from stake-transfers (#3467) and stake-moves (#3468) leaderboards.
+ */
+function StakeFlowSection({ flow, window }: { flow: ChainStakeFlow; window: string }) {
+  const net = flow.network;
+  const hasFlow = net.gross_flow_tao > 0 || flow.subnets.length > 0;
+  const inOutCap = Math.max(net.total_staked_tao, net.total_unstaked_tao, 1);
+  const topByNet = [...flow.subnets]
+    .sort((a, b) => Math.abs(b.net_flow_tao) - Math.abs(a.net_flow_tao))
+    .slice(0, 10);
+  const barCap = Math.max(1, ...topByNet.map((s) => Math.abs(s.net_flow_tao)));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Stake flow
+          </h2>
+          <p className="mt-1 font-mono text-[11px] text-ink-muted">
+            Net capital in vs out (StakeAdded − StakeRemoved) — not transfers or re-delegation
+            moves.
+          </p>
+        </div>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(flow.subnet_count)} subnets · {window}
+        </span>
+      </div>
+      {hasFlow ? (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatTile
+              icon={ArrowDownUp}
+              eyebrow="Staked in"
+              value={fmtTao(net.total_staked_tao)}
+              hint={`${formatNumber(net.stake_events)} StakeAdded`}
+              tone="ok"
+            />
+            <StatTile
+              icon={ArrowDownUp}
+              eyebrow="Unstaked out"
+              value={fmtTao(net.total_unstaked_tao)}
+              hint={`${formatNumber(net.unstake_events)} StakeRemoved`}
+            />
+            <StatTile
+              icon={Layers}
+              eyebrow="Net flow"
+              value={fmtTao(net.net_flow_tao)}
+              hint={`${formatNumber(net.gaining)} gaining · ${formatNumber(net.losing)} losing`}
+              tone={net.net_flow_tao >= 0 ? "ok" : "accent"}
+            />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                Network in vs out
+              </div>
+              <ul className="space-y-2">
+                {[
+                  { label: "Staked in", value: net.total_staked_tao, color: "var(--chart-6)" },
+                  { label: "Unstaked out", value: net.total_unstaked_tao, color: "var(--chart-3)" },
+                ].map((row) => {
+                  const pct = Math.max(2, Math.round((row.value / inOutCap) * 100));
+                  return (
+                    <li
+                      key={row.label}
+                      className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-2"
+                    >
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                        {row.label}
+                      </span>
+                      <span className="relative h-2 overflow-hidden rounded-full bg-surface">
+                        <span
+                          className="absolute inset-y-0 left-0 rounded-full"
+                          style={{ width: `${pct}%`, background: row.color }}
+                        />
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-ink-strong">
+                        {fmtTao(row.value)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <div>
+              <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                Top subnets by |net flow|
+              </div>
+              {topByNet.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {topByNet.map((s) => {
+                    const abs = Math.abs(s.net_flow_tao);
+                    const pct = Math.max(2, Math.round((abs / barCap) * 100));
+                    const positive = s.net_flow_tao >= 0;
+                    return (
+                      <li
+                        key={s.netuid}
+                        className="grid grid-cols-[3.5rem_1fr_auto] items-center gap-2"
+                      >
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: s.netuid }}
+                          className="font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-accent"
+                        >
+                          SN{s.netuid}
+                        </Link>
+                        <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
+                          <span
+                            className="absolute inset-y-0 left-0 rounded-full"
+                            style={{
+                              width: `${pct}%`,
+                              background: positive ? "var(--chart-6)" : "var(--chart-3)",
+                            }}
+                          />
+                        </span>
+                        <span
+                          className={
+                            positive
+                              ? "font-mono text-[10px] tabular-nums text-ink-strong"
+                              : "font-mono text-[10px] tabular-nums text-ink-muted"
+                          }
+                        >
+                          {positive ? "+" : "−"}
+                          {fmtTao(Math.abs(s.net_flow_tao))}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="font-mono text-[12px] text-ink-muted">No per-subnet flow yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">
+          No stake flow indexed in this window yet — the account_events tier fills this from
+          StakeAdded and StakeRemoved events.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -231,6 +382,7 @@ function ExplorerDashboard() {
   const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
+  const stakeFlow = useSuspenseQuery(chainStakeFlowQuery(win)).data.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -450,6 +602,8 @@ function ExplorerDashboard() {
           )}
         </section>
       </div>
+
+      <StakeFlowSection flow={stakeFlow} window={win} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* call mix */}
