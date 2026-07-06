@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { synthesizeDonutAriaLabel } from "@/lib/metagraphed/chart-aria";
 
 export interface DonutSegment {
   label: string;
@@ -15,13 +16,6 @@ interface Props {
   className?: string;
   /** Accessible name; synthesized from `segments` when omitted. */
   ariaLabel?: string;
-}
-
-function synthesizeDonutAriaLabel(segments: DonutSegment[]): string {
-  if (segments.length === 0) return "Donut chart with no data";
-  const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
-  if (total <= 0) return "Donut chart with no data";
-  return segments.map((s) => `${s.label} ${s.value}`).join(", ");
 }
 
 /**

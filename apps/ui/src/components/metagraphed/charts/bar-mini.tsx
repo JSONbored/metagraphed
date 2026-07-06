@@ -1,4 +1,5 @@
 import { classNames } from "@/lib/metagraphed/format";
+import { synthesizeBarMiniAriaLabel } from "@/lib/metagraphed/chart-aria";
 
 export interface BarMiniDatum {
   label: string;
@@ -14,11 +15,6 @@ interface Props {
   showValue?: boolean;
   /** Accessible name; synthesized from `data` when omitted. */
   ariaLabel?: string;
-}
-
-function synthesizeBarMiniAriaLabel(data: BarMiniDatum[]): string {
-  if (data.length === 0) return "Bar chart with no data";
-  return data.map((d) => `${d.label} ${d.value}`).join(", ");
 }
 
 /**
