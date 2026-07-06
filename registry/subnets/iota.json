@@ -105,6 +105,40 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Public Macrocosmos HuggingFace GitHub-code corpus (repo_name/path/size/content/license columns; 32 languages) in the macrocosm-os org, a pretraining-data source fit for the IOTA (SN9) LLM-pretraining subnet; not gated. The IOTA repo README (source) declares Macrocosmos operates subnet 9 and links docs.macrocosmos.ai/subnets/subnet-9-pre-training."
+    },
+    {
+      "id": "sn-9-iota-openapi",
+      "name": "IOTA orchestrator API OpenAPI schema",
+      "kind": "openapi",
+      "url": "https://iota.api.macrocosmos.ai/openapi.json",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
+      "schema_url": "https://iota.api.macrocosmos.ai/openapi.json",
+      "schema_status": "machine-readable",
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "codevector96"
+      },
+      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo."
+    },
+    {
+      "id": "sn-9-iota-healthcheck",
+      "name": "IOTA orchestrator healthcheck",
+      "kind": "subnet-api",
+      "url": "https://iota.api.macrocosmos.ai/healthcheck",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "codevector96"
+      },
+      "notes": "Public no-auth GET /healthcheck on the IOTA SN9 orchestrator returning liveness JSON (observed: {\"status\":\"healthy\"}); documented as GET /healthcheck in the subnet OpenAPI spec."
     }
   ],
   "contact": "support@macrocosmos.ai"
