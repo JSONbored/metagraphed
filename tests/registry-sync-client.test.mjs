@@ -79,6 +79,31 @@ test("postRegistrySync throws with the response status + error on failure", asyn
   );
 });
 
+test("postRegistrySync falls back to statusText when the error body has no message", async () => {
+  process.env.REGISTRY_SYNC_SECRET = "s3cr3t";
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 502,
+    statusText: "Bad Gateway",
+    json: async () => ({}),
+  });
+  await assert.rejects(
+    postRegistrySync({ providers: [] }),
+    /failed \(502\): Bad Gateway/,
+  );
+});
+
+test("postRegistrySync tolerates an unreadable response body", async () => {
+  process.env.REGISTRY_SYNC_SECRET = "s3cr3t";
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => {
+      throw new SyntaxError("Unexpected end of JSON input");
+    },
+  });
+  assert.deepEqual(await postRegistrySync({ providers: [] }), {});
+});
+
 test("postRegistrySync throws before sending when the payload exceeds the byte budget", async () => {
   process.env.REGISTRY_SYNC_SECRET = "s3cr3t";
   let called = false;
