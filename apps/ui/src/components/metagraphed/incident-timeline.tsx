@@ -17,6 +17,20 @@ function shortSurfaceId(id: string, netuid: number): string {
   return id.replace(new RegExp(`^(community-)?sn-${netuid}-`), "");
 }
 
+/**
+ * #3427: duration segment for subnet incident rows — omit when `started_at` is
+ * absent or unparseable; open incidents (`ended_at` null) use live elapsed time
+ * via `durationLabel`, matching `IncidentCard`.
+ */
+export function subnetIncidentDurationText(
+  startedAt?: string | null,
+  endedAt?: string | null,
+): string | null {
+  if (!startedAt) return null;
+  const label = durationLabel(startedAt, endedAt);
+  return label === "—" ? null : label;
+}
+
 export function IncidentTimeline({ netuid }: { netuid: number }) {
   const { data, isLoading } = useQuery(subnetHealthIncidentsQuery(netuid));
   const incidents = flattenSurfaceIncidents(data?.data ?? []);
@@ -39,6 +53,7 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
         <ol className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
           {incidents.slice(0, 12).map((inc, i) => {
             const open = !inc.ended_at;
+            const duration = subnetIncidentDurationText(inc.started_at, inc.ended_at);
             return (
               <li
                 key={`${inc.surface_id}-${inc.started_at ?? i}`}
@@ -55,9 +70,7 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
                         started <TimeAgo at={inc.started_at} />
                       </span>
                     ) : null}
-                    {inc.started_at ? (
-                      <span>· {durationLabel(inc.started_at, inc.ended_at)}</span>
-                    ) : null}
+                    {duration ? <span>· {duration}</span> : null}
                     {inc.failed_samples != null ? <span>· {inc.failed_samples} failed</span> : null}
                   </div>
                 </div>
