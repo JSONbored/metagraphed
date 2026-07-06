@@ -82,6 +82,22 @@
         "timeout_ms": 10000
       },
       "notes": "Official MVTRX source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-79-taos-im-subnet-api",
+      "kind": "subnet-api",
+      "name": "MVTRX exchange health API",
+      "notes": "Public no-auth GET /health on mvtrx.exchange returning JSON liveness for the TAOS IM trading host (observed: {\"status\":\"ok\",\"mode\":\"host\",\"network\":\"mainnet\"}). The official SN79 README links mvtrx.exchange as the project exchange.",
+      "provider": "taos-im",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://github.com/taos-im/sn-79/blob/main/README.md"],
+      "url": "https://mvtrx.exchange/health"
     }
   ],
   "social": {
