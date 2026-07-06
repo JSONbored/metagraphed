@@ -18,7 +18,7 @@ name: metagraphed-core
 
 services:
   postgres:
-    image: timescale/timescaledb:2.17.2-pg16
+    image: timescale/timescaledb:2.28.2-pg16
     restart: unless-stopped
     environment:
       POSTGRES_DB: metagraphed
