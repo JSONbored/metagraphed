@@ -316,255 +316,261 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         ref={wrapRef}
         className="relative hidden md:block flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
       >
-      {/* Input */}
-      <div
-        className={classNames(
-          "inline-flex w-full items-center gap-2 rounded-full border bg-card pl-3 pr-2 py-2 text-left text-sm transition-all min-h-10",
-          open ? "border-accent/60 ring-2 ring-accent/20" : "border-border hover:border-accent/40",
-        )}
-      >
-        <Search className="size-3.5 shrink-0 text-ink-muted" />
-        <input
-          ref={inputRef}
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={onKeyDown}
-          placeholder="Search subnets, wallets, blocks, txs…"
-          role="combobox"
-          aria-label="Search the registry"
-          aria-autocomplete="list"
-          aria-expanded={open}
-          aria-controls="nav-omnibox-listbox"
-          aria-activedescendant={activeOptionId}
-          className="flex-1 min-w-0 bg-transparent outline-none text-ink-strong placeholder:text-ink-muted text-sm"
-        />
-        <button
-          type="button"
-          onClick={onOpenPalette}
-          title="Open command palette"
-          aria-label="Open command palette"
-          className="hidden sm:inline-flex items-center gap-0.5 shrink-0 text-ink-muted hover:text-ink-strong transition-colors"
-        >
-          <Kbd>⌘</Kbd>
-          <Kbd>K</Kbd>
-        </button>
-      </div>
-
-      {/* Dropdown — wider than the input, right-aligned */}
-      {open ? (
+        {/* Input */}
         <div
-          id="nav-omnibox-listbox"
-          role="listbox"
-          className="absolute right-0 mt-1.5 w-[600px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-paper shadow-2xl z-50 overflow-hidden"
+          className={classNames(
+            "inline-flex w-full items-center gap-2 rounded-full border bg-card pl-3 pr-2 py-2 text-left text-sm transition-all min-h-10",
+            open
+              ? "border-accent/60 ring-2 ring-accent/20"
+              : "border-border hover:border-accent/40",
+          )}
         >
-          {/* ── Empty state: no query typed ─────────────────────────── */}
-          {showSuggestions ? (
-            <div>
-              <div className="px-3 pt-3 pb-2">
-                <p className="mg-label mb-2">Jump to</p>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {NAV_LINKS.map((r) => (
-                    <Link
-                      key={r.to}
-                      to={r.to}
-                      onClick={() => setOpen(false)}
-                      className="group/jump flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 hover:border-accent/40 hover:bg-surface transition-colors"
-                    >
-                      <r.Icon className="size-3.5 shrink-0 text-ink-muted group-hover/jump:text-accent transition-colors" />
-                      <span className="min-w-0">
-                        <span className="block text-[12px] font-medium text-ink-strong truncate">
-                          {r.label}
-                        </span>
-                        <span className="block text-[10px] text-ink-muted truncate">{r.hint}</span>
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+          <Search className="size-3.5 shrink-0 text-ink-muted" />
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKeyDown}
+            placeholder="Search subnets, wallets, blocks, txs…"
+            role="combobox"
+            aria-label="Search the registry"
+            aria-autocomplete="list"
+            aria-expanded={open}
+            aria-controls="nav-omnibox-listbox"
+            aria-activedescendant={activeOptionId}
+            className="flex-1 min-w-0 bg-transparent outline-none text-ink-strong placeholder:text-ink-muted text-sm"
+          />
+          <button
+            type="button"
+            onClick={onOpenPalette}
+            title="Open command palette"
+            aria-label="Open command palette"
+            className="hidden sm:inline-flex items-center gap-0.5 shrink-0 text-ink-muted hover:text-ink-strong transition-colors"
+          >
+            <Kbd>⌘</Kbd>
+            <Kbd>K</Kbd>
+          </button>
+        </div>
 
-              <div className="mx-3 mb-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2">
-                <p className="text-[11px] text-ink-muted leading-relaxed">
-                  <span className="font-medium text-ink">Paste anything:</span> wallet address
-                  (ss58), block number, transaction hash (0x…) or block hash to jump directly.
-                </p>
-              </div>
-
-              {recent.length > 0 ? (
-                <div className="px-3 pb-2 border-t border-border pt-2">
-                  <p className="mg-label mb-2 flex items-center gap-1.5">
-                    <Clock className="size-3" />
-                    Recent
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {recent.slice(0, 5).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => {
-                          setQ(r);
-                          setOpen(true);
-                          inputRef.current?.focus();
-                        }}
-                        className="rounded-full border border-border bg-card px-2.5 py-0.5 text-[11px] text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors"
+        {/* Dropdown — wider than the input, right-aligned */}
+        {open ? (
+          <div
+            id="nav-omnibox-listbox"
+            role="listbox"
+            className="absolute right-0 mt-1.5 w-[600px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-paper shadow-2xl z-50 overflow-hidden"
+          >
+            {/* ── Empty state: no query typed ─────────────────────────── */}
+            {showSuggestions ? (
+              <div>
+                <div className="px-3 pt-3 pb-2">
+                  <p className="mg-label mb-2">Jump to</p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {NAV_LINKS.map((r) => (
+                      <Link
+                        key={r.to}
+                        to={r.to}
+                        onClick={() => setOpen(false)}
+                        className="group/jump flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 hover:border-accent/40 hover:bg-surface transition-colors"
                       >
-                        {r}
-                      </button>
+                        <r.Icon className="size-3.5 shrink-0 text-ink-muted group-hover/jump:text-accent transition-colors" />
+                        <span className="min-w-0">
+                          <span className="block text-[12px] font-medium text-ink-strong truncate">
+                            {r.label}
+                          </span>
+                          <span className="block text-[10px] text-ink-muted truncate">
+                            {r.hint}
+                          </span>
+                        </span>
+                      </Link>
                     ))}
                   </div>
                 </div>
-              ) : null}
 
-              <div className="px-3 py-2 border-t border-border flex items-center justify-between">
-                <span className="font-mono text-[10px] text-ink-muted">
-                  <Kbd>↑</Kbd> <Kbd>↓</Kbd> navigate · <Kbd>↵</Kbd> open
-                </span>
-                <button
-                  type="button"
-                  onClick={onOpenPalette}
-                  className="inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted hover:text-ink-strong transition-colors"
-                >
-                  Full search
-                  <ArrowRight className="size-2.5" />
-                </button>
-              </div>
-            </div>
-          ) : null}
+                <div className="mx-3 mb-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2">
+                  <p className="text-[11px] text-ink-muted leading-relaxed">
+                    <span className="font-medium text-ink">Paste anything:</span> wallet address
+                    (ss58), block number, transaction hash (0x…) or block hash to jump directly.
+                  </p>
+                </div>
 
-          {/* ── Results state: query typed ───────────────────────────── */}
-          {showResults ? (
-            <div>
-              {/* Direct-navigation targets (ss58 / block / extrinsic) */}
-              {navTargets.length > 0 ? (
-                <div className="px-2 pt-2 pb-1">
-                  <p className="px-1 mg-label mb-1">Go to</p>
-                  {navTargets.map((n, i) => {
-                    if (n.kind !== "nav") return null;
-                    const Icon = n.icon;
-                    const isActive = i === active;
-                    return (
-                      <button
-                        key={`nav-${n.to}-${n.label}`}
-                        type="button"
-                        id={`nav-omnibox-option-${i}`}
-                        role="option"
-                        aria-selected={isActive}
-                        onMouseEnter={() => setActive(i)}
-                        onClick={() => commit(n)}
-                        className={classNames(
-                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
-                          isActive ? "bg-surface" : "hover:bg-surface/60",
-                        )}
-                      >
-                        <Icon className="size-4 shrink-0 text-accent" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-medium text-ink-strong">
-                            {n.label}
-                          </span>
-                          <span className="block font-mono text-[10px] text-ink-muted truncate">
-                            {n.hint}
-                          </span>
-                        </span>
-                        <span className="shrink-0 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-accent/80">
-                          {n.badge}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
+                {recent.length > 0 ? (
+                  <div className="px-3 pb-2 border-t border-border pt-2">
+                    <p className="mg-label mb-2 flex items-center gap-1.5">
+                      <Clock className="size-3" />
+                      Recent
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recent.slice(0, 5).map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => {
+                            setQ(r);
+                            setOpen(true);
+                            inputRef.current?.focus();
+                          }}
+                          className="rounded-full border border-border bg-card px-2.5 py-0.5 text-[11px] text-ink-muted hover:text-ink-strong hover:border-accent/40 transition-colors"
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
-              {/* Search hits */}
-              {isFetching && hits.length === 0 ? (
-                <div className="px-3 py-5 text-center font-mono text-[11px] text-ink-muted">
-                  Searching…
-                </div>
-              ) : hits.length === 0 && navTargets.length === 0 ? (
-                <div className="px-3 py-5 text-center font-mono text-[11px] text-ink-muted">
-                  No results. Try pasting a wallet address, block number, or tx hash.
-                </div>
-              ) : hits.length > 0 ? (
-                <div
-                  className={classNames(
-                    "px-2 pb-1",
-                    navTargets.length > 0 ? "border-t border-border pt-2" : "pt-2",
-                  )}
-                >
-                  {[...grouped.entries()].map(([kind, items]) => {
-                    const Icon = KIND_ICON[kind] ?? Activity;
-                    return (
-                      <div key={kind} className="mb-1 last:mb-0">
-                        <p className="px-1 mg-label mb-1">{KIND_LABEL[kind] ?? kind}s</p>
-                        {items.map((h) => {
-                          const idx = flat.findIndex((f) => f.kind === "hit" && f.hit.id === h.id);
-                          const isActive = idx === active;
-                          return (
-                            <button
-                              key={h.id}
-                              type="button"
-                              id={`nav-omnibox-option-${idx}`}
-                              role="option"
-                              aria-selected={isActive}
-                              onMouseEnter={() => setActive(idx)}
-                              onClick={() => commit({ kind: "hit", hit: h })}
-                              className={classNames(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
-                                isActive ? "bg-surface" : "hover:bg-surface/60",
-                              )}
-                            >
-                              <Icon className="size-3.5 shrink-0 text-ink-muted" />
-                              <span className="min-w-0 flex-1">
-                                <span className="block text-sm text-ink-strong truncate">
-                                  {h.title ?? h.url ?? h.id}
-                                </span>
-                                <span className="block font-mono text-[10px] text-ink-muted truncate">
-                                  {h.netuid != null
-                                    ? `netuid ${h.netuid}`
-                                    : (h.slug ?? h.url ?? "")}
-                                </span>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-
-              {/* "Search for …" fallback action */}
-              {debounced ? (
-                <div className="px-2 pb-2 border-t border-border pt-2">
+                <div className="px-3 py-2 border-t border-border flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-ink-muted">
+                    <Kbd>↑</Kbd> <Kbd>↓</Kbd> navigate · <Kbd>↵</Kbd> open
+                  </span>
                   <button
                     type="button"
-                    id={`nav-omnibox-option-${flat.length - 1}`}
-                    role="option"
-                    aria-selected={active === flat.length - 1}
-                    onMouseEnter={() => setActive(flat.length - 1)}
-                    onClick={() => commit({ kind: "action" })}
-                    className={classNames(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
-                      active === flat.length - 1 ? "bg-surface" : "hover:bg-surface/60",
-                    )}
+                    onClick={onOpenPalette}
+                    className="inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted hover:text-ink-strong transition-colors"
                   >
-                    <Search className="size-3.5 text-ink-muted shrink-0" />
-                    <span className="text-sm text-ink-strong">
-                      Filter /subnets by{" "}
-                      <span className="font-mono text-accent-text">"{debounced}"</span>
-                    </span>
-                    <span className="ml-auto font-mono text-[10px] text-ink-muted">
-                      <Kbd>↵</Kbd>
-                    </span>
+                    Full search
+                    <ArrowRight className="size-2.5" />
                   </button>
                 </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+              </div>
+            ) : null}
+
+            {/* ── Results state: query typed ───────────────────────────── */}
+            {showResults ? (
+              <div>
+                {/* Direct-navigation targets (ss58 / block / extrinsic) */}
+                {navTargets.length > 0 ? (
+                  <div className="px-2 pt-2 pb-1">
+                    <p className="px-1 mg-label mb-1">Go to</p>
+                    {navTargets.map((n, i) => {
+                      if (n.kind !== "nav") return null;
+                      const Icon = n.icon;
+                      const isActive = i === active;
+                      return (
+                        <button
+                          key={`nav-${n.to}-${n.label}`}
+                          type="button"
+                          id={`nav-omnibox-option-${i}`}
+                          role="option"
+                          aria-selected={isActive}
+                          onMouseEnter={() => setActive(i)}
+                          onClick={() => commit(n)}
+                          className={classNames(
+                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
+                            isActive ? "bg-surface" : "hover:bg-surface/60",
+                          )}
+                        >
+                          <Icon className="size-4 shrink-0 text-accent" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium text-ink-strong">
+                              {n.label}
+                            </span>
+                            <span className="block font-mono text-[10px] text-ink-muted truncate">
+                              {n.hint}
+                            </span>
+                          </span>
+                          <span className="shrink-0 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-accent/80">
+                            {n.badge}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {/* Search hits */}
+                {isFetching && hits.length === 0 ? (
+                  <div className="px-3 py-5 text-center font-mono text-[11px] text-ink-muted">
+                    Searching…
+                  </div>
+                ) : hits.length === 0 && navTargets.length === 0 ? (
+                  <div className="px-3 py-5 text-center font-mono text-[11px] text-ink-muted">
+                    No results. Try pasting a wallet address, block number, or tx hash.
+                  </div>
+                ) : hits.length > 0 ? (
+                  <div
+                    className={classNames(
+                      "px-2 pb-1",
+                      navTargets.length > 0 ? "border-t border-border pt-2" : "pt-2",
+                    )}
+                  >
+                    {[...grouped.entries()].map(([kind, items]) => {
+                      const Icon = KIND_ICON[kind] ?? Activity;
+                      return (
+                        <div key={kind} className="mb-1 last:mb-0">
+                          <p className="px-1 mg-label mb-1">{KIND_LABEL[kind] ?? kind}s</p>
+                          {items.map((h) => {
+                            const idx = flat.findIndex(
+                              (f) => f.kind === "hit" && f.hit.id === h.id,
+                            );
+                            const isActive = idx === active;
+                            return (
+                              <button
+                                key={h.id}
+                                type="button"
+                                id={`nav-omnibox-option-${idx}`}
+                                role="option"
+                                aria-selected={isActive}
+                                onMouseEnter={() => setActive(idx)}
+                                onClick={() => commit({ kind: "hit", hit: h })}
+                                className={classNames(
+                                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
+                                  isActive ? "bg-surface" : "hover:bg-surface/60",
+                                )}
+                              >
+                                <Icon className="size-3.5 shrink-0 text-ink-muted" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block text-sm text-ink-strong truncate">
+                                    {h.title ?? h.url ?? h.id}
+                                  </span>
+                                  <span className="block font-mono text-[10px] text-ink-muted truncate">
+                                    {h.netuid != null
+                                      ? `netuid ${h.netuid}`
+                                      : (h.slug ?? h.url ?? "")}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {/* "Search for …" fallback action */}
+                {debounced ? (
+                  <div className="px-2 pb-2 border-t border-border pt-2">
+                    <button
+                      type="button"
+                      id={`nav-omnibox-option-${flat.length - 1}`}
+                      role="option"
+                      aria-selected={active === flat.length - 1}
+                      onMouseEnter={() => setActive(flat.length - 1)}
+                      onClick={() => commit({ kind: "action" })}
+                      className={classNames(
+                        "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
+                        active === flat.length - 1 ? "bg-surface" : "hover:bg-surface/60",
+                      )}
+                    >
+                      <Search className="size-3.5 text-ink-muted shrink-0" />
+                      <span className="text-sm text-ink-strong">
+                        Filter /subnets by{" "}
+                        <span className="font-mono text-accent-text">"{debounced}"</span>
+                      </span>
+                      <span className="ml-auto font-mono text-[10px] text-ink-muted">
+                        <Kbd>↵</Kbd>
+                      </span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </>
   );

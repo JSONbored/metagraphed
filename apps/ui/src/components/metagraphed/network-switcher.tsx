@@ -78,7 +78,10 @@ export function NetworkSwitcher() {
         >
           <Globe2 className="size-3.5 text-ink-muted shrink-0" />
           <span className="hidden md:inline text-ink-strong">{network.label}</span>
-          <span className={classNames("inline-block size-1.5 rounded-full shrink-0", dotCls)} aria-hidden />
+          <span
+            className={classNames("inline-block size-1.5 rounded-full shrink-0", dotCls)}
+            aria-hidden
+          />
           <ChevronDown className="hidden md:inline size-3 text-ink-muted shrink-0" />
         </button>
       </PopoverTrigger>
