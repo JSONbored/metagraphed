@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { classNames } from "@/lib/metagraphed/format";
+import { useCopy } from "@/hooks/use-copy";
 
 interface Props {
   /** Optional explicit URL; defaults to current window.location.href. */
@@ -11,25 +12,25 @@ interface Props {
 }
 
 export function ShareButton({ url, label = "Share view", className }: Props) {
-  const [copied, setCopied] = useState(false);
+  // #3425: reuse the shared useCopy hook for the clipboard write, copied-state,
+  // and reset timer (the app-wide primitive every other copy affordance uses),
+  // keeping ShareButton's two extras it doesn't cover — the window.location.href
+  // fallback and the sr-only aria-live announcement. toastOnSuccess is off so the
+  // distinct "Link copied" success toast below is preserved; useCopy already
+  // surfaces the failure toast, so the error path isn't double-notified.
+  const { copied, copy } = useCopy({ toastOnSuccess: false });
   const [announcement, setAnnouncement] = useState("");
 
   const onClick = async () => {
-    try {
-      const href = url ?? (typeof window !== "undefined" ? window.location.href : "");
-      if (!href) return;
-      await navigator.clipboard.writeText(href);
-      setCopied(true);
-      setAnnouncement(`Link copied to clipboard: ${href}`);
+    const href = url ?? (typeof window !== "undefined" ? window.location.href : "");
+    if (!href) return;
+    const ok = await copy(href);
+    if (ok) {
       toast.success("Link copied", {
         description: "Filters, sort, and pagination are preserved in the URL.",
       });
-      window.setTimeout(() => setCopied(false), 1400);
-      window.setTimeout(() => setAnnouncement(""), 2000);
-    } catch {
-      toast.error("Couldn't copy link", {
-        description: "Your browser blocked clipboard access.",
-      });
+      setAnnouncement(`Link copied to clipboard: ${href}`);
+    } else {
       setAnnouncement("Couldn't copy link to clipboard.");
     }
   };
