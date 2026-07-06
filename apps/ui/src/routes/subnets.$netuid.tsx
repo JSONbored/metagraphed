@@ -45,6 +45,7 @@ import {
   lineageQuery,
   agentCatalogDetailQuery,
   subnetWeightSettersQuery,
+  subnetWeightsQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -842,6 +843,35 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
 
 // Top-validator stake distribution + leaderboard. Rows drill into the same
 // per-UID neuron view (switches to the Metagraph tab where the detail renders).
+// #3479: aggregate weight-setting activity for this subnet over the trailing
+// 30-day window, from the already-shipped subnetWeightsQuery. A compact KPI strip
+// (distinct setters / total weight-sets / average per setter) summarising the
+// per-validator breakdown below; complements, and does not duplicate, that table.
+function WeightsSummaryLoader({ netuid }: { netuid: number }) {
+  const { data: res } = useSuspenseQuery(subnetWeightsQuery(netuid));
+  const w = res.data;
+  const cells = [
+    { label: "Distinct setters", value: formatNumber(w?.distinct_setters) },
+    { label: "Weight-sets (30d)", value: formatNumber(w?.weight_sets) },
+    {
+      label: "Avg per setter",
+      value: w?.sets_per_setter != null ? w.sets_per_setter.toFixed(1) : formatNumber(null),
+    },
+  ];
+  return (
+    <div className="mb-4 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-card">
+      {cells.map((c) => (
+        <div key={c.label} className="px-4 py-3">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            {c.label}
+          </div>
+          <div className="mt-0.5 font-mono text-lg tabular-nums text-ink-strong">{c.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // #3480: per-validator weight-setting leaderboard for this subnet over the
 // trailing 30-day window, from the already-shipped subnetWeightSettersQuery.
 // The API returns the setters pre-ranked by weight-set count; we show the top
@@ -860,8 +890,7 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
   return (
     <div className="mt-6">
       <h3 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-        Weight-setters (30d): {formatNumber(d.distinct_setters)} validators,{" "}
-        {formatNumber(d.weight_sets)} sets
+        Weight-setters (per-validator breakdown)
       </h3>
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="overflow-x-auto">
@@ -931,6 +960,11 @@ function ValidatorsPanel({ netuid }: { netuid: number }) {
               })
             }
           />
+        </Suspense>
+      </QueryErrorBoundary>
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+          <WeightsSummaryLoader netuid={netuid} />
         </Suspense>
       </QueryErrorBoundary>
       <QueryErrorBoundary>
