@@ -4,6 +4,7 @@ import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { TableState } from "@/components/metagraphed/table-state";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
+import { FreshnessIndicator } from "@/components/metagraphed/freshness";
 
 const TOP_N = 10;
 
@@ -48,21 +49,33 @@ export function ValidatorsTableLoader({
     );
   }
 
+  const freshness = (
+    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+      Daily rollup
+      <FreshnessIndicator at={meta?.generated_at} />
+    </span>
+  );
+
   return (
     <div className="space-y-4">
       {stakeBars.length > 0 ? (
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
               Validator stake · top {stakeBars.length}
             </span>
-            <span className="font-mono text-[10px] text-ink-muted">
-              peak {taoCompact(stakeBars[0]?.value)} τ
+            <span className="ml-auto flex items-center gap-3">
+              <span className="font-mono text-[10px] text-ink-muted">
+                peak {taoCompact(stakeBars[0]?.value)} τ
+              </span>
+              {freshness}
             </span>
           </div>
           <BarMini data={stakeBars} />
         </div>
-      ) : null}
+      ) : (
+        <div className="flex items-center justify-end">{freshness}</div>
+      )}
 
       <NeuronTable
         netuid={netuid}
