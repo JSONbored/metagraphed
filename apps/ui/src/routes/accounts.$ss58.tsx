@@ -108,9 +108,15 @@ function AccountDetail({ ss58 }: { ss58: string }) {
         />
         <EmptyState
           title="Invalid account address"
-          description="Use a valid hotkey or coldkey ss58 address."
+          description="Bittensor addresses start with 5, are 46–49 characters long, and use the base58 alphabet (digits and letters excluding 0, O, I, and l). This value doesn't match — check for a truncated or wrong-chain address."
           action={{ label: "Back to accounts", href: "/accounts" }}
         />
+        <div className="mt-3 flex flex-col items-center gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            Example of a valid address
+          </span>
+          <CopyableCode value="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" truncate={false} />
+        </div>
       </>
     );
   }
