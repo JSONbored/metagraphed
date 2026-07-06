@@ -812,6 +812,63 @@ export function sortValue(value) {
   return value;
 }
 
+export const REGISTRY_SYNC_DEFAULT_URL =
+  "https://api.metagraph.sh/api/v1/internal/registry-sync";
+// Stay comfortably under workers/registry-sync-api.mjs's own 4 MiB body /
+// 5,000-rows-per-kind caps -- these are call-site chunk sizes, not the
+// server's actual limit, so a caller can safely batch well below them.
+export const REGISTRY_SYNC_MAX_BODY_BYTES = 3_500_000;
+export const REGISTRY_SYNC_MAX_ROWS_PER_KIND = 2_000;
+
+// Shared POST client for scripts/sync-registry-to-postgres.mjs (merge-
+// triggered) and scripts/backfill-registry-postgres.mjs (scheduled full
+// resync) -- both send {providers, subnets, surfaces} row arrays to the
+// registry-sync Worker over HTTPS instead of touching Postgres directly (see
+// workers/registry-sync-api.mjs). Returns null when REGISTRY_SYNC_SECRET
+// isn't set, so callers can no-op gracefully before the secret is
+// provisioned; throws on any transport/auth/validation failure so a real
+// misconfiguration fails the run loudly instead of silently doing nothing.
+export async function postRegistrySync(payload) {
+  const secret = process.env.REGISTRY_SYNC_SECRET;
+  if (!secret) {
+    return null;
+  }
+  const endpoint = process.env.REGISTRY_SYNC_URL || REGISTRY_SYNC_DEFAULT_URL;
+  const body = JSON.stringify(payload);
+  if (new TextEncoder().encode(body).length > REGISTRY_SYNC_MAX_BODY_BYTES) {
+    throw new Error(
+      `registry-sync payload of ${body.length} bytes exceeds the ${REGISTRY_SYNC_MAX_BODY_BYTES}-byte chunk budget -- split it further before calling postRegistrySync`,
+    );
+  }
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-registry-sync-token": secret,
+    },
+    body,
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      `registry-sync request to ${endpoint} failed (${response.status}): ${json.error || response.statusText}`,
+    );
+  }
+  return json;
+}
+
+// Splits `rows` into chunks of at most `maxRows` each -- used to keep every
+// individual postRegistrySync() call under the server's rows-per-kind cap
+// when a caller (namely the full backfill) has more rows than fit in one
+// request. Always returns at least one (possibly empty) chunk.
+export function chunkRows(rows, maxRows = REGISTRY_SYNC_MAX_ROWS_PER_KIND) {
+  const chunks = [];
+  for (let i = 0; i < rows.length; i += maxRows) {
+    chunks.push(rows.slice(i, i + maxRows));
+  }
+  return chunks.length ? chunks : [[]];
+}
+
 const schemaGeneratedTimestampKeys = new Set(["x-generated-at", "x-timestamp"]);
 const schemaDroppedContentKeys = new Set([
   "description",

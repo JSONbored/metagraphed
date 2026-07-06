@@ -1,0 +1,191 @@
+// metagraphed registry-sync Worker — the ONLY write path into the registry
+// Postgres instance (a dedicated, separate database from the chain-indexer's
+// -- see deploy/postgres/registry-schema.sql). Kept SEPARATE from the main
+// api.mjs Worker and from workers/data-api.mjs (which is READ-ONLY by design
+// for chain data) for the same bundle-budget reason ADR 0013 already split
+// data-api.mjs out: the postgres.js driver shouldn't grow every Worker that
+// merely proxies to it.
+//
+// Reached only via the main Worker's REGISTRY_SYNC_API service binding (no
+// public routes of its own) -- see workers/api.mjs's handleRegistrySyncProxy,
+// which forwards the request here unchanged. This Worker's shared-secret
+// check below is the only auth gate in the whole path.
+//
+// This is the write path scripts/sync-registry-to-postgres.mjs (merge-
+// triggered) and scripts/backfill-registry-postgres.mjs (scheduled full
+// resync) call over HTTPS from GitHub Actions -- there is no Tailscale, SSH,
+// or direct network path from CI to the database at all. GitHub Actions
+// only ever needs a REGISTRY_SYNC_SECRET value and the public HTTPS
+// endpoint; the database itself stays exactly as private as it already was
+// (bound to 127.0.0.1 on its host, reachable only via the Cloudflare Tunnel
+// + Workers VPC Service + Hyperdrive path already proven for reads).
+import postgres from "postgres";
+import { timingSafeEqual } from "../src/webhooks.mjs";
+
+const TOKEN_HEADER = "x-registry-sync-token";
+const MAX_BODY_BYTES = 4_194_304; // 4 MiB -- the full registry is ~1.5k surfaces, comfortably under this
+const MAX_ROWS_PER_KIND = 5_000;
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+function isValidRow(row) {
+  return row && typeof row === "object" && !Array.isArray(row);
+}
+
+export default {
+  async fetch(request, env) {
+    if (request.method !== "POST") {
+      return json({ error: "method not allowed" }, 405);
+    }
+    if (!env.REGISTRY_SYNC_SECRET) {
+      return json(
+        { error: "registry sync is not provisioned on this deployment" },
+        503,
+      );
+    }
+    const provided = request.headers.get(TOKEN_HEADER) || "";
+    if (!provided || !timingSafeEqual(provided, env.REGISTRY_SYNC_SECRET)) {
+      return json({ error: `provide a valid ${TOKEN_HEADER} header` }, 401);
+    }
+    if (!env.HYPERDRIVE?.connectionString) {
+      return json({ error: "hyperdrive binding unavailable" }, 503);
+    }
+
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) {
+      return json({ error: `body exceeds ${MAX_BODY_BYTES} bytes` }, 413);
+    }
+    let body;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      return json({ error: "body must be JSON" }, 400);
+    }
+    const subnets = Array.isArray(body?.subnets) ? body.subnets : [];
+    const providers = Array.isArray(body?.providers) ? body.providers : [];
+    const surfaces = Array.isArray(body?.surfaces) ? body.surfaces : [];
+    for (const [name, rows] of [
+      ["subnets", subnets],
+      ["providers", providers],
+      ["surfaces", surfaces],
+    ]) {
+      if (rows.length > MAX_ROWS_PER_KIND) {
+        return json(
+          { error: `at most ${MAX_ROWS_PER_KIND} ${name} rows per request` },
+          413,
+        );
+      }
+      if (!rows.every(isValidRow)) {
+        return json({ error: `${name} must be an array of row objects` }, 400);
+      }
+    }
+    if (!subnets.length && !providers.length && !surfaces.length) {
+      return json({ error: "no rows provided" }, 400);
+    }
+
+    const sql = postgres(env.HYPERDRIVE.connectionString, {
+      max: 5,
+      prepare: false,
+      fetch_types: false,
+    });
+
+    const summary = {
+      providers_written: 0,
+      subnets_written: 0,
+      surfaces_written: 0,
+    };
+    try {
+      await sql`SET statement_timeout = '10000ms'`;
+
+      for (const p of providers) {
+        if (!p.id || !p.overlay || !p.source_commit) continue;
+        await sql`
+          INSERT INTO providers (id, overlay, source_commit)
+          VALUES (${p.id}, ${sql.json(p.overlay)}, ${p.source_commit})
+          ON CONFLICT (id) DO UPDATE SET
+            overlay = EXCLUDED.overlay,
+            source_commit = EXCLUDED.source_commit,
+            updated_at = now()
+          WHERE providers.overlay IS DISTINCT FROM EXCLUDED.overlay`;
+        summary.providers_written += 1;
+      }
+
+      for (const s of subnets) {
+        if (
+          !Number.isInteger(s.netuid) ||
+          !s.slug ||
+          !s.name ||
+          !s.overlay ||
+          !s.source_commit
+        )
+          continue;
+        await sql`
+          INSERT INTO subnets (netuid, slug, name, source, overlay, source_commit)
+          VALUES (${s.netuid}, ${s.slug}, ${s.name}, ${s.source || "community"}, ${sql.json(s.overlay)}, ${s.source_commit})
+          ON CONFLICT (netuid) DO UPDATE SET
+            slug = EXCLUDED.slug,
+            name = EXCLUDED.name,
+            source = EXCLUDED.source,
+            overlay = EXCLUDED.overlay,
+            source_commit = EXCLUDED.source_commit,
+            updated_at = now()`;
+        summary.subnets_written += 1;
+      }
+
+      for (const surf of surfaces) {
+        if (
+          !Number.isInteger(surf.subnet_netuid) ||
+          !surf.surface_key ||
+          !surf.kind ||
+          !surf.url ||
+          !surf.overlay ||
+          !surf.source_commit
+        )
+          continue;
+        const result = await sql`
+          INSERT INTO surfaces (
+            subnet_netuid, provider_id, surface_key, kind, url,
+            authority, review_state, probe_eligible, public_safe,
+            overlay, source_commit
+          )
+          VALUES (
+            ${surf.subnet_netuid}, ${surf.provider_id ?? null}, ${surf.surface_key}, ${surf.kind}, ${surf.url},
+            ${surf.authority || "community"}, ${surf.review_state || "community-submitted"},
+            ${Boolean(surf.probe_eligible)}, ${surf.public_safe !== false},
+            ${sql.json(surf.overlay)}, ${surf.source_commit}
+          )
+          ON CONFLICT (subnet_netuid, kind, url) DO UPDATE SET
+            provider_id = EXCLUDED.provider_id,
+            surface_key = EXCLUDED.surface_key,
+            authority = EXCLUDED.authority,
+            review_state = EXCLUDED.review_state,
+            probe_eligible = EXCLUDED.probe_eligible,
+            public_safe = EXCLUDED.public_safe,
+            overlay = EXCLUDED.overlay,
+            source_commit = EXCLUDED.source_commit,
+            updated_at = now()
+          WHERE surfaces.overlay IS DISTINCT FROM EXCLUDED.overlay
+          RETURNING (xmax = 0) AS inserted`;
+        if (result.length) {
+          const action = result[0].inserted ? "insert" : "update";
+          await sql`
+            INSERT INTO surface_history (subnet_netuid, action, overlay, source_commit)
+            VALUES (${surf.subnet_netuid}, ${action}, ${sql.json(surf.overlay)}, ${surf.source_commit})`;
+          summary.surfaces_written += 1;
+        }
+      }
+
+      return json({ ok: true, ...summary });
+    } catch (err) {
+      console.error("registry-sync-api write failed:", err);
+      return json({ error: "write failed" }, 502);
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  },
+};
