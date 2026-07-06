@@ -901,6 +901,31 @@ export interface AccountSubnets {
   [key: string]: unknown;
 }
 
+/** Per-subnet AxonInfoRemoved row in /api/v1/accounts/{ss58}/axon-removals. */
+export interface AccountAxonRemovalsSubnet {
+  netuid: number;
+  removals: number;
+  first_removed_at: string | null;
+  last_removed_at: string | null;
+}
+
+/**
+ * One account's axon-removal (teardown) footprint over a 7d/30d/90d window, from
+ * /api/v1/accounts/{ss58}/axon-removals — the account-level companion to
+ * /api/v1/subnets/{netuid}/axon-removals. Zeroed when the account had no
+ * AxonInfoRemoved events in the window.
+ */
+export interface AccountAxonRemovals {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_removals: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountAxonRemovalsSubnet[];
+}
+
 /**
  * One neuron position a wallet holds on a subnet, from
  * /api/v1/accounts/{ss58}/portfolio: its economics plus emission/stake yield.
