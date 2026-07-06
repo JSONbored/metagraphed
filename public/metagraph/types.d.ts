@@ -6837,7 +6837,7 @@ export interface components {
             netuid: number;
             neuron_count: number;
             neurons: {
-                emission_tao: number;
+                emission_tao: number | null;
                 hotkey: string | null;
                 /** @enum {string} */
                 role: "validator" | "miner";
