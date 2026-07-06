@@ -37,6 +37,14 @@ function dbWith({
                   return { results: activity ? [activity] : [] };
                 if (/COUNT\(\*\) AS c\b/.test(sql))
                   return { results: agg ? [agg] : [] };
+                // Account weight-setters (#3842): the query is one UNION ALL
+                // combining a `FROM account_events` seek with a `FROM neurons
+                // ... JOIN account_events` fallback, so it textually matches
+                // BOTH the `FROM neurons` and `FROM account_events` checks
+                // below -- match its unique `AS weight_sets` alias first so
+                // it resolves to the `events` fixture, not `registrations`.
+                if (/AS weight_sets/.test(sql))
+                  return { results: events || [] };
                 if (/FROM neurons/.test(sql))
                   return { results: registrations || [] };
                 if (/FROM extrinsics/.test(sql))
