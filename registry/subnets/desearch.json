@@ -297,6 +297,31 @@
         "https://www.desearch.ai/openapi.json"
       ],
       "url": "https://api.desearch.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-22-desearch-py-sdk",
+      "kind": "sdk",
+      "name": "Desearch Python SDK",
+      "notes": "Official async Desearch Python SDK on PyPI (desearch-py, v1.2.1) for the Desearch API. Published by the Desearch-ai GitHub org that also hosts the registered SN22 source repository (Desearch-ai/subnet-22); the desearch.py README declares it the \"Official async Python SDK for the Desearch API\" installed via pip install desearch-py.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "desearch",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/Desearch-ai/desearch.py",
+        "https://github.com/Desearch-ai/desearch.py/blob/main/README.md"
+      ],
+      "url": "https://pypi.org/project/desearch-py/"
     }
   ],
   "website_url": "https://www.desearch.ai/"
