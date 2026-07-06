@@ -1261,6 +1261,18 @@ describe("script utility contracts", () => {
     assert.equal(entry.overlay, allOverlays[0]);
   });
 
+  test("buildSubnetOverlaysByNetuid falls back to sn-<netuid> when the name has no sluggable characters", () => {
+    const allOverlays = [{ netuid: 7, name: "###" }];
+
+    const byNetuid = buildSubnetOverlaysByNetuid({
+      allOverlays,
+      manualOverlays: [],
+      root: "/repo",
+    });
+
+    assert.equal(byNetuid.get(7).filePath, "/repo/registry/subnets/sn-7.json");
+  });
+
   test("buildSubnetOverlaysByNetuid refuses a generated overlay that collides with a manual file", () => {
     const manualOverlays = [
       {
