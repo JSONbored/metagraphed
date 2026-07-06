@@ -72,13 +72,14 @@ export function NetworkSwitcher() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink hover:border-ink/30 transition-colors min-h-7"
+          className="inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card font-mono text-[10px] uppercase tracking-widest text-ink hover:border-ink/30 transition-colors min-h-9 min-w-9 md:min-w-0 md:px-2 md:py-1"
           title={`Network: ${network.label} · ${base}`}
+          aria-label={`Network: ${network.label}`}
         >
-          <Globe2 className="size-3 text-ink-muted" />
-          <span className="text-ink-strong">{network.label}</span>
-          <span className={classNames("inline-block size-1.5 rounded-full", dotCls)} aria-hidden />
-          <ChevronDown className="size-3 text-ink-muted" />
+          <Globe2 className="size-3.5 text-ink-muted shrink-0" />
+          <span className="hidden md:inline text-ink-strong">{network.label}</span>
+          <span className={classNames("inline-block size-1.5 rounded-full shrink-0", dotCls)} aria-hidden />
+          <ChevronDown className="hidden md:inline size-3 text-ink-muted shrink-0" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-3 space-y-3">

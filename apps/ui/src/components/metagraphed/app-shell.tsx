@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Compass, Github, Menu, X } from "lucide-react";
+import { ChevronRight, Compass, Github, Menu, Search, X } from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -125,11 +125,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Top bar */}
           <header
             data-scrolled={scrolled ? "true" : "false"}
-            className="mg-header sticky top-0 z-30 border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75"
+            className="mg-header sticky top-0 z-30 border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75 overflow-x-clip"
           >
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
+            <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-8 flex h-nav items-center gap-2 sm:gap-3 min-w-0">
               <button
-                className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-10 min-w-10 inline-flex items-center justify-center"
+                className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-10 min-w-10 shrink-0 inline-flex items-center justify-center"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open menu"
               >
@@ -138,10 +138,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Brand />
               <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
               <NavMegaMenu />
-              <div className="flex-1 flex justify-end">
+              <div className="flex-1 min-w-0 flex justify-end">
                 <NavOmnibox onOpenPalette={() => setPaletteOpen(true)} />
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <ApiDrawerTrigger />
 
                 <NetworkSwitcher />
@@ -233,6 +233,17 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="mg-label inline-flex items-center gap-1">
                   <Compass className="size-3" /> Unofficial registry
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setPaletteOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-left text-sm text-ink-muted hover:border-accent/40 hover:text-ink-strong transition-colors"
+                >
+                  <Search className="size-4 shrink-0" aria-hidden="true" />
+                  <span>Search subnets, wallets, blocks…</span>
+                </button>
                 <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
                 <div className="mt-auto border-t border-border pt-3">
                   <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">

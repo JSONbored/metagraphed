@@ -301,7 +301,21 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     showResults && active < flat.length ? `nav-omnibox-option-${active}` : undefined;
 
   return (
-    <div ref={wrapRef} className="relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0">
+    <>
+      {/* Mobile: icon opens the full command palette — keeps the header row from overflowing. */}
+      <button
+        type="button"
+        onClick={onOpenPalette}
+        aria-label="Search the registry"
+        className="md:hidden inline-flex items-center justify-center rounded-full border border-border bg-card size-10 shrink-0 text-ink-muted hover:border-accent/40 hover:text-ink-strong transition-colors"
+      >
+        <Search className="size-4" aria-hidden="true" />
+      </button>
+
+      <div
+        ref={wrapRef}
+        className="relative hidden md:block flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
+      >
       {/* Input */}
       <div
         className={classNames(
@@ -551,6 +565,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           ) : null}
         </div>
       ) : null}
-    </div>
+      </div>
+    </>
   );
 }
