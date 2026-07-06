@@ -136,6 +136,31 @@
         "timeout_ms": 10000
       },
       "notes": "Official Vanta Network source repository."
+    },
+    {
+      "id": "sn-8-vanta-model-parameters",
+      "name": "Vanta scoring model parameters",
+      "kind": "subnet-api",
+      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/all_model_parameters.json",
+      "provider": "vanta",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/vali_bkp_utils.py",
+        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/model_parameters/all_model_parameters.json"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "notes": "Public no-auth GET all_model_parameters.json on the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Provides the per-asset buy/sell slippage model parameters (intercept and coefficients) that the validator loads via vali_objects/utils/vali_bkp_utils.py to score miner positions."
     }
   ],
   "social": {
