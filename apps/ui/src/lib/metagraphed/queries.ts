@@ -2978,14 +2978,16 @@ export const subnetHealthQuery = (netuid: number) =>
  * newest first, from the account_events tier filtered by netuid. Schema-stable
  * zero for a cold/unknown subnet.
  */
-export const subnetEventsQuery = (netuid: number) =>
+export type SubnetEventsParams = { kind?: string };
+
+export const subnetEventsQuery = (netuid: number, params: SubnetEventsParams = {}) =>
   queryOptions({
-    queryKey: k("subnet-events", netuid),
+    queryKey: k("subnet-events", netuid, params.kind ?? null),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>(
-        `/api/v1/subnets/${netuid}/events?limit=100`,
-        { signal },
-      );
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/events`, {
+        params: { limit: 100, ...params },
+        signal,
+      });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const events = normalizeAccountEvents(d.events);
       return {

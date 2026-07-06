@@ -103,3 +103,10 @@ export function eventKindLabel(kind: string | null | undefined): string {
 export function eventKindCategoryLabel(category: EventKindCategory): string {
   return EVENT_KIND_CATEGORY_LABELS[category];
 }
+
+export type EventKindFilterOption = { value: string; label: string };
+
+/** SelectFilter-ready options from {@link EVENT_KIND_LABELS} for subnet event-kind filters. */
+export function eventKindFilterOptions(): EventKindFilterOption[] {
+  return Object.entries(EVENT_KIND_LABELS).map(([value, label]) => ({ value, label }));
+}

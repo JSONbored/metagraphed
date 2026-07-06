@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   EVENT_KIND_CATEGORIES,
+  EVENT_KIND_LABELS,
   eventKindCategory,
   eventKindCategoryLabel,
+  eventKindFilterOptions,
   eventKindLabel,
 } from "./event-kinds";
 
@@ -54,5 +56,16 @@ describe("eventKindCategoryLabel", () => {
   it("returns explorer-facing category names", () => {
     expect(eventKindCategoryLabel("stake")).toBe("Stake");
     expect(eventKindCategoryLabel("other")).toBe("Other");
+  });
+});
+
+describe("eventKindFilterOptions", () => {
+  it("maps every known kind to a value/label pair for SelectFilter", () => {
+    const options = eventKindFilterOptions();
+    expect(options).toHaveLength(Object.keys(EVENT_KIND_LABELS).length);
+    expect(options.find((o) => o.value === "StakeAdded")).toEqual({
+      value: "StakeAdded",
+      label: "Stake added",
+    });
   });
 });
