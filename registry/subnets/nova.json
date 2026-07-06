@@ -85,6 +85,47 @@
         "https://github.com/metanova-labs/nova/blob/16da5da15919ff3757b82a5980cf59460335d23e/utils/challenge.py#L37"
       ],
       "url": "https://huggingface.co/datasets/Metanova/Proteins"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-68-nova-score-share-openapi",
+      "kind": "openapi",
+      "name": "NOVA Boltz score sharing API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.x schema for the NOVA SN68 validator score-sharing service (title: Boltz score sharing API). Served publicly at vali-score-share-api.metanova-labs.ai; documents molecule and nanobody score-share routes used by validators to average non-deterministic model results.",
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://vali-score-share-api.metanova-labs.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/metanova-labs/nova/blob/main/neurons/validator/validator.py",
+        "https://github.com/metanova-labs/nova/blob/main/docs/VALIDATOR.md",
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+      ],
+      "url": "https://vali-score-share-api.metanova-labs.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-68-nova-score-share-molecules",
+      "kind": "subnet-api",
+      "name": "NOVA score-share molecules catalog API",
+      "notes": "Public no-auth GET /api/v1/molecules on vali-score-share-api.metanova-labs.ai returning paginated molecule score-share records (items with name, epoch, target_averages). Documented as GET /api/v1/molecules in the subnet OpenAPI spec; same host as SCORE_SHARE_API_URL in the official nova validator docs and validator.py.",
+      "provider": "nova",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://vali-score-share-api.metanova-labs.ai/openapi.json",
+        "https://github.com/metanova-labs/nova/blob/main/docs/VALIDATOR.md"
+      ],
+      "url": "https://vali-score-share-api.metanova-labs.ai/api/v1/molecules"
     }
   ],
   "source_repo": "https://github.com/metanova-labs/nova",
