@@ -129,6 +129,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Investing source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-88-investing-pnl-api",
+      "kind": "subnet-api",
+      "name": "Investing PnL API",
+      "notes": "Public no-auth GET /pnl on api.investing88.ai returning JSON miner PnL records (observed: HTTP 200 JSON array). The official Investing/core/api.py client fetches this endpoint via API_ROOT and the const.py module pins API_ROOT to api.investing88.ai.",
+      "provider": "mobiusfund",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/mobiusfund/investing/blob/main/Investing/core/api.py",
+        "https://github.com/mobiusfund/investing/blob/main/Investing/core/const.py"
+      ],
+      "url": "https://api.investing88.ai/pnl"
     }
   ],
   "social": {
