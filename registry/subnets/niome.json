@@ -1,0 +1,40 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "NIOME",
+  "netuid": 55,
+  "schema_version": 1,
+  "slug": "sn-55",
+  "source_repo": "https://github.com/genomesio/subnet-niome",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-55-niome-tasks-api",
+      "kind": "subnet-api",
+      "name": "NIOME tasks API",
+      "notes": "Public no-auth GET /api/tasks on niome-api.genomes.io returning JSON task listings (observed: HTTP 200 with items containing genome_context and input fields). The official genomesio/subnet-niome validator constants set BASE_URL to this host and TASK_URL to /api/tasks.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "niome",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/constants.py"
+      ],
+      "url": "https://niome-api.genomes.io/api/tasks"
+    }
+  ],
+  "website_url": "https://niome.genomes.io/"
+}
