@@ -13,6 +13,7 @@ import {
   Rows3,
   Unplug,
   UserMinus,
+  UserPlus,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
@@ -34,6 +35,7 @@ import {
   accountDeregistrationsQuery,
   accountEventsQuery,
   accountExtrinsicsQuery,
+  accountRegistrationsQuery,
   accountQuery,
   accountSubnetsQuery,
   accountTransfersQuery,
@@ -249,6 +251,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
 
       <AccountTeardownActivitySection ss58={ss58} />
+      <AccountRegistrationActivitySection ss58={ss58} />
       <AccountDeregistrationActivitySection ss58={ss58} />
 
       {account.event_kinds.length > 0 ? (
@@ -634,6 +637,79 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
           eyebrow="Distinct subnets"
           value={formatNumber(distinctSubnets)}
           hint="subnets with teardown"
+          className={KPI_TILE}
+        />
+      </div>
+    </SectionAnchor>
+  );
+}
+
+/**
+ * Per-account registration (NeuronRegistered) activity over a 7d/30d/90d
+ * window — the onboarding-side complement to the deregistration summary. A flat
+ * KPI card: total registrations + distinct subnets registered on.
+ */
+function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountRegistrationsQuery(ss58));
+  const card = result.data?.data;
+  const windowLabel = card?.window ?? "30d";
+
+  if (result.isPending && !card) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="registrations"
+        title="Registration activity"
+        subtitle="NeuronRegistered events for this account over the trailing 30-day window."
+      />
+    );
+  }
+
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="registrations"
+        title="Registration activity"
+        subtitle="NeuronRegistered events for this account over the trailing 30-day window."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load registration activity"
+          description="The registrations tier is optional enrichment."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const registrations = card?.total_registrations ?? 0;
+  const distinctSubnets = card?.subnet_count ?? 0;
+  if (registrations === 0 && distinctSubnets === 0) return null;
+
+  return (
+    <SectionAnchor
+      id="registrations"
+      title="Registration activity"
+      subtitle="NeuronRegistered events for this account over the trailing 30-day window."
+      tone="accent"
+      info="The onboarding-side complement to account deregistrations — counts how many times this account registered a neuron, and on how many distinct subnets."
+      right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
+    >
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+        <StatTile
+          icon={UserPlus}
+          eyebrow="Registrations"
+          tone="accent"
+          value={formatNumber(registrations)}
+          hint={`NeuronRegistered · ${windowLabel}`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Distinct subnets"
+          value={formatNumber(distinctSubnets)}
+          hint="subnets registered on"
           className={KPI_TILE}
         />
       </div>

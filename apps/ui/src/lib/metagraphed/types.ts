@@ -975,6 +975,29 @@ export interface AccountDeregistrations {
   subnets: AccountDeregistrationsSubnet[];
 }
 
+export interface AccountRegistrationsSubnet {
+  netuid: number;
+  registrations: number;
+  first_observed: string | null;
+  last_observed: string | null;
+}
+
+/**
+ * One account's registration (NeuronRegistered) footprint over a
+ * 7d/30d/90d window, from /api/v1/accounts/{ss58}/registrations.
+ * Zeroed when the account had no NeuronRegistered events in the window.
+ */
+export interface AccountRegistrations {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_registrations: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountRegistrationsSubnet[];
+}
+
 /**
  * One neuron position a wallet holds on a subnet, from
  * /api/v1/accounts/{ss58}/portfolio: its economics plus emission/stake yield.
