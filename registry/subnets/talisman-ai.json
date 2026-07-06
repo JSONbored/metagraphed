@@ -64,6 +64,46 @@
         "timeout_ms": 10000
       },
       "notes": "Official Talisman AI source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-45-talisman-openapi",
+      "kind": "openapi",
+      "name": "Talisman coordination API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the Talisman SN45 coordination API (title: Alpharidge AI API). Served publicly at api.alpharidge.ai; documents validator/miner coordination routes and the no-auth GET /health probe.",
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.alpharidge.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/Team-Rizzo/talisman-ai/blob/main/README.md#L153",
+        "https://api.alpharidge.ai/openapi.json"
+      ],
+      "url": "https://api.alpharidge.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-45-talisman-health",
+      "kind": "subnet-api",
+      "name": "Talisman coordination API health",
+      "notes": "Public no-auth GET /health on api.alpharidge.ai returning liveness JSON (observed: {\"status\":\"healthy\"}). Documented as GET /health in the subnet OpenAPI spec; api.alpharidge.ai is the default MINER_API_URL configured in the official talisman-ai README for SN45 validators and miners.",
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://api.alpharidge.ai/openapi.json",
+        "https://github.com/Team-Rizzo/talisman-ai/blob/main/README.md#L153"
+      ],
+      "url": "https://api.alpharidge.ai/health"
     }
   ],
   "social": { "x": "https://x.com/wearetalisman" },
