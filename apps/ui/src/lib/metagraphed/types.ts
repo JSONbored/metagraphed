@@ -960,6 +960,31 @@ export interface AccountAxonRemovals {
   subnets: AccountAxonRemovalsSubnet[];
 }
 
+/** Per-subnet NeuronDeregistered row in /api/v1/accounts/{ss58}/deregistrations. */
+export interface AccountDeregistrationsSubnet {
+  netuid: number;
+  deregistrations: number;
+  first_deregistered_at: string | null;
+  last_deregistered_at: string | null;
+}
+
+/**
+ * One account's deregistration (eviction) footprint over a 7d/30d/90d window, from
+ * /api/v1/accounts/{ss58}/deregistrations — the account-level companion to
+ * /api/v1/subnets/{netuid}/deregistrations. Zeroed when the account had no
+ * NeuronDeregistered events in the window.
+ */
+export interface AccountDeregistrations {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_deregistrations: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountDeregistrationsSubnet[];
+}
+
 /** Per-subnet WeightsSet row in /api/v1/accounts/{ss58}/weight-setters. */
 export interface AccountWeightSettersSubnet {
   netuid: number;
@@ -983,6 +1008,55 @@ export interface AccountWeightSetters {
   concentration: number | null;
   dominant_netuid: number | null;
   subnets: AccountWeightSettersSubnet[];
+}
+
+/** Per-subnet AxonServed row in /api/v1/accounts/{ss58}/serving. */
+export interface AccountServingSubnet {
+  netuid: number;
+  announcements: number;
+  first_served_at: string | null;
+  last_served_at: string | null;
+}
+
+/**
+ * One account's axon-serving footprint over a 7d/30d/90d window, from
+ * /api/v1/accounts/{ss58}/serving — the account-level companion to
+ * /api/v1/subnets/{netuid}/serving. Zeroed when the account had no AxonServed
+ * events in the window.
+ */
+export interface AccountServing {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_announcements: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountServingSubnet[];
+}
+
+/** Per-subnet PrometheusServed row in /api/v1/accounts/{ss58}/prometheus. */
+export interface AccountPrometheusSubnet {
+  netuid: number;
+  announcements: number;
+  first_announced_at: string | null;
+  last_announced_at: string | null;
+}
+
+/**
+ * One account's Prometheus-endpoint serving footprint over a 7d/30d/90d window,
+ * from /api/v1/accounts/{ss58}/prometheus — the account-level companion to
+ * /api/v1/subnets/{netuid}/prometheus. Zeroed when cold.
+ */
+export interface AccountPrometheus {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_announcements: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountPrometheusSubnet[];
 }
 
 /**
@@ -1793,6 +1867,52 @@ export interface ChainTransferPairs {
   pair_count: number;
   top_pair_share: number | null;
   pairs: ChainTransferPair[];
+}
+
+/** One subnet's row on the network-wide stake-transfer leaderboard (#3467). */
+export interface ChainStakeTransferSubnet {
+  netuid: number;
+  distinct_senders: number;
+  transfers: number;
+  transfers_per_sender: number | null;
+}
+
+/** Network-wide stake-transfer rollup — true distinct-sender count (not a per-subnet sum) + total transfers. */
+export interface ChainStakeTransferNetwork {
+  distinct_senders: number;
+  transfers: number;
+  transfers_per_sender: number | null;
+}
+
+/** Distribution summary of per-subnet transfer intensity (count, mean, min, p25, median, p75, p90, max). */
+export interface ChainIntensityDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
+/**
+ * Network-wide stake-transfer leaderboard over a 7d/30d window (#3467), from
+ * GET /api/v1/chain/stake-transfers — subnets ranked by StakeTransferred event
+ * count, distinct senders, and transfers per sender, plus the true network-wide
+ * distinct-sender rollup and a distribution summary of the per-subnet transfer
+ * intensity. The between-coldkeys sibling of /api/v1/chain/stake-moves
+ * (within-account re-delegation churn). Zeroed with an empty subnets list when
+ * the store is cold.
+ */
+export interface ChainStakeTransfers {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainStakeTransferNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainStakeTransferSubnet[];
 }
 
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */

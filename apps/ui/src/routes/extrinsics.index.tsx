@@ -18,8 +18,10 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
+import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -56,7 +58,24 @@ export const Route = createFileRoute("/extrinsics/")({
   component: ExtrinsicsPage,
 });
 
+type ExtrinsicsSearch = z.infer<typeof extrinsicsSearchSchema>;
+
+function extrinsicsQueryParams(search: ExtrinsicsSearch): Record<string, string | number> {
+  const queryParams: Record<string, string | number> = {
+    limit: search.limit,
+    offset: search.offset,
+  };
+  if (search.signer) queryParams.signer = search.signer;
+  if (search.call_module) queryParams.call_module = search.call_module;
+  if (search.call_function) queryParams.call_function = search.call_function;
+  if (search.success) queryParams.success = search.success;
+  return queryParams;
+}
+
 function ExtrinsicsPage() {
+  const search = Route.useSearch();
+  const extrinsicsCsvUrl = buildUrl("/api/v1/extrinsics", extrinsicsQueryParams(search));
+
   return (
     <AppShell>
       <PageHero
@@ -64,7 +83,12 @@ function ExtrinsicsPage() {
         live
         title="Extrinsics"
         description="Recent Bittensor extrinsics (transactions) indexed directly from the chain — newest first, with call, signer, and success."
-        actions={<ShareButton />}
+        actions={
+          <>
+            <DownloadCsvButton url={extrinsicsCsvUrl} />
+            <ShareButton />
+          </>
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
@@ -90,14 +114,7 @@ function ExtrinsicsTable() {
   const navigate = useNavigate({ from: Route.fullPath });
 
   // Only send filters the user actually set, so an empty bar is the plain feed.
-  const queryParams: Record<string, string | number> = {
-    limit: search.limit,
-    offset: search.offset,
-  };
-  if (search.signer) queryParams.signer = search.signer;
-  if (search.call_module) queryParams.call_module = search.call_module;
-  if (search.call_function) queryParams.call_function = search.call_function;
-  if (search.success) queryParams.success = search.success;
+  const queryParams = extrinsicsQueryParams(search);
 
   const rows = (useSuspenseQuery(extrinsicsQuery(queryParams)).data.data ?? []) as Extrinsic[];
 

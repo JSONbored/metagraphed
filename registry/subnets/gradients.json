@@ -274,6 +274,22 @@
         "https://www.gradients.io/"
       ],
       "url": "https://api.gradients.io/tournament/fees"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-auditing-tasks-api",
+      "kind": "subnet-api",
+      "name": "Gradients auditing tasks API",
+      "notes": "Public no-auth GET /auditing/tasks — audited task records (task id, organic flag, status, model) for the SN56 Gradients tournament. Documented in the subnet's openapi and served on the same api.gradients.io host as the subnet's registered API surfaces.",
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "url": "https://api.gradients.io/auditing/tasks"
     }
   ],
   "website_url": "https://www.gradients.io/"

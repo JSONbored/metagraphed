@@ -169,6 +169,25 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Public NATIX StreetVision HuggingFace image+text dataset (~8.5k road/roadwork scenes with structured scene/weather/lighting metadata) backing the SN72 roadwork image-classification task; not gated. The StreetVision README (source) declares the Bittensor subnet and links the natix-network-org HF org that owns it."
+    },
+    {
+      "id": "sn-72-natix-roadwork-rows-api",
+      "name": "StreetVision roadwork dataset rows API",
+      "kind": "data-artifact",
+      "url": "https://datasets-server.huggingface.co/rows?dataset=natix-network-org/roadwork&config=default&split=train&offset=0&length=100",
+      "provider": "natix",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/natixnetwork/streetvision-subnet",
+        "https://huggingface.co/datasets/natix-network-org/roadwork"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "notes": "Public no-auth Hugging Face Datasets Server rows API for the official StreetVision roadwork dataset — returns machine-readable JSON (schema + row records with image/id/width/height/scene metadata), a distinct callable endpoint from the existing HF dataset webpage surface above. Fills the file's gap note for a verified safe public subnet API endpoint."
     }
   ],
   "social": {

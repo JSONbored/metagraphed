@@ -163,6 +163,33 @@
         "submitted_by": "davion-knight"
       },
       "notes": "Public Tensorplex Dojo (SN52) HuggingFace DPO dataset of human-feedback preference pairs collected through the subnet's Dojo human-feedback-loop platform; not gated. The dojo repo README (source) declares the Bittensor subnet (--netuid 52) and the tensorplex-labs HF org owns the dataset. Distinct from the subnet's registered Dojo-Synthetic-SFT dataset."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-52-tensorplex-openapi",
+      "kind": "openapi",
+      "name": "Dojo Worker API OpenAPI spec",
+      "notes": "Swagger 2.0 spec (20 paths) for the Dojo Worker API, committed in the official tensorplex-labs/dojo-worker-api repository at docs/swagger.json and served here via the jsDelivr view of that exact repo file (raw.githubusercontent.com serves it as text/plain, which machine-readable validation rejects). The previously hosted API base https://dojo.network/api/v1 (the TASK_API_URL default in tensorplex-labs/dojo internal/config/env.go) currently 301-redirects every path to the GitHub repo, so the committed spec is the subnet's only live machine-readable API description.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://cdn.jsdelivr.net/gh/tensorplex-labs/dojo-worker-api@main/docs/swagger.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/dojo-worker-api",
+        "https://raw.githubusercontent.com/tensorplex-labs/dojo-worker-api/main/docs/swagger.json"
+      ],
+      "url": "https://cdn.jsdelivr.net/gh/tensorplex-labs/dojo-worker-api@main/docs/swagger.json"
     }
   ],
   "contact": "jarvis@tensorplex.ai"

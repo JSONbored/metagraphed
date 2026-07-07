@@ -114,7 +114,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**126 curated subnets** — 107 with a site, 44 with docs, 109 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**127 curated subnets** — 108 with a site, 44 with docs, 110 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -173,6 +173,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[Dojo](https://metagraph.sh/subnets/52)** `SN52` — `tensorplex` · [site](https://www.tensorplex.ai/) · [docs](https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism) · [repo](https://github.com/tensorplex-labs/dojo)
 - **[EfficientFrontier](https://metagraph.sh/subnets/53)** `SN53` — `defi` `financial-trading` `trading-strategies` · [site](https://www.signalplus.com/) · [repo](https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier)
 - **[Yanez MIID](https://metagraph.sh/subnets/54)** `SN54` · [site](https://www.yanez.ai/) · [repo](https://github.com/yanez-compliance/MIID-subnet)
+- **[NIOME](https://metagraph.sh/subnets/55)** `SN55` · [site](https://niome.genomes.io/) · [repo](https://github.com/genomesio/subnet-niome)
 - **[Gradients](https://metagraph.sh/subnets/56)** `SN56` — `ai-training` `operational-interface` · [site](https://www.gradients.io/) · [docs](https://api.gradients.io/docs) · [repo](https://github.com/gradients-ai/G.O.D)
 - **[Sparket](https://metagraph.sh/subnets/57)** `SN57` — `prediction-market` `sports` · [site](https://sparket.ai/) · [repo](https://github.com/sparket-ai/sparket-ai)
 - **[Handshake58](https://metagraph.sh/subnets/58)** `SN58` — `ai-marketplace` `payments` · [site](https://handshake58.com) · [docs](https://handshake58.com/skill.md) · [repo](https://github.com/Handshake58/HS58-subnet)

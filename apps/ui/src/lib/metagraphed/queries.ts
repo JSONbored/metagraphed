@@ -29,8 +29,14 @@ import type {
   SourceHealthProvider,
   AccountAxonRemovals,
   AccountAxonRemovalsSubnet,
+  AccountDeregistrations,
+  AccountDeregistrationsSubnet,
   AccountWeightSetters,
   AccountWeightSettersSubnet,
+  AccountPrometheus,
+  AccountPrometheusSubnet,
+  AccountServing,
+  AccountServingSubnet,
   AccountBalance,
   AccountDay,
   AccountEvent,
@@ -52,6 +58,9 @@ import type {
   ChainFeePayer,
   ChainTransferPair,
   ChainTransferPairs,
+  ChainStakeTransfers,
+  ChainStakeTransferSubnet,
+  ChainIntensityDistribution,
   ChainConcentration,
   ChainPerformance,
   ChainSigners,
@@ -186,6 +195,7 @@ const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
 const MAX_CHAIN_TRANSFER_PAIRS = 100;
+const MAX_CHAIN_STAKE_TRANSFERS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -2313,6 +2323,62 @@ export const accountAxonRemovalsQuery = (ss58: string, window = "30d") =>
     staleTime: STALE_MED,
   });
 
+function normalizeAccountDeregistrationsSubnet(raw: unknown): AccountDeregistrationsSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    deregistrations: firstFiniteNumber(raw.deregistrations) ?? 0,
+    first_deregistered_at: firstString(raw.first_deregistered_at) ?? null,
+    last_deregistered_at: firstString(raw.last_deregistered_at) ?? null,
+  };
+}
+
+// Per-account deregistration (eviction) footprint over a 7d/30d/90d window. A flat
+// summary card — total deregistrations + distinct subnets — from the account_events
+// NeuronDeregistered stream. Every numeric cell coerces defensively: counts fall
+// through to 0 and concentration to null on a cold store or junk.
+export function normalizeAccountDeregistrations(
+  ss58: string,
+  raw: unknown,
+): AccountDeregistrations {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountDeregistrationsSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_deregistrations: firstFiniteNumber(rec.total_deregistrations) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountDeregistrationsQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-deregistrations", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountDeregistrations>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/deregistrations`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountDeregistrations(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
 function normalizeAccountWeightSettersSubnet(raw: unknown): AccountWeightSettersSubnet | null {
   if (!isRecord(raw)) return null;
   const netuid = firstFiniteNumber(raw.netuid);
@@ -2359,6 +2425,104 @@ export const accountWeightSettersQuery = (ss58: string, window = "30d") =>
       );
       return {
         data: normalizeAccountWeightSetters(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountServingSubnet(raw: unknown): AccountServingSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    announcements: firstFiniteNumber(raw.announcements) ?? 0,
+    first_served_at: firstString(raw.first_served_at) ?? null,
+    last_served_at: firstString(raw.last_served_at) ?? null,
+  };
+}
+
+export function normalizeAccountServing(ss58: string, raw: unknown): AccountServing {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountServingSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_announcements: firstFiniteNumber(rec.total_announcements) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountServingQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-serving", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountServing>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/serving`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountServing(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountPrometheusSubnet(raw: unknown): AccountPrometheusSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    announcements: firstFiniteNumber(raw.announcements) ?? 0,
+    first_announced_at: firstString(raw.first_announced_at) ?? null,
+    last_announced_at: firstString(raw.last_announced_at) ?? null,
+  };
+}
+
+export function normalizeAccountPrometheus(ss58: string, raw: unknown): AccountPrometheus {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountPrometheusSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_announcements: firstFiniteNumber(rec.total_announcements) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountPrometheusQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-prometheus", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountPrometheus>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/prometheus`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountPrometheus(ss58, res.data),
         meta: res.meta,
         url: res.url,
       };
@@ -2646,6 +2810,78 @@ export const chainTransferPairsQuery = (
       });
       return {
         data: normalizeChainTransferPairs(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeChainStakeTransferSubnet(raw: unknown): ChainStakeTransferSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_senders: firstFiniteNumber(raw.distinct_senders) ?? 0,
+    transfers: firstFiniteNumber(raw.transfers) ?? 0,
+    transfers_per_sender: firstFiniteNumber(raw.transfers_per_sender) ?? null,
+  };
+}
+
+function normalizeChainIntensityDistribution(raw: unknown): ChainIntensityDistribution | null {
+  if (!isRecord(raw)) return null;
+  const count = firstFiniteNumber(raw.count);
+  if (count == null) return null;
+  return {
+    count,
+    mean: firstFiniteNumber(raw.mean) ?? 0,
+    min: firstFiniteNumber(raw.min) ?? 0,
+    p25: firstFiniteNumber(raw.p25) ?? 0,
+    median: firstFiniteNumber(raw.median) ?? 0,
+    p75: firstFiniteNumber(raw.p75) ?? 0,
+    p90: firstFiniteNumber(raw.p90) ?? 0,
+    max: firstFiniteNumber(raw.max) ?? 0,
+  };
+}
+
+// #3467: network-wide stake-transfer leaderboard over a 7d/30d window — the
+// between-coldkeys sibling of /api/v1/chain/stake-moves (within-account
+// re-delegation churn). Every numeric cell coerces defensively: counts fall
+// through to 0, averages to null (never NaN), and malformed subnet rows are
+// dropped on a cold store or junk.
+export function normalizeChainStakeTransfers(raw: unknown): ChainStakeTransfers {
+  const rec = isRecord(raw) ? raw : {};
+  const networkRec = isRecord(rec.network) ? rec.network : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: {
+      distinct_senders: firstFiniteNumber(networkRec.distinct_senders) ?? 0,
+      transfers: firstFiniteNumber(networkRec.transfers) ?? 0,
+      transfers_per_sender: firstFiniteNumber(networkRec.transfers_per_sender) ?? null,
+    },
+    intensity_distribution: normalizeChainIntensityDistribution(rec.intensity_distribution),
+    subnets: normalizeChainRows(
+      rec.subnets,
+      MAX_CHAIN_STAKE_TRANSFERS,
+      normalizeChainStakeTransferSubnet,
+    ),
+  };
+}
+
+export const chainStakeTransfersQuery = (window = "7d", limit = 20) =>
+  queryOptions({
+    queryKey: k("chain-stake-transfers", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainStakeTransfers>>("/api/v1/chain/stake-transfers", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainStakeTransfers(res.data),
         meta: res.meta,
         url: res.url,
       };

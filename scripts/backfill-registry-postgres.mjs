@@ -114,6 +114,7 @@ async function main() {
     providers_written: 0,
     subnets_written: 0,
     surfaces_written: 0,
+    surfaces_deleted: 0,
   };
 
   // Providers + subnets are small (low hundreds) -- one request each is
@@ -129,6 +130,12 @@ async function main() {
     if (!chunk.length) continue;
     const result = await postRegistrySync({ surfaces: chunk });
     summary.surfaces_written += result?.surfaces_written ?? 0;
+  }
+
+  for (const chunk of chunkRows(buildSurfacePruneRows(subnets, surfaces))) {
+    if (!chunk.length) continue;
+    const result = await postRegistrySync({ prune_surfaces: chunk });
+    summary.surfaces_deleted += result?.surfaces_deleted ?? 0;
   }
 
   console.log(stableStringify(summary));
@@ -177,6 +184,26 @@ function collectOverlays(
       });
     }
   }
+}
+
+function buildSurfacePruneRows(subnets, surfaces) {
+  const bySubnet = new Map(
+    subnets.map((subnet) => [
+      subnet.netuid,
+      {
+        subnet_netuid: subnet.netuid,
+        current_surfaces: [],
+        source_commit: subnet.source_commit,
+      },
+    ]),
+  );
+  for (const surface of surfaces) {
+    bySubnet.get(surface.subnet_netuid)?.current_surfaces.push({
+      kind: surface.kind,
+      url: surface.url,
+    });
+  }
+  return [...bySubnet.values()];
 }
 
 async function currentCommitSha() {

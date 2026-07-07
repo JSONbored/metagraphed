@@ -77,15 +77,22 @@ async function main() {
   const providers = [];
   const subnets = [];
   const surfaces = [];
+  const pruneSurfaces = [];
+  const deleteSubnets = [];
   const skippedInvalid = [];
 
   for (const file of changedFiles) {
     const stillExists = fileExistsAtHead(file);
     if (!stillExists) {
-      // Deletions aren't synced yet (rare — this repo's surface model is
-      // append-only in practice); leaving the last-known row in place is
-      // safer than guessing at removal semantics here.
-      console.log(`${file} was deleted in this push; leaving its row(s) as-is`);
+      if (file.startsWith("registry/subnets/")) {
+        const deletedSubnet = readSubnetFromCommit(args.base, file);
+        if (deletedSubnet) {
+          deleteSubnets.push({
+            netuid: deletedSubnet.netuid,
+            source_commit: args.head,
+          });
+        }
+      }
       continue;
     }
     const absolutePath = path.join(repoRoot, file);
@@ -103,7 +110,7 @@ async function main() {
         skippedInvalid.push(file);
         continue;
       }
-      await collectSubnetFile(absolutePath, subnets, surfaces);
+      await collectSubnetFile(absolutePath, subnets, surfaces, pruneSurfaces);
     } else {
       await collectProviderFile(absolutePath, providers);
     }
@@ -113,14 +120,30 @@ async function main() {
     providers_written: 0,
     subnets_written: 0,
     surfaces_written: 0,
+    surfaces_deleted: 0,
+    subnets_deleted: 0,
     skipped_invalid: skippedInvalid,
   };
 
-  if (providers.length || subnets.length || surfaces.length) {
-    const result = await postRegistrySync({ providers, subnets, surfaces });
+  if (
+    providers.length ||
+    subnets.length ||
+    surfaces.length ||
+    pruneSurfaces.length ||
+    deleteSubnets.length
+  ) {
+    const result = await postRegistrySync({
+      providers,
+      subnets,
+      surfaces,
+      prune_surfaces: pruneSurfaces,
+      delete_subnets: deleteSubnets,
+    });
     summary.providers_written = result?.providers_written ?? 0;
     summary.subnets_written = result?.subnets_written ?? 0;
     summary.surfaces_written = result?.surfaces_written ?? 0;
+    summary.surfaces_deleted = result?.surfaces_deleted ?? 0;
+    summary.subnets_deleted = result?.subnets_deleted ?? 0;
   }
 
   console.log(stableStringify(summary));
@@ -141,7 +164,12 @@ async function collectProviderFile(absolutePath, providersOut) {
   providersOut.push({ id: overlay.id, overlay, source_commit: args.head });
 }
 
-async function collectSubnetFile(absolutePath, subnetsOut, surfacesOut) {
+async function collectSubnetFile(
+  absolutePath,
+  subnetsOut,
+  surfacesOut,
+  pruneSurfacesOut,
+) {
   const overlay = await readJson(absolutePath);
   if (!Number.isInteger(overlay.netuid) || !overlay.slug || !overlay.name) {
     console.error(
@@ -165,7 +193,9 @@ async function collectSubnetFile(absolutePath, subnetsOut, surfacesOut) {
     source_commit: args.head,
   });
 
+  const currentSurfaces = [];
   for (const surface of surfaces) {
+    currentSurfaces.push({ kind: surface.kind, url: surface.url });
     surfacesOut.push({
       subnet_netuid: overlay.netuid,
       provider_id: surface.provider || null,
@@ -184,6 +214,18 @@ async function collectSubnetFile(absolutePath, subnetsOut, surfacesOut) {
       source_commit: args.head,
     });
   }
+  pruneSurfacesOut.push({
+    subnet_netuid: overlay.netuid,
+    current_surfaces: currentSurfaces,
+    source_commit: args.head,
+    // This file's `surfaces` array is only ever the community-authored ones --
+    // it has no visibility into machine-generated/candidate-promoted surfaces
+    // the same subnet may also carry (that's generateBaselineOverlaySet's job,
+    // via the scheduled backfill). Scope the Worker's prune to authority =
+    // 'community' so this fast path can never delete a row it has no way to
+    // know about.
+    authority_scope: "community",
+  });
 }
 
 function gitDiffFiles(base, head) {
@@ -195,6 +237,21 @@ function gitDiffFiles(base, head) {
     throw new Error(`git diff ${base}..${head} failed: ${result.stderr}`);
   }
   return result.stdout.split("\n").filter(Boolean);
+}
+
+function readSubnetFromCommit(commit, file) {
+  const result = spawnSync("git", ["show", `${commit}:${file}`], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  if (result.status !== 0) return null;
+  try {
+    const overlay = JSON.parse(result.stdout);
+    if (Number.isInteger(overlay.netuid)) return overlay;
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function fileExistsAtHead(file) {

@@ -44,6 +44,7 @@ import {
   fixturesIndexQuery,
   lineageQuery,
   agentCatalogDetailQuery,
+  subnetWeightSettersQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -841,6 +842,71 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
 
 // Top-validator stake distribution + leaderboard. Rows drill into the same
 // per-UID neuron view (switches to the Metagraph tab where the detail renders).
+// #3480: per-validator weight-setting leaderboard for this subnet over the
+// trailing 30-day window, from the already-shipped subnetWeightSettersQuery.
+// The API returns the setters pre-ranked by weight-set count; we show the top
+// slice as a compact table complementing the stake-ranked validator set above.
+function WeightSettersLoader({ netuid }: { netuid: number }) {
+  const { data: res } = useSuspenseQuery(subnetWeightSettersQuery(netuid));
+  const d = res.data;
+  if (!d || d.setter_count === 0) {
+    return (
+      <p className="mt-6 text-sm text-ink-muted">
+        No weight-setting activity recorded for this subnet in the last 30 days.
+      </p>
+    );
+  }
+  const rows = d.setters.slice(0, 15);
+  return (
+    <div className="mt-6">
+      <h3 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+        Weight-setters (30d): {formatNumber(d.distinct_setters)} validators,{" "}
+        {formatNumber(d.weight_sets)} sets
+      </h3>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-surface/50 text-ink-muted">
+              <tr>
+                <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
+                  #
+                </th>
+                <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
+                  Validator
+                </th>
+                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest">
+                  Weight sets
+                </th>
+                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest">
+                  Share
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((setter, i) => (
+                <tr key={setter.uid ?? setter.hotkey ?? i} className="border-t border-border">
+                  <td className="px-3 py-2.5 font-mono text-[12px] tabular-nums text-ink-muted">
+                    {i + 1}
+                  </td>
+                  <td className="px-3 py-2.5 font-mono text-[12px] tabular-nums text-ink-strong">
+                    {setter.uid != null ? `UID ${setter.uid}` : "validator"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-strong">
+                    {formatNumber(setter.weight_sets)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                    {setter.share != null ? `${(setter.share * 100).toFixed(1)}%` : "0%"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ValidatorsPanel({ netuid }: { netuid: number }) {
   const { uid } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -865,6 +931,11 @@ function ValidatorsPanel({ netuid }: { netuid: number }) {
               })
             }
           />
+        </Suspense>
+      </QueryErrorBoundary>
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+          <WeightSettersLoader netuid={netuid} />
         </Suspense>
       </QueryErrorBoundary>
     </SectionAnchor>

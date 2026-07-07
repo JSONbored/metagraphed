@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { synthesizeDonutAriaLabel } from "@/lib/metagraphed/chart-aria";
 
 export interface DonutSegment {
   label: string;
@@ -13,6 +14,8 @@ interface Props {
   centerLabel?: string;
   centerSub?: string;
   className?: string;
+  /** Accessible name; synthesized from `segments` when omitted. */
+  ariaLabel?: string;
 }
 
 /**
@@ -26,15 +29,19 @@ export function Donut({
   centerLabel,
   centerSub,
   className,
+  ariaLabel,
 }: Props) {
   const id = useId();
   const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
+  const label = ariaLabel ?? synthesizeDonutAriaLabel(segments);
 
   return (
     <div
+      role="img"
+      aria-label={label}
       className={className}
       style={{ width: size, height: size, position: "relative", flexShrink: 0 }}
     >
