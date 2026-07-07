@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-top-scores-over-time",
+      "kind": "data-artifact",
+      "name": "Ridges top-scores-over-time dataset",
+      "notes": "Public, unauthenticated GET /retrieval/top-scores-over-time on agent-upload.ridges.ai returning an hourly historical time-series (802 points spanning 2026-06-04 through the present) of the top SWE-agent score per hour — a genuine dataset, distinct from the live top-agents leaderboard snapshot already registered as the subnet-api surface. Documented in the subnet's own OpenAPI spec (already the registered schema_url) with summary \"Top Scores Over Time\", and defined in the same api/endpoints/retrieval.py source file backing the sibling subnet-api surface.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/retrieval.py",
+        "https://agent-upload.ridges.ai/openapi.json"
+      ],
+      "url": "https://agent-upload.ridges.ai/retrieval/top-scores-over-time"
     }
   ],
   "contact": "hello@ridges.ai"
