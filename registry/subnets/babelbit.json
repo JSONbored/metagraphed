@@ -52,6 +52,25 @@
         "https://github.com/babelbit/babelbit_subnet/blob/main/README.md"
       ],
       "url": "https://api.babelbit.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-59-babelbit-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Babelbit minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official babelbit/babelbit_subnet repository as min_compute.yml. Documents benchmark-based CPU, GPU, memory, storage, and bandwidth floors for SN59 utterance-engine miners and validators.",
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/babelbit/babelbit_subnet/blob/main/min_compute.yml",
+        "https://github.com/babelbit/babelbit_subnet/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/babelbit/babelbit_subnet/main/min_compute.yml"
     }
   ],
   "source_repo": "https://github.com/babelbit/babelbit_subnet",
