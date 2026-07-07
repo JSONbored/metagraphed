@@ -587,6 +587,17 @@ function fmtStake(v: number | null | undefined): string {
 const KPI_TILE =
   "rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]";
 
+// Compact TAO formatter for the portfolio KPI tiles — a long raw value like
+// "338,030.153 τ" wraps + overflows a narrow StatTile, so summarise it (338.0k τ).
+function fmtTaoCompact(v?: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (v === 0) return "0 τ";
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (v >= 1) return `${v.toFixed(2)} τ`;
+  return `${v.toFixed(4)} τ`;
+}
+
 // #3491: cross-subnet portfolio for this account, from the already-shipped
 // accountPortfolioQuery. An aggregate stake / emission / yield KPI row plus the
 // per-subnet position table (netuid, role, stake, emission, incentive). Non-
@@ -647,14 +658,14 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
         <StatTile
           icon={Coins}
           eyebrow="Total stake"
-          value={fmtStake(p.total_stake_tao)}
-          hint={`${formatNumber(p.validator_count)} validator / ${formatNumber(p.miner_count)} miner`}
+          value={fmtTaoCompact(p.total_stake_tao)}
+          hint={`${formatNumber(p.validator_count)} val / ${formatNumber(p.miner_count)} min`}
           className={KPI_TILE}
         />
         <StatTile
           icon={Sparkles}
           eyebrow="Total emission"
-          value={fmtStake(p.total_emission_tao)}
+          value={fmtTaoCompact(p.total_emission_tao)}
           hint="summed across positions"
           className={KPI_TILE}
         />
@@ -662,7 +673,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
           icon={TrendingUp}
           eyebrow="Overall yield"
           value={p.overall_yield != null ? p.overall_yield.toExponential(2) : "—"}
-          hint="emission / stake"
+          hint="return rate"
           className={KPI_TILE}
         />
       </div>
