@@ -200,6 +200,25 @@
         "https://bitcast-api.bitcast.network/docs"
       ],
       "url": "https://bitcast-api.bitcast.network/health/database"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Bitcast minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official bitcast-network/bitcast repository as min_compute.yml. Documents baseline CPU and RAM requirements for SN93 YouTube-token miners and validators.",
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/bitcast-network/bitcast/blob/main/min_compute.yml",
+        "https://github.com/bitcast-network/bitcast/blob/main/setup.py"
+      ],
+      "url": "https://raw.githubusercontent.com/bitcast-network/bitcast/main/min_compute.yml"
     }
   ]
 }
