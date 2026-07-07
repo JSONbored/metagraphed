@@ -66,6 +66,25 @@
       },
       "source_urls": ["https://github.com/safe-scan-ai/cancer-ai"],
       "url": "https://github.com/safe-scan-ai/cancer-ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-76-byzantium-agent-config",
+      "kind": "data-artifact",
+      "name": "Byzantium miner agent configuration",
+      "notes": "Public no-auth JSON miner agent-kit configuration (minerHandle, campaign, linkBase, Farcaster channel targets, posting rate limits, and persona traits) published in the official byzantiumaitao-arch/byzantium repository at ai-agent-kit/byzantium.config.json. Documented in ai-agent-kit/README.md as the primary file miners edit to configure the ElizaOS-based social promotion agent for SN76 click campaigns.",
+      "provider": "byzantium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/byzantiumaitao-arch/byzantium/blob/main/ai-agent-kit/README.md",
+        "https://github.com/byzantiumaitao-arch/byzantium/blob/main/ai-agent-kit/byzantium.config.json"
+      ],
+      "url": "https://raw.githubusercontent.com/byzantiumaitao-arch/byzantium/main/ai-agent-kit/byzantium.config.json"
     }
   ],
   "website_url": "https://www.byzantiumai.net/"
