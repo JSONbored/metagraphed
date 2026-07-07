@@ -549,8 +549,7 @@ function SectionHeader({
 
 function TrackedGrid() {
   const coverage = useQuery(coverageQuery()).data?.data as
-    | Record<string, number | undefined>
-    | undefined;
+    Record<string, number | undefined> | undefined;
   // Endpoint/provider totals are not in /api/v1/coverage — read from their own
   // list endpoints. Use limit=1 for endpoints (1197 items) to get only the
   // pagination meta; providers are small enough to load in full (cached for /providers).
