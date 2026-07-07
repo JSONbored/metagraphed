@@ -126,6 +126,25 @@
         "https://dashboard.theredteam.io/"
       ],
       "url": "https://dashboard.theredteam.io/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-61-redteam-active-challenges",
+      "kind": "data-artifact",
+      "name": "RedTeam active challenges registry",
+      "notes": "Public no-auth YAML challenge-pool registry listing active SN61 RedTeam challenges (names, incentive weights, Docker images, controller targets, resource limits, and container run configuration) published in the official RedTeamSubnet/RedTeam repository at src/redteam_core/challenge_pool/active_challenges.yaml. Loaded at validator startup by active_challenges_manager.py via ACTIVE_CHALLENGES_FILE.",
+      "provider": "redteam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/src/redteam_core/challenge_pool/active_challenges_manager.py",
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/src/redteam_core/challenge_pool/active_challenges.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/RedTeamSubnet/RedTeam/main/src/redteam_core/challenge_pool/active_challenges.yaml"
     }
   ],
   "contact": "oscar@theredteam.io"
