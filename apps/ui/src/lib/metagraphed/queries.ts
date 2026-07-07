@@ -125,6 +125,7 @@ import type {
   SubnetWeightSetter,
   SubnetWeightSetters,
   SubnetWeights,
+  SubnetTurnover,
   SubnetIdentityHistoryEntry,
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
@@ -3746,6 +3747,48 @@ export const subnetWeightsQuery = (netuid: number, window = "30d") =>
       });
       return {
         data: normalizeSubnetWeights(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-subnet validator-set & registration turnover (churn) scorecard: diffs the
+// window's start/end neuron_daily snapshots. `comparable: false` on a cold store
+// or single-snapshot window — ratio/score fields stay null rather than zeroed.
+export function normalizeSubnetTurnover(netuid: number, raw: unknown): SubnetTurnover {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    start_date: firstString(rec.start_date) ?? null,
+    end_date: firstString(rec.end_date) ?? null,
+    comparable: rec.comparable === true,
+    validators_start: firstFiniteNumber(rec.validators_start) ?? 0,
+    validators_end: firstFiniteNumber(rec.validators_end) ?? 0,
+    validators_entered: firstFiniteNumber(rec.validators_entered) ?? 0,
+    validators_exited: firstFiniteNumber(rec.validators_exited) ?? 0,
+    validator_retention: firstFiniteNumber(rec.validator_retention) ?? null,
+    neurons_start: firstFiniteNumber(rec.neurons_start) ?? 0,
+    neurons_end: firstFiniteNumber(rec.neurons_end) ?? 0,
+    uids_deregistered: firstFiniteNumber(rec.uids_deregistered) ?? 0,
+    neuron_retention: firstFiniteNumber(rec.neuron_retention) ?? null,
+    stability_score: firstFiniteNumber(rec.stability_score) ?? null,
+  };
+}
+
+export const subnetTurnoverQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-turnover", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetTurnover>>(`/api/v1/subnets/${netuid}/turnover`, {
+        params: { window },
+        signal,
+      });
+      return {
+        data: normalizeSubnetTurnover(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };
