@@ -237,6 +237,25 @@
         "https://luminar.network/"
       ],
       "url": "https://luminar.network/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-87-luminar-benchmark-submission-sample",
+      "kind": "data-artifact",
+      "name": "Luminar benchmark submission sample",
+      "notes": "Public no-auth CSV sample miner detection output (video_id, frame_idx, category, n_items, box_2d columns with bounding-box JSON) published in the official Luminar-Network/luminar-sn repository at benchmark/test/test_submission.csv. Documents the per-frame submission schema scored by luminar/validator/scoring.py and illustrated in the README Required output format section for SN87 traffic object-detection agents.",
+      "provider": "luminar-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/Luminar-Network/luminar-sn/blob/main/README.md",
+        "https://github.com/Luminar-Network/luminar-sn/blob/main/luminar/validator/scoring.py"
+      ],
+      "url": "https://raw.githubusercontent.com/Luminar-Network/luminar-sn/main/benchmark/test/test_submission.csv"
     }
   ],
   "website_url": "https://luminar.network/"
