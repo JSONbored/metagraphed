@@ -188,9 +188,7 @@ function AccountMiniProfile({ ss58 }: { ss58: string }) {
   return (
     <div className="space-y-2">
       <div className="min-w-0">
-        <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
-          account
-        </div>
+        <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">account</div>
         <div className="font-mono text-[10px] text-ink-muted truncate">{ss58}</div>
       </div>
       <dl className="grid grid-cols-2 gap-2 pt-1">
