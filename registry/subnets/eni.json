@@ -1,21 +1,6 @@
 {
-  "schema_version": 1,
-  "netuid": 101,
-  "name": "eni",
-  "slug": "eni",
-  "status": "active",
   "categories": ["baseline-curated", "identity-reviewed"],
-  "source_repo": "https://github.com/tag101-ai/tag101",
-  "website_url": "http://tag101.ai/",
-  "docs_url": null,
-  "dashboard_url": null,
-  "notes": "Reviewed overlay for SN101 eni. Public directories list the subnet, but no official website, source repository, API, OpenAPI schema, or docs site has been verified.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
-    "verified_at": "2026-06-08T15:00:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "No verified official website yet.",
       "No verified live source repository yet.",
@@ -24,7 +9,43 @@
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-06-08T15:00:00.000Z"
   },
-  "surfaces": []
+  "dashboard_url": null,
+  "docs_url": null,
+  "name": "eni",
+  "netuid": 101,
+  "notes": "Reviewed overlay for SN101 eni. Public directories list the subnet, but no official website, source repository, API, OpenAPI schema, or docs site has been verified.",
+  "schema_version": 1,
+  "slug": "eni",
+  "source_repo": "https://github.com/tag101-ai/tag101",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-101-tag101-subnet-api",
+      "kind": "subnet-api",
+      "name": "eni task-server API",
+      "notes": "Official reference task-server the validator/miner stack talks to (README: \"Validators retrieve posts from the database via API\"). Hardcoded as DEFAULT_TASK_SERVER_URL in chain/settings.py and overridable via --task-server.url/TASK_SERVER_URL. Live and routed (GET / -> 404 JSON; GET on the known POST routes -> 405, confirming the routes exist) but every functional endpoint (/tasks/lease, /tasks/report, /scoreboards, /scoreboards/latest, /miners/axon, /miners/axons per tasks/framework/client.py) requires a wallet-hotkey-signed JSON body, so there is no plain no-auth GET surface on this host.",
+      "provider": "tag101",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsdevninja"
+      },
+      "source_urls": [
+        "https://github.com/tag101-ai/tag101/blob/main/chain/settings.py",
+        "https://github.com/tag101-ai/tag101/blob/main/tasks/framework/client.py",
+        "https://github.com/tag101-ai/tag101/blob/main/README.md"
+      ],
+      "url": "https://crawler.tag101.ai/"
+    }
+  ],
+  "website_url": "http://tag101.ai/"
 }
