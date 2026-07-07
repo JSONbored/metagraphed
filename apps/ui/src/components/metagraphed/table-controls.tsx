@@ -105,7 +105,7 @@ export function SelectFilter({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-transparent text-ink-strong text-xs focus:outline-none"
+        className="bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <option value="">all</option>
         {options.map((o) => (
@@ -140,7 +140,7 @@ export function PageSizeSelect({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label="Results per page"
-        className="bg-transparent text-ink-strong text-xs focus:outline-none min-h-7"
+        className="bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-7"
       >
         {options.map((n) => (
           <option key={n} value={n}>
