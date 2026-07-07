@@ -28,6 +28,7 @@ import {
 import {
   subnetEndpointsQuery,
   subnetDeregistrationsQuery,
+  subnetEventSummaryQuery,
   subnetHealthPercentilesQuery,
   subnetRegistrationsQuery,
   subnetTrajectoryQuery,
@@ -88,6 +89,11 @@ const KIND_BUCKETS: Array<{
   { id: "data", label: "Data", color: "var(--health-warn)", match: (k) => k === "data" },
   { id: "other", label: "Other", color: "var(--border)", match: () => true },
 ];
+
+// Cycled palette for the event-category breakdown — categories are
+// data-driven (not a fixed enum we want to hand-map), so we assign colors by
+// rank rather than by category name.
+const CATEGORY_COLORS = ["var(--accent)", "var(--ink-strong)", "var(--health-warn)"];
 
 function classifyKind(k: unknown): string {
   const key = String(k ?? "other").toLowerCase();
@@ -172,8 +178,15 @@ export function SubnetMasthead({
   const { data: pctRes } = useQuery(subnetHealthPercentilesQuery(netuid));
   const { data: regRes } = useQuery(subnetRegistrationsQuery(netuid));
   const { data: deregRes } = useQuery(subnetDeregistrationsQuery(netuid));
+  const { data: summaryRes } = useQuery(subnetEventSummaryQuery(netuid));
   const reg = regRes?.data;
   const dereg = deregRes?.data;
+  const summary = summaryRes?.data;
+  const topCategories = (summary?.categories ?? [])
+    .slice()
+    .sort((a, b) => b.event_count - a.event_count)
+    .slice(0, 3);
+  const summaryAt = summaryRes?.meta?.generated_at ?? generatedAt;
 
   // Subnet-wide daily uptime % + median latency, meaned across tracked surfaces.
   const trendWindowKey = uptimeRes?.data?.window ?? "90d";
@@ -576,6 +589,31 @@ export function SubnetMasthead({
           full="Number of primary source links recorded"
           updatedAt={generatedAt}
           viz={<DotRow dots={sourceKinds} />}
+        />
+        <StatWithSpark
+          label="Activity"
+          value={summary != null ? formatNumber(summary.total_events) : "—"}
+          hint={
+            topCategories.length
+              ? topCategories.map((c) => `${c.event_count} ${c.category}`).join(" · ")
+              : "on-chain events"
+          }
+          full="Windowed on-chain event rollup for this subnet (registrations, stake, serving, transfers, etc.)"
+          updatedAt={summaryAt}
+          windowLabel={summary?.window ?? "7d"}
+          viz={
+            topCategories.length ? (
+              <MiniStack
+                segments={topCategories.map((c, i) => ({
+                  label: c.category,
+                  value: c.event_count,
+                  color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+                }))}
+              />
+            ) : (
+              <NoDataSpark updatedAt={summaryAt} windowLabel={summary?.window ?? "7d"} />
+            )
+          }
         />
       </div>
     </header>
