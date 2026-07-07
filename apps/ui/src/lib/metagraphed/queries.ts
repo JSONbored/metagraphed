@@ -5780,6 +5780,15 @@ export const evidenceQuery = (params?: QueryParams) =>
     staleTime: STALE_LONG,
   });
 
+/** Evidence ledger filtered to one subnet via the dedicated subnet-scoped route (#3347). */
+export const subnetEvidenceQuery = (netuid: number, params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("subnet-evidence", netuid, params ?? {}),
+    queryFn: ({ signal }) =>
+      fetchList<EvidenceItem>(`/api/v1/subnets/${netuid}/evidence`, "evidence", params, signal),
+    staleTime: STALE_LONG,
+  });
+
 export type SubnetGapsView = {
   netuid: number;
   missing_kinds: string[];
