@@ -937,6 +937,21 @@ describe("formatBulkTrends", () => {
     assert.equal(sn7.points[1].latency_sample_count, 90);
   });
 
+  test("accepts numeric-string netuids while rejecting blank ones", () => {
+    const out = formatBulkTrends({
+      windows: {
+        "7d": [
+          { netuid: "7", date: "2026-06-10", total: 2, ok_count: 2 },
+          { netuid: " ", date: "2026-06-10", total: 5, ok_count: 5 },
+        ],
+      },
+    });
+    assert.deepEqual(
+      out.windows["7d"].subnets.map((s) => s.netuid),
+      [7],
+    );
+  });
+
   test("empty or invalid rows keep the schema-stable cold shape", () => {
     const out = formatBulkTrends({
       windows: {
