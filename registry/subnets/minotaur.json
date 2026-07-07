@@ -31,6 +31,25 @@
         "https://github.com/subnet112/minotaur_subnet/blob/main/scripts/check_validator.sh"
       ],
       "url": "https://api.minotaursubnet.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-network-reference",
+      "kind": "data-artifact",
+      "name": "Minotaur operator network reference",
+      "notes": "Public no-auth Markdown operator network reference (netuid 112, finney subtensor endpoint, production API host, mainnet contract addresses on Base and BT EVM, quorum targets) published in the official subnet112/minotaur_subnet repository at docs/operator/network-reference.md. Documented as the authoritative operator network reference and cited by scripts/check_validator.sh for ValidatorRegistry configuration.",
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/operator/network-reference.md",
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/scripts/check_validator.sh"
+      ],
+      "url": "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/operator/network-reference.md"
     }
   ],
   "source_repo": "https://github.com/subnet112/minotaur_subnet",

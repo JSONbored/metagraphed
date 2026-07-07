@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, useMemo } from "react";
+import { z } from "zod";
 import { Network, Radio, Layers, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
@@ -17,6 +18,7 @@ import { ViewModeToggle, type ViewMode } from "@/components/metagraphed/view-mod
 import { useIsMobile } from "@/hooks/use-mobile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
+import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
   ariaSort,
@@ -40,6 +42,7 @@ import {
   agentCatalogMapQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { joinHealth, matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { AgentCatalogSummary, Subnet } from "@/lib/metagraphed/types";
@@ -92,6 +95,16 @@ export const Route = createFileRoute("/subnets/")({
   component: SubnetsPage,
 });
 
+type SubnetsSearch = z.infer<typeof tableSearchSchema>;
+
+/** Server-backed params only — sort/curation/health filters are client-side. */
+function subnetsQueryParams(search: SubnetsSearch): { q?: string; limit: number } {
+  return {
+    q: search.q || undefined,
+    limit: search.limit,
+  };
+}
+
 function SubnetsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -125,6 +138,7 @@ function SubnetsPage() {
       search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
       replace: true,
     });
+  const subnetsCsvUrl = buildUrl("/api/v1/subnets", subnetsQueryParams(search));
   return (
     <AppShell>
       <PageHero
@@ -139,6 +153,7 @@ function SubnetsPage() {
               <DensityToggle value={effectiveDensity} onChange={setDensity} />
             ) : null}
             <ResetFiltersButton active={filtersActive} onReset={onReset} />
+            <DownloadCsvButton url={subnetsCsvUrl} />
             <ShareButton />
           </>
         }
@@ -227,10 +242,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // /api/v1/subnets supports only q + cursor/limit. `sort` returns HTTP 400, and
   // `curation`/`health` are ignored server-side — so those are applied
   // client-side (filtered/sorted over the fetched pages) and must NOT be sent.
-  const baseParams = {
-    q: search.q || undefined,
-    limit: search.limit,
-  };
+  const baseParams = subnetsQueryParams(search);
 
   const {
     data,

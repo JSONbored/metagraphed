@@ -54,6 +54,25 @@
         "https://tao-ui-dashboard.yanez.ai/"
       ],
       "url": "https://miners-stats.yanezcompliance.net/miners_stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-54-yanez-compliance-miners-list",
+      "kind": "data-artifact",
+      "name": "Yanez MIID miner UID catalog",
+      "notes": "Public no-auth GET returning the full catalog of registered SN54 miner UIDs (254 entries observed), distinct from the miners_stats scoring payload already registered as the subnet-api surface. Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"List Miners\" (operationId list_miners_miners_get), same host as the registered openapi/subnet-api surfaces.",
+      "provider": "yanez-compliance",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://miners-stats.yanezcompliance.net/openapi.json",
+        "https://github.com/yanez-compliance/MIID-subnet"
+      ],
+      "url": "https://miners-stats.yanezcompliance.net/miners"
     }
   ],
   "website_url": "https://www.yanez.ai/"

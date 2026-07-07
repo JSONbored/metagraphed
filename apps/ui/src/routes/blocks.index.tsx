@@ -18,8 +18,10 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
+import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { blocksQuery, blocksSummaryQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -58,7 +60,26 @@ export const Route = createFileRoute("/blocks/")({
   component: BlocksPage,
 });
 
+type BlocksSearch = z.infer<typeof blocksSearchSchema>;
+
+function blocksQueryParams(search: BlocksSearch): Record<string, string | number> {
+  const queryParams: Record<string, string | number> = {
+    limit: search.limit,
+    offset: search.offset,
+  };
+  if (search.author) queryParams.author = search.author;
+  if (search.spec_version) queryParams.spec_version = search.spec_version;
+  if (search.block_start) queryParams.block_start = search.block_start;
+  if (search.block_end) queryParams.block_end = search.block_end;
+  if (search.min_extrinsics) queryParams.min_extrinsics = search.min_extrinsics;
+  if (search.min_events) queryParams.min_events = search.min_events;
+  return queryParams;
+}
+
 function BlocksPage() {
+  const search = Route.useSearch();
+  const blocksCsvUrl = buildUrl("/api/v1/blocks", blocksQueryParams(search));
+
   return (
     <AppShell>
       <PageHero
@@ -66,7 +87,12 @@ function BlocksPage() {
         live
         title="Blocks"
         description="Recent Bittensor blocks indexed directly from the chain — newest first, with author, extrinsic, and event counts."
-        actions={<ShareButton />}
+        actions={
+          <>
+            <DownloadCsvButton url={blocksCsvUrl} />
+            <ShareButton />
+          </>
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-28 w-full mb-8" />}>
@@ -128,16 +154,7 @@ function BlocksTable() {
   const navigate = useNavigate({ from: Route.fullPath });
 
   // Only send filters the user actually set, so an empty bar is the plain feed.
-  const queryParams: Record<string, string | number> = {
-    limit: search.limit,
-    offset: search.offset,
-  };
-  if (search.author) queryParams.author = search.author;
-  if (search.spec_version) queryParams.spec_version = search.spec_version;
-  if (search.block_start) queryParams.block_start = search.block_start;
-  if (search.block_end) queryParams.block_end = search.block_end;
-  if (search.min_extrinsics) queryParams.min_extrinsics = search.min_extrinsics;
-  if (search.min_events) queryParams.min_events = search.min_events;
+  const queryParams = blocksQueryParams(search);
 
   const rows = (useSuspenseQuery(blocksQuery(queryParams)).data.data ?? []) as Block[];
 
