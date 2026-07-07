@@ -4,6 +4,8 @@ import { Suspense, type ReactNode } from "react";
 import {
   Activity,
   Boxes,
+  TrendingUp,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -32,6 +34,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import {
   accountAxonRemovalsQuery,
+  accountPortfolioQuery,
   accountDeregistrationsQuery,
   accountWeightSettersQuery,
   accountBalanceQuery,
@@ -252,6 +255,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       ) : null}
 
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+
+      <AccountPortfolioSection ss58={ss58} />
 
       <AccountTeardownActivitySection ss58={ss58} />
 
@@ -581,6 +586,135 @@ function fmtStake(v: number | null | undefined): string {
 
 const KPI_TILE =
   "rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]";
+
+// #3491: cross-subnet portfolio for this account, from the already-shipped
+// accountPortfolioQuery. An aggregate stake / emission / yield KPI row plus the
+// per-subnet position table (netuid, role, stake, emission, incentive). Non-
+// blocking: while it loads or if it fails, the rest of the account page is
+// unaffected.
+function AccountPortfolioSection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountPortfolioQuery(ss58));
+  const p = result.data?.data;
+
+  if (result.isPending && !p) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="portfolio"
+        title="Portfolio"
+        subtitle="Cross-subnet neuron positions for this account: per-subnet stake, emission, and role, with an aggregate stake and yield summary."
+      />
+    );
+  }
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="portfolio"
+        title="Portfolio"
+        subtitle="Cross-subnet neuron positions for this account: per-subnet stake, emission, and role, with an aggregate stake and yield summary."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load portfolio"
+          description="The portfolio tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+  const positions = p?.positions ?? [];
+  if (!p || positions.length === 0) return null;
+
+  return (
+    <SectionAnchor
+      id="portfolio"
+      title="Portfolio"
+      subtitle="Cross-subnet neuron positions for this account: per-subnet stake, emission, and role, with an aggregate stake and yield summary."
+      tone="accent"
+      info="The account's registered neurons across every subnet, from /api/v1/accounts/{ss58}/portfolio — total stake and emission, the validator / miner split, and the per-subnet breakdown."
+      right={<SectionBadge tone="accent">{formatNumber(p.subnet_count)} subnets</SectionBadge>}
+    >
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          icon={Boxes}
+          eyebrow="Positions"
+          tone="accent"
+          value={formatNumber(p.position_count)}
+          hint={`across ${formatNumber(p.subnet_count)} subnets`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Coins}
+          eyebrow="Total stake"
+          value={fmtStake(p.total_stake_tao)}
+          hint={`${formatNumber(p.validator_count)} validator / ${formatNumber(p.miner_count)} miner`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Sparkles}
+          eyebrow="Total emission"
+          value={fmtStake(p.total_emission_tao)}
+          hint="summed across positions"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={TrendingUp}
+          eyebrow="Overall yield"
+          value={p.overall_yield != null ? p.overall_yield.toExponential(2) : "—"}
+          hint="emission / stake"
+          className={KPI_TILE}
+        />
+      </div>
+      <DataPanel>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-surface/50">
+            <tr>
+              <th className={TH}>Subnet</th>
+              <th className={TH}>Role</th>
+              <th className={`${TH} text-right`}>Stake</th>
+              <th className={`${TH} text-right`}>Emission</th>
+              <th className={`${TH} text-right`}>Incentive</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {positions.map((pos) => (
+              <tr key={`${pos.netuid}-${pos.uid ?? "x"}`} className="hover:bg-surface/30">
+                <td className="px-5 py-4 font-mono text-[12px]">
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: pos.netuid }}
+                    className="text-ink hover:text-accent hover:underline"
+                  >
+                    SN{pos.netuid}
+                  </Link>
+                </td>
+                <td className="px-5 py-4 font-mono text-[11px]">
+                  {pos.role === "validator" ? (
+                    <span className="text-emerald-500">validator</span>
+                  ) : pos.role === "miner" ? (
+                    <span className="text-sky-500">miner</span>
+                  ) : (
+                    <span className="text-ink-muted">{"—"}</span>
+                  )}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {fmtStake(pos.stake_tao)}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {fmtStake(pos.emission_tao)}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {pos.incentive != null ? pos.incentive.toFixed(4) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </DataPanel>
+    </SectionAnchor>
+  );
+}
 
 /**
  * Axon-removal (teardown) footprint over the trailing 30-day window — a flat
