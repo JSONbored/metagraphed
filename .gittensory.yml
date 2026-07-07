@@ -11,7 +11,8 @@
 wantedPaths:
   - "registry/subnets/**"
   - "registry/providers/**"
-  - "registry/candidates/community/**"
+  # registry/candidates/community/** — retired lane, no longer a valid PR path.
+  # Community surfaces now live in registry/subnets/<slug>.json (see CONTRIBUTING.md).
   - "registry/reviews/**"
   - "registry/adapters/**"
 
@@ -35,3 +36,10 @@ blockedPaths:
   # work (repo-structure, CI, and Cloudflare deploy surgery), never a
   # community data submission.
   - "apps/**"
+
+# Review-evasion protection (config-as-code override; layered OVER the dashboard's own default of
+# "off"): closing or converting-to-draft your OWN PR while gittensory has an active review pass
+# running, a prior recorded gate failure, or a repeated ready<->draft cycle on this PR, is treated
+# as dodging the one-shot review rather than an ordinary action.
+settings:
+  reviewEvasionProtection: close

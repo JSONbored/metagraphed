@@ -8,6 +8,7 @@
 
 ## Registry Safety
 
+- [ ] Links a tracked, currently-open issue (`Closes #<n>`) — required.
 - [ ] No secrets, PATs, wallet data, private dashboards, private URLs, or
       validator-local state.
 - [ ] Generated artifacts were produced by repo scripts, not hand-edited.

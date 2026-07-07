@@ -359,6 +359,19 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
         icon: Hash,
       });
     }
+    const netuidMatch = /^(?:sn\s*(\d+)|netuid\s*(\d+))$/i.exec(q);
+    if (netuidMatch) {
+      const n = Number(netuidMatch[1] ?? netuidMatch[2]);
+      if (Number.isFinite(n) && n >= 0 && n <= 1024) {
+        targets.push({
+          label: `Subnet ${n}`,
+          hint: "go to subnet by netuid",
+          target: { to: "/subnets/$netuid", params: { netuid: String(n) } },
+          kind: "subnet",
+          icon: Layers,
+        });
+      }
+    }
     return targets;
   }, [debounced]);
 

@@ -558,11 +558,7 @@ export interface Lineage {
 
 /** The five D1-computed registry leaderboards from /api/v1/registry/leaderboards. */
 export type LeaderboardBoardKey =
-  | "healthiest"
-  | "fastest-rpc"
-  | "most-complete"
-  | "most-enriched"
-  | "fastest-growing";
+  "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing";
 
 /**
  * One ranked subnet in a leaderboard. Every row carries netuid/slug/name; only

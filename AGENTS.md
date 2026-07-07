@@ -37,7 +37,9 @@ process evolves — edits to those files improve both Claude Code and Codex.
    post-merge. Likewise, do **not** hand-bump `MCP_SERVER_VERSION` (`src/mcp-server.mjs`) or
    `server.json`'s `"version"` — `sync-mcp-version` bumps both automatically after a tool-registry
    change lands on main. MCP tool additions do **not** require a server-card regen (it's
-   worker-computed).
+   worker-computed). **99% patch coverage, branch-counted** — `codecov/patch` enforces
+   `target: 99%, threshold: 0%` on every changed line and branch in `src/**`/`workers/**`; measure it
+   unsharded with `npm run test:coverage`.
 5. **House rules:** Conventional Commits, **no AI/Claude/agent attribution** in commits or PR text; no
    secrets / PATs / wallet paths / private URLs anywhere; health/uptime/latency is **probe-derived
    only** (never hand-set); one focused change per PR. **UI/frontend work now lives in this repo**

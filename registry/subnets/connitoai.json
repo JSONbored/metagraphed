@@ -108,6 +108,23 @@
         "https://connito.ai/docs/reference/sn-owner-api"
       ],
       "url": "https://cycle-api.connito.ai/get_phase"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-102-connito-data-artifact",
+      "kind": "data-artifact",
+      "name": "ConnitoAI previous phase block ranges",
+      "notes": "Public no-auth GET /previous_phase_blocks on cycle-api.connito.ai returning the block-height range of each named phase (Distribute, Train, MinerCommit1/2, Submission, Validate, Merge, ValidatorCommit1/2) in the prior training cycle. Documented in the subnet's own OpenAPI schema (already-registered sn-102-connito-phase-openapi surface); same cycle-api.connito.ai host as the existing /get_phase surface.",
+      "provider": "connito",
+      "public_safe": true,
+      "rate_limit_notes": "Cloudflare WAF in front of cycle-api.connito.ai may challenge simple automated probes from datacenter IPs; the endpoint is on the official phase-oracle host queried by miners and validators.",
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "philluiz2323"
+      },
+      "source_urls": ["https://cycle-api.connito.ai/openapi.json"],
+      "url": "https://cycle-api.connito.ai/previous_phase_blocks"
     }
   ],
   "social": {

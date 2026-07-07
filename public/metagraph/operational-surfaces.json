@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 101,
+  "surface_count": 104,
   "surfaces": [
     {
       "auth_required": false,
@@ -502,6 +502,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 8,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "surface_id": "sn-8-vanta-model-parameters",
+      "surface_key": "srf-0edb50969e9c5098",
+      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/all_model_parameters.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 10,
       "probe": {
         "expect": "any",
@@ -659,6 +677,24 @@
       "surface_id": "sn-25-macrocosm-os-macrobench-benchmark-dataset",
       "surface_key": "srf-2c94a06dbd4dc428",
       "url": "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 25,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "Mainframe",
+      "subnet_slug": "sn-25",
+      "surface_id": "sn-25-mainframe-pdb-file-api",
+      "surface_key": "srf-728da1bf08c5643c",
+      "url": "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
     },
     {
       "auth_required": false,
@@ -1559,6 +1595,24 @@
       "surface_id": "sn-88-investing-ratio",
       "surface_key": "srf-e606f94442e24006",
       "url": "https://api.investing88.ai/ratio"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 91,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "subnet_name": "Bitstarter #1",
+      "subnet_slug": "sn-91",
+      "surface_id": "sn-91-bitstarter-updates-health-api",
+      "surface_key": "srf-49a2520ec2761aa7",
+      "url": "https://updates.bitstarter.ai/api/health"
     },
     {
       "auth_required": false,

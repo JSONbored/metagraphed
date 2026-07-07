@@ -175,9 +175,12 @@ input list, which a one-file surface PR does not commit; it is served fresh on d
 (gzip-measures the `wrangler deploy --dry-run` Worker bundle against a budget so an over-1MiB bundle
 fails at PR time, not at the Cloudflare deploy) · `scan:public-safety` · `validate:private-boundary`.
 
-Codecov is configured in `codecov.yml`; run `npm run test:coverage` locally for the full-suite number.
-CI uploads coverage once, from the `test:ci` pass — the two artifact writers run via child processes
-and contribute no in-process coverage, so splitting them out is coverage-neutral.
+Codecov is configured in `codecov.yml`: `codecov/patch` enforces **99% patch coverage, branch-counted**
+(`target: 99%, threshold: 0%`, near-zero slack) on every changed line in `src/**`/`workers/**`;
+`codecov/project` is informational only (`target: auto`, `threshold: 1%`). Run
+`npm run test:coverage` locally for the full-suite number. CI uploads coverage once, from the
+`test:ci` pass — the two artifact writers run via child processes and contribute no in-process
+coverage, so splitting them out is coverage-neutral.
 
 ---
 

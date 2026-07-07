@@ -6,6 +6,7 @@ import {
   subnetHealthPercentilesQuery,
   subnetHealthTrendsQuery,
   subnetEndpointsQuery,
+  subnetAxonRemovalsQuery,
   flattenSurfaceIncidents,
 } from "@/lib/metagraphed/queries";
 import type {
@@ -161,6 +162,14 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
               }
               hint={`${ok} ok · ${warn} warn · ${down} down${unknown ? ` · ${unknown} unknown` : ""}. Click a segment to filter resources.`}
             />
+          </div>
+
+          {/* #3482: chain teardown activity — axon (serving-endpoint) removals over
+            the window, from the already-shipped subnetAxonRemovalsQuery. A flex strip
+            below the health ribbon so the lone tile sits flush left (no empty grid
+            columns); #3481 (serving/prometheus) tiles wrap in alongside it. */}
+          <div className="flex flex-wrap divide-x divide-border border-b border-border">
+            <AxonRemovalsStat netuid={netuid} />
           </div>
 
           {!filter.isAll ? (
@@ -331,6 +340,30 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
         </div>
       )}
     </PanelShell>
+  );
+}
+
+/**
+ * #3482: teardown-activity KPI — axon (serving-endpoint) removals for this subnet
+ * over the trailing window, from the already-shipped subnetAxonRemovalsQuery
+ * (#3660). The endpoint returns a flat window aggregate (removals / distinct
+ * removers), so it renders as a single `Stat` tile matching the health ribbon's
+ * convention: "…" while pending, "—" on error, the count otherwise.
+ */
+function AxonRemovalsStat({ netuid }: { netuid: number }) {
+  const { data: res, isPending, isError } = useQuery(subnetAxonRemovalsQuery(netuid));
+  const a = res?.data;
+  const removals = a?.removals ?? 0;
+  const removers = a?.distinct_removers ?? 0;
+  const win = a?.window ?? "30d";
+  const value = isError ? "—" : isPending && !a ? "…" : formatNumber(removals);
+  return (
+    <Stat
+      label={`Teardowns · ${win}`}
+      value={value}
+      tone={removals > 0 ? "warn" : "default"}
+      hint={`Axon (serving-endpoint) removals for SN${netuid} over the ${win} window — ${removers} distinct ${removers === 1 ? "remover" : "removers"}. Source: /api/v1/subnets/{netuid}/axon-removals.`}
+    />
   );
 }
 

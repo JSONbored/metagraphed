@@ -13,6 +13,7 @@ This PR adds or updates exactly one provider/operator profile review file.
 
 ## Checklist
 
+- [ ] Links a tracked, currently-open issue (`Closes #<n>`) — required.
 - [ ] This PR changes exactly one `registry/providers/*.json` file.
 - [ ] I matched `docs/examples/submissions/direct-provider-profile.json` (or let
       `npm run surface:add --provider-name … --provider-url …` scaffold the stub

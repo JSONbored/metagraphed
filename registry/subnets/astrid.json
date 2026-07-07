@@ -27,6 +27,25 @@
         "https://github.com/astridintelligence/sn-127/blob/master/README.md"
       ],
       "url": "https://arena-api.astrid.global/public/arena/completed-competitions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-127-astrid-data-artifact",
+      "kind": "data-artifact",
+      "name": "Astrid Arena competition wallet-activity dataset",
+      "notes": "Public no-auth GET returning the full wallet-activity dataset (totals plus orders/positions/trades records) for a completed SN127 Astrid Arena competition (Miners Showdown 3). The competitionId is sourced from the public completed-competitions endpoint already in this manifest, and the wallet-activity dataset path is documented in the official astridintelligence/sn-127 validator client (src/core/arena/api.ts, fetchAllTrades). Returns application/json; distinct from the completed-competitions API surface.",
+      "provider": "astrid",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/astridintelligence/sn-127/blob/master/src/core/arena/api.ts",
+        "https://github.com/astridintelligence/sn-127/blob/master/README.md"
+      ],
+      "url": "https://arena-api.astrid.global/public/competitions/190482a8-70b8-463d-b6c5-d1808bc7db9f/wallet-activity"
     }
   ]
 }

@@ -1082,6 +1082,25 @@ function AccountEventsSection({
     );
   }
 
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="events"
+        title="Chain events"
+        subtitle="Full first-party event feed for this account, newest first — filter by kind, page through history."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Couldn't load chain events"
+          description="The chain-events feed is temporarily unavailable — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
   return (
     <SectionAnchor
       id="events"

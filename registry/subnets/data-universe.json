@@ -300,6 +300,33 @@
         "https://www.npmjs.com/package/macrocosmos"
       ],
       "url": "https://github.com/macrocosm-os/macrocosmos-ts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-13-data-universe-openapi",
+      "kind": "openapi",
+      "name": "Data Universe Validator API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1.0 schema (title \"Data Universe Validator API\", version 1.0.0) served by the SN13 validator API on the macrocosmos-hosted sn13.api.macrocosmos.ai host. Documents the on-demand data-query, bucket, label-size, age-size, and desirability routes. Unauthenticated GET returns the full paths object.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://sn13.api.macrocosmos.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/macrocosm-os/data-universe",
+        "https://sn13.api.macrocosmos.ai/openapi.json"
+      ],
+      "url": "https://sn13.api.macrocosmos.ai/openapi.json"
     }
   ],
   "website_url": "https://datauniverse.macrocosmos.ai/"
