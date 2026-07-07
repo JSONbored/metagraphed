@@ -327,6 +327,31 @@
         "https://sn13.api.macrocosmos.ai/openapi.json"
       ],
       "url": "https://sn13.api.macrocosmos.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-13-data-universe-desirability-defaults",
+      "kind": "data-artifact",
+      "name": "Data Universe default desirability list",
+      "notes": "Public no-auth JSON default dynamic-desirability list (per-source label weights used to value Reddit and X data) published at dynamic_desirability/default.json in the official macrocosm-os/data-universe repository. Documents the SN13 baseline data-scoring configuration.",
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/macrocosm-os/data-universe/blob/main/dynamic_desirability/default.json",
+        "https://github.com/macrocosm-os/data-universe"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "url": "https://raw.githubusercontent.com/macrocosm-os/data-universe/main/dynamic_desirability/default.json"
     }
   ],
   "website_url": "https://datauniverse.macrocosmos.ai/"
