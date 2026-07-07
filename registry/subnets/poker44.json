@@ -1,17 +1,18 @@
 {
-  "schema_version": 1,
-  "netuid": 126,
-  "name": "Poker44",
-  "slug": "sn-126",
-  "status": "active",
   "categories": [],
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "Poker44",
+  "netuid": 126,
+  "schema_version": 1,
+  "slug": "sn-126",
   "social": {
     "x": "https://x.com/poker44subnet"
   },
+  "source_repo": "https://github.com/Poker44/Poker44-subnet",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -31,8 +32,26 @@
         "https://api.poker44.net/health"
       ],
       "url": "https://api.poker44.net/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-data-artifact",
+      "kind": "data-artifact",
+      "name": "Poker44 shadow-training benchmark dataset",
+      "notes": "Public no-auth GET /api/v1/benchmark on api.poker44.net — the official Poker44 (SN126) benchmark dataset release endpoint documented in the subnet repo's docs/training-benchmark.md (GET /api/v1/benchmark, GET /api/v1/benchmark/releases). Returns JSON release metadata (observed releaseVersion v1.13, schemaVersion shadow-training-v1, 121 chunks / 29,680 hands, auto-release schedule); miners fetch the hand chunks from this endpoint. Same api.poker44.net host as the already-listed platform health surface.",
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "peter-minion"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md",
+        "https://api.poker44.net/api/v1/benchmark"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark"
     }
   ],
-  "source_repo": "https://github.com/Poker44/Poker44-subnet",
   "website_url": "https://poker44.net/"
 }
