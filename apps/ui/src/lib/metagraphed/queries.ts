@@ -130,6 +130,8 @@ import type {
   SubnetNeuronHistoryPoint,
   SubnetStakeTransfers,
   SubnetRegistrations,
+  SubnetEventSummary,
+  SubnetEventCategorySummary,
   MetagraphNeuron,
   SubnetMetagraph,
   SubnetValidators,
@@ -3340,6 +3342,66 @@ export const subnetTrajectoryQuery = (netuid: number) =>
       return { data: normalizeTrajectory(res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_LONG,
+  });
+
+function normalizeSubnetEventCategory(raw: unknown): SubnetEventCategorySummary | null {
+  if (!isRecord(raw)) return null;
+  const category = firstString(raw.category);
+  const eventCount = coerceFiniteNumber(raw.event_count);
+  if (!category || eventCount == null) return null;
+  return {
+    category,
+    event_count: eventCount,
+    kind_count: coerceFiniteNumber(raw.kind_count) ?? 0,
+    amount_tao: coerceFiniteNumber(raw.amount_tao) ?? 0,
+    alpha_amount: coerceFiniteNumber(raw.alpha_amount) ?? 0,
+    first_block: coerceFiniteNumber(raw.first_block) ?? null,
+    last_block: coerceFiniteNumber(raw.last_block) ?? null,
+    first_observed_at: firstString(raw.first_observed_at) ?? null,
+    last_observed_at: firstString(raw.last_observed_at) ?? null,
+  };
+}
+
+// #3486: windowed on-chain event rollup for one subnet from
+// /api/v1/subnets/{netuid}/event-summary — total account_events over the window
+// plus a per-category breakdown. Every numeric cell coerces defensively: a cold
+// store or junk payload degrades to a zeroed card (total_events 0, categories []),
+// never NaN or undefined.
+export function normalizeSubnetEventSummary(netuid: number, raw: unknown): SubnetEventSummary {
+  const d = isRecord(raw) ? raw : {};
+  const categories = Array.isArray(d.categories)
+    ? d.categories.flatMap((row) => {
+        const normalized = normalizeSubnetEventCategory(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    window: firstString(d.window) ?? "7d",
+    observed_at: firstString(d.observed_at) ?? null,
+    total_events: firstFiniteNumber(d.total_events) ?? 0,
+    kind_count: firstFiniteNumber(d.kind_count) ?? 0,
+    category_count: firstFiniteNumber(d.category_count) ?? categories.length,
+    categories,
+  };
+}
+
+export const subnetEventSummaryQuery = (netuid: number, window = "7d") =>
+  queryOptions({
+    queryKey: k("subnet-event-summary", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetEventSummary>>(
+        `/api/v1/subnets/${netuid}/event-summary`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetEventSummary(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_SHORT,
   });
 
 // #1115: long-range daily uptime history + reliability grade per surface, over a

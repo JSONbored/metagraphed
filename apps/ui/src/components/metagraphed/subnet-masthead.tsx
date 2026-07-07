@@ -28,6 +28,7 @@ import {
 import {
   subnetEndpointsQuery,
   subnetDeregistrationsQuery,
+  subnetEventSummaryQuery,
   subnetHealthPercentilesQuery,
   subnetRegistrationsQuery,
   subnetTrajectoryQuery,
@@ -146,6 +147,21 @@ function aggregateSurfaceP50(rows: SurfaceLatencyPercentiles[] | undefined): num
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
 
+// #3486: coarse-category palette for the subnet event-mix rollup tile. Mirrors
+// the fixed category enum the event-summary endpoint returns; anything unmapped
+// falls back to the muted ink token.
+const EVENT_CATEGORY_COLOR: Record<string, string> = {
+  registration: "var(--chart-1)",
+  stake: "var(--chart-2)",
+  serving: "var(--chart-3)",
+  consensus: "var(--chart-4)",
+  delegation: "var(--chart-5)",
+  transfer: "var(--chart-1)",
+  identity: "var(--chart-2)",
+  governance: "var(--chart-3)",
+  other: "var(--ink-muted)",
+};
+
 export function SubnetMasthead({
   netuid,
   profile,
@@ -174,6 +190,18 @@ export function SubnetMasthead({
   const { data: deregRes } = useQuery(subnetDeregistrationsQuery(netuid));
   const reg = regRes?.data;
   const dereg = deregRes?.data;
+  const { data: eventSummaryRes } = useQuery(subnetEventSummaryQuery(netuid));
+  const eventSummary = eventSummaryRes?.data;
+  // Top event categories by volume, fed into the MiniStack breakdown viz.
+  const eventSegments = (eventSummary?.categories ?? [])
+    .slice()
+    .sort((a, b) => b.event_count - a.event_count)
+    .slice(0, 5)
+    .map((c) => ({
+      label: c.category,
+      value: c.event_count,
+      color: EVENT_CATEGORY_COLOR[c.category] ?? "var(--ink-muted)",
+    }));
 
   // Subnet-wide daily uptime % + median latency, meaned across tracked surfaces.
   const trendWindowKey = uptimeRes?.data?.window ?? "90d";
@@ -572,6 +600,19 @@ export function SubnetMasthead({
           full="Number of primary source links recorded"
           updatedAt={generatedAt}
           viz={<DotRow dots={sourceKinds} />}
+        />
+        <StatWithSpark
+          label="Events"
+          value={eventSummary ? formatNumber(eventSummary.total_events) : "—"}
+          hint={
+            eventSegments.length
+              ? eventSegments.map((s) => `${s.value} ${s.label}`).join(" · ")
+              : "on-chain events"
+          }
+          full="Windowed on-chain event rollup for this subnet (registrations, stake, serving, transfers, etc.)"
+          updatedAt={eventSummaryRes?.meta?.generated_at ?? generatedAt}
+          windowLabel={eventSummary?.window ?? "7d"}
+          viz={eventSegments.length ? <MiniStack segments={eventSegments} /> : undefined}
         />
       </div>
     </header>

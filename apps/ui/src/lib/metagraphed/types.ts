@@ -1452,6 +1452,36 @@ export interface SubnetRegistrations {
   registrations_per_registrant: number | null;
 }
 
+/** One coarse-category aggregate row from the subnet event-summary rollup. */
+export interface SubnetEventCategorySummary {
+  category: string;
+  event_count: number;
+  kind_count: number;
+  amount_tao: number;
+  alpha_amount: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+}
+
+/**
+ * Windowed on-chain event rollup for one subnet from
+ * /api/v1/subnets/{netuid}/event-summary (#3486): total account_events over the
+ * 7d/30d/90d window plus a per-category breakdown. A cold/absent store degrades
+ * to a schema-stable zeroed card (total_events 0, categories []).
+ */
+export interface SubnetEventSummary {
+  schema_version: number;
+  netuid: number;
+  window: string;
+  observed_at: string | null;
+  total_events: number;
+  kind_count: number;
+  category_count: number;
+  categories: SubnetEventCategorySummary[];
+}
+
 /**
  * Per-subnet neuron-deregistration (eviction) event volume over a 7d/30d window
  * (#1657), from /api/v1/subnets/{netuid}/deregistrations — the eviction-side
