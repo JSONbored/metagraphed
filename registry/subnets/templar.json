@@ -174,6 +174,31 @@
         "confidence": "medium"
       },
       "url": "https://grafana.tplr.ai/public/openapi3.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Templar minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator hardware specification (CPU, memory, storage, OS, and bandwidth) published at the root of the official one-covenant/templar repository as min_compute.yml. Documents SN3 Templar operator requirements for the decentralized pre-training run.",
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/templar/blob/main/min_compute.yml",
+        "https://github.com/one-covenant/templar"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "url": "https://raw.githubusercontent.com/one-covenant/templar/main/min_compute.yml"
     }
   ],
   "social": {
