@@ -87,6 +87,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Bitrecs source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-122-bitrecs-amazon-fashion-sample",
+      "kind": "data-artifact",
+      "name": "Bitrecs Amazon fashion sample catalog",
+      "notes": "Public no-auth JSON sample ecommerce product-review catalog (ASIN, rating, title, price metadata) published in the official SN122 Bitrecs source repository at tests/data/amazon/fashion/. Referenced by the repo README (sample data setup) and exercised by tests/test_json.py for local recommendation-engine validation.",
+      "provider": "bitrecs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/bitrecs/bitrecs-subnet/blob/main/README.md",
+        "https://github.com/bitrecs/bitrecs-subnet/blob/main/tests/test_json.py"
+      ],
+      "url": "https://raw.githubusercontent.com/bitrecs/bitrecs-subnet/main/tests/data/amazon/fashion/amazon_fashion_sample_1000.json"
     }
   ],
   "social": {
