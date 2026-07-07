@@ -32,7 +32,7 @@ export function SettingsPopover() {
           type="button"
           aria-label="Settings"
           title="Settings"
-          className="inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-7 min-w-7 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+          className="inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
         >
           <Settings className="size-3.5" aria-hidden="true" />
         </button>
