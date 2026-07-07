@@ -1080,9 +1080,12 @@ export async function safeFetch(
   url,
   {
     accept = "*/*",
+    headers = null,
     maxRedirects = 5,
+    method = "GET",
     timeoutMs = 12000,
     resolver = lookup,
+    signal = null,
   } = {},
 ) {
   let target = url;
@@ -1098,16 +1101,18 @@ export async function safeFetch(
       addresses[0].address,
       addresses[0].family,
     );
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const controller = signal ? null : new AbortController();
+    const timer = controller
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null;
     let response;
     try {
       response = await fetch(target, {
-        method: "GET",
+        method,
         redirect: "manual",
-        signal: controller.signal,
+        signal: signal || controller.signal,
         dispatcher,
-        headers: { "user-agent": "metagraphed/0.0", accept },
+        headers: headers || { "user-agent": "metagraphed/0.0", accept },
       });
     } catch (error) {
       return {
@@ -1115,7 +1120,9 @@ export async function safeFetch(
         error: error.name === "AbortError" ? "timeout" : error.message,
       };
     } finally {
-      clearTimeout(timer);
+      if (timer) {
+        clearTimeout(timer);
+      }
     }
     const location = response.headers.get("location");
     if (SAFE_FETCH_REDIRECT_CODES.has(response.status) && location) {

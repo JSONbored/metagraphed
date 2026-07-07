@@ -8,9 +8,9 @@ import {
   flattenSurfaces,
   hashJson,
   isJsonContentType,
-  isUnsafeResolvedUrl,
   isUnsafeUrl,
   loadSubnets,
+  safeFetch,
   sanitizeOpenApiDocument,
   stableStringify,
   writeJson,
@@ -276,40 +276,21 @@ function candidateSchemaUrls(surface) {
   return [...new Set(urls.filter((url) => !isUnsafeUrl(url)))];
 }
 
-async function fetchJson(url, redirectCount = 0) {
-  if (await isUnsafeResolvedUrl(url)) {
-    return { ok: false, unsafe_url: true, error: "unsafe URL" };
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+async function fetchJson(url) {
   try {
-    const response = await fetch(url, {
+    const fetched = await safeFetch(url, {
       headers: {
         accept: "application/json",
         "user-agent": "metagraphed-openapi-snapshot/0.0",
       },
-      redirect: "manual",
-      signal: controller.signal,
     });
-    const location = response.headers.get("location");
-    if (
-      [301, 302, 303, 307, 308].includes(response.status) &&
-      location &&
-      redirectCount < 5
-    ) {
-      const redirectTarget = new URL(location, url).toString();
-      if (await isUnsafeResolvedUrl(redirectTarget)) {
-        await response.body?.cancel();
-        return {
-          ok: false,
-          private_redirect_blocked: true,
-          error: "redirect target is unsafe",
-        };
-      }
-      await response.body?.cancel();
-      return fetchJson(redirectTarget, redirectCount + 1);
+    if (fetched.unsafe) {
+      return { ok: false, unsafe_url: true, error: "unsafe URL" };
     }
+    if (!fetched.response) {
+      return { ok: false, error: fetched.error || "fetch failed" };
+    }
+    const response = fetched.response;
 
     const contentType = response.headers.get("content-type") || "";
     if (!response.ok || !isJsonContentType(contentType)) {
@@ -349,8 +330,6 @@ async function fetchJson(url, redirectCount = 0) {
     };
   } catch (error) {
     return { ok: false, error: error.message, error_class: error.name };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
