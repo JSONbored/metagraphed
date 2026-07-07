@@ -131,6 +131,7 @@ export default {
         summary.providers_written += 1;
       }
 
+      const writtenSubnetNetuids = new Set();
       for (const s of subnets) {
         if (
           !Number.isInteger(s.netuid) ||
@@ -151,6 +152,7 @@ export default {
             source_commit = EXCLUDED.source_commit,
             updated_at = now()`;
         summary.subnets_written += 1;
+        writtenSubnetNetuids.add(s.netuid);
       }
 
       for (const prune of pruneSurfaces) {
@@ -200,6 +202,7 @@ export default {
       for (const deletion of deleteSubnets) {
         if (!Number.isInteger(deletion.netuid) || !deletion.source_commit)
           continue;
+        if (writtenSubnetNetuids.has(deletion.netuid)) continue;
         const deletedSurfaces = await sql`
           DELETE FROM surfaces
           WHERE subnet_netuid = ${deletion.netuid}

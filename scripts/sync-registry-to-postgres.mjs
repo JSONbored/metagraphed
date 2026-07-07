@@ -116,6 +116,11 @@ async function main() {
     }
   }
 
+  const upsertedSubnetNetuids = new Set(subnets.map((subnet) => subnet.netuid));
+  const safeDeleteSubnets = deleteSubnets.filter(
+    (deletion) => !upsertedSubnetNetuids.has(deletion.netuid),
+  );
+
   const summary = {
     providers_written: 0,
     subnets_written: 0,
@@ -130,14 +135,14 @@ async function main() {
     subnets.length ||
     surfaces.length ||
     pruneSurfaces.length ||
-    deleteSubnets.length
+    safeDeleteSubnets.length
   ) {
     const result = await postRegistrySync({
       providers,
       subnets,
       surfaces,
       prune_surfaces: pruneSurfaces,
-      delete_subnets: deleteSubnets,
+      delete_subnets: safeDeleteSubnets,
     });
     summary.providers_written = result?.providers_written ?? 0;
     summary.subnets_written = result?.subnets_written ?? 0;
