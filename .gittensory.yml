@@ -37,9 +37,38 @@ blockedPaths:
   # community data submission.
   - "apps/**"
 
+# AI-review eligibility filters: a draft PR previously re-triggered a full AI review on every push,
+# letting a contributor iterate for free while tokens kept burning — skip_drafts stops that.
+review:
+  auto_review:
+    skip_drafts: true
+
+# Linked-issue label propagation: a PR that closes/fixes/resolves an issue inherits that issue's
+# point-bearing gittensor:* label, instead of the PR's own label being decided purely by its
+# commit-title prefix. bug/feature trust a maintainer-authored linked issue (routine categorization,
+# no reward at stake) since our issues are almost always maintainer-authored for open pickup and
+# rarely formally assigned; priority intentionally omits that flag and still requires the PR author
+# to be the issue's actual author/assignee, since it is the scarce, maintainer-hand-picked reward
+# label.
+#
 # Review-evasion protection (config-as-code override; layered OVER the dashboard's own default of
 # "off"): closing or converting-to-draft your OWN PR while gittensory has an active review pass
 # running, a prior recorded gate failure, or a repeated ready<->draft cycle on this PR, is treated
 # as dodging the one-shot review rather than an ordinary action.
 settings:
+  linkedIssueLabelPropagation:
+    enabled: true
+    mode: exclusive_type_label
+    mappings:
+      - issueLabel: "gittensor:bug"
+        prLabel: "gittensor:bug"
+        removeOtherTypeLabels: true
+        trustMaintainerAuthoredIssue: true
+      - issueLabel: "gittensor:feature"
+        prLabel: "gittensor:feature"
+        removeOtherTypeLabels: true
+        trustMaintainerAuthoredIssue: true
+      - issueLabel: "gittensor:priority"
+        prLabel: "gittensor:priority"
+        removeOtherTypeLabels: true
   reviewEvasionProtection: close
