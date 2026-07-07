@@ -145,6 +145,35 @@
         "https://grafana.tplr.ai/"
       ],
       "url": "https://grafana.tplr.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-grafana-openapi",
+      "kind": "openapi",
+      "name": "Templar Grafana HTTP API OpenAPI",
+      "notes": "Public no-auth OpenAPI 3.0.3 schema (title \"Grafana HTTP API.\", 208 paths) on grafana.tplr.ai/public/openapi3.json. Served on the Templar Grafana host registered as a dashboard surface and linked from the Templar source repository README; the built-in Swagger UI at grafana.tplr.ai/swagger loads this spec alongside the legacy v2 merge at public/api-merged.json.",
+      "provider": "one-covenant",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://grafana.tplr.ai/public/openapi3.json",
+      "source_urls": [
+        "https://grafana.tplr.ai/swagger",
+        "https://github.com/one-covenant/templar",
+        "https://github.com/one-covenant/crusades/blob/main/src/crusades/logging.py"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie",
+        "confidence": "medium"
+      },
+      "url": "https://grafana.tplr.ai/public/openapi3.json"
     }
   ],
   "social": {
