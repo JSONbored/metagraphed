@@ -132,6 +132,35 @@
         "submitted_by": "galuis116"
       },
       "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-compute-horde-grafana-openapi",
+      "kind": "openapi",
+      "name": "Compute Horde Grafana HTTP API OpenAPI",
+      "notes": "Public no-auth OpenAPI 3.0.3 schema (title \"Grafana HTTP API.\", 215 paths) on grafana.bittensor.church/public/openapi3.json. Served on the Compute Horde Grafana metagraph dashboard host registered as a dashboard surface; the official ComputeHorde miner and validator admin UIs embed grafana.bactensor.io dashboards (which redirect to bittensor.church) for SN12 metagraph exploration.",
+      "provider": "compute-horde",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://grafana.bittensor.church/public/openapi3.json",
+      "source_urls": [
+        "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
+        "https://github.com/backend-developers-ltd/ComputeHorde",
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/miner/app/src/compute_horde_miner/miner/templates/admin/miner_index.html"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie",
+        "confidence": "medium"
+      },
+      "url": "https://grafana.bittensor.church/public/openapi3.json"
     }
   ]
 }
