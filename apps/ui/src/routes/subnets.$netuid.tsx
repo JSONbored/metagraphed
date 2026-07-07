@@ -30,6 +30,7 @@ import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
 import { YieldLoader } from "@/components/metagraphed/yield-panel";
+import { TurnoverLoader } from "@/components/metagraphed/turnover-panel";
 import { NeuronDetailCard } from "@/components/metagraphed/neuron-detail-card";
 import { NeuronHistoryChart } from "@/components/metagraphed/neuron-history-chart";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
@@ -167,6 +168,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   neuron: "metagraph",
   concentration: "metagraph",
   yield: "metagraph",
+  turnover: "metagraph",
   validators: "validators",
   services: "services",
   "agent-readiness": "services",
@@ -834,6 +836,20 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-48 w-full" />}>
             <YieldLoader netuid={netuid} />
+          </Suspense>
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="turnover"
+        title="Turnover"
+        subtitle="Validator-set and registration churn: entered/exited validators, deregistered UIDs, retention, and a stability score across the window."
+        info="GET /api/v1/subnets/{netuid}/turnover — diffs the window's start/end metagraph snapshots into a validator-set + registration-churn scorecard."
+        tone="muted"
+      >
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+            <TurnoverLoader netuid={netuid} />
           </Suspense>
         </QueryErrorBoundary>
       </SectionAnchor>

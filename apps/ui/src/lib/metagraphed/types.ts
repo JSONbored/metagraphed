@@ -1467,6 +1467,32 @@ export interface SubnetDeregistrations {
   deregistrations_per_hotkey: number | null;
 }
 
+/**
+ * Validator-set & registration turnover scorecard for one subnet, from
+ * /api/v1/subnets/{netuid}/turnover — diffs the window's start/end
+ * `neuron_daily` snapshots. `comparable: false` on a cold store or a
+ * single-snapshot window; the ratio/score fields are null in that case, not
+ * zeroed (a zero would read as flawless retention).
+ */
+export interface SubnetTurnover {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  comparable: boolean;
+  validators_start: number;
+  validators_end: number;
+  validators_entered: number;
+  validators_exited: number;
+  validator_retention: number | null;
+  neurons_start: number;
+  neurons_end: number;
+  uids_deregistered: number;
+  neuron_retention: number | null;
+  stability_score: number | null;
+}
+
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
 export interface SubnetNeuronHistoryPoint {
   snapshot_date: string;
