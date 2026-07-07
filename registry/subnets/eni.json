@@ -26,5 +26,31 @@
       "No verified standalone static data artifact yet."
     ]
   },
-  "surfaces": []
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-101-eni-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "eni minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator hardware specification (CPU, memory, storage, OS, and bandwidth) published at the root of the official tag101-ai/tag101 repository as min_compute.yml. Documents SN101 eni operator requirements.",
+      "provider": "eni",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tag101-ai/tag101/blob/main/min_compute.yml",
+        "https://github.com/tag101-ai/tag101"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "url": "https://raw.githubusercontent.com/tag101-ai/tag101/main/min_compute.yml"
+    }
+  ]
 }

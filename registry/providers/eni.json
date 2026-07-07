@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/tag101-ai/tag101",
+  "id": "eni",
+  "kind": "subnet-team",
+  "name": "eni",
+  "public_notes": "Subnet 101 (eni) team profile. Identity from the public tag101-ai/tag101 source repository and the tag101.ai website. Review input only (authority: community).",
+  "schema_version": 1,
+  "website_url": "http://tag101.ai/"
+}
