@@ -52,6 +52,22 @@
         "https://github.com/Beam-Network/beam/blob/main/README.md"
       ],
       "url": "https://beamcore.b1m.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-105-beam-uid-ranges",
+      "kind": "data-artifact",
+      "name": "BeamCore orchestrator UID range config",
+      "notes": "Public no-auth GET /config/uid-ranges on beamcore.b1m.ai returning the public orchestrator UID window (public_orchestrator_uid_start, public_orchestrator_uid_end, max_orchestrators). Documented as a route in the subnet's own OpenAPI schema (already-registered sn-105-beam-openapi surface); same beamcore.b1m.ai host as the existing health surface.",
+      "provider": "beam",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "philluiz2323"
+      },
+      "source_urls": ["https://beamcore.b1m.ai/openapi.json"],
+      "url": "https://beamcore.b1m.ai/config/uid-ranges"
     }
   ],
   "source_repo": null,
