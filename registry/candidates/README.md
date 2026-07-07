@@ -1,46 +1,39 @@
-# Candidate Surfaces
+# Candidate Surfaces (machine-generated only)
 
-This directory is for unverified subnet interface candidates discovered from third-party sources or community submissions.
+This directory holds **machine-generated** candidate data only. The old direct-PR
+candidate lane — where a contributor ran a helper to create one
+`registry/candidates/community/*.json` file per surface — is **retired and rejected by
+CI**. Recreating `registry/candidates/community/*.json` fails validation; there is no
+`community/` subdirectory here anymore.
 
-Candidate entries are not published as verified registry surfaces. They must stay separate until maintainer review confirms:
+`generated/public-sources.json` is the only file in this directory. It's produced by the
+build pipeline from on-chain identity data (`SubnetIdentitiesV3`) and other public
+sources — never hand-authored, never edited in a PR.
 
-- the public URL is live;
-- auth and rate-limit requirements are labeled;
-- source docs support the claim;
-- the probe is safe and read-only;
-- no secrets, private dashboards, credentialed flows, or validator-sensitive data are included.
+## Where community surface submissions go now
 
-Generated public-source candidates live in `generated/public-sources.json`.
-Community-submitted direct PR candidates live in `community/*.json`.
-
-Use the helper to generate the direct PR file shape:
+Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its
+`surfaces[]` array. A community contribution appends a surface to that one file with
+`npm run surface:add`, which sets `authority: "community"` and
+`review.state: "community-submitted"` for you. If the subnet has no manifest yet,
+scaffold it first with `npm run subnet:new`, then add the surface to that same new file.
 
 ```bash
-npm run candidate:new -- --netuid 7 --kind docs --url https://docs.all-ways.io/community-submission-example --source-url https://docs.all-ways.io/how-it-works.html --provider allways --submitted-by <github-login> --write
+npm run surface:add -- \
+  --netuid 43 --kind subnet-api \
+  --url https://api.example.com/v1 \
+  --source-url https://github.com/example/project/blob/main/README.md \
+  --provider <provider-slug> --submitted-by <github-login> --write
 ```
 
-Schema-backed examples live under `docs/examples/submissions` so they do not get
-ingested as registry data.
+See [`CONTRIBUTING.md`](../../CONTRIBUTING.md)'s "Community submissions" section and
+[`docs/curation-playbook.md`](../../docs/curation-playbook.md) for the full model,
+allowed surface `kind`s, and validation steps
+(`npm run validate:surface -- registry/subnets/<slug>.json`).
 
-Direct PR submissions must:
+## Allowed states (generated data only)
 
-- change exactly one `registry/candidates/community/*.json` file;
-- include one `candidates[0]` entry only;
-- include `submission.submitted_by` and `submission.submitted_by_url` matching the PR author;
-- use public-safe `url` and `source_url` values;
-- avoid generated artifacts, secrets, private URLs, wallet data, and validator-local data.
-
-The generated bundle is allowed to contain:
-
-- official/project websites;
-- source repositories;
-- documentation links;
-- dashboards and leaderboard-style URLs;
-- public data-artifact URLs.
-
-The generated bundle must not contain owner key fields, contact emails, Discord handles, wallet data, private dashboards, credentialed validator flows, or social-only links.
-
-Allowed states:
+The generated candidate entries in `generated/public-sources.json` carry one of:
 
 - `schema-invalid`
 - `schema-valid`
@@ -49,4 +42,6 @@ Allowed states:
 - `stale`
 - `rejected`
 
-Only `verified` candidates should be promoted into curated subnet overlays under `registry/subnets`.
+Only `verified` candidates are eligible for promotion into subnet overlays under
+`registry/subnets/`, and that promotion is build/maintainer-owned, not a contributor
+action.

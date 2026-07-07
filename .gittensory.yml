@@ -11,7 +11,8 @@
 wantedPaths:
   - "registry/subnets/**"
   - "registry/providers/**"
-  - "registry/candidates/community/**"
+  # registry/candidates/community/** — retired lane, no longer a valid PR path.
+  # Community surfaces now live in registry/subnets/<slug>.json (see CONTRIBUTING.md).
   - "registry/reviews/**"
   - "registry/adapters/**"
 

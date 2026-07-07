@@ -1,33 +1,40 @@
-# Contributing to metagraphed-ui
+# Contributing to apps/ui
 
 Thanks for helping improve the [Metagraphed](https://github.com/JSONbored/metagraphed)
-frontend. This guide gets you from clone to a green PR.
+frontend. `apps/ui` is an npm workspace inside the `metagraphed` monorepo — this guide
+gets you from clone to a green PR.
 
 ## Setup
 
-[Bun](https://bun.sh) is the canonical toolchain.
+Node 22 and npm are the canonical toolchain.
 
 ```bash
-bun install
-bun run dev
+npm install                       # root install wires the apps/ui workspace too
+npm run dev --workspace=apps/ui
 ```
 
-The app fetches live data from `https://metagraph.sh` by default — no backend setup or
-secrets are required to develop against real data. To point at a different backend, set
-`VITE_METAGRAPH_API_BASE`.
+The app fetches live data from `https://api.metagraph.sh` by default — no backend setup
+or secrets are required to develop against real data. To point at a different backend,
+set `VITE_METAGRAPH_API_BASE`.
 
 ## Before you open a PR
 
-Run the three checks CI enforces — a PR is only mergeable when all pass:
+Run the same checks CI's `ui` job enforces, in this order — a PR is only mergeable when
+all pass:
 
 ```bash
-bun run lint       # ESLint + Prettier (errors block; the repo is Prettier-clean)
-bun run typecheck  # tsc --noEmit (the routes are fully typed — no `any` escape hatches)
-bun run build      # production SSR build must succeed
+npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
+npm run typecheck --workspace=apps/ui
+npm test --workspace=apps/ui
+npm run build --workspace=apps/ui
 ```
 
-If lint flags formatting, run `bun run format`. Prettier is the single source of truth
-for style and is enforced through ESLint's `prettier/prettier` rule — don't hand-format.
+If lint flags formatting, run `npm run format --workspace=apps/ui`. Prettier is the
+single source of truth for style and is enforced through ESLint's `prettier/prettier`
+rule — don't hand-format.
+
+CI also gzip-measures the initial client JS for a cold `/` visit against a bundle-size
+budget — keep new dependencies/imports lean.
 
 ## Code conventions
 
@@ -37,6 +44,8 @@ for style and is enforced through ESLint's `prettier/prettier` rule — don't ha
 - **Data fetching** goes through the query helpers in `src/lib/metagraphed/queries.ts`
   and `useSuspenseQuery` / error boundaries — don't fetch ad hoc in components.
 - **Components** live in `src/components/metagraphed/`; route trees in `src/routes/`.
+- Reuse existing design tokens (`src/styles.css`) and shared components instead of
+  inventing new one-off styles.
 - Keep diffs focused. Don't reformat or refactor unrelated files in a feature PR.
 
 ## Lovable-managed surface
@@ -46,18 +55,39 @@ Parts of the build are managed by [Lovable](https://lovable.dev). **Do not edit*
 Cloudflare build is driven entirely by build-time env vars (see [DEPLOY.md](./DEPLOY.md))
 so Lovable's visual edits stay non-conflicting. App code under `src/` is fair game.
 
+## Screenshot contract (required for any visual change)
+
+**Non-negotiable for any PR that changes rendered output — PRs without it are
+auto-closed, no exceptions.** See the root
+[`.claude/skills/metagraphed/SKILL.md`](../../.claude/skills/metagraphed/SKILL.md)'s
+"Path C — Frontend PR" section (Phase C2) for the exact capture steps: fixed viewport
+sizes (mobile 375×812, tablet 768×1024, desktop 1280×800), both themes, before/after,
+hosted on a branch and linked in a table in the PR body — never a full-page capture,
+never images committed to your feature branch.
+
+A PR confined to non-visual code (`src/lib/**`, `src/hooks/**`, test files) with no
+rendered-output change skips this — it isn't rendering anything different.
+
+## Linked issue
+
+Every PR must reference an open issue (`Closes #<n>` / `Refs #<n>`) in the PR body, and
+that issue must still be open at submission time — a missing or already-closed link is
+an automatic close before content is even reviewed. Pick a `gittensor:bug` /
+`gittensor:feature` issue scoped to `apps/ui/`.
+
 ## Pull requests
 
 1. Branch off `main`.
-2. Make the change; keep it scoped to one concern.
-3. Run the three checks above until green.
-4. Open the PR with a clear description of what and why. CI must pass to merge.
+2. Make the change; keep it scoped to one concern (aim for ≤10 files / ≤1000 LOC).
+3. Run the checks above until green.
+4. Fill the screenshot table if the change is visual, and link the issue you're closing.
+5. Open the PR with a clear description of what and why. CI must pass to merge.
 
 ## Where issues live
 
-The roadmap and most issues are tracked in the
-**[metagraphed](https://github.com/JSONbored/metagraphed/issues)** backend repo. Open
-**UI-specific** issues (rendering, routing, accessibility, design) in this repo.
+All issues — backend, roadmap, and UI-specific — are tracked in
+**[JSONbored/metagraphed](https://github.com/JSONbored/metagraphed/issues)**. There is
+no separate frontend repo anymore; `apps/ui` is a workspace within this monorepo.
 
 ## License
 
