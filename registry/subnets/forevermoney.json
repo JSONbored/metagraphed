@@ -91,6 +91,32 @@
         "confidence": "medium"
       },
       "notes": "Public no-auth GET returning vault TVL aggregates grouped by trading pair on the official ForeverMoney Insights dashboard API host."
+    },
+    {
+      "id": "sn-98-forevermoney-min-compute-spec",
+      "name": "ForeverMoney minimum compute requirements",
+      "kind": "data-artifact",
+      "url": "https://raw.githubusercontent.com/SN98-ForeverMoney/forever-money/main/min_compute.yml",
+      "provider": "forevermoney",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/SN98-ForeverMoney/forever-money/blob/main/min_compute.yml",
+        "https://github.com/SN98-ForeverMoney/forever-money/blob/main/setup.py"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight",
+        "confidence": "medium"
+      },
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official SN98-ForeverMoney/forever-money repository as min_compute.yml. Documents baseline CPU, memory, storage, and network bandwidth requirements for SN98 ForeverMoney miners and validators."
     }
   ],
   "social": {
