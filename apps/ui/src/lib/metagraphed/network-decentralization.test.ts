@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { networkDecentralizationModel } from "./network-decentralization";
+import { networkDecentralizationModel, nakamotoTone } from "./network-decentralization";
 import type { ChainConcentration, ChainPerformance } from "./types";
 
 function findTile(model: ReturnType<typeof networkDecentralizationModel>, key: string) {
@@ -155,5 +155,21 @@ describe("networkDecentralizationModel", () => {
     expect(findTile(model, "trust-median")?.value).toBe("—");
     expect(findTile(model, "trust-median")?.hint).toBeUndefined();
     expect(findTile(model, "validator-trust-median")?.value).toBe("1.000");
+  });
+});
+
+// #3990: nakamotoTone is exported so BlockProductionHeader (blocks.index.tsx)
+// can call the same shared helper instead of re-implementing its thresholds.
+describe("nakamotoTone", () => {
+  it("is down at and below 1, warn at and below 3, ok above 3", () => {
+    expect(nakamotoTone(1)).toBe("down");
+    expect(nakamotoTone(3)).toBe("warn");
+    expect(nakamotoTone(4)).toBe("ok");
+    expect(nakamotoTone(105)).toBe("ok");
+  });
+
+  it("is default for a missing value", () => {
+    expect(nakamotoTone(null)).toBe("default");
+    expect(nakamotoTone(undefined)).toBe("default");
   });
 });
