@@ -82,6 +82,25 @@
         "https://github.com/sundae-bar/sb-validator/blob/main/README.md"
       ],
       "url": "https://api.sundaebar.ai/api/v2/validators"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-121-sundae-bar-sbc9-eval-dataset",
+      "kind": "data-artifact",
+      "name": "Sundae Bar SBC9 skill evaluation dataset",
+      "notes": "Public no-auth JSONL benchmark dataset of customer-email response scenarios with rubric ground-truth metadata, published in the official SN121 sb-validator repository at python/dataset_sbc9.jsonl. Loaded at grader runtime by skill_evaluation.py (_load_variant_specifics) for skill-integrity checks during validator evaluation flows.",
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/sundae-bar/sb-validator/blob/main/python/skill_evaluation.py",
+        "https://github.com/sundae-bar/sb-validator/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/sundae-bar/sb-validator/main/python/dataset_sbc9.jsonl"
     }
   ],
   "social": {
