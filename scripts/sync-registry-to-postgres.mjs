@@ -218,6 +218,13 @@ async function collectSubnetFile(
     subnet_netuid: overlay.netuid,
     current_surfaces: currentSurfaces,
     source_commit: args.head,
+    // This file's `surfaces` array is only ever the community-authored ones --
+    // it has no visibility into machine-generated/candidate-promoted surfaces
+    // the same subnet may also carry (that's generateBaselineOverlaySet's job,
+    // via the scheduled backfill). Scope the Worker's prune to authority =
+    // 'community' so this fast path can never delete a row it has no way to
+    // know about.
+    authority_scope: "community",
   });
 }
 

@@ -163,15 +163,31 @@ export default {
         const keepKeys = prune.current_surfaces
           .filter((surface) => surface?.kind && surface?.url)
           .map((surface) => `${surface.kind}\u001f${surface.url}`);
+        // `authority_scope: "community"` (set by the merge-triggered fast path,
+        // scripts/sync-registry-to-postgres.mjs) bounds this prune to ONLY the
+        // community-authority rows for the subnet -- the fast path's
+        // current_surfaces comes from a single registry/subnets/<slug>.json file
+        // and has no visibility into machine-generated/candidate-promoted
+        // surfaces (authority: "registry-observed") the same subnet may also
+        // carry, so without this scope it would delete those rows on every
+        // merge that touches the file. The scheduled full resync
+        // (scripts/backfill-registry-postgres.mjs) computes current_surfaces
+        // from the complete baseline-augmented view and omits authority_scope,
+        // so it keeps pruning across every authority as before. Passed as a
+        // plain boolean parameter (not spliced SQL) so the condition is a
+        // no-op OR branch when unscoped, rather than composing raw fragments.
+        const scopeToCommunity = prune.authority_scope === "community";
         const deleted = keepKeys.length
           ? await sql`
               DELETE FROM surfaces
               WHERE subnet_netuid = ${prune.subnet_netuid}
+                AND (NOT ${scopeToCommunity} OR authority = ${"community"})
                 AND NOT (kind || ${"\u001f"} || url = ANY(${keepKeys}))
               RETURNING id, subnet_netuid, overlay`
           : await sql`
               DELETE FROM surfaces
               WHERE subnet_netuid = ${prune.subnet_netuid}
+                AND (NOT ${scopeToCommunity} OR authority = ${"community"})
               RETURNING id, subnet_netuid, overlay`;
         for (const row of deleted) {
           await sql`

@@ -306,6 +306,133 @@ test("prunes surfaces absent from the current subnet payload and records delete 
   expect(historyCall.values).toContain("delete");
 });
 
+test("REGRESSION: prune_surfaces with authority_scope 'community' passes a true scope flag, bounding the DELETE to community-authority rows", async () => {
+  deleteResult.surfaces = [];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [
+              { kind: "docs", url: "https://example.com/docs" },
+            ],
+            source_commit: "def456",
+            authority_scope: "community",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text));
+  expect(deleteCall.text).toMatch(/authority = /);
+  // The scope flag is bound as a real parameter (true), not spliced into the query text.
+  expect(deleteCall.values).toContain(true);
+  expect(deleteCall.values).toContain("community");
+});
+
+test("does not scope by authority when authority_scope is absent (the scheduled full-resync path)", async () => {
+  deleteResult.surfaces = [];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [
+              { kind: "docs", url: "https://example.com/docs" },
+            ],
+            source_commit: "def456",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text));
+  // The scope flag is still present in the query shape (always-composed OR clause),
+  // but bound to false so it never actually filters by authority.
+  expect(deleteCall.values).toContain(false);
+});
+
+test("skips a prune_surfaces entry missing subnet_netuid/current_surfaces/source_commit instead of failing the request", async () => {
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          { subnet_netuid: 8 }, // missing current_surfaces and source_commit
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ surfaces_deleted: 0 });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).not.toMatch(/DELETE FROM surfaces/);
+});
+
+test("deletes every surface for a subnet when current_surfaces has no valid kind/url entries", async () => {
+  deleteResult.surfaces = [
+    {
+      id: "00000000-0000-0000-0000-000000000003",
+      subnet_netuid: 8,
+      overlay: { kind: "docs", url: "https://stale.example/docs" },
+    },
+  ];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          { subnet_netuid: 8, current_surfaces: [], source_commit: "def456" },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ surfaces_deleted: 1 });
+  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text));
+  expect(deleteCall.text).not.toMatch(/ANY/);
+});
+
+test("skips a delete_subnets entry missing netuid/source_commit instead of failing the request", async () => {
+  const res = await worker.fetch(
+    post(
+      { delete_subnets: [{ netuid: null, source_commit: "def456" }] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({
+    surfaces_deleted: 0,
+    subnets_deleted: 0,
+  });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).not.toMatch(/DELETE FROM subnets/);
+});
+
 test("deletes a removed subnet after recording delete history for its surfaces", async () => {
   deleteResult.surfaces = [
     {
