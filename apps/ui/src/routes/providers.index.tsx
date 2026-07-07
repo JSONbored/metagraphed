@@ -13,7 +13,12 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
-import { providersQuery, endpointsQuery, type ProviderCounts } from "@/lib/metagraphed/queries";
+import {
+  providersQuery,
+  endpointsQuery,
+  sourceHealthProvidersQuery,
+  type ProviderCounts,
+} from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
@@ -264,6 +269,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
       ) : null}
 
       <ProviderOverview providers={rows} counts={counts} />
+      <SourceHealthRollup />
 
       {/* Toolbar */}
       <div className="sticky top-14 z-10 -mx-1 px-1 py-2 backdrop-blur bg-paper/85 border-b border-border/60 flex flex-wrap items-center gap-2">
@@ -554,6 +560,27 @@ function CountTile({ icon, label, value }: { icon?: ReactNode; label: string; va
         )}
       >
         {value > 0 ? value : "—"}
+      </span>
+    </div>
+  );
+}
+
+// #3353: compact source-health status-mix rollup for the /providers page — the
+// summary-level companion to the full sortable provider table on /status, from
+// the same /api/v1/source-health query already wired for that page. Suspends
+// within the ProvidersGrid boundary alongside ProviderOverview.
+function SourceHealthRollup() {
+  const summary = useSuspenseQuery(sourceHealthProvidersQuery()).data.data.summary;
+  const status = summary.status_counts;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-4 rounded border border-border bg-card p-3 font-mono text-[12px] tabular-nums">
+      <span className="mg-label">Source health</span>
+      <span className="text-health-ok">{status.ok ?? 0} ok</span>
+      <span className="text-health-warn">{status.degraded ?? 0} degraded</span>
+      <span className="text-health-down">{status.failed ?? 0} failed</span>
+      <span className="text-ink-muted">{status.unknown ?? 0} unknown</span>
+      <span className="ml-auto text-ink-muted">
+        {summary.provider_count ?? 0} providers · {summary.endpoint_count ?? 0} endpoints
       </span>
     </div>
   );
