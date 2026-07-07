@@ -1,18 +1,45 @@
 {
-  "schema_version": 1,
-  "netuid": 70,
-  "name": "NexisGen",
-  "slug": "sn-70",
-  "status": "active",
   "categories": [],
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "NexisGen",
+  "netuid": 70,
+  "schema_version": 1,
+  "slug": "sn-70",
   "social": {
     "x": "https://x.com/nexisgen_ai"
   },
-  "surfaces": [],
   "source_repo": "https://github.com/RendixNetwork/nexisgen",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-validator-api-healthz",
+      "kind": "subnet-api",
+      "name": "NexisGen validator API healthz",
+      "notes": "Public no-auth GET /healthz on api.nexisgen.ai returning application liveness JSON (observed: {\"status\":\"ok\"}). Implemented in the official RendixNetwork/nexisgen FastAPI app and documented as a route in the subnet's own OpenAPI schema on the same host.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/RendixNetwork/nexisgen/blob/main/nexis/api/app.py",
+        "https://api.nexisgen.ai/openapi.json",
+        "https://github.com/RendixNetwork/nexisgen"
+      ],
+      "url": "https://api.nexisgen.ai/healthz"
+    }
+  ],
   "website_url": "https://nexisgen.ai/"
 }
