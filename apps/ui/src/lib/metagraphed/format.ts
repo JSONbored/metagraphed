@@ -4,6 +4,15 @@ export function formatNumber(n: number | undefined | null, fallback = "—"): st
   return new Intl.NumberFormat("en-US").format(n);
 }
 
+/** Compact TAO label with Nk/NM compaction and consistent decimal thresholds app-wide. */
+export function formatTao(v: number | undefined | null, fallback = "—"): string {
+  if (v === undefined || v === null || !Number.isFinite(v)) return fallback;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (v >= 1) return `${v.toFixed(2)} τ`;
+  return `${v.toFixed(4)} τ`;
+}
+
 /**
  * The upstream registry frequently emits "1970-01-01T00:00:00.000Z" as a
  * placeholder when an artifact hasn't been timestamped yet. Treat any

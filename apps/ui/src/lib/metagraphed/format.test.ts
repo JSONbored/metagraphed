@@ -5,7 +5,34 @@ import {
   durationLabel,
   formatRelative,
   isStaleFreshness,
+  formatTao,
 } from "./format";
+
+describe("formatTao", () => {
+  it("returns the fallback for nullish / non-finite input", () => {
+    expect(formatTao(undefined)).toBe("—");
+    expect(formatTao(null)).toBe("—");
+    expect(formatTao(Number.NaN)).toBe("—");
+    expect(formatTao(Infinity)).toBe("—");
+    expect(formatTao(null, "n/a")).toBe("n/a");
+  });
+
+  it("uses the majority convention at boundary values shared across call sites", () => {
+    expect(formatTao(1)).toBe("1.00 τ");
+    expect(formatTao(5)).toBe("5.00 τ");
+    expect(formatTao(10)).toBe("10.00 τ");
+  });
+
+  it("formats sub-1 TAO with four decimal places", () => {
+    expect(formatTao(0.5)).toBe("0.5000 τ");
+    expect(formatTao(0.12345)).toBe("0.1235 τ");
+  });
+
+  it("compacts large values with k and M suffixes", () => {
+    expect(formatTao(1_500)).toBe("1.5k τ");
+    expect(formatTao(2_500_000)).toBe("2.50M τ");
+  });
+});
 
 describe("isUsableTimestamp", () => {
   it("rejects empty / nullish input", () => {
