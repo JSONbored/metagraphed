@@ -37,6 +37,22 @@
         "https://github.com/leadpoet/leadpoet"
       ],
       "url": "https://leadpoet.com/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-71-leadpoet-geo-countries",
+      "kind": "data-artifact",
+      "name": "Leadpoet country reference list",
+      "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Documented in the subnet's own OpenAPI schema, titled \"Leadpoet Public API\" (leadpoet.com/api/openapi.json, already cited as a source for the existing health surface); same leadpoet.com host.",
+      "provider": "leadpoet",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "philluiz2323"
+      },
+      "source_urls": ["https://leadpoet.com/api/openapi.json"],
+      "url": "https://leadpoet.com/api/geo/countries"
     }
   ],
   "source_repo": "https://github.com/leadpoet/leadpoet",
