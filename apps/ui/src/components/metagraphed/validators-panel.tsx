@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
+import { TreemapMini, type TreemapMiniDatum } from "@/components/metagraphed/charts/treemap-mini";
 import { TableState } from "@/components/metagraphed/table-state";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
 import { FreshnessIndicator } from "@/components/metagraphed/freshness";
@@ -38,6 +39,16 @@ export function ValidatorsTableLoader({
       }));
   }, [validators]);
 
+  // Same top-N stake-ranked set as `stakeBars`, but sized by area so the
+  // concentration of stake across the leading validators reads at a glance —
+  // a complement to the ranked bar list, not a replacement. Shares are derived
+  // client-side from the values already in hand (no network-wide total exists
+  // on the payload).
+  const stakeTiles = useMemo<TreemapMiniDatum[]>(
+    () => stakeBars.map((b) => ({ label: b.label, value: b.value, color: b.color })),
+    [stakeBars],
+  );
+
   if (validators.length === 0) {
     return (
       <TableState
@@ -72,6 +83,21 @@ export function ValidatorsTableLoader({
             </span>
           </div>
           <BarMini data={stakeBars} />
+          {stakeTiles.length > 1 ? (
+            <div className="mt-4 border-t border-border pt-3">
+              <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                Stake dominance
+                <span className="ml-2 normal-case tracking-normal text-ink-subtle">
+                  share within the top {stakeTiles.length}
+                </span>
+              </div>
+              <TreemapMini
+                data={stakeTiles}
+                formatValue={(v) => `${taoCompact(v)} τ`}
+                ariaLabel={`Validator stake dominance across the top ${stakeTiles.length} validators, sized by stake share`}
+              />
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="flex items-center justify-end">{freshness}</div>
