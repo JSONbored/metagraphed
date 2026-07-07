@@ -299,8 +299,21 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 
       <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
 
-      <AccountExtrinsicsSection rows={signedExtrinsics} isPending={extrinsicsResult.isPending} />
-      <AccountTransfersSection ss58={ss58} rows={transfers} isPending={transfersResult.isPending} />
+      <AccountExtrinsicsSection
+        rows={signedExtrinsics}
+        isPending={extrinsicsResult.isPending}
+        isError={extrinsicsResult.isError}
+        error={extrinsicsResult.error}
+        onRetry={() => void extrinsicsResult.refetch()}
+      />
+      <AccountTransfersSection
+        ss58={ss58}
+        rows={transfers}
+        isPending={transfersResult.isPending}
+        isError={transfersResult.isError}
+        error={transfersResult.error}
+        onRetry={() => void transfersResult.refetch()}
+      />
 
       <div className="mt-6">
         <Link
@@ -397,7 +410,19 @@ function AccountFeedSectionSkeleton({
   );
 }
 
-function AccountExtrinsicsSection({ rows, isPending }: { rows: Extrinsic[]; isPending?: boolean }) {
+function AccountExtrinsicsSection({
+  rows,
+  isPending,
+  isError,
+  error,
+  onRetry,
+}: {
+  rows: Extrinsic[];
+  isPending?: boolean;
+  isError?: boolean;
+  error?: unknown;
+  onRetry?: () => void;
+}) {
   if (isPending && rows.length === 0) {
     return (
       <AccountFeedSectionSkeleton
@@ -405,6 +430,24 @@ function AccountExtrinsicsSection({ rows, isPending }: { rows: Extrinsic[]; isPe
         title="Signed extrinsics"
         subtitle="The newest transactions this account signed, from the chain-direct extrinsics tier."
       />
+    );
+  }
+  if (isError) {
+    return (
+      <SectionAnchor
+        id="extrinsics"
+        title="Signed extrinsics"
+        subtitle="The newest transactions this account signed, from the chain-direct extrinsics tier."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Couldn't load signed extrinsics"
+          description="The extrinsics tier is optional enrichment — the rest of the account page is unaffected."
+          error={error}
+          onRetry={onRetry}
+        />
+      </SectionAnchor>
     );
   }
   if (rows.length === 0) return null;
@@ -486,10 +529,16 @@ function AccountTransfersSection({
   ss58,
   rows,
   isPending,
+  isError,
+  error,
+  onRetry,
 }: {
   ss58: string;
   rows: Transfer[];
   isPending?: boolean;
+  isError?: boolean;
+  error?: unknown;
+  onRetry?: () => void;
 }) {
   if (isPending && rows.length === 0) {
     return (
@@ -498,6 +547,24 @@ function AccountTransfersSection({
         title="Transfers"
         subtitle="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
       />
+    );
+  }
+  if (isError) {
+    return (
+      <SectionAnchor
+        id="transfers"
+        title="Transfers"
+        subtitle="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Couldn't load transfers"
+          description="The transfers tier is optional enrichment — the rest of the account page is unaffected."
+          error={error}
+          onRetry={onRetry}
+        />
+      </SectionAnchor>
     );
   }
   if (rows.length === 0) return null;
