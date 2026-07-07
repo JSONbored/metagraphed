@@ -942,6 +942,7 @@ describe("formatBulkTrends", () => {
       windows: {
         "7d": [
           { netuid: -1, date: "2026-06-10", total: 1, ok_count: 1 },
+          { netuid: " ", date: "2026-06-10", total: 1, ok_count: 1 },
           { netuid: 7, date: "not-a-date", total: 1, ok_count: 1 },
         ],
       },
@@ -3058,6 +3059,30 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
       ],
     });
     assert.equal(capped.summary.incident_count, 1);
+  });
+
+  test("skips blank netuid values instead of coercing to subnet 0", () => {
+    const out = formatGlobalIncidents({
+      incidentRows: [
+        {
+          netuid: " ",
+          surface_id: "x",
+          started_at: 1,
+          ended_at: 2,
+          failed_samples: 1,
+        },
+        {
+          netuid: "7",
+          surface_id: "y",
+          started_at: 10,
+          ended_at: 20,
+          failed_samples: 2,
+        },
+      ],
+    });
+    assert.equal(out.summary.incident_count, 1);
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].netuid, 7);
   });
 });
 

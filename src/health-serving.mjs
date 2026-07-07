@@ -366,13 +366,9 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
   const formatWindow = (rows, days) => {
     const bySubnet = new Map();
     for (const row of rows || []) {
-      const netuid = Number(row.netuid);
+      const netuid = parseNonNegativeInt(row.netuid);
       const date = String(row.date || "");
-      if (
-        !Number.isInteger(netuid) ||
-        netuid < 0 ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(date)
-      ) {
+      if (netuid == null || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         continue;
       }
       const samples = Math.max(0, Number(row.total) || 0);
@@ -480,6 +476,16 @@ function toFiniteOrNull(value) {
   if (value == null) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+function parseNonNegativeInt(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const parsed = Number(trimmed);
+  return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
 // p50/p95/p99 + avg/min/max latency per surface, computed in SQL (one row per
@@ -680,7 +686,8 @@ export function formatGlobalIncidents({
     if (acceptedIncidents >= incidentLimit) {
       break;
     }
-    const netuid = Number(row.netuid);
+    const netuid = parseNonNegativeInt(row.netuid);
+    if (netuid == null) continue;
     const key = `${netuid}/${surfaceLookupKey(row)}`;
     const entry = bySurface.get(key) || {
       netuid,
