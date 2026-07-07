@@ -134,6 +134,22 @@
         "submitted_by": "nickmopen"
       },
       "notes": "Public no-auth GET returning the ItsAI (SN32) content-detection API health as JSON. Hosted on api.its-ai.org, the API subdomain of the registered website its-ai.org; the API is documented at docs.its-ai.org and implemented in the team's It-s-AI/api FastAPI repo. Fills the file's noted missing public-API-endpoint gap."
+    },
+    {
+      "id": "sn-32-its-ai-data-artifact",
+      "name": "ItsAI SN32 leaderboard (Hugging Face Space)",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/spaces/sergak0/ai-detection-leaderboard",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/It-s-AI/llm-detection/blob/main/docs/FAQ.md"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "notes": "Live SN32 miner leaderboard (UID/incentive/emission plus F1, false-positive, and average-precision scores from the Yuma validator) hosted as a public, no-auth Hugging Face Space. Explicitly named as the team's own leaderboard in docs/FAQ.md (\"Yes, we do have a leaderboard based on OTF scores\"); the app itself titles the page \"Subnet 32 Leaderboard\" and links back to github.com/It-s-AI/llm-detection. Fills the file's noted missing standalone-data-artifact gap."
     }
   ],
   "social": { "x": "https://x.com/ai_detection" },
