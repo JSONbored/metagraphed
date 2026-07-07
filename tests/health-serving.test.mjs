@@ -3078,6 +3078,20 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
           ended_at: 20,
           failed_samples: 2,
         },
+        {
+          netuid: {},
+          surface_id: "z",
+          started_at: 30,
+          ended_at: 40,
+          failed_samples: 1,
+        },
+        {
+          netuid: "9007199254740993",
+          surface_id: "z2",
+          started_at: 50,
+          ended_at: 60,
+          failed_samples: 1,
+        },
       ],
     });
     assert.equal(out.summary.incident_count, 1);
