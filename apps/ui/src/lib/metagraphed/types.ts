@@ -848,6 +848,52 @@ export interface ChainEventsFeed {
   [key: string]: unknown;
 }
 
+/**
+ * Inter-block time distribution (ms) from /api/v1/blocks/summary — null when
+ * fewer than two consecutive blocks are in the window (no interval to measure).
+ */
+export interface BlockTimeStats {
+  count: number;
+  mean_ms: number;
+  min_ms: number;
+  max_ms: number;
+  p50_ms: number;
+  p90_ms: number;
+}
+
+/** Extrinsic/event throughput over the summary window — null on a cold store. */
+export interface BlockThroughput {
+  total_extrinsics: number;
+  total_events: number;
+  mean_extrinsics_per_block: number;
+  mean_events_per_block: number;
+  max_extrinsics_in_block: number;
+}
+
+/**
+ * Block-production summary from /api/v1/blocks/summary (#3488): aggregate health
+ * of the recent-blocks window — inter-block time, throughput, block-author
+ * decentralization, and the runtime spec-version spread. A cold/absent store
+ * degrades to a schema-stable zeroed card (block_count 0, nested objects null).
+ */
+export interface BlocksSummary {
+  schema_version?: number;
+  block_count: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+  block_time: BlockTimeStats | null;
+  throughput: BlockThroughput | null;
+  distinct_authors: number;
+  // Block-authorship decentralization — the same Gini/HHI/Nakamoto scorecard as
+  // the stake/emission tiers, computed over each author's block count.
+  author_concentration: ConcentrationMetrics | null;
+  distinct_spec_versions: number;
+  latest_spec_version: number | null;
+  [key: string]: unknown;
+}
+
 export interface ExtrinsicCallArg {
   name?: string | null;
   value?: unknown;

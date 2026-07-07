@@ -3,13 +3,14 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Timer, Activity, Users } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ListShell } from "@/components/metagraphed/list-shell";
+import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import {
   PageSizeSelect,
   ResetFiltersButton,
@@ -17,8 +18,8 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
-import { blocksQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { blocksQuery, blocksSummaryQuery } from "@/lib/metagraphed/queries";
+import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { Block } from "@/lib/metagraphed/types";
@@ -67,12 +68,58 @@ function BlocksPage() {
         actions={<ShareButton />}
       />
       <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-28 w-full mb-8" />}>
+          <BlockProductionHeader />
+        </Suspense>
+      </QueryErrorBoundary>
+      <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <BlocksTable />
         </Suspense>
       </QueryErrorBoundary>
-      <ApiSourceFooter paths={["/api/v1/blocks"]} artifacts={["/metagraph/blocks.json"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/blocks", "/api/v1/blocks/summary"]}
+        artifacts={["/metagraph/blocks.json", "/metagraph/blocks/summary.json"]}
+      />
     </AppShell>
+  );
+}
+
+// #3488: point-in-time block-production health above the raw blocks feed —
+// inter-block cadence, per-block throughput, and block-author decentralization
+// from /api/v1/blocks/summary, in its own Suspense/error boundary so a slow or
+// failed summary never blocks the table below.
+function BlockProductionHeader() {
+  const summary = useSuspenseQuery(blocksSummaryQuery()).data.data;
+  const blockTime = summary.block_time;
+  const throughput = summary.throughput;
+  const nakamoto = summary.author_concentration?.nakamoto_coefficient;
+  const nakamotoTone: "ok" | "warn" | "down" | "default" =
+    nakamoto == null ? "default" : nakamoto <= 1 ? "down" : nakamoto <= 3 ? "warn" : "ok";
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+      <StatTile
+        icon={Timer}
+        eyebrow="Inter-block time"
+        value={blockTime ? humaniseSeconds(blockTime.mean_ms / 1000) : "—"}
+        hint={blockTime ? `p90 ${humaniseSeconds(blockTime.p90_ms / 1000)}` : undefined}
+      />
+      <StatTile
+        icon={Activity}
+        eyebrow="Throughput"
+        value={throughput ? `${formatNumber(throughput.mean_extrinsics_per_block)} ext/block` : "—"}
+        hint={
+          throughput ? `${formatNumber(throughput.mean_events_per_block)} events/block` : undefined
+        }
+      />
+      <StatTile
+        icon={Users}
+        eyebrow="Author decentralization"
+        value={nakamoto != null ? formatNumber(nakamoto) : "—"}
+        hint="Nakamoto coefficient"
+        tone={nakamotoTone}
+      />
+    </div>
   );
 }
 
