@@ -146,6 +146,25 @@
         "https://github.com/PlatformNetwork/platform/blob/main/README.md"
       ],
       "url": "https://chain.joinbase.ai/v1/registry"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-100-platform-network-challenges-dashboard",
+      "kind": "data-artifact",
+      "name": "Plaτform challenges dashboard SVG",
+      "notes": "Public no-auth GET returning a rendered SVG dashboard (registered BASE challenges with status, miners, and emissions) on the same chain.joinbase.ai host as the registered OpenAPI/subnet-api surfaces. Documented in the subnet's own OpenAPI spec (chain.joinbase.ai/openapi.json, path /v1/challenges/dashboard.svg, summary \"Get Challenges Dashboard Svg\").",
+      "provider": "platform-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://chain.joinbase.ai/openapi.json",
+        "https://chain.joinbase.ai/v1/weights/latest"
+      ],
+      "url": "https://chain.joinbase.ai/v1/challenges/dashboard.svg"
     }
   ],
   "social": {
