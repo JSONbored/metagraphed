@@ -115,6 +115,22 @@
         "https://github.com/General-Tao-Ventures/cartha-principal-miner-template/blob/main/README.md"
       ],
       "url": "https://api.cartha.finance/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-lp-stats",
+      "kind": "data-artifact",
+      "name": "Cartha liquidity-providing metrics",
+      "notes": "Public no-auth GET /v1/lp-stats on api.cartha.finance returning aggregated liquidity-providing metrics for the 0xMarkets landing page (observed top-level fields: apy_tiers, max_apy, tvl, weekly_rewards, emissions, prices, epoch, extras, last_updated). Documented as GET /v1/lp-stats in the subnet OpenAPI spec (api.cartha.finance/openapi.json, already cited for the existing health and OpenAPI surfaces); same api.cartha.finance host as the Cartha Verifier API.",
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "GildardoDev"
+      },
+      "source_urls": ["https://api.cartha.finance/openapi.json"],
+      "url": "https://api.cartha.finance/v1/lp-stats"
     }
   ],
   "contact": "contact@0xmarkets.io",
