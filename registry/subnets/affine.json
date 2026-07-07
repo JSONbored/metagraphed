@@ -1,14 +1,15 @@
 {
-  "schema_version": 1,
-  "netuid": 120,
-  "name": "Affine",
-  "slug": "sn-120",
-  "status": "active",
   "categories": [],
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "Affine",
+  "netuid": 120,
+  "schema_version": 1,
+  "slug": "sn-120",
+  "source_repo": "https://github.com/AffineFoundation/affine-cortex",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -49,8 +50,23 @@
         "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/utils/api_client.py"
       ],
       "url": "https://api.affine.io/api/v1/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-data-artifact",
+      "kind": "data-artifact",
+      "name": "Affine current champion rank",
+      "notes": "Public no-auth GET /api/v1/rank/current on api.affine.io returning the current champion window (model reference, revision, since-block) plus past champions with their emission share. Documented as GET /api/v1/rank/current in the subnet's own OpenAPI 3.1 schema (already-registered sn-120-affine-openapi surface); same api.affine.io host as the existing health surface. Observed live and populated at submission time.",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "philluiz2323"
+      },
+      "source_urls": ["https://api.affine.io/openapi.json"],
+      "url": "https://api.affine.io/api/v1/rank/current"
     }
   ],
-  "source_repo": "https://github.com/AffineFoundation/affine-cortex",
   "website_url": "https://www.affine.io/"
 }
