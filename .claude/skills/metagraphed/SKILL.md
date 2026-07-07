@@ -238,9 +238,11 @@ its structure, naming, and comment density. Build for the class, not the one cas
 ### Phase B2 — Test
 
 Tests are vitest under `tests/`. Add coverage for new branches and fallback paths, and a **regression
-test for every bug fix**. **Codecov is the coverage gate** — run it unsharded locally:
-`npm run test:coverage`. Reader tests serve R2-only artifacts that only exist after a build, so
-`npm run build` before the suite if a test reads served artifacts.
+test for every bug fix**. **Codecov is the coverage gate** — `codecov/patch` enforces **99% patch
+coverage, branch-counted, with zero threshold slack** (`target: 99%, threshold: 0%` in `codecov.yml`),
+scoped to `src/**` + `workers/**` runtime code. Run it unsharded locally: `npm run test:coverage`.
+Reader tests serve R2-only artifacts that only exist after a build, so `npm run build` before the
+suite if a test reads served artifacts.
 
 ### Phase B3 — Regenerate what you invalidated (then commit it)
 

@@ -54,7 +54,7 @@ Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its
 
 > **Plagiarism is not tolerated.** Copying another contributor's PR, surface, or work and submitting it as your own — including duplicated or lightly reworded copies filed under a different account — is a hard violation. Don't copy others to farm Gittensor rewards: anyone attempting to cheat or copy for gain is **permanently blocked from contributing across all of our repositories**. See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
-> Filing your own issue and then opening a PR that resolves it is welcome, and a PR with no linked issue is fine — neither is farming. What is against policy is **using more than one account you control (alt / sock-puppet accounts) — e.g. one account opening issues for another to "resolve" — to inflate contribution credit**, along with manufacturing low-value/slop issues and bulk point-chasing surface PRs. Farmed work earns no linked-issue bonus, and repeat or any confirmed multi-account farming is closed on sight and blocked. Enforcement is proportional; the full ladder is in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+> A linked, currently-open issue is required on every PR — filing your own issue and then opening a PR that resolves it is welcome and the normal path, but a PR with no linked issue, or one linked to an issue that's already closed, is automatically closed before its content is even scored. What is against policy is **using more than one account you control (alt / sock-puppet accounts) — e.g. one account opening issues for another to "resolve" — to inflate contribution credit**, along with manufacturing low-value/slop issues and bulk point-chasing surface PRs. Farmed work earns no linked-issue bonus, and repeat or any confirmed multi-account farming is closed on sight and blocked. Enforcement is proportional; the full ladder is in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 Add a surface locally — three steps:
 
@@ -113,6 +113,8 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 **Timing is typical, not an SLA.** When the gittensory maintainer agent is operating, most PRs are reviewed and auto-merged or auto-closed within **~1 hour of CI finishing**; when it is paused or under maintenance, manual review **typically takes 24–48 hours, depending on volume**. These are observations, not commitments — reviews happen when they happen.
 
 **One-shot, merge-ready as-is.** We do not request changes on contributor PRs — a PR is merged exactly as it stands or it is closed; there is no "changes requested" back-and-forth. Before CI we rebase your branch onto `main` with a **merge commit**, then review **after** CI completes — so a rebase conflict, or any failing gate (schema, API, OpenAPI, `contract-drift`, or surface validation), closes the PR. Keep to the one-subnet-one-file rule, regenerate artifacts, and make it green before pushing; recover from a close by opening a **fresh, corrected PR**. PRs touching guarded paths (build scripts, the Worker API, CI config) are held for manual review.
+
+**You can have at most 2 open PRs against this repo at a time** — a 3rd is closed on sight. Every automatic close, including this one, comes with a comment from the gate explaining exactly what was wrong so you can fix it in your next PR.
 
 **If we close your PR by mistake, that's on us** — we may reopen or re-review at our discretion as time permits. There is no fixed window, and a fresh PR is usually fastest.
 
