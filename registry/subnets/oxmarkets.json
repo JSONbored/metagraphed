@@ -115,6 +115,25 @@
         "https://github.com/General-Tao-Ventures/cartha-principal-miner-template/blob/main/README.md"
       ],
       "url": "https://api.cartha.finance/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-35-oxmarkets-pools",
+      "kind": "data-artifact",
+      "name": "Cartha pools catalog",
+      "notes": "Public no-auth GET /pools on api.cartha.finance returning a JSON catalog of the tradeable liquidity pools on the SN35 OxMarkets (Cartha) market — each entry with name (e.g. EUR/USD, GBP/USD), poolId, vaultAddress, chainId, and network. Documented as GET /pools in the subnet OpenAPI spec (the already-registered schema on the sibling health surface); api.cartha.finance is the default VERIFIER_URL configured in the official Cartha principal miner template. Observed live and populated at submission time.",
+      "provider": "oxmarkets",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rust-toml"
+      },
+      "source_urls": [
+        "https://api.cartha.finance/openapi.json",
+        "https://github.com/General-Tao-Ventures/cartha-principal-miner-template/blob/main/README.md"
+      ],
+      "url": "https://api.cartha.finance/pools"
     }
   ],
   "contact": "contact@0xmarkets.io",
