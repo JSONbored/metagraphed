@@ -1254,6 +1254,46 @@ export interface ChainCalls {
   call_count: number;
   calls: ChainCallEntry[];
 }
+export interface ChainStakeFlowNetwork {
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+  gaining: number;
+  losing: number;
+  flat: number;
+}
+export interface ChainStakeFlowDistribution {
+  count: number;
+  mean: number | null;
+  min: number | null;
+  p25: number | null;
+  median: number | null;
+  p75: number | null;
+  p90: number | null;
+  max: number | null;
+}
+export interface ChainStakeFlowSubnet {
+  netuid: number;
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+  direction: string;
+}
+export interface ChainStakeFlow {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainStakeFlowNetwork | null;
+  net_flow_distribution: ChainStakeFlowDistribution | null;
+  subnets: ChainStakeFlowSubnet[];
+}
 export interface ChainSignerEntry {
   signer: string;
   tx_count: number;

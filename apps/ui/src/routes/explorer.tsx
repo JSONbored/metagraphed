@@ -18,10 +18,11 @@ import {
   chainCallsQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainStakeFlowQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import type { ChainCalls } from "@/lib/metagraphed/types";
+import type { ChainCalls, ChainStakeFlow } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -52,6 +53,9 @@ function sum(values: number[]): number {
   return values.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 }
 
+function fmtTaoSigned(v: number): string {
+  return v < 0 ? `-${fmtTao(-v)}` : `+${fmtTao(v)}`;
+}
 function fmtTao(v: number): string {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
   if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
@@ -80,6 +84,7 @@ function ExplorerPage() {
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
+          "/api/v1/chain/stake-flow",
         ]}
       />
     </AppShell>
@@ -222,6 +227,127 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 }
 
+/** Compact labeled metric for the stake-flow summary row. */
+function StakeFlowMetric({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "down" | "default";
+}) {
+  const valueClass =
+    tone === "ok" ? "text-health-ok" : tone === "down" ? "text-health-down" : "text-ink-strong";
+  return (
+    <div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        {label}
+      </div>
+      <div className={`mt-0.5 font-mono text-sm tabular-nums ${valueClass}`}>{value}</div>
+    </div>
+  );
+}
+
+/**
+ * Network-wide stake flow (#3734) — total staked vs unstaked across every subnet
+ * for the window, the gaining/losing/flat split, and the biggest movers by
+ * absolute net flow as a signed bar list (green inflow / red outflow).
+ * Chain-direct: GET /api/v1/chain/stake-flow.
+ */
+function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
+  const net = flow.network;
+  const dist = flow.net_flow_distribution;
+  // Biggest movers by absolute net flow, largest first.
+  const movers = [...flow.subnets]
+    .sort((a, b) => Math.abs(b.net_flow_tao) - Math.abs(a.net_flow_tao))
+    .slice(0, 12);
+  const cap = Math.max(1, ...movers.map((s) => Math.abs(s.net_flow_tao)));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Stake flow
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(flow.subnet_count)} subnets
+        </span>
+      </div>
+
+      {net ? (
+        <div className="mb-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StakeFlowMetric
+              label="Net flow"
+              value={fmtTaoSigned(net.net_flow_tao)}
+              tone={net.net_flow_tao >= 0 ? "ok" : "down"}
+            />
+            <StakeFlowMetric label="Gross flow" value={fmtTao(net.gross_flow_tao)} />
+            <StakeFlowMetric label="Staked" value={fmtTao(net.total_staked_tao)} />
+            <StakeFlowMetric label="Unstaked" value={fmtTao(net.total_unstaked_tao)} />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest">
+            <span className="text-health-ok">{formatNumber(net.gaining)} gaining</span>
+            <span className="text-health-down">{formatNumber(net.losing)} losing</span>
+            <span className="text-ink-muted">{formatNumber(net.flat)} flat</span>
+            <span className="text-ink-muted">
+              {formatNumber(net.stake_events + net.unstake_events)} events
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      {movers.length > 0 ? (
+        <ul className="space-y-1.5">
+          {movers.map((s) => {
+            const pct = Math.max(2, Math.round((Math.abs(s.net_flow_tao) / cap) * 100));
+            const inflow = s.net_flow_tao >= 0;
+            return (
+              <li key={s.netuid}>
+                <Link
+                  to="/subnets/$netuid"
+                  params={{ netuid: s.netuid }}
+                  className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
+                >
+                  <span className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    SN{s.netuid}
+                  </span>
+                  <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
+                    <span
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{
+                        width: `${pct}%`,
+                        background: inflow ? "var(--health-ok)" : "var(--health-down)",
+                      }}
+                    />
+                  </span>
+                  <span
+                    className={`text-right font-mono text-[10px] tabular-nums ${
+                      inflow ? "text-health-ok" : "text-health-down"
+                    }`}
+                  >
+                    {fmtTaoSigned(s.net_flow_tao)}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No stake flow in this window yet.</p>
+      )}
+
+      {dist ? (
+        <p className="mt-4 border-t border-border pt-3 font-mono text-[10px] text-ink-muted">
+          Median net flow {fmtTaoSigned(dist.median ?? 0)}, p90 {fmtTaoSigned(dist.p90 ?? 0)},
+          across {formatNumber(dist.count)} subnets.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -231,6 +357,7 @@ function ExplorerDashboard() {
   const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
+  const stakeFlow = useSuspenseQuery(chainStakeFlowQuery(win)).data.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -515,6 +642,8 @@ function ExplorerDashboard() {
           )}
         </section>
       </div>
+
+      <StakeFlowSection flow={stakeFlow} />
     </div>
   );
 }
