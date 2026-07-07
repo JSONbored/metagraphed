@@ -38,6 +38,25 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-min-compute",
+      "kind": "data-artifact",
+      "name": "Minos minimum compute requirements",
+      "notes": "Public no-auth YAML machine-readable miner and validator hardware requirements (CPU, GPU, memory, storage, Docker images, network, dataset sizes) published in the official SN107 minos_subnet repository at min_compute.yml. Listed in the repo README project layout and used by operators sizing genomics variant-calling nodes.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
+        "https://github.com/minos-protocol/minos_subnet/blob/main/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/main/min_compute.yml"
     }
   ],
   "contact": "contact@theminos.ai"
