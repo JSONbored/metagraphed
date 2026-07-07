@@ -52,6 +52,24 @@
         "https://github.com/swarm-subnet/swarm/blob/main/docs/king_of_the_hill.md"
       ],
       "url": "https://api.swarm124.com/kings/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-leaderboard-api",
+      "kind": "subnet-api",
+      "name": "Swarm leaderboard API",
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm/blob/main/swarm/validator/backend_api.py"
+      ],
+      "url": "https://api.swarm124.com/leaderboard",
+      "notes": "Public no-auth GET /leaderboard — ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
     }
   ],
   "website_url": "https://www.swarm124.com/"

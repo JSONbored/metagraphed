@@ -1,19 +1,18 @@
 {
-  "schema_version": 1,
-  "netuid": 99,
-  "name": "Leoma",
-  "slug": "sn-99",
-  "status": "active",
   "categories": [],
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "Leoma",
+  "netuid": 99,
+  "schema_version": 1,
+  "slug": "sn-99",
   "social": {
     "x": "https://x.com/leoma_ai"
   },
-  "website_url": "https://leoma.ai/",
   "source_repo": "https://github.com/RendixNetwork/leoma",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -50,6 +49,35 @@
       },
       "source_urls": ["https://api.leoma.ai/openapi.json"],
       "url": "https://api.leoma.ai/scores/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-99-leoma-openapi",
+      "kind": "openapi",
+      "name": "Leoma validator API OpenAPI schema",
+      "notes": "Public no-auth OpenAPI 3.x schema for the SN99 Leoma validator API (title \"Leoma API\", version 0.3.2, 28 paths) on api.leoma.ai. Documents /health, miner listing, samples, scores, and related validator routes; same host as the existing health and scores/stats surfaces.",
+      "provider": "leoma",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.leoma.ai/openapi.json",
+      "source_urls": [
+        "https://api.leoma.ai/health",
+        "https://api.leoma.ai/openapi.json",
+        "https://github.com/RendixNetwork/leoma"
+      ],
+      "url": "https://api.leoma.ai/openapi.json"
     }
-  ]
+  ],
+  "website_url": "https://leoma.ai/"
 }
