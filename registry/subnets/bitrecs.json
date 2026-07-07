@@ -87,6 +87,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Bitrecs source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-122-bitrecs-artifact-template",
+      "kind": "data-artifact",
+      "name": "Bitrecs V2 miner artifact template",
+      "notes": "Public no-auth YAML artifact template defining the SN122 Bitrecs V2 miner submission format (name, version_num, status, miner_hotkey, provider, model, prompt templates, sampling_params). Referenced as the canonical example in the official bitrecs-v2 miner setup docs; miners publish artifacts as single-commit GitHub Gists in this shape.",
+      "provider": "bitrecs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/bitrecs/bitrecs-v2/blob/main/docs/miner_setup.md",
+        "https://github.com/bitrecs/bitrecs-v2/blob/main/miner/miner_artifact.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/bitrecs/bitrecs-v2/main/miner/miner_artifact.yaml"
     }
   ],
   "social": {
