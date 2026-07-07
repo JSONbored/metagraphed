@@ -1,18 +1,47 @@
 {
-  "schema_version": 1,
-  "netuid": 70,
-  "name": "NexisGen",
-  "slug": "sn-70",
-  "status": "active",
   "categories": [],
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "NexisGen",
+  "netuid": 70,
+  "schema_version": 1,
+  "slug": "sn-70",
   "social": {
     "x": "https://x.com/nexisgen_ai"
   },
-  "surfaces": [],
   "source_repo": "https://github.com/RendixNetwork/nexisgen",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-openapi",
+      "kind": "openapi",
+      "name": "NexisGen validator API OpenAPI schema",
+      "notes": "Public no-auth OpenAPI 3.1 schema for the SN70 NexisGen validator API (title \"Nexis Validator API\", version 2.0.0, 7 paths) on api.nexisgen.ai. Documents /healthz, training-score, blacklist, and admin routes used by subnet validators.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.nexisgen.ai/openapi.json",
+      "source_urls": [
+        "https://api.nexisgen.ai/healthz",
+        "https://github.com/RendixNetwork/nexisgen/blob/main/nexis/api/app.py",
+        "https://api.nexisgen.ai/openapi.json"
+      ],
+      "url": "https://api.nexisgen.ai/openapi.json"
+    }
+  ],
   "website_url": "https://nexisgen.ai/"
 }
