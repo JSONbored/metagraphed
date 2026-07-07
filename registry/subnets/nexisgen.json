@@ -1,18 +1,53 @@
 {
-  "schema_version": 1,
-  "netuid": 70,
-  "name": "NexisGen",
-  "slug": "sn-70",
-  "status": "active",
   "categories": [],
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "NexisGen",
+  "netuid": 70,
+  "schema_version": 1,
+  "slug": "sn-70",
   "social": {
     "x": "https://x.com/nexisgen_ai"
   },
-  "surfaces": [],
   "source_repo": "https://github.com/RendixNetwork/nexisgen",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-openapi",
+      "kind": "openapi",
+      "name": "NexisGen Nexis Validator API",
+      "notes": "Public no-auth OpenAPI 3.1 spec (Nexis Validator API v2.0.0, 7 documented paths) served on api.nexisgen.ai — the same nexisgen.ai host declared in the subnet's on-chain SubnetIdentitiesV3 (website + source repo). Machine-readable description of SN70 NexisGen's public validator API.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.nexisgen.ai/openapi.json",
+      "source_urls": ["https://github.com/RendixNetwork/nexisgen"],
+      "url": "https://api.nexisgen.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-latest-total-score-api",
+      "kind": "subnet-api",
+      "name": "NexisGen latest total score API",
+      "notes": "Public no-auth GET /v1/get_latest_total_score on api.nexisgen.ai — the most recent evaluation cycle's aggregate miner scores (cycle id plus per-miner aggregate and component scores) for SN70 NexisGen. Documented in the subnet's public OpenAPI spec on the same host.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://api.nexisgen.ai/openapi.json"],
+      "url": "https://api.nexisgen.ai/v1/get_latest_total_score"
+    }
+  ],
   "website_url": "https://nexisgen.ai/"
 }
