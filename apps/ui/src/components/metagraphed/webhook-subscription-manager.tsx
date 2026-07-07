@@ -132,6 +132,7 @@ function CreateSubscriptionSection() {
   return (
     <section aria-labelledby="create-subscription-heading">
       <SectionHeading
+        id="create-subscription-heading"
         title="Create subscription"
         intro="Register a URL to receive change-feed webhooks. Creation requires a subscription token issued by a metagraphed operator — this app never bundles one."
       />
@@ -264,6 +265,7 @@ function LookupSubscriptionSection() {
   return (
     <section aria-labelledby="lookup-subscription-heading">
       <SectionHeading
+        id="lookup-subscription-heading"
         title="Look up subscription"
         intro="Check a subscription's status and delivery health by id."
       />
@@ -376,6 +378,7 @@ function DeleteSubscriptionSection() {
   return (
     <section aria-labelledby="delete-subscription-heading">
       <SectionHeading
+        id="delete-subscription-heading"
         title="Delete subscription"
         intro="Requires the one-time secret returned when the subscription was created."
       />
