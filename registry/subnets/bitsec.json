@@ -49,6 +49,25 @@
         "https://bitsec.ai/api/docs"
       ],
       "url": "https://bitsec.ai/api/analytics"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-ai-known-solutions",
+      "kind": "data-artifact",
+      "name": "Bitsec.ai known-solutions dataset",
+      "notes": "Public no-auth JSON dataset of known-vulnerability benchmark projects (GET /projects/known-solutions) used to evaluate SN60 miner agents — each entry has real codebases (repo/commit/tarball) and vulnerability findings (severity, title, description). Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"Get Current Project Set Known Solutions\". Served on the official bitsec.ai domain.",
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://bitsec.ai/api/openapi.json",
+        "https://github.com/Bitsec-AI/subnet"
+      ],
+      "url": "https://bitsec.ai/api/projects/known-solutions"
     }
   ]
 }
