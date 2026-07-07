@@ -123,12 +123,12 @@
     "@vitest/coverage-v8": "^4.1.9",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "eslint": "^10.5.0",
+    "eslint": "^10.6.0",
     "openapi-typescript": "^7.13.0",
-    "prettier": "^3.8.4",
-    "vite": "^7.3.5",
+    "prettier": "^3.9.4",
+    "vite": "^7.3.6",
     "vitest": "^4.1.9",
-    "wrangler": "4.102.0"
+    "wrangler": "4.107.0"
   },
   "overrides": {
     "esbuild": "^0.28.1",
