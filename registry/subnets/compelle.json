@@ -83,6 +83,25 @@
         "https://compelle.com/"
       ],
       "url": "https://compelle.com/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-82-compelle-validator-config",
+      "kind": "data-artifact",
+      "name": "Compelle validator game configuration",
+      "notes": "Public no-auth JSON validator consensus configuration (netuid 82, LLM model identifiers, judge panel, Elo parameters, tournament settings, and bundled debate topics) published in the official compelle/compelle-validator repository at compelle/config.json. Documented in the README Configuration section as the shared game-parameter contract every validator runs.",
+      "provider": "compelle",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/compelle/compelle-validator/blob/main/README.md",
+        "https://github.com/compelle/compelle-validator/blob/main/compelle/config.json"
+      ],
+      "url": "https://raw.githubusercontent.com/compelle/compelle-validator/main/compelle/config.json"
     }
   ]
 }
