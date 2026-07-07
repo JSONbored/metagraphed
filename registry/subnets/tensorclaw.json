@@ -129,6 +129,34 @@
         "timeout_ms": 10000
       },
       "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API."
+    },
+    {
+      "id": "sn-92-tensorclaw-valid-model-series-api",
+      "name": "Tensorclaw supported model series allowlist",
+      "kind": "subnet-api",
+      "url": "https://github.com/n-ark/tensorclaw_modification/raw/main/VALID_MODEL_SERIES.txt",
+      "provider": "tensorclaw",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/n-ark/tensorclaw_modification/blob/main/README.md",
+        "https://github.com/n-ark/tensorclaw_modification/blob/main/configs/validator.env",
+        "https://www.tensorclaw.ai/",
+        "https://api.tensorclaw.ai/robots.txt"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie",
+        "confidence": "medium"
+      },
+      "notes": "Public no-auth GET returning the SN92 supported-model allowlist referenced by the Tensorclaw validator config (BITTENSOR_NETUID=92, VALID_MODEL_SERIES). The official github.com/tensorclaw/tensorclaw repository currently returns 404 and Business API routes on api.tensorclaw.ai return HTTP 521, but this published allowlist file is live on the public SN92 source tree and the official API host still resolves (robots.txt HTTP 200)."
     }
   ]
 }
