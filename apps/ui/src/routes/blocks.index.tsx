@@ -20,6 +20,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { blocksQuery, blocksSummaryQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
+import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { Block } from "@/lib/metagraphed/types";
@@ -94,8 +95,7 @@ function BlockProductionHeader() {
   const blockTime = summary.block_time;
   const throughput = summary.throughput;
   const nakamoto = summary.author_concentration?.nakamoto_coefficient;
-  const nakamotoTone: "ok" | "warn" | "down" | "default" =
-    nakamoto == null ? "default" : nakamoto <= 1 ? "down" : nakamoto <= 3 ? "warn" : "ok";
+  const nakamotoStatTone = nakamotoTone(nakamoto);
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
       <StatTile
@@ -117,7 +117,7 @@ function BlockProductionHeader() {
         eyebrow="Author decentralization"
         value={nakamoto != null ? formatNumber(nakamoto) : "—"}
         hint="Nakamoto coefficient"
-        tone={nakamotoTone}
+        tone={nakamotoStatTone}
       />
     </div>
   );

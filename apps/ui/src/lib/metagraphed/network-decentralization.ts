@@ -70,7 +70,7 @@ function giniTone(v: number | null | undefined): DecentralizationTone {
   return "ok";
 }
 
-function nakamotoTone(v: number | null | undefined): DecentralizationTone {
+export function nakamotoTone(v: number | null | undefined): DecentralizationTone {
   const n = num(v);
   if (n == null) return "default";
   if (n <= 1) return "down";
