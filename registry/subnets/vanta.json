@@ -161,6 +161,31 @@
         "submitted_by": "davion-knight"
       },
       "notes": "Public no-auth GET all_model_parameters.json on the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Provides the per-asset buy/sell slippage model parameters (intercept and coefficients) that the validator loads via vali_objects/utils/vali_bkp_utils.py to score miner positions."
+    },
+    {
+      "id": "sn-8-vanta-slippage-estimates",
+      "name": "Vanta empirical slippage estimates dataset",
+      "kind": "data-artifact",
+      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/slippage_estimates.json",
+      "provider": "vanta",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/vali_bkp_utils.py",
+        "https://github.com/taoshidev/vanta-network/blob/main/vali_objects/utils/price_slippage_model.py"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rust-toml"
+      },
+      "notes": "Public no-auth static JSON dataset slippage_estimates.json committed in the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Distinct from the model-coefficients surface: this is the precomputed per-asset, per-trade-size empirical slippage lookup table (e.g. crypto BTCUSDC/ETHUSDC long/short across notional buckets). The path is resolved in vali_objects/utils/vali_bkp_utils.py and loaded by the PriceSlippageModel in vali_objects/utils/price_slippage_model.py to estimate execution slippage when scoring miner positions. Whitelisted for commit in .gitignore, so it is intentionally published."
     }
   ],
   "social": {
