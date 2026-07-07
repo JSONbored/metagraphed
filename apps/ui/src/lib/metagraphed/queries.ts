@@ -52,6 +52,10 @@ import type {
   ChainActivity,
   ChainActivityDay,
   ChainCalls,
+  ChainStakeFlow,
+  ChainStakeFlowDistribution,
+  ChainStakeFlowNetwork,
+  ChainStakeFlowSubnet,
   ChainCallEntry,
   ChainFees,
   ChainFeeDay,
@@ -194,6 +198,7 @@ const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
 const MAX_CHAIN_CALLS = 12;
+const MAX_STAKE_FLOW_SUBNETS = 24;
 const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
@@ -2959,6 +2964,81 @@ export const chainStakeTransfersQuery = (window = "7d", limit = 20) =>
       };
     },
     staleTime: STALE_MED,
+  });
+
+function normalizeChainStakeFlowNetwork(raw: unknown): ChainStakeFlowNetwork | null {
+  if (!isRecord(raw)) return null;
+  return {
+    total_staked_tao: coerceFiniteNumber(raw.total_staked_tao) ?? 0,
+    total_unstaked_tao: coerceFiniteNumber(raw.total_unstaked_tao) ?? 0,
+    net_flow_tao: coerceFiniteNumber(raw.net_flow_tao) ?? 0,
+    gross_flow_tao: coerceFiniteNumber(raw.gross_flow_tao) ?? 0,
+    stake_events: coerceFiniteNumber(raw.stake_events) ?? 0,
+    unstake_events: coerceFiniteNumber(raw.unstake_events) ?? 0,
+    gaining: coerceFiniteNumber(raw.gaining) ?? 0,
+    losing: coerceFiniteNumber(raw.losing) ?? 0,
+    flat: coerceFiniteNumber(raw.flat) ?? 0,
+  };
+}
+
+function normalizeChainStakeFlowDistribution(raw: unknown): ChainStakeFlowDistribution | null {
+  if (!isRecord(raw)) return null;
+  return {
+    count: coerceFiniteNumber(raw.count) ?? 0,
+    mean: coerceFiniteNumber(raw.mean) ?? null,
+    min: coerceFiniteNumber(raw.min) ?? null,
+    p25: coerceFiniteNumber(raw.p25) ?? null,
+    median: coerceFiniteNumber(raw.median) ?? null,
+    p75: coerceFiniteNumber(raw.p75) ?? null,
+    p90: coerceFiniteNumber(raw.p90) ?? null,
+    max: coerceFiniteNumber(raw.max) ?? null,
+  };
+}
+
+function normalizeChainStakeFlowSubnet(raw: unknown): ChainStakeFlowSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    total_staked_tao: coerceFiniteNumber(raw.total_staked_tao) ?? 0,
+    total_unstaked_tao: coerceFiniteNumber(raw.total_unstaked_tao) ?? 0,
+    net_flow_tao: coerceFiniteNumber(raw.net_flow_tao) ?? 0,
+    gross_flow_tao: coerceFiniteNumber(raw.gross_flow_tao) ?? 0,
+    stake_events: coerceFiniteNumber(raw.stake_events) ?? 0,
+    unstake_events: coerceFiniteNumber(raw.unstake_events) ?? 0,
+    direction: firstString(raw.direction) ?? "balanced",
+  };
+}
+
+export const chainStakeFlowQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-stake-flow", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/stake-flow", {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          network: normalizeChainStakeFlowNetwork(d.network),
+          net_flow_distribution: normalizeChainStakeFlowDistribution(d.net_flow_distribution),
+          subnets: normalizeChainRows(
+            d.subnets,
+            MAX_STAKE_FLOW_SUBNETS,
+            normalizeChainStakeFlowSubnet,
+          ),
+        } as ChainStakeFlow,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainStakeFlow>;
+    },
+    staleTime: STALE_SHORT,
   });
 
 const READINESS_COMPONENT_KEYS = [
