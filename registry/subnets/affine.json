@@ -49,6 +49,25 @@
         "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/utils/api_client.py"
       ],
       "url": "https://api.affine.io/api/v1/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-scores-latest",
+      "kind": "data-artifact",
+      "name": "Affine latest miner scores",
+      "notes": "Public no-auth GET /api/v1/scores/latest on api.affine.io returning the latest per-miner score snapshot: block_number, calculated_at, and a scores[] array of {miner_hotkey, uid, model, model_type, overall_score, average_score, scores_by_env}. Documented as GET /api/v1/scores/latest in the subnet OpenAPI spec; api.affine.io/api/v1 is the default API_URL in the official affine-cortex API client.",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": [
+        "https://api.affine.io/openapi.json",
+        "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/utils/api_client.py"
+      ],
+      "url": "https://api.affine.io/api/v1/scores/latest"
     }
   ],
   "source_repo": "https://github.com/AffineFoundation/affine-cortex",
