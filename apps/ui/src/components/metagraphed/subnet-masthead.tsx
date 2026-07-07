@@ -405,8 +405,12 @@ export function SubnetMasthead({
         </div>
       </div>
 
-      {/* Stat spine — sparkline-bearing tiles. Auto-wrap on narrow widths. */}
-      <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] divide-x divide-border rounded-xl border border-border bg-card overflow-hidden">
+      {/* Stat spine — sparkline-bearing tiles. Flex-wrap (not grid) so a
+          trailing partial row's tiles stretch to fill the row instead of
+          leaving empty column slots — grid tracks are shared across every
+          row, but flex lines size independently (same pattern as the
+          flex-wrap strip in operational-panel.tsx). */}
+      <div className="mt-5 flex flex-wrap divide-x divide-border rounded-xl border border-border bg-card overflow-hidden [&>*]:grow [&>*]:basis-[150px] [&>*]:min-w-[150px]">
         <StatWithSpark
           label="Netuid"
           value={String(netuid).padStart(3, "0")}
