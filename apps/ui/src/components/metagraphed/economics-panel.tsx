@@ -3,10 +3,12 @@ import {
   economicsQuery,
   subnetStakeMovesQuery,
   subnetStakeTransfersQuery,
+  subnetTrajectoryQuery,
 } from "@/lib/metagraphed/queries";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
+import { Sparkline, type SparklinePoint } from "@/components/metagraphed/charts/sparkline";
 import { stakeMovesTileModel } from "@/lib/metagraphed/stake-moves-tile";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { stakeTransfersTileModel } from "@/lib/metagraphed/stake-transfers-tile";
@@ -114,6 +116,18 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
   const { data: res, isPending } = useQuery(economicsQuery());
   const e = res?.data.find((x) => x.netuid === netuid);
 
+  // #3362: alpha-price trend for the "Alpha price" tile, from the already-shipped
+  // subnetTrajectoryQuery — same points.alpha_price_tao extraction as
+  // subnet-price-ticker.tsx. Fetched alongside economicsQuery() but never gates the
+  // panel's own loading/empty states, which stay keyed off economicsQuery() only.
+  const { data: trajRes } = useQuery(subnetTrajectoryQuery(netuid));
+  const pricePoints: SparklinePoint[] = (trajRes?.data.points ?? []).flatMap((p) =>
+    typeof p.alpha_price_tao === "number" && Number.isFinite(p.alpha_price_tao)
+      ? [{ t: p.date, v: p.alpha_price_tao }]
+      : [],
+  );
+  const priceValues = pricePoints.map((p) => p.v);
+
   if (isPending && !e) return <Notice>Loading economics…</Notice>;
   if (!e) return <Notice>No on-chain economic data for this subnet.</Notice>;
 
@@ -127,6 +141,16 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
       <StatTile
         eyebrow="Alpha price"
         value={e.alpha_price_tao != null ? `${e.alpha_price_tao.toFixed(4)} τ` : "—"}
+        chart={
+          <Sparkline
+            values={priceValues}
+            points={pricePoints}
+            width={72}
+            height={28}
+            formatValue={(v) => `${v.toFixed(4)} τ`}
+            ariaLabel="Alpha price trend"
+          />
+        }
       />
       <StatTile
         eyebrow="Validators"
