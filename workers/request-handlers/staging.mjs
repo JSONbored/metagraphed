@@ -624,7 +624,7 @@ export async function loadStagedSubnetHyperparams(env) {
   } else {
     // Legacy bare-array envelopes lack a completeness marker — refuse to prune
     // when coverage collapsed vs the live table (mirrors fetch-metagraph.mjs).
-    let priorCount = 0;
+    let priorCount;
     try {
       const countRow = await db
         .prepare(`SELECT COUNT(*) AS c FROM subnet_hyperparams`)
