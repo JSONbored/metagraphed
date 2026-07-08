@@ -159,6 +159,31 @@
         "submitted_by": "nickmopen"
       },
       "notes": "Public no-auth GET returning the Hone (SN5) backend API health as JSON ({\"status\":\"ok\"}). Served on the api.hone.training subdomain of the subnet's registered website hone.training — a live API host distinct from the website-host /health path noted as 404 in this file. Fills the noted missing public-API-endpoint gap."
+    },
+    {
+      "id": "sn-5-hone-projects-json",
+      "name": "Hone training projects data",
+      "kind": "data-artifact",
+      "url": "https://www.hone.training/api/proxy/runs/projects",
+      "provider": "hone",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.hone.training/projects",
+        "https://github.com/manifold-inc/hone"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "notes": "Public no-auth GET returning the Hone (SN5) training projects catalog as JSON (project, version, modelSize, runCount, lastSeen fields; 46 release entries observed at submission time). This is the machine-readable feed behind the registered hone.training /projects dashboard surface, served from the same first-party hone.training host as the subnet's registered website."
     }
   ],
   "contact": "devs@manifold.inc"
