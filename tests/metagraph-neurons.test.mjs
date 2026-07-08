@@ -6,8 +6,10 @@ import {
   buildSubnetValidators,
   buildGlobalValidators,
   buildNeuronDetail,
+  buildValidatorDetail,
   loadSubnetValidators,
   loadGlobalValidators,
+  loadValidatorDetail,
 } from "../src/metagraph-neurons.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -593,6 +595,145 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
+  test("buildValidatorDetail aggregates one hotkey's validator rows across every subnet", () => {
+    const data = buildValidatorDetail(
+      [
+        {
+          netuid: 1,
+          uid: 2,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 100.1234567891,
+          emission_tao: 5,
+          validator_trust: 0.4,
+          captured_at: 1750000000000,
+          block_number: 10,
+        },
+        {
+          netuid: 2,
+          uid: 1,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 50,
+          emission_tao: 9,
+          validator_trust: 0.8,
+          captured_at: 1750000001000, // later than the first row: updates latest
+          block_number: 11,
+        },
+        {
+          netuid: 1,
+          uid: 5, // same netuid as the first row, higher uid: exercises the sort's uid tie-break
+          hotkey: "hk-a",
+          coldkey: "", // empty string: must NOT count as a coldkey
+          stake_tao: 1,
+          emission_tao: 2,
+          validator_trust: null, // must not affect avg/max trust
+          captured_at: 1750000001000, // ties the current latest...
+          block_number: 15, // ...but wins the tie on a higher block_number
+        },
+        {
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          coldkey: undefined, // missing coldkey: must not count either
+          stake_tao: 500,
+          emission_tao: 1,
+          validator_trust: 0.6,
+          captured_at: 1750000001000, // ties again...
+          block_number: 10, // ...but LOSES the tie (lower block_number): no update
+        },
+        {
+          netuid: 6,
+          uid: 0,
+          hotkey: "hk-a",
+          coldkey: "ck-new",
+          stake_tao: 2,
+          emission_tao: 2,
+          validator_trust: null,
+          captured_at: null, // must still count toward totals/subnets, just not "latest"
+          block_number: 999,
+        },
+        {
+          // No netuid at all: must be skipped entirely, proven by the totals below
+          // being unaffected by this row's otherwise-huge stake/emission.
+          uid: 0,
+          hotkey: "hk-a",
+          coldkey: "ck-ignored",
+          stake_tao: 99999,
+          emission_tao: 99999,
+        },
+      ],
+      "hk-a",
+    );
+
+    assert.equal(data.hotkey, "hk-a");
+    assert.equal(data.coldkey, "ck-a"); // 2 rows vs. ck-new's 1
+    assert.equal(data.coldkey_count, 2);
+    assert.equal(data.subnet_count, 5);
+    assert.equal(data.total_stake_tao, 653.123456789);
+    assert.equal(data.total_emission_tao, 19);
+    assert.equal(data.avg_validator_trust, 0.6); // (0.4 + 0.8 + 0.6) / 3
+    assert.equal(data.max_validator_trust, 0.8);
+    assert.equal(data.captured_at, new Date(1750000001000).toISOString());
+    assert.equal(data.block_number, 15);
+    assert.deepEqual(
+      data.subnets.map((s) => [s.netuid, s.uid]),
+      [
+        [1, 2],
+        [1, 5],
+        [2, 1],
+        [3, 0],
+        [6, 0],
+      ],
+    );
+  });
+
+  test("buildValidatorDetail: a null latest block_number is beaten by a real one on a captured_at tie, and a null incoming block_number never wins one", () => {
+    const data = buildValidatorDetail(
+      [
+        {
+          netuid: 1,
+          uid: 0,
+          hotkey: "hk-b",
+          captured_at: 1000,
+          block_number: null,
+        },
+        {
+          netuid: 2,
+          uid: 0,
+          hotkey: "hk-b",
+          captured_at: 1000,
+          block_number: 5,
+        },
+        {
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-b",
+          captured_at: 1000,
+          block_number: null,
+        },
+      ],
+      "hk-b",
+    );
+    assert.equal(data.captured_at, new Date(1000).toISOString());
+    assert.equal(data.block_number, 5);
+  });
+
+  test("buildValidatorDetail is cold-safe for non-array/empty input", () => {
+    const empty = buildValidatorDetail(null, "hk-cold");
+    assert.equal(empty.hotkey, "hk-cold");
+    assert.equal(empty.coldkey, null);
+    assert.equal(empty.coldkey_count, 0);
+    assert.equal(empty.subnet_count, 0);
+    assert.equal(empty.total_stake_tao, 0);
+    assert.equal(empty.total_emission_tao, 0);
+    assert.equal(empty.avg_validator_trust, null);
+    assert.equal(empty.max_validator_trust, null);
+    assert.equal(empty.captured_at, null);
+    assert.equal(empty.block_number, null);
+    assert.deepEqual(empty.subnets, []);
+  });
+
   test("buildGlobalValidators reports a null block_number as null, not a fabricated 0", () => {
     // block_number is a nullable INTEGER column and the /validators query does not
     // filter it, so a validator's newest capture can carry block_number: null.
@@ -830,6 +971,24 @@ describe("metagraph-neurons loaders", () => {
     assert.equal(data.validators.length, 1);
     assert.equal(data.validators[0].hotkey, "hk-a");
   });
+
+  test("loadValidatorDetail queries by hotkey + validator_permit, ordered by netuid/uid", async () => {
+    let seenSql = "";
+    let seenParams = null;
+    const data = await loadValidatorDetail(async (sql, params) => {
+      seenSql = sql;
+      seenParams = params;
+      return [
+        { netuid: 2, uid: 0, hotkey: "hk-a", coldkey: "ck-a", stake_tao: 10 },
+        { netuid: 1, uid: 3, hotkey: "hk-a", coldkey: "ck-a", stake_tao: 20 },
+      ];
+    }, "hk-a");
+    assert.match(seenSql, /hotkey = \? AND validator_permit = 1/);
+    assert.match(seenSql, /ORDER BY netuid ASC, uid ASC/);
+    assert.deepEqual(seenParams, ["hk-a"]);
+    assert.equal(data.hotkey, "hk-a");
+    assert.equal(data.subnet_count, 2);
+  });
 });
 
 // D1 mock honoring the handlers' WHERE clauses.
@@ -846,6 +1005,9 @@ function neuronsD1(rows) {
               }
               if (sql.includes("AND uid = ?")) {
                 r = r.filter((x) => x.uid === params[1]);
+              }
+              if (sql.includes("hotkey = ?")) {
+                r = r.filter((x) => x.hotkey === params[0]);
               }
               return Promise.resolve({ results: r });
             },
@@ -1334,6 +1496,44 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
 
     const emptyFormat = await getJson("/api/v1/validators?format=", env);
     assert.equal(emptyFormat.res.status, 400);
+  });
+
+  const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  test("GET /validators/{hotkey} returns cross-subnet validator detail", async () => {
+    const hotkeyEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: neuronsD1([
+        { ...ROW, netuid: 1, uid: 0, hotkey: HOTKEY, stake_tao: 10 },
+        { ...ROW, netuid: 2, uid: 1, hotkey: HOTKEY, stake_tao: 20 },
+        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-other", stake_tao: 999 },
+        { ...MINER, netuid: 4, uid: 5, hotkey: HOTKEY }, // permit=0: excluded
+      ]),
+    };
+    const { res, body } = await getJson(
+      `/api/v1/validators/${HOTKEY}`,
+      hotkeyEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.hotkey, HOTKEY);
+    assert.equal(body.data.subnet_count, 2);
+    assert.deepEqual(
+      body.data.subnets.map((s) => s.netuid),
+      [1, 2],
+    );
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/validators/${HOTKEY}.json`,
+    );
+    assert.equal(body.meta.source, "metagraph-snapshot");
+  });
+
+  test("GET /validators/{hotkey} for an absent hotkey returns a zeroed aggregate, never 404", async () => {
+    const { res, body } = await getJson(`/api/v1/validators/${HOTKEY}`, env);
+    assert.equal(res.status, 200);
+    assert.equal(body.data.hotkey, HOTKEY);
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.subnets, []);
   });
 
   test("GET /subnets/{n}/neurons/{uid} returns the neuron", async () => {

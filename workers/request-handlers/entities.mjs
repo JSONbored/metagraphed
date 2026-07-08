@@ -46,6 +46,7 @@ import {
   loadSubnetMetagraph,
   loadSubnetValidators,
   loadNeuron,
+  loadValidatorDetail,
   GLOBAL_VALIDATOR_SORTS,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -637,6 +638,28 @@ export async function handleGlobalValidators(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/validators.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/validators/{hotkey}: a single validator's validator_permit=1
+// rows aggregated across every subnet it operates in — the single-entity
+// drill-in of the /api/v1/validators leaderboard above. Cold/absent hotkey
+// (no permit=1 rows anywhere) returns 200 with a zeroed aggregate and an
+// empty subnets array, consistent with handleNeuron's absent-uid contract
+// (never 404 on a cold/absent live D1 tier).
+export async function handleValidatorDetail(request, env, hotkey) {
+  const data = await loadValidatorDetail(d1Runner(env), hotkey);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/validators/${hotkey}.json`,
         data.captured_at,
       ),
     },

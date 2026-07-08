@@ -46,6 +46,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-yield",
   "subnet-yield-history",
   "global-validators",
+  "validator-detail",
   "subnet-uptime",
   "subnet-metagraph",
   "subnet-neuron",

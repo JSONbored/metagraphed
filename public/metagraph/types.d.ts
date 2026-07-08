@@ -2384,6 +2384,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/validators/{hotkey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons D1 tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404. */
+        get: operations["validatorDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7081,6 +7098,44 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, served live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404 — the single-entity drill-in of /api/v1/validators. */
+        ValidatorDetailArtifact: {
+            avg_validator_trust: number | null;
+            block_number: number | null;
+            /** Format: date-time */
+            captured_at: string | null;
+            coldkey: string | null;
+            coldkey_count: number;
+            hotkey: string;
+            max_validator_trust: number | null;
+            schema_version: number;
+            subnet_count: number;
+            subnets: components["schemas"]["ValidatorDetailSubnet"][];
+            total_emission_tao: number;
+            total_stake_tao: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One subnet membership (a validator_permit=1 neuron row) in a validator's cross-subnet detail view (#4334/7.1). Same shape as Neuron, plus the netuid it belongs to; unlike GlobalValidatorSubnet this is not capped at ten — a detail page's whole point is the full per-subnet performance table. */
+        ValidatorDetailSubnet: {
+            active: boolean;
+            axon?: string | null;
+            coldkey: string | null;
+            consensus?: number | null;
+            dividends?: number | null;
+            emission_tao?: number | null;
+            hotkey: string | null;
+            incentive?: number | null;
+            is_immunity_period?: boolean;
+            netuid: number;
+            rank?: number | null;
+            registered_at_block?: number | null;
+            stake_tao?: number | null;
+            trust?: number | null;
+            uid: number;
+            validator_permit: boolean;
+            validator_trust?: number | null;
         };
         VerificationArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_count: number;
@@ -26366,6 +26421,127 @@ export interface operations {
                      *     hk_sample,ck_sample,1,3,3,1234.5,10.25,0.12,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    validatorDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hotkey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "avg_validator_trust": 0.5,
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "coldkey": "example",
+                     *         "coldkey_count": 1,
+                     *         "hotkey": "example",
+                     *         "max_validator_trust": 0.5,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "active": false,
+                     *             "coldkey": "example",
+                     *             "hotkey": "example",
+                     *             "netuid": 7,
+                     *             "uid": 1,
+                     *             "validator_permit": false
+                     *           }
+                     *         ],
+                     *         "total_emission_tao": 0.5,
+                     *         "total_stake_tao": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ValidatorDetailArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

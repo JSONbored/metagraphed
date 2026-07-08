@@ -461,3 +461,88 @@ export async function loadNeuron(d1, netuid, uid) {
   );
   return buildNeuronDetail(rows[0] ?? null, netuid);
 }
+
+// Cross-subnet validator detail (#4334/7.1): one hotkey's validator_permit=1
+// rows joined across every subnet it operates in — the single-entity
+// drill-in of the /api/v1/validators leaderboard above. Same aggregate shape
+// as buildGlobalValidatorEntry (rao-precision stake/emission sums, avg/max
+// trust), but for one hotkey instead of a many-hotkey leaderboard, and with
+// full per-subnet Neuron detail (not the leaderboard's 5-field/top-10-capped
+// GlobalValidatorSubnet slice) since a detail page's whole point is the full
+// per-subnet performance table.
+export function buildValidatorDetail(rows, hotkey) {
+  const coldkeys = new Map();
+  let stakeTotalRao = 0n;
+  let emissionTotalRao = 0n;
+  let validatorTrustTotal = 0;
+  let validatorTrustCount = 0;
+  let maxValidatorTrust = null;
+  let latestCapturedAt = null;
+  let latestBlockNumber = null;
+  const subnets = [];
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    // formatNeuron only nulls on a non-object row, and a non-object row's
+    // optional-chained ?.netuid is always undefined too — so netuid == null
+    // already subsumes the malformed-row case; a separate !neuron guard
+    // would be unreachable dead code (mirrors #2197's removal of two
+    // similarly-unreachable defensive branches).
+    const netuid = nonNegativeInt(row?.netuid);
+    if (netuid == null) continue;
+    const neuron = formatNeuron(row);
+
+    if (typeof row?.coldkey === "string" && row.coldkey.length > 0) {
+      coldkeys.set(row.coldkey, (coldkeys.get(row.coldkey) ?? 0) + 1);
+    }
+    stakeTotalRao += toRaoBig(numberOrZero(row?.stake_tao));
+    emissionTotalRao += toRaoBig(numberOrZero(row?.emission_tao));
+    const trust = nullableNumber(row?.validator_trust);
+    if (trust != null) {
+      validatorTrustTotal += trust;
+      validatorTrustCount += 1;
+      maxValidatorTrust =
+        maxValidatorTrust == null ? trust : Math.max(maxValidatorTrust, trust);
+    }
+    const capturedAt = nullableNumber(row?.captured_at);
+    const blockNumber = nonNegativeInt(row?.block_number);
+    if (
+      capturedAt != null &&
+      (latestCapturedAt == null ||
+        capturedAt > latestCapturedAt ||
+        (capturedAt === latestCapturedAt &&
+          blockNumber != null &&
+          (latestBlockNumber == null || blockNumber > latestBlockNumber)))
+    ) {
+      latestCapturedAt = capturedAt;
+      latestBlockNumber = blockNumber;
+    }
+    subnets.push({ netuid, ...neuron });
+  }
+
+  const avgTrust =
+    validatorTrustCount > 0 ? validatorTrustTotal / validatorTrustCount : null;
+  subnets.sort((a, b) => a.netuid - b.netuid || a.uid - b.uid);
+
+  return {
+    schema_version: 1,
+    hotkey,
+    coldkey: primaryColdkey(coldkeys),
+    coldkey_count: coldkeys.size,
+    subnet_count: subnets.length,
+    total_stake_tao: roundTao(raoBigToTao(stakeTotalRao)),
+    total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
+    avg_validator_trust: round(avgTrust),
+    max_validator_trust: round(maxValidatorTrust),
+    captured_at: toIso(latestCapturedAt),
+    block_number: latestBlockNumber,
+    subnets,
+  };
+}
+
+export async function loadValidatorDetail(d1, hotkey) {
+  const rows = await d1(
+    `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
+    [hotkey],
+  );
+  return buildValidatorDetail(rows, hotkey);
+}

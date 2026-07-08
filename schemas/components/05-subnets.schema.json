@@ -1926,6 +1926,74 @@
           }
         }
       },
+      "ValidatorDetailSubnet": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One subnet membership (a validator_permit=1 neuron row) in a validator's cross-subnet detail view (#4334/7.1). Same shape as Neuron, plus the netuid it belongs to; unlike GlobalValidatorSubnet this is not capped at ten — a detail page's whole point is the full per-subnet performance table.",
+        "required": [
+          "netuid",
+          "uid",
+          "hotkey",
+          "coldkey",
+          "active",
+          "validator_permit"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "uid": { "type": "integer", "minimum": 0 },
+          "hotkey": { "type": ["string", "null"] },
+          "coldkey": { "type": ["string", "null"] },
+          "active": { "type": "boolean" },
+          "validator_permit": { "type": "boolean" },
+          "rank": { "type": ["number", "null"] },
+          "trust": { "type": ["number", "null"] },
+          "validator_trust": { "type": ["number", "null"] },
+          "consensus": { "type": ["number", "null"] },
+          "incentive": { "type": ["number", "null"] },
+          "dividends": { "type": ["number", "null"] },
+          "emission_tao": { "type": ["number", "null"] },
+          "stake_tao": { "type": ["number", "null"] },
+          "registered_at_block": { "type": ["integer", "null"] },
+          "is_immunity_period": { "type": "boolean" },
+          "axon": { "type": ["string", "null"] }
+        }
+      },
+      "ValidatorDetailArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, served live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404 — the single-entity drill-in of /api/v1/validators.",
+        "required": [
+          "schema_version",
+          "hotkey",
+          "coldkey",
+          "coldkey_count",
+          "subnet_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "avg_validator_trust",
+          "max_validator_trust",
+          "captured_at",
+          "block_number",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "hotkey": { "type": "string" },
+          "coldkey": { "type": ["string", "null"] },
+          "coldkey_count": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "total_stake_tao": { "type": "number", "minimum": 0 },
+          "total_emission_tao": { "type": "number", "minimum": 0 },
+          "avg_validator_trust": { "type": ["number", "null"] },
+          "max_validator_trust": { "type": ["number", "null"] },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "subnets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ValidatorDetailSubnet" }
+          }
+        }
+      },
       "NeuronHistoryArtifact": {
         "type": "object",
         "additionalProperties": true,

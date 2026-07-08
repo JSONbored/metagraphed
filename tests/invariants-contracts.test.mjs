@@ -153,6 +153,20 @@ describe("contracts — compileRoutePattern per token type", () => {
       ],
     },
     {
+      // {hotkey} (#4334/7.1) shares {ss58}'s compiled token/character class —
+      // just a more self-documenting path-parameter name for a route that only
+      // ever accepts a hotkey. The captured named group is still `ss58`.
+      token: "{hotkey}",
+      group: "ss58",
+      template: "/api/v1/validators/{hotkey}",
+      validPath: `/api/v1/validators/${"5".repeat(48)}`,
+      captured: "5".repeat(48),
+      invalid: [
+        "/api/v1/validators/short", // too short (<47)
+        `/api/v1/validators/${"0".repeat(48)}`, // base58 excludes 0
+      ],
+    },
+    {
       token: "{slug}",
       group: "slug",
       template: "/api/v1/adapters/{slug}",
@@ -273,6 +287,14 @@ describe("contracts — compileRoutePattern per token type", () => {
         ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       }),
       "/metagraph/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5.json",
+    );
+    // {hotkey} reads from params.ss58, matching compileRoutePattern's shared
+    // __METAGRAPH_SS58__ token/named group for this same route.
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/validators/{hotkey}.json", {
+        ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      }),
+      "/metagraph/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5.json",
     );
     assert.equal(
       artifactPathFromTemplate("/metagraph/blocks/{ref}.json", { ref: "1234" }),
