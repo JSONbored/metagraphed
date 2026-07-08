@@ -419,10 +419,14 @@ test("loadStagedSubnetHyperparams skips prune when expected_netuid_count is zero
   table.set(2, { ...hyperparamsRow(2) });
   const m = statefulEnv(table);
 
-  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope([hyperparamsRow(1)], SIGNING_KEY, {
-    expected_netuid_count: 0,
-    captured_at: 1_750_000_000_000,
-  });
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope(
+    [hyperparamsRow(1)],
+    SIGNING_KEY,
+    {
+      expected_netuid_count: 0,
+      captured_at: 1_750_000_000_000,
+    },
+  );
   const r = await loadStagedSubnetHyperparams(m.env);
   assert.equal(r.ok, true);
   assert.equal(r.purged, 0);

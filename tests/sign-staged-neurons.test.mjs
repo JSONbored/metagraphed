@@ -17,9 +17,13 @@ test("sign-staged-neurons.mjs signs expected_netuid_count on hyperparams payload
       captured_at: 1_750_000_000_000,
     }),
   );
-  execFileSync(process.execPath, ["scripts/sign-staged-neurons.mjs", input, output], {
-    env: { ...process.env, METAGRAPH_STAGING_SIGNING_KEY: "test-sign-key" },
-  });
+  execFileSync(
+    process.execPath,
+    ["scripts/sign-staged-neurons.mjs", input, output],
+    {
+      env: { ...process.env, METAGRAPH_STAGING_SIGNING_KEY: "test-sign-key" },
+    },
+  );
   const envelope = JSON.parse(readFileSync(output, "utf8"));
   assert.equal(envelope.schema_version, 1);
   assert.equal(envelope.expected_netuid_count, 1);
