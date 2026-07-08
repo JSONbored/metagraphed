@@ -413,6 +413,37 @@ function statefulEnv(table, { failBatch = false, failPrune = false } = {}) {
   };
 }
 
+test("loadStagedSubnetHyperparams skips legacy prune when row count collapsed vs D1", async () => {
+  const table = new Map();
+  for (let i = 1; i <= 4; i++) table.set(i, { ...hyperparamsRow(i) });
+  const m = statefulEnv(table);
+
+  const snapshot = [{ ...hyperparamsRow(1), tempo: 720 }];
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope(snapshot);
+  const r = await loadStagedSubnetHyperparams(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 0);
+  assert.equal(r.prune_skipped, true);
+  assert.deepEqual([...table.keys()].sort(), [1, 2, 3, 4]);
+});
+
+test("loadStagedSubnetHyperparams prunes when expected_netuid_count matches snapshot rows", async () => {
+  const table = new Map();
+  table.set(1, { ...hyperparamsRow(1) });
+  table.set(2, { ...hyperparamsRow(2) });
+  const m = statefulEnv(table);
+
+  const snapshot = [{ ...hyperparamsRow(1), tempo: 720 }];
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope(snapshot, SIGNING_KEY, {
+    expected_netuid_count: 1,
+    captured_at: 1_750_000_000_000,
+  });
+  const r = await loadStagedSubnetHyperparams(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 1);
+  assert.deepEqual([...table.keys()], [1]);
+});
+
 test("loadStagedSubnetHyperparams keeps stale rows when completeness contract is unmet", async () => {
   const table = new Map();
   table.set(1, { ...hyperparamsRow(1) });
