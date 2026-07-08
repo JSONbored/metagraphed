@@ -27,6 +27,7 @@ import {
   NEURON_SNAPSHOT_PRUNE_RETRIES,
 } from "../config.mjs";
 import { NEURON_INSERT_COLUMNS } from "../../src/metagraph-neurons.mjs";
+import { SUBNET_HYPERPARAMS_INSERT_COLUMNS } from "../../src/subnet-hyperparams.mjs";
 import {
   eventInsertStatements,
   validEventRows,
@@ -54,6 +55,14 @@ const MAX_STAGED_NEURON_STRING_BYTES = 512;
 const MAX_STAGED_NETUID = 65_535;
 const MAX_STAGED_UID = 65_535;
 const MAX_STAGED_REFRESHED_NETUIDS = 256;
+
+// Subnet hyperparameters (#4303/1.3): a much smaller, much-less-frequent staged
+// snapshot (~129 rows today, one per active subnet) than the per-UID neuron
+// snapshot above — bounds are correspondingly tighter.
+const STAGED_SUBNET_HYPERPARAMS_KEY =
+  "metagraph/subnet-hyperparams-pending.json";
+const MAX_STAGED_SUBNET_HYPERPARAMS_BYTES = 2_000_000;
+const MAX_STAGED_SUBNET_HYPERPARAMS_ROWS = 1_000;
 
 function neuronStagingSignPayload(rows, refreshed_netuids, captured_at) {
   if (refreshed_netuids == null && captured_at == null) {
@@ -464,6 +473,149 @@ export async function loadStagedNeurons(env) {
     }
   }
   await bucket.delete(STAGED_NEURONS_KEY);
+  return { ok: true, rows: rows.length, purged };
+}
+
+function subnetHyperparamsStagingSignPayload(rows) {
+  return JSON.stringify(rows);
+}
+
+function validStagedSubnetHyperparamsRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (
+    !Number.isInteger(row.netuid) ||
+    row.netuid < 0 ||
+    row.netuid > MAX_STAGED_NETUID
+  )
+    return false;
+  for (const [key, value] of Object.entries(row)) {
+    if (!SUBNET_HYPERPARAMS_INSERT_COLUMNS.includes(key)) return false;
+    if (typeof value === "number" && !Number.isFinite(value)) return false;
+    if (value !== null && typeof value !== "number") return false;
+  }
+  return true;
+}
+
+// Load a staged subnet-hyperparameters snapshot from R2 into D1 (#4303/1.3). The
+// refresh-subnet-hyperparams CI job fetches every active subnet's hyperparameter
+// set first-party (#4305), signs the bare-array snapshot with
+// scripts/sign-staged-neurons.mjs (reused unchanged — same bare-array envelope
+// shape as a legacy neuron snapshot), and writes it to R2
+// (metagraph/subnet-hyperparams-pending.json). We load only authenticated,
+// bounded, schema-valid rows through the METAGRAPH_HEALTH_DB binding (no
+// API-token D1 permission needed) with PARAMETERIZED inserts.
+//
+// Unlike loadStagedNeurons, every fetch covers ALL active subnets in one run
+// (get_subnet_hyperparameters has no bulk variant, but the fetch script loops
+// every netuid every time — no "refreshed_netuids" partial-coverage concept
+// needed here). ~129 rows today is far smaller than the neuron snapshot, so no
+// backup/rollback complexity: each upsert batch is independently an atomic D1
+// transaction and idempotent (INSERT OR REPLACE), so a failed batch leaves
+// only correctly-upserted rows behind — safe to leave as-is, since the staged
+// object is preserved (not deleted) on failure and the next cron retries the
+// same full snapshot. The prune (deleting a deregistered subnet's stale row)
+// runs only after every upsert batch succeeds, so it never fires against a
+// partially-loaded snapshot.
+export async function loadStagedSubnetHyperparams(env) {
+  const bucket = env.METAGRAPH_ARCHIVE;
+  const db = env.METAGRAPH_HEALTH_DB;
+  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
+  if (!bucket?.get || !db?.prepare || !signingKey) {
+    return { ok: false, reason: "unavailable" };
+  }
+  const object = await bucket.get(STAGED_SUBNET_HYPERPARAMS_KEY);
+  if (!object) return { ok: false, reason: "none" };
+  if (Number(object.size || 0) > MAX_STAGED_SUBNET_HYPERPARAMS_BYTES) {
+    console.warn(
+      `loadStagedSubnetHyperparams: staged file ${object.size} bytes exceeds ${MAX_STAGED_SUBNET_HYPERPARAMS_BYTES}; skipping (next cron self-heals)`,
+    );
+    return { ok: false, reason: "too_large", size: Number(object.size) };
+  }
+  let envelope;
+  try {
+    envelope = await object.json();
+  } catch {
+    await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
+    return { ok: false, reason: "parse_failed" };
+  }
+  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
+  if (
+    envelope?.schema_version !== 1 ||
+    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
+  ) {
+    await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  if (rows.length > MAX_STAGED_SUBNET_HYPERPARAMS_ROWS) {
+    await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
+    return { ok: false, reason: "too_many_rows" };
+  }
+  if (
+    !rows.length ||
+    rows.some((row) => !validStagedSubnetHyperparamsRow(row))
+  ) {
+    await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
+    return { ok: false, reason: "invalid" };
+  }
+  const expected = await hmacHex(
+    signingKey,
+    subnetHyperparamsStagingSignPayload(rows),
+  );
+  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
+    await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  const cols = SUBNET_HYPERPARAMS_INSERT_COLUMNS;
+  const colList = cols.join(",");
+  // Matches loadStagedNeurons's proven-in-production per-statement/per-batch
+  // sizing (5 rows x 18 columns = 90 bound params/statement, 50 statements/
+  // batch) scaled down for this table's larger column count (36): 2 rows x 36
+  // columns = 72 bound params/statement, same 50-statement batch size.
+  const ROWS_PER_STMT = 2;
+  const STMTS_PER_BATCH = 50;
+  const statements = [];
+  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
+    const chunk = rows.slice(i, i + ROWS_PER_STMT);
+    const tuples = chunk
+      .map(() => `(${cols.map(() => "?").join(",")})`)
+      .join(",");
+    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
+    statements.push(
+      db
+        .prepare(
+          `INSERT OR REPLACE INTO subnet_hyperparams (${colList}) VALUES ${tuples}`,
+        )
+        .bind(...values),
+    );
+  }
+  try {
+    for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+      await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+    }
+  } catch {
+    // Staged object intentionally preserved: the next cron retries the full
+    // (idempotent) snapshot rather than leaving a partial load unrecovered.
+    return { ok: false, reason: "load_failed" };
+  }
+  const netuidsInSnapshot = rows.map((row) => row.netuid);
+  let purged;
+  try {
+    const result = await db
+      .prepare(
+        `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${netuidsInSnapshot
+          .map(() => "?")
+          .join(",")})`,
+      )
+      .bind(...netuidsInSnapshot)
+      .run();
+    purged = result?.meta?.changes ?? 0;
+  } catch {
+    // Upserts already committed; only the stale-subnet prune failed. Keep the
+    // staged object so the next cron retries (a redundant but harmless
+    // re-upsert either way).
+    return { ok: false, reason: "purge_failed" };
+  }
+  await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
   return { ok: true, rows: rows.length, purged };
 }
 
