@@ -3746,20 +3746,22 @@ function openApiExampleForRoute(entry, responseSchema, componentSchemas) {
 }
 
 export function artifactPathFromTemplate(template, params = {}) {
-  return template
-    .replace("{netuid}", String(params.netuid ?? ""))
-    .replace("{uid}", String(params.uid ?? ""))
-    .replace("{ss58}", String(params.ss58 ?? ""))
-    // {hotkey} shares compileRoutePattern's __METAGRAPH_SS58__ token, so the
-    // compiled regex's named capture group is `ss58`, not `hotkey` — read
-    // from params.ss58 here too, or a matched /validators/{hotkey} route
-    // would always substitute an empty string.
-    .replace("{hotkey}", String(params.ss58 ?? ""))
-    .replace("{slug}", String(params.slug ?? ""))
-    .replace("{date}", String(params.date ?? ""))
-    .replace("{surface_id}", String(params.surface_id ?? ""))
-    .replace("{ref}", String(params.ref ?? ""))
-    .replace("{hash}", String(params.hash ?? ""));
+  return (
+    template
+      .replace("{netuid}", String(params.netuid ?? ""))
+      .replace("{uid}", String(params.uid ?? ""))
+      .replace("{ss58}", String(params.ss58 ?? ""))
+      // {hotkey} shares compileRoutePattern's __METAGRAPH_SS58__ token, so the
+      // compiled regex's named capture group is `ss58`, not `hotkey` — read
+      // from params.ss58 here too, or a matched /validators/{hotkey} route
+      // would always substitute an empty string.
+      .replace("{hotkey}", String(params.ss58 ?? ""))
+      .replace("{slug}", String(params.slug ?? ""))
+      .replace("{date}", String(params.date ?? ""))
+      .replace("{surface_id}", String(params.surface_id ?? ""))
+      .replace("{ref}", String(params.ref ?? ""))
+      .replace("{hash}", String(params.hash ?? ""))
+  );
 }
 
 export function compileRoutePattern(pathTemplate) {
