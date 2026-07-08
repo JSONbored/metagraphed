@@ -6,10 +6,11 @@ import {
   flattenSurfaceIncidents,
   sortedHealthTrendSurfaces,
 } from "@/lib/metagraphed/queries";
-import { classNames, durationLabel } from "@/lib/metagraphed/format";
+import { classNames, durationLabel, formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTimeRange, RANGE_LABEL } from "./time-range-context";
 import type { FlatSurfaceIncident, HealthTrendSurface } from "@/lib/metagraphed/types";
@@ -148,7 +149,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
             <span className="tabular-nums text-ink-strong">{pct(window?.uptime_ratio)}</span> uptime
           </span>
           {typeof window?.samples === "number" ? (
-            <span className="tabular-nums">{window.samples.toLocaleString()} samples</span>
+            <span className="tabular-nums">{formatNumber(window.samples)} samples</span>
           ) : null}
           <span className="tabular-nums">{surfaces.length} surfaces</span>
           <InfoTooltip label="Per-surface uptime ratio over the selected window, worst first. The bar fills to the uptime %; the dashed mark is the 95% SLA line. p50/p95 are latency percentiles for that surface. Reconstructed downtime windows (if any) are listed below as incident markers." />
@@ -194,7 +195,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
               </div>
               <div className="mt-1 flex items-center gap-3 font-mono text-[9.5px] text-ink-muted tabular-nums">
                 {typeof s.samples === "number" ? (
-                  <span>{s.samples.toLocaleString()} samples</span>
+                  <span>{formatNumber(s.samples)} samples</span>
                 ) : null}
                 <span>p50 {ms(s.latency_ms?.p50 ?? s.avg_latency_ms)}</span>
                 <span>p95 {ms(s.latency_ms?.p95)}</span>
@@ -256,8 +257,8 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                   : sev === "warn"
                     ? "var(--health-warn)"
                     : "var(--ink-muted)";
-              const startLabel = i.started_at ? new Date(i.started_at).toLocaleString() : "—";
-              const endLabel = i.ended_at ? new Date(i.ended_at).toLocaleString() : "ongoing";
+              const startLabel = formatRelative(i.started_at);
+              const endLabel = i.ended_at ? formatRelative(i.ended_at) : "ongoing";
               const dur = durationLabel(i.started_at ?? undefined, i.ended_at ?? undefined);
               const aria = `${sev} incident, started ${startLabel}, ${i.ended_at ? `ended ${endLabel}` : "ongoing"}, duration ${dur}${i.surface_id ? `, ${i.surface_id}` : ""}`;
               return (
@@ -282,9 +283,15 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                     </div>
                     <div className="mt-1 break-all">{i.surface_id}</div>
                     <div className="mt-1 font-mono text-[10px] text-primary-foreground/70">
-                      started {startLabel}
+                      started <TimeAgo at={i.started_at} />
                       <br />
-                      {i.ended_at ? `ended ${endLabel}` : "still open"}
+                      {i.ended_at ? (
+                        <>
+                          ended <TimeAgo at={i.ended_at} />
+                        </>
+                      ) : (
+                        "still open"
+                      )}
                     </div>
                   </TooltipContent>
                 </Tooltip>
