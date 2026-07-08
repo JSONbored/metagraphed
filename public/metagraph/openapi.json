@@ -19869,6 +19869,107 @@
         ],
         "type": "object"
       },
+      "ValidatorNominatorEntry": {
+        "additionalProperties": false,
+        "description": "One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2).",
+        "properties": {
+          "coldkey": {
+            "type": "string"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "gross_staked_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "net_staked_tao": {
+            "type": "number"
+          },
+          "staked_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "unstaked_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "coldkey",
+          "staked_tao",
+          "unstaked_tao",
+          "net_staked_tao",
+          "gross_staked_tao",
+          "event_count",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
+      "ValidatorNominatorsArtifact": {
+        "additionalProperties": true,
+        "description": "Nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, ranked by net/gross stake flow or recency, served live from the account_events StakeAdded/StakeRemoved stream at /api/v1/validators/{hotkey}/nominators (no static file). Cold/absent hotkey returns an empty list, never a 404.",
+        "properties": {
+          "hotkey": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nominator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nominators": {
+            "items": {
+              "$ref": "#/components/schemas/ValidatorNominatorEntry"
+            },
+            "type": "array"
+          },
+          "offset": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "net_staked",
+              "gross_staked",
+              "last_activity"
+            ],
+            "type": "string"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "hotkey",
+          "window",
+          "sort",
+          "limit",
+          "offset",
+          "nominator_count",
+          "nominators"
+        ],
+        "type": "object"
+      },
       "VerificationArtifact": {
         "allOf": [
           {
@@ -48433,6 +48534,203 @@
           }
         },
         "summary": "Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons D1 tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404.",
+        "tags": [
+          "validators",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/validators/{hotkey}/nominators": {
+      "get": {
+        "operationId": "validatorNominators",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hotkey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "net_staked",
+                "gross_staked",
+                "last_activity"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "coldkey",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "hotkey": "example",
+                    "limit": 1,
+                    "nominator_count": 1,
+                    "nominators": [
+                      {
+                        "coldkey": "example",
+                        "event_count": 1,
+                        "gross_staked_tao": 0.5,
+                        "last_observed_at": "2026-06-01T00:00:00.000Z",
+                        "net_staked_tao": 0.5,
+                        "staked_tao": 0.5,
+                        "unstaked_tao": 0.5
+                      }
+                    ],
+                    "offset": 1,
+                    "schema_version": 1,
+                    "sort": "net_staked",
+                    "window": "30d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ValidatorNominatorsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404.",
         "tags": [
           "validators",
           "analytics"

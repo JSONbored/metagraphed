@@ -19847,6 +19847,107 @@
         ],
         "type": "object"
       },
+      "ValidatorNominatorEntry": {
+        "additionalProperties": false,
+        "description": "One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2).",
+        "properties": {
+          "coldkey": {
+            "type": "string"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "gross_staked_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "net_staked_tao": {
+            "type": "number"
+          },
+          "staked_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "unstaked_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "coldkey",
+          "staked_tao",
+          "unstaked_tao",
+          "net_staked_tao",
+          "gross_staked_tao",
+          "event_count",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
+      "ValidatorNominatorsArtifact": {
+        "additionalProperties": true,
+        "description": "Nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, ranked by net/gross stake flow or recency, served live from the account_events StakeAdded/StakeRemoved stream at /api/v1/validators/{hotkey}/nominators (no static file). Cold/absent hotkey returns an empty list, never a 404.",
+        "properties": {
+          "hotkey": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nominator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nominators": {
+            "items": {
+              "$ref": "#/components/schemas/ValidatorNominatorEntry"
+            },
+            "type": "array"
+          },
+          "offset": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "net_staked",
+              "gross_staked",
+              "last_activity"
+            ],
+            "type": "string"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "hotkey",
+          "window",
+          "sort",
+          "limit",
+          "offset",
+          "nominator_count",
+          "nominators"
+        ],
+        "type": "object"
+      },
       "VerificationArtifact": {
         "allOf": [
           {

@@ -186,6 +186,12 @@ import {
 } from "../../src/stake-flow.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
+  loadValidatorNominators,
+  NOMINATOR_WINDOWS,
+  DEFAULT_NOMINATOR_WINDOW,
+  NOMINATOR_SORTS,
+} from "../../src/validator-nominators.mjs";
+import {
   loadAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
@@ -661,6 +667,82 @@ export async function handleValidatorDetail(request, env, hotkey) {
         env,
         `/metagraph/validators/${hotkey}.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/validators/{hotkey}/nominators?window=7d|30d|90d&sort=net_staked|
+// gross_staked|last_activity&limit=&offset=&coldkey=: who has staked to this
+// validator (across every subnet it operates in) over the window, ranked by
+// net/gross flow or recency. account_events-derived (source "chain-events"),
+// no new capture — StakeAdded/StakeRemoved already carry the hotkey/coldkey
+// pair on every row. coldkey= narrows to one nominator's own flow (an
+// exact-match lookup, not fuzzy search). Cold/absent → 200 with an empty
+// list, never 404.
+export async function handleValidatorNominators(request, env, hotkey, url) {
+  const validationError = validateEntityQuery(url, [
+    "window",
+    "sort",
+    "limit",
+    "offset",
+    "coldkey",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_NOMINATOR_WINDOW;
+  if (!Object.hasOwn(NOMINATOR_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, NOMINATOR_WINDOWS),
+    });
+  }
+  const sort = url.searchParams.get("sort");
+  if (sort !== null && !NOMINATOR_SORTS.includes(sort)) {
+    return analyticsQueryError({
+      parameter: "sort",
+      message: `"${sort}" is not a supported sort. Supported: ${NOMINATOR_SORTS.join(", ")}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    min: 1,
+    max: GLOBAL_VALIDATOR_LIMIT_MAX,
+  });
+  if (limit.error) return analyticsQueryError(limit.error);
+  const offset = parseBoundedIntParam(url, "offset", {
+    def: 0,
+    min: 0,
+    max: Number.MAX_SAFE_INTEGER,
+  });
+  if (offset.error) return analyticsQueryError(offset.error);
+  const coldkeyParam = url.searchParams.get("coldkey");
+  if (coldkeyParam !== null && !SS58_ADDRESS_PATTERN.test(coldkeyParam)) {
+    return analyticsQueryError({
+      parameter: "coldkey",
+      message: `"coldkey" must be a valid SS58 address.`,
+    });
+  }
+  const { data, generatedAt } = await loadValidatorNominators(
+    d1Runner(env),
+    hotkey,
+    {
+      windowLabel: windowParam,
+      sort: sort ?? undefined,
+      limit: limit.value,
+      offset: offset.value,
+      coldkey: coldkeyParam ?? undefined,
+    },
+  );
+  return accountEnvelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/validators/${hotkey}/nominators.json`,
+        generatedAt,
       ),
     },
     "short",

@@ -108,6 +108,12 @@ export const SUBNET_VALIDATORS_PATH_PATTERN =
 // the single-entity drill-in of the bare /api/v1/validators leaderboard.
 export const VALIDATOR_DETAIL_PATH_PATTERN =
   /^\/api\/v1\/validators\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
+// Nominator list for one validator (#4334/7.2): StakeAdded/StakeRemoved
+// account_events grouped by coldkey, no static file. Dispatched separately
+// from VALIDATOR_DETAIL_PATH_PATTERN above (disjoint — that one is $-anchored
+// right after the hotkey, this one requires the /nominators suffix).
+export const VALIDATOR_NOMINATORS_PATH_PATTERN =
+  /^\/api\/v1\/validators\/([1-9A-HJ-NP-Za-km-z]{47,48})\/nominators$/;
 // Per-subnet chain-event stream (#1345 block explorer): account_events filtered
 // by netuid, served live from the event tier.
 export const SUBNET_EVENT_SUMMARY_PATH_PATTERN =

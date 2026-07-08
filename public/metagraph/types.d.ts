@@ -2401,6 +2401,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/validators/{hotkey}/nominators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. */
+        get: operations["validatorNominators"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7136,6 +7153,31 @@ export interface components {
             uid: number;
             validator_permit: boolean;
             validator_trust?: number | null;
+        };
+        /** @description One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2). */
+        ValidatorNominatorEntry: {
+            coldkey: string;
+            event_count: number;
+            gross_staked_tao: number;
+            /** Format: date-time */
+            last_observed_at: string | null;
+            net_staked_tao: number;
+            staked_tao: number;
+            unstaked_tao: number;
+        };
+        /** @description Nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, ranked by net/gross stake flow or recency, served live from the account_events StakeAdded/StakeRemoved stream at /api/v1/validators/{hotkey}/nominators (no static file). Cold/absent hotkey returns an empty list, never a 404. */
+        ValidatorNominatorsArtifact: {
+            hotkey: string;
+            limit: number;
+            nominator_count: number;
+            nominators: components["schemas"]["ValidatorNominatorEntry"][];
+            offset: number;
+            schema_version: number;
+            /** @enum {string} */
+            sort: "net_staked" | "gross_staked" | "last_activity";
+            window: string | null;
+        } & {
+            [key: string]: unknown;
         };
         VerificationArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_count: number;
@@ -26541,6 +26583,130 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ValidatorDetailArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    validatorNominators: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+                sort?: "net_staked" | "gross_staked" | "last_activity";
+                limit?: number;
+                offset?: number;
+                coldkey?: string;
+            };
+            header?: never;
+            path: {
+                hotkey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "hotkey": "example",
+                     *         "limit": 1,
+                     *         "nominator_count": 1,
+                     *         "nominators": [
+                     *           {
+                     *             "coldkey": "example",
+                     *             "event_count": 1,
+                     *             "gross_staked_tao": 0.5,
+                     *             "last_observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "net_staked_tao": 0.5,
+                     *             "staked_tao": 0.5,
+                     *             "unstaked_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "offset": 1,
+                     *         "schema_version": 1,
+                     *         "sort": "net_staked",
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ValidatorNominatorsArtifact"];
                     };
                 };
             };
