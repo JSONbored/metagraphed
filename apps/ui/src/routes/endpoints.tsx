@@ -350,8 +350,9 @@ function formatStatusRollup(byStatus: Record<string, number> | undefined): strin
 }
 
 function RpcEndpointsTable() {
-  const { data, summary } = useSuspenseQuery(rpcEndpointsQuery());
+  const { data } = useSuspenseQuery(rpcEndpointsQuery());
   const rows = (data.data ?? []) as RpcEndpoint[];
+  const summary = data.summary;
   const stale = isStaleFreshness(data.meta?.generated_at);
   const statusHint = formatStatusRollup(summary?.by_status);
   const endpointCount = summary?.endpoint_count ?? rows.length;
