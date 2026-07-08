@@ -33,6 +33,24 @@
         "https://github.com/neuralinternet/SN27-opencompute/blob/main/server.py"
       ],
       "url": "https://github.com/neuralinternet/SN27-opencompute"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-27-nodexo-data-artifact",
+      "kind": "data-artifact",
+      "name": "NI Compute GPU performance reference config",
+      "notes": "Public no-auth static YAML data file committed in SN27 NI Compute's official neuralinternet/SN27-opencompute repository — the validator's GPU scoring reference data: gpu_performance (per-GPU-model FP16 TFLOPS + effective-VRAM tables), gpu_time_models, merkle_proof challenge parameters, and subnet_config used to score miner compute. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo. Public-safe: contains only hardware reference tables and challenge parameters, no credentials.",
+      "provider": "nodexo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "source_urls": [
+        "https://github.com/neuralinternet/SN27-opencompute/blob/main/config.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/neuralinternet/SN27-opencompute/main/config.yaml"
     }
   ]
 }
