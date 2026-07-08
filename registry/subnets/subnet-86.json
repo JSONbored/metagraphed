@@ -31,5 +31,25 @@
       "No verified standalone static data artifact yet."
     ]
   },
-  "surfaces": []
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-86-taomarketcap-subnet-snapshot",
+      "kind": "data-artifact",
+      "name": "SN86 on-chain subnet snapshot",
+      "notes": "Public no-auth GET /public/v1/subnets/86 on api.taomarketcap.com returning a machine-readable JSON snapshot of SN86 on-chain subnet state and SubnetIdentitiesV3 metadata (subnetName \"⚒\", owner description about building a methodical foundation and onboarding a senior data scientist, plus economics, registration/burn parameters, and dTAO market fields). SN86 exposes no first-party API, repository, or static dataset; this is the indexed public JSON feed for netuid 86 documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://backprop.finance/dtao/subnets/86-subnet-86"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/86"
+    }
+  ]
 }

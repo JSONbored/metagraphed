@@ -1,5 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { resolveRefetchInterval, usePageVisible } from "@/hooks/use-refetch-interval";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -40,7 +42,34 @@ const INTERVAL_OPTIONS: Array<{ label: string; value: number }> = [
 
 const INCIDENT_INITIAL_VISIBLE = 12;
 
+// Mirrors the six Health mega-menu quick-filter links (nav-mega-menu-data.ts
+// `MEGA_PANELS` "health" panel) so `/health?view=...` and `/health?status=...`
+// deep-link into a specific section/filter instead of always rendering the
+// same fixed page. `status` also backs the page's own incident-filter chips.
+const HEALTH_VIEWS = ["", "matrix", "incidents", "sources", "freshness"] as const;
+type HealthView = (typeof HEALTH_VIEWS)[number];
+
+const HEALTH_STATUSES = ["all", "down", "warn", "resolved"] as const;
+type StateFilter = (typeof HEALTH_STATUSES)[number];
+
+const healthSearchSchema = z.object({
+  view: fallback(z.enum(HEALTH_VIEWS), "").default(""),
+  status: fallback(z.enum(HEALTH_STATUSES), "all").default("all"),
+});
+
+// Which section a `view` deep-link should scroll to + highlight. A bare
+// `status` (no `view`) targets the incidents section too, since that's the
+// only place `status` has any effect.
+const VIEW_SECTION_ID: Record<HealthView, string | null> = {
+  "": null,
+  matrix: "subnet-matrix",
+  incidents: "incidents",
+  sources: "source-health",
+  freshness: "status-board",
+};
+
 export const Route = createFileRoute("/health")({
+  validateSearch: zodValidator(healthSearchSchema),
   head: () => ({
     meta: [
       { title: "Health — Metagraphed" },
@@ -61,12 +90,36 @@ export const Route = createFileRoute("/health")({
 });
 
 function HealthPage() {
+  const search = Route.useSearch();
   const [enabled, setEnabled] = useState(true);
   const [intervalMs, setIntervalMs] = useState(30_000);
   const visible = usePageVisible();
   const effectiveInterval = resolveRefetchInterval(intervalMs, enabled, visible);
   // #1117: push a refresh on each registry publish, on top of the poll interval.
   useRegistryEvents();
+
+  // `search.view` is cast here because `fallback().default()` (zod-adapter,
+  // pinned to zod v3 types) loses its literal-union output type under this
+  // repo's zod v4 — a pre-existing gap shared by every other route's search
+  // schema, just not one any of them happens to index a Record with.
+  const activeSectionId =
+    VIEW_SECTION_ID[search.view as HealthView] ?? (search.status !== "all" ? "incidents" : null);
+  const sectionRing = (id: string) =>
+    activeSectionId === id ? "ring-1 ring-accent/40 rounded-2xl" : undefined;
+
+  useEffect(() => {
+    if (!activeSectionId) return;
+    const t = window.setTimeout(() => {
+      document
+        .getElementById(activeSectionId)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(t);
+    // Deep-link arrival only — deliberately not re-run when `search` changes
+    // afterward (e.g. clicking an incident-filter chip below), or the page
+    // would yank itself back to this section every time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AppShell>
@@ -95,6 +148,7 @@ function HealthPage() {
             title="Global health, at a glance"
             description="Probe-derived state across every monitored surface."
             toolbar={<TimeRangeScrub />}
+            className={sectionRing("status-board")}
           >
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-56 w-full" />}>
@@ -135,6 +189,7 @@ function HealthPage() {
           eyebrow="Coverage"
           title="Subnet health matrix"
           description="Every active subnet, colored by latest probe state. Click a cell to open."
+          className={sectionRing("subnet-matrix")}
         >
           <SubnetHealthMatrix />
         </PageSection>
@@ -144,6 +199,7 @@ function HealthPage() {
           eyebrow="Sources"
           title="Source freshness"
           description="Where the registry pulls evidence from and how fresh each source is."
+          className={sectionRing("source-health")}
         >
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
@@ -157,6 +213,7 @@ function HealthPage() {
           eyebrow="Incidents"
           title="Live & recent incidents"
           description="Grouped by host. Ongoing incidents bubble to the top."
+          className={sectionRing("incidents")}
         >
           <QueryErrorBoundary>
             <Suspense fallback={<Skeleton className="h-32 w-full" />}>
@@ -523,12 +580,17 @@ function severityRank(state: HealthState | undefined): SeverityRank {
   return 0;
 }
 
-type StateFilter = "all" | "down" | "warn" | "resolved";
-
 function Incidents({ interval }: { interval: number | false }) {
   const { data } = useSuspenseQuery({ ...endpointIncidentsQuery(), refetchInterval: interval });
   const rows = useMemo(() => (data.data ?? []) as EndpointIncident[], [data]);
-  const [filter, setFilter] = useState<StateFilter>("all");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const filter = search.status;
+  const setFilter = (next: StateFilter) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, status: next }) as never,
+      resetScroll: false,
+    });
   const [showAll, setShowAll] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 

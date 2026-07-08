@@ -68,6 +68,24 @@
         "https://docs.zeussubnet.com/docs/introduction"
       ],
       "url": "https://api.zeussubnet.com/v1/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-18-zeus-data-artifact",
+      "kind": "data-artifact",
+      "name": "Zeus latitude-weighting array for RMSE scoring",
+      "notes": "Public NumPy (.npy) array of per-latitude weights that SN18 Zeus applies to compute area-weighted RMSE when scoring miner weather/climate forecasts (correcting for grid-cell area shrinking toward the poles). Committed in the validator repository alongside its generator script. No-auth static file, pinned to an immutable commit.",
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jeffrey701"
+      },
+      "source_urls": [
+        "https://github.com/Orpheus-AI/Zeus/blob/8b79e8ea117d085f959decd6fea9ae17da1b1494/zeus/data/weights/latitude_weights_for_rmse.npy"
+      ],
+      "url": "https://raw.githubusercontent.com/Orpheus-AI/Zeus/8b79e8ea117d085f959decd6fea9ae17da1b1494/zeus/data/weights/latitude_weights_for_rmse.npy"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"

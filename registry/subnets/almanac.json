@@ -28,6 +28,25 @@
         "https://github.com/sportstensor/sn41/blob/main/api_trading.py"
       ],
       "url": "https://api.almanac.market/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-41-almanac-nfl-champion-market",
+      "kind": "data-artifact",
+      "name": "Almanac NFL Champion 2027 market snapshot",
+      "notes": "Public no-auth GET /api/markets/events/{event_id} on api.almanac.market returning full market metadata (title, description, resolution rules, image/icon URLs, active/closed/archived flags) for a specific SN41 Almanac prediction market (NFL Champion 2027, event id 202857). Same api.almanac.market host as the existing health surface; the underlying /markets/search and /markets/events/{id} routes are used by the official sportstensor/sn41 trading client (api_trading.py) to browse and inspect markets.",
+      "provider": "almanac",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "philluiz2323"
+      },
+      "source_urls": [
+        "https://github.com/sportstensor/sn41/blob/main/api_trading.py",
+        "https://api.almanac.market/api/markets/search?q=nfl"
+      ],
+      "url": "https://api.almanac.market/api/markets/events/202857"
     }
   ],
   "website_url": "https://almanac.market/"
