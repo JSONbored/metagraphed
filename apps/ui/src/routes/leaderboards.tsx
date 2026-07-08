@@ -9,6 +9,7 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { chainWeightsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, classNames } from "@/lib/metagraphed/format";
+import type { ChainIntensityDistribution } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/leaderboards")({
   head: () => ({
@@ -117,6 +118,9 @@ function WeightsLeaderboard() {
               }
             />
           </div>
+          {data.intensity_distribution ? (
+            <IntensityDistributionStrip dist={data.intensity_distribution} />
+          ) : null}
           <div className="overflow-hidden rounded-xl border border-border bg-card">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -176,5 +180,33 @@ function WeightsLeaderboard() {
         </>
       )}
     </section>
+  );
+}
+
+// Spread of per-subnet update intensity (weight-sets per setter) across every subnet that
+// set weights in the window — the distribution the ranked table's rows are drawn from,
+// not just a rollup of the visible page.
+function IntensityDistributionStrip({ dist }: { dist: ChainIntensityDistribution }) {
+  const cells: Array<[string, number]> = [
+    ["min", dist.min],
+    ["p25", dist.p25],
+    ["median", dist.median],
+    ["mean", dist.mean],
+    ["p75", dist.p75],
+    ["p90", dist.p90],
+    ["max", dist.max],
+  ];
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-lg border border-border bg-card px-4 py-3">
+      <span className="mg-label">Update intensity (sets/setter)</span>
+      {cells.map(([label, value]) => (
+        <span key={label} className="font-mono text-[11px] text-ink-muted">
+          {label} <strong className="text-ink-strong">{value.toFixed(1)}</strong>
+        </span>
+      ))}
+      <span className="ml-auto font-mono text-[11px] text-ink-muted">
+        {formatNumber(dist.count)} subnets
+      </span>
+    </div>
   );
 }
