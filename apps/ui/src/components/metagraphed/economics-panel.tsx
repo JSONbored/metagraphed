@@ -132,7 +132,11 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
   if (!e) return <Notice>No on-chain economic data for this subnet.</Notice>;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    // Flex-wrap (not grid) so a trailing partial row's tiles stretch to fill
+    // the row instead of leaving empty column slots — grid tracks are shared
+    // across every row, but flex lines size independently (same pattern as
+    // the stat spine in subnet-masthead.tsx / operational-panel.tsx).
+    <div className="flex flex-wrap gap-3 [&>*]:grow [&>*]:basis-[200px]">
       <StatTile
         eyebrow="Emission share"
         tone="accent"
