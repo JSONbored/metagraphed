@@ -278,6 +278,8 @@ function normalizeEconomicsSubnets(value: unknown): SubnetEconomics[] {
         max_stake_tao: optionalNumber(item.max_stake_tao),
         subnet_volume_tao: optionalNumber(item.subnet_volume_tao),
         registration_cost_tao: optionalNumber(item.registration_cost_tao),
+        alpha_market_cap_tao: optionalNumber(item.alpha_market_cap_tao),
+        alpha_fdv_tao: optionalNumber(item.alpha_fdv_tao),
         registration_allowed: booleanValue(item.registration_allowed),
       } satisfies SubnetEconomics,
     ];

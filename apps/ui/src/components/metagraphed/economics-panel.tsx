@@ -168,6 +168,8 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
       <StatTile eyebrow="Total stake" value={fmtTao(e.total_stake_tao)} />
       <StatTile eyebrow="Volume" value={fmtTao(e.subnet_volume_tao)} />
       <StatTile eyebrow="Max stake" value={fmtTao(e.max_stake_tao)} />
+      <StatTile eyebrow="Market cap" value={fmtTao(e.alpha_market_cap_tao)} hint="proxy" />
+      <StatTile eyebrow="FDV" value={fmtTao(e.alpha_fdv_tao)} hint="proxy" />
       <StatTile
         eyebrow="Registration"
         tone={e.registration_allowed === false ? "down" : "default"}
