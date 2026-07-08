@@ -58,6 +58,10 @@ import type {
   ChainStakeFlowDistribution,
   ChainStakeFlowNetwork,
   ChainStakeFlowSubnet,
+  ChainRegistrations,
+  ChainRegistrationsDistribution,
+  ChainRegistrationsNetwork,
+  ChainRegistrationsSubnet,
   ChainStakeMoves,
   ChainTurnover,
   ChainTurnoverNetwork,
@@ -217,6 +221,7 @@ const MAX_CHAIN_ACTIVITY_DAYS = 31;
 const MAX_CHAIN_CALLS = 12;
 const MAX_STAKE_FLOW_SUBNETS = 24;
 const MAX_STAKE_MOVES_SUBNETS = 24;
+const MAX_REGISTRATIONS_SUBNETS = 24;
 const MAX_TURNOVER_SUBNETS = 24;
 // The endpoint returns the top 100 pallet.method groups, busiest first.
 const MAX_CHAIN_EVENT_GROUPS = 100;
@@ -3340,6 +3345,73 @@ export const chainTurnoverQuery = (window: ChainWindow = "7d") =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainTurnover>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeChainRegistrationsNetwork(raw: unknown): ChainRegistrationsNetwork | null {
+  if (!isRecord(raw)) return null;
+  return {
+    distinct_registrants: coerceFiniteNumber(raw.distinct_registrants) ?? 0,
+    registrations: coerceFiniteNumber(raw.registrations) ?? 0,
+    registrations_per_registrant: coerceFiniteNumber(raw.registrations_per_registrant) ?? 0,
+  };
+}
+
+function normalizeChainRegistrationsDistribution(
+  raw: unknown,
+): ChainRegistrationsDistribution | null {
+  if (!isRecord(raw)) return null;
+  return {
+    count: coerceFiniteNumber(raw.count) ?? 0,
+    mean: coerceFiniteNumber(raw.mean) ?? null,
+    min: coerceFiniteNumber(raw.min) ?? null,
+    p25: coerceFiniteNumber(raw.p25) ?? null,
+    median: coerceFiniteNumber(raw.median) ?? null,
+    p75: coerceFiniteNumber(raw.p75) ?? null,
+    p90: coerceFiniteNumber(raw.p90) ?? null,
+    max: coerceFiniteNumber(raw.max) ?? null,
+  };
+}
+
+function normalizeChainRegistrationsSubnet(raw: unknown): ChainRegistrationsSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_registrants: coerceFiniteNumber(raw.distinct_registrants) ?? 0,
+    registrations: coerceFiniteNumber(raw.registrations) ?? 0,
+    registrations_per_registrant: coerceFiniteNumber(raw.registrations_per_registrant) ?? 0,
+  };
+}
+
+export const chainRegistrationsQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-registrations", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/registrations", {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          network: normalizeChainRegistrationsNetwork(d.network),
+          intensity_distribution: normalizeChainRegistrationsDistribution(d.intensity_distribution),
+          subnets: normalizeChainRows(
+            d.subnets,
+            MAX_REGISTRATIONS_SUBNETS,
+            normalizeChainRegistrationsSubnet,
+          ),
+        } as ChainRegistrations,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainRegistrations>;
     },
     staleTime: STALE_SHORT,
   });
