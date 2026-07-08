@@ -132,6 +132,24 @@
         "submitted_by": "galuis116"
       },
       "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login."
+    },
+    {
+      "id": "sn-12-compute-horde-data-artifact",
+      "name": "Compute Horde collateral contract ABI",
+      "kind": "data-artifact",
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json",
+      "provider": "compute-horde",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jeffrey701"
+      },
+      "notes": "Public JSON ABI of the ComputeHorde on-chain collateral smart contract (deposit/reclaim/slash collateral keyed by NETUID), committed in the SN12 validator source. No-auth static data artifact for encoding/decoding the subnet collateral system's calls and events."
     }
   ]
 }
