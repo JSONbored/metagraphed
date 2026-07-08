@@ -6,7 +6,7 @@
   "status": "active",
   "categories": ["baseline-curated", "identity-reviewed"],
   "source_repo": null,
-  "website_url": null,
+  "website_url": "https://www.heraldmedia.ai/",
   "docs_url": null,
   "dashboard_url": null,
   "notes": "Reviewed overlay for SN69 ain. Public directories and analytics pages list the subnet, but no official team, website, source repository, API, OpenAPI schema, or docs site has been verified.",

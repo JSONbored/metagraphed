@@ -70,7 +70,7 @@
       "url": "https://beamcore.b1m.ai/config/uid-ranges"
     }
   ],
-  "source_repo": null,
+  "source_repo": "https://github.com/orgs/Beam-Network/repositories",
   "website_url": "https://b1m.ai/",
   "contact": "info@b1m.ai"
 }

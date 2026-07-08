@@ -176,5 +176,8 @@
       },
       "notes": "Public no-auth GET competitions.json on the official SN29 dynamic-configuration repository (github.com/coldint/sn29). Validators poll this URL on COMPETITIONS_URL in constants/__init__.py via requests.get to load live competition parameters without restart."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/cacheon_ai"
+  }
 }

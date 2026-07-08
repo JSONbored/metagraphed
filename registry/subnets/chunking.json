@@ -28,7 +28,7 @@
   "notes": "Reviewed overlay for SN40 Chunking. Multiple public directories identify VectorChat as the team and subnet.chunking.com as the official website, but the website currently has an expired TLS certificate and the historical VectorChat/chunking_subnet repository returns 404.",
   "schema_version": 1,
   "slug": "chunking",
-  "source_repo": null,
+  "source_repo": "https://github.com/RalphLabsAI/ralph",
   "status": "active",
   "surfaces": [
     {

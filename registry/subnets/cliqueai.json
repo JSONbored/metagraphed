@@ -28,5 +28,7 @@
       ],
       "url": "https://wandb.ai/toptensor-ai/CliqueAI/table"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/toptensor/CliqueAI",
+  "website_url": "https://cliqueai.toptensor.ai/"
 }

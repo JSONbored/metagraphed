@@ -68,5 +68,7 @@
       ],
       "url": "https://api.synthdata.co/validation/scores/latest"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/mode-network/synth-subnet",
+  "website_url": "https://synthdata.co/"
 }

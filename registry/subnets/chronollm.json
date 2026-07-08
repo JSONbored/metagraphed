@@ -63,5 +63,9 @@
     }
   ],
   "source_repo": "https://github.com/chronollm/sn38",
-  "contact": "crew@crunchdao.com"
+  "contact": "crew@crunchdao.com",
+  "website_url": "https://chronollm.crunchdao.com/",
+  "social": {
+    "x": "https://x.com/chronollm"
+  }
 }

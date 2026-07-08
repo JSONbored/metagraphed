@@ -47,5 +47,7 @@
       ],
       "url": "https://arena-api.astrid.global/public/competitions/190482a8-70b8-463d-b6c5-d1808bc7db9f/wallet-activity"
     }
-  ]
+  ],
+  "source_repo": "https://github.com/astridintelligence/sn-127",
+  "website_url": "https://www.astrid.global/"
 }

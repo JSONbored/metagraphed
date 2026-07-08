@@ -308,5 +308,8 @@
       "url": "https://handshake58.com/api/validator/registry"
     }
   ],
-  "website_url": "https://handshake58.com"
+  "website_url": "https://handshake58.com",
+  "social": {
+    "x": "https://x.com/greevils_ai"
+  }
 }
