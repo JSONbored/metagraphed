@@ -642,6 +642,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per snapshot_date, summed across every subnet it operates in that day, rolled up from the neuron_daily D1 tier at /api/v1/validators/{hotkey}/history (no static file).",
+      "id": "validator-history",
+      "path": "/metagraph/validators/{hotkey}/history.json",
+      "schema_ref": "#/components/schemas/ValidatorHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",

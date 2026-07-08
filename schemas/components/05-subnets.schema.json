@@ -2051,6 +2051,33 @@
           }
         }
       },
+      "ValidatorHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator (#4334/7.3): one point per day, summed across every subnet it operates in that day, served live from the neuron_daily D1 rollup tier at /api/v1/validators/{hotkey}/history (no static file).",
+        "required": ["schema_version", "hotkey", "point_count", "points"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "hotkey": { "type": "string" },
+          "window": { "type": ["string", "null"] },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["snapshot_date"],
+              "properties": {
+                "snapshot_date": { "type": "string" },
+                "subnet_count": { "type": ["integer", "null"] },
+                "total_stake_tao": { "type": ["number", "null"] },
+                "total_emission_tao": { "type": ["number", "null"] },
+                "rewards_per_1000_tao": { "type": ["number", "null"] }
+              }
+            }
+          }
+        }
+      },
       "NeuronHistoryArtifact": {
         "type": "object",
         "additionalProperties": true,

@@ -48,6 +48,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "global-validators",
   "validator-detail",
   "validator-nominators",
+  "validator-history",
   "subnet-uptime",
   "subnet-metagraph",
   "subnet-neuron",

@@ -2401,6 +2401,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/validators/{hotkey}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. */
+        get: operations["validatorHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validators/{hotkey}/nominators": {
         parameters: {
             query?: never;
@@ -7153,6 +7170,22 @@ export interface components {
             uid: number;
             validator_permit: boolean;
             validator_trust?: number | null;
+        };
+        /** @description Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator (#4334/7.3): one point per day, summed across every subnet it operates in that day, served live from the neuron_daily D1 rollup tier at /api/v1/validators/{hotkey}/history (no static file). */
+        ValidatorHistoryArtifact: {
+            hotkey: string;
+            point_count: number;
+            points: {
+                rewards_per_1000_tao?: number | null;
+                snapshot_date: string;
+                subnet_count?: number | null;
+                total_emission_tao?: number | null;
+                total_stake_tao?: number | null;
+            }[];
+            schema_version: number;
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** @description One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2). */
         ValidatorNominatorEntry: {
@@ -26583,6 +26616,117 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ValidatorDetailArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    validatorHistory: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d" | "1y" | "all";
+            };
+            header?: never;
+            path: {
+                hotkey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "hotkey": "example",
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "snapshot_date": "example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ValidatorHistoryArtifact"];
                     };
                 };
             };

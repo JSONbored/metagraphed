@@ -191,6 +191,7 @@ import {
   DEFAULT_NOMINATOR_WINDOW,
   NOMINATOR_SORTS,
 } from "../../src/validator-nominators.mjs";
+import { buildValidatorHistory } from "../../src/validator-history.mjs";
 import {
   loadAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
@@ -749,6 +750,48 @@ export async function handleValidatorNominators(request, env, hotkey, url) {
   );
 }
 
+// GET /api/v1/validators/{hotkey}/history?window=7d|30d|90d|1y|all: cross-
+// subnet staked-over-time + a rewards-per-1000-TAO rate for one validator,
+// one point per snapshot_date summed across every subnet it validates in
+// that day. Rolled up from the neuron_daily tier (idx_neuron_daily_hotkey_date),
+// the same tier the per-UID/per-subnet history routes below already use.
+export async function handleValidatorHistory(request, env, hotkey, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [hotkey];
+  let sql =
+    "SELECT snapshot_date, COUNT(DISTINCT netuid) AS subnet_count, " +
+    "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
+    "FROM neuron_daily WHERE hotkey = ? AND validator_permit = 1";
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildValidatorHistory(rows, hotkey, { window: label });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/validators/${hotkey}/history.json`,
+        null,
+      ),
+    },
+    "short",
+  );
+}
+
 // ---- Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345) --
 // Served from the dated neuron_daily rollup tier (D1). Cold/absent store → 200
 // with empty points (never 404), consistent with the live metagraph tiers.
@@ -1050,6 +1093,10 @@ function canonicalWindowedCachePath(url, parseWindow) {
 }
 
 export function canonicalSubnetHistoryCachePath(url) {
+  return canonicalWindowedCachePath(url, parseHistoryWindow);
+}
+
+export function canonicalValidatorHistoryCachePath(url) {
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 

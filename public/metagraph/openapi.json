@@ -19869,6 +19869,74 @@
         ],
         "type": "object"
       },
+      "ValidatorHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator (#4334/7.3): one point per day, summed across every subnet it operates in that day, served live from the neuron_daily D1 rollup tier at /api/v1/validators/{hotkey}/history (no static file).",
+        "properties": {
+          "hotkey": {
+            "type": "string"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "rewards_per_1000_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "snapshot_date": {
+                  "type": "string"
+                },
+                "subnet_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "total_emission_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "total_stake_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "hotkey",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
+      },
       "ValidatorNominatorEntry": {
         "additionalProperties": false,
         "description": "One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2).",
@@ -48534,6 +48602,156 @@
           }
         },
         "summary": "Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons D1 tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404.",
+        "tags": [
+          "validators",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/validators/{hotkey}/history": {
+      "get": {
+        "operationId": "validatorHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hotkey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d",
+                "1y",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "hotkey": "example",
+                    "point_count": 1,
+                    "points": [
+                      {
+                        "snapshot_date": "example"
+                      }
+                    ],
+                    "schema_version": 1,
+                    "window": "30d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ValidatorHistoryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
         "tags": [
           "validators",
           "analytics"

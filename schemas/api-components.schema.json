@@ -19847,6 +19847,74 @@
         ],
         "type": "object"
       },
+      "ValidatorHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator (#4334/7.3): one point per day, summed across every subnet it operates in that day, served live from the neuron_daily D1 rollup tier at /api/v1/validators/{hotkey}/history (no static file).",
+        "properties": {
+          "hotkey": {
+            "type": "string"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "rewards_per_1000_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "snapshot_date": {
+                  "type": "string"
+                },
+                "subnet_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "total_emission_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "total_stake_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "hotkey",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
+      },
       "ValidatorNominatorEntry": {
         "additionalProperties": false,
         "description": "One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2).",

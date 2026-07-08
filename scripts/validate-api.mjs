@@ -482,6 +482,18 @@ const checks = [
     },
   ],
   [
+    "/api/v1/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/history?window=30d",
+    (body) => {
+      assert.equal(
+        body.data.hotkey,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      // Cold harness (no D1) → empty points, never 404.
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/events",
     (body) => {
       assert.equal(body.data.netuid, 7);

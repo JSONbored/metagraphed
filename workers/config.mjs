@@ -114,6 +114,10 @@ export const VALIDATOR_DETAIL_PATH_PATTERN =
 // right after the hotkey, this one requires the /nominators suffix).
 export const VALIDATOR_NOMINATORS_PATH_PATTERN =
   /^\/api\/v1\/validators\/([1-9A-HJ-NP-Za-km-z]{47,48})\/nominators$/;
+// Cross-subnet staked-over-time + rewards-per-1000-TAO history for one
+// validator (#4334/7.3), rolled up from the neuron_daily tier.
+export const VALIDATOR_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/validators\/([1-9A-HJ-NP-Za-km-z]{47,48})\/history$/;
 // Per-subnet chain-event stream (#1345 block explorer): account_events filtered
 // by netuid, served live from the event tier.
 export const SUBNET_EVENT_SUMMARY_PATH_PATTERN =

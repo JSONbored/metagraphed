@@ -1044,6 +1044,12 @@ export const PUBLIC_ARTIFACTS = [
     "ValidatorNominatorsArtifact",
   ),
   artifact(
+    "validator-history",
+    "/metagraph/validators/{hotkey}/history.json",
+    "Cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per snapshot_date, summed across every subnet it operates in that day, rolled up from the neuron_daily D1 tier at /api/v1/validators/{hotkey}/history (no static file).",
+    "ValidatorHistoryArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -2296,6 +2302,22 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "coldkey", schema: { type: "string" } },
+    ],
+    [{ name: "hotkey", schema: { type: "string" } }],
+  ),
+  route(
+    "validator-history",
+    "GET",
+    "/api/v1/validators/{hotkey}/history",
+    "/metagraph/validators/{hotkey}/history.json",
+    "Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["validators", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
     ],
     [{ name: "hotkey", schema: { type: "string" } }],
   ),

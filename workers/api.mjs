@@ -98,6 +98,7 @@ import {
   canonicalChainIdentityHistoryCachePath,
   handleChainYield,
   canonicalSubnetHistoryCachePath,
+  canonicalValidatorHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   canonicalSubnetPerformanceHistoryCachePath,
   canonicalSubnetYieldHistoryCachePath,
@@ -133,6 +134,7 @@ import {
   canonicalGlobalValidatorsCachePath,
   handleValidatorDetail,
   handleValidatorNominators,
+  handleValidatorHistory,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
   canonicalSubnetYieldCachePath,
@@ -330,6 +332,7 @@ import {
   SUBNET_VALIDATORS_PATH_PATTERN,
   VALIDATOR_DETAIL_PATH_PATTERN,
   VALIDATOR_NOMINATORS_PATH_PATTERN,
+  VALIDATOR_HISTORY_PATH_PATTERN,
   SUBNET_EVENT_SUMMARY_PATH_PATTERN,
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
@@ -1380,6 +1383,23 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       env,
       validatorNominatorsMatch[1],
       url,
+    );
+  }
+
+  // Cross-subnet staked-over-time + rewards history for one validator
+  // (#4334/7.3): GROUP BY daily aggregation, deterministic per cron snapshot
+  // — edge-cache like the sibling subnet-history route below.
+  const validatorHistoryMatch = VALIDATOR_HISTORY_PATH_PATTERN.exec(
+    url.pathname,
+  );
+  if (validatorHistoryMatch) {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "validator-history",
+      () => handleValidatorHistory(request, env, validatorHistoryMatch[1], url),
+      canonicalValidatorHistoryCachePath(url),
     );
   }
 
