@@ -1050,7 +1050,8 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
     >
       {isEmpty ? (
-        <EmptyState
+        <TableState
+          variant="empty"
           title="No endpoint announcements"
           description="This account had no AxonServed or PrometheusServed events in the window — typical for non-miner accounts or coldkeys without serving activity."
         />

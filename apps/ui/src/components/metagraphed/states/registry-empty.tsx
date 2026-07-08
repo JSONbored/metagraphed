@@ -57,9 +57,16 @@ const TONE = {
 } as const;
 
 /**
- * Unified empty/error/stale state for registry surfaces. Surfaces a clear
- * headline, a plain-language explainer, an optional freshness hint, and a
- * compact row of "next actions" so users always know what to do next.
+ * Unified empty/error/stale state reserved for top-level registry
+ * index/listing pages (endpoints, surfaces, gaps) whose content is
+ * inherently about externally-sourced provenance. Surfaces a clear
+ * headline, a plain-language explainer, an optional freshness hint, an
+ * "evidence & sources" link, and a compact row of up to ~3 "next actions."
+ *
+ * Not for single-panel/chart no-data cases within a subnet or account detail
+ * page (use `TableState`, table-state.tsx) or for simple guard clauses (use
+ * `EmptyState`, states.tsx). See the rule documented on `EmptyState` in
+ * states.tsx (issue #3962).
  */
 export function RegistryEmpty({
   variant,

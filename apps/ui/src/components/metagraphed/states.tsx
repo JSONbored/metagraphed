@@ -93,6 +93,22 @@ export function ErrorState({
   );
 }
 
+/**
+ * The default no-data/no-selection placeholder — issue #3962's rule for
+ * choosing between the three empty-state components:
+ *  - `EmptyState` (here): page-level guard clauses (not-found/invalid input),
+ *    single charts/stat panels, and generic lists that need at most one
+ *    action link and no retry wiring or provenance.
+ *  - `TableState` (table-state.tsx): a subnet/account-detail panel's primary
+ *    content — literal `<table>` or a StatTile scorecard sharing that panel
+ *    shell — that needs the empty/stale/error variant switch plus retry.
+ *  - `RegistryEmpty` (states/registry-empty.tsx): top-level registry index
+ *    pages whose content is inherently externally-sourced (endpoints,
+ *    surfaces, gaps) and needs multiple next-actions plus freshness/evidence
+ *    rows.
+ * Use `ErrorState` above instead of this for a genuine fetch error — it
+ * carries `onRetry` and the failing status/URL that this component doesn't.
+ */
 export function EmptyState({
   title = "Nothing here yet",
   description,

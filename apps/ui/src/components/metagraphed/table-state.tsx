@@ -34,9 +34,16 @@ interface Props {
 }
 
 /**
- * Unified empty / stale / error block for every registry table. Identical
- * padding, copy column, and CTA style so empty states feel consistent across
- * /endpoints, /surfaces, /providers, subnet detail tables.
+ * Unified empty / stale / error block for a subnet- or account-detail
+ * panel's primary content — a literal `<table>` or a StatTile/scorecard
+ * panel sharing the same detail-page shell — wherever that content needs
+ * the variant switch plus a single retry + CTA. Identical padding, copy
+ * column, and CTA style so these panels feel consistent with each other.
+ *
+ * Not for top-level registry index/listing pages (use `RegistryEmpty`,
+ * states/registry-empty.tsx, for those) or for simple guard clauses/charts
+ * that need no retry (use `EmptyState`/`ErrorState`, states.tsx). See the
+ * rule documented on `EmptyState` in states.tsx (issue #3962).
  */
 export function TableState({
   variant,
