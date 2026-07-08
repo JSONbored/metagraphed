@@ -50,6 +50,7 @@ import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
+import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import type {
   AccountRegistration,
   AccountSummary,
@@ -423,7 +424,12 @@ function AccountExtrinsicsSection({
   error?: unknown;
   onRetry?: () => void;
 }) {
-  if (isPending && rows.length === 0) {
+  const phase = accountFeedSectionPhase({
+    isPending,
+    isError,
+    rowCount: rows.length,
+  });
+  if (phase === "skeleton") {
     return (
       <AccountFeedSectionSkeleton
         id="extrinsics"
@@ -432,7 +438,7 @@ function AccountExtrinsicsSection({
       />
     );
   }
-  if (isError) {
+  if (phase === "error") {
     return (
       <SectionAnchor
         id="extrinsics"
@@ -450,7 +456,7 @@ function AccountExtrinsicsSection({
       </SectionAnchor>
     );
   }
-  if (rows.length === 0) return null;
+  if (phase === "empty") return null;
   return (
     <SectionAnchor
       id="extrinsics"
@@ -540,7 +546,12 @@ function AccountTransfersSection({
   error?: unknown;
   onRetry?: () => void;
 }) {
-  if (isPending && rows.length === 0) {
+  const phase = accountFeedSectionPhase({
+    isPending,
+    isError,
+    rowCount: rows.length,
+  });
+  if (phase === "skeleton") {
     return (
       <AccountFeedSectionSkeleton
         id="transfers"
@@ -549,7 +560,7 @@ function AccountTransfersSection({
       />
     );
   }
-  if (isError) {
+  if (phase === "error") {
     return (
       <SectionAnchor
         id="transfers"
@@ -567,7 +578,7 @@ function AccountTransfersSection({
       </SectionAnchor>
     );
   }
-  if (rows.length === 0) return null;
+  if (phase === "empty") return null;
   return (
     <SectionAnchor
       id="transfers"
