@@ -24,6 +24,7 @@ import {
   chainFeesQuery,
   chainSignersQuery,
   chainStakeFlowQuery,
+  chainStakeMovesQuery,
   chainStakeTransfersQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -34,6 +35,7 @@ import type {
   ChainEvent,
   ChainEventsStats,
   ChainStakeFlow,
+  ChainStakeMoves,
 } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
@@ -101,6 +103,7 @@ function ExplorerPage() {
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
           "/api/v1/chain/stake-flow",
+          "/api/v1/chain/stake-moves",
           "/api/v1/chain/stake-transfers",
           "/api/v1/chain-events",
           "/api/v1/chain-events/stats",
@@ -426,6 +429,85 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
   );
 }
 
+/**
+ * Network-wide stake moves (#3468) - re-delegation churn across every subnet for
+ * the window: distinct movers, total movements, and moves-per-mover, plus the
+ * busiest subnets by movement count and the intensity distribution.
+ * Chain-direct: GET /api/v1/chain/stake-moves.
+ */
+function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
+  const net = moves.network;
+  const dist = moves.intensity_distribution;
+  // Server sorts subnets by movements desc; re-sort defensively, take the top 12.
+  const busiest = [...moves.subnets].sort((a, b) => b.movements - a.movements).slice(0, 12);
+  const cap = Math.max(1, ...busiest.map((s) => s.movements));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Stake moves
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(moves.subnet_count)} subnets
+        </span>
+      </div>
+
+      {net ? (
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StakeFlowMetric label="Distinct movers" value={formatNumber(net.distinct_movers)} />
+          <StakeFlowMetric label="Movements" value={formatNumber(net.movements)} />
+          <StakeFlowMetric label="Moves / mover" value={net.movements_per_mover.toFixed(2)} />
+        </div>
+      ) : null}
+
+      {busiest.length > 0 ? (
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Busiest subnets
+          </div>
+          <ul className="space-y-1.5">
+            {busiest.map((s) => {
+              const pct = Math.max(2, Math.round((s.movements / cap) * 100));
+              return (
+                <li key={s.netuid}>
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: s.netuid }}
+                    className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
+                  >
+                    <span className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                      SN{s.netuid}
+                    </span>
+                    <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
+                      <span
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{ width: `${pct}%`, background: "var(--accent)" }}
+                      />
+                    </span>
+                    <span className="text-right font-mono text-[10px] tabular-nums text-ink-strong">
+                      {formatNumber(s.movements)}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No stake moves in this window yet.</p>
+      )}
+
+      {dist ? (
+        <p className="mt-4 border-t border-border pt-3 font-mono text-[10px] text-ink-muted">
+          Median {(dist.median ?? 0).toFixed(1)} moves per mover, up to {(dist.max ?? 0).toFixed(1)}{" "}
+          in the busiest subnet, across {formatNumber(dist.count)} subnets.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -436,6 +518,7 @@ function ExplorerDashboard() {
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
   const stakeFlow = useSuspenseQuery(chainStakeFlowQuery(win)).data.data;
+  const stakeMoves = useSuspenseQuery(chainStakeMovesQuery(win)).data.data;
   const stakeTransfers = useSuspenseQuery(chainStakeTransfersQuery(win)).data.data;
   const eventMix = useSuspenseQuery(chainEventsStatsQuery()).data.data;
 
@@ -724,6 +807,8 @@ function ExplorerDashboard() {
       </div>
 
       <StakeFlowSection flow={stakeFlow} />
+
+      <StakeMovesSection moves={stakeMoves} />
 
       {/* stake-transfer leaderboard */}
       <section className="rounded-lg border border-border bg-card p-5">

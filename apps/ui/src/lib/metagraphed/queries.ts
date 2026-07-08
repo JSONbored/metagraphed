@@ -56,6 +56,10 @@ import type {
   ChainStakeFlowDistribution,
   ChainStakeFlowNetwork,
   ChainStakeFlowSubnet,
+  ChainStakeMoves,
+  ChainStakeMovesDistribution,
+  ChainStakeMovesNetwork,
+  ChainStakeMovesSubnet,
   ChainCallEntry,
   ChainEventsStats,
   ChainEventsStatsEntry,
@@ -202,6 +206,7 @@ const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
 const MAX_CHAIN_CALLS = 12;
 const MAX_STAKE_FLOW_SUBNETS = 24;
+const MAX_STAKE_MOVES_SUBNETS = 24;
 // The endpoint returns the top 100 pallet.method groups, busiest first.
 const MAX_CHAIN_EVENT_GROUPS = 100;
 const DEFAULT_CHAIN_EVENT_BLOCKS = 1000;
@@ -3086,6 +3091,71 @@ export const chainStakeFlowQuery = (window: ChainWindow = "7d") =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainStakeFlow>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeChainStakeMovesNetwork(raw: unknown): ChainStakeMovesNetwork | null {
+  if (!isRecord(raw)) return null;
+  return {
+    distinct_movers: coerceFiniteNumber(raw.distinct_movers) ?? 0,
+    movements: coerceFiniteNumber(raw.movements) ?? 0,
+    movements_per_mover: coerceFiniteNumber(raw.movements_per_mover) ?? 0,
+  };
+}
+
+function normalizeChainStakeMovesDistribution(raw: unknown): ChainStakeMovesDistribution | null {
+  if (!isRecord(raw)) return null;
+  return {
+    count: coerceFiniteNumber(raw.count) ?? 0,
+    mean: coerceFiniteNumber(raw.mean) ?? null,
+    min: coerceFiniteNumber(raw.min) ?? null,
+    p25: coerceFiniteNumber(raw.p25) ?? null,
+    median: coerceFiniteNumber(raw.median) ?? null,
+    p75: coerceFiniteNumber(raw.p75) ?? null,
+    p90: coerceFiniteNumber(raw.p90) ?? null,
+    max: coerceFiniteNumber(raw.max) ?? null,
+  };
+}
+
+function normalizeChainStakeMovesSubnet(raw: unknown): ChainStakeMovesSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_movers: coerceFiniteNumber(raw.distinct_movers) ?? 0,
+    movements: coerceFiniteNumber(raw.movements) ?? 0,
+    movements_per_mover: coerceFiniteNumber(raw.movements_per_mover) ?? 0,
+  };
+}
+
+export const chainStakeMovesQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-stake-moves", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/stake-moves", {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          network: normalizeChainStakeMovesNetwork(d.network),
+          intensity_distribution: normalizeChainStakeMovesDistribution(d.intensity_distribution),
+          subnets: normalizeChainRows(
+            d.subnets,
+            MAX_STAKE_MOVES_SUBNETS,
+            normalizeChainStakeMovesSubnet,
+          ),
+        } as ChainStakeMoves,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainStakeMoves>;
     },
     staleTime: STALE_SHORT,
   });

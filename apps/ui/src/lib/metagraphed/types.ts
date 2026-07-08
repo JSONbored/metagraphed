@@ -1927,6 +1927,36 @@ export interface ChainStakeFlow {
   net_flow_distribution: ChainStakeFlowDistribution | null;
   subnets: ChainStakeFlowSubnet[];
 }
+export interface ChainStakeMovesNetwork {
+  distinct_movers: number;
+  movements: number;
+  movements_per_mover: number;
+}
+export interface ChainStakeMovesDistribution {
+  count: number;
+  mean: number | null;
+  min: number | null;
+  p25: number | null;
+  median: number | null;
+  p75: number | null;
+  p90: number | null;
+  max: number | null;
+}
+export interface ChainStakeMovesSubnet {
+  netuid: number;
+  distinct_movers: number;
+  movements: number;
+  movements_per_mover: number;
+}
+export interface ChainStakeMoves {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainStakeMovesNetwork | null;
+  intensity_distribution: ChainStakeMovesDistribution | null;
+  subnets: ChainStakeMovesSubnet[];
+}
 export interface ChainSignerEntry {
   signer: string;
   tx_count: number;
