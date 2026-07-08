@@ -1961,6 +1961,33 @@ export interface ChainStakeFlow {
   net_flow_distribution: ChainStakeFlowDistribution | null;
   subnets: ChainStakeFlowSubnet[];
 }
+export interface ChainTurnoverNetwork {
+  validators_start: number;
+  validators_end: number;
+  validators_entered: number;
+  validators_exited: number;
+  validator_retention: number | null;
+  stability_score: number | null;
+}
+export interface ChainTurnoverSubnet {
+  netuid: number;
+  validators_start: number;
+  validators_end: number;
+  validators_entered: number;
+  validators_exited: number;
+  validator_retention: number | null;
+  stability_score: number | null;
+}
+export interface ChainTurnover {
+  schema_version: number;
+  window: string;
+  start_date: string | null;
+  end_date: string | null;
+  comparable: boolean;
+  subnet_count: number;
+  network: ChainTurnoverNetwork | null;
+  subnets: ChainTurnoverSubnet[];
+}
 export interface ChainStakeMovesNetwork {
   distinct_movers: number;
   movements: number;

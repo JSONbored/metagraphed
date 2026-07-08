@@ -25,6 +25,7 @@ import {
   chainSignersQuery,
   chainStakeFlowQuery,
   chainStakeMovesQuery,
+  chainTurnoverQuery,
   chainStakeTransfersQuery,
   chainTransferPairsQuery,
 } from "@/lib/metagraphed/queries";
@@ -37,6 +38,7 @@ import type {
   ChainEventsStats,
   ChainStakeFlow,
   ChainStakeMoves,
+  ChainTurnover,
 } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
@@ -105,6 +107,7 @@ function ExplorerPage() {
           "/api/v1/chain/signers",
           "/api/v1/chain/stake-flow",
           "/api/v1/chain/stake-moves",
+          "/api/v1/chain/turnover",
           "/api/v1/chain/stake-transfers",
           "/api/v1/chain-events",
           "/api/v1/chain-events/stats",
@@ -509,6 +512,103 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
   );
 }
 
+/**
+ * Network-wide validator-set turnover (#3473) — how much each subnet's validator
+ * set churned over the window (entered / exited, retention, stability), plus the
+ * most volatile subnets. Chain-direct: GET /api/v1/chain/turnover. Placed here
+ * alongside the sibling network-chain sections; the issue names /leaderboards,
+ * which does not exist yet.
+ */
+function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
+  const net = turnover.network;
+  // Most volatile first (lowest stability score); bar width ~ total churn.
+  const volatile = [...turnover.subnets]
+    .sort((a, b) => (a.stability_score ?? 100) - (b.stability_score ?? 100))
+    .slice(0, 12);
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Validator turnover
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(turnover.subnet_count)} subnets
+        </span>
+      </div>
+
+      {net ? (
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StakeFlowMetric
+            label="Retention"
+            value={
+              net.validator_retention != null
+                ? `${(net.validator_retention * 100).toFixed(1)}%`
+                : "—"
+            }
+            tone="ok"
+          />
+          <StakeFlowMetric label="Entered" value={formatNumber(net.validators_entered)} />
+          <StakeFlowMetric label="Exited" value={formatNumber(net.validators_exited)} />
+          <StakeFlowMetric
+            label="Stability"
+            value={net.stability_score != null ? `${formatNumber(net.stability_score)}/100` : "—"}
+          />
+        </div>
+      ) : null}
+
+      {volatile.length > 0 ? (
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Most volatile subnets
+          </div>
+          <ul className="space-y-1.5">
+            {volatile.map((s) => {
+              const pct = Math.max(
+                2,
+                Math.round((s.validator_retention != null ? 1 - s.validator_retention : 0) * 100),
+              );
+              return (
+                <li key={s.netuid}>
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: s.netuid }}
+                    className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
+                  >
+                    <span className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                      SN{s.netuid}
+                    </span>
+                    <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
+                      <span
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{ width: `${pct}%`, background: "var(--health-warn)" }}
+                      />
+                    </span>
+                    <span className="text-right font-mono text-[10px] tabular-nums text-ink-strong">
+                      {s.validator_retention != null
+                        ? `${Math.round(s.validator_retention * 100)}% kept`
+                        : "—"}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No turnover in this window yet.</p>
+      )}
+
+      {net ? (
+        <p className="mt-4 border-t border-border pt-3 font-mono text-[10px] text-ink-muted">
+          Validator set {formatNumber(net.validators_start)} to {formatNumber(net.validators_end)}{" "}
+          over {turnover.window}, across {formatNumber(turnover.subnet_count)} subnets.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -520,6 +620,7 @@ function ExplorerDashboard() {
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
   const stakeFlow = useSuspenseQuery(chainStakeFlowQuery(win)).data.data;
   const stakeMoves = useSuspenseQuery(chainStakeMovesQuery(win)).data.data;
+  const turnover = useSuspenseQuery(chainTurnoverQuery(win)).data.data;
   const stakeTransfers = useSuspenseQuery(chainStakeTransfersQuery(win)).data.data;
   const eventMix = useSuspenseQuery(chainEventsStatsQuery()).data.data;
 
@@ -812,6 +913,8 @@ function ExplorerDashboard() {
       <StakeFlowSection flow={stakeFlow} />
 
       <StakeMovesSection moves={stakeMoves} />
+
+      <ValidatorTurnoverSection turnover={turnover} />
 
       {/* stake-transfer leaderboard */}
       <section className="rounded-lg border border-border bg-card p-5">

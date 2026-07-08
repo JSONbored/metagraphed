@@ -57,6 +57,9 @@ import type {
   ChainStakeFlowNetwork,
   ChainStakeFlowSubnet,
   ChainStakeMoves,
+  ChainTurnover,
+  ChainTurnoverNetwork,
+  ChainTurnoverSubnet,
   ChainStakeMovesDistribution,
   ChainStakeMovesNetwork,
   ChainStakeMovesSubnet,
@@ -209,6 +212,7 @@ const MAX_CHAIN_ACTIVITY_DAYS = 31;
 const MAX_CHAIN_CALLS = 12;
 const MAX_STAKE_FLOW_SUBNETS = 24;
 const MAX_STAKE_MOVES_SUBNETS = 24;
+const MAX_TURNOVER_SUBNETS = 24;
 // The endpoint returns the top 100 pallet.method groups, busiest first.
 const MAX_CHAIN_EVENT_GROUPS = 100;
 const DEFAULT_CHAIN_EVENT_BLOCKS = 1000;
@@ -3227,6 +3231,64 @@ export const chainStakeMovesQuery = (window: ChainWindow = "7d") =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainStakeMoves>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeChainTurnoverNetwork(raw: unknown): ChainTurnoverNetwork | null {
+  if (!isRecord(raw)) return null;
+  return {
+    validators_start: coerceFiniteNumber(raw.validators_start) ?? 0,
+    validators_end: coerceFiniteNumber(raw.validators_end) ?? 0,
+    validators_entered: coerceFiniteNumber(raw.validators_entered) ?? 0,
+    validators_exited: coerceFiniteNumber(raw.validators_exited) ?? 0,
+    validator_retention: coerceFiniteNumber(raw.validator_retention) ?? null,
+    stability_score: coerceFiniteNumber(raw.stability_score) ?? null,
+  };
+}
+
+function normalizeChainTurnoverSubnet(raw: unknown): ChainTurnoverSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    validators_start: coerceFiniteNumber(raw.validators_start) ?? 0,
+    validators_end: coerceFiniteNumber(raw.validators_end) ?? 0,
+    validators_entered: coerceFiniteNumber(raw.validators_entered) ?? 0,
+    validators_exited: coerceFiniteNumber(raw.validators_exited) ?? 0,
+    validator_retention: coerceFiniteNumber(raw.validator_retention) ?? null,
+    stability_score: coerceFiniteNumber(raw.stability_score) ?? null,
+  };
+}
+
+export const chainTurnoverQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-turnover", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/turnover", {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          start_date: firstString(d.start_date) ?? null,
+          end_date: firstString(d.end_date) ?? null,
+          comparable: d.comparable === true,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          network: normalizeChainTurnoverNetwork(d.network),
+          subnets: normalizeChainRows(
+            d.subnets,
+            MAX_TURNOVER_SUBNETS,
+            normalizeChainTurnoverSubnet,
+          ),
+        } as ChainTurnover,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainTurnover>;
     },
     staleTime: STALE_SHORT,
   });
