@@ -1,0 +1,10 @@
+﻿{
+  "authority": "community",
+  "github_url": "https://github.com/tag101-ai/tag101",
+  "id": "eni",
+  "kind": "subnet-team",
+  "name": "Tag101",
+  "public_notes": "Subnet 101 (eni / Tag101) team profile — decentralized social post tagging. Identity from the official tag101-ai/tag101 source repository registered as SN101 source_repo. Review input only (authority: community).",
+  "schema_version": 1,
+  "website_url": "https://github.com/tag101-ai/tag101"
+}
