@@ -54,6 +54,25 @@
         "https://api.taoprivatenetwork.com/docs/getting-started/"
       ],
       "url": "https://api.taoprivatenetwork.com/api/v1/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-65-tpn-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "TAO Private Network minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official taofu-labs/tpn-subnet repository as min_compute.yml. Documents SN65 operator CPU/GPU/memory/storage/network floors.",
+      "provider": "taofu-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://github.com/taofu-labs/tpn-subnet/blob/main/min_compute.yml",
+        "https://github.com/taofu-labs/tpn-subnet"
+      ],
+      "url": "https://raw.githubusercontent.com/taofu-labs/tpn-subnet/main/min_compute.yml"
     }
   ],
   "website_url": "https://tpn.taofu.xyz/"

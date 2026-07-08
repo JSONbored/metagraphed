@@ -393,6 +393,26 @@ export interface GlobalIncidents {
   surfaces: GlobalIncidentSurface[];
 }
 
+/** One JSON Feed 1.1 item from /api/v1/feeds/* endpoints. */
+export interface FeedItem {
+  id: string;
+  url?: string;
+  title?: string;
+  content_text?: string;
+  date_published?: string | null;
+  tags?: string[];
+}
+
+/** JSON Feed body from GET /api/v1/feeds/incidents.json. */
+export interface IncidentsFeed {
+  version?: string;
+  title?: string;
+  home_page_url?: string;
+  feed_url?: string;
+  description?: string;
+  items: FeedItem[];
+}
+
 export interface ProviderEndpointSummary {
   endpoint_count?: number;
   monitored_count?: number;

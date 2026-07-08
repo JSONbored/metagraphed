@@ -6,13 +6,16 @@ import { Suspense, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { AnimatedNumber } from "@/components/metagraphed/animated-number";
-import { healthQuery, globalIncidentsQuery } from "@/lib/metagraphed/queries";
+import { healthQuery, globalIncidentsQuery, incidentsFeedQuery } from "@/lib/metagraphed/queries";
+import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";
 import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
 import type { GlobalIncidentSurface } from "@/lib/metagraphed/types";
@@ -28,6 +31,12 @@ const SURFACES_INITIAL = 10;
 const ONGOING_MS = 10 * 60_000;
 const WINDOWS = ["7d", "30d"] as const;
 type IncidentWindow = (typeof WINDOWS)[number];
+const INCIDENTS_FEED_BASE = "/api/v1/feeds/incidents";
+const INCIDENTS_FEED_FORMATS = [
+  { label: "RSS", suffix: ".rss" },
+  { label: "Atom", suffix: ".atom" },
+  { label: "JSON", suffix: ".json" },
+] as const;
 
 function isGlobalIncidentOngoing(s: GlobalIncidentSurface, observedAt?: string | null): boolean {
   const observedMs = observedAt ? Date.parse(observedAt) : Date.now();
@@ -80,6 +89,18 @@ function StatusPage() {
           </QueryErrorBoundary>
         </section>
 
+        <section>
+          <SectionHeading
+            title="Subscribe"
+            intro="Copy or open the incidents feed in RSS, Atom, or JSON Feed format — the same probe-detected downtime stream shown above."
+          />
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+              <IncidentsFeedSubscribe />
+            </Suspense>
+          </QueryErrorBoundary>
+        </section>
+
         {/* #3471: network-scope decentralization scorecard — stake &
             emission concentration (Gini / HHI / Nakamoto / entropy / top-1%)
             plus the trust/consensus score spread, mirroring the per-subnet
@@ -124,6 +145,7 @@ function StatusPage() {
         paths={[
           "/api/v1/health",
           "/api/v1/incidents",
+          "/api/v1/feeds/incidents",
           "/api/v1/health/history/{date}",
           "/api/v1/source-health",
           "/api/v1/chain/concentration",
@@ -356,6 +378,41 @@ function RecentIncidents() {
           ) : null}
         </>
       )}
+    </div>
+  );
+}
+
+/** Subscribe card for the incidents JSON/RSS/Atom feeds backing this page. */
+function IncidentsFeedSubscribe() {
+  const refetchInterval = useRefetchInterval(60_000);
+  const { data } = useSuspenseQuery({
+    ...incidentsFeedQuery(),
+    refetchInterval,
+  });
+  const feed = data.data;
+  const items = feed?.items ?? [];
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded border border-border bg-card p-3 space-y-3">
+        {feed?.description ? <p className="text-sm text-ink-muted">{feed.description}</p> : null}
+        <div className="space-y-2">
+          {INCIDENTS_FEED_FORMATS.map(({ label, suffix }) => {
+            const path = `${INCIDENTS_FEED_BASE}${suffix}`;
+            const url = `${API_BASE}${path}`;
+            return (
+              <div key={suffix} className="flex flex-wrap items-center gap-2">
+                <span className="mg-label w-12 shrink-0">{label}</span>
+                <ExternalLink href={url} className="font-mono text-[11px] hover:text-ink-strong">
+                  {path}
+                </ExternalLink>
+                <CopyableCode value={url} label="copy" className="px-1.5 py-0.5" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {items.length === 0 ? <EmptyState title="No incidents in feed" /> : null}
     </div>
   );
 }

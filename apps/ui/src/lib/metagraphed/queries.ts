@@ -103,6 +103,8 @@ import type {
   GlobalIncident,
   GlobalIncidents,
   GlobalIncidentSurface,
+  IncidentsFeed,
+  FeedItem,
   HealthState,
   HealthStatus,
   HealthSummary,
@@ -5493,6 +5495,59 @@ export const globalIncidentsQuery = (window: string) =>
     },
     staleTime: STALE_SHORT,
   });
+
+/**
+ * Incidents JSON Feed (/api/v1/feeds/incidents.json) — machine-readable
+ * subscription stream for probe-detected downtime across subnet surfaces.
+ */
+export const incidentsFeedQuery = () =>
+  queryOptions({
+    queryKey: k("feeds", "incidents"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/feeds/incidents.json", { signal });
+      return { ...res, data: normalizeIncidentsFeed(res.data) } as ApiResult<IncidentsFeed>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeFeedItem(raw: unknown): FeedItem | undefined {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : undefined;
+  if (!r) return undefined;
+  const id = pickStr(r.id);
+  if (!id) return undefined;
+  const tags = Array.isArray(r.tags)
+    ? r.tags.flatMap((tag) => {
+        const s = pickStr(tag);
+        return s ? [s] : [];
+      })
+    : [];
+  return {
+    id,
+    url: pickStr(r.url),
+    title: pickStr(r.title),
+    content_text: pickStr(r.content_text),
+    date_published: pickStr(r.date_published) ?? null,
+    tags: tags.length > 0 ? tags : undefined,
+  };
+}
+
+function normalizeIncidentsFeed(raw: unknown): IncidentsFeed {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const items = Array.isArray(r.items)
+    ? r.items.flatMap((item) => {
+        const normalized = normalizeFeedItem(item);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    version: pickStr(r.version),
+    title: pickStr(r.title),
+    home_page_url: pickStr(r.home_page_url),
+    feed_url: pickStr(r.feed_url),
+    description: pickStr(r.description),
+    items,
+  };
+}
 
 function finiteNumber(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
