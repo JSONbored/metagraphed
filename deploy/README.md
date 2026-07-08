@@ -19,15 +19,19 @@ R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 | Tier          | Where                                                     | Pieces                                                                                                                                                                                                                                                           |
 | ------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Edge (rented) | **Cloudflare**                                            | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy                                                                                                                                  |
-| Core (owned)  | **Dedicated box** (data plane) + **Railway** (light glue) | box: `subtensor-node` (**full archive**, ~3.5 TB+ NVMe) + `postgres` + `redis` + `indexer`; Railway: `wss-lb` + crons (`health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`). _Interim: Postgres/Redis/indexer run on Railway until the box is live._ |
+| Core (owned)  | **Dedicated box** (data plane) + **Railway** (light glue) | box: `subtensor-node` (**full archive**, ~3.5 TB+ NVMe) + `postgres` + `redis` + `indexer`; Railway: `wss-lb` + crons (`health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`). |
 | Escape hatch  | **Hetzner** (later)                                       | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                                                                                                                                  |
 
 One Railway **project**, two **environments** (`production`, `staging`), one
 private network (`<service>.railway.internal`, zero egress). The
 `metagraphed-streamer` project has already been moved off Railway (2026-07-04,
 self-hosted via the Ansible `streamer` role, verified stable) and the Railway
-project deleted — decoupled from, and ahead of, the Postgres/indexer-rs
-cutover sequencing below, which is unaffected.
+project deleted. The `postgres` / `redis` / `indexer-rs` / `pg-backup`
+services described as "interim, until the box is live" in earlier revisions
+of this doc are also now gone — the box's own Postgres/Redis/indexer are the
+real, permanent core (verified: Railway's data was migrated over first, and
+the box's Postgres now has its own working backup, see "Backup job" below).
+`wss-lb` is the only Railway service left in this project.
 
 ## Railway: one project, many services
 
@@ -46,10 +50,12 @@ and you lose internal DNS + cross-service vars and must wire public URLs by hand
   its OWN file. Railway does **not** auto-discover it from a subdirectory — set the
   service's **Settings → Config-as-code → "Railway Config File"** to an **absolute**
   repo-root path (it does **not** follow Root Directory):
-  - `wss-lb` → `/deploy/wss-lb/railway.json`
-  - `indexer` → no config yet; the Python `scripts/index-chain.py`/`backfill-chain.py`
-    it used to point at are retired in favor of a faster Rust implementation whose
-    source doesn't have a git home in this repo yet (see the Bare-metal section below)
+  - `wss-lb` → `/deploy/wss-lb/railway.json` (the only compute service left on Railway)
+  - `postgres` / `redis` / `indexer` are **not** Railway services anymore — they run
+    on the dedicated box (see the Bare-metal section below). The Python
+    `scripts/index-chain.py`/`backfill-chain.py` this repo used to ship a Railway
+    Dockerfile for are retired in favor of a Rust implementation, deployed
+    directly to the box (its source doesn't have a git home in this repo yet).
 
   Each builds its Dockerfile from the **repo-root** build context (leave Root
   Directory unset) and scopes redeploys with `watchPatterns`, so an unrelated
@@ -93,61 +99,12 @@ That starts:
   `extrinsics` / `account_events` / `chain_events` into Postgres; **verify ~100%
   capture vs D1 before any serving cutover** (the ADR 0013 gate).
 
-To use **managed Railway Postgres** instead of the in-stack one (for managed
-backups/HA), delete the `postgres` service and point the indexer's
-`DATABASE_URL` at the Railway URL — the schema is portable and nothing else
-changes.
-
-## Provisioning Railway (only if NOT co-locating Postgres on bare metal)
-
-The whole project bring-up is scripted in [`railway-bootstrap.sh`](railway-bootstrap.sh)
-— the canonical, version-controlled record of the topology (run it once against a
-fresh project to recreate prod or stand up `staging`, so it is never assembled by
-hand). The commands below are that script, annotated.
-
-> Idle managed Postgres/Redis bill from the moment they exist, and nothing reads
-> them until the `indexer` lands. Provision as part of the indexer phase, not
-> ahead of it. Run from a **dedicated directory** (NOT this repo) so this repo's
-> Railway link state stays clean — `railway init` links the current dir.
-
-```bash
-mkdir -p ~/metagraphed-core && cd ~/metagraphed-core
-railway init --name metagraphed-core --workspace aethereal --json
-railway add -d postgres          # managed Postgres (enable TimescaleDB, or use the Timescale template)
-railway add -d redis             # indexer cursor + dedup + queue
-# apply the portable base schema (always):
-railway connect postgres < /path/to/metagraphed/deploy/postgres/schema.sql
-# only if this Postgres actually has the TimescaleDB extension (the Timescale
-# template, or an extension explicitly enabled) — plain Railway Postgres does
-# NOT have it, and applying this file there will fail on CREATE EXTENSION:
-railway connect postgres < /path/to/metagraphed/deploy/postgres/schema-timescaledb.sql
-```
-
-Each compute service is added from the monorepo with its own root/Dockerfile and
-cross-service variable references. The indexer example below is illustrative —
-it needs the Rust indexer's own repo/Dockerfile once that project has a home:
-
-```bash
-railway add -s indexer --repo <indexer-repo-once-it-exists> --branch main \
-  -v DATABASE_URL='${{Postgres.DATABASE_URL}}' \
-  -v REDIS_URL='${{Redis.REDIS_URL}}' \
-  -v EVENTS_RPC_URL='wss://archive.chain.opentensor.ai:443'   # archive, NOT pruned entrypoint
-```
-
-The public `wss-lb` is independent of Postgres/Redis (it reads only the public
-API), so it can ship **first**, before any DB exists:
-
-```bash
-railway add -s wss-lb --repo JSONbored/metagraphed --branch main
-# set its Config File = /deploy/wss-lb/railway.json (dashboard), then expose it:
-railway domain
-```
-
-Cron services (`rollups`, `exporter`, `reconciler`) get a crontab via the service
-settings (run-and-terminate). Long-running services (`indexer`, `subtensor-node`,
-`health-prober`, `alerter`) restart-on-failure with effectively-infinite retries
-(a head-follower must retry forever) + a `last_ingested_block` heartbeat into
-Redis so the Worker can surface "realtime stale".
+**Managed Railway Postgres is no longer used** — it was the interim home for
+`postgres`/`redis`/`indexer-rs` before the dedicated box existed; both the data
+and the live Hyperdrive binding have since moved to the box's own Postgres
+(migrated + verified, then the Railway `postgres`/`redis`/`indexer-rs`/
+`pg-backup` services and their volumes were deleted). `wss-lb`'s own
+provisioning is documented in [`deploy/wss-lb/README.md`](wss-lb/README.md).
 
 ## Cloudflare side
 
@@ -200,22 +157,24 @@ One-time setup:
 
 1. Create an R2 bucket (e.g. `metagraphed-backups`) + an **R2 API token** (S3
    access key + secret) in the Cloudflare dashboard.
-2. Add a Railway service from the repo, **Config File = `/deploy/backup.railway.json`**,
-   env: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `R2_BUCKET`, `R2_ENDPOINT`
-   (`https://<accountid>.r2.cloudflarestorage.com`), `AWS_ACCESS_KEY_ID`,
-   `AWS_SECRET_ACCESS_KEY`.
-3. Set the service's **Cron Schedule** in Settings (e.g. `17 4 * * *` — daily) so it
-   runs and terminates (`restartPolicyType: NEVER` is already in the config).
-4. Set an **R2 lifecycle rule** on the bucket for retention (e.g. expire after 30
-   days) — the robust way, not a script-side prune.
+2. Build `deploy/backup/Dockerfile` on the box, write the required env vars
+   (`DATABASE_URL` pointed at the box's local Postgres, `R2_BUCKET`,
+   `R2_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BACKUP_PREFIX`)
+   to a root-only env file, then install and enable
+   `deploy/backup/metagraphed-pg-backup.{service,timer}` — see the header
+   comment in the `.service` file for the exact steps. This is the current,
+   live deployment path (there is no Railway Postgres left to back up via a
+   Railway cron service anymore).
+3. Set an **R2 lifecycle rule** on the bucket for retention, scoped to the
+   `BACKUP_PREFIX` used — e.g. `indexer-postgres/`, expire after 14 days (the
+   robust way, not a script-side prune). Use a distinct `BACKUP_PREFIX` per
+   Postgres instance backed up to the same bucket, so dumps from different
+   databases don't collide under one prefix.
 
-**Bare-metal / systemd deployment (self-hosted indexer box, no Railway cron
-available)**: same Dockerfile + script, built and run locally, scheduled by
-`deploy/backup/metagraphed-pg-backup.{service,timer}` instead of Railway's
-managed cron — see the header comment in that `.service` file for the exact
-setup steps. Use a distinct `BACKUP_PREFIX` per Postgres instance backed up
-to the same bucket (e.g. `indexer-postgres` vs. `postgres`) so dumps from
-different databases don't collide under one prefix.
+**Verify it actually restores, not just that it uploads** — a backup that's
+never been restore-tested is only half-verified. Spin up a scratch Postgres
+(same image/version as the source), restore the dump into it, and compare
+row counts per table against the live source before trusting the job.
 
 ## Backups + PITR (mandatory)
 
@@ -223,17 +182,11 @@ Postgres holds derived state. It is **re-derivable** (re-index from the chain vi
 the archive node), but a full re-index is slow — so back it up; you just don't
 need a near-zero RPO.
 
-- **Enable Railway scheduled backups — daily.** Cheap insurance. Railway bills a
-  backup at the **incremental size, per GB-minute**, so daily snapshots of a
-  compressing DB add only a modest fraction on top of the volume cost.
 - **Full continuous PITR is optional / overkill here.** PITR buys a seconds-level
   RPO via continuous WAL — worth it for un-recreatable OLTP data, but our worst
   case is "re-index the last day from chain," which a daily snapshot already
   bounds. It also adds WAL-storage cost. Skip it unless the re-index window
-  becomes painful; daily snapshots + the R2 export below are enough.
-- **Cheapest durable copy: `pg_dump` → R2** (zero-egress) via the `exporter`
-  service on a schedule — the long-term archive, independent of Railway.
-
-Whichever you pick, the DB volume + backups are the storage-cost driver; when they
-outgrow Railway economics, that is the trigger for the Hetzner escape hatch
-(TimescaleDB compression ~10–20×) in ADR 0013.
+  becomes painful; the `pg_dump` → R2 job above is enough.
+- The DB volume + backups are the storage-cost driver; when they outgrow the
+  box's disk (TimescaleDB compression ~10–20×), that is the trigger to plan
+  additional storage — see ADR 0013.
