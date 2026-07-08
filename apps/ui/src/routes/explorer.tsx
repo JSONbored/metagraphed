@@ -26,6 +26,7 @@ import {
   chainStakeFlowQuery,
   chainStakeMovesQuery,
   chainStakeTransfersQuery,
+  chainAxonRemovalsQuery,
   chainTransferPairsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -37,6 +38,7 @@ import type {
   ChainEventsStats,
   ChainStakeFlow,
   ChainStakeMoves,
+  ChainAxonRemovals,
 } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
@@ -106,6 +108,7 @@ function ExplorerPage() {
           "/api/v1/chain/stake-flow",
           "/api/v1/chain/stake-moves",
           "/api/v1/chain/stake-transfers",
+          "/api/v1/chain/axon-removals",
           "/api/v1/chain-events",
           "/api/v1/chain-events/stats",
         ]}
@@ -509,6 +512,73 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
   );
 }
 
+/**
+ * #3464: network-wide axon-teardown ("churn") leaderboard — the teardown-side
+ * complement of the serving/stake-transfer boards, from the newly-wired
+ * chainAxonRemovalsQuery. Network rollup line + per-subnet table, mirroring the
+ * stake-transfer leaderboard treatment on this page.
+ */
+function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Axon churn leaderboard
+          </h2>
+          <p className="mt-1 font-mono text-[11px] text-ink-muted">
+            {formatNumber(churn.network.removals)} axon teardowns across{" "}
+            {formatNumber(churn.network.distinct_removers)} removers network-wide
+          </p>
+        </div>
+        <span className="font-mono text-[11px] text-ink-muted">{churn.subnets.length} subnets</span>
+      </div>
+      {churn.subnets.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Teardowns</th>
+                <th className={`${TH} text-right`}>Distinct removers</th>
+                <th className={`${TH} text-right`}>Teardowns per remover</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {churn.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.removals)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.distinct_removers)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {s.removals_per_remover != null ? s.removals_per_remover.toFixed(2) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">
+          No axon teardowns in this window yet.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -521,6 +591,7 @@ function ExplorerDashboard() {
   const stakeFlow = useSuspenseQuery(chainStakeFlowQuery(win)).data.data;
   const stakeMoves = useSuspenseQuery(chainStakeMovesQuery(win)).data.data;
   const stakeTransfers = useSuspenseQuery(chainStakeTransfersQuery(win)).data.data;
+  const axonChurn = useSuspenseQuery(chainAxonRemovalsQuery(win)).data.data;
   const eventMix = useSuspenseQuery(chainEventsStatsQuery()).data.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
@@ -870,6 +941,9 @@ function ExplorerDashboard() {
           </p>
         )}
       </section>
+
+      <AxonChurnSection churn={axonChurn} />
+
       <PalletEventMixSection stats={eventMix} />
     </div>
   );

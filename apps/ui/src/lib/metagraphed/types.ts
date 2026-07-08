@@ -578,7 +578,11 @@ export interface Lineage {
 
 /** The five D1-computed registry leaderboards from /api/v1/registry/leaderboards. */
 export type LeaderboardBoardKey =
-  "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing";
+  | "healthiest"
+  | "fastest-rpc"
+  | "most-complete"
+  | "most-enriched"
+  | "fastest-growing";
 
 /**
  * One ranked subnet in a leaderboard. Every row carries netuid/slug/name; only
@@ -2137,6 +2141,39 @@ export interface ChainStakeTransfers {
   network: ChainStakeTransferNetwork;
   intensity_distribution: ChainIntensityDistribution | null;
   subnets: ChainStakeTransferSubnet[];
+}
+
+/** One subnet's row on the network-wide axon-teardown ("churn") leaderboard (#3464). */
+export interface ChainAxonRemovalSubnet {
+  netuid: number;
+  distinct_removers: number;
+  removals: number;
+  removals_per_remover: number | null;
+}
+
+/** Network-wide axon-teardown rollup — true distinct-remover count (not a per-subnet sum) + total removals. */
+export interface ChainAxonRemovalNetwork {
+  distinct_removers: number;
+  removals: number;
+  removals_per_remover: number | null;
+}
+
+/**
+ * Network-wide axon-teardown ("churn") leaderboard over a 7d/30d window (#3464),
+ * from GET /api/v1/chain/axon-removals — the teardown-side complement of the
+ * serving leaderboard: subnets ranked by AxonInfoRemoved event count, plus the
+ * true network-wide distinct-remover rollup and a distribution summary of the
+ * per-subnet teardown intensity. Zeroed with an empty subnets list when the
+ * store is cold.
+ */
+export interface ChainAxonRemovals {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainAxonRemovalNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainAxonRemovalSubnet[];
 }
 
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
