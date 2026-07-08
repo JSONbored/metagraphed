@@ -9,6 +9,7 @@
     "software-engineering",
     "workflow"
   ],
+  "contact": "tau@arbos.life",
   "curation": {
     "gap_notes": [
       "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
@@ -213,8 +214,23 @@
       "public_safe": true,
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/66"],
       "url": "https://taomarketcap.com/subnets/66"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-66-unarbos-data-artifact",
+      "kind": "data-artifact",
+      "name": "Ninja accepted private-submission metadata dataset",
+      "notes": "Public no-auth GET https://ninja66.ai/api/submissions returning application/json with an updated_at timestamp and the accepted public submission metadata ledger (submission_id, uid, hotkey, submitted_block, submitted_at, status) for SN66 private miner harness submissions. The official unarbos/ninja miner harness README documents this route as the public visibility endpoint for accepted submission metadata and explicitly states it does not expose agent.py contents or hotkey signatures.",
+      "provider": "unarbos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": ["https://github.com/unarbos/ninja/blob/main/README.md"],
+      "url": "https://ninja66.ai/api/submissions"
     }
   ],
-  "website_url": "https://ninja.arbos.life/",
-  "contact": "tau@arbos.life"
+  "website_url": "https://ninja.arbos.life/"
 }

@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 101,
+  "surface_count": 111,
   "surfaces": [
     {
       "auth_required": false,
@@ -155,6 +155,24 @@
       "surface_id": "opentensor-lite-wss",
       "surface_key": "srf-dcf48d017826dc4b",
       "url": "wss://lite.chain.opentensor.ai:443"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 3,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "surface_id": "sn-3-templar-min-compute-spec",
+      "surface_key": "srf-3c91dc30d6e9ffef",
+      "url": "https://raw.githubusercontent.com/one-covenant/templar/main/min_compute.yml"
     },
     {
       "auth_required": false,
@@ -502,6 +520,42 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 8,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "surface_id": "sn-8-vanta-model-parameters",
+      "surface_key": "srf-0edb50969e9c5098",
+      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/all_model_parameters.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 8,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "surface_id": "sn-8-vanta-slippage-estimates",
+      "surface_key": "srf-4772f1bc76366498",
+      "url": "https://github.com/taoshidev/vanta-network/raw/main/vali_objects/utils/model_parameters/slippage_estimates.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 10,
       "probe": {
         "expect": "any",
@@ -515,6 +569,24 @@
       "surface_id": "sn-10-taofi-api",
       "surface_key": "srf-6bf50fe9203db27c",
       "url": "https://taofi-api.web.app/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 13,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "Data Universe",
+      "subnet_slug": "sn-13",
+      "surface_id": "sn-13-data-universe-desirability-defaults",
+      "surface_key": "srf-535ff35c9895b0f8",
+      "url": "https://raw.githubusercontent.com/macrocosm-os/data-universe/main/dynamic_desirability/default.json"
     },
     {
       "auth_required": false,
@@ -659,6 +731,24 @@
       "surface_id": "sn-25-macrocosm-os-macrobench-benchmark-dataset",
       "surface_key": "srf-2c94a06dbd4dc428",
       "url": "https://huggingface.co/datasets/macrocosm-os/macrobench-bittensor-01"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 25,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "Mainframe",
+      "subnet_slug": "sn-25",
+      "surface_id": "sn-25-mainframe-pdb-file-api",
+      "surface_key": "srf-728da1bf08c5643c",
+      "url": "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
     },
     {
       "auth_required": false,
@@ -879,6 +969,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-executor-stats",
+      "surface_key": "srf-323d4ddc758d53ad",
+      "url": "https://lium.io/api/executors/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 51,
       "probe": {
@@ -1037,6 +1145,24 @@
       "surface_id": "sn-56-gradients-weight-projection-static",
       "surface_key": "srf-5aa367d8193a4a6a",
       "url": "https://api.gradients.io/v1/performance/weight-projection-static"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 57,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sparket",
+      "public_safe": true,
+      "subnet_name": "Sparket",
+      "subnet_slug": "sn-57",
+      "surface_id": "sn-57-sparket-leaderboard",
+      "surface_key": "srf-efd52b6b3868d683",
+      "url": "https://sparket.ai/api/v1/leaderboard"
     },
     {
       "auth_required": false,
@@ -1271,6 +1397,24 @@
       "surface_id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
       "surface_key": "srf-1216a921c8908de5",
       "url": "https://www.metanova-labs.ai/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 70,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nexisgen",
+      "public_safe": true,
+      "subnet_name": "NexisGen",
+      "subnet_slug": "sn-70",
+      "surface_id": "sn-70-nexisgen-validator-api-healthz",
+      "surface_key": "srf-fc7e63cd7f0f1ca9",
+      "url": "https://api.nexisgen.ai/healthz"
     },
     {
       "auth_required": false,
@@ -1564,6 +1708,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 91,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "bitstarter",
+      "public_safe": true,
+      "subnet_name": "Bitstarter #1",
+      "subnet_slug": "sn-91",
+      "surface_id": "sn-91-bitstarter-updates-health-api",
+      "surface_key": "srf-49a2520ec2761aa7",
+      "url": "https://updates.bitstarter.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 94,
       "probe": {
         "expect": "json",
@@ -1649,6 +1811,24 @@
       "surface_id": "sn-96-verathos-models-api",
       "surface_key": "srf-4f803cf3db704548",
       "url": "https://api.verathos.ai/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 98,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "forevermoney",
+      "public_safe": true,
+      "subnet_name": "ForeverMoney",
+      "subnet_slug": "sn-98",
+      "surface_id": "sn-98-forevermoney-min-compute-spec",
+      "surface_key": "srf-adb16edb3f42f513",
+      "url": "https://raw.githubusercontent.com/SN98-ForeverMoney/forever-money/main/min_compute.yml"
     },
     {
       "auth_required": false,

@@ -5,8 +5,10 @@
 # this is the cheap insurance against a catastrophic Postgres loss. The data is
 # also re-derivable from chain, so a ~daily RPO is plenty (no PITR needed).
 #
-# Runs as a scheduled (cron) Railway service — see deploy/backup.railway.json.
-# Env (set on that service):
+# Runs as a scheduled job — either a Railway cron service, or (the current
+# deployment, for boxes with no Railway cron) a systemd timer, see
+# deploy/backup/metagraphed-pg-backup.{service,timer} and deploy/README.md.
+# Env (set on whichever runs this):
 #   DATABASE_URL           ${{Postgres.DATABASE_URL}}  (private net; no egress)
 #   R2_BUCKET              the R2 bucket name
 #   R2_ENDPOINT           https://<accountid>.r2.cloudflarestorage.com

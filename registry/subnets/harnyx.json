@@ -28,6 +28,24 @@
       },
       "source_urls": ["https://github.com/harnyx/harnyx", "https://harnyx.ai/"],
       "url": "https://harnyx.ai/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-67-harnyx-data-artifact",
+      "kind": "data-artifact",
+      "name": "Harnyx WebWalkerQA miner-task benchmark",
+      "notes": "Public WebWalkerQA question-answer evaluation set (680 records: Question, answer, domain, source_website, golden_path, difficulty_level) from the SN67 Harnyx miner-task benchmark suite, used to score web-navigation research tasks. No-auth static JSON dataset, pinned to an immutable commit.",
+      "provider": "harnyx",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jeffrey701"
+      },
+      "source_urls": [
+        "https://github.com/harnyx/harnyx/blob/41771ae6b74fc8b2f14b365745c1292782ed9d3a/packages/commons/src/harnyx_commons/miner_task_benchmark/webwalkerqa/data/versions/2026-05-14-webwalkerqa-test-single-source-easy__correctness-v1/test.json"
+      ],
+      "url": "https://raw.githubusercontent.com/harnyx/harnyx/41771ae6b74fc8b2f14b365745c1292782ed9d3a/packages/commons/src/harnyx_commons/miner_task_benchmark/webwalkerqa/data/versions/2026-05-14-webwalkerqa-test-single-source-easy__correctness-v1/test.json"
     }
   ],
   "source_repo": "https://github.com/harnyx/harnyx",

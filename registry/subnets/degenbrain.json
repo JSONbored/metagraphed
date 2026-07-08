@@ -164,6 +164,25 @@
         "https://subnet90.com/"
       ],
       "url": "https://api.subnet90.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-market-breakdown",
+      "kind": "data-artifact",
+      "name": "DegenBrain market miner breakdown",
+      "notes": "Public no-auth GET /api/markets/{market_id}/breakdown on api.subnet90.com returning a JSON dataset of per-miner resolution breakdown for a prediction-market statement (statement text plus miner_breakdown entries with miner_id, resolution, confidence, summary, and sources). Documented as \"Get Market Breakdown\" in the subnet's registered OpenAPI spec; distinct from the existing /api/markets/pending and /api/resolutions subnet-api surfaces. Example market_id btc-100k-2024 is listed in the live pending-markets feed.",
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.subnet90.com/openapi.json",
+        "https://subnet90.com/"
+      ],
+      "url": "https://api.subnet90.com/api/markets/btc-100k-2024/breakdown"
     }
   ],
   "website_url": "https://subnet90.com/"

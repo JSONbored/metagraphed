@@ -336,6 +336,7 @@ function SiteFooter() {
           <FooterLink to="/surfaces">Surfaces</FooterLink>
           <FooterLink to="/endpoints">Endpoints</FooterLink>
           <FooterLink to="/providers">Providers</FooterLink>
+          <FooterLink to="/validators">Validators</FooterLink>
         </FooterCol>
         <FooterCol title="Operations">
           <FooterLink to="/health">Health</FooterLink>

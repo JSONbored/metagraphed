@@ -91,6 +91,25 @@
         "https://play.shiftlayer.ai/"
       ],
       "url": "https://play.shiftlayer.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-117-brainplay-codenames-profile",
+      "kind": "data-artifact",
+      "name": "BrainPlay Codenames miner deployment profile",
+      "notes": "Public no-auth JSON Targon serverless container spec for the SN117 Codenames competition, published in the official brainplay-subnet repository at deploy/profiles/codenames.json. Read by deploy/miner.py when miners pass --competition codenames to deploy and commit their model endpoint on-chain.",
+      "provider": "shiftlayer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/shiftlayer-llc/brainplay-subnet/blob/main/README.md",
+        "https://github.com/shiftlayer-llc/brainplay-subnet/blob/main/deploy/miner.py"
+      ],
+      "url": "https://raw.githubusercontent.com/shiftlayer-llc/brainplay-subnet/main/deploy/profiles/codenames.json"
     }
   ]
 }

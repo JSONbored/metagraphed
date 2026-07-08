@@ -19685,6 +19685,190 @@
         ],
         "type": "object"
       },
+      "ValidatorDetailArtifact": {
+        "additionalProperties": true,
+        "description": "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, served live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404 — the single-entity drill-in of /api/v1/validators.",
+        "properties": {
+          "avg_validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "max_validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/ValidatorDetailSubnet"
+            },
+            "type": "array"
+          },
+          "total_emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "hotkey",
+          "coldkey",
+          "coldkey_count",
+          "subnet_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "avg_validator_trust",
+          "max_validator_trust",
+          "captured_at",
+          "block_number",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "ValidatorDetailSubnet": {
+        "additionalProperties": false,
+        "description": "One subnet membership (a validator_permit=1 neuron row) in a validator's cross-subnet detail view (#4334/7.1). Same shape as Neuron, plus the netuid it belongs to; unlike GlobalValidatorSubnet this is not capped at ten — a detail page's whole point is the full per-subnet performance table.",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "axon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consensus": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dividends": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "emission_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "incentive": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "is_immunity_period": {
+            "type": "boolean"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rank": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "registered_at_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "uid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_permit": {
+            "type": "boolean"
+          },
+          "validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "uid",
+          "hotkey",
+          "coldkey",
+          "active",
+          "validator_permit"
+        ],
+        "type": "object"
+      },
       "VerificationArtifact": {
         "allOf": [
           {
@@ -48102,6 +48286,153 @@
           }
         },
         "summary": "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
+        "tags": [
+          "validators",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/validators/{hotkey}": {
+      "get": {
+        "operationId": "validatorDetail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hotkey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "avg_validator_trust": 0.5,
+                    "block_number": 5000000,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "coldkey": "example",
+                    "coldkey_count": 1,
+                    "hotkey": "example",
+                    "max_validator_trust": 0.5,
+                    "schema_version": 1,
+                    "subnet_count": 1,
+                    "subnets": [
+                      {
+                        "active": false,
+                        "coldkey": "example",
+                        "hotkey": "example",
+                        "netuid": 7,
+                        "uid": 1,
+                        "validator_permit": false
+                      }
+                    ],
+                    "total_emission_tao": 0.5,
+                    "total_stake_tao": 0.5
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ValidatorDetailArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons D1 tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404.",
         "tags": [
           "validators",
           "analytics"

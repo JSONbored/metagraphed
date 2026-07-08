@@ -458,6 +458,18 @@ const checks = [
     },
   ],
   [
+    "/api/v1/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    (body) => {
+      assert.equal(
+        body.data.hotkey,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      // Cold harness (no D1) → zeroed aggregate, never 404.
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(typeof body.data.subnet_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/events",
     (body) => {
       assert.equal(body.data.netuid, 7);

@@ -124,6 +124,24 @@
         "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
       ],
       "url": "https://new-collector-api-production.up.railway.app/health/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-37-aurelius-data-artifact",
+      "kind": "data-artifact",
+      "name": "Aurelius seed dataset",
+      "notes": "Public no-auth JSONL dataset committed in SN37 Aurelius's official repository — the seed corpus of moral-reasoning dilemma scenario configs (one JSON object per line: {config:{name,tension_archetype,morebench_context,premise,...}}) that bootstraps the validator scoring pipeline. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo. Distinct from the existing Aurelius Central API subnet-api surfaces.",
+      "provider": "aurelius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/data/seed_dataset.jsonl"
+      ],
+      "url": "https://raw.githubusercontent.com/Aurelius-Protocol/Aurelius-Protocol/main/data/seed_dataset.jsonl"
     }
   ],
   "social": {

@@ -1,17 +1,19 @@
 {
-  "schema_version": 1,
-  "netuid": 124,
-  "name": "Swarm",
-  "slug": "sn-124",
-  "status": "active",
   "categories": [],
+  "contact": "admin@swarm124.com",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "Swarm",
+  "netuid": 124,
+  "schema_version": 1,
+  "slug": "sn-124",
   "social": {
     "x": "https://x.com/swarmsubnet"
   },
+  "source_repo": "https://github.com/swarm-subnet/swarm",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -32,9 +34,43 @@
         "https://github.com/swarm-subnet/swarm/blob/main/docs/miner.md"
       ],
       "url": "https://api.swarm124.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-data-artifact",
+      "kind": "data-artifact",
+      "name": "Swarm king-of-the-hill active window",
+      "notes": "Public no-auth GET /kings/active on api.swarm124.com returning the live \"king of the hill\" leaderboard window (per-lineage identifiers, github_url, score, share, rank). docs/king_of_the_hill.md documents this route as public on the same SWARM_BACKEND_API_URL host as the existing health surface (observed live: 10-entry active window with real scores/ranks).",
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "philluiz2323"
+      },
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm/blob/main/docs/king_of_the_hill.md"
+      ],
+      "url": "https://api.swarm124.com/kings/active"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-leaderboard-api",
+      "kind": "subnet-api",
+      "name": "Swarm leaderboard API",
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm/blob/main/swarm/validator/backend_api.py"
+      ],
+      "url": "https://api.swarm124.com/leaderboard",
+      "notes": "Public no-auth GET /leaderboard — ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
     }
   ],
-  "source_repo": "https://github.com/swarm-subnet/swarm",
-  "website_url": "https://www.swarm124.com/",
-  "contact": "admin@swarm124.com"
+  "website_url": "https://www.swarm124.com/"
 }

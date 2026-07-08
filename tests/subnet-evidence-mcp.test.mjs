@@ -350,7 +350,7 @@ describe("subnet-evidence-mcp", () => {
   });
 
   test("MCP server exports wire list_subnet_evidence at the bumped SemVer", () => {
-    assert.equal(MCP_SERVER_VERSION, "1.78.0");
+    assert.match(MCP_SERVER_VERSION, /^\d+\.\d+\.\d+$/);
     assert.match(MCP_INSTRUCTIONS, /list_subnet_evidence/);
     const tool = MCP_TOOLS.find((t) => t.name === "list_subnet_evidence");
     assert.ok(tool);

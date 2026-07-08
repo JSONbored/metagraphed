@@ -49,7 +49,7 @@ export function SubnetHealthMatrix() {
                       "group aspect-square rounded-sm transition-all duration-150 ring-0 hover:ring-2 hover:ring-accent/40 hover:scale-110",
                       tone,
                     )}
-                    aria-label={`SN${s.netuid}${s.name ? ` — ${s.name}` : ""}`}
+                    aria-label={`SN${s.netuid}${s.name ? ` — ${s.name}` : ""} — ${s.health ?? "unknown"}`}
                   />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-[11px]">

@@ -54,7 +54,7 @@ Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its
 
 > **Plagiarism is not tolerated.** Copying another contributor's PR, surface, or work and submitting it as your own — including duplicated or lightly reworded copies filed under a different account — is a hard violation. Don't copy others to farm Gittensor rewards: anyone attempting to cheat or copy for gain is **permanently blocked from contributing across all of our repositories**. See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
-> Filing your own issue and then opening a PR that resolves it is welcome, and a PR with no linked issue is fine — neither is farming. What is against policy is **using more than one account you control (alt / sock-puppet accounts) — e.g. one account opening issues for another to "resolve" — to inflate contribution credit**, along with manufacturing low-value/slop issues and bulk point-chasing surface PRs. Farmed work earns no linked-issue bonus, and repeat or any confirmed multi-account farming is closed on sight and blocked. Enforcement is proportional; the full ladder is in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+> A linked, currently-open issue is required on every PR — issue creation is maintainer-only, so pick an existing open issue to link rather than filing your own (browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) / [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted)); a PR with no linked issue, or one linked to an issue that's already closed, is automatically closed before its content is even scored. What is against policy is **using more than one account you control (alt / sock-puppet accounts) to inflate contribution credit**, along with manufacturing low-value/slop PRs against off-scope issues and bulk point-chasing surface PRs. Farmed work earns no linked-issue bonus, and repeat or any confirmed multi-account farming is closed on sight and blocked. Enforcement is proportional; the full ladder is in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 Add a surface locally — three steps:
 
@@ -114,11 +114,15 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 
 **One-shot, merge-ready as-is.** We do not request changes on contributor PRs — a PR is merged exactly as it stands or it is closed; there is no "changes requested" back-and-forth. Before CI we rebase your branch onto `main` with a **merge commit**, then review **after** CI completes — so a rebase conflict, or any failing gate (schema, API, OpenAPI, `contract-drift`, or surface validation), closes the PR. Keep to the one-subnet-one-file rule, regenerate artifacts, and make it green before pushing; recover from a close by opening a **fresh, corrected PR**. PRs touching guarded paths (build scripts, the Worker API, CI config) are held for manual review.
 
+**You can have at most 2 open PRs against this repo at a time** — a 3rd is closed on sight. Every automatic close, including this one, comes with a comment from the gate explaining exactly what was wrong so you can fix it in your next PR.
+
 **If we close your PR by mistake, that's on us** — we may reopen or re-review at our discretion as time permits. There is no fixed window, and a fresh PR is usually fastest.
 
 **Don't ask for or chase reviews.** The queue is automated and best-effort, and the gate posts its own status on your PR. Do **not** DM, @-mention, or comment asking for a review or status — it will not speed anything up and **will deprioritize your PR (expect at least 5 days added to its place in the manual queue)**. Persistent pestering (here, Discord, or elsewhere) is a conduct violation and may get the PR closed and the account blocked.
 
 **Scoring and rewards are not ours to grant.** Contribution scoring and any Gittensor rewards are set by the subnet's on-chain hyperparameters and validators, not by this repo. Merging a PR is not a promise of score, ranking, or compensation, and all review decisions are at maintainer discretion and final.
+
+**This repository is itself Gittensor-listed.** PRs merged here by registered miners may earn TAO under the subnet's own rules — see the badge in `README.md` for a live, aggregate merged-PR/line-count summary. That eligibility and scoring is Gittensor's, not ours, and doesn't change the review bar above.
 
 ## Deeper docs
 

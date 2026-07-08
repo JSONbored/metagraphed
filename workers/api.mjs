@@ -131,6 +131,7 @@ import {
   canonicalChainTurnoverCachePath,
   handleGlobalValidators,
   canonicalGlobalValidatorsCachePath,
+  handleValidatorDetail,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
   canonicalSubnetYieldCachePath,
@@ -326,6 +327,7 @@ import {
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
+  VALIDATOR_DETAIL_PATH_PATTERN,
   SUBNET_EVENT_SUMMARY_PATH_PATTERN,
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
@@ -1355,6 +1357,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       validatorsCache.cachePathAndSearch,
       (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
     );
+  }
+
+  // Cross-subnet validator detail (#4334/7.1): single-entity drill-in of the
+  // leaderboard above, keyed by hotkey. Direct dispatch (no edge cache), same
+  // as the other single-entity-by-key routes (handleAccount, handleNeuron).
+  const validatorDetailMatch = VALIDATOR_DETAIL_PATH_PATTERN.exec(url.pathname);
+  if (validatorDetailMatch) {
+    return handleValidatorDetail(request, env, validatorDetailMatch[1]);
   }
 
   // Cross-subnet movers leaderboard (exact path, dispatched before subnet-slug

@@ -104,6 +104,25 @@
         "https://github.com/Team-Rizzo/talisman-ai/blob/main/README.md#L153"
       ],
       "url": "https://api.alpharidge.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-45-talisman-dashboard-stats",
+      "kind": "data-artifact",
+      "name": "Talisman dashboard stats",
+      "notes": "Public no-auth GET /dashboard/stats on api.alpharidge.ai returning live SN45 content-analysis totals (tweets/telegram/articles analyzed, latest_analysis_at, sentiment distribution) — counts advance between successive requests, confirming a genuinely live feed. Documented in the subnet's own OpenAPI spec (already the registered schema_url on the sibling openapi surface) as \"Dashboard Stats\" / \"Public dashboard overview statistics\".",
+      "provider": "talisman-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://api.alpharidge.ai/openapi.json",
+        "https://github.com/Team-Rizzo/talisman-ai"
+      ],
+      "url": "https://api.alpharidge.ai/dashboard/stats"
     }
   ],
   "social": { "x": "https://x.com/wearetalisman" },

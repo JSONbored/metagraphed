@@ -27,7 +27,7 @@ same new file.
       private URLs, private dashboards, validator internals, or generated
       `public/metagraph/**` artifacts.
 - [ ] Does not duplicate an existing Metagraphed surface.
-- [ ] Links a tracked issue (`Closes #<n>`).
+- [ ] Links a tracked issue that is still OPEN (`Closes #<n>`) — a closed or missing link is an automatic close.
 
 ## Gate Expectations
 

@@ -19663,6 +19663,190 @@
         ],
         "type": "object"
       },
+      "ValidatorDetailArtifact": {
+        "additionalProperties": true,
+        "description": "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, served live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404 — the single-entity drill-in of /api/v1/validators.",
+        "properties": {
+          "avg_validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "max_validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/ValidatorDetailSubnet"
+            },
+            "type": "array"
+          },
+          "total_emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "hotkey",
+          "coldkey",
+          "coldkey_count",
+          "subnet_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "avg_validator_trust",
+          "max_validator_trust",
+          "captured_at",
+          "block_number",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "ValidatorDetailSubnet": {
+        "additionalProperties": false,
+        "description": "One subnet membership (a validator_permit=1 neuron row) in a validator's cross-subnet detail view (#4334/7.1). Same shape as Neuron, plus the netuid it belongs to; unlike GlobalValidatorSubnet this is not capped at ten — a detail page's whole point is the full per-subnet performance table.",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "axon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consensus": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dividends": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "emission_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "incentive": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "is_immunity_period": {
+            "type": "boolean"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rank": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "registered_at_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "uid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_permit": {
+            "type": "boolean"
+          },
+          "validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "uid",
+          "hotkey",
+          "coldkey",
+          "active",
+          "validator_permit"
+        ],
+        "type": "object"
+      },
       "VerificationArtifact": {
         "allOf": [
           {

@@ -13,6 +13,7 @@ import {
   isUnsafeResolvedUrl,
   loadSubnets,
   repoRoot,
+  safeFetch,
   writeJson,
 } from "./lib.mjs";
 import {
@@ -39,6 +40,19 @@ const priorHistory = await loadPriorHistory();
 // history-derived fields (last_ok, uptime_sample_ratio) the build artifacts need.
 const probeOptions = {
   isUnsafeUrl: isUnsafeResolvedUrl,
+  fetchImpl: async (url, init = {}) => {
+    const result = await safeFetch(url, {
+      headers: init.headers,
+      method: init.method || "GET",
+      signal: init.signal,
+    });
+    if (!result.response) {
+      throw new Error(
+        result.unsafe ? "unsafe URL" : result.error || "fetch failed",
+      );
+    }
+    return result.response;
+  },
   connect: nodeWebSocketConnector(),
 };
 

@@ -52,7 +52,13 @@ import type {
   ChainActivity,
   ChainActivityDay,
   ChainCalls,
+  ChainStakeFlow,
+  ChainStakeFlowDistribution,
+  ChainStakeFlowNetwork,
+  ChainStakeFlowSubnet,
   ChainCallEntry,
+  ChainEventsStats,
+  ChainEventsStatsEntry,
   ChainFees,
   ChainFeeDay,
   ChainFeePayer,
@@ -125,6 +131,7 @@ import type {
   SubnetWeightSetter,
   SubnetWeightSetters,
   SubnetWeights,
+  SubnetTurnover,
   SubnetIdentityHistoryEntry,
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
@@ -194,6 +201,10 @@ const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
 const MAX_CHAIN_CALLS = 12;
+const MAX_STAKE_FLOW_SUBNETS = 24;
+// The endpoint returns the top 100 pallet.method groups, busiest first.
+const MAX_CHAIN_EVENT_GROUPS = 100;
+const DEFAULT_CHAIN_EVENT_BLOCKS = 1000;
 const MAX_CHAIN_SIGNERS = 20;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
@@ -2776,6 +2787,49 @@ export const chainCallsQuery = (window: ChainWindow = "7d") =>
     staleTime: STALE_SHORT,
   });
 
+function normalizeChainEventsStatsEntry(raw: unknown): ChainEventsStatsEntry | null {
+  if (!isRecord(raw)) return null;
+  const pallet = firstString(raw.pallet);
+  const count = coerceFiniteNumber(raw.count);
+  if (!pallet || count == null) return null;
+  return {
+    pallet,
+    method: firstString(raw.method) ?? null,
+    count,
+  };
+}
+
+// #3489: raw all-events tier pallet.method distribution from
+// /api/v1/chain-events/stats — the raw-tier sibling of chainCallsQuery's D1
+// /chain/calls aggregate. Takes a block window (default 1000, capped 5000
+// server-side); returns the distinct group count and the busiest-first rows.
+// A cold store (before the all-events backfill) yields groups: 0, activity: [].
+export const chainEventsStatsQuery = (blocks: number = DEFAULT_CHAIN_EVENT_BLOCKS) =>
+  queryOptions({
+    queryKey: k("chain-events-stats", blocks),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain-events/stats", {
+        params: { blocks },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          window_blocks: firstFiniteNumber(d.window_blocks) ?? blocks,
+          groups: firstFiniteNumber(d.groups) ?? 0,
+          activity: normalizeChainRows(
+            d.activity,
+            MAX_CHAIN_EVENT_GROUPS,
+            normalizeChainEventsStatsEntry,
+          ),
+        } as ChainEventsStats,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainEventsStats>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
 export const chainSignersQuery = (window: ChainWindow = "7d") =>
   queryOptions({
     queryKey: k("chain-signers", window),
@@ -2959,6 +3013,81 @@ export const chainStakeTransfersQuery = (window = "7d", limit = 20) =>
       };
     },
     staleTime: STALE_MED,
+  });
+
+function normalizeChainStakeFlowNetwork(raw: unknown): ChainStakeFlowNetwork | null {
+  if (!isRecord(raw)) return null;
+  return {
+    total_staked_tao: coerceFiniteNumber(raw.total_staked_tao) ?? 0,
+    total_unstaked_tao: coerceFiniteNumber(raw.total_unstaked_tao) ?? 0,
+    net_flow_tao: coerceFiniteNumber(raw.net_flow_tao) ?? 0,
+    gross_flow_tao: coerceFiniteNumber(raw.gross_flow_tao) ?? 0,
+    stake_events: coerceFiniteNumber(raw.stake_events) ?? 0,
+    unstake_events: coerceFiniteNumber(raw.unstake_events) ?? 0,
+    gaining: coerceFiniteNumber(raw.gaining) ?? 0,
+    losing: coerceFiniteNumber(raw.losing) ?? 0,
+    flat: coerceFiniteNumber(raw.flat) ?? 0,
+  };
+}
+
+function normalizeChainStakeFlowDistribution(raw: unknown): ChainStakeFlowDistribution | null {
+  if (!isRecord(raw)) return null;
+  return {
+    count: coerceFiniteNumber(raw.count) ?? 0,
+    mean: coerceFiniteNumber(raw.mean) ?? null,
+    min: coerceFiniteNumber(raw.min) ?? null,
+    p25: coerceFiniteNumber(raw.p25) ?? null,
+    median: coerceFiniteNumber(raw.median) ?? null,
+    p75: coerceFiniteNumber(raw.p75) ?? null,
+    p90: coerceFiniteNumber(raw.p90) ?? null,
+    max: coerceFiniteNumber(raw.max) ?? null,
+  };
+}
+
+function normalizeChainStakeFlowSubnet(raw: unknown): ChainStakeFlowSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    total_staked_tao: coerceFiniteNumber(raw.total_staked_tao) ?? 0,
+    total_unstaked_tao: coerceFiniteNumber(raw.total_unstaked_tao) ?? 0,
+    net_flow_tao: coerceFiniteNumber(raw.net_flow_tao) ?? 0,
+    gross_flow_tao: coerceFiniteNumber(raw.gross_flow_tao) ?? 0,
+    stake_events: coerceFiniteNumber(raw.stake_events) ?? 0,
+    unstake_events: coerceFiniteNumber(raw.unstake_events) ?? 0,
+    direction: firstString(raw.direction) ?? "balanced",
+  };
+}
+
+export const chainStakeFlowQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-stake-flow", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/stake-flow", {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          network: normalizeChainStakeFlowNetwork(d.network),
+          net_flow_distribution: normalizeChainStakeFlowDistribution(d.net_flow_distribution),
+          subnets: normalizeChainRows(
+            d.subnets,
+            MAX_STAKE_FLOW_SUBNETS,
+            normalizeChainStakeFlowSubnet,
+          ),
+        } as ChainStakeFlow,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainStakeFlow>;
+    },
+    staleTime: STALE_SHORT,
   });
 
 const READINESS_COMPONENT_KEYS = [
@@ -3746,6 +3875,48 @@ export const subnetWeightsQuery = (netuid: number, window = "30d") =>
       });
       return {
         data: normalizeSubnetWeights(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// Per-subnet validator-set & registration turnover (churn) scorecard: diffs the
+// window's start/end neuron_daily snapshots. `comparable: false` on a cold store
+// or single-snapshot window — ratio/score fields stay null rather than zeroed.
+export function normalizeSubnetTurnover(netuid: number, raw: unknown): SubnetTurnover {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    start_date: firstString(rec.start_date) ?? null,
+    end_date: firstString(rec.end_date) ?? null,
+    comparable: rec.comparable === true,
+    validators_start: firstFiniteNumber(rec.validators_start) ?? 0,
+    validators_end: firstFiniteNumber(rec.validators_end) ?? 0,
+    validators_entered: firstFiniteNumber(rec.validators_entered) ?? 0,
+    validators_exited: firstFiniteNumber(rec.validators_exited) ?? 0,
+    validator_retention: firstFiniteNumber(rec.validator_retention) ?? null,
+    neurons_start: firstFiniteNumber(rec.neurons_start) ?? 0,
+    neurons_end: firstFiniteNumber(rec.neurons_end) ?? 0,
+    uids_deregistered: firstFiniteNumber(rec.uids_deregistered) ?? 0,
+    neuron_retention: firstFiniteNumber(rec.neuron_retention) ?? null,
+    stability_score: firstFiniteNumber(rec.stability_score) ?? null,
+  };
+}
+
+export const subnetTurnoverQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-turnover", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetTurnover>>(`/api/v1/subnets/${netuid}/turnover`, {
+        params: { window },
+        signal,
+      });
+      return {
+        data: normalizeSubnetTurnover(netuid, res.data),
         meta: res.meta,
         url: res.url,
       };

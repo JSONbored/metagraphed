@@ -462,6 +462,33 @@ test("deletes a removed subnet after recording delete history for its surfaces",
   expect(text).toMatch(/DELETE FROM subnets/);
 });
 
+test("does not delete a subnet that is also upserted in the same request", async () => {
+  const res = await worker.fetch(
+    post(
+      {
+        subnets: [subnet()],
+        surfaces: [surface()],
+        delete_subnets: [{ netuid: 8, source_commit: "def456" }],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({
+    subnets_written: 1,
+    surfaces_written: 1,
+    surfaces_deleted: 0,
+    subnets_deleted: 0,
+  });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/INSERT INTO subnets/);
+  expect(text).toMatch(/INSERT INTO surfaces/);
+  expect(text).not.toMatch(/DELETE FROM subnets/);
+});
+
 test("maps a DB failure to a clean 502 instead of throwing", async () => {
   failure.error = new Error("connection reset");
   const res = await worker.fetch(

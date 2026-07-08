@@ -119,7 +119,7 @@ export function RegistryTicker() {
               <StatChip key={s.label} stat={s} />
             ))}
           </span>
-          <span className="xl:hidden inline-flex">
+          <span className="xl:hidden inline-flex" aria-live="polite" aria-atomic="true">
             <StatChip stat={stats[rot]!} />
           </span>
         </div>

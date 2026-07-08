@@ -94,7 +94,7 @@ function BoardCard({
   metric: (row: LeaderboardRow) => string | null;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
         {label}
       </div>

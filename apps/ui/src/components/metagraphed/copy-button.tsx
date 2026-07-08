@@ -1,6 +1,6 @@
-import { Check, Copy } from "lucide-react";
 import { classNames } from "@/lib/metagraphed/format";
 import { useCopy } from "@/hooks/use-copy";
+import { CopyIconToggle } from "./copy-icon-toggle";
 
 /**
  * Icon-only copy button with the same green-check microinteraction as
@@ -28,20 +28,7 @@ export function CopyButton({
         className,
       )}
     >
-      <span className="relative inline-flex size-3 items-center justify-center" aria-hidden>
-        <Check
-          className={classNames(
-            "absolute size-3 text-health-ok transition-all duration-150",
-            copied ? "scale-100 opacity-100" : "scale-50 opacity-0",
-          )}
-        />
-        <Copy
-          className={classNames(
-            "absolute size-3 transition-all duration-150",
-            copied ? "scale-50 opacity-0" : "scale-100 opacity-100",
-          )}
-        />
-      </span>
+      <CopyIconToggle copied={copied} />
     </button>
   );
 }

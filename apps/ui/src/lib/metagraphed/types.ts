@@ -558,11 +558,7 @@ export interface Lineage {
 
 /** The five D1-computed registry leaderboards from /api/v1/registry/leaderboards. */
 export type LeaderboardBoardKey =
-  | "healthiest"
-  | "fastest-rpc"
-  | "most-complete"
-  | "most-enriched"
-  | "fastest-growing";
+  "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing";
 
 /**
  * One ranked subnet in a leaderboard. Every row carries netuid/slug/name; only
@@ -1471,6 +1467,32 @@ export interface SubnetDeregistrations {
   deregistrations_per_hotkey: number | null;
 }
 
+/**
+ * Validator-set & registration turnover scorecard for one subnet, from
+ * /api/v1/subnets/{netuid}/turnover — diffs the window's start/end
+ * `neuron_daily` snapshots. `comparable: false` on a cold store or a
+ * single-snapshot window; the ratio/score fields are null in that case, not
+ * zeroed (a zero would read as flawless retention).
+ */
+export interface SubnetTurnover {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  comparable: boolean;
+  validators_start: number;
+  validators_end: number;
+  validators_entered: number;
+  validators_exited: number;
+  validator_retention: number | null;
+  neurons_start: number;
+  neurons_end: number;
+  uids_deregistered: number;
+  neuron_retention: number | null;
+  stability_score: number | null;
+}
+
 /** One daily per-UID snapshot from /subnets/{n}/neurons/{uid}/history. */
 export interface SubnetNeuronHistoryPoint {
   snapshot_date: string;
@@ -1848,6 +1870,62 @@ export interface ChainCalls {
   total_extrinsics: number;
   call_count: number;
   calls: ChainCallEntry[];
+}
+
+// #3489: raw all-events tier (ADR 0013) pallet.method distribution from
+// GET /api/v1/chain-events/stats — the raw-tier counterpart to ChainCalls
+// (the D1 /chain/calls aggregate). No schema_version/observed_at envelope; the
+// endpoint returns the block window it scanned, the distinct pallet.method
+// group count, and the count-descending activity rows.
+export interface ChainEventsStatsEntry {
+  pallet: string;
+  method: string | null;
+  count: number;
+}
+export interface ChainEventsStats {
+  window_blocks: number;
+  groups: number;
+  activity: ChainEventsStatsEntry[];
+}
+export interface ChainStakeFlowNetwork {
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+  gaining: number;
+  losing: number;
+  flat: number;
+}
+export interface ChainStakeFlowDistribution {
+  count: number;
+  mean: number | null;
+  min: number | null;
+  p25: number | null;
+  median: number | null;
+  p75: number | null;
+  p90: number | null;
+  max: number | null;
+}
+export interface ChainStakeFlowSubnet {
+  netuid: number;
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+  direction: string;
+}
+export interface ChainStakeFlow {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainStakeFlowNetwork | null;
+  net_flow_distribution: ChainStakeFlowDistribution | null;
+  subnets: ChainStakeFlowSubnet[];
 }
 export interface ChainSignerEntry {
   signer: string;

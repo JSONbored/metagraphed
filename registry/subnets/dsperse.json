@@ -185,6 +185,35 @@
         "https://github.com/inference-labs-inc/subnet-2/blob/main/crates/sn2-types/src/constants.rs"
       ],
       "url": "https://sn2-api.inferencelabs.com/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-2-dsperse-circuit-repository-openapi",
+      "kind": "openapi",
+      "name": "DSperse circuit repository OpenAPI",
+      "notes": "Public no-auth OpenAPI 3.1 schema for the SN2 circuit repository API (title \"Circuit Repository API\", 11 paths) on repository.inferencelabs.com. Validators and miners fetch active ZK circuits from this host; the official subnet-2 client sets CIRCUIT_API_URL to https://repository.inferencelabs.com in crates/sn2-types/src/constants.rs.",
+      "provider": "inference-labs",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://repository.inferencelabs.com/openapi.json",
+      "source_urls": [
+        "https://github.com/inference-labs-inc/subnet-2/blob/main/crates/sn2-types/src/constants.rs",
+        "https://sn2-docs.inferencelabs.com/technical-roadmap.md",
+        "https://repository.inferencelabs.com/docs"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie",
+        "confidence": "medium"
+      },
+      "url": "https://repository.inferencelabs.com/openapi.json"
     }
   ],
   "website_url": "https://subnet2.inferencelabs.com/"

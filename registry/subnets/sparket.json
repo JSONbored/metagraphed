@@ -91,6 +91,28 @@
         "submitted_by": "nickmopen"
       },
       "notes": "Public no-auth GET returning the Sparket (SN57) backend API health as JSON (status, db connectivity, version, and sync lag). Served on the subnet's own registered website domain sparket.ai under /api/v1/. Fills the file's noted missing public-API-endpoint gap."
+    },
+    {
+      "id": "sn-57-sparket-leaderboard",
+      "name": "Sparket miner leaderboard",
+      "kind": "data-artifact",
+      "url": "https://sparket.ai/api/v1/leaderboard",
+      "provider": "sparket",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://sparket.ai/"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "notes": "Public no-auth GET returning the Sparket (SN57) miner leaderboard as JSON — per-miner rank, uid, component scores (skill/accuracy/edge/timeliness/uniqueness), incentive, and weight (25 ranked rows plus a meta block). Served on the subnet's own registered domain sparket.ai under /api/v1/; all fields are public scoreboard and ranking data. Fills the file's noted missing standalone-data-artifact gap."
     }
   ]
 }

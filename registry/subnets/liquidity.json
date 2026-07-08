@@ -27,6 +27,24 @@
         "https://github.com/creativebuilds/sn77/blob/master/README.md"
       ],
       "url": "https://77.creativebuilds.io/pools"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-weights",
+      "kind": "data-artifact",
+      "name": "SN77 final miner weights",
+      "notes": "Public no-auth GET /weights on 77.creativebuilds.io returning the subnet's final calculated per-miner weights as a JSON map of hotkey SS58 address to weight value (observed live: {success, weights:{<ss58>:<number>, ...250+ miners}, cached}). Documented as GET /weights in the official creativebuilds/sn77 README; same 77.creativebuilds.io host as the existing /pools surface.",
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "GildardoDev"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/README.md"
+      ],
+      "url": "https://77.creativebuilds.io/weights"
     }
   ]
 }

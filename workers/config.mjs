@@ -103,6 +103,11 @@ export const SUBNET_NEURON_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/;
 export const SUBNET_VALIDATORS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/validators$/;
+// Cross-subnet validator detail route (#4334/7.1): a single validator's
+// validator_permit=1 rows aggregated across every subnet it operates in —
+// the single-entity drill-in of the bare /api/v1/validators leaderboard.
+export const VALIDATOR_DETAIL_PATH_PATTERN =
+  /^\/api\/v1\/validators\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
 // Per-subnet chain-event stream (#1345 block explorer): account_events filtered
 // by netuid, served live from the event tier.
 export const SUBNET_EVENT_SUMMARY_PATH_PATTERN =

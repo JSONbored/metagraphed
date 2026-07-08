@@ -130,6 +130,25 @@
         "timeout_ms": 10000
       },
       "notes": "Public W&B dashboard linked from the Grail repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-81-grail-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Grail minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official one-covenant/grail repository as compute.min.yaml. Documents SN81 Grail operator GPU, CPU, memory, and storage requirements for verifiable post-training rollouts across supported environments.",
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/one-covenant/grail/blob/main/compute.min.yaml",
+        "https://github.com/one-covenant/grail/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/one-covenant/grail/main/compute.min.yaml"
     }
   ]
 }

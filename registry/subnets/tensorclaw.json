@@ -129,6 +129,26 @@
         "timeout_ms": 10000
       },
       "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-92-tensorclaw-valid-model-series",
+      "kind": "data-artifact",
+      "name": "Tensorclaw supported model series allowlist",
+      "notes": "Public no-auth plain-text allowlist of supported LLM model families (gpt, deepseek, qwen, kimi, glm, claude, llama, mistral, gemini) used by SN92 Tensorclaw validators for model-availability scoring. Archived copy of the root-level VALID_MODEL_SERIES.txt from the official tensorclaw/tensorclaw repository; configs/validator.env in the same archive sets VALID_MODEL_SERIES to the official GitHub raw path and BITTENSOR_NETUID=92.",
+      "provider": "tensorclaw",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://github.com/fx-integral/academia-archives/blob/main/repos/tensorclaw__tensorclaw/VALID_MODEL_SERIES.txt",
+        "https://github.com/fx-integral/academia-archives/blob/main/repos/tensorclaw__tensorclaw/configs/validator.env",
+        "https://github.com/fx-integral/academia-archives/blob/main/repos/tensorclaw__tensorclaw/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/fx-integral/academia-archives/main/repos/tensorclaw__tensorclaw/VALID_MODEL_SERIES.txt"
     }
   ]
 }

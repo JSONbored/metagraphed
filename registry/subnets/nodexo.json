@@ -135,6 +135,25 @@
         "https://nodexo.ai/"
       ],
       "url": "https://nodexo.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-106-nodexo-mainnet-chain-config",
+      "kind": "data-artifact",
+      "name": "Nodexo mainnet chain config",
+      "notes": "Public no-auth JSON mainnet EVM registry configuration (chain_id, netuid 106, compute/validator/collateral/subnet/payment contract addresses and deploy blocks) published in the official nodexo-ai/nodexo repository at chain_config_mainnet.json. Resolved at validator startup by _resolve_chain_config_path when operators pass --subtensor-network finney.",
+      "provider": "nodexo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/nodexo-ai/nodexo/blob/main/README.md",
+        "https://github.com/nodexo-ai/nodexo/blob/main/neurons/validator/validator.py"
+      ],
+      "url": "https://raw.githubusercontent.com/nodexo-ai/nodexo/main/chain_config_mainnet.json"
     }
   ]
 }

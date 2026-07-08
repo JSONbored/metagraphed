@@ -103,6 +103,31 @@
       "schema_url": "https://lium.io/api/openapi.json",
       "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
       "url": "https://lium.io/api/reclaims"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-executor-stats",
+      "kind": "data-artifact",
+      "name": "Lium executor GPU utilization statistics",
+      "notes": "Public no-auth GET /api/executors/stats on lium.io returning a JSON dataset of live GPU-rental statistics aggregated per GPU type across the SN51 lium.io compute marketplace (gpu_type, rented_count, all_count, utilization percentage). Documented as a security-free public endpoint in the official Lium Backend API OpenAPI spec. Verified 200 application/json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rust-toml"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json",
+        "https://lium.io/api/executors/stats"
+      ],
+      "url": "https://lium.io/api/executors/stats"
     }
   ],
   "source_repo": "https://github.com/Datura-ai/lium-io"

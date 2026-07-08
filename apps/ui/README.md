@@ -1,11 +1,11 @@
 <div align="center">
 
-# metagraphed-ui
+# apps/ui — metagraphed frontend
 
 **The web frontend for [Metagraphed](https://github.com/JSONbored/metagraphed)** — the Bittensor subnet integration registry.
 
 [![Live](https://img.shields.io/badge/live-metagraph.sh-2ea44f)](https://metagraph.sh)
-[![CI](https://github.com/JSONbored/metagraphed-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/JSONbored/metagraphed-ui/actions/workflows/ci.yml)
+[![Validate](https://github.com/JSONbored/metagraphed/actions/workflows/validate.yml/badge.svg)](https://github.com/JSONbored/metagraphed/actions/workflows/validate.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](./LICENSE)
 
 [**metagraph.sh**](https://metagraph.sh) · [Backend](https://github.com/JSONbored/metagraphed) · [Deploy](./DEPLOY.md)
@@ -18,7 +18,8 @@ The web app at **[metagraph.sh](https://metagraph.sh)** — for every Bittensor 
 what it exposes (APIs, docs, schemas), whether it's healthy, and how to call it. It
 holds **no** subnet data; it renders what the
 [metagraphed](https://github.com/JSONbored/metagraphed) backend serves at
-`api.metagraph.sh`.
+`api.metagraph.sh`. This directory (`apps/ui`) is an npm workspace within the
+`metagraphed` monorepo, not a standalone repository.
 
 ## Stack
 
@@ -28,33 +29,30 @@ Radix/shadcn. Deploys as a Cloudflare Worker — see [DEPLOY.md](./DEPLOY.md).
 
 ## Getting started
 
-[Bun](https://bun.sh) is the canonical toolchain. No secrets needed — it talks to the
-live API.
+Node 22 and npm are the canonical toolchain. No secrets needed — it talks to the live
+API.
 
 ```bash
-bun install
-bun run dev        # dev server
+npm install                       # from the repo root — wires the apps/ui workspace too
+npm run dev --workspace=apps/ui   # dev server
 ```
 
-Run the same checks CI gates on before you push:
+Run the same checks CI's `ui` job gates on before you push:
 
 ```bash
-bun run lint       # ESLint + Prettier
-bun run typecheck  # tsc --noEmit
-bun run build      # production SSR build
+npm run lint --workspace=apps/ui
+npm run typecheck --workspace=apps/ui
+npm run build --workspace=apps/ui
 ```
 
 > The API base defaults to `https://api.metagraph.sh` (override with
-> `VITE_METAGRAPH_API_BASE`). CI installs via `npm ci --legacy-peer-deps` to match the
-> Cloudflare deploy path — `bun.lock` pins a few packages to a private mirror that 403s
-> in CI, so both lockfiles are kept in sync.
+> `VITE_METAGRAPH_API_BASE`).
 
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md). Parts of the build are Lovable-managed —
-don't edit `vite.config.ts`. Backend and roadmap issues live in the
-[metagraphed](https://github.com/JSONbored/metagraphed/issues) repo; open UI-specific
-issues here.
+don't edit `vite.config.ts`. All issues — backend, roadmap, and UI-specific — are
+tracked in [JSONbored/metagraphed](https://github.com/JSONbored/metagraphed/issues).
 
 ## License
 

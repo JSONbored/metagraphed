@@ -1,18 +1,98 @@
 {
-  "schema_version": 1,
-  "netuid": 70,
-  "name": "NexisGen",
-  "slug": "sn-70",
-  "status": "active",
   "categories": [],
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "NexisGen",
+  "netuid": 70,
+  "schema_version": 1,
+  "slug": "sn-70",
   "social": {
     "x": "https://x.com/nexisgen_ai"
   },
-  "surfaces": [],
   "source_repo": "https://github.com/RendixNetwork/nexisgen",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-validator-api-healthz",
+      "kind": "subnet-api",
+      "name": "NexisGen validator API healthz",
+      "notes": "Public no-auth GET /healthz on api.nexisgen.ai returning application liveness JSON (observed: {\"status\":\"ok\"}). Implemented in the official RendixNetwork/nexisgen FastAPI app and documented as a route in the subnet's own OpenAPI schema on the same host.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/RendixNetwork/nexisgen/blob/main/nexis/api/app.py",
+        "https://api.nexisgen.ai/openapi.json",
+        "https://github.com/RendixNetwork/nexisgen"
+      ],
+      "url": "https://api.nexisgen.ai/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-openapi",
+      "kind": "openapi",
+      "name": "NexisGen validator API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema (title \"Nexis Validator API\") for the NexisGen (SN70) validator API, documenting its public training-score, blacklist, and total-score routes plus a healthz liveness check. Served on api.nexisgen.ai, the API subdomain of the subnet's registered website nexisgen.ai, and already cited as a source for the existing healthz subnet-api surface.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.nexisgen.ai/openapi.json",
+      "source_urls": [
+        "https://nexisgen.ai/",
+        "https://github.com/RendixNetwork/nexisgen"
+      ],
+      "url": "https://api.nexisgen.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-latest-total-score",
+      "kind": "data-artifact",
+      "name": "NexisGen latest cycle total scores",
+      "notes": "Public no-auth GET /v1/get_latest_total_score on api.nexisgen.ai returning the current scoring cycle_id plus a miner aggregate score map for SN70 NexisGen. Documented in the subnet OpenAPI schema (title \"Nexis Validator API\") already registered for this host; same first-party api.nexisgen.ai as the existing healthz surface.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://api.nexisgen.ai/openapi.json",
+        "https://github.com/RendixNetwork/nexisgen/blob/main/nexis/api/app.py",
+        "https://api.nexisgen.ai/v1/get_latest_total_score"
+      ],
+      "url": "https://api.nexisgen.ai/v1/get_latest_total_score"
+    }
+  ],
   "website_url": "https://nexisgen.ai/"
 }

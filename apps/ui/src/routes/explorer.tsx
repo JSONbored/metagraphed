@@ -20,14 +20,21 @@ import {
   chainActivityQuery,
   chainCallsQuery,
   chainEventsInfiniteQuery,
+  chainEventsStatsQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainStakeFlowQuery,
   chainStakeTransfersQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
-import type { ChainCalls, ChainEvent } from "@/lib/metagraphed/types";
+import type {
+  ChainCalls,
+  ChainEvent,
+  ChainEventsStats,
+  ChainStakeFlow,
+} from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -61,6 +68,9 @@ function sum(values: number[]): number {
   return values.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 }
 
+function fmtTaoSigned(v: number): string {
+  return v < 0 ? `-${fmtTao(-v)}` : `+${fmtTao(v)}`;
+}
 function fmtTao(v: number): string {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
   if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
@@ -90,8 +100,10 @@ function ExplorerPage() {
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
+          "/api/v1/chain/stake-flow",
           "/api/v1/chain/stake-transfers",
           "/api/v1/chain-events",
+          "/api/v1/chain-events/stats",
         ]}
       />
     </AppShell>
@@ -234,6 +246,186 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 }
 
+// #3489: raw all-events tier (ADR 0013) pallet.method distribution from
+// /api/v1/chain-events/stats — the raw-tier sibling of the curated CallMixSection
+// above (D1 /chain/calls). Same ranked-list-with-proportional-bar idiom, capped
+// to the busiest 10 rows; the header reports the distinct group count and the
+// block window scanned. Empty until the all-events backfill runs.
+function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
+  const rows = stats.activity.slice(0, 10);
+  const cap = Math.max(1, ...rows.map((r) => r.count));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Pallet event mix
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(stats.groups)} groups · {formatNumber(stats.window_blocks)} blocks
+        </span>
+      </div>
+      {rows.length > 0 ? (
+        <ul className="space-y-1.5">
+          {rows.map((r) => {
+            const pct = Math.max(2, Math.round((r.count / cap) * 100));
+            const label = r.method ? `${r.pallet}.${r.method}` : r.pallet;
+            return (
+              <li key={label} className="grid grid-cols-[10rem_1fr_auto] items-center gap-2">
+                <span
+                  className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+                  title={label}
+                >
+                  {label}
+                </span>
+                <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{ width: `${pct}%`, background: "var(--chart-1)" }}
+                  />
+                </span>
+                <span className="font-mono text-[10px] tabular-nums text-ink-strong">
+                  {formatNumber(r.count)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No raw pallet events indexed yet.</p>
+      )}
+    </section>
+  );
+}
+
+/** Compact labeled metric for the stake-flow summary row. */
+function StakeFlowMetric({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "ok" | "down" | "default";
+}) {
+  const valueClass =
+    tone === "ok" ? "text-health-ok" : tone === "down" ? "text-health-down" : "text-ink-strong";
+  return (
+    <div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        {label}
+      </div>
+      <div className={`mt-0.5 font-mono text-sm tabular-nums ${valueClass}`}>{value}</div>
+    </div>
+  );
+}
+
+/**
+ * Network-wide stake flow (#3734) — total staked vs unstaked across every subnet
+ * for the window, the gaining/losing/flat split, and the top net inflows as a
+ * bar list. The endpoint returns subnets sorted descending by net flow and caps
+ * the list server-side (LIMIT_MAX 100 of ~129 subnets), so it is a
+ * top-net-inflows board and cannot surface the biggest outflows — the largest
+ * single outflow is reported separately from the full-network distribution.
+ * Chain-direct: GET /api/v1/chain/stake-flow.
+ */
+function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
+  const net = flow.network;
+  const dist = flow.net_flow_distribution;
+  // Server already sorts subnets descending by net flow (biggest net inflows
+  // first); re-sort defensively and take the top 12 for the inflow board.
+  const inflows = [...flow.subnets].sort((a, b) => b.net_flow_tao - a.net_flow_tao).slice(0, 12);
+  const cap = Math.max(1, ...inflows.map((s) => s.net_flow_tao));
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Stake flow
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(flow.subnet_count)} subnets
+        </span>
+      </div>
+
+      {net ? (
+        <div className="mb-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StakeFlowMetric
+              label="Net flow"
+              value={fmtTaoSigned(net.net_flow_tao)}
+              tone={net.net_flow_tao >= 0 ? "ok" : "down"}
+            />
+            <StakeFlowMetric label="Gross flow" value={fmtTao(net.gross_flow_tao)} />
+            <StakeFlowMetric label="Staked" value={fmtTao(net.total_staked_tao)} />
+            <StakeFlowMetric label="Unstaked" value={fmtTao(net.total_unstaked_tao)} />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest">
+            <span className="text-health-ok">{formatNumber(net.gaining)} gaining</span>
+            <span className="text-health-down">{formatNumber(net.losing)} losing</span>
+            <span className="text-ink-muted">{formatNumber(net.flat)} flat</span>
+            <span className="text-ink-muted">
+              {formatNumber(net.stake_events + net.unstake_events)} events
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      {inflows.length > 0 ? (
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Top net inflows
+          </div>
+          <ul className="space-y-1.5">
+            {inflows.map((s) => {
+              const pct = Math.max(2, Math.round((Math.max(0, s.net_flow_tao) / cap) * 100));
+              const inflow = s.net_flow_tao >= 0;
+              return (
+                <li key={s.netuid}>
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: s.netuid }}
+                    className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
+                  >
+                    <span className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                      SN{s.netuid}
+                    </span>
+                    <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
+                      <span
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{
+                          width: `${pct}%`,
+                          background: inflow ? "var(--health-ok)" : "var(--health-down)",
+                        }}
+                      />
+                    </span>
+                    <span
+                      className={`text-right font-mono text-[10px] tabular-nums ${
+                        inflow ? "text-health-ok" : "text-health-down"
+                      }`}
+                    >
+                      {fmtTaoSigned(s.net_flow_tao)}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No stake flow in this window yet.</p>
+      )}
+
+      {dist ? (
+        <p className="mt-4 border-t border-border pt-3 font-mono text-[10px] text-ink-muted">
+          Median net flow {fmtTaoSigned(dist.median ?? 0)}, largest single outflow{" "}
+          {fmtTaoSigned(dist.min ?? 0)} across {formatNumber(dist.count)} subnets.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -243,7 +435,9 @@ function ExplorerDashboard() {
   const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
   const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
   const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
+  const stakeFlow = useSuspenseQuery(chainStakeFlowQuery(win)).data.data;
   const stakeTransfers = useSuspenseQuery(chainStakeTransfersQuery(win)).data.data;
+  const eventMix = useSuspenseQuery(chainEventsStatsQuery()).data.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -529,6 +723,8 @@ function ExplorerDashboard() {
         </section>
       </div>
 
+      <StakeFlowSection flow={stakeFlow} />
+
       {/* stake-transfer leaderboard */}
       <section className="rounded-lg border border-border bg-card p-5">
         <div className="mb-4 flex items-center justify-between">
@@ -586,6 +782,7 @@ function ExplorerDashboard() {
           </p>
         )}
       </section>
+      <PalletEventMixSection stats={eventMix} />
     </div>
   );
 }

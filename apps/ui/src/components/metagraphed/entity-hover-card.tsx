@@ -4,7 +4,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { BrandIcon } from "./brand-icon";
 import { CurationChip, HealthPill } from "./chips";
 import { TimeAgo } from "./time-ago";
-import { subnetQuery, providerQuery } from "@/lib/metagraphed/queries";
+import { subnetQuery, providerQuery, accountQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 interface SubnetHoverProps {
@@ -17,7 +17,12 @@ interface ProviderHoverProps {
   slug: string;
   children: ReactNode;
 }
-type Props = SubnetHoverProps | ProviderHoverProps;
+interface AccountHoverProps {
+  kind: "account";
+  ss58: string;
+  children: ReactNode;
+}
+type Props = SubnetHoverProps | ProviderHoverProps | AccountHoverProps;
 
 /**
  * Detect a touch-primary device. On those we don't render a hover card at
@@ -50,7 +55,11 @@ export function EntityHoverCard(props: Props) {
   if (coarse) return <>{props.children}</>;
 
   const ariaLabel =
-    props.kind === "subnet" ? `Preview subnet ${props.netuid}` : `Preview provider ${props.slug}`;
+    props.kind === "subnet"
+      ? `Preview subnet ${props.netuid}`
+      : props.kind === "provider"
+        ? `Preview provider ${props.slug}`
+        : `Preview account ${props.ss58}`;
 
   return (
     <HoverCard openDelay={250} closeDelay={120}>
@@ -65,8 +74,10 @@ export function EntityHoverCard(props: Props) {
       >
         {props.kind === "subnet" ? (
           <SubnetMiniProfile netuid={props.netuid} />
-        ) : (
+        ) : props.kind === "provider" ? (
           <ProviderMiniProfile slug={props.slug} />
+        ) : (
+          <AccountMiniProfile ss58={props.ss58} />
         )}
       </HoverCardContent>
     </HoverCard>
@@ -162,6 +173,33 @@ function ProviderMiniProfile({ slug }: { slug: string }) {
         <Mini label="Endpoints" value={String(p.endpoints_count ?? sum?.endpoint_count ?? "—")} />
         <Mini label="Authority" value={p.authority ?? "—"} />
       </dl>
+    </div>
+  );
+}
+
+function AccountMiniProfile({ ss58 }: { ss58: string }) {
+  const { data, isPending, error } = useQuery({
+    ...accountQuery(ss58),
+    staleTime: 5 * 60_000,
+  });
+  if (isPending) return <Loading />;
+  if (error || !data?.data) return <Failed />;
+  const a = data.data;
+  return (
+    <div className="space-y-2">
+      <div className="min-w-0">
+        <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">account</div>
+        <div className="font-mono text-[10px] text-ink-muted truncate">{ss58}</div>
+      </div>
+      <dl className="grid grid-cols-2 gap-2 pt-1">
+        <Mini label="Events" value={formatNumber(a.event_count)} />
+        <Mini label="Subnets" value={formatNumber(a.subnet_count)} />
+      </dl>
+      {a.last_seen_at ? (
+        <div className="pt-1 border-t border-border font-mono text-[10px] text-ink-muted">
+          last seen <TimeAgo at={a.last_seen_at} />
+        </div>
+      ) : null}
     </div>
   );
 }

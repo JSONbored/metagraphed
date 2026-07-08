@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Copy, Check, ExternalLink as ExternalLinkIcon } from "lucide-react";
+import { ExternalLink as ExternalLinkIcon } from "lucide-react";
 import { useMemo } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HealthDot } from "./chips";
@@ -8,6 +8,7 @@ import { TimeAgo } from "./time-ago";
 import { BrandIcon } from "./brand-icon";
 import { safeExternalUrl } from "./external-link";
 import { Sparkline } from "./charts/sparkline";
+import { CopyIconToggle } from "./copy-icon-toggle";
 import { useCopy } from "@/hooks/use-copy";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames } from "@/lib/metagraphed/format";
@@ -266,11 +267,7 @@ function Row({
                     aria-label="Copy URL"
                     className="inline-flex size-7 items-center justify-center rounded-md text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
                   >
-                    {copied ? (
-                      <Check className="size-3.5 text-health-ok" />
-                    ) : (
-                      <Copy className="size-3.5" />
-                    )}
+                    <CopyIconToggle copied={copied} size={3.5} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Copy URL</TooltipContent>
@@ -379,8 +376,7 @@ function MobileCard({
             onClick={() => copy(e.url!)}
             className="inline-flex items-center gap-1 rounded-md border border-border bg-paper px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-accent/40"
           >
-            {copied ? <Check className="size-3 text-health-ok" /> : <Copy className="size-3" />}{" "}
-            copy
+            <CopyIconToggle copied={copied} /> copy
           </button>
           {safeUrl ? (
             <a

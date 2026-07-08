@@ -108,6 +108,25 @@
         "submitted_by": "nickmopen"
       },
       "notes": "Public no-auth GET returning the TensorUSD (SN113) backend API health (status + component/database connectivity). Hosted on api.tensorusd.com, the API subdomain of the subnet's registered website tensorusd.com."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-113-tensorusd-vault-abi",
+      "kind": "data-artifact",
+      "name": "TensorUSD vault contract ABI",
+      "notes": "Public no-auth JSON contract metadata (ink! ABI) for the SN113 TensorUSD vault pallet contract. Loaded by miners and validators via ContractMetadata.create_from_file in the official tensorusd/common/contract.py module; the README documents the matching mainnet Vault contract address.",
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/tensorusd/common/contract.py",
+        "https://github.com/TensorUSD/subnet/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/TensorUSD/subnet/main/tensorusd/common/abis/tusdt_vault.json"
     }
   ],
   "social": {

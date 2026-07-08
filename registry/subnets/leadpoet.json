@@ -1,17 +1,19 @@
 {
-  "schema_version": 1,
-  "netuid": 71,
-  "name": "Leadpoet",
-  "slug": "sn-71",
-  "status": "active",
   "categories": [],
+  "contact": "hello@leadpoet.com",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
   },
+  "name": "Leadpoet",
+  "netuid": 71,
+  "schema_version": 1,
+  "slug": "sn-71",
   "social": {
     "x": "https://x.com/leadpoetai"
   },
+  "source_repo": "https://github.com/leadpoet/leadpoet",
+  "status": "active",
   "surfaces": [
     {
       "auth_required": false,
@@ -37,9 +39,51 @@
         "https://github.com/leadpoet/leadpoet"
       ],
       "url": "https://leadpoet.com/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-71-leadpoet-openapi",
+      "kind": "openapi",
+      "name": "Leadpoet public web API OpenAPI schema",
+      "notes": "Public no-auth OpenAPI 3.x schema for the SN71 Leadpoet web API (title \"Leadpoet Public API\", 5 paths) on leadpoet.com. Documents /api/health, /api/contact, and geo lookup routes for agents and prospective customers; same host as the existing health surface.",
+      "provider": "leadpoet",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://leadpoet.com/api/openapi.json",
+      "source_urls": [
+        "https://leadpoet.com/api/health",
+        "https://leadpoet.com/api/openapi.json",
+        "https://github.com/leadpoet/leadpoet"
+      ],
+      "url": "https://leadpoet.com/api/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-71-leadpoet-geo-countries",
+      "kind": "data-artifact",
+      "name": "Leadpoet country reference list",
+      "notes": "Public no-auth GET /api/geo/countries on leadpoet.com returning the ISO country code/label reference list used by the platform's lead-fulfillment forms. Confirmed present at the exact path in the subnet's own OpenAPI schema (GET /api/geo/countries, tag \"reference\", summary \"List ISO countries (priority-ordered)\", response schema GeoOption[]) — the same schema already registered as the sn-71-leadpoet-openapi surface in this file; same leadpoet.com host as the existing health surface.",
+      "provider": "leadpoet",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "philluiz2323"
+      },
+      "source_urls": ["https://leadpoet.com/api/openapi.json"],
+      "url": "https://leadpoet.com/api/geo/countries"
     }
   ],
-  "source_repo": "https://github.com/leadpoet/leadpoet",
-  "website_url": "https://leadpoet.com/",
-  "contact": "hello@leadpoet.com"
+  "website_url": "https://leadpoet.com/"
 }

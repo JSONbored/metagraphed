@@ -1032,6 +1032,12 @@ export const PUBLIC_ARTIFACTS = [
     "GlobalValidatorsArtifact",
   ),
   artifact(
+    "validator-detail",
+    "/metagraph/validators/{hotkey}.json",
+    "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, computed live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
+    "ValidatorDetailArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -2249,6 +2255,17 @@ export const API_ROUTES = [
       },
     ]),
     [],
+  ),
+  route(
+    "validator-detail",
+    "GET",
+    "/api/v1/validators/{hotkey}",
+    "/metagraph/validators/{hotkey}.json",
+    "Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons D1 tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404.",
+    "short",
+    ["validators", "analytics"],
+    [],
+    [{ name: "hotkey", schema: { type: "string" } }],
   ),
   route(
     "subnet-metagraph",
@@ -3729,15 +3746,22 @@ function openApiExampleForRoute(entry, responseSchema, componentSchemas) {
 }
 
 export function artifactPathFromTemplate(template, params = {}) {
-  return template
-    .replace("{netuid}", String(params.netuid ?? ""))
-    .replace("{uid}", String(params.uid ?? ""))
-    .replace("{ss58}", String(params.ss58 ?? ""))
-    .replace("{slug}", String(params.slug ?? ""))
-    .replace("{date}", String(params.date ?? ""))
-    .replace("{surface_id}", String(params.surface_id ?? ""))
-    .replace("{ref}", String(params.ref ?? ""))
-    .replace("{hash}", String(params.hash ?? ""));
+  return (
+    template
+      .replace("{netuid}", String(params.netuid ?? ""))
+      .replace("{uid}", String(params.uid ?? ""))
+      .replace("{ss58}", String(params.ss58 ?? ""))
+      // {hotkey} shares compileRoutePattern's __METAGRAPH_SS58__ token, so the
+      // compiled regex's named capture group is `ss58`, not `hotkey` — read
+      // from params.ss58 here too, or a matched /validators/{hotkey} route
+      // would always substitute an empty string.
+      .replace("{hotkey}", String(params.ss58 ?? ""))
+      .replace("{slug}", String(params.slug ?? ""))
+      .replace("{date}", String(params.date ?? ""))
+      .replace("{surface_id}", String(params.surface_id ?? ""))
+      .replace("{ref}", String(params.ref ?? ""))
+      .replace("{hash}", String(params.hash ?? ""))
+  );
 }
 
 export function compileRoutePattern(pathTemplate) {
@@ -3745,6 +3769,10 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
     .replace(/\{uid\}/g, "__METAGRAPH_UID__")
     .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
+    // {hotkey} (#4334/7.1) is structurally the same SS58 shape as {ss58} —
+    // just a more self-documenting path-parameter name for a route that only
+    // ever accepts a hotkey, not any account. Same character class/length.
+    .replace(/\{hotkey\}/g, "__METAGRAPH_SS58__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
     .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")

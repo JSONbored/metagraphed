@@ -106,7 +106,7 @@ type NavTarget =
       label: string;
       hint: string;
       to: string;
-      params?: Record<string, string>;
+      params?: Record<string, string | number>;
       icon: typeof User;
       badge: string;
     };
@@ -225,6 +225,22 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         icon: Hash,
         badge: "partial hash",
       });
+    }
+
+    const netuidMatch = /^(?:sn\s*(\d+)|netuid\s*(\d+))$/i.exec(q);
+    if (netuidMatch) {
+      const n = Number(netuidMatch[1] ?? netuidMatch[2]);
+      if (Number.isFinite(n) && n >= 0 && n <= 1024) {
+        targets.push({
+          kind: "nav",
+          label: `Subnet ${n}`,
+          hint: "Go to subnet by netuid",
+          to: "/subnets/$netuid",
+          params: { netuid: n },
+          icon: Layers,
+          badge: "subnet",
+        });
+      }
     }
 
     return targets;

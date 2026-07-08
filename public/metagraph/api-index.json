@@ -485,6 +485,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "validator-detail",
+      "path": "/metagraph/validators/{hotkey}.json",
+      "schema_ref": "#/components/schemas/ValidatorDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
@@ -5290,6 +5297,18 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/validators/{hotkey}.json",
+      "cache": "short",
+      "description": "Fetch cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in — cross-subnet totals (stake, emission, avg/max trust) plus a full per-subnet performance table. Computed live from the neurons D1 tier. Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404.",
+      "id": "validator-detail",
+      "method": "GET",
+      "path": "/api/v1/validators/{hotkey}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",

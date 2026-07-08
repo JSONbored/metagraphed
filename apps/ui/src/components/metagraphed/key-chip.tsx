@@ -1,7 +1,7 @@
-import { Check, Copy } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCopy } from "@/hooks/use-copy";
 import { classNames } from "@/lib/metagraphed/format";
+import { CopyIconToggle } from "./copy-icon-toggle";
 
 interface Props {
   /** Full value (e.g. coldkey/hotkey/long hash). */
@@ -39,23 +39,7 @@ export function KeyChip({ value, label = "value", head = 8, tail = 6, className 
           )}
         >
           <span className="truncate tabular-nums">{short}</span>
-          <span
-            className="relative inline-flex size-3 shrink-0 items-center justify-center"
-            aria-hidden
-          >
-            <Check
-              className={classNames(
-                "absolute size-3 text-health-ok transition-all duration-150",
-                copied ? "scale-100 opacity-100" : "scale-50 opacity-0",
-              )}
-            />
-            <Copy
-              className={classNames(
-                "absolute size-3 text-ink-muted group-hover:text-ink transition-all duration-150",
-                copied ? "scale-50 opacity-0" : "scale-100 opacity-100",
-              )}
-            />
-          </span>
+          <CopyIconToggle copied={copied} className="text-ink-muted group-hover:text-ink" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-[90vw] break-all font-mono text-[11px]">

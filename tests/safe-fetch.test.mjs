@@ -109,6 +109,34 @@ describe("safeFetch SSRF guard", () => {
     assert.equal(fetchCalls[0][0], "http://rebind.example.test/surface");
     assert.ok(fetchCalls[0][1].dispatcher);
   });
+
+  test("preserves caller method, headers, and abort signal with pinned fetches", async () => {
+    const signal = AbortSignal.timeout(1000);
+    const fetchCalls = [];
+    vi.stubGlobal("fetch", async (url, options) => {
+      fetchCalls.push([String(url), options]);
+      return mockResponse({ status: 204, contentType: null });
+    });
+
+    const result = await safeFetch("http://1.1.1.1/health", {
+      method: "HEAD",
+      headers: {
+        accept: "application/json",
+        "user-agent": "metagraphed-smoke-probe/0.0",
+      },
+      signal,
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(fetchCalls.length, 1);
+    assert.equal(fetchCalls[0][1].method, "HEAD");
+    assert.deepEqual(fetchCalls[0][1].headers, {
+      accept: "application/json",
+      "user-agent": "metagraphed-smoke-probe/0.0",
+    });
+    assert.equal(fetchCalls[0][1].signal, signal);
+    assert.ok(fetchCalls[0][1].dispatcher);
+  });
 });
 
 describe("createPinnedLookup", () => {

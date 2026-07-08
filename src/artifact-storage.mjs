@@ -17,6 +17,8 @@ export const R2_ONLY_PATTERNS = [
   /^incidents\.json$/,
   // Global validator/operator leaderboard, computed live from the neurons D1 tier.
   /^validators\.json$/,
+  // Cross-subnet validator detail (#4334/7.1): computed live from the neurons D1 tier.
+  /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\.json$/,
   /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^evidence\/(?:\d+|\{netuid\})\.json$/,

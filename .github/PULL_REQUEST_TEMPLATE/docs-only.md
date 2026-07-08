@@ -6,6 +6,7 @@
 
 ## Checklist
 
+- [ ] Links a tracked, currently-open issue (`Closes #<n>`) — required.
 - [ ] This PR changes docs/templates only.
 - [ ] No generated `public/metagraph/**` artifacts are included.
 - [ ] No private research notes, local paths, secrets, wallet/PAT data, private

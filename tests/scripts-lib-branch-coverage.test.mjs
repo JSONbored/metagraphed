@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import {
   buildEvidenceSubjectNetuidIndex,
   netuidForEvidenceClaim,
@@ -189,6 +189,29 @@ describe("safeFetch (error envelope)", () => {
       assert.equal(out.error, "timeout");
     } finally {
       globalThis.fetch = realFetch;
+    }
+  });
+
+  test("fires the real timer and calls controller.abort() when the caller passes no signal", async () => {
+    const realFetch = globalThis.fetch;
+    vi.useFakeTimers();
+    globalThis.fetch = (_url, options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () => {
+          const err = new Error("This operation was aborted");
+          err.name = "AbortError";
+          reject(err);
+        });
+      });
+    try {
+      const resultPromise = safeFetch("https://8.8.8.8/x", { timeoutMs: 50 });
+      await vi.advanceTimersByTimeAsync(50);
+      const out = await resultPromise;
+      assert.equal(out.ok, false);
+      assert.equal(out.error, "timeout");
+    } finally {
+      globalThis.fetch = realFetch;
+      vi.useRealTimers();
     }
   });
 });
