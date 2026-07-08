@@ -34,6 +34,24 @@
         "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/constants.py"
       ],
       "url": "https://niome-api.genomes.io/api/tasks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-55-niome-data-artifact",
+      "kind": "data-artifact",
+      "name": "NIOME miner scores dataset",
+      "notes": "Public no-auth GET returning SN55 NIOME's per-miner scoring dataset as JSON — an items[] array of scored genome-annotation submissions (annotation_score, f1_score, final_score, VCF score, per-submission log and timestamps) produced by the validator. Served on niome-api.genomes.io (the subnet's official API host) and declared as MINER_SCORE_URL alongside the already-registered TASK_URL in the official genomesio/subnet-niome validator constants. Distinct from the existing tasks surface — this is the scored-output dataset, not the task feed.",
+      "provider": "niome",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "source_urls": [
+        "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/constants.py"
+      ],
+      "url": "https://niome-api.genomes.io/api/miner_scores"
     }
   ],
   "website_url": "https://niome.genomes.io/"
