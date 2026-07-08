@@ -21,6 +21,7 @@ import { safeExternalUrl } from "./external-link";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { pickPromotedSubnetHit, hitKind } from "@/lib/metagraphed/search-hit-score";
 
 interface Props {
   /** Opens the full command palette modal (still bound to ⌘K). */
@@ -30,6 +31,7 @@ interface Props {
 interface Hit {
   id: string;
   kind?: string;
+  type?: string;
   title?: string;
   url?: string;
   netuid?: number;
@@ -89,7 +91,7 @@ const NAV_LINKS = [
 ] as const;
 
 function hrefFor(hit: Hit): string {
-  const k = (hit.kind ?? "").toLowerCase();
+  const k = hitKind(hit);
   if (k === "subnet" && hit.netuid != null) return `/subnets/${hit.netuid}`;
   if (k === "provider" && hit.slug) return `/providers/${hit.slug}`;
   if (k === "surface") return "/surfaces";
@@ -153,15 +155,22 @@ export function NavOmnibox({ onOpenPalette }: Props) {
   });
   const hits = ((data?.data as Hit[] | undefined) ?? []).slice(0, 8);
 
+  const promotedSubnet = useMemo(() => pickPromotedSubnetHit(hits, debounced), [hits, debounced]);
+
+  const visibleHits = useMemo(() => {
+    if (!promotedSubnet) return hits;
+    return hits.filter((h) => h.id !== promotedSubnet.id);
+  }, [hits, promotedSubnet]);
+
   const grouped = useMemo(() => {
     const m = new Map<string, Hit[]>();
-    for (const h of hits) {
-      const k = (h.kind ?? "other").toLowerCase();
+    for (const h of visibleHits) {
+      const k = hitKind(h) || "other";
       if (!m.has(k)) m.set(k, []);
       m.get(k)!.push(h);
     }
     return m;
-  }, [hits]);
+  }, [visibleHits]);
 
   // Detect direct-navigation targets from the query — ss58 wallet address,
   // decimal block number, 0x tx hash, or partial 0x block hash.
@@ -243,8 +252,20 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       }
     }
 
+    if (promotedSubnet?.netuid != null) {
+      targets.push({
+        kind: "nav",
+        label: promotedSubnet.title ?? `Subnet ${promotedSubnet.netuid}`,
+        hint: `netuid ${promotedSubnet.netuid}`,
+        to: "/subnets/$netuid",
+        params: { netuid: promotedSubnet.netuid },
+        icon: Layers,
+        badge: "subnet",
+      });
+    }
+
     return targets;
-  }, [debounced]);
+  }, [debounced, promotedSubnet]);
 
   const flat: NavTarget[] = useMemo(() => {
     const items: NavTarget[] = [...navTargets];
@@ -274,7 +295,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       window.open(safeHref, "_blank", "noopener,noreferrer");
       return;
     }
-    const k = (item.hit.kind ?? "").toLowerCase();
+    const k = hitKind(item.hit);
     if (k === "subnet" && item.hit.netuid != null) {
       navigate({ to: "/subnets/$netuid", params: { netuid: item.hit.netuid } });
     } else if (k === "provider" && item.hit.slug) {
