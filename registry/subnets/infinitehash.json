@@ -68,6 +68,24 @@
         "timeout_ms": 10000
       },
       "notes": "Public InfiniteHash documentation for the subnet auction incentive mechanism."
+    },
+    {
+      "id": "sn-89-infinitehash-data-artifact",
+      "name": "InfiniteHash mining-pool worker metrics",
+      "kind": "data-artifact",
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/InfiniteHash/1a4f32d1efb053efd6d1a64d48d67680081ee744/app/src/infinite_hashes/validator/tests/data/pool-workers-2025-08-21.csv",
+      "provider": "infinitehash",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/InfiniteHash/blob/1a4f32d1efb053efd6d1a64d48d67680081ee744/app/src/infinite_hashes/validator/tests/data/pool-workers-2025-08-21.csv"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jeffrey701"
+      },
+      "notes": "Public snapshot of SN89 InfiniteHash mining-pool worker performance metrics — per-worker hashrate, efficiency, and stale/rejected share rates with last-share timestamps and status — committed in the validator repository. No-auth static CSV, pinned to an immutable commit."
     }
   ],
   "website_url": "https://infinitehash.xyz/",
