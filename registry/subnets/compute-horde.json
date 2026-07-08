@@ -132,6 +132,25 @@
         "submitted_by": "galuis116"
       },
       "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-compute-horde-map-contract-abi",
+      "kind": "data-artifact",
+      "name": "Compute Horde Map contract ABI",
+      "notes": "Public no-auth JSON ABI for the SN12 Compute Horde on-chain Map smart contract. Loaded at runtime by get_contract_abi in compute_horde/smart_contracts/utils.py and used by map_contract.py to read dynamic subnet configuration values from the deployed contract.",
+      "provider": "compute-horde",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/compute_horde/compute_horde/smart_contracts/map_contract.py",
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/compute_horde/compute_horde/smart_contracts/utils.py"
+      ],
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/master/compute_horde/compute_horde/smart_contracts/abi/map_abi.json"
     }
   ]
 }
