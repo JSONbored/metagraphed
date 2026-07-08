@@ -413,6 +413,44 @@ function statefulEnv(table, { failBatch = false, failPrune = false } = {}) {
   };
 }
 
+test("loadStagedSubnetHyperparams returns purge_failed when legacy count lookup fails", async () => {
+  const env = {
+    METAGRAPH_STAGING_SIGNING_KEY: SIGNING_KEY,
+    METAGRAPH_ARCHIVE: {
+      async get() {
+        return {
+          size: 100,
+          async json() {
+            return signedEnvelope([hyperparamsRow(1)]);
+          },
+        };
+      },
+      async delete() {},
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind: (...v) => ({
+            async run() {
+              return { meta: { changes: 0 } };
+            },
+          }),
+          async first() {
+            if (sql.includes("COUNT(*)")) throw new Error("count failed");
+            return null;
+          },
+        };
+      },
+      async batch() {
+        return [{ meta: { changes: 0 } }];
+      },
+    },
+  };
+  const r = await loadStagedSubnetHyperparams(env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "purge_failed");
+});
+
 test("loadStagedSubnetHyperparams skips legacy prune when row count collapsed vs D1", async () => {
   const table = new Map();
   for (let i = 1; i <= 4; i++) table.set(i, { ...hyperparamsRow(i) });
