@@ -27,6 +27,24 @@
         "https://github.com/toptensor/CliqueAI/blob/main/docs/wandb_logging.md"
       ],
       "url": "https://wandb.ai/toptensor-ai/CliqueAI/table"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-cliqueai-min-compute",
+      "kind": "data-artifact",
+      "name": "CliqueAI minimum compute requirements",
+      "notes": "Public no-auth static YAML data file committed at the root of SN83 CliqueAI's official toptensor/CliqueAI repository — the subnet's minimum/recommended compute specification (per-role miner and validator CPU, GPU/VRAM, memory, storage, OS, and network bandwidth requirements) used by operators to provision hardware. Served read-only via raw.githubusercontent from the same official repo.",
+      "provider": "cliqueai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "source_urls": [
+        "https://github.com/toptensor/CliqueAI/blob/main/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/toptensor/CliqueAI/main/min_compute.yml"
     }
   ]
 }
