@@ -8,8 +8,9 @@
   "main": "workers/data-api.mjs",
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
-  // Smart placement: run the Worker close to the Hyperdrive origin (Railway Postgres)
-  // to minimize the per-request DB round-trip, not at the nearest edge to the client.
+  // Smart placement: run the Worker close to the Hyperdrive origin (self-hosted indexer
+  // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,
+  // not at the nearest edge to the client.
   "placement": { "mode": "smart" },
   // Full observability — logs AND traces (matches the main Worker).
   "observability": {
@@ -28,7 +29,7 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "d8c62acb5520402b82d039ec482f7cc3",
+      "id": "2e989d5380044b57b57cb6481c18487e",
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
     },
   ],
