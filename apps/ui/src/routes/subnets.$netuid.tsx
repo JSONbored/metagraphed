@@ -47,6 +47,7 @@ import {
   agentCatalogDetailQuery,
   subnetWeightSettersQuery,
   subnetWeightsQuery,
+  subnetIdentityHistoryQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -145,6 +146,7 @@ const TABS = [
   { id: "metagraph", label: "Metagraph" },
   { id: "validators", label: "Validators" },
   { id: "activity", label: "Activity" },
+  { id: "identity", label: "Identity history" },
   { id: "services", label: "Callable services" },
   { id: "surfaces", label: "Surfaces" },
   { id: "endpoints", label: "Endpoints" },
@@ -170,6 +172,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   yield: "metagraph",
   turnover: "metagraph",
   validators: "validators",
+  identity: "identity",
   services: "services",
   "agent-readiness": "services",
   surfaces: "surfaces",
@@ -262,6 +265,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
           {tab === "metagraph" ? <MetagraphPanel netuid={netuid} /> : null}
           {tab === "validators" ? <ValidatorsPanel netuid={netuid} /> : null}
           {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
+          {tab === "identity" ? <IdentityHistoryPanel netuid={netuid} /> : null}
           {tab === "services" ? <CallableServicesPanel netuid={netuid} /> : null}
           {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
           {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
@@ -442,6 +446,83 @@ function SubnetLineageSection({ netuid }: { netuid: number }) {
 }
 
 /* ----------------------------- panels ----------------------------- */
+
+function IdentityHistoryPanel({ netuid }: { netuid: number }) {
+  return (
+    <SectionAnchor
+      id="identity"
+      title="Identity history"
+      subtitle="On-chain name, symbol, and metadata changes for this subnet, newest first."
+      info="GET /api/v1/subnets/{netuid}/identity-history — each row is an observed on-chain SubnetIdentitiesV3 snapshot, so the timeline shows how the subnet's registered identity changed over time."
+    >
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+          <IdentityHistoryList netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
+    </SectionAnchor>
+  );
+}
+
+function IdentityHistoryList({ netuid }: { netuid: number }) {
+  const { data: res } = useSuspenseQuery(subnetIdentityHistoryQuery(netuid));
+  const entries = res.data.entries;
+
+  if (entries.length === 0) {
+    return (
+      <EmptyState
+        title="No identity history yet"
+        description="This subnet has no recorded on-chain identity changes."
+      />
+    );
+  }
+
+  return (
+    <ol className="space-y-2">
+      {entries.map((entry, i) => (
+        <li
+          key={`${entry.identity_hash}-${i}`}
+          className="rounded-lg border border-border bg-card p-3"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="font-display text-sm font-semibold text-ink-strong">
+              {entry.subnet_name ?? "Unnamed"}
+              {entry.symbol ? (
+                <span className="ml-1.5 font-mono text-xs text-ink-muted">{entry.symbol}</span>
+              ) : null}
+            </span>
+            <span className="font-mono text-[11px] text-ink-muted">
+              {entry.observed_at ? <TimeAgo at={entry.observed_at} /> : "unknown time"}
+              {entry.block_number != null ? ` · block #${formatNumber(entry.block_number)}` : ""}
+            </span>
+          </div>
+          {entry.description ? (
+            <p className="mt-1 text-xs text-ink-muted">{entry.description}</p>
+          ) : null}
+          {entry.subnet_url || entry.github_repo || entry.discord ? (
+            <div className="mt-1.5 flex flex-wrap gap-3 text-[11px]">
+              {entry.subnet_url ? (
+                <ExternalLink href={entry.subnet_url} className="text-accent-text hover:underline">
+                  website
+                </ExternalLink>
+              ) : null}
+              {entry.github_repo ? (
+                <ExternalLink href={entry.github_repo} className="text-accent-text hover:underline">
+                  repo
+                </ExternalLink>
+              ) : null}
+              {entry.discord ? (
+                <ExternalLink href={entry.discord} className="text-accent-text hover:underline">
+                  discord
+                </ExternalLink>
+              ) : null}
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 function SurfacesPanel({ netuid }: { netuid: number }) {
   return (
