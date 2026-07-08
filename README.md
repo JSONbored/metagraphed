@@ -115,11 +115,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 
 <p align="center">
   <a href="https://gittensor.io/miners/repository?name=JSONbored/metagraphed">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/JSONbored/metagraphed/gittensor-impact-assets/gittensor-impact-dark.svg">
-      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/JSONbored/metagraphed/gittensor-impact-assets/gittensor-impact-light.svg">
-      <img src="https://raw.githubusercontent.com/JSONbored/metagraphed/gittensor-impact-assets/gittensor-impact-light.svg" alt="Gittensor contributor impact" width="600">
-    </picture>
+    <img src="https://raw.githubusercontent.com/JSONbored/metagraphed/gittensor-impact-assets/gittensor-impact-dark.svg" alt="Gittensor contributor impact" width="600">
   </a>
 </p>
 
