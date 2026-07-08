@@ -15,13 +15,13 @@ a block" — broader than "transaction": it covers user-signed calls (`Subtensor
 and **inherents**, special extrinsics the block author inserts itself, not signed by any user
 (every block's extrinsic #0 is `Timestamp.set`).
 
-**Events are the output** — the log of what happened as a *result* of executing extrinsics.
+**Events are the output** — the log of what happened as a _result_ of executing extrinsics.
 One extrinsic can produce zero, one, or many events. Every extrinsic ends in exactly one
 `System.ExtrinsicSuccess` or `System.ExtrinsicFailed` event (source of the `success` column
 on `extrinsics`).
 
 The `phase` field ties them together. Verified directly against block #8,575,300: events
-0–270 all had `phase=Initialization` — fired automatically at the *start* of block execution,
+0–270 all had `phase=Initialization` — fired automatically at the _start_ of block execution,
 before any extrinsic ran (emission distribution, scheduled weight-reveals — none triggered by
 a user). Events 271+ had `phase=ApplyExtrinsic`, each tagged with the causing `extrinsic_index`.
 Execution order for every block: **Initialization events → extrinsics execute in order, each
@@ -31,7 +31,7 @@ that determinism is what consensus is built on.
 
 ## The gap: extrinsics + events give you a log, not a snapshot
 
-Events are a log of *changes*, not a snapshot of *current values*. A `Balances.Transfer` event
+Events are a log of _changes_, not a snapshot of _current values_. A `Balances.Transfer` event
 tells you money moved; it doesn't hand you "this account's balance right now." Point-in-time
 values (an account's exact balance, a hotkey's stake, a neuron's weight vector) at a specific
 historical block require querying **state/storage**, not replaying events.
@@ -62,7 +62,7 @@ Verified against live polkadot-sdk source, 2026-07-08:
 - **`state_getStorage`/`getStorageAt`/`getKeysPaged`/`getPairs`/`getReadProof`** — direct
   historical state reads at an arbitrary block. Requires `state-pruning=archive`.
 - **`state_call`** (aliased `state_callAt`) — execute any Runtime API method against a
-  historical block's state. This is how you get *computed* values (e.g. a chain-defined
+  historical block's state. This is how you get _computed_ values (e.g. a chain-defined
   aggregate like subnet/neuron info) rather than one raw storage key. Same archive-depth
   requirement as above. Parity's own guidance: prefer custom Runtime APIs + `state_call` over
   bespoke RPC endpoints — a Runtime API upgrades with the runtime, no node restart needed.
@@ -89,6 +89,7 @@ taostats.io is the dominant, most feature-complete explorer. TaoMarketCap is the
 lacks, a real differentiator worth matching or beating.
 
 **Block/extrinsic/event pages** — foundation we already have, verified accurate:
+
 - Block page: header + Extrinsics tab + Events tab (taostats hides the first ~30 System
   events by default — worth copying).
 - Extrinsic detail page: decoded call name/params, signer, fee, linked events — a full
