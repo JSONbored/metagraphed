@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/clementblaise/metahash",
+  "id": "metahash",
+  "kind": "subnet-team",
+  "name": "MetaHash",
+  "public_notes": "",
+  "schema_version": 1,
+  "website_url": "https://github.com/clementblaise/metahash"
+}
