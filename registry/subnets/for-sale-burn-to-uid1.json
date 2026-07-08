@@ -31,5 +31,25 @@
       "No verified standalone static data artifact yet."
     ]
   },
-  "surfaces": []
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-104-taomarketcap-subnet-snapshot",
+      "kind": "data-artifact",
+      "name": "SN104 on-chain subnet snapshot",
+      "notes": "Public no-auth GET /public/v1/subnets/104 on api.taomarketcap.com returning a machine-readable JSON snapshot of SN104 on-chain subnet state and SubnetIdentitiesV3 metadata (subnetName \"for sale (burn to uid1)\", owner description: subnet parked for sale with emissions burning to uid1, plus economics, registration/burn parameters, and dTAO market fields). SN104 exposes no first-party API, repository, or static dataset; this is the indexed public JSON feed for netuid 104 documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/104"
+    }
+  ]
 }
