@@ -1047,6 +1047,25 @@ export interface AccountDeregistrations {
   subnets: AccountDeregistrationsSubnet[];
 }
 
+export interface AccountRegistrationsSubnet {
+  netuid: number;
+  registrations: number;
+  first_registered_at: string | null;
+  last_registered_at: string | null;
+}
+
+/** Per-account registration (NeuronRegistered) footprint over a window (#3730). */
+export interface AccountRegistrations {
+  schema_version: number;
+  address: string;
+  window: string | null;
+  total_registrations: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountRegistrationsSubnet[];
+}
+
 /** Per-subnet WeightsSet row in /api/v1/accounts/{ss58}/weight-setters. */
 export interface AccountWeightSettersSubnet {
   netuid: number;

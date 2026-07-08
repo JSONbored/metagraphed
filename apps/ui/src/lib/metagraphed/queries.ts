@@ -30,6 +30,8 @@ import type {
   AccountAxonRemovals,
   AccountAxonRemovalsSubnet,
   AccountDeregistrations,
+  AccountRegistrations,
+  AccountRegistrationsSubnet,
   AccountDeregistrationsSubnet,
   AccountWeightSetters,
   AccountWeightSettersSubnet,
@@ -2524,6 +2526,59 @@ export const accountAxonRemovalsQuery = (ss58: string, window = "30d") =>
       );
       return {
         data: normalizeAccountAxonRemovals(ss58, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountRegistrationsSubnet(raw: unknown): AccountRegistrationsSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    registrations: firstFiniteNumber(raw.registrations) ?? 0,
+    first_registered_at: firstString(raw.first_registered_at) ?? null,
+    last_registered_at: firstString(raw.last_registered_at) ?? null,
+  };
+}
+
+// Per-account registration (NeuronRegistered) footprint over a 7d/30d/90d window
+// (#3730). A flat summary card — total registrations + distinct subnets — from the
+// account_events NeuronRegistered stream. Coerces defensively: counts fall through
+// to 0 and concentration to null on a cold store or junk.
+export function normalizeAccountRegistrations(ss58: string, raw: unknown): AccountRegistrations {
+  const rec = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(rec.subnets)
+    ? rec.subnets.flatMap((row) => {
+        const normalized = normalizeAccountRegistrationsSubnet(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    address: firstString(rec.address) ?? ss58,
+    window: firstString(rec.window) ?? null,
+    total_registrations: firstFiniteNumber(rec.total_registrations) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? subnets.length,
+    concentration: firstFiniteNumber(rec.concentration) ?? null,
+    dominant_netuid: firstFiniteNumber(rec.dominant_netuid) ?? null,
+    subnets,
+  };
+}
+
+export const accountRegistrationsQuery = (ss58: string, window = "30d") =>
+  queryOptions({
+    queryKey: k("account-registrations", ss58, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<AccountRegistrations>>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/registrations`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeAccountRegistrations(ss58, res.data),
         meta: res.meta,
         url: res.url,
       };
