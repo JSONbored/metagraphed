@@ -1161,6 +1161,22 @@ export interface PortfolioConcentration {
  * counts, overall return, stake concentration). Richer than the registrations-only
  * AccountSubnets footprint.
  */
+export interface AccountStakeMovesSubnet {
+  netuid: number;
+  movements: number;
+  first_moved_at?: string | null;
+  last_moved_at?: string | null;
+}
+export interface AccountStakeMoves {
+  ss58: string;
+  window: string;
+  total_movements: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountStakeMovesSubnet[];
+  [key: string]: unknown;
+}
 export interface AccountPortfolio {
   ss58: string;
   captured_at?: string | null;

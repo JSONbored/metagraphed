@@ -43,6 +43,8 @@ import type {
   AccountEventsPage,
   AccountHistory,
   AccountPortfolio,
+  AccountStakeMoves,
+  AccountStakeMovesSubnet,
   AccountRegistration,
   AccountSubnets,
   AccountSummary,
@@ -205,6 +207,7 @@ const MAX_EXTRINSIC_COLLECTION_ENTRIES = 64;
 const MAX_EXTRINSIC_STRING_LENGTH = 2_000;
 const MAX_ACCOUNT_REGISTRATIONS = 100;
 const MAX_ACCOUNT_POSITIONS = 256;
+const MAX_ACCOUNT_STAKE_MOVES_SUBNETS = 128;
 const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
@@ -2396,6 +2399,50 @@ export const accountSubnetsQuery = (ss58: string) =>
 // #3491: the economics-rich companion to accountSubnetsQuery — every neuron
 // position under this hotkey with stake/emission/yield, plus wallet aggregates.
 // Non-blocking on the entity page; a cold wallet returns an empty positions[].
+function normalizeAccountStakeMovesSubnet(raw: unknown): AccountStakeMovesSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    movements: coerceFiniteNumber(raw.movements) ?? 0,
+    first_moved_at: firstString(raw.first_moved_at) ?? null,
+    last_moved_at: firstString(raw.last_moved_at) ?? null,
+  };
+}
+
+export const accountStakeMovesQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-stake-moves", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/stake-moves`, {
+        params: { window: "30d" },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const subnets = Array.isArray(d.subnets)
+        ? d.subnets.slice(0, MAX_ACCOUNT_STAKE_MOVES_SUBNETS).flatMap((row) => {
+            const n = normalizeAccountStakeMovesSubnet(row);
+            return n ? [n] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.address) ?? ss58,
+          window: firstString(d.window) ?? "30d",
+          total_movements: firstFiniteNumber(d.total_movements) ?? 0,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? subnets.length,
+          concentration: firstFiniteNumber(d.concentration) ?? null,
+          dominant_netuid: firstFiniteNumber(d.dominant_netuid) ?? null,
+          subnets,
+        } as AccountStakeMoves,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountStakeMoves>;
+    },
+    staleTime: STALE_MED,
+  });
+
 export const accountPortfolioQuery = (ss58: string) =>
   queryOptions({
     queryKey: k("account-portfolio", ss58),

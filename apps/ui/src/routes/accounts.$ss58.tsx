@@ -35,6 +35,7 @@ import { AccountHistoryChart } from "@/components/metagraphed/account-history-ch
 import {
   accountAxonRemovalsQuery,
   accountPortfolioQuery,
+  accountStakeMovesQuery,
   accountDeregistrationsQuery,
   accountWeightSettersQuery,
   accountBalanceQuery,
@@ -258,6 +259,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
 
       <AccountPortfolioSection ss58={ss58} />
+      <AccountStakeMovesSection ss58={ss58} />
 
       <AccountTeardownActivitySection ss58={ss58} />
 
@@ -681,6 +683,122 @@ function fmtTaoCompact(v?: number | null): string {
 // per-subnet position table (netuid, role, stake, emission, incentive). Non-
 // blocking: while it loads or if it fails, the rest of the account page is
 // unaffected.
+function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountStakeMovesQuery(ss58));
+  const m = result.data?.data;
+
+  if (result.isPending && !m) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="stake-moves"
+        title="Stake moves"
+        subtitle="Where this account re-delegated stake over the window: total movements, the subnets it moved across, and the per-subnet breakdown."
+      />
+    );
+  }
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="stake-moves"
+        title="Stake moves"
+        subtitle="Where this account re-delegated stake over the window: total movements, the subnets it moved across, and the per-subnet breakdown."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load stake moves"
+          description="The stake-moves tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+  const subnets = m?.subnets ?? [];
+  if (!m || subnets.length === 0) return null;
+  const rows = [...subnets].sort((a, b) => b.movements - a.movements).slice(0, 20);
+
+  return (
+    <SectionAnchor
+      id="stake-moves"
+      title="Stake moves"
+      subtitle="Where this account re-delegated stake over the window: total movements, the subnets it moved across, and the per-subnet breakdown."
+      tone="accent"
+      info="Re-delegation activity for this account, from /api/v1/accounts/{ss58}/stake-moves — total movements over the window, how concentrated they are, the dominant subnet, and the per-subnet breakdown."
+      right={<SectionBadge tone="accent">{formatNumber(m.subnet_count)} subnets</SectionBadge>}
+    >
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          icon={Activity}
+          eyebrow="Movements"
+          tone="accent"
+          value={formatNumber(m.total_movements)}
+          hint={`over ${m.window}`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Subnets moved"
+          value={formatNumber(m.subnet_count)}
+          hint="distinct subnets"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Scale}
+          eyebrow="Concentration"
+          value={m.concentration != null ? m.concentration.toFixed(4) : "—"}
+          hint="0 = spread, 1 = single"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Sparkles}
+          eyebrow="Dominant subnet"
+          value={m.dominant_netuid != null ? `SN${m.dominant_netuid}` : "—"}
+          hint="most-moved"
+          className={KPI_TILE}
+        />
+      </div>
+      <DataPanel>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-surface/50">
+            <tr>
+              <th className={TH}>Subnet</th>
+              <th className={`${TH} text-right`}>Movements</th>
+              <th className={`${TH} text-right`}>Last moved</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((s) => (
+              <tr key={s.netuid} className="hover:bg-surface/30">
+                <td className="px-5 py-4 font-mono text-[12px]">
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: s.netuid }}
+                    className="text-ink hover:text-accent hover:underline"
+                  >
+                    SN{s.netuid}
+                  </Link>
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                  {formatNumber(s.movements)}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                  {s.last_moved_at ? <TimeAgo at={s.last_moved_at} /> : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </DataPanel>
+      {subnets.length > rows.length ? (
+        <p className="mt-3 font-mono text-[10px] text-ink-muted">
+          Showing the {rows.length} most-active of {formatNumber(subnets.length)} subnets.
+        </p>
+      ) : null}
+    </SectionAnchor>
+  );
+}
+
 function AccountPortfolioSection({ ss58 }: { ss58: string }) {
   const result = useQuery(accountPortfolioQuery(ss58));
   const p = result.data?.data;
