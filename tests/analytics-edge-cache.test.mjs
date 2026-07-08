@@ -1052,6 +1052,45 @@ describe("analytics edge cache", () => {
     );
   });
 
+  test("validator-history ?window variants share a single cache entry (canonical key)", async () => {
+    const queries = [];
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv(queries);
+    const hotkey = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+    const base = `/api/v1/validators/${hotkey}/history`;
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=30d`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    const queriesAfterFirst = queries.length;
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=30d&`),
+      env,
+      ctx,
+    );
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "?window=30d& hits cache of ?window=30d",
+    );
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}`),
+      env,
+      ctx,
+    );
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "no ?window hits cache of ?window=30d",
+    );
+  });
+
   test("economics-trends ?window variants share a single cache entry (canonical key)", async () => {
     const queries = [];
     const cache = mockCaches();

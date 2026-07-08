@@ -57,6 +57,7 @@ import {
   handleExtrinsics,
   handleExtrinsic,
   canonicalSubnetHistoryCachePath,
+  canonicalValidatorHistoryCachePath,
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
   canonicalSubnetWeightsCachePath,
@@ -6258,6 +6259,29 @@ describe("canonicalSubnetHistoryCachePath", () => {
   test("falls back to raw url when window value is invalid", () => {
     const raw = "/api/v1/subnets/7/history?window=invalid";
     assert.equal(canonicalSubnetHistoryCachePath(url(raw)), raw);
+  });
+});
+
+describe("canonicalValidatorHistoryCachePath", () => {
+  const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  test("returns canonical key for valid window param", () => {
+    assert.equal(
+      canonicalValidatorHistoryCachePath(
+        url(`/api/v1/validators/${HOTKEY}/history?window=90d`),
+      ),
+      `/api/v1/validators/${HOTKEY}/history?window=90d`,
+    );
+  });
+
+  test("falls back to raw url when unknown query param is present", () => {
+    const raw = `/api/v1/validators/${HOTKEY}/history?window=30d&extra=junk`;
+    assert.equal(canonicalValidatorHistoryCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw url when window value is invalid", () => {
+    const raw = `/api/v1/validators/${HOTKEY}/history?window=invalid`;
+    assert.equal(canonicalValidatorHistoryCachePath(url(raw)), raw);
   });
 });
 

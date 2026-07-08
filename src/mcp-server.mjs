@@ -416,6 +416,7 @@ import {
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
+import { buildValidatorHistory } from "./validator-history.mjs";
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
 import {
@@ -714,8 +715,10 @@ export const MCP_INSTRUCTIONS =
   "distribution) over a 7d/30d window, get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
   "list_subnet_validators its validators ranked by stake, list_global_validators " +
-  "the network-wide validator leaderboard grouped by hotkey, and get_neuron one " +
-  "UID — use these to decide where to mine or validate. For wallet lookup, " +
+  "the network-wide validator leaderboard grouped by hotkey, get_validator_history " +
+  "a validator hotkey's cross-subnet staked-over-time and rewards-per-1000-TAO " +
+  "daily history, and get_neuron one UID — use these to decide where to mine or " +
+  "validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
   "get_account_events returns its chain-event history (optional kind filter), and " +
@@ -1170,6 +1173,27 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
   return buildNeuronHistory(rows, netuid, uid, { window: label });
 }
 
+// Cross-subnet daily history for one validator hotkey — mirrors
+// handleValidatorHistory: GROUP BY snapshot_date over neuron_daily rows where
+// validator_permit = 1, newest first, bounded by MAX_HISTORY_POINTS, shaped by
+// buildValidatorHistory. Cold D1 → point_count:0.
+async function loadValidatorHistory(ctx, hotkey, { label, days }) {
+  const run = mcpD1Runner(ctx);
+  const params = [hotkey];
+  let sql =
+    "SELECT snapshot_date, COUNT(DISTINCT netuid) AS subnet_count, " +
+    "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
+    "FROM neuron_daily WHERE hotkey = ? AND validator_permit = 1";
+  if (days != null) {
+    sql += " AND snapshot_date >= ?";
+    params.push(historyCutoff(days));
+  }
+  sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await run(sql, params);
+  return buildValidatorHistory(rows, hotkey, { window: label });
+}
+
 // One provider's detail + (optionally) its endpoints, mirroring GET
 // /api/v1/providers/{slug}{,/endpoints}. Both are artifact-backed; the endpoints
 // artifact is optional (a provider may have no endpoints artifact), so a missing
@@ -1487,6 +1511,17 @@ function requireSs58(args) {
     throw toolError(
       "invalid_params",
       "Argument `ss58` must be a valid SS58 account address (base58, 47-48 chars).",
+    );
+  }
+  return value;
+}
+
+function requireHotkey(args) {
+  const value = requireString(args, "hotkey");
+  if (!SS58_ADDRESS_PATTERN.test(value)) {
+    throw toolError(
+      "invalid_params",
+      "Argument `hotkey` must be a valid SS58 validator hotkey (base58, 47-48 chars).",
     );
   }
   return value;
@@ -4156,6 +4191,39 @@ export const MCP_TOOLS = [
       const netuid = requireNetuid(args);
       const uid = requireNonNegativeInt(args, "uid");
       return loadNeuronHistory(ctx, netuid, uid, requireHistoryWindow(args));
+    },
+  },
+  {
+    name: "get_validator_history",
+    title: "Get a validator's cross-subnet daily history",
+    description:
+      "Fetch one validator hotkey's cross-subnet daily history from the " +
+      "neuron_daily rollup: active subnet count, total stake (TAO), total " +
+      "emission (TAO), and a rewards-per-1000-TAO rate per snapshot_date, " +
+      "newest first. Each point sums across every subnet the hotkey validates " +
+      "that day. Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
+      "Use it to chart how a validator's stake and reward rate have moved over " +
+      "time across the network. Mirrors GET /api/v1/validators/{hotkey}/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkey: {
+          type: "string",
+          pattern: SS58_PATTERN_SOURCE,
+          description: "Validator hotkey (SS58 address).",
+        },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const hotkey = requireHotkey(args);
+      return loadValidatorHistory(ctx, hotkey, requireHistoryWindow(args));
     },
   },
   {
@@ -9193,6 +9261,24 @@ const TOOL_OUTPUT_SCHEMAS = {
       window: NULLABLE_STRING,
       point_count: { type: "integer" },
       points: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_validator_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: { type: "string" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        subnet_count: NULLABLE_INT,
+        total_stake_tao: ANY,
+        total_emission_tao: ANY,
+        rewards_per_1000_tao: ANY,
+      }),
     },
   },
   get_subnet_events: {

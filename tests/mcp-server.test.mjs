@@ -13403,6 +13403,87 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.match(res.body.result.content[0].text, /uid/);
   });
 
+  test("get_validator_history returns cross-subnet per-day aggregates newest-first", async () => {
+    const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+    const capture = [];
+    const env = parityD1(
+      {
+        dailyAgg: [
+          {
+            snapshot_date: "2026-06-26",
+            subnet_count: 3,
+            total_stake_tao: 12_000,
+            total_emission_tao: 60,
+          },
+          {
+            snapshot_date: "2026-06-25",
+            subnet_count: 2,
+            total_stake_tao: 10_000,
+            total_emission_tao: 50,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_validator_history",
+      { hotkey: HOTKEY, window: "7d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.window, "7d");
+    assert.equal(out.point_count, 2);
+    assert.equal(out.points[0].snapshot_date, "2026-06-26");
+    assert.equal(out.points[0].subnet_count, 3);
+    assert.equal(out.points[0].rewards_per_1000_tao, 5);
+    const q = capture.find(
+      (c) => /hotkey = \? AND validator_permit = 1/.test(c.sql),
+    );
+    assert.ok(q);
+    assert.ok(q.params.includes(HOTKEY));
+    assert.ok(q.params.some((p) => /^\d{4}-\d{2}-\d{2}$/.test(p)));
+  });
+
+  test("get_validator_history (all) omits the date cutoff bind", async () => {
+    const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+    const capture = [];
+    const env = parityD1({ dailyAgg: [] }, capture);
+    const res = await callTool(
+      "get_validator_history",
+      { hotkey: HOTKEY, window: "all" },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.window, "all");
+    const q = capture.find(
+      (c) => /hotkey = \? AND validator_permit = 1/.test(c.sql),
+    );
+    assert.equal(q.params.length, 2);
+    assert.ok(!q.params.some((p) => /^\d{4}-\d{2}-\d{2}$/.test(p)));
+  });
+
+  test("get_validator_history defaults to the 30d window when omitted", async () => {
+    const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+    const env = parityD1({ dailyAgg: [] });
+    const res = await callTool("get_validator_history", { hotkey: HOTKEY }, { env });
+    assert.equal(res.body.result.structuredContent.window, "30d");
+  });
+
+  test("get_validator_history rejects an unknown window", async () => {
+    const res = await callTool("get_validator_history", {
+      hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      window: "400d",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_validator_history requires a valid hotkey", async () => {
+    const res = await callTool("get_validator_history", { hotkey: "not-ss58" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /hotkey/);
+  });
+
   test("get_subnet_concentration_history builds the per-day trend", async () => {
     const env = parityD1({
       concentrationRows: [
@@ -13611,6 +13692,11 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
       uid: 0,
     });
     assert.equal(neuronHistory.body.result.structuredContent.point_count, 0);
+
+    const validatorHistory = await callTool("get_validator_history", {
+      hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    });
+    assert.equal(validatorHistory.body.result.structuredContent.point_count, 0);
 
     const concentration = await callTool("get_subnet_concentration_history", {
       netuid: 1,
