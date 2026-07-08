@@ -27,6 +27,26 @@
         "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
       ],
       "url": "https://github.com/dogelayer-ai/dogelayer/blob/main/docs/proxy-api.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-80-dogelayer-poolinfo-types",
+      "kind": "data-artifact",
+      "name": "DogeLayer PoolInfo SCALE type registry",
+      "notes": "Public no-auth JSON PortableRegistry schema defining the SN80 DogeLayer PoolInfo on-chain commitment structure (pool_index, ip, port, domain, username, password, high_diff_port). Published in the official dogelayer-ai/dogelayer repository and loaded by dogelayer/core/chain_data/pool_info.py for encode_pool_info/decode_pool_info when validators publish stratum pool metadata to the chain.",
+      "provider": "dogelayer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/dogelayer/core/chain_data/types.json",
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/dogelayer/core/chain_data/pool_info.py",
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/dogelayer-ai/dogelayer/main/dogelayer/core/chain_data/types.json"
     }
   ]
 }

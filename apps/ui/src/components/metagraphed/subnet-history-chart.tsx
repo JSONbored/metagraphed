@@ -82,7 +82,7 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
       ) : (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           {series.neurons.length > 0 ? (
-            <HistoryRow label="Neurons" series={series.neurons} color="var(--accent, #7aa2ff)" />
+            <HistoryRow label="Neurons" series={series.neurons} color="var(--accent, #00c899)" />
           ) : null}
           {series.validators.length > 0 ? (
             <HistoryRow
@@ -103,7 +103,7 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
             <HistoryRow
               label="Total emission"
               series={series.emission}
-              color="var(--accent, #7aa2ff)"
+              color="var(--accent, #00c899)"
               format={taoStr}
             />
           ) : null}
