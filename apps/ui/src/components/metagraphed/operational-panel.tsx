@@ -7,6 +7,8 @@ import {
   subnetHealthTrendsQuery,
   subnetEndpointsQuery,
   subnetAxonRemovalsQuery,
+  subnetServingQuery,
+  subnetPrometheusQuery,
   flattenSurfaceIncidents,
 } from "@/lib/metagraphed/queries";
 import type {
@@ -170,6 +172,8 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
             columns); #3481 (serving/prometheus) tiles wrap in alongside it. */}
           <div className="flex flex-wrap divide-x divide-border border-b border-border">
             <AxonRemovalsStat netuid={netuid} />
+            <ServingActivityStat netuid={netuid} />
+            <PrometheusActivityStat netuid={netuid} />
           </div>
 
           {!filter.isAll ? (
@@ -363,6 +367,50 @@ function AxonRemovalsStat({ netuid }: { netuid: number }) {
       value={value}
       tone={removals > 0 ? "warn" : "default"}
       hint={`Axon (serving-endpoint) removals for SN${netuid} over the ${win} window — ${removers} distinct ${removers === 1 ? "remover" : "removers"}. Source: /api/v1/subnets/{netuid}/axon-removals.`}
+    />
+  );
+}
+
+/**
+ * #3481: endpoint-announcement activity KPIs — serving (axon) and Prometheus
+ * endpoint announcements for this subnet over the trailing window, from the
+ * already-shipped subnetServingQuery / subnetPrometheusQuery (#3675). Each
+ * endpoint returns a flat window aggregate, so they render as single `Stat`
+ * tiles matching the health ribbon convention: "…" while pending, "—" on error,
+ * the distinct-announcer count otherwise.
+ */
+function ServingActivityStat({ netuid }: { netuid: number }) {
+  const { data: res, isPending, isError } = useQuery(subnetServingQuery(netuid));
+  const s = res?.data;
+  const servers = s?.distinct_servers ?? 0;
+  const win = s?.window ?? "30d";
+  const value = isError ? "—" : isPending && !s ? "…" : formatNumber(servers);
+  return (
+    <Stat
+      label={`Serving · ${win}`}
+      value={value}
+      tone={servers > 0 ? "ok" : "default"}
+      hint={`Distinct axon serving-endpoint announcers for SN${netuid} over the ${win} window — ${formatNumber(
+        s?.announcements ?? 0,
+      )} announcements. Source: /api/v1/subnets/{netuid}/serving.`}
+    />
+  );
+}
+
+function PrometheusActivityStat({ netuid }: { netuid: number }) {
+  const { data: res, isPending, isError } = useQuery(subnetPrometheusQuery(netuid));
+  const p = res?.data;
+  const exporters = p?.distinct_exporters ?? 0;
+  const win = p?.window ?? "30d";
+  const value = isError ? "—" : isPending && !p ? "…" : formatNumber(exporters);
+  return (
+    <Stat
+      label={`Prometheus · ${win}`}
+      value={value}
+      tone={exporters > 0 ? "ok" : "default"}
+      hint={`Distinct Prometheus exporter announcers for SN${netuid} over the ${win} window — ${formatNumber(
+        p?.announcements ?? 0,
+      )} announcements. Source: /api/v1/subnets/{netuid}/prometheus.`}
     />
   );
 }
