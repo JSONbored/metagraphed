@@ -219,6 +219,54 @@
         "https://github.com/bitcast-network/bitcast/blob/main/setup.py"
       ],
       "url": "https://raw.githubusercontent.com/bitcast-network/bitcast/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-validator-briefs-api",
+      "kind": "subnet-api",
+      "name": "Bitcast validator briefs API",
+      "notes": "Public no-auth GET /api/v2/validator/briefs on bitcast-api.bitcast.network — the live incentivized YouTube brief definitions (id, brief text, reward pool, dates) that SN93 Bitcast validators score miners against. Declared no-auth (global security: none) in the subnet's own OpenAPI spec on the same host as its registered openapi + health surfaces.",
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://bitcast-api.bitcast.network/openapi.json"],
+      "url": "https://bitcast-api.bitcast.network/api/v2/validator/briefs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-validator-pools-api",
+      "kind": "subnet-api",
+      "name": "Bitcast validator pools API",
+      "notes": "Public no-auth GET /api/v2/validator/pools on bitcast-api.bitcast.network — the live reward-pool definitions (name, active flag, keywords, promoted accounts) that partition SN93 Bitcast brief incentives. Declared no-auth (global security: none) in the subnet's own OpenAPI spec on the same host as its registered openapi + health surfaces.",
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://bitcast-api.bitcast.network/openapi.json"],
+      "url": "https://bitcast-api.bitcast.network/api/v2/validator/pools"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-validator-x-briefs-api",
+      "kind": "subnet-api",
+      "name": "Bitcast validator X briefs API",
+      "notes": "Public no-auth GET /api/v2/validator/x-briefs on bitcast-api.bitcast.network — the live incentivized X (Twitter) brief definitions (id, brief text, display copy) that SN93 Bitcast validators score X-platform miners against. Declared no-auth (global security: none) in the subnet's own OpenAPI spec on the same host as its registered openapi + health surfaces.",
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://bitcast-api.bitcast.network/openapi.json"],
+      "url": "https://bitcast-api.bitcast.network/api/v2/validator/x-briefs"
     }
   ]
 }
