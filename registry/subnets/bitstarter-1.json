@@ -172,6 +172,24 @@
         "confidence": "medium"
       },
       "notes": "Public no-auth GET returning operational status JSON on the official Bitstarter updates/crowdfund host linked from app.bitstarter.ai project pages."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-91-alphacore-task-config",
+      "kind": "data-artifact",
+      "name": "AlphaCore task-generation config",
+      "notes": "Public no-auth static YAML data file committed in SN91 Bitstarter's official AlphaCoreBittensor/alphacore repository — the validator's task-generation configuration (providers, resource families, and task banks) loaded by the TaskGenerationPipeline via ALPHACORE_CONFIG to construct miner tasks. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo.",
+      "provider": "alphacore",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "source_urls": [
+        "https://github.com/AlphaCoreBittensor/alphacore/blob/main/modules/task_config.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/AlphaCoreBittensor/alphacore/main/modules/task_config.yaml"
     }
   ],
   "social": {
