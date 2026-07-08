@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Waves, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CandidateChip, CurationChip, ReviewChip } from "@/components/metagraphed/chips";
 import { ExternalLink } from "@/components/metagraphed/external-link";
@@ -18,6 +18,8 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
@@ -48,6 +50,7 @@ import {
   subnetWeightSettersQuery,
   subnetWeightsQuery,
   subnetIdentityHistoryQuery,
+  subnetStakeFlowQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -543,6 +546,43 @@ function SurfacesPanel({ netuid }: { netuid: number }) {
 
 // On-chain activity stream (#1345): first-party SubtensorModule events for this
 // subnet, decoded direct from finney and served from /api/v1/subnets/{netuid}/events.
+function StakeFlowScorecard({ netuid }: { netuid: number }) {
+  const { data: res } = useQuery(subnetStakeFlowQuery(netuid));
+  const card = res?.data;
+  if (!card) return null;
+  const net = card.net_flow_tao;
+  const netTone: "ok" | "down" | "default" = net > 0 ? "ok" : net < 0 ? "down" : "default";
+  return (
+    <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <StatTile
+        icon={ArrowDownToLine}
+        eyebrow="Staked in"
+        value={`${taoCompact(card.total_staked_tao)} τ`}
+        hint={`${formatNumber(card.stake_events)} stake events`}
+      />
+      <StatTile
+        icon={ArrowUpFromLine}
+        eyebrow="Unstaked out"
+        value={`${taoCompact(card.total_unstaked_tao)} τ`}
+        hint={`${formatNumber(card.unstake_events)} unstake events`}
+      />
+      <StatTile
+        icon={Waves}
+        eyebrow="Net flow"
+        tone={netTone}
+        value={`${taoCompact(net)} τ`}
+        hint={net > 0 ? "net inflow" : net < 0 ? "net outflow" : "balanced"}
+      />
+      <StatTile
+        icon={Activity}
+        eyebrow="Total events"
+        value={formatNumber(card.stake_events + card.unstake_events)}
+        hint={`over ${card.window}`}
+      />
+    </div>
+  );
+}
+
 function ActivityPanel({ netuid }: { netuid: number }) {
   return (
     <SectionAnchor
@@ -551,6 +591,7 @@ function ActivityPanel({ netuid }: { netuid: number }) {
       subtitle="First-party chain events for this subnet, newest first."
       info="Registrations, stake, weights, axon, delegation, lifecycle, and transfers decoded directly from finney System.Events for recent finalized blocks (the rolling first-party event window) — not Taostats."
     >
+      <StakeFlowScorecard netuid={netuid} />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-32 w-full" />}>
           <ActivityTableLoader netuid={netuid} />
