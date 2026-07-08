@@ -150,6 +150,7 @@ import type {
   SubnetNeuronHistoryPoint,
   SubnetStakeTransfers,
   SubnetRegistrations,
+  SubnetStakeFlow,
   SubnetMovers,
   SubnetMover,
   MetagraphNeuron,
@@ -3622,6 +3623,36 @@ export const subnetHealthQuery = (netuid: number) =>
  * newest first, from the account_events tier filtered by netuid. Schema-stable
  * zero for a cold/unknown subnet.
  */
+// #3342: per-subnet stake-flow scorecard — net capital movement (staked in /
+// unstaked out / signed net) over the window. A cold store returns all-zero
+// totals (never 404); the normalizer coerces every numeric to 0, never NaN.
+export function normalizeSubnetStakeFlow(netuid: number, raw: unknown): SubnetStakeFlow {
+  const d = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    window: firstString(d.window) ?? "30d",
+    total_staked_tao: coerceFiniteNumber(d.total_staked_tao) ?? 0,
+    total_unstaked_tao: coerceFiniteNumber(d.total_unstaked_tao) ?? 0,
+    net_flow_tao: coerceFiniteNumber(d.net_flow_tao) ?? 0,
+    stake_events: firstFiniteNumber(d.stake_events) ?? 0,
+    unstake_events: firstFiniteNumber(d.unstake_events) ?? 0,
+  };
+}
+
+export const subnetStakeFlowQuery = (netuid: number, window = "30d") =>
+  queryOptions({
+    queryKey: k("subnet-stake-flow", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetStakeFlow>>(`/api/v1/subnets/${netuid}/stake-flow`, {
+        params: { window },
+        signal,
+      });
+      return { data: normalizeSubnetStakeFlow(netuid, res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
 export const subnetEventsQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-events", netuid),

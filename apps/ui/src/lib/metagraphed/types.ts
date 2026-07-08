@@ -1510,6 +1510,18 @@ export interface SubnetRegistrations {
   registrations_per_registrant: number | null;
 }
 
+/** Per-subnet stake-flow scorecard from /api/v1/subnets/{netuid}/stake-flow (#3342). */
+export interface SubnetStakeFlow {
+  schema_version: number;
+  netuid: number;
+  window: string;
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+}
+
 /** One subnet's movement over the comparison window on the /subnets/movers board. */
 export interface SubnetMover {
   netuid: number;
