@@ -430,7 +430,7 @@ test("loadStagedSubnetHyperparams returns purge_failed when legacy count lookup 
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
         return {
-          bind: (...v) => ({
+          bind: (..._v) => ({
             async run() {
               return { meta: { changes: 0 } };
             },
