@@ -91,6 +91,26 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-network-statistics",
+      "kind": "data-artifact",
+      "name": "Ridges network statistics",
+      "notes": "Public no-auth GET /retrieval/network-statistics on the Ridges agent API returning aggregate SWE-agent network statistics (score_improvement_24_hrs, agents_created_24_hrs, top_score). Defined without auth as @router.get(\"/network-statistics\") in the official ridgesai/ridges repo (api/endpoints/retrieval.py) and documented as a security-free GET in the registered OpenAPI spec; agent-upload.ridges.ai is the DEFAULT_API_BASE_URL in the official ridgesai/ridges miner CLI. Distinct from the top-agents leaderboard surface. Verified 200 application/json.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rust-toml"
+      },
+      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/retrieval.py",
+        "https://agent-upload.ridges.ai/openapi.json"
+      ],
+      "url": "https://agent-upload.ridges.ai/retrieval/network-statistics"
     }
   ],
   "contact": "hello@ridges.ai"
