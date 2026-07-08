@@ -318,6 +318,12 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/subnets/7/metagraph",
       "/api/v1/testnet/subnets/7/hyperparameters",
       "/api/v1/testnet/subnets/7/validators",
+      // Cross-subnet validator drill-in routes read the same mainnet-only
+      // neurons D1 tier as /api/v1/validators — must not fall through to a
+      // testnet R2 read either.
+      `/api/v1/testnet/validators/${SS58}`,
+      `/api/v1/testnet/validators/${SS58}/nominators`,
+      `/api/v1/testnet/validators/${SS58}/history`,
       "/api/v1/testnet/subnets/7/events",
       "/api/v1/testnet/subnets/7/health",
       // D1-backed per-subnet analytics: also mainnet-only, must not fall through

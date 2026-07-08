@@ -2400,6 +2400,9 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/graphql" ||
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/validators" ||
+    VALIDATOR_DETAIL_PATH_PATTERN.test(pathname) ||
+    VALIDATOR_NOMINATORS_PATH_PATTERN.test(pathname) ||
+    VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/subnets/movers" ||
