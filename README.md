@@ -125,7 +125,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**128 curated subnets** — 108 with a site, 44 with docs, 110 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**128 curated subnets** — 115 with a site, 44 with docs, 117 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -167,9 +167,9 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[OxMarkets](https://metagraph.sh/subnets/35)** `SN35` · [site](https://www.0xmarkets.io/) · [repo](https://github.com/General-Tao-Ventures/cartha-validator)
 - **[Eirel](https://metagraph.sh/subnets/36)** `SN36` · [site](https://eirel.ai/) · [repo](https://github.com/RendixNetwork/eirel-ai)
 - **[Aurelius](https://metagraph.sh/subnets/37)** `SN37` · [site](https://aureliusaligned.ai/) · [repo](https://github.com/Aurelius-Protocol/Aurelius-Protocol)
-- **[ChronoLLM](https://metagraph.sh/subnets/38)** `SN38` · [repo](https://github.com/chronollm/sn38)
+- **[ChronoLLM](https://metagraph.sh/subnets/38)** `SN38` · [site](https://chronollm.crunchdao.com/) · [repo](https://github.com/chronollm/sn38)
 - **[Basilica](https://metagraph.sh/subnets/39)** `SN39` — `compute` · [site](https://www.basilica.ai/) · [repo](https://github.com/one-covenant/basilica)
-- **[Chunking](https://metagraph.sh/subnets/40)** `SN40` — `data-pipeline` `rag` · [site](https://subnet.chunking.com/)
+- **[Chunking](https://metagraph.sh/subnets/40)** `SN40` — `data-pipeline` `rag` · [site](https://subnet.chunking.com/) · [repo](https://github.com/RalphLabsAI/ralph)
 - **[Almanac](https://metagraph.sh/subnets/41)** `SN41` · [site](https://almanac.market/) · [repo](https://github.com/sportstensor/sn41)
 - **[Gopher](https://metagraph.sh/subnets/42)** `SN42` — `data` `tee` · [site](https://developers.gopher-ai.com/) · [docs](https://developers.gopher-ai.com/docs/subnet/intro) · [repo](https://github.com/gopher-lab/subnet-42)
 - **[Graphite](https://metagraph.sh/subnets/43)** `SN43` — `optimization` `research` · [site](https://graphite-ai.net/) · [repo](https://github.com/GraphiteAI/Graphite-Subnet)
@@ -179,7 +179,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[EvolAI](https://metagraph.sh/subnets/47)** `SN47` — `data` · [repo](https://github.com/openevolai/evolai)
 - **[Quantum Compute](https://metagraph.sh/subnets/48)** `SN48` — `compute` `quantum` · [site](https://www.qbittensorlabs.com/) · [repo](https://github.com/qbittensor-labs/quantum-compute)
 - **[Nepher Robotics](https://metagraph.sh/subnets/49)** `SN49` — `robotics` `tournament` · [site](https://nepher.ai) · [docs](https://docs.nepher.ai/) · [repo](https://github.com/nepher-ai/nepher-subnet)
-- **[Synth](https://metagraph.sh/subnets/50)** `SN50`
+- **[Synth](https://metagraph.sh/subnets/50)** `SN50` · [site](https://synthdata.co/) · [repo](https://github.com/mode-network/synth-subnet)
 - **[lium.io](https://metagraph.sh/subnets/51)** `SN51` · [site](https://lium.io/) · [repo](https://github.com/Datura-ai/lium-io)
 - **[Dojo](https://metagraph.sh/subnets/52)** `SN52` — `tensorplex` · [site](https://www.tensorplex.ai/) · [docs](https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism) · [repo](https://github.com/tensorplex-labs/dojo)
 - **[EfficientFrontier](https://metagraph.sh/subnets/53)** `SN53` — `defi` `financial-trading` `trading-strategies` · [site](https://www.signalplus.com/) · [repo](https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier)
@@ -189,7 +189,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Sparket](https://metagraph.sh/subnets/57)** `SN57` — `prediction-market` `sports` · [site](https://sparket.ai/) · [repo](https://github.com/sparket-ai/sparket-ai)
 - **[Handshake58](https://metagraph.sh/subnets/58)** `SN58` — `ai-marketplace` `payments` · [site](https://handshake58.com) · [docs](https://handshake58.com/skill.md) · [repo](https://github.com/Handshake58/HS58-subnet)
 - **[Babelbit](https://metagraph.sh/subnets/59)** `SN59` · [site](https://babelbit.ai/) · [repo](https://github.com/babelbit/babelbit_subnet)
-- **[Bitsec](https://metagraph.sh/subnets/60)** `SN60`
+- **[Bitsec](https://metagraph.sh/subnets/60)** `SN60` · [site](https://bitsec.ai/) · [repo](https://github.com/Bitsec-AI/sandbox)
 - **[RedTeam](https://metagraph.sh/subnets/61)** `SN61` — `cybersecurity` · [site](https://www.theredteam.io/) · [docs](https://docs.theredteam.io/) · [repo](https://github.com/RedTeamSubnet/RedTeam)
 - **[Ridges](https://metagraph.sh/subnets/62)** `SN62` — `agents` · [site](https://www.ridges.ai/) · [repo](https://github.com/ridgesai/ridges)
 - **[Enigma](https://metagraph.sh/subnets/63)** `SN63` — `quantum` · [site](https://www.qbittensorlabs.com/) · [repo](https://github.com/qbittensor-labs/enigma)
@@ -198,7 +198,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[ninja](https://metagraph.sh/subnets/66)** `SN66` — `software-engineering` `workflow` · [site](https://ninja.arbos.life/) · [docs](https://github.com/unarbos/tau/blob/main/README.md) · [repo](https://github.com/unarbos/tau)
 - **[Harnyx](https://metagraph.sh/subnets/67)** `SN67` · [site](https://harnyx.ai/) · [repo](https://github.com/harnyx/harnyx)
 - **[NOVA](https://metagraph.sh/subnets/68)** `SN68` · [site](https://www.metanova-labs.ai/) · [repo](https://github.com/metanova-labs/nova)
-- **[ain](https://metagraph.sh/subnets/69)** `SN69`
+- **[ain](https://metagraph.sh/subnets/69)** `SN69` · [site](https://www.heraldmedia.ai/)
 - **[NexisGen](https://metagraph.sh/subnets/70)** `SN70` · [site](https://nexisgen.ai/) · [repo](https://github.com/RendixNetwork/nexisgen)
 - **[Leadpoet](https://metagraph.sh/subnets/71)** `SN71` · [site](https://leadpoet.com/) · [repo](https://github.com/leadpoet/leadpoet)
 - **[StreetVision by NATIX](https://metagraph.sh/subnets/72)** `SN72` — `computer-vision` `data` `depin` · [site](https://www.natix.network/) · [docs](https://docs.natix.network/whitepaper) · [repo](https://github.com/natixnetwork/streetvision-subnet)
@@ -206,13 +206,13 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Gittensor](https://metagraph.sh/subnets/74)** `SN74` — `developer-tools` `repositories` · [site](https://gittensor.io/) · [docs](https://docs.gittensor.io/) · [repo](https://github.com/entrius/gittensor)
 - **[Hippius](https://metagraph.sh/subnets/75)** `SN75` — `depin` `storage` · [site](https://hippius.com/) · [docs](https://docs.hippius.com/) · [repo](https://github.com/thenervelab/hippius-validator)
 - **[Byzantium](https://metagraph.sh/subnets/76)** `SN76` · [site](https://www.byzantiumai.net/) · [repo](https://github.com/byzantiumaitao-arch/byzantium)
-- **[Liquidity](https://metagraph.sh/subnets/77)** `SN77`
+- **[Liquidity](https://metagraph.sh/subnets/77)** `SN77` · [site](https://sn77.xyz/) · [repo](https://github.com/creativebuilds/sn77)
 - **[Vocence](https://metagraph.sh/subnets/78)** `SN78` · [site](https://www.vocence.ai/) · [repo](https://github.com/vocence-78/vocence)
 - **[MVTRX](https://metagraph.sh/subnets/79)** `SN79` · [site](https://taos.im/) · [docs](https://simulate.trading/taos-im-paper) · [repo](https://github.com/taos-im/sn-79)
 - **[dogelayer](https://metagraph.sh/subnets/80)** `SN80`
 - **[Grail](https://metagraph.sh/subnets/81)** `SN81` — `decentralized-training` · [docs](https://github.com/one-covenant/grail/tree/main/docs) · [repo](https://github.com/one-covenant/grail)
 - **[Compelle](https://metagraph.sh/subnets/82)** `SN82` · [site](https://compelle.com/) · [repo](https://github.com/compelle/compelle-validator)
-- **[CliqueAI](https://metagraph.sh/subnets/83)** `SN83`
+- **[CliqueAI](https://metagraph.sh/subnets/83)** `SN83` · [site](https://cliqueai.toptensor.ai/) · [repo](https://github.com/toptensor/CliqueAI)
 - **[ansuz](https://metagraph.sh/subnets/84)** `SN84` — `chip-design` `hardware` · [site](https://www.chipforge.io/) · [docs](https://docs.chipforge.io/) · [repo](https://github.com/TatsuProject/ChipForge_SN84)
 - **[Vidaio](https://metagraph.sh/subnets/85)** `SN85` · [site](https://vidaio.io/) · [repo](https://github.com/vidaio-subnet/vidaio-subnet)
 - **[Subnet 86](https://metagraph.sh/subnets/86)** `SN86`
@@ -234,7 +234,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[ConnitoAI](https://metagraph.sh/subnets/102)** `SN102` · [site](https://connito.ai/) · [repo](https://github.com/Connito-AI/Connito)
 - **[Djinn](https://metagraph.sh/subnets/103)** `SN103` · [site](https://www.djinn.gg/) · [repo](https://github.com/Djinn-Inc/djinn)
 - **[for sale (burn to uid1)](https://metagraph.sh/subnets/104)** `SN104` — `no-public-project-surface`
-- **[Beam](https://metagraph.sh/subnets/105)** `SN105` · [site](https://b1m.ai/)
+- **[Beam](https://metagraph.sh/subnets/105)** `SN105` · [site](https://b1m.ai/) · [repo](https://github.com/orgs/Beam-Network/repositories)
 - **[Nodexo](https://metagraph.sh/subnets/106)** `SN106` — `compute` `gpu` · [site](https://nodexo.ai/) · [docs](https://docs.nodexo.ai/) · [repo](https://github.com/nodexo-ai/nodexo)
 - **[Minos](https://metagraph.sh/subnets/107)** `SN107` · [site](https://theminos.ai/) · [repo](https://github.com/minos-protocol/minos_subnet)
 - **[TalkHead](https://metagraph.sh/subnets/108)** `SN108` · [site](https://www.talkhead.ai/) · [repo](https://github.com/talkheadai/talkhead-subnet)
@@ -256,7 +256,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Swarm](https://metagraph.sh/subnets/124)** `SN124` · [site](https://www.swarm124.com/) · [repo](https://github.com/swarm-subnet/swarm)
 - **[8 Ball](https://metagraph.sh/subnets/125)** `SN125` — `prediction-market` · [site](https://8ball125.com/) · [docs](https://github.com/Barbariandev/8Ball_miner#readme) · [repo](https://github.com/Barbariandev/8Ball_miner)
 - **[Poker44](https://metagraph.sh/subnets/126)** `SN126` · [site](https://poker44.net/) · [repo](https://github.com/Poker44/Poker44-subnet)
-- **[Astrid](https://metagraph.sh/subnets/127)** `SN127`
+- **[Astrid](https://metagraph.sh/subnets/127)** `SN127` · [site](https://www.astrid.global/) · [repo](https://github.com/astridintelligence/sn-127)
 
 <sub>Auto-generated from the curated overlays in `registry/subnets/` by `scripts/generate-registry-readme-section.mjs` — enrich a subnet (one PR) and it appears here. Not the live list; browse + monitor everything at [metagraph.sh](https://metagraph.sh).</sub>
 
