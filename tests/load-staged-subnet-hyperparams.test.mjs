@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHmac } from "node:crypto";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test, vi } from "vitest";
 import { loadStagedSubnetHyperparams } from "../workers/api.mjs";
 
@@ -55,7 +59,12 @@ function signedEnvelope(
   const payload =
     expected_netuid_count == null && captured_at == null
       ? JSON.stringify(rows)
-      : JSON.stringify({ rows, expected_netuid_count, captured_at });
+      : JSON.stringify({
+          rows,
+          refreshed_netuids: undefined,
+          captured_at,
+          expected_netuid_count,
+        });
   const envelope = {
     schema_version: 1,
     hmac_sha256: createHmac("sha256", key).update(payload).digest("hex"),
@@ -157,6 +166,36 @@ function mockEnv({
     jsonCalls,
   };
 }
+
+test("loadStagedSubnetHyperparams accepts envelopes signed by sign-staged-neurons.mjs", async () => {
+  const table = new Map();
+  const m = statefulEnv(table);
+  const row = hyperparamsRow(1);
+  const dir = mkdtempSync(path.join(tmpdir(), "hyperparams-sign-roundtrip-"));
+  const input = path.join(dir, "in.json");
+  const output = path.join(dir, "out.json");
+  writeFileSync(
+    input,
+    JSON.stringify({
+      rows: [row],
+      expected_netuid_count: 1,
+      captured_at: row.captured_at,
+    }),
+  );
+  execFileSync(
+    process.execPath,
+    ["scripts/sign-staged-neurons.mjs", input, output],
+    {
+      env: { ...process.env, METAGRAPH_STAGING_SIGNING_KEY: SIGNING_KEY },
+    },
+  );
+  m.env.METAGRAPH_STAGING_SIGNING_KEY = SIGNING_KEY;
+  m.env.METAGRAPH_ARCHIVE._staged = JSON.parse(readFileSync(output, "utf8"));
+  const r = await loadStagedSubnetHyperparams(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.rows, 1);
+  assert.equal(r.purged, 0);
+});
 
 test("loadStagedSubnetHyperparams loads JSON via parameterized batches + deletes it (#4306)", async () => {
   const rows = Array.from({ length: 5 }, (_, i) => hyperparamsRow(i + 1));

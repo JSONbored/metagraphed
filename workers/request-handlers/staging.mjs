@@ -484,7 +484,16 @@ function subnetHyperparamsStagingSignPayload(
   if (expected_netuid_count == null && captured_at == null) {
     return JSON.stringify(rows);
   }
-  return JSON.stringify({ rows, expected_netuid_count, captured_at });
+  // Property order must match scripts/sign-staged-neurons.mjs (rows,
+  // refreshed_netuids, captured_at, expected_netuid_count) — undefined keys
+  // are omitted by JSON.stringify but captured_at must precede
+  // expected_netuid_count or the HMAC will not verify.
+  return JSON.stringify({
+    rows,
+    refreshed_netuids: undefined,
+    captured_at,
+    expected_netuid_count,
+  });
 }
 
 function validStagedSubnetHyperparamsRow(row) {
