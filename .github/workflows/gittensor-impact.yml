@@ -1,0 +1,40 @@
+name: Gittensor Impact
+
+# Publishes the Gittensor SN74 impact card (dark/light SVG comparing Gittensor
+# vs non-Gittensor contribution on this repo) as GitHub Release assets on a
+# schedule. Third-party action pinned past its last tagged release (v1.1.4)
+# to pick up the per-repo API endpoint fix — see the pinned SHA's commit.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "40 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gittensor-impact
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Scoped here rather than at workflow level (defense-in-depth): this is the
+    # only job that needs write access, to publish SVG assets to the pinned
+    # `gittensor-impact` release via matthewevans/gittensor-impact-action.
+    permissions:
+      contents: write
+    # matthewevans/gittensor-impact-action is a ~1.5-day-old repo; require a
+    # human approval before it runs with contents:write, on top of the SHA pin.
+    environment: gittensor-impact
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Generate and publish Gittensor impact card
+        uses: matthewevans/gittensor-impact-action@397fd470899cba47367458289a374eea9cb0d76a # main, 2026-07-06 (#1 per-repo API endpoint)
+        with:
+          title: Metagraphed

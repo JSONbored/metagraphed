@@ -122,6 +122,8 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 
 **Scoring and rewards are not ours to grant.** Contribution scoring and any Gittensor rewards are set by the subnet's on-chain hyperparameters and validators, not by this repo. Merging a PR is not a promise of score, ranking, or compensation, and all review decisions are at maintainer discretion and final.
 
+**This repository is itself Gittensor-listed.** PRs merged here by registered miners may earn TAO under the subnet's own rules — see the badge in `README.md` for a live, aggregate merged-PR/line-count summary. That eligibility and scoring is Gittensor's, not ours, and doesn't change the review bar above.
+
 ## Deeper docs
 
 - [`docs/curation-playbook.md`](docs/curation-playbook.md) — what to curate and in what order.
