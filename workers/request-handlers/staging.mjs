@@ -476,8 +476,15 @@ export async function loadStagedNeurons(env) {
   return { ok: true, rows: rows.length, purged };
 }
 
-function subnetHyperparamsStagingSignPayload(rows) {
-  return JSON.stringify(rows);
+function subnetHyperparamsStagingSignPayload(
+  rows,
+  expected_netuid_count,
+  captured_at,
+) {
+  if (expected_netuid_count == null && captured_at == null) {
+    return JSON.stringify(rows);
+  }
+  return JSON.stringify({ rows, expected_netuid_count, captured_at });
 }
 
 function validStagedSubnetHyperparamsRow(row) {
@@ -505,10 +512,11 @@ function validStagedSubnetHyperparamsRow(row) {
 // bounded, schema-valid rows through the METAGRAPH_HEALTH_DB binding (no
 // API-token D1 permission needed) with PARAMETERIZED inserts.
 //
-// Unlike loadStagedNeurons, every fetch covers ALL active subnets in one run
-// (get_subnet_hyperparameters has no bulk variant, but the fetch script loops
-// every netuid every time — no "refreshed_netuids" partial-coverage concept
-// needed here). ~129 rows today is far smaller than the neuron snapshot, so no
+// Unlike loadStagedNeurons, every successful fetch is expected to cover ALL
+// active subnets in one run. The fetch script stamps expected_netuid_count on
+// the signed envelope; loadStagedSubnetHyperparams refuses to prune when that
+// completeness contract is unmet (or, for legacy bare-array envelopes, when
+// row count collapsed vs the live table).
 // backup/rollback complexity: each upsert batch is independently an atomic D1
 // transaction and idempotent (INSERT OR REPLACE), so a failed batch leaves
 // only correctly-upserted rows behind — safe to leave as-is, since the staged
@@ -559,7 +567,11 @@ export async function loadStagedSubnetHyperparams(env) {
   }
   const expected = await hmacHex(
     signingKey,
-    subnetHyperparamsStagingSignPayload(rows),
+    subnetHyperparamsStagingSignPayload(
+      rows,
+      envelope.expected_netuid_count,
+      envelope.captured_at,
+    ),
   );
   if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
     await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
@@ -598,25 +610,62 @@ export async function loadStagedSubnetHyperparams(env) {
     return { ok: false, reason: "load_failed" };
   }
   const netuidsInSnapshot = rows.map((row) => row.netuid);
-  let purged;
-  try {
-    const result = await db
-      .prepare(
-        `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${netuidsInSnapshot
-          .map(() => "?")
-          .join(",")})`,
-      )
-      .bind(...netuidsInSnapshot)
-      .run();
-    purged = result?.meta?.changes ?? 0;
-  } catch {
-    // Upserts already committed; only the stale-subnet prune failed. Keep the
-    // staged object so the next cron retries (a redundant but harmless
-    // re-upsert either way).
-    return { ok: false, reason: "purge_failed" };
+  const expectedNetuidCount = envelope.expected_netuid_count;
+  const hasCompletenessContract = Number.isInteger(expectedNetuidCount);
+  let canPrune = true;
+  if (hasCompletenessContract) {
+    canPrune =
+      expectedNetuidCount > 0 && rows.length === expectedNetuidCount;
+    if (!canPrune) {
+      console.warn(
+        `loadStagedSubnetHyperparams: incomplete snapshot (${rows.length}/${expectedNetuidCount}); skipping prune`,
+      );
+    }
+  } else {
+    // Legacy bare-array envelopes lack a completeness marker — refuse to prune
+    // when coverage collapsed vs the live table (mirrors fetch-metagraph.mjs).
+    let priorCount = 0;
+    try {
+      const countRow = await db
+        .prepare(`SELECT COUNT(*) AS c FROM subnet_hyperparams`)
+        .first();
+      priorCount = Number(countRow?.c ?? 0);
+    } catch {
+      return { ok: false, reason: "purge_failed" };
+    }
+    if (priorCount > 0 && rows.length < priorCount / 2) {
+      canPrune = false;
+      console.warn(
+        `loadStagedSubnetHyperparams: legacy snapshot row count collapsed (${rows.length}/${priorCount}); skipping prune`,
+      );
+    }
+  }
+  let purged = 0;
+  if (canPrune) {
+    try {
+      const result = await db
+        .prepare(
+          `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${netuidsInSnapshot
+            .map(() => "?")
+            .join(",")})`,
+        )
+        .bind(...netuidsInSnapshot)
+        .run();
+      purged = result?.meta?.changes ?? 0;
+    } catch {
+      // Upserts already committed; only the stale-subnet prune failed. Keep the
+      // staged object so the next cron retries (a redundant but harmless
+      // re-upsert either way).
+      return { ok: false, reason: "purge_failed" };
+    }
   }
   await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
-  return { ok: true, rows: rows.length, purged };
+  return {
+    ok: true,
+    rows: rows.length,
+    purged,
+    ...(canPrune ? {} : { prune_skipped: true }),
+  };
 }
 
 // Load a staged chain-event batch from R2 into D1 (#1346, epic #1345). The

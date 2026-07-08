@@ -94,6 +94,11 @@ def to_flag(value):
     return 1 if value else 0
 
 
+def coverage_snapshot_complete(rows_count, netuids_count, errors):
+    """True only when every active netuid produced a hyperparameter row."""
+    return not errors and rows_count == netuids_count
+
+
 def main():
     import bittensor as bt  # lazy: keeps this module loadable (e.g. for unit
     # tests) without the heavy SDK installed, matching fetch-events.py's/
@@ -209,14 +214,33 @@ def main():
         )
 
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
+    # Every staged snapshot is a full-sync replacement: the Worker prunes any
+    # netuid absent from the signed rows. A partial fetch (per-netuid RPC
+    # failures or missing hyperparameters for an active netuid) must not be
+    # written — mirror fetch-metagraph.mjs's coverage-collapse guard.
+    if not coverage_snapshot_complete(len(rows), len(netuids), errors):
+        if errors:
+            sys.stderr.write(
+                f"aborting: {len(errors)}/{len(netuids)} subnet hyperparameter fetch(es) failed\n",
+            )
+            for err in errors:
+                sys.stderr.write(f"  {err}\n")
+        else:
+            sys.stderr.write(
+                f"aborting: expected {len(netuids)} row(s) but got {len(rows)} "
+                f"(active netuid without hyperparameters)\n",
+            )
+        sys.exit(1)
+    payload = {
+        "rows": rows,
+        "expected_netuid_count": len(netuids),
+        "captured_at": captured_at,
+    }
     with open(OUT, "w") as fh:
-        json.dump(rows, fh)
+        json.dump(payload, fh)
     sys.stderr.write(
-        f"wrote {len(rows)} subnet hyperparameter row(s) "
-        f"({len(errors)} error(s)) -> {OUT}\n"
+        f"wrote {len(rows)} subnet hyperparameter row(s) -> {OUT}\n",
     )
-    for err in errors:
-        sys.stderr.write(f"  {err}\n")
     if not rows:
         sys.exit(1)
 

@@ -47,14 +47,27 @@ function hyperparamsRow(netuid) {
   };
 }
 
-function signedEnvelope(rows, key = SIGNING_KEY) {
-  return {
+function signedEnvelope(
+  rows,
+  key = SIGNING_KEY,
+  { expected_netuid_count, captured_at } = {},
+) {
+  const payload =
+    expected_netuid_count == null && captured_at == null
+      ? JSON.stringify(rows)
+      : JSON.stringify({ rows, expected_netuid_count, captured_at });
+  const envelope = {
     schema_version: 1,
-    hmac_sha256: createHmac("sha256", key)
-      .update(JSON.stringify(rows))
-      .digest("hex"),
+    hmac_sha256: createHmac("sha256", key).update(payload).digest("hex"),
     rows,
   };
+  if (expected_netuid_count != null) {
+    envelope.expected_netuid_count = expected_netuid_count;
+  }
+  if (captured_at != null) {
+    envelope.captured_at = captured_at;
+  }
+  return envelope;
 }
 
 function mockEnv({
@@ -93,7 +106,7 @@ function mockEnv({
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
           prepared.push(sql);
-          return {
+          const stmt = {
             bind: (...v) => ({
               sql,
               v,
@@ -113,8 +126,21 @@ function mockEnv({
                   },
                 };
               },
+              async first() {
+                if (sql.includes("COUNT(*)")) {
+                  return { c: 0 };
+                }
+                return null;
+              },
             }),
+            async first() {
+              if (sql.includes("COUNT(*)")) {
+                return { c: 0 };
+              }
+              return null;
+            },
           };
+          return stmt;
         },
         async batch(stmts) {
           batches.push(stmts.length);
@@ -354,7 +380,19 @@ function statefulEnv(table, { failBatch = false, failPrune = false } = {}) {
                 }
                 return { meta: { changes: 0 } };
               },
+              async first() {
+                if (sql.includes("COUNT(*)")) {
+                  return { c: table.size };
+                }
+                return null;
+              },
             }),
+            async first() {
+              if (sql.includes("COUNT(*)")) {
+                return { c: table.size };
+              }
+              return null;
+            },
           };
         },
         async batch(stmts) {
@@ -374,6 +412,30 @@ function statefulEnv(table, { failBatch = false, failPrune = false } = {}) {
     table,
   };
 }
+
+test("loadStagedSubnetHyperparams keeps stale rows when completeness contract is unmet", async () => {
+  const table = new Map();
+  table.set(1, { ...hyperparamsRow(1) });
+  table.set(2, { ...hyperparamsRow(2) });
+  table.set(3, { ...hyperparamsRow(3) });
+  const m = statefulEnv(table);
+
+  const snapshot = [
+    { ...hyperparamsRow(1), tempo: 720 },
+    { ...hyperparamsRow(3), tempo: 100 },
+  ];
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope(snapshot, SIGNING_KEY, {
+    expected_netuid_count: 3,
+    captured_at: 1_750_000_000_000,
+  });
+  const r = await loadStagedSubnetHyperparams(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 0);
+  assert.equal(r.prune_skipped, true);
+  assert.deepEqual([...table.keys()].sort(), [1, 2, 3]);
+  assert.equal(table.get(1).tempo, 720);
+  assert.equal(table.get(3).tempo, 100);
+});
 
 test("loadStagedSubnetHyperparams prunes a deregistered subnet's row on the next full snapshot", async () => {
   const table = new Map();

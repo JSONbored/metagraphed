@@ -28,6 +28,7 @@ u16_ratio = _fsh.u16_ratio
 rao_to_tao_exact = _fsh.rao_to_tao_exact
 to_flag = _fsh.to_flag
 to_float = _fsh.to_float
+coverage_snapshot_complete = _fsh.coverage_snapshot_complete
 
 
 class U16RatioTest(unittest.TestCase):
@@ -92,6 +93,17 @@ class ToFloatTest(unittest.TestCase):
 
     def test_non_numeric_returns_none(self):
         self.assertIsNone(to_float("not-a-number"))
+
+
+class CoverageSnapshotCompleteTest(unittest.TestCase):
+    def test_complete_when_all_netuids_succeeded(self):
+        self.assertTrue(coverage_snapshot_complete(129, 129, []))
+
+    def test_incomplete_when_any_fetch_failed(self):
+        self.assertFalse(coverage_snapshot_complete(128, 129, ["netuid=8: timeout"]))
+
+    def test_incomplete_when_row_count_short(self):
+        self.assertFalse(coverage_snapshot_complete(128, 129, []))
 
 
 if __name__ == "__main__":
