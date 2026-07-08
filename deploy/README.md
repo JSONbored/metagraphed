@@ -209,6 +209,14 @@ One-time setup:
 4. Set an **R2 lifecycle rule** on the bucket for retention (e.g. expire after 30
    days) — the robust way, not a script-side prune.
 
+**Bare-metal / systemd deployment (self-hosted indexer box, no Railway cron
+available)**: same Dockerfile + script, built and run locally, scheduled by
+`deploy/backup/metagraphed-pg-backup.{service,timer}` instead of Railway's
+managed cron — see the header comment in that `.service` file for the exact
+setup steps. Use a distinct `BACKUP_PREFIX` per Postgres instance backed up
+to the same bucket (e.g. `indexer-postgres` vs. `postgres`) so dumps from
+different databases don't collide under one prefix.
+
 ## Backups + PITR (mandatory)
 
 Postgres holds derived state. It is **re-derivable** (re-index from the chain via
