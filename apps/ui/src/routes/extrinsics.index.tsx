@@ -18,6 +18,8 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
+import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { CopyButton } from "@/components/metagraphed/copy-button";
 import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -251,14 +253,17 @@ function ExtrinsicsTable() {
               <tr key={rowKey(x)} className="mg-row-accent hover:bg-surface/40">
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
                   {x.extrinsic_hash ? (
-                    <Link
-                      to="/extrinsics/$hash"
-                      params={{ hash: x.extrinsic_hash }}
-                      className="font-medium text-ink-strong hover:underline"
-                      title={x.extrinsic_hash}
-                    >
-                      {shortHash(x.extrinsic_hash)}
-                    </Link>
+                    <span className="inline-flex items-center gap-1 min-w-0">
+                      <Link
+                        to="/extrinsics/$hash"
+                        params={{ hash: x.extrinsic_hash }}
+                        className="font-medium text-ink-strong hover:underline truncate"
+                        title={x.extrinsic_hash}
+                      >
+                        {shortHash(x.extrinsic_hash)}
+                      </Link>
+                      <CopyButton value={x.extrinsic_hash} label="extrinsic hash" />
+                    </span>
                   ) : (
                     "—"
                   )}
@@ -282,11 +287,8 @@ function ExtrinsicsTable() {
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink">
                   {extrinsicCall(x.call_module, x.call_function)}
                 </td>
-                <td
-                  className="px-4 py-2.5 font-mono text-[11px] text-ink-muted"
-                  title={x.signer ?? undefined}
-                >
-                  {shortHash(x.signer) ?? "—"}
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                  {x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px]">
                   <SuccessBadge success={x.success} />
@@ -305,27 +307,59 @@ function ExtrinsicsTable() {
 }
 
 function HashCardOrLink({ x }: { x: Extrinsic }) {
+  const className = "block rounded border border-border bg-card p-3 min-h-11 active:bg-surface";
   const inner = (
     <>
       <div className="flex items-center justify-between gap-2">
-        <div className="font-mono text-[12px] font-medium text-ink-strong truncate">
-          {shortHash(x.extrinsic_hash) ?? "(no hash)"}
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          {x.extrinsic_hash ? (
+            <>
+              <span className="font-mono text-[12px] font-medium text-ink-strong truncate">
+                {shortHash(x.extrinsic_hash)}
+              </span>
+              <span
+                role="presentation"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <CopyButton value={x.extrinsic_hash} label="extrinsic hash" />
+              </span>
+            </>
+          ) : (
+            <span className="font-mono text-[12px] font-medium text-ink-strong">(no hash)</span>
+          )}
         </div>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="font-mono text-[11px] text-ink-muted shrink-0">
           <TimeAgo at={x.observed_at} />
         </span>
       </div>
       <div className="mt-1 font-mono text-[11px] text-ink truncate">
         {extrinsicCall(x.call_module, x.call_function)}
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
-        <span>{x.block_number != null ? `#${formatNumber(x.block_number)}` : "—"}</span>
-        <span>{shortHash(x.signer) ?? "no signer"}</span>
+      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
+        <span className="shrink-0">
+          {x.block_number != null ? `#${formatNumber(x.block_number)}` : "—"}
+        </span>
+        {x.signer ? (
+          <span
+            role="presentation"
+            className="min-w-0 max-w-[55%]"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <CopyableCode value={x.signer} className="w-full" />
+          </span>
+        ) : (
+          <span>no signer</span>
+        )}
         <SuccessBadge success={x.success} />
       </div>
     </>
   );
-  const className = "block rounded border border-border bg-card p-3 min-h-11 active:bg-surface";
   return x.extrinsic_hash ? (
     <Link to="/extrinsics/$hash" params={{ hash: x.extrinsic_hash }} className={className}>
       {inner}
