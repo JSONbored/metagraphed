@@ -102,6 +102,25 @@
         "submitted_by": "devmixa702"
       },
       "notes": "Official Trishool documentation site (docs.trishool.ai), hosted on the subnet's own domain and linked from the official website trishool.ai."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-23-trishool-submission-schema",
+      "kind": "data-artifact",
+      "name": "Trishool tri-check submission schema template",
+      "notes": "Public no-auth JSON template for the tri-check / alignet-style miner submission format (Q1–Q12 prompt object keys). Used for local testing and documentation of the expected batch submission shape.",
+      "provider": "trishool",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/tri-check/README.md",
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/tri-check/data/submission_schema.json"
+      ],
+      "url": "https://raw.githubusercontent.com/TrishoolAI/trishool-phase2/main/tri-check/data/submission_schema.json"
     }
   ],
   "social": { "x": "https://x.com/trishoolai" },
