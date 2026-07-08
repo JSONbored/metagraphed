@@ -452,6 +452,24 @@ function statefulEnv(table, { failBatch = false, failPrune = false } = {}) {
   };
 }
 
+test("loadStagedSubnetHyperparams legacy envelope still prunes when shrink is below collapse threshold", async () => {
+  const table = new Map();
+  table.set(1, { ...hyperparamsRow(1) });
+  table.set(2, { ...hyperparamsRow(2) });
+  table.set(3, { ...hyperparamsRow(3) });
+  const m = statefulEnv(table);
+
+  const snapshot = [
+    { ...hyperparamsRow(1), tempo: 720 },
+    { ...hyperparamsRow(2), tempo: 100 },
+  ];
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope(snapshot);
+  const r = await loadStagedSubnetHyperparams(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 1);
+  assert.deepEqual([...table.keys()].sort(), [1, 2]);
+});
+
 test("loadStagedSubnetHyperparams skips prune when expected_netuid_count is zero", async () => {
   const table = new Map();
   table.set(1, { ...hyperparamsRow(1) });
@@ -471,6 +489,45 @@ test("loadStagedSubnetHyperparams skips prune when expected_netuid_count is zero
   assert.equal(r.purged, 0);
   assert.equal(r.prune_skipped, true);
   assert.deepEqual([...table.keys()].sort(), [1, 2]);
+});
+
+test("loadStagedSubnetHyperparams verifies HMAC when captured_at is set without expected_netuid_count", async () => {
+  const table = new Map();
+  const m = statefulEnv(table);
+  const row = hyperparamsRow(1);
+  const captured_at = 1_750_000_000_000;
+  const payload = JSON.stringify({ rows: [row], captured_at });
+  m.env.METAGRAPH_ARCHIVE._staged = {
+    schema_version: 1,
+    rows: [row],
+    captured_at,
+    hmac_sha256: createHmac("sha256", SIGNING_KEY)
+      .update(payload)
+      .digest("hex"),
+  };
+  const r = await loadStagedSubnetHyperparams(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.rows, 1);
+});
+
+test("loadStagedSubnetHyperparams legacy envelope treats missing COUNT c as zero prior rows", async () => {
+  const table = new Map();
+  const m = statefulEnv(table);
+  const basePrepare = m.env.METAGRAPH_HEALTH_DB.prepare;
+  m.env.METAGRAPH_HEALTH_DB.prepare = (sql) => {
+    const stmt = basePrepare(sql);
+    if (!sql.includes("COUNT(*)")) return stmt;
+    return {
+      bind: (...v) => stmt.bind(...v),
+      async first() {
+        return {};
+      },
+    };
+  };
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope([hyperparamsRow(1)]);
+  const r = await loadStagedSubnetHyperparams(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 0);
 });
 
 test("loadStagedSubnetHyperparams returns purge_failed when legacy count lookup fails", async () => {
