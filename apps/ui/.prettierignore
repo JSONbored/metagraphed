@@ -6,3 +6,8 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+
+# release-please regenerates this CHANGELOG on every release in its own
+# format; it is machine-generated, not prettier-gated (same precedent as the
+# root CHANGELOG.md / packages/client/CHANGELOG.md entries).
+CHANGELOG.md
