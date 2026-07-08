@@ -31,6 +31,31 @@
         "submitted_by": "nickmopen"
       },
       "notes": "Public no-auth GET returning the Perturb (SN26) backend API health as JSON (status + server timestamp). Hosted on api.perturbai.io, the API subdomain of the subnet's registered website perturbai.io."
+    },
+    {
+      "id": "sn-26-perturb-data-artifact",
+      "name": "Perturb emission burn rate",
+      "kind": "data-artifact",
+      "url": "https://api.perturbai.io/api/v1/burn-rate",
+      "provider": "perturb",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/0xsigurd/Perturb/blob/8da57e5c6a43e29392f52fe9f22883859e7a230d/perturbnet/constants.py",
+        "https://www.perturbai.io/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "notes": "Public no-auth GET returning SN26 Perturb's current emission burn rate as JSON ({\"burnRate\":0.5} observed at submission time). The endpoint is declared as BURN_RATE_ENDPOINT in the subnet's validator source (perturbnet/constants.py in the official repo, pinned above) and is served from api.perturbai.io, the same host as the already-registered health surface."
     }
   ],
   "social": {
