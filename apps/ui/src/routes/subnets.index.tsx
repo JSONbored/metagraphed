@@ -40,12 +40,13 @@ import {
   healthQuery,
   subnetHealthMapQuery,
   agentCatalogMapQuery,
+  economicsQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { joinHealth, matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
-import type { AgentCatalogSummary, Subnet } from "@/lib/metagraphed/types";
+import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
 
 // #9: a list row enriched with its agent-catalog capability fields (flattened
 // from the netuid-keyed catalog map so client-side sort/filter can read them).
@@ -55,6 +56,10 @@ type SubnetRow = Subnet & {
   integration_readiness?: number;
   readiness_tier?: string;
   service_count?: number;
+  // #3364: on-chain registration economics joined from /api/v1/economics by netuid
+  // so the Registration column (and its sort) can read them off the row.
+  registration_cost_tao?: number;
+  registration_allowed?: boolean;
 };
 
 function joinCatalog(
@@ -72,6 +77,34 @@ function joinCatalog(
       service_count: c.service_count,
     };
   });
+}
+
+// #3364: flatten the netuid-keyed economics map onto each row, mirroring
+// joinCatalog above. Best-effort: a subnet with no economics entry passes
+// through unchanged (its Registration cell renders "—").
+function joinEconomics(
+  rows: SubnetRow[],
+  economicsMap: Record<number, SubnetEconomics | undefined>,
+): SubnetRow[] {
+  return rows.map((s) => {
+    const e = economicsMap[s.netuid];
+    if (!e) return s;
+    return {
+      ...s,
+      registration_cost_tao: e.registration_cost_tao,
+      registration_allowed: e.registration_allowed,
+    };
+  });
+}
+
+// #3364: registration cost formatting mirrors EconomicsPanel's fmtTao
+// (economics-panel.tsx) so the table column reads identically to the detail tile.
+function fmtTao(v?: number): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (v >= 1) return `${v.toFixed(2)} τ`;
+  return `${v.toFixed(4)} τ`;
 }
 
 export const Route = createFileRoute("/subnets/")({
@@ -269,6 +302,17 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   const catalogMapRaw = useSuspenseQuery(agentCatalogMapQuery()).data.data;
   const catalogMap = useMemo(() => catalogMapRaw ?? {}, [catalogMapRaw]);
 
+  // #3364: per-subnet on-chain economics (already fetched once per session for the
+  // detail EconomicsPanel; shared cache). Indexed by netuid into a map and joined
+  // the same way as health/catalog so the Registration column + its sort resolve.
+  // No new endpoint — reuses economicsQuery()'s /api/v1/economics.
+  const economicsRaw = useSuspenseQuery(economicsQuery()).data.data;
+  const economicsMap = useMemo(() => {
+    const map: Record<number, SubnetEconomics> = {};
+    for (const e of economicsRaw ?? []) map[e.netuid] = e;
+    return map;
+  }, [economicsRaw]);
+
   const pages = data.pages as Array<(typeof data.pages)[number] & { cursorInvalid?: boolean }>;
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!lastPage?.cursorInvalid;
@@ -277,14 +321,17 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // re-renders the route doesn't re-flatten and re-clone every row.
   const all = useMemo(
     () =>
-      joinCatalog(
-        joinHealth(
-          pages.flatMap((p) => (p.data ?? []) as Subnet[]),
-          healthMap,
+      joinEconomics(
+        joinCatalog(
+          joinHealth(
+            pages.flatMap((p) => (p.data ?? []) as Subnet[]),
+            healthMap,
+          ),
+          catalogMap,
         ),
-        catalogMap,
+        economicsMap,
       ),
-    [pages, healthMap, catalogMap],
+    [pages, healthMap, catalogMap, economicsMap],
   );
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
@@ -623,6 +670,19 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     align="right"
                   />
                 </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
+                >
+                  <SortHeader
+                    label="Registration"
+                    field="registration_cost_tao"
+                    active={search.sort === "registration_cost_tao"}
+                    order={search.order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
                 <th className={cellPad}>Health</th>
                 <th
                   className={classNames(cellPad, "text-right")}
@@ -698,6 +758,22 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       tier={s.readiness_tier}
                       kinds={s.service_kinds}
                     />
+                  </td>
+                  <td
+                    className={classNames(
+                      cellPad,
+                      "text-right font-mono text-[11px] tabular-nums",
+                      s.registration_allowed === false ? "text-ink-muted" : "text-ink",
+                    )}
+                    title={
+                      s.registration_allowed === false
+                        ? "Registration currently closed"
+                        : s.registration_allowed === true
+                          ? "Registration open"
+                          : undefined
+                    }
+                  >
+                    {fmtTao(s.registration_cost_tao)}
                   </td>
                   <td className={cellPad}>
                     <HealthPill state={s.health} />
