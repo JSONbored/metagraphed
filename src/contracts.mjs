@@ -1038,6 +1038,12 @@ export const PUBLIC_ARTIFACTS = [
     "ValidatorDetailArtifact",
   ),
   artifact(
+    "validator-nominators",
+    "/metagraph/validators/{hotkey}/nominators.json",
+    "Nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, ranked by net/gross stake flow or recency, computed live from the account_events StakeAdded/StakeRemoved stream at /api/v1/validators/{hotkey}/nominators (no static file).",
+    "ValidatorNominatorsArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -2265,6 +2271,32 @@ export const API_ROUTES = [
     "short",
     ["validators", "analytics"],
     [],
+    [{ name: "hotkey", schema: { type: "string" } }],
+  ),
+  route(
+    "validator-nominators",
+    "GET",
+    "/api/v1/validators/{hotkey}/nominators",
+    "/metagraph/validators/{hotkey}/nominators.json",
+    "Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404.",
+    "short",
+    ["validators", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      {
+        name: "sort",
+        schema: {
+          type: "string",
+          enum: ["net_staked", "gross_staked", "last_activity"],
+        },
+      },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "coldkey", schema: { type: "string" } },
+    ],
     [{ name: "hotkey", schema: { type: "string" } }],
   ),
   route(

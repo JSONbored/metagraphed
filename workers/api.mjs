@@ -132,6 +132,7 @@ import {
   handleGlobalValidators,
   canonicalGlobalValidatorsCachePath,
   handleValidatorDetail,
+  handleValidatorNominators,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
   canonicalSubnetYieldCachePath,
@@ -328,6 +329,7 @@ import {
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
   VALIDATOR_DETAIL_PATH_PATTERN,
+  VALIDATOR_NOMINATORS_PATH_PATTERN,
   SUBNET_EVENT_SUMMARY_PATH_PATTERN,
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
@@ -1365,6 +1367,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   const validatorDetailMatch = VALIDATOR_DETAIL_PATH_PATTERN.exec(url.pathname);
   if (validatorDetailMatch) {
     return handleValidatorDetail(request, env, validatorDetailMatch[1]);
+  }
+
+  // Nominator list for one validator (#4334/7.2): account_events-derived, so
+  // dispatched like the sibling account routes (no edge cache — live/paginated).
+  const validatorNominatorsMatch = VALIDATOR_NOMINATORS_PATH_PATTERN.exec(
+    url.pathname,
+  );
+  if (validatorNominatorsMatch) {
+    return handleValidatorNominators(
+      request,
+      env,
+      validatorNominatorsMatch[1],
+      url,
+    );
   }
 
   // Cross-subnet movers leaderboard (exact path, dispatched before subnet-slug

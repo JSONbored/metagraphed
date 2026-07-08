@@ -1994,6 +1994,63 @@
           }
         }
       },
+      "ValidatorNominatorEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One nominator's StakeAdded/StakeRemoved flow to a validator over a window (#4334/7.2).",
+        "required": [
+          "coldkey",
+          "staked_tao",
+          "unstaked_tao",
+          "net_staked_tao",
+          "gross_staked_tao",
+          "event_count",
+          "last_observed_at"
+        ],
+        "properties": {
+          "coldkey": { "type": "string" },
+          "staked_tao": { "type": "number", "minimum": 0 },
+          "unstaked_tao": { "type": "number", "minimum": 0 },
+          "net_staked_tao": { "type": "number" },
+          "gross_staked_tao": { "type": "number", "minimum": 0 },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "last_observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        }
+      },
+      "ValidatorNominatorsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, ranked by net/gross stake flow or recency, served live from the account_events StakeAdded/StakeRemoved stream at /api/v1/validators/{hotkey}/nominators (no static file). Cold/absent hotkey returns an empty list, never a 404.",
+        "required": [
+          "schema_version",
+          "hotkey",
+          "window",
+          "sort",
+          "limit",
+          "offset",
+          "nominator_count",
+          "nominators"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "hotkey": { "type": "string" },
+          "window": { "type": ["string", "null"] },
+          "sort": {
+            "type": "string",
+            "enum": ["net_staked", "gross_staked", "last_activity"]
+          },
+          "limit": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "offset": { "type": "integer", "minimum": 0 },
+          "nominator_count": { "type": "integer", "minimum": 0 },
+          "nominators": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ValidatorNominatorEntry" }
+          }
+        }
+      },
       "NeuronHistoryArtifact": {
         "type": "object",
         "additionalProperties": true,

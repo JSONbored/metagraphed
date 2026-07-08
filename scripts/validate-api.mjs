@@ -470,6 +470,18 @@ const checks = [
     },
   ],
   [
+    "/api/v1/validators/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/nominators",
+    (body) => {
+      assert.equal(
+        body.data.hotkey,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      // Cold harness (no D1) → empty list, never 404.
+      assert.equal(Array.isArray(body.data.nominators), true);
+      assert.equal(typeof body.data.nominator_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/events",
     (body) => {
       assert.equal(body.data.netuid, 7);
