@@ -1997,6 +1997,36 @@ export interface ChainStakeFlow {
   net_flow_distribution: ChainStakeFlowDistribution | null;
   subnets: ChainStakeFlowSubnet[];
 }
+export interface ChainRegistrationsNetwork {
+  distinct_registrants: number;
+  registrations: number;
+  registrations_per_registrant: number;
+}
+export interface ChainRegistrationsDistribution {
+  count: number;
+  mean: number | null;
+  min: number | null;
+  p25: number | null;
+  median: number | null;
+  p75: number | null;
+  p90: number | null;
+  max: number | null;
+}
+export interface ChainRegistrationsSubnet {
+  netuid: number;
+  distinct_registrants: number;
+  registrations: number;
+  registrations_per_registrant: number;
+}
+export interface ChainRegistrations {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainRegistrationsNetwork | null;
+  intensity_distribution: ChainRegistrationsDistribution | null;
+  subnets: ChainRegistrationsSubnet[];
+}
 export interface ChainStakeMovesNetwork {
   distinct_movers: number;
   movements: number;
