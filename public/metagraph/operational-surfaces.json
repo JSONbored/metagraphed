@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 111,
+  "surface_count": 113,
   "surfaces": [
     {
       "auth_required": false,
@@ -569,6 +569,24 @@
       "surface_id": "sn-10-taofi-api",
       "surface_key": "srf-6bf50fe9203db27c",
       "url": "https://taofi-api.web.app/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 11,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "surface_id": "sn-11-trajectoryrl-miners",
+      "surface_key": "srf-e752617b3d782a38",
+      "url": "https://trajrl.com/api/miners"
     },
     {
       "auth_required": false,
@@ -1397,6 +1415,24 @@
       "surface_id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
       "surface_key": "srf-1216a921c8908de5",
       "url": "https://www.metanova-labs.ai/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 70,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "nexisgen",
+      "public_safe": true,
+      "subnet_name": "NexisGen",
+      "subnet_slug": "sn-70",
+      "surface_id": "sn-70-nexisgen-latest-total-score",
+      "surface_key": "srf-d27e72d2681f9787",
+      "url": "https://api.nexisgen.ai/v1/get_latest_total_score"
     },
     {
       "auth_required": false,
