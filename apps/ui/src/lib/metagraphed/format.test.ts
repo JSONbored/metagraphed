@@ -5,6 +5,7 @@ import {
   durationLabel,
   formatRelative,
   isStaleFreshness,
+  formatTao,
 } from "./format";
 
 describe("isUsableTimestamp", () => {
@@ -130,5 +131,35 @@ describe("isStaleFreshness", () => {
   it("honours a custom threshold", () => {
     const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
     expect(isStaleFreshness(oneHourAgo, 30 * 60_000)).toBe(true);
+  });
+});
+
+describe("formatTao", () => {
+  it("returns the em-dash fallback for nullish / non-finite input", () => {
+    expect(formatTao(undefined)).toBe("—");
+    expect(formatTao(null)).toBe("—");
+    expect(formatTao(Number.NaN)).toBe("—");
+    expect(formatTao(Infinity)).toBe("—");
+    expect(formatTao(-Infinity)).toBe("—");
+  });
+
+  it("keeps 4 decimals for zero and sub-unit amounts (< 1)", () => {
+    expect(formatTao(0)).toBe("0.0000 τ");
+    expect(formatTao(0.5)).toBe("0.5000 τ");
+    expect(formatTao(0.48213)).toBe("0.4821 τ");
+  });
+
+  it("uses 2 decimals for whole-unit amounts in [1, 1e3)", () => {
+    expect(formatTao(1)).toBe("1.00 τ"); // lower boundary — 2dp, not k-tier
+    expect(formatTao(256.5)).toBe("256.50 τ");
+    expect(formatTao(999.994)).toBe("999.99 τ");
+  });
+
+  it("switches to the k-tier at 1e3 and the M-tier at 1e6 (inclusive)", () => {
+    expect(formatTao(1_000)).toBe("1.0k τ"); // lower boundary of k-tier
+    expect(formatTao(12_345)).toBe("12.3k τ");
+    expect(formatTao(999_999)).toBe("1000.0k τ"); // still < 1e6 → k-tier
+    expect(formatTao(1_000_000)).toBe("1.00M τ"); // lower boundary of M-tier
+    expect(formatTao(2_500_000)).toBe("2.50M τ");
   });
 });
