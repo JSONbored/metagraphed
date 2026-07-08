@@ -26,6 +26,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { TableState } from "@/components/metagraphed/table-state";
 import { PageHero } from "@/components/metagraphed/page-hero";
+import { ShareButton } from "@/components/metagraphed/share-button";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { SelectFilter } from "@/components/metagraphed/table-controls";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
@@ -183,6 +184,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         }
         actions={
           <>
+            <ShareButton />
             <a
               href="#history"
               className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-colors hover:bg-accent/15"

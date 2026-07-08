@@ -8,6 +8,7 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
+import { ShareButton } from "@/components/metagraphed/share-button";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
@@ -127,6 +128,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         live
         title={`#${formatNumber(block.block_number)}`}
         description={<span className="font-mono text-sm break-all">{block.block_hash || "—"}</span>}
+        actions={<ShareButton />}
         caption="explorer / v1"
       />
 
