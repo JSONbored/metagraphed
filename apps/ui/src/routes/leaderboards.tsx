@@ -88,7 +88,11 @@ function WeightsLeaderboard() {
           <Skeleton className="h-64 w-full" />
         </div>
       ) : isError ? (
-        <ErrorState error={error} context="weight-setting activity" onRetry={() => void refetch()} />
+        <ErrorState
+          error={error}
+          context="weight-setting activity"
+          onRetry={() => void refetch()}
+        />
       ) : !data || data.subnets.length === 0 ? (
         <EmptyState
           title="No weight-setting activity yet"
@@ -109,9 +113,7 @@ function WeightsLeaderboard() {
             <StatTile
               eyebrow="Sets per setter"
               value={
-                data.network.sets_per_setter != null
-                  ? data.network.sets_per_setter.toFixed(1)
-                  : "—"
+                data.network.sets_per_setter != null ? data.network.sets_per_setter.toFixed(1) : "—"
               }
             />
           </div>
