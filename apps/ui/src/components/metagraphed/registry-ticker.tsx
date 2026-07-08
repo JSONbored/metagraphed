@@ -99,7 +99,7 @@ export function RegistryTicker() {
 
   return (
     <div className="hidden md:block border-t border-border/60 bg-surface/40">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-9 flex items-center justify-between gap-4">
+      <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center justify-between gap-4">
         {/* Left: rotating stat on md, full row on xl */}
         <div className="flex items-center gap-5 min-w-0">
           <span className="inline-flex items-center gap-1.5">

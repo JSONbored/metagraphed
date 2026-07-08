@@ -96,6 +96,7 @@
   --spacing-nav: 3.5rem; /* app header height (h-nav in app-shell) */
   --spacing-sticky-offset: 6.5rem; /* nav + filter-bar height — sticky thead anchor */
   --spacing-section-gap: 4rem; /* between top-level page sections */
+  --spacing-shell-max: 1400px; /* page shell max width (max-w-shell-max) */
 }
 
 /* ============ LIGHT (default) — Bone + Ink ============ */
