@@ -89,6 +89,24 @@
         "submitted_by": "dev-miro26"
       },
       "notes": "Public no-auth JSON data artifact of asset prices and funding rates published by the SN123 MANTIS validator — the PRICE_DATA_URL declared in the official repo's config.py (line 63). Freshness/uptime are probe-derived and not asserted here."
+    },
+    {
+      "id": "sn-123-mantis-datalog-archive",
+      "name": "MANTIS historical datalog archive",
+      "kind": "data-artifact",
+      "url": "https://pub-879ad825983e43529792665f4f510cd6.r2.dev/datalog.db",
+      "provider": "mantis",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://raw.githubusercontent.com/Barbariandev/MANTIS/main/config.py"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public no-auth downloadable SQLite datalog of the SN123 MANTIS validator's full historical multi-asset signal/price time series — the DATALOG_ARCHIVE_URL declared in the official repo's config.py, distinct from and complementary to the latest_prices.json snapshot (this is the complete historical archive, served as a SQLite database file). Verified as a live SQLite artifact (magic bytes 'SQLite format 3'). Freshness/size are probe-derived and not asserted here."
     }
   ]
 }
