@@ -17,6 +17,7 @@ import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
+import { MoversBand } from "@/components/metagraphed/movers-band";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { ScrollReveal } from "@/components/metagraphed/scroll-reveal";
 import { CoverageFunnel } from "@/components/metagraphed/analytics/coverage-funnel";
@@ -176,6 +177,11 @@ function OverviewPage() {
       </ScrollReveal>
 
       <LeaderboardsModule />
+      <QueryErrorBoundary fallback={() => null}>
+        <Suspense fallback={<Skeleton className="h-48 w-full mt-section-gap" />}>
+          <MoversBand />
+        </Suspense>
+      </QueryErrorBoundary>
 
       <QuickActionsRow />
 

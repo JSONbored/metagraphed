@@ -137,6 +137,8 @@ import type {
   SubnetNeuronHistoryPoint,
   SubnetStakeTransfers,
   SubnetRegistrations,
+  SubnetMovers,
+  SubnetMover,
   MetagraphNeuron,
   SubnetMetagraph,
   SubnetValidators,
@@ -702,6 +704,75 @@ function normalizeLeaderboards(raw: unknown): Leaderboards {
 // #1111: registry leaderboards — five live, D1-computed boards (healthiest,
 // fastest-rpc, most-complete, most-enriched, fastest-growing). One artifact carries
 // all boards; the homepage discovery module renders the top rows of each.
+function normalizeSubnetMover(raw: unknown): SubnetMover | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    stake_start_tao: coerceFiniteNumber(raw.stake_start_tao) ?? 0,
+    stake_end_tao: coerceFiniteNumber(raw.stake_end_tao) ?? 0,
+    stake_delta_tao: coerceFiniteNumber(raw.stake_delta_tao) ?? 0,
+    stake_pct_change: coerceFiniteNumber(raw.stake_pct_change) ?? null,
+    stake_share_pct: coerceFiniteNumber(raw.stake_share_pct) ?? null,
+    emission_delta_tao: coerceFiniteNumber(raw.emission_delta_tao) ?? 0,
+    validators_delta: coerceFiniteNumber(raw.validators_delta) ?? 0,
+    neurons_delta: coerceFiniteNumber(raw.neurons_delta) ?? 0,
+  };
+}
+
+// #3344: cross-subnet biggest-movers board from /api/v1/subnets/movers. Every
+// numeric cell coerces defensively; a cold store or junk payload degrades to a
+// schema-stable card (movers [], network null), never NaN.
+export function normalizeSubnetMovers(raw: unknown): SubnetMovers {
+  const d = isRecord(raw) ? raw : {};
+  const movers = Array.isArray(d.movers)
+    ? d.movers.flatMap((row) => {
+        const normalized = normalizeSubnetMover(row);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  const net = isRecord(d.network) ? d.network : null;
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    window: firstString(d.window) ?? "30d",
+    sort: firstString(d.sort) ?? "stake",
+    subnet_count: firstFiniteNumber(d.subnet_count) ?? movers.length,
+    network: net
+      ? {
+          gainers: firstFiniteNumber(net.gainers) ?? 0,
+          losers: firstFiniteNumber(net.losers) ?? 0,
+          unchanged: firstFiniteNumber(net.unchanged) ?? 0,
+        }
+      : null,
+    movers,
+  };
+}
+
+export interface SubnetMoversParams extends QueryParams {
+  window?: string;
+  sort?: string;
+  limit?: number;
+}
+
+export const subnetMoversQuery = (params: SubnetMoversParams = {}) =>
+  queryOptions({
+    queryKey: k(
+      "subnet-movers",
+      params.window ?? "30d",
+      params.sort ?? "stake",
+      params.limit ?? 20,
+    ),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetMovers>>("/api/v1/subnets/movers", {
+        params,
+        signal,
+      });
+      return { data: normalizeSubnetMovers(res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
 export const leaderboardsQuery = () =>
   queryOptions({
     queryKey: k("registry-leaderboards"),

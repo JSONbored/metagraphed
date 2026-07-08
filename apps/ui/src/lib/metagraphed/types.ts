@@ -1452,6 +1452,40 @@ export interface SubnetRegistrations {
   registrations_per_registrant: number | null;
 }
 
+/** One subnet's movement over the comparison window on the /subnets/movers board. */
+export interface SubnetMover {
+  netuid: number;
+  stake_start_tao: number;
+  stake_end_tao: number;
+  stake_delta_tao: number;
+  stake_pct_change: number | null;
+  stake_share_pct: number | null;
+  emission_delta_tao: number;
+  validators_delta: number;
+  neurons_delta: number;
+}
+
+/** Network-wide gainer/loser tallies accompanying the movers board. */
+export interface SubnetMoversNetwork {
+  gainers: number;
+  losers: number;
+  unchanged: number;
+}
+
+/**
+ * Cross-subnet biggest-movers board from /api/v1/subnets/movers (#3344): subnets
+ * ranked by how much their stake/emission/validator set changed over a window.
+ * A cold/absent store degrades to a schema-stable card (movers [], network null).
+ */
+export interface SubnetMovers {
+  schema_version: number;
+  window: string;
+  sort: string;
+  subnet_count: number;
+  network: SubnetMoversNetwork | null;
+  movers: SubnetMover[];
+}
+
 /**
  * Per-subnet neuron-deregistration (eviction) event volume over a 7d/30d window
  * (#1657), from /api/v1/subnets/{netuid}/deregistrations — the eviction-side
