@@ -118,6 +118,8 @@ import type {
   ReadinessSummary,
   Provider,
   ProviderEndpointSummary,
+  RpcEndpoint,
+  RpcEndpointsSummary,
   RpcPool,
   RpcUsage,
   SchemaInfo,
@@ -5290,6 +5292,89 @@ export const rpcPoolsQuery = () =>
     queryFn: async ({ signal }) => {
       const res = await fetchList<unknown>("/api/v1/rpc/pools", "pools", undefined, signal);
       return { ...res, data: res.data.map(normalizePool) } as ApiResult<RpcPool[]>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function countMap(raw: unknown): Record<string, number> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "number" && Number.isFinite(value)) out[key] = value;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+export function normalizeRpcEndpointsSummary(raw: unknown): RpcEndpointsSummary | null {
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  return {
+    endpoint_count: optionalNumber(s.endpoint_count),
+    archive_supported_count: optionalNumber(s.archive_supported_count),
+    by_kind: countMap(s.by_kind),
+    by_provider: countMap(s.by_provider),
+    by_status: countMap(s.by_status),
+  };
+}
+
+export function normalizeRpcEndpoint(raw: unknown): RpcEndpoint {
+  if (!raw || typeof raw !== "object") return raw as RpcEndpoint;
+  const e = raw as Record<string, unknown>;
+  return {
+    ...(e as object),
+    id: asString(e.id) ?? "",
+    netuid: optionalNumber(e.netuid) ?? 0,
+    chain: (e.chain as "bittensor") ?? "bittensor",
+    kind: (e.kind as RpcEndpoint["kind"]) ?? "subtensor-rpc",
+    url: asString(e.url) ?? "",
+    provider: asString(e.provider) ?? "",
+    status: asString(e.status) ?? "unknown",
+    health: statusToHealth(e.status) ?? "unknown",
+    latency_ms: optionalNumber(e.latency_ms) ?? null,
+    latest_block: optionalNumber(e.latest_block) ?? null,
+    archive_support: booleanValue(e.archive_support) ?? null,
+    auth_required: booleanValue(e.auth_required),
+    observed_at: asString(e.observed_at) ?? null,
+    last_checked: asString(e.last_checked) ?? null,
+    last_ok: asString(e.last_ok) ?? null,
+    error: asString(e.error) ?? null,
+    rate_limit_notes: asString(e.rate_limit_notes) ?? null,
+    classification: asString(e.classification) ?? (e.classification as string | undefined),
+    authority: asString(e.authority) ?? (e.authority as string | undefined),
+    health_source: e.health_source as RpcEndpoint["health_source"],
+    health_stale: booleanValue(e.health_stale),
+    methods_supported: (e.methods_supported as RpcEndpoint["methods_supported"]) ?? null,
+    subnet_name: asString(e.subnet_name),
+    subnet_slug: asString(e.subnet_slug),
+    network: asString(e.network),
+  } as RpcEndpoint;
+}
+
+export type RpcEndpointsQueryResult = ApiResult<RpcEndpoint[]> & {
+  summary: RpcEndpointsSummary | null;
+};
+
+export const rpcEndpointsQuery = () =>
+  queryOptions({
+    queryKey: k("rpc-endpoints"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/rpc/endpoints", { signal });
+      const payload = res.data;
+      let endpoints: unknown[] = [];
+      let summary: RpcEndpointsSummary | null = null;
+      if (Array.isArray(payload)) {
+        endpoints = payload;
+      } else if (payload && typeof payload === "object") {
+        const obj = payload as Record<string, unknown>;
+        if (Array.isArray(obj.endpoints)) endpoints = obj.endpoints;
+        summary = normalizeRpcEndpointsSummary(obj.summary);
+      }
+      return {
+        data: endpoints.map(normalizeRpcEndpoint),
+        summary,
+        meta: res.meta,
+        url: res.url,
+      } as RpcEndpointsQueryResult;
     },
     staleTime: STALE_MED,
   });

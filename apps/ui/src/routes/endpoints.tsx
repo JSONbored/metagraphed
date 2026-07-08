@@ -38,6 +38,7 @@ import { useScrolled } from "@/hooks/use-scrolled";
 import {
   endpointsQuery,
   endpointIncidentsQuery,
+  rpcEndpointsQuery,
   rpcPoolsQuery,
   providersQuery,
   subnetsQuery,
@@ -52,7 +53,7 @@ import {
   type PoolEligibility,
 } from "@/lib/metagraphed/endpoint-pool";
 
-import type { Endpoint, RpcPool, Provider, Subnet } from "@/lib/metagraphed/types";
+import type { Endpoint, RpcEndpoint, RpcPool, Provider, Subnet } from "@/lib/metagraphed/types";
 
 const endpointsSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -173,6 +174,14 @@ function EndpointsPage() {
             </QueryErrorBoundary>
           </section>
           <section>
+            <SectionHeading title="Base-layer RPC catalog" />
+            <QueryErrorBoundary>
+              <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+                <RpcEndpointsTable />
+              </Suspense>
+            </QueryErrorBoundary>
+          </section>
+          <section>
             <SectionHeading title="Callable endpoints" />
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-48 w-full" />}>
@@ -195,6 +204,7 @@ function EndpointsPage() {
           "/rpc/v1/finney",
           "/api/v1/rpc/usage",
           "/api/v1/endpoints",
+          "/api/v1/rpc/endpoints",
           "/api/v1/rpc/pools",
           "/api/v1/endpoint-incidents",
         ]}
@@ -319,6 +329,127 @@ function PoolsTable() {
       <p className="px-1 font-mono text-[10px] text-ink-muted">
         Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
         in-sync, healthy nodes and fails over automatically.
+      </p>
+    </div>
+  );
+}
+
+function rpcMethodsCount(methods: RpcEndpoint["methods_supported"]): number | null {
+  if (methods == null) return null;
+  if (Array.isArray(methods)) return methods.length;
+  if (typeof methods === "object") return Object.keys(methods).length;
+  return null;
+}
+
+function formatStatusRollup(byStatus: Record<string, number> | undefined): string | undefined {
+  if (!byStatus || !Object.keys(byStatus).length) return undefined;
+  return Object.entries(byStatus)
+    .sort((a, b) => b[1] - a[1])
+    .map(([status, count]) => `${status}: ${count}`)
+    .join(" · ");
+}
+
+function RpcEndpointsTable() {
+  const { data, summary } = useSuspenseQuery(rpcEndpointsQuery());
+  const rows = (data.data ?? []) as RpcEndpoint[];
+  const stale = isStaleFreshness(data.meta?.generated_at);
+  const statusHint = formatStatusRollup(summary?.by_status);
+  const endpointCount = summary?.endpoint_count ?? rows.length;
+  const archiveCount =
+    summary?.archive_supported_count ?? rows.filter((row) => row.archive_support).length;
+  const okCount = summary?.by_status?.ok;
+
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        title="No base-layer RPC endpoints tracked"
+        description="The rpc-endpoints artifact returned no rows — the catalog may be temporarily unavailable."
+      />
+    );
+
+  return (
+    <div className="space-y-2">
+      {stale ? (
+        <StaleBanner
+          generatedAt={data.meta?.generated_at}
+          refreshQueryKeys={[rpcEndpointsQuery().queryKey]}
+        />
+      ) : null}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <StatTile icon={Radio} eyebrow="Catalog endpoints" value={endpointCount} hint="base-layer" />
+        <StatTile icon={ShieldCheck} eyebrow="Archive-capable" value={archiveCount} />
+        <StatTile
+          icon={Activity}
+          eyebrow="Healthy (ok)"
+          value={okCount ?? "—"}
+          hint={statusHint ?? "status rollup"}
+        />
+      </div>
+      <div className="rounded border border-border bg-card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <tr>
+              <th className="px-3 py-2 text-left">Kind</th>
+              <th className="px-3 py-2 text-left">Provider</th>
+              <th className="px-3 py-2 text-left">URL</th>
+              <th className="px-3 py-2 text-center">Status</th>
+              <th className="px-3 py-2 text-right">Latency</th>
+              <th className="px-3 py-2 text-right">Block</th>
+              <th className="px-3 py-2 text-center">Archive</th>
+              <th className="px-3 py-2 text-left">Authority</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row) => {
+              const methodCount = rpcMethodsCount(row.methods_supported);
+              return (
+                <tr key={row.id} id={`rpc-endpoint-${row.id}`} className="mg-row-hover scroll-mt-24">
+                  <td className="px-3 py-2 font-mono text-[11px]">{row.kind}</td>
+                  <td className="px-3 py-2 text-[12px]">{row.provider}</td>
+                  <td className="px-3 py-2 font-mono text-[11px] max-w-[36ch]">
+                    {row.url ? (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <ExternalLink href={row.url} className="truncate text-[11px]">
+                          {row.url}
+                        </ExternalLink>
+                        <CopyButton value={row.url} label="URL" />
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                    {methodCount != null ? (
+                      <div className="mt-0.5 text-[10px] text-ink-muted">
+                        {methodCount} method{methodCount === 1 ? "" : "s"}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <HealthPill state={row.health ?? row.status} />
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px]">
+                    {row.latency_ms != null ? `${row.latency_ms}ms` : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px]">
+                    {row.latest_block != null ? row.latest_block.toLocaleString() : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-center text-[11px] text-ink-muted">
+                    {row.archive_support ? "yes" : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-[11px] text-ink-muted">
+                    <div>{row.authority ?? "—"}</div>
+                    {row.classification ? (
+                      <div className="font-mono text-[10px]">{row.classification}</div>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="px-1 font-mono text-[10px] text-ink-muted">
+        Chain-scoped Subtensor RPC/WSS endpoints from the base-layer catalog — distinct from the
+        cross-subnet callable directory below.
       </p>
     </div>
   );

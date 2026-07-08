@@ -293,6 +293,47 @@ export interface RpcPool {
   [key: string]: unknown;
 }
 
+/** Base-layer Subtensor RPC/WSS row from GET /api/v1/rpc/endpoints (RpcEndpointsArtifact). */
+export interface RpcEndpoint {
+  id: string;
+  netuid: number;
+  chain: "bittensor";
+  kind: "subtensor-rpc" | "subtensor-wss";
+  url: string;
+  provider: string;
+  status: HealthStatus | string;
+  classification?: Classification | string;
+  authority?: Authority | string;
+  latency_ms?: number | null;
+  latest_block?: number | null;
+  archive_support?: boolean | null;
+  auth_required?: boolean;
+  methods_supported?: Record<string, boolean> | string[] | null;
+  health_source?: "probe-derived" | "missing-probe" | "not-monitored";
+  health_stale?: boolean;
+  last_checked?: string | null;
+  last_ok?: string | null;
+  observed_at?: string | null;
+  error?: string | null;
+  rate_limit_notes?: string | null;
+  subnet_name?: string;
+  subnet_slug?: string;
+  network?: string;
+  /** UI health chip mapped from wire `status`. */
+  health?: HealthState;
+  [key: string]: unknown;
+}
+
+/** Roll-up counts across the base-layer RPC endpoint catalog. */
+export interface RpcEndpointsSummary {
+  endpoint_count?: number;
+  archive_supported_count?: number;
+  by_kind?: Record<string, number>;
+  by_provider?: Record<string, number>;
+  by_status?: Record<string, number>;
+  [key: string]: unknown;
+}
+
 export interface EndpointIncident {
   id: string;
   endpoint_id?: string;
