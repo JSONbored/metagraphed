@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApiResult } from "./client";
 import { apiFetch } from "./client";
-import {
-  normalizeRpcEndpoint,
-  normalizeRpcEndpointsSummary,
-  rpcEndpointsQuery,
-} from "./queries";
+import { normalizeRpcEndpoint, normalizeRpcEndpointsSummary, rpcEndpointsQuery } from "./queries";
 
 vi.mock("./client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./client")>();
@@ -38,7 +34,7 @@ describe("normalizeRpcEndpointsSummary", () => {
       endpoint_count: 12,
       archive_supported_count: 4,
       by_kind: { "subtensor-rpc": 8, "subtensor-wss": 4 },
-      by_provider: { "opentensor": 6 },
+      by_provider: { opentensor: 6 },
       by_status: { ok: 10, degraded: 2 },
     });
     expect(summary).toEqual({
