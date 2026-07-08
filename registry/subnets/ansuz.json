@@ -91,6 +91,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official ChipForge source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-84-chipforge-llms-txt",
+      "kind": "data-artifact",
+      "name": "ChipForge documentation index",
+      "notes": "Public no-auth machine-readable llms.txt documentation index published by the official ChipForge docs site (docs.chipforge.io). Catalogs SN84 ansuz API reference endpoints (active challenge, test-case download, submission/scoring routes) and links the hosted OpenAPI spec at /api-reference/openapi.json. Referenced from the docs root as the discovery file for agents and integrators.",
+      "provider": "chipforge",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://docs.chipforge.io/",
+        "https://github.com/TatsuProject/ChipForge_SN84/blob/master/README.md"
+      ],
+      "url": "https://docs.chipforge.io/llms.txt"
     }
   ]
 }
