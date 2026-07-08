@@ -614,8 +614,7 @@ export async function loadStagedSubnetHyperparams(env) {
   const hasCompletenessContract = Number.isInteger(expectedNetuidCount);
   let canPrune = true;
   if (hasCompletenessContract) {
-    canPrune =
-      expectedNetuidCount > 0 && rows.length === expectedNetuidCount;
+    canPrune = expectedNetuidCount > 0 && rows.length === expectedNetuidCount;
     if (!canPrune) {
       console.warn(
         `loadStagedSubnetHyperparams: incomplete snapshot (${rows.length}/${expectedNetuidCount}); skipping prune`,
