@@ -1218,6 +1218,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountBalanceArtifact",
   ),
   artifact(
+    "sudo-key",
+    "/metagraph/sudo/key.json",
+    "The current Sudo::Key holder (#4310/2.4, re-scoped from the original Senate/Council membership framing — subtensor has no such pallet), queried from the finney RPC at request time with 1h KV cache (the key changes extremely rarely). hotkey is null on RPC failure or an unset sudo key.",
+    "SudoKeyArtifact",
+  ),
+  artifact(
     "blocks-feed",
     "/metagraph/blocks.json",
     "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
@@ -2779,6 +2785,17 @@ export const API_ROUTES = [
     ["accounts"],
     [],
     [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "sudo-key",
+    "GET",
+    "/api/v1/sudo/key",
+    "/metagraph/sudo/key.json",
+    "Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key.",
+    "short",
+    ["accounts"],
+    [],
+    [],
   ),
   route(
     "blocks-feed",

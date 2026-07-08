@@ -3341,6 +3341,17 @@
           "queried_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
+      "SudoKeyArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The current Sudo::Key holder (#4310/2.4), queried from the finney RPC at request time and cached for 1h (the key changes extremely rarely). hotkey is null on RPC failure or an unset sudo key (Optional<AccountId>).",
+        "required": ["schema_version"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "hotkey": { "type": ["string", "null"] },
+          "queried_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "Block": {
         "type": "object",
         "additionalProperties": false,

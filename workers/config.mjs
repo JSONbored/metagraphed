@@ -227,6 +227,10 @@ export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
 // (subtensor has no Council/Senate — see #4310's audit). Same D1 tier as
 // EXTRINSICS_FEED_PATH_PATTERN, just a dedicated, discoverable path.
 export const SUDO_CALLS_PATH_PATTERN = /^\/api\/v1\/sudo$/;
+// Current Sudo::Key holder (#4310/2.4, re-scoped from the original Senate/
+// Council membership framing — see #4310's audit): a live finney RPC read,
+// not a D1 tier — distinct from SUDO_CALLS_PATH_PATTERN's extrinsic feed.
+export const SUDO_KEY_PATH_PATTERN = /^\/api\/v1\/sudo\/key$/;
 // AdminUtils config-change feed (#4310/2.3, re-scoped from the original
 // Council/Senate framing — see #4310's audit): the extrinsics feed hardcoded
 // to call_module='AdminUtils', subtensor's own root-origin hyperparameter/

@@ -165,6 +165,7 @@ import {
   handleExtrinsics,
   handleExtrinsic,
   handleSudo,
+  handleSudoKey,
   handleGovernanceConfigChanges,
 } from "./request-handlers/entities.mjs";
 import {
@@ -360,6 +361,7 @@ import {
   SUBNET_YIELD_PATH_PATTERN,
   SUBNET_PERFORMANCE_PATH_PATTERN,
   SUDO_CALLS_PATH_PATTERN,
+  SUDO_KEY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -2228,6 +2230,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (EXTRINSICS_FEED_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleExtrinsics(request, env, resolved.url);
     }
+    if (SUDO_KEY_PATH_PATTERN.test(resolved.url.pathname)) {
+      return handleSudoKey(request, env);
+    }
     if (SUDO_CALLS_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleSudo(request, env, resolved.url);
     }
@@ -2490,6 +2495,7 @@ function isMainnetOnlyApiPath(pathname) {
     EXTRINSICS_FEED_PATH_PATTERN.test(pathname) ||
     EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname) ||
     SUDO_CALLS_PATH_PATTERN.test(pathname) ||
+    SUDO_KEY_PATH_PATTERN.test(pathname) ||
     GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN.test(pathname)
   );
 }

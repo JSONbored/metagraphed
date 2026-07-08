@@ -88,6 +88,7 @@ import {
   isFinneySs58Address,
   loadAccountBalance,
 } from "../../src/account-balance.mjs";
+import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
   BLOCK_READ_COLUMNS,
@@ -3495,6 +3496,24 @@ export async function handleGovernanceConfigChanges(request, env, url) {
         data.extrinsics[0]?.observed_at ?? null,
       ),
     },
+    "short",
+  );
+}
+
+// GET /api/v1/sudo/key (#4310/2.4, re-scoped from the original Senate/Council
+// membership framing — see #4310's audit): the current Sudo::Key holder,
+// queried live from finney RPC at request time. Sudo::Key changes extremely
+// rarely, so a single fixed-key KV cache (1h TTL, same METAGRAPH_CONTROL
+// binding as loadAccountBalance) means only the first request per hour ever
+// reaches the live RPC — no per-request-controllable cache-busting parameter
+// exists for this route (unlike /accounts/{ss58}/balance), so it doesn't need
+// that route's rate limiter. hotkey is null on RPC failure or an unset sudo
+// key (schema-stable, never throws).
+export async function handleSudoKey(request, env) {
+  const data = await loadSudoKey(env);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
     "short",
   );
 }

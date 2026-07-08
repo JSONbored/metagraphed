@@ -318,6 +318,8 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/sudo",
       // Same for the AdminUtils config-change feed (#4310/2.3).
       "/api/v1/testnet/governance/config-changes",
+      // The live Sudo::Key RPC read is fixed to finney, no testnet variant (#4310/2.4).
+      "/api/v1/testnet/sudo/key",
       `/api/v1/testnet/accounts/${SS58}`,
       "/api/v1/testnet/subnets/7/metagraph",
       "/api/v1/testnet/subnets/7/hyperparameters",

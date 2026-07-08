@@ -702,6 +702,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "sudo-key",
+      "path": "/metagraph/sudo/key.json",
+      "schema_ref": "#/components/schemas/SudoKeyArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "schema_ref": "#/components/schemas/BlocksFeedArtifact",
@@ -6269,6 +6276,18 @@
       "id": "account-balance",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/balance",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/sudo/key.json",
+      "cache": "short",
+      "description": "Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key.",
+      "id": "sudo-key",
+      "method": "GET",
+      "path": "/api/v1/sudo/key",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

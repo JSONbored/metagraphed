@@ -668,6 +668,12 @@ const checks = [
     },
   ],
   [
+    "/api/v1/sudo/key",
+    (body) => {
+      assert.equal("hotkey" in body.data, true);
+    },
+  ],
+  [
     "/api/v1/blocks",
     (body) => {
       assert.equal(Array.isArray(body.data.blocks), true);
