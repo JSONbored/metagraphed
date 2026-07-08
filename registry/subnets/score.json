@@ -65,6 +65,26 @@
         "https://github.com/score-technologies/score-vision/blob/main/validator/config.py"
       ],
       "url": "https://api.scorevision.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-44-score-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Score minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official score-technologies/score-vision repository as min_compute.yaml. Documents SN44 Score Vision operator CPU, GPU/VRAM, memory, storage, network, and OS requirements aligned with miner/REQUIREMENTS.md.",
+      "provider": "score",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/score-technologies/score-vision/blob/main/miner/REQUIREMENTS.md",
+        "https://github.com/score-technologies/score-vision/blob/main/miner/README.md",
+        "https://github.com/score-technologies/score-vision/blob/main/min_compute.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/score-technologies/score-vision/main/min_compute.yaml"
     }
   ],
   "social": {
