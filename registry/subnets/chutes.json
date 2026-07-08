@@ -615,6 +615,38 @@
         "https://chutes.ai/docs"
       ],
       "url": "https://api.chutes.ai/payments/summary/tao"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-miner-scores-api",
+      "kind": "subnet-api",
+      "name": "Chutes miner scores API",
+      "notes": "Public no-auth GET /miner/scores on api.chutes.ai — Chutes-computed per-miner scoring breakdown (raw and normalized bounty/compute values) for SN64 Chutes. Declared as a no-auth route (security: none) in the official Chutes OpenAPI spec on the same api.chutes.ai gateway that hosts the subnet's registered surfaces.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-miner-stats-api",
+      "kind": "subnet-api",
+      "name": "Chutes miner stats API",
+      "notes": "Public no-auth GET /miner/stats on api.chutes.ai — Chutes-computed per-miner instance and compute statistics (rolling instance counts and utilization windows) for SN64 Chutes. Declared as a no-auth route (security: none) in the official Chutes OpenAPI spec on the same api.chutes.ai gateway that hosts the subnet's registered surfaces.",
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/miner/stats"
     }
   ],
   "website_url": "https://chutes.ai/"
