@@ -31,6 +31,25 @@
         "https://www.talkhead.ai/"
       ],
       "url": "https://api.talkhead.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-108-talkhead-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "TalkHead minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official talkheadai/talkhead-executor repository as min_compute.yml. Documents baseline CPU, GPU (10GB+ VRAM, CUDA 8.6+), memory, storage, OS, and bandwidth floors for SN108 TalkHead talking-head model evaluation. Linked from the talkhead-subnet README as the official executor/scoring repo.",
+      "provider": "talkhead",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://github.com/talkheadai/talkhead-executor/blob/main/min_compute.yml",
+        "https://github.com/talkheadai/talkhead-subnet/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/talkheadai/talkhead-executor/main/min_compute.yml"
     }
   ],
   "source_repo": "https://github.com/talkheadai/talkhead-subnet",
