@@ -7,28 +7,43 @@ const sqlCalls = vi.hoisted(() => []);
 const surfaceResult = vi.hoisted(() => ({ current: [{ inserted: true }] }));
 const deleteResult = vi.hoisted(() => ({ surfaces: [], subnets: [] }));
 const failure = vi.hoisted(() => ({ error: null }));
+const transaction = vi.hoisted(() => ({ began: 0, rolledBack: 0 }));
 
 vi.mock("postgres", () => ({
   default: () => {
-    const sql = (strings, ...values) => {
-      const text = Array.from(strings).join("?");
-      sqlCalls.push({ text, values });
-      if (failure.error && /INSERT INTO providers/.test(text)) {
-        return Promise.reject(failure.error);
-      }
-      if (/INSERT INTO surfaces/.test(text)) {
-        return Promise.resolve(surfaceResult.current);
-      }
-      if (/DELETE FROM surfaces/.test(text)) {
-        return Promise.resolve(deleteResult.surfaces);
-      }
-      if (/DELETE FROM subnets/.test(text)) {
-        return Promise.resolve(deleteResult.subnets);
-      }
-      return Promise.resolve([]);
+    const makeSql = () => {
+      const sql = (strings, ...values) => {
+        const text = Array.from(strings).join("?");
+        sqlCalls.push({ text, values });
+        if (failure.error && /INSERT INTO providers/.test(text)) {
+          return Promise.reject(failure.error);
+        }
+        if (/INSERT INTO surfaces/.test(text)) {
+          return Promise.resolve(surfaceResult.current);
+        }
+        if (/DELETE FROM surfaces/.test(text)) {
+          return Promise.resolve(deleteResult.surfaces);
+        }
+        if (/DELETE FROM subnets/.test(text)) {
+          return Promise.resolve(deleteResult.subnets);
+        }
+        return Promise.resolve([]);
+      };
+      sql.json = (value) => value;
+      return sql;
     };
-    sql.json = (value) => value;
+    const sql = makeSql();
     sql.end = () => Promise.resolve();
+    sql.begin = async (fn) => {
+      transaction.began += 1;
+      const tx = makeSql();
+      try {
+        return await fn(tx);
+      } catch (err) {
+        transaction.rolledBack += 1;
+        throw err;
+      }
+    };
     return sql;
   },
 }));
@@ -86,6 +101,8 @@ beforeEach(() => {
   deleteResult.surfaces = [];
   deleteResult.subnets = [];
   failure.error = null;
+  transaction.began = 0;
+  transaction.rolledBack = 0;
 });
 
 test("rejects non-POST (405)", async () => {
@@ -489,6 +506,18 @@ test("does not delete a subnet that is also upserted in the same request", async
   expect(text).not.toMatch(/DELETE FROM subnets/);
 });
 
+test("wraps all registry mutations in a single postgres transaction", async () => {
+  await worker.fetch(
+    post(
+      { providers: [provider()], subnets: [subnet()], surfaces: [surface()] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+  expect(transaction.began).toBe(1);
+});
+
 test("maps a DB failure to a clean 502 instead of throwing", async () => {
   failure.error = new Error("connection reset");
   const res = await worker.fetch(
@@ -498,4 +527,5 @@ test("maps a DB failure to a clean 502 instead of throwing", async () => {
   );
   expect(res.status).toBe(502);
   expect((await res.json()).error).toBe("write failed");
+  expect(transaction.rolledBack).toBe(1);
 });
