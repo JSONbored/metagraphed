@@ -132,6 +132,25 @@
         "submitted_by": "galuis116"
       },
       "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login."
+    },
+    {
+      "id": "sn-12-compute-horde-data-artifact",
+      "name": "Compute Horde health probe alert rules",
+      "kind": "data-artifact",
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/af0956585f957ad05f856b2680673f0fffbe517a/health_probe/envs/dev/rules/ch_health.yml",
+      "provider": "compute-horde",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/health_probe/envs/dev/rules/ch_health.yml",
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/health_probe/README.md"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "notes": "Public no-auth YAML rule set for the official Compute Horde health probe (health_probe/ in the SN12 registered source repository): Prometheus alerting rules (SubnetBusyWarning, SubnetBusyCritical, SubnetBroken) defining when the subnet counts as busy or failing, based on the probe's periodic organic tasks. URL pinned to the immutable commit that last touched the file."
     }
   ]
 }
