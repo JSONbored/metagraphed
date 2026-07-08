@@ -66,6 +66,24 @@
         "https://github.com/RendixNetwork/nexisgen"
       ],
       "url": "https://api.nexisgen.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-data-artifact",
+      "kind": "data-artifact",
+      "name": "NexisGen invalid-hotkeys eligibility ledger",
+      "notes": "Public no-auth JSON ledger committed in NexisGen's official repository (RendixNetwork/nexisgen, the manifest's registered source_repo) recording per-cycle invalidated miner hotkeys as {invalid_hotkeys:[{cycle_id, hotkey, reason}]}. It is the static, first-party backing data for the subnet's own public `GET /v1/invalid-hotkeys` (\"List Invalid Hotkeys\") route documented in the registered OpenAPI. Hotkeys are public on-chain SS58 identifiers. Served read-only via raw.githubusercontent; distinct from the existing healthz subnet-api and openapi surfaces.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/RendixNetwork/nexisgen/blob/main/eligibility/invalid_hotkeys.json"
+      ],
+      "url": "https://raw.githubusercontent.com/RendixNetwork/nexisgen/main/eligibility/invalid_hotkeys.json"
     }
   ],
   "website_url": "https://nexisgen.ai/"
