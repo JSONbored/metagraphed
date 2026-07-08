@@ -116,6 +116,14 @@ describe("buildValidatorNominators", () => {
     assert.equal(negative.nominators[0].event_count, 0);
   });
 
+  test("a missing/NaN event_count counts as zero events, not NaN", () => {
+    const d = buildValidatorNominators(
+      [row("ck-a", STAKE_ADDED_KIND, 100, undefined, 1000)],
+      HOTKEY,
+    );
+    assert.equal(d.nominators[0].event_count, 0);
+  });
+
   test("tracks the latest last_observed_at per coldkey, ignoring an earlier or null observed cell", () => {
     const d = buildValidatorNominators(
       [
@@ -128,6 +136,32 @@ describe("buildValidatorNominators", () => {
     assert.equal(
       d.nominators[0].last_observed_at,
       new Date(9000).toISOString(),
+    );
+  });
+
+  test("an out-of-range last_observed timestamp yields a null last_observed_at (not epoch 1970)", () => {
+    const d = buildValidatorNominators(
+      [added("ck-a", 10, 1, "8640000000000001")],
+      HOTKEY,
+    );
+    assert.equal(d.nominators[0].last_observed_at, null);
+  });
+
+  test("sorting by last_activity falls back to -Infinity for a nominator with no valid observed timestamp", () => {
+    const d = buildValidatorNominators(
+      [
+        added("ck-no-activity", 100, 1, Number.NaN),
+        added("ck-with-activity", 1, 1, 1000),
+      ],
+      HOTKEY,
+      { sort: "last_activity" },
+    );
+    // The nominator with a real timestamp ranks above the one with none,
+    // proving the missing side falls back to -Infinity rather than throwing
+    // or comparing equal.
+    assert.deepEqual(
+      d.nominators.map((n) => n.coldkey),
+      ["ck-with-activity", "ck-no-activity"],
     );
   });
 
