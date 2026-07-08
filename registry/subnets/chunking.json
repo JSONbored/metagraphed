@@ -76,6 +76,25 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
       ],
       "url": "https://github.com/salahawk/chunking_subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-40-chunking-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Chunking minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official salahawk/chunking_subnet repository as min_compute.yml. Documents SN40 Chunking operator CPU, GPU/VRAM, memory, storage, and network requirements; the README Get Started section directs operators to review min compute requirements for their role.",
+      "provider": "vectorchat",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/salahawk/chunking_subnet/blob/main/README.md",
+        "https://github.com/salahawk/chunking_subnet/blob/main/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/salahawk/chunking_subnet/main/min_compute.yml"
     }
   ],
   "website_url": "https://subnet.chunking.com/"
