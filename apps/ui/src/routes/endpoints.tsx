@@ -376,7 +376,12 @@ function RpcEndpointsTable() {
         />
       ) : null}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatTile icon={Radio} eyebrow="Catalog endpoints" value={endpointCount} hint="base-layer" />
+        <StatTile
+          icon={Radio}
+          eyebrow="Catalog endpoints"
+          value={endpointCount}
+          hint="base-layer"
+        />
         <StatTile icon={ShieldCheck} eyebrow="Archive-capable" value={archiveCount} />
         <StatTile
           icon={Activity}
@@ -403,7 +408,11 @@ function RpcEndpointsTable() {
             {rows.map((row) => {
               const methodCount = rpcMethodsCount(row.methods_supported);
               return (
-                <tr key={row.id} id={`rpc-endpoint-${row.id}`} className="mg-row-hover scroll-mt-24">
+                <tr
+                  key={row.id}
+                  id={`rpc-endpoint-${row.id}`}
+                  className="mg-row-hover scroll-mt-24"
+                >
                   <td className="px-3 py-2 font-mono text-[11px]">{row.kind}</td>
                   <td className="px-3 py-2 text-[12px]">{row.provider}</td>
                   <td className="px-3 py-2 font-mono text-[11px] max-w-[36ch]">
