@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 113,
+  "surface_count": 116,
   "surfaces": [
     {
       "auth_required": false,
@@ -188,9 +188,45 @@
       "public_safe": true,
       "subnet_name": "Targon",
       "subnet_slug": "sn-4",
+      "surface_id": "sn-4-targon-miner-stats-api",
+      "surface_key": "srf-3d72d0f871d187bb",
+      "url": "https://stats.targon.com/api/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 4,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
+      "public_safe": true,
+      "subnet_name": "Targon",
+      "subnet_slug": "sn-4",
       "surface_id": "sn-4-targon-subnet-api",
       "surface_key": "srf-40be5162d95eb737",
       "url": "https://api.targon.com/tha/v2/inventory"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 5,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
+      "public_safe": true,
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "surface_id": "sn-5-hone-projects-json",
+      "surface_key": "srf-642e1c012ad9748c",
+      "url": "https://www.hone.training/api/proxy/runs/projects"
     },
     {
       "auth_required": false,
@@ -767,6 +803,24 @@
       "surface_id": "sn-25-mainframe-pdb-file-api",
       "surface_key": "srf-728da1bf08c5643c",
       "url": "https://sn25.nyc3.digitaloceanspaces.com/pdb_files/1ubq.pdb"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 26,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "perturb",
+      "public_safe": true,
+      "subnet_name": "Perturb",
+      "subnet_slug": "sn-26",
+      "surface_id": "sn-26-perturb-data-artifact",
+      "surface_key": "srf-93a99fb7593a4bf5",
+      "url": "https://api.perturbai.io/api/v1/burn-rate"
     },
     {
       "auth_required": false,
