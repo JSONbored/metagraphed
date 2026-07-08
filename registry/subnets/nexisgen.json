@@ -39,6 +39,33 @@
         "https://github.com/RendixNetwork/nexisgen"
       ],
       "url": "https://api.nexisgen.ai/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-70-nexisgen-openapi",
+      "kind": "openapi",
+      "name": "NexisGen validator API OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema (title \"Nexis Validator API\") for the NexisGen (SN70) validator API, documenting its public training-score, blacklist, and total-score routes plus a healthz liveness check. Served on api.nexisgen.ai, the API subdomain of the subnet's registered website nexisgen.ai, and already cited as a source for the existing healthz subnet-api surface.",
+      "provider": "nexisgen",
+      "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "nickmopen"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.nexisgen.ai/openapi.json",
+      "source_urls": [
+        "https://nexisgen.ai/",
+        "https://github.com/RendixNetwork/nexisgen"
+      ],
+      "url": "https://api.nexisgen.ai/openapi.json"
     }
   ],
   "website_url": "https://nexisgen.ai/"
