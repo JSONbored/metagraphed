@@ -38,6 +38,25 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-data-artifact",
+      "kind": "data-artifact",
+      "name": "Minos network statistics",
+      "notes": "Public no-auth GET /dashboard/network-stats on api.theminos.ai returning aggregate SN107 Minos platform metrics (active miners, task counts, evaluation totals, validator connectivity, and 24h averages). Documented as a safe public GET endpoint in the official minos_subnet repository endpoint-safety reference; same first-party host as the registered health surface.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/docs/ai-assistant/memory-pack/endpoint-safety.md",
+        "https://api.theminos.ai/dashboard/network-stats"
+      ],
+      "url": "https://api.theminos.ai/dashboard/network-stats"
     }
   ],
   "contact": "contact@theminos.ai"
