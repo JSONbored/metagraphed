@@ -85,6 +85,25 @@
         "https://github.com/byzantiumaitao-arch/byzantium/blob/main/ai-agent-kit/byzantium.config.json"
       ],
       "url": "https://raw.githubusercontent.com/byzantiumaitao-arch/byzantium/main/ai-agent-kit/byzantium.config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-76-byzantium-validator-weights",
+      "kind": "subnet-api",
+      "name": "Byzantium validator weights API",
+      "notes": "Public no-auth GET returning per-miner reward weights (computed from settled per-click authenticity scores, normalized to sum 1.0, with payout hotkey per miner) for weight-copy validators. The route's own source comment states it is \"the ONLY public validator endpoint\" in v1. Hosted on link.byzantiumai.net, the link-service subdomain of the registered byzantiumai.net website, documented in the official byzantiumaitao-arch/byzantium repository.",
+      "provider": "byzantium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://github.com/byzantiumaitao-arch/byzantium/blob/main/link-service/app/api/validator/weights/route.ts",
+        "https://github.com/byzantiumaitao-arch/byzantium/blob/main/MINER_GUIDE.md"
+      ],
+      "url": "https://link.byzantiumai.net/api/validator/weights"
     }
   ],
   "website_url": "https://www.byzantiumai.net/"
