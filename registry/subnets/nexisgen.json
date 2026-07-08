@@ -73,7 +73,7 @@
       "id": "sn-70-nexisgen-latest-total-score",
       "kind": "data-artifact",
       "name": "NexisGen latest cycle total scores",
-      "notes": "Public no-auth GET /v1/get_latest_total_score on api.nexisgen.ai returning the current scoring cycle_id plus per-hotkey aggregate score map for SN70 NexisGen. Documented in the subnet OpenAPI schema (title \"Nexis Validator API\") already registered for this host; same first-party api.nexisgen.ai as the existing healthz surface.",
+      "notes": "Public no-auth GET /v1/get_latest_total_score on api.nexisgen.ai returning the current scoring cycle_id plus a miner aggregate score map for SN70 NexisGen. Documented in the subnet OpenAPI schema (title \"Nexis Validator API\") already registered for this host; same first-party api.nexisgen.ai as the existing healthz surface.",
       "provider": "nexisgen",
       "public_safe": true,
       "probe": {
