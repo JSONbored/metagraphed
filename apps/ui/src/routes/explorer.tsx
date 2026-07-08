@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -26,6 +26,7 @@ import {
   chainStakeFlowQuery,
   chainStakeMovesQuery,
   chainStakeTransfersQuery,
+  chainTransferPairsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -806,6 +807,8 @@ function ExplorerDashboard() {
         </section>
       </div>
 
+      <TransferPairsSection win={win} />
+
       <StakeFlowSection flow={stakeFlow} />
 
       <StakeMovesSection moves={stakeMoves} />
@@ -869,6 +872,128 @@ function ExplorerDashboard() {
       </section>
       <PalletEventMixSection stats={eventMix} />
     </div>
+  );
+}
+
+// Ranked sender→receiver native-TAO transfer corridors (#3476). Uses a plain
+// useQuery (not the page's suspense queries) so the volume/count sort toggle can
+// swap the ranking in place without re-suspending the whole dashboard.
+function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
+  const [sort, setSort] = useState<"volume" | "count">("volume");
+  const pairsQ = useQuery(chainTransferPairsQuery(win, 25, sort));
+  const pairs = pairsQ.data?.data;
+  const rows = pairs?.pairs ?? [];
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Transfer pairs
+          </h2>
+          {pairs ? (
+            <p className="mt-1 font-mono text-[11px] text-ink-muted">
+              {formatNumber(pairs.unique_pairs)} sender→receiver corridors ·{" "}
+              {fmtTao(pairs.total_volume_tao)} moved
+            </p>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-1.5" role="group" aria-label="Sort transfer pairs by">
+          {(["volume", "count"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={s === sort}
+              onClick={() => setSort(s)}
+              className={
+                s === sort
+                  ? "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent"
+                  : "rounded-full border border-border bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30"
+              }
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pairsQ.isPending ? (
+        <Skeleton className="h-64 w-full" />
+      ) : pairsQ.error ? (
+        <ErrorState
+          error={pairsQ.error}
+          onRetry={() => pairsQ.refetch()}
+          context="transfer pairs"
+        />
+      ) : rows.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={`${TH} text-right`}>#</th>
+                <th className={TH}>From</th>
+                <th className={TH}>To</th>
+                <th className={`${TH} text-right`}>Volume</th>
+                <th className={`${TH} text-right`}>Transfers</th>
+                <th className={`${TH} text-right`}>Last block</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((p, i) => (
+                <tr key={`${p.from}-${p.to}`} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {i + 1}
+                  </td>
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: p.from }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                      title={p.from}
+                    >
+                      {shortHash(p.from) ?? p.from}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: p.to }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                      title={p.to}
+                    >
+                      {shortHash(p.to) ?? p.to}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {fmtTao(p.volume_tao)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(p.transfer_count)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {p.last_block != null ? (
+                      <Link
+                        to="/blocks/$ref"
+                        params={{ ref: String(p.last_block) }}
+                        className="hover:text-accent hover:underline"
+                      >
+                        #{formatNumber(p.last_block)}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">
+          No transfer pairs in this window yet.
+        </p>
+      )}
+    </section>
   );
 }
 

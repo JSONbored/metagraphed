@@ -49,6 +49,25 @@
         "https://github.com/vocence-78/vocence/blob/master/vocence/gateway/http/service/app.py"
       ],
       "url": "https://api.vocence.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-78-vocence-llms-txt",
+      "kind": "data-artifact",
+      "name": "Vocence documentation index",
+      "notes": "Public no-auth machine-readable llms.txt documentation index published by the official Vocence website (www.vocence.ai). Catalogs SN78 Vocence Studio guides, Developer API reference, Python SDK, CLI, subnet miner/validator setup docs, and links the hosted OpenAPI spec at api.vocence.ai/openapi.json plus llms-full.txt for full-doc ingestion.",
+      "provider": "vocence",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://www.vocence.ai/",
+        "https://github.com/vocence-78/vocence/blob/master/README.md"
+      ],
+      "url": "https://www.vocence.ai/llms.txt"
     }
   ],
   "source_repo": "https://github.com/vocence-78/vocence",
