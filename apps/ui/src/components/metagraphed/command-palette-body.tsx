@@ -560,6 +560,33 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           </div>
         ) : null}
 
+        {/* #3401: richer zero-result state — a debounced query that matches nothing
+          across hits/routes/nav targets gets recovery chips instead of a dead-end
+          "No matches." Mirrors the empty-query "Try" row so both states offer a way
+          forward. Co-exists with the terse <CommandEmpty> above. */}
+        {debounced &&
+        hits.length === 0 &&
+        filteredRoutes.length === 0 &&
+        navigateTargets.length === 0 ? (
+          <div className="px-3 py-3 space-y-2 border-b border-border">
+            <div className="mg-label">No matches for &ldquo;{debounced}&rdquo;</div>
+            <p className="text-[11px] text-ink-muted">Try one of these instead:</p>
+            <ul className="flex flex-wrap gap-1">
+              {SUGGESTED_QUERIES.map((s) => (
+                <li key={s}>
+                  <button
+                    type="button"
+                    onClick={() => setQ(s)}
+                    className="rounded-full border border-dashed border-ink-subtle bg-paper px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                  >
+                    {s}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {navigateTargets.length > 0 ? (
           <CommandGroup heading="Go to">
             {navigateTargets.map((n) => {
