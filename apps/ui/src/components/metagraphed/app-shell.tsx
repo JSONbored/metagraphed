@@ -354,8 +354,11 @@ function SiteFooter() {
       </div>
       <div className="border-t border-border/70">
         <div className="max-w-[1400px] mx-auto px-4 md:px-10 py-4 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
-          <span>
+          <span className="inline-flex items-center gap-2">
             © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
+            <span className="rounded border border-border px-1.5 py-0.5 uppercase tracking-wider text-ink-subtle">
+              AGPL-3.0
+            </span>
           </span>
           <EndpointHealthPill />
         </div>
