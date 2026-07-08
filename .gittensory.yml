@@ -37,6 +37,20 @@ blockedPaths:
   # community data submission.
   - "apps/**"
 
+# AI-judgment blocker promotion (JSONbored/gittensory#3907): the registry surface lane's own
+# deterministic checks (owner-match, freshness, dead/private source_url, duplicate detection) already
+# cover the failure modes a submission can have -- so by default (the engine-wide "advisory" setting)
+# a decisive surface-lane merge overrides even a confident AI-judgment-only finding, since an AI
+# opinion alone should never one-shot-close a structurally-clean submission. That default left a real
+# gap here: metagraphed's registry entries are validated for STRUCTURE and provenance, not semantic
+# correctness, so a content-correctness defect the AI reviewer correctly caught under "Blockers" (PR
+# #3910: a provider slug semantically wrong for its domain) still merged. "gate" lets that kind of
+# AI-judgment blocker survive into the gate's own decision instead of being silently overridden --
+# an explicit trade-off (a confident AI false positive can now one-shot-close a clean PR) accepted
+# because this repo's registry data has no other net for pure semantic-correctness defects.
+gate:
+  aiJudgmentBlockers: gate
+
 # Review-evasion protection (config-as-code override; layered OVER the dashboard's own default of
 # "off"): closing or converting-to-draft your OWN PR while gittensory has an active review pass
 # running, a prior recorded gate failure, or a repeated ready<->draft cycle on this PR, is treated
