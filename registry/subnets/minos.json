@@ -38,6 +38,24 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-knowledge-pack",
+      "kind": "data-artifact",
+      "name": "Minos public knowledge-graph pack manifest",
+      "notes": "Public no-auth static YAML data file committed in SN107 Minos's official minos-protocol/minos_subnet repository — the 'Minos SN107 Public Knowledge Graph' memory-pack manifest (version, description, and pack contents), a public-safe knowledge pack for miners, validators, and agent runtimes. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/docs/ai-assistant/memory-pack/manifest.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/main/docs/ai-assistant/memory-pack/manifest.yaml"
     }
   ],
   "contact": "contact@theminos.ai"
