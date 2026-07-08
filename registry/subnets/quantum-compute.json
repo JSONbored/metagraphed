@@ -85,6 +85,25 @@
         "https://www.qbittensorlabs.com/"
       ],
       "url": "https://www.qbittensorlabs.com/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-48-quantum-compute-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Quantum Compute minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official qbittensor-labs/quantum-compute repository as min_compute.yml. Documents SN48 operator CPU/GPU/memory/storage/network floors.",
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "galuis116"
+      },
+      "source_urls": [
+        "https://github.com/qbittensor-labs/quantum-compute/blob/main/min_compute.yml",
+        "https://github.com/qbittensor-labs/quantum-compute"
+      ],
+      "url": "https://raw.githubusercontent.com/qbittensor-labs/quantum-compute/main/min_compute.yml"
     }
   ],
   "social": {
