@@ -223,6 +223,10 @@ export const BLOCK_EVENTS_PATH_PATTERN =
 // detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
 // (32-byte blake2b = 64 hex chars).
 export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
+// Sudo-call feed (#4310/2.2): the extrinsics feed hardcoded to call_module='Sudo'
+// (subtensor has no Council/Senate — see #4310's audit). Same D1 tier as
+// EXTRINSICS_FEED_PATH_PATTERN, just a dedicated, discoverable path.
+export const SUDO_CALLS_PATH_PATTERN = /^\/api\/v1\/sudo$/;
 // Per-extrinsic detail (#1345/#1848): ref is a 0x extrinsic_hash OR the canonical
 // composite id "<block_number>-<extrinsic_index>" (the guaranteed-present id, since
 // the hash is best-effort/nullable). Single capture group; the handler branches.

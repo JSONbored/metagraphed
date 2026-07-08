@@ -164,6 +164,7 @@ import {
   handleBlockEvents,
   handleExtrinsics,
   handleExtrinsic,
+  handleSudo,
 } from "./request-handlers/entities.mjs";
 import {
   canonicalCompareCachePath,
@@ -356,6 +357,7 @@ import {
   SUBNET_DEREGISTRATIONS_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
   SUBNET_PERFORMANCE_PATH_PATTERN,
+  SUDO_CALLS_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -2224,6 +2226,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (EXTRINSICS_FEED_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleExtrinsics(request, env, resolved.url);
     }
+    if (SUDO_CALLS_PATH_PATTERN.test(resolved.url.pathname)) {
+      return handleSudo(request, env, resolved.url);
+    }
     if (resolved.url.pathname === "/api/v1/incidents") {
       return withEdgeCache(request, ctx, env, "global-incidents", () =>
         handleGlobalIncidents(request, env, resolved.url),
@@ -2478,7 +2483,8 @@ function isMainnetOnlyApiPath(pathname) {
     BLOCK_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     BLOCK_EVENTS_PATH_PATTERN.test(pathname) ||
     EXTRINSICS_FEED_PATH_PATTERN.test(pathname) ||
-    EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname)
+    EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname) ||
+    SUDO_CALLS_PATH_PATTERN.test(pathname)
   );
 }
 

@@ -135,3 +135,39 @@ completion roadmap issue tree for the full breakdown.
 
 Price/market data is a separate problem again — not a state read in the simple sense, needs
 a decision on data source (on-chain bonding-curve state vs. an external price feed).
+
+## Governance/Sudo pallet audit (#4310/2.1, 2026-07-08)
+
+The competitor benchmark (taostats.io) describes a generic Substrate governance shape
+(20-member Proposer → 3-member Triumvirate 7-day vote → 16-32-voter Senate 48h 75%/51%
+thresholds) — **subtensor does not have this.** Confirmed against live finney runtime metadata
+(bittensor 10.5.0, `SubtensorApi(network="finney").substrate.metadata`):
+
+```
+ALL PALLETS: AdminUtils, AlphaAssets, Aura, Balances, BaseFee, Commitments, Contracts,
+Crowdloan, Drand, EVM, EVMChainId, Ethereum, Grandpa, LimitOrders, MevShield, Multisig,
+Preimage, Proxy, RandomnessCollectiveFlip, SafeMode, Scheduler, SubtensorModule, Sudo, Swap,
+System, Timestamp, TransactionPayment, Utility
+```
+
+No `Council`, `Senate`, `SenateMembers`, `TechnicalCommittee`, `Triumvirate`, `Democracy`, or
+`Referenda` pallet exists. Only two pallets carry the governance-adjacent surface:
+
+- **`Sudo`** — calls: `sudo`, `sudo_as`, `sudo_unchecked_weight`, `set_key`, `remove_key`.
+  Storage: `Key` (`Optional<AccountId>`, the current sudo holder — live value on 2026-07-08:
+  `5DcSqBNqCmfdJZRGFSwwcRb2dZdJHZuKK8Tb1Gx8gbmF5E8s`). Events: `Sudid`, `KeyChanged`,
+  `KeyRemoved`, `SudoAsDone`.
+- **`AdminUtils`** — subtensor's own root-origin admin-config pallet, ~83 calls (almost all
+  `sudo_set_*`, e.g. `sudo_set_kappa`, `sudo_set_tempo`, `sudo_set_immunity_period`,
+  `sudo_set_min_burn`/`sudo_set_max_burn`, `sudo_set_commit_reveal_weights_enabled`,
+  `sudo_set_liquid_alpha_enabled`, `sudo_set_bonds_moving_average` — the same fields
+  `subnet_hyperparams`, #4303, captures). Only 6 of the 83 calls emit a dedicated `AdminUtils`
+  event (`PrecompileUpdated`, `Yuma3EnableToggled`, `BondsResetToggled`, `BurnHalfLifeSet`,
+  `BurnIncreaseMultSet`, `SubnetEmissionEnabledSet`) — the reliable source for the rest is the
+  extrinsic itself (`call_module = 'AdminUtils'`, decoded `call_args`).
+
+Both `call_module` values are confirmed present in the captured `extrinsics` D1 tier: `Sudo`
+had zero calls in the last ~104k blocks (~2 weeks) sampled 2026-07-08; `AdminUtils` had 57 in
+the same window — this is where real activity happens. Epic #4310's 2.2 (`/api/v1/sudo`) and
+2.3 (AdminUtils config-change feed, re-scoped from the original Council/Senate framing) and 2.4
+(current Sudo key, re-scoped from Senate/Council membership) are built directly on this audit.

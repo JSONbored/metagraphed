@@ -2367,6 +2367,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sudo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the root-origin (Sudo pallet) call table, newest first — subtensor has no Council/Senate, so this is the extrinsics feed hardcoded to call_module='Sudo'. ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics D1 tier (#4310/2.2). */
+        get: operations["sudoCalls"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/surfaces": {
         parameters: {
             query?: never;
@@ -26426,6 +26443,133 @@ export interface operations {
                     /**
                      * @example netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta
                      *     7,1000,1250,250,25,10,12,2,20,16,18,2,256,256,0
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    sudoCalls: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                cursor?: string;
+                block?: number;
+                call_function?: string;
+                success?: "true" | "false";
+                block_start?: number;
+                block_end?: number;
+                from?: number;
+                to?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "extrinsic_count": 1,
+                     *         "extrinsics": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "extrinsic_index": 1
+                     *           }
+                     *         ],
+                     *         "limit": 1,
+                     *         "next_cursor": "example",
+                     *         "offset": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ExtrinsicsFeedArtifact"];
+                    };
+                    /**
+                     * @example extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at
+                     *     8454388-1,8454388,1,0xhash_sample,5SudoKey,Sudo,sudo,true,0.000123,0,2026-07-03T00:00:00.000Z
                      */
                     "text/csv": string;
                 };

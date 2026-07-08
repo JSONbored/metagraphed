@@ -3348,6 +3348,82 @@ export async function handleExtrinsics(request, env, url) {
   );
 }
 
+// GET /api/v1/sudo (#4310/2.2): the root-origin call table. subtensor has no
+// Council/Senate (confirmed live against finney, bittensor 10.5.0, 2026-07-08 —
+// only the Sudo pallet exists from the generic-Substrate governance family), so
+// this is the extrinsics feed hardcoded to call_module='Sudo' rather than a
+// proposal-lifecycle route — same D1 tier + loader as handleExtrinsics, no
+// signer/call_module query params (signer is always the current sudo key, see
+// GET /api/v1/sudo/key; call_module is fixed).
+export async function handleSudo(request, env, url) {
+  const validationError = validateEntityQuery(url, [
+    "limit",
+    "offset",
+    "cursor",
+    "block",
+    "call_function",
+    "success",
+    "block_start",
+    "block_end",
+    "from",
+    "to",
+    "format",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { limit, offset, cursor } = parsePagination(url, BLOCK_PAGINATION);
+  const sp = url.searchParams;
+  const numericFilters = {};
+  for (const param of ["block", "block_start", "block_end", "from", "to"]) {
+    const raw = sp.get(param);
+    if (raw === null) continue;
+    const parsed = parseNonNegativeIntParam(raw, param);
+    if (parsed.error) return analyticsQueryError(parsed.error);
+    numericFilters[param] = parsed.value;
+  }
+  const successRaw = sp.get("success");
+  if (successRaw !== null && successRaw !== "true" && successRaw !== "false") {
+    return analyticsQueryError({
+      parameter: "success",
+      message: "success must be one of: true, false.",
+    });
+  }
+  const data = await loadExtrinsics(d1Runner(env), {
+    callModule: "Sudo",
+    block: numericFilters.block ?? undefined,
+    callFunction: sp.get("call_function") || undefined,
+    success:
+      successRaw === "true" ? true : successRaw === "false" ? false : undefined,
+    blockStart: numericFilters.block_start ?? undefined,
+    blockEnd: numericFilters.block_end ?? undefined,
+    from: numericFilters.from ?? undefined,
+    to: numericFilters.to ?? undefined,
+    limit,
+    offset,
+    cursor,
+  });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      extrinsicsToCsvRows(data.extrinsics),
+      "sudo-calls",
+      "short",
+      request,
+      EXTRINSICS_CSV_COLUMNS,
+    );
+  }
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        "/metagraph/sudo.json",
+        data.extrinsics[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
 // GET /api/v1/extrinsics/{ref}: per-extrinsic detail (#1345/#1848). ref is EITHER
 // a 0x extrinsic_hash OR the canonical composite id "<block_number>-<extrinsic_index>".
 // The hash is best-effort/nullable in the decoder, so the composite id is the

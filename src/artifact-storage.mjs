@@ -137,6 +137,9 @@ export const R2_ONLY_PATTERNS = [
   // (0x extrinsic_hash or composite block-index ref) — never written as files.
   /^extrinsics\.json$/,
   /^extrinsics\/(?:0x[0-9a-fA-F]{64}|\d+-\d+|\{hash\})\.json$/,
+  // Sudo-call feed (#4310/2.2): the extrinsics feed hardcoded to
+  // call_module='Sudo' — computed live from the same D1 tier, never a file.
+  /^sudo\.json$/,
   // Chain analytics (#1987-#1990): network-activity / call-mix / signer-leaderboard
   // / fee-market aggregates computed live from the extrinsics + blocks D1 tiers at
   // /api/v1/chain/* — never files.

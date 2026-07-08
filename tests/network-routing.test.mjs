@@ -314,6 +314,8 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/blocks/summary",
       "/api/v1/testnet/blocks/12345",
       "/api/v1/testnet/extrinsics",
+      // Sudo-call feed reads the same mainnet-only extrinsics D1 tier (#4310/2.2).
+      "/api/v1/testnet/sudo",
       `/api/v1/testnet/accounts/${SS58}`,
       "/api/v1/testnet/subnets/7/metagraph",
       "/api/v1/testnet/subnets/7/hyperparameters",

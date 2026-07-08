@@ -993,6 +993,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "The root-origin (Sudo pallet) call table (#4310/2.2) — subtensor has no Council/Senate, only Sudo, so this is the extrinsics feed hardcoded to call_module='Sudo'. Served live from the first-party extrinsics D1 tier at /api/v1/sudo; pass ?format=csv to download the filtered rows as CSV (no static file).",
+      "id": "sudo-calls",
+      "path": "/metagraph/sudo.json",
+      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
       "id": "chain-activity",
       "path": "/metagraph/chain/activity.json",

@@ -1278,6 +1278,12 @@ export const PUBLIC_ARTIFACTS = [
     "ExtrinsicDetailArtifact",
   ),
   artifact(
+    "sudo-calls",
+    "/metagraph/sudo.json",
+    "The root-origin (Sudo pallet) call table (#4310/2.2) — subtensor has no Council/Senate, only Sudo, so this is the extrinsics feed hardcoded to call_module='Sudo'. Served live from the first-party extrinsics D1 tier at /api/v1/sudo; pass ?format=csv to download the filtered rows as CSV (no static file).",
+    "ExtrinsicsFeedArtifact",
+  ),
+  artifact(
     "chain-activity",
     "/metagraph/chain/activity.json",
     "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
@@ -2932,6 +2938,28 @@ export const API_ROUTES = [
     [{ name: "hash", schema: { type: "string" } }],
   ),
   route(
+    "sudo-calls",
+    "GET",
+    "/api/v1/sudo",
+    "/metagraph/sudo.json",
+    "Fetch the root-origin (Sudo pallet) call table, newest first — subtensor has no Council/Senate, so this is the extrinsics feed hardcoded to call_module='Sudo'. ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics D1 tier (#4310/2.2).",
+    "short",
+    ["extrinsics", "analytics"],
+    csvRouteQuery([
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+      { name: "call_function", schema: { type: "string" } },
+      { name: "success", schema: { type: "string", enum: ["true", "false"] } },
+      { name: "block_start", schema: { type: "integer", minimum: 0 } },
+      { name: "block_end", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "integer", minimum: 0 } },
+      { name: "to", schema: { type: "integer", minimum: 0 } },
+    ]),
+    [],
+  ),
+  route(
     "chain-activity",
     "GET",
     "/api/v1/chain/activity",
@@ -4061,6 +4089,12 @@ function csvExampleForRoute(entry) {
     return [
       "extrinsic_id,block_number,signer,call_module,call_function,success",
       "8454388-2,8454388,5Signer,SubtensorModule,add_stake,true",
+    ].join("\r\n");
+  }
+  if (entry.id === "sudo-calls") {
+    return [
+      "extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
+      "8454388-1,8454388,1,0xhash_sample,5SudoKey,Sudo,sudo,true,0.000123,0,2026-07-03T00:00:00.000Z",
     ].join("\r\n");
   }
   if (entry.id === "chain-activity") {
