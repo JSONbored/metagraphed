@@ -488,7 +488,7 @@
       "id": "global-accounts",
       "path": "/metagraph/accounts.json",
       "schema_ref": "#/components/schemas/GlobalAccountsArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-07-03.2",
