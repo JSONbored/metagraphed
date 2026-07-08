@@ -36,6 +36,7 @@ import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
 import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
 
 import {
+  blocksQuery,
   coverageQuery,
   freshnessQuery,
   healthQuery,
@@ -285,6 +286,25 @@ function OverviewPage() {
 
 /* ----------------------------- hero ----------------------------- */
 
+// #3372: a compact chain-head tip in the hero — "head #NNNN · N ago" from the
+// live /api/v1/blocks feed (limit 1), linking to that block. Plain useQuery so a
+// cold/failed fetch silently renders null and never disrupts the primary hero.
+function ChainHeadTip() {
+  const { data } = useQuery(blocksQuery({ limit: 1 }));
+  const head = data?.data?.[0];
+  if (!head || head.block_number == null) return null;
+  return (
+    <Link
+      to="/blocks/$ref"
+      params={{ ref: String(head.block_number) }}
+      className="mg-fade-in mg-fade-in-delay-3 mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted hover:text-accent transition-colors"
+    >
+      <span className="mg-live-dot" />
+      head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
+    </Link>
+  );
+}
+
 function HomeHero() {
   return (
     <section className="mg-hero-slab relative overflow-hidden px-6 py-12 md:px-12 md:py-20">
@@ -316,6 +336,7 @@ function HomeHero() {
               Read the API
             </Link>
           </div>
+          <ChainHeadTip />
         </div>
         <div className="mg-fade-in mg-fade-in-delay-2 shrink-0">
           <HeroKpis />
