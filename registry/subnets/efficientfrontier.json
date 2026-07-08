@@ -100,6 +100,25 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
       ],
       "url": "https://github.com/oxylok/53-EfficientFrontier"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-53-signalplus-data-artifact",
+      "kind": "data-artifact",
+      "name": "EfficientFrontier miner ranking rules specification",
+      "notes": "Public no-auth Markdown specification of SN53 EfficientFrontier validator scoring rules: 14-day observation period, weighted daily returns, decayed drawdown formula, minimum balance/volume requirements, whitelisted assets, and penalty conditions. Published in the subnet source repository docs/Introduction and pinned to an immutable commit.",
+      "provider": "signalplus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsdevninja"
+      },
+      "source_urls": [
+        "https://github.com/oxylok/53-EfficientFrontier/blob/be5d620ced30b34b41c0e33b6a8a76121747d005/docs/Introduction/RankingRulesEN.md",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
+      ],
+      "url": "https://raw.githubusercontent.com/oxylok/53-EfficientFrontier/be5d620ced30b34b41c0e33b6a8a76121747d005/docs/Introduction/RankingRulesEN.md"
     }
   ],
   "website_url": "https://www.signalplus.com/"
