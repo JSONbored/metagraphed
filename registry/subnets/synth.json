@@ -47,6 +47,26 @@
         "https://github.com/synthdataco/synth-subnet/blob/main/README.md"
       ],
       "url": "https://api.synthdata.co/v2/leaderboard/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-50-synth-validation-scores",
+      "kind": "data-artifact",
+      "name": "Synth latest validation scores dataset",
+      "notes": "Public no-auth GET /validation/scores/latest on api.synthdata.co returning a JSON dataset of the latest per-miner, per-asset forecast validation scores for the SN50 Synth price-prediction network (miner_uid, asset, prompt_score, crps, scored_time, time_length). Documented as a security-free GET (\"Validations - Latest Scores\") in the subnet's registered OpenAPI spec at api.synthdata.co/swagger.json; distinct from the leaderboard subnet-api surface on the same host. Verified 200 application/json.",
+      "provider": "synth",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rust-toml"
+      },
+      "schema_url": "https://api.synthdata.co/swagger.json",
+      "source_urls": [
+        "https://api.synthdata.co/swagger.json",
+        "https://github.com/synthdataco/synth-subnet/blob/main/README.md"
+      ],
+      "url": "https://api.synthdata.co/validation/scores/latest"
     }
   ]
 }
