@@ -12,6 +12,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { taoCompact } from "@/components/metagraphed/neuron-table";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 // The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
@@ -157,6 +158,9 @@ function ValidatorsTable({
                 <th className={TH}>Coldkey</th>
                 <th className={`${TH} text-right`}>Active subnets</th>
                 <th className={`${TH} text-right`}>UIDs</th>
+                <th className={`${TH} text-right`}>Dominance</th>
+                <th className={`${TH} text-right`}>Total stake</th>
+                <th className={`${TH} text-right`}>Total emission</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -191,6 +195,15 @@ function ValidatorsTable({
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                     {formatNumber(v.uid_count)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {taoCompact(v.total_stake_tao)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {taoCompact(v.total_emission_tao)}
                   </td>
                 </tr>
               ))}
