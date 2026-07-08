@@ -16067,6 +16067,237 @@
         ],
         "type": "object"
       },
+      "SubnetHyperparameters": {
+        "additionalProperties": false,
+        "description": "One subnet's consensus, economic, and governance hyperparameters (#4307). *_ratio fields are 0..1 ratios; min_burn_tao/max_burn_tao are TAO floats; bonds_moving_avg_raw is the raw on-chain integer (not yet ratio-converted — scaling constant unconfirmed).",
+        "properties": {
+          "activity_cutoff": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "activity_cutoff_factor": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "alpha_high_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_low_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_sigmoid_steepness": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bonds_moving_avg_raw": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "bonds_reset_enabled": {
+            "type": "boolean"
+          },
+          "burn_half_life": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "burn_increase_mult": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "commit_reveal_enabled": {
+            "type": "boolean"
+          },
+          "commit_reveal_period": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "immunity_period": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kappa_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "liquid_alpha_enabled": {
+            "type": "boolean"
+          },
+          "max_burn_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_regs_per_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "max_validators": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "max_weight_limit_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min_allowed_weights": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "min_burn_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min_childkey_take_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "owner_cut_auto_lock_enabled": {
+            "type": "boolean"
+          },
+          "owner_cut_enabled": {
+            "type": "boolean"
+          },
+          "registration_allowed": {
+            "type": "boolean"
+          },
+          "serving_rate_limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "subnet_is_active": {
+            "type": "boolean"
+          },
+          "target_regs_per_interval": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "tempo": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "transfers_enabled": {
+            "type": "boolean"
+          },
+          "user_liquidity_enabled": {
+            "type": "boolean"
+          },
+          "weights_rate_limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "weights_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "yuma_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "registration_allowed",
+          "commit_reveal_enabled",
+          "liquid_alpha_enabled",
+          "subnet_is_active",
+          "transfers_enabled",
+          "bonds_reset_enabled",
+          "user_liquidity_enabled",
+          "owner_cut_enabled",
+          "owner_cut_auto_lock_enabled"
+        ],
+        "type": "object"
+      },
+      "SubnetHyperparametersArtifact": {
+        "additionalProperties": true,
+        "description": "One subnet's consensus, economic, and governance hyperparameters (#4307), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hyperparameters": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SubnetHyperparameters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "hyperparameters"
+        ],
+        "type": "object"
+      },
       "SubnetIdentityHistoryArtifact": {
         "additionalProperties": true,
         "description": "Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",

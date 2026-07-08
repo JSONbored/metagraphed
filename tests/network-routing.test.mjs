@@ -316,6 +316,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/extrinsics",
       `/api/v1/testnet/accounts/${SS58}`,
       "/api/v1/testnet/subnets/7/metagraph",
+      "/api/v1/testnet/subnets/7/hyperparameters",
       "/api/v1/testnet/subnets/7/validators",
       "/api/v1/testnet/subnets/7/events",
       "/api/v1/testnet/subnets/7/health",

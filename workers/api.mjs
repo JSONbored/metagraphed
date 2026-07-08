@@ -83,6 +83,7 @@ import {
 import {
   handleSubnetMetagraph,
   handleNeuron,
+  handleSubnetHyperparams,
   handleSubnetValidators,
   handleSubnetEventSummary,
   handleSubnetEvents,
@@ -326,6 +327,7 @@ import {
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   resolveClientIp,
   SUBNET_HISTORY_PATH_PATTERN,
+  SUBNET_HYPERPARAMS_PATH_PATTERN,
   SUBNET_IDENTITY_HISTORY_PATH_PATTERN,
   SUBNET_METAGRAPH_PATH_PATTERN,
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
@@ -1945,6 +1947,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         Number(neuronMatch[2]),
       );
     }
+    const hyperparamsMatch = SUBNET_HYPERPARAMS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (hyperparamsMatch) {
+      // Single PK-by-netuid D1 lookup, same cost class as handleNeuron —
+      // dispatch directly, no edge-cache wrapper.
+      return handleSubnetHyperparams(
+        request,
+        env,
+        Number(hyperparamsMatch[1]),
+        resolved.url,
+      );
+    }
     const validatorsMatch = SUBNET_VALIDATORS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2424,6 +2439,7 @@ function isMainnetOnlyApiPath(pathname) {
     /^\/api\/v1\/subnets\/(\d+)\/health$/.test(pathname) ||
     SUBNET_METAGRAPH_PATH_PATTERN.test(pathname) ||
     SUBNET_NEURON_PATH_PATTERN.test(pathname) ||
+    SUBNET_HYPERPARAMS_PATH_PATTERN.test(pathname) ||
     SUBNET_NEURON_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_VALIDATORS_PATH_PATTERN.test(pathname) ||
     SUBNET_EVENTS_PATH_PATTERN.test(pathname) ||

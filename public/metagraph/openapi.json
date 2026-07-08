@@ -16089,6 +16089,237 @@
         ],
         "type": "object"
       },
+      "SubnetHyperparameters": {
+        "additionalProperties": false,
+        "description": "One subnet's consensus, economic, and governance hyperparameters (#4307). *_ratio fields are 0..1 ratios; min_burn_tao/max_burn_tao are TAO floats; bonds_moving_avg_raw is the raw on-chain integer (not yet ratio-converted — scaling constant unconfirmed).",
+        "properties": {
+          "activity_cutoff": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "activity_cutoff_factor": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "alpha_high_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_low_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_sigmoid_steepness": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bonds_moving_avg_raw": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "bonds_reset_enabled": {
+            "type": "boolean"
+          },
+          "burn_half_life": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "burn_increase_mult": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "commit_reveal_enabled": {
+            "type": "boolean"
+          },
+          "commit_reveal_period": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "immunity_period": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kappa_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "liquid_alpha_enabled": {
+            "type": "boolean"
+          },
+          "max_burn_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_regs_per_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "max_validators": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "max_weight_limit_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min_allowed_weights": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "min_burn_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min_childkey_take_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "owner_cut_auto_lock_enabled": {
+            "type": "boolean"
+          },
+          "owner_cut_enabled": {
+            "type": "boolean"
+          },
+          "registration_allowed": {
+            "type": "boolean"
+          },
+          "serving_rate_limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "subnet_is_active": {
+            "type": "boolean"
+          },
+          "target_regs_per_interval": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "tempo": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "transfers_enabled": {
+            "type": "boolean"
+          },
+          "user_liquidity_enabled": {
+            "type": "boolean"
+          },
+          "weights_rate_limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "weights_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "yuma_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "registration_allowed",
+          "commit_reveal_enabled",
+          "liquid_alpha_enabled",
+          "subnet_is_active",
+          "transfers_enabled",
+          "bonds_reset_enabled",
+          "user_liquidity_enabled",
+          "owner_cut_enabled",
+          "owner_cut_auto_lock_enabled"
+        ],
+        "type": "object"
+      },
+      "SubnetHyperparametersArtifact": {
+        "additionalProperties": true,
+        "description": "One subnet's consensus, economic, and governance hyperparameters (#4307), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hyperparameters": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SubnetHyperparameters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "hyperparameters"
+        ],
+        "type": "object"
+      },
       "SubnetIdentityHistoryArtifact": {
         "additionalProperties": true,
         "description": "Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
@@ -43591,6 +43822,172 @@
           }
         },
         "summary": "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/hyperparameters": {
+      "get": {
+        "operationId": "subnetHyperparameters",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "block_number": 5000000,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "hyperparameters": {
+                      "activity_cutoff": 1,
+                      "activity_cutoff_factor": 1,
+                      "alpha_high_ratio": 0.9966,
+                      "alpha_low_ratio": 0.9966,
+                      "alpha_sigmoid_steepness": 0.5,
+                      "bonds_moving_avg_raw": 1,
+                      "bonds_reset_enabled": false,
+                      "burn_half_life": 1,
+                      "burn_increase_mult": 0.5,
+                      "commit_reveal_enabled": false,
+                      "commit_reveal_period": 1,
+                      "immunity_period": 1,
+                      "kappa_ratio": 0.9966,
+                      "liquid_alpha_enabled": false,
+                      "max_burn_tao": 0.5,
+                      "max_regs_per_block": 5000000,
+                      "max_validators": 1,
+                      "max_weight_limit_ratio": 0.9966,
+                      "min_allowed_weights": 1,
+                      "min_burn_tao": 0.5,
+                      "min_childkey_take_ratio": 0.9966,
+                      "owner_cut_auto_lock_enabled": false,
+                      "owner_cut_enabled": false,
+                      "registration_allowed": false,
+                      "serving_rate_limit": 1,
+                      "subnet_is_active": false,
+                      "target_regs_per_interval": 1,
+                      "tempo": 1,
+                      "transfers_enabled": false,
+                      "user_liquidity_enabled": false,
+                      "weights_rate_limit": 1,
+                      "weights_version": 1,
+                      "yuma_version": 1
+                    },
+                    "netuid": 7,
+                    "schema_version": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetHyperparametersArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams D1 tier.",
         "tags": [
           "subnets",
           "analytics"

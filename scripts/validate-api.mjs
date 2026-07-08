@@ -423,6 +423,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/hyperparameters",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      // Cold harness (no D1) → hyperparameters present but null; never 404.
+      assert.equal("hyperparameters" in body.data, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/validators",
     (body) => {
       assert.equal(body.data.netuid, 7);

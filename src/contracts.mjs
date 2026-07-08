@@ -1062,6 +1062,12 @@ export const PUBLIC_ARTIFACTS = [
     "NeuronDetailArtifact",
   ),
   artifact(
+    "subnet-hyperparameters",
+    "/metagraph/subnets/{netuid}/hyperparameters.json",
+    "One subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
+    "SubnetHyperparametersArtifact",
+  ),
+  artifact(
     "subnet-validators",
     "/metagraph/subnets/{netuid}/validators.json",
     "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
@@ -2347,6 +2353,17 @@ export const API_ROUTES = [
       { name: "netuid", schema: { type: "integer", minimum: 0 } },
       { name: "uid", schema: { type: "integer", minimum: 0 } },
     ],
+  ),
+  route(
+    "subnet-hyperparameters",
+    "GET",
+    "/api/v1/subnets/{netuid}/hyperparameters",
+    "/metagraph/subnets/{netuid}/hyperparameters.json",
+    "Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams D1 tier.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
     "subnet-validators",

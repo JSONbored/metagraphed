@@ -669,6 +669,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "One subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
+      "id": "subnet-hyperparameters",
+      "path": "/metagraph/subnets/{netuid}/hyperparameters.json",
+      "schema_ref": "#/components/schemas/SubnetHyperparametersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",

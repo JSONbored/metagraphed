@@ -37,6 +37,10 @@ export const INCIDENTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/health\/incidents$/;
 export const TRAJECTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/trajectory$/;
+// Subnet hyperparameters (#4303/1.4): one row per netuid, computed live from
+// the subnet_hyperparams D1 tier, no static file.
+export const SUBNET_HYPERPARAMS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/hyperparameters$/;
 // Stake/emission concentration metrics (#2106): computed live from the neurons
 // D1 tier, no static file.
 export const SUBNET_CONCENTRATION_PATH_PATTERN =

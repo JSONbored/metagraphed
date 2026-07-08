@@ -52,6 +52,7 @@ import {
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/metagraph-neurons.mjs";
+import { loadSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
 import {
   loadSubnetYield,
   YIELD_HISTORY_READ_COLUMNS,
@@ -541,6 +542,28 @@ export async function handleNeuron(request, env, netuid, uid) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/neurons/${uid}.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/hyperparameters (#4307/1.4): one netuid's live
+// consensus/economic/governance settings from the subnet_hyperparams D1 tier
+// (refreshed daily by refresh-subnet-hyperparams.yml, #4306/1.3) — no static
+// file, no query params (a single-row lookup, nothing to filter or paginate).
+export async function handleSubnetHyperparams(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadSubnetHyperparams(d1Runner(env), netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/hyperparameters.json`,
         data.captured_at,
       ),
     },

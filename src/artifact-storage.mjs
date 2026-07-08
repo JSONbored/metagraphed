@@ -82,6 +82,9 @@ export const R2_ONLY_PATTERNS = [
   // tier at /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, /validators —
   // never written as files.
   /^subnets\/(?:\d+|\{netuid\})\/metagraph\.json$/,
+  // Subnet hyperparameters (#4303/1.4): computed live from the
+  // subnet_hyperparams D1 tier, refreshed daily — never written as a file.
+  /^subnets\/(?:\d+|\{netuid\})\/hyperparameters\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/history\.json$/,

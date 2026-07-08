@@ -1421,6 +1421,75 @@
           }
         }
       },
+      "SubnetHyperparameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One subnet's consensus, economic, and governance hyperparameters (#4307). *_ratio fields are 0..1 ratios; min_burn_tao/max_burn_tao are TAO floats; bonds_moving_avg_raw is the raw on-chain integer (not yet ratio-converted — scaling constant unconfirmed).",
+        "required": [
+          "registration_allowed",
+          "commit_reveal_enabled",
+          "liquid_alpha_enabled",
+          "subnet_is_active",
+          "transfers_enabled",
+          "bonds_reset_enabled",
+          "user_liquidity_enabled",
+          "owner_cut_enabled",
+          "owner_cut_auto_lock_enabled"
+        ],
+        "properties": {
+          "kappa_ratio": { "type": ["number", "null"] },
+          "immunity_period": { "type": ["integer", "null"] },
+          "min_allowed_weights": { "type": ["integer", "null"] },
+          "max_weight_limit_ratio": { "type": ["number", "null"] },
+          "tempo": { "type": ["integer", "null"] },
+          "weights_version": { "type": ["integer", "null"] },
+          "weights_rate_limit": { "type": ["integer", "null"] },
+          "activity_cutoff": { "type": ["integer", "null"] },
+          "activity_cutoff_factor": { "type": ["integer", "null"] },
+          "registration_allowed": { "type": "boolean" },
+          "target_regs_per_interval": { "type": ["integer", "null"] },
+          "min_burn_tao": { "type": ["number", "null"] },
+          "max_burn_tao": { "type": ["number", "null"] },
+          "burn_half_life": { "type": ["integer", "null"] },
+          "burn_increase_mult": { "type": ["number", "null"] },
+          "bonds_moving_avg_raw": { "type": ["integer", "null"] },
+          "max_regs_per_block": { "type": ["integer", "null"] },
+          "serving_rate_limit": { "type": ["integer", "null"] },
+          "max_validators": { "type": ["integer", "null"] },
+          "commit_reveal_period": { "type": ["integer", "null"] },
+          "commit_reveal_enabled": { "type": "boolean" },
+          "alpha_high_ratio": { "type": ["number", "null"] },
+          "alpha_low_ratio": { "type": ["number", "null"] },
+          "liquid_alpha_enabled": { "type": "boolean" },
+          "alpha_sigmoid_steepness": { "type": ["number", "null"] },
+          "yuma_version": { "type": ["integer", "null"] },
+          "subnet_is_active": { "type": "boolean" },
+          "transfers_enabled": { "type": "boolean" },
+          "bonds_reset_enabled": { "type": "boolean" },
+          "user_liquidity_enabled": { "type": "boolean" },
+          "owner_cut_enabled": { "type": "boolean" },
+          "owner_cut_auto_lock_enabled": { "type": "boolean" },
+          "min_childkey_take_ratio": { "type": ["number", "null"] }
+        }
+      },
+      "SubnetHyperparametersArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "One subnet's consensus, economic, and governance hyperparameters (#4307), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
+        "required": ["schema_version", "netuid", "hyperparameters"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "hyperparameters": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/SubnetHyperparameters" },
+              { "type": "null" }
+            ]
+          }
+        }
+      },
       "SubnetValidatorsArtifact": {
         "type": "object",
         "additionalProperties": true,

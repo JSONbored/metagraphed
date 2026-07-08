@@ -52,6 +52,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-uptime",
   "subnet-metagraph",
   "subnet-neuron",
+  "subnet-hyperparameters",
   "subnet-validators",
   "subnet-events",
   "subnet-event-summary",

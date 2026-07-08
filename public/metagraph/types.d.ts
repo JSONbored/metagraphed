@@ -1942,6 +1942,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/hyperparameters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams D1 tier. */
+        get: operations["subnetHyperparameters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/identity-history": {
         parameters: {
             query?: never;
@@ -6258,6 +6275,53 @@ export interface components {
             }[];
             schema_version: number;
             window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One subnet's consensus, economic, and governance hyperparameters (#4307). *_ratio fields are 0..1 ratios; min_burn_tao/max_burn_tao are TAO floats; bonds_moving_avg_raw is the raw on-chain integer (not yet ratio-converted — scaling constant unconfirmed). */
+        SubnetHyperparameters: {
+            activity_cutoff?: number | null;
+            activity_cutoff_factor?: number | null;
+            alpha_high_ratio?: number | null;
+            alpha_low_ratio?: number | null;
+            alpha_sigmoid_steepness?: number | null;
+            bonds_moving_avg_raw?: number | null;
+            bonds_reset_enabled: boolean;
+            burn_half_life?: number | null;
+            burn_increase_mult?: number | null;
+            commit_reveal_enabled: boolean;
+            commit_reveal_period?: number | null;
+            immunity_period?: number | null;
+            kappa_ratio?: number | null;
+            liquid_alpha_enabled: boolean;
+            max_burn_tao?: number | null;
+            max_regs_per_block?: number | null;
+            max_validators?: number | null;
+            max_weight_limit_ratio?: number | null;
+            min_allowed_weights?: number | null;
+            min_burn_tao?: number | null;
+            min_childkey_take_ratio?: number | null;
+            owner_cut_auto_lock_enabled: boolean;
+            owner_cut_enabled: boolean;
+            registration_allowed: boolean;
+            serving_rate_limit?: number | null;
+            subnet_is_active: boolean;
+            target_regs_per_interval?: number | null;
+            tempo?: number | null;
+            transfers_enabled: boolean;
+            user_liquidity_enabled: boolean;
+            weights_rate_limit?: number | null;
+            weights_version?: number | null;
+            yuma_version?: number | null;
+        };
+        /** @description One subnet's consensus, economic, and governance hyperparameters (#4307), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file). */
+        SubnetHyperparametersArtifact: {
+            block_number?: number | null;
+            /** Format: date-time */
+            captured_at?: string | null;
+            hyperparameters: components["schemas"]["SubnetHyperparameters"] | null;
+            netuid: number;
+            schema_version: number;
         } & {
             [key: string]: unknown;
         };
@@ -22856,6 +22920,145 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetHyperparameters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "hyperparameters": {
+                     *           "activity_cutoff": 1,
+                     *           "activity_cutoff_factor": 1,
+                     *           "alpha_high_ratio": 0.9966,
+                     *           "alpha_low_ratio": 0.9966,
+                     *           "alpha_sigmoid_steepness": 0.5,
+                     *           "bonds_moving_avg_raw": 1,
+                     *           "bonds_reset_enabled": false,
+                     *           "burn_half_life": 1,
+                     *           "burn_increase_mult": 0.5,
+                     *           "commit_reveal_enabled": false,
+                     *           "commit_reveal_period": 1,
+                     *           "immunity_period": 1,
+                     *           "kappa_ratio": 0.9966,
+                     *           "liquid_alpha_enabled": false,
+                     *           "max_burn_tao": 0.5,
+                     *           "max_regs_per_block": 5000000,
+                     *           "max_validators": 1,
+                     *           "max_weight_limit_ratio": 0.9966,
+                     *           "min_allowed_weights": 1,
+                     *           "min_burn_tao": 0.5,
+                     *           "min_childkey_take_ratio": 0.9966,
+                     *           "owner_cut_auto_lock_enabled": false,
+                     *           "owner_cut_enabled": false,
+                     *           "registration_allowed": false,
+                     *           "serving_rate_limit": 1,
+                     *           "subnet_is_active": false,
+                     *           "target_regs_per_interval": 1,
+                     *           "tempo": 1,
+                     *           "transfers_enabled": false,
+                     *           "user_liquidity_enabled": false,
+                     *           "weights_rate_limit": 1,
+                     *           "weights_version": 1,
+                     *           "yuma_version": 1
+                     *         },
+                     *         "netuid": 7,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetHyperparametersArtifact"];
                     };
                 };
             };
