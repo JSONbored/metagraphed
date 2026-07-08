@@ -413,6 +413,23 @@ function statefulEnv(table, { failBatch = false, failPrune = false } = {}) {
   };
 }
 
+test("loadStagedSubnetHyperparams skips prune when expected_netuid_count is zero", async () => {
+  const table = new Map();
+  table.set(1, { ...hyperparamsRow(1) });
+  table.set(2, { ...hyperparamsRow(2) });
+  const m = statefulEnv(table);
+
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope([hyperparamsRow(1)], SIGNING_KEY, {
+    expected_netuid_count: 0,
+    captured_at: 1_750_000_000_000,
+  });
+  const r = await loadStagedSubnetHyperparams(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 0);
+  assert.equal(r.prune_skipped, true);
+  assert.deepEqual([...table.keys()].sort(), [1, 2]);
+});
+
 test("loadStagedSubnetHyperparams returns purge_failed when legacy count lookup fails", async () => {
   const env = {
     METAGRAPH_STAGING_SIGNING_KEY: SIGNING_KEY,
