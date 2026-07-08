@@ -127,7 +127,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             data-scrolled={scrolled ? "true" : "false"}
             className="mg-header sticky top-0 z-30 border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75"
           >
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
+            <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
               <button
                 className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-10 min-w-10 inline-flex items-center justify-center"
                 onClick={() => setMobileOpen(true)}
@@ -199,7 +199,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {/* Secondary breadcrumb row (desktop only, hidden on home) */}
             {crumbs.length > 1 ? (
               <div className="hidden md:block border-t border-border/70 bg-paper/60">
-                <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-9 flex items-center">
+                <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center">
                   <nav
                     aria-label="Breadcrumb"
                     className="flex items-center gap-1.5 text-xs text-ink-muted min-w-0"
@@ -261,7 +261,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <main
             id="main-content"
             key={pathname}
-            className="flex-1 px-4 md:px-10 py-10 md:py-14 max-w-[1400px] mx-auto w-full mg-route-enter"
+            className="flex-1 px-4 md:px-10 py-10 md:py-14 max-w-shell-max mx-auto w-full mg-route-enter"
           >
             {children}
           </main>
@@ -294,7 +294,7 @@ function SiteFooter() {
         aria-hidden
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
       />
-      <div className="max-w-[1400px] mx-auto px-4 md:px-10 py-14 grid gap-10 md:grid-cols-4 text-[12px] text-ink-muted">
+      <div className="max-w-shell-max mx-auto px-4 md:px-10 py-14 grid gap-10 md:grid-cols-4 text-[12px] text-ink-muted">
         <div className="md:col-span-2">
           <div className="font-display text-base font-semibold text-ink-strong inline-flex items-baseline gap-1">
             Metagraphed
@@ -348,12 +348,12 @@ function SiteFooter() {
         </FooterCol>
       </div>
       <div className="border-t border-border/70">
-        <div className="max-w-[1400px] mx-auto px-4 md:px-10 py-3">
+        <div className="max-w-shell-max mx-auto px-4 md:px-10 py-3">
           <RegistryPulseStrip />
         </div>
       </div>
       <div className="border-t border-border/70">
-        <div className="max-w-[1400px] mx-auto px-4 md:px-10 py-4 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
+        <div className="max-w-shell-max mx-auto px-4 md:px-10 py-4 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
           <span>
             © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
           </span>

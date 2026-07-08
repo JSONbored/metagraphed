@@ -21,7 +21,7 @@ export function SubnetsCompareDrawer() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-10 pb-3">
+      <div className="max-w-shell-max mx-auto px-4 md:px-10 pb-3">
         <div
           className={classNames(
             "pointer-events-auto rounded-xl border border-border bg-card/95 backdrop-blur shadow-[0_-8px_32px_-12px_rgba(0,0,0,0.35)]",

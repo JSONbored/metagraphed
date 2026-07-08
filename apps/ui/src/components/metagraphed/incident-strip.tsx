@@ -67,7 +67,7 @@ export function IncidentStrip() {
           : "bg-health-warn/10 border-health-warn/30 text-ink-strong",
       )}
     >
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-1.5 flex items-center gap-3">
+      <div className="max-w-shell-max mx-auto px-4 md:px-8 py-1.5 flex items-center gap-3">
         <AlertTriangle
           className={classNames(
             "size-3.5 shrink-0",
