@@ -36,7 +36,7 @@ export function Sparkline({
   points,
   width = 120,
   height = 28,
-  color = "var(--accent, #7aa2ff)",
+  color = "var(--accent, #00c899)",
   fill = true,
   className,
   ariaLabel,
