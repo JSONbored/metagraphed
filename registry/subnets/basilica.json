@@ -129,6 +129,24 @@
         "https://www.basilica.ai/"
       ],
       "url": "https://api.basilica.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-39-one-covenant-data-artifact",
+      "kind": "data-artifact",
+      "name": "Basilica A100 SXM5 GPU-host hardware profile",
+      "notes": "Public lshw hardware profile of an NVIDIA A100 SXM5 80GB GPU host (CPU, memory, PCI topology, GPU) serving as a reference capability sample for SN39 Basilica's validator hardware attestation. No-auth static JSON, pinned to an immutable commit.",
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jeffrey701"
+      },
+      "source_urls": [
+        "https://github.com/one-covenant/basilica/blob/1a75c1cb7c62caabe929b280931f0e074e2757f2/crates/basilica-validator/tests/fixtures/lshw/a100_sxm5_30vcpu.json"
+      ],
+      "url": "https://raw.githubusercontent.com/one-covenant/basilica/1a75c1cb7c62caabe929b280931f0e074e2757f2/crates/basilica-validator/tests/fixtures/lshw/a100_sxm5_30vcpu.json"
     }
   ],
   "website_url": "https://www.basilica.ai/"
