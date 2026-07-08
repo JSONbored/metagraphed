@@ -1216,6 +1216,9 @@ export interface SubnetEconomics {
   subnet_volume_tao?: number;
   registration_cost_tao?: number;
   registration_allowed?: boolean;
+  /** Proxy metrics (#3361): alpha_price × total_stake, and alpha_price × ALPHA_MAX_SUPPLY. */
+  alpha_market_cap_tao?: number;
+  alpha_fdv_tao?: number;
   [key: string]: unknown;
 }
 
