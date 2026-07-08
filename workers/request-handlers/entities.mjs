@@ -52,6 +52,13 @@ import {
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/metagraph-neurons.mjs";
+import {
+  loadGlobalAccounts,
+  GLOBAL_ACCOUNT_SORTS,
+  DEFAULT_GLOBAL_ACCOUNT_SORT,
+  GLOBAL_ACCOUNT_LIMIT_DEFAULT,
+  GLOBAL_ACCOUNT_LIMIT_MAX,
+} from "../../src/metagraph-accounts.mjs";
 import { loadSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
 import {
   loadSubnetYield,
@@ -295,6 +302,22 @@ const GLOBAL_VALIDATOR_CSV_COLUMNS = [
   "avg_validator_trust",
   "max_validator_trust",
   "latest_captured_at",
+  "latest_block_number",
+  "subnets",
+];
+const GLOBAL_ACCOUNT_CSV_COLUMNS = [
+  "ss58",
+  "hotkey_count",
+  "subnet_count",
+  "uid_count",
+  "validator_count",
+  "delegated_stake_tao",
+  "total_emission_tao",
+  "event_count",
+  "stake_dominance",
+  "last_seen_at",
+  "latest_captured_at",
+  "last_update_at",
   "latest_block_number",
   "subnets",
 ];
@@ -592,6 +615,82 @@ export async function handleSubnetValidators(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/validators.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts?sort=total_stake|total_emission|subnet_count|uid_count&limit=20:
+// network-wide account directory from the current neurons snapshot joined to ss58-level
+// account_events aggregates. Groups every neuron row by wallet ss58 so consumers get a
+// collection-level wallet leaderboard (delegated stake, footprint, activity) rather than
+// only address-scoped drill-ins. Cold/absent D1 returns a schema-stable empty list.
+function parseGlobalAccountsQuery(url) {
+  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
+  if (validationError) return { error: validationError };
+
+  const sort = url.searchParams.get("sort") || DEFAULT_GLOBAL_ACCOUNT_SORT;
+  if (!GLOBAL_ACCOUNT_SORTS.includes(sort)) {
+    return {
+      error: {
+        parameter: "sort",
+        message: `"${sort}" is not a supported sort. Supported: ${GLOBAL_ACCOUNT_SORTS.join(
+          ", ",
+        )}.`,
+      },
+    };
+  }
+
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: GLOBAL_ACCOUNT_LIMIT_DEFAULT,
+    min: 1,
+    max: GLOBAL_ACCOUNT_LIMIT_MAX,
+  });
+  if (limit.error) return { error: limit.error };
+
+  return { sort, limit: limit.value };
+}
+
+export function canonicalGlobalAccountsCachePath(url, request = null) {
+  const parsed = parseGlobalAccountsQuery(url);
+  if (parsed.error) {
+    return { response: analyticsQueryError(parsed.error) };
+  }
+  const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
+  return {
+    cachePathAndSearch: csvCacheVariant(
+      url,
+      request,
+      `${url.pathname}?${search}`,
+    ),
+  };
+}
+
+export async function handleGlobalAccounts(request, env, url) {
+  const parsed = parseGlobalAccountsQuery(url);
+  if (parsed.error) return analyticsQueryError(parsed.error);
+  const data = await loadGlobalAccounts(d1Runner(env), {
+    sort: parsed.sort,
+    limit: parsed.limit,
+  });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.accounts,
+      "global-accounts",
+      "short",
+      request,
+      GLOBAL_ACCOUNT_CSV_COLUMNS,
+    );
+  }
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/accounts.json",
         data.captured_at,
       ),
     },

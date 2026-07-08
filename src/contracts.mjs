@@ -1032,6 +1032,12 @@ export const PUBLIC_ARTIFACTS = [
     "GlobalValidatorsArtifact",
   ),
   artifact(
+    "global-accounts",
+    "/metagraph/accounts.json",
+    "Network-wide account directory: wallets grouped across all current neuron memberships and ranked by delegated stake, subnet/UID footprint, validator count, chain-event activity, or recency, computed live from the neurons + account_events D1 tiers at /api/v1/accounts (no static file).",
+    "GlobalAccountsArtifact",
+  ),
+  artifact(
     "validator-detail",
     "/metagraph/validators/{hotkey}.json",
     "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, computed live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
@@ -2282,6 +2288,39 @@ export const API_ROUTES = [
             "total_emission",
             "total_stake",
             "uid_count",
+          ],
+        },
+      },
+      {
+        name: "limit",
+        schema: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    ]),
+    [],
+  ),
+  route(
+    "global-accounts",
+    "GET",
+    "/api/v1/accounts",
+    "/metagraph/accounts.json",
+    "Fetch the network-wide account directory: wallets grouped across all current neuron memberships with delegated stake/emission totals, validator footprint, ss58-level account_events activity, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, hotkey_count, validator_count, event_count, last_update_at, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons + account_events D1 tiers.",
+    "short",
+    ["accounts", "analytics"],
+    csvRouteQuery([
+      {
+        name: "sort",
+        schema: {
+          type: "string",
+          enum: [
+            "event_count",
+            "hotkey_count",
+            "last_update_at",
+            "stake_dominance",
+            "subnet_count",
+            "total_emission",
+            "total_stake",
+            "uid_count",
+            "validator_count",
           ],
         },
       },
@@ -4110,6 +4149,12 @@ function csvExampleForRoute(entry) {
     return [
       "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
       'hk_sample,ck_sample,1,3,3,1234.5,10.25,0.12,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+    ].join("\r\n");
+  }
+  if (entry.id === "global-accounts") {
+    return [
+      "ss58,hotkey_count,subnet_count,uid_count,validator_count,delegated_stake_tao,total_emission_tao,event_count,stake_dominance,last_seen_at,latest_captured_at,last_update_at,latest_block_number,subnets",
+      '5CkSample,2,3,3,1,1234.5,10.25,42,0.12,2026-07-03T00:00:00.000Z,2026-07-02T00:00:00.000Z,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0,""hotkey"":""hk_sample""}]"',
     ].join("\r\n");
   }
   if (entry.id === "subnet-metagraph" || entry.id === "subnet-validators") {

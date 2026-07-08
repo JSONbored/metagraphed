@@ -19,6 +19,8 @@ import {
   handleNeuron,
   handleSubnetValidators,
   handleGlobalValidators,
+  handleGlobalAccounts,
+  canonicalGlobalAccountsCachePath,
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetIdentityHistory,
@@ -840,6 +842,56 @@ describe("handleGlobalValidators", () => {
       url("/api/v1/validators"),
     );
     assert.deepEqual(body.data.validators, []);
+  });
+});
+
+describe("handleGlobalAccounts", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleGlobalAccounts(
+      req("/api/v1/accounts"),
+      emptyEnv(),
+      url("/api/v1/accounts?bogus=1"),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty directory on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleGlobalAccounts,
+      req("/api/v1/accounts"),
+      emptyEnv(),
+      url("/api/v1/accounts"),
+    );
+    assert.deepEqual(body.data.accounts, []);
+    assert.equal(body.meta.artifact_path, "/metagraph/accounts.json");
+  });
+});
+
+describe("canonicalGlobalAccountsCachePath", () => {
+  test("returns a response short-circuit for an unsupported query param", () => {
+    const result = canonicalGlobalAccountsCachePath(
+      url("/api/v1/accounts?bogus=1"),
+    );
+    assert.equal(result.cachePathAndSearch, undefined);
+    assert.ok(result.response instanceof Response);
+    assert.equal(result.response.status, 400);
+  });
+
+  test("returns a response short-circuit for an unsupported sort value", () => {
+    const result = canonicalGlobalAccountsCachePath(
+      url("/api/v1/accounts?sort=bogus"),
+    );
+    assert.equal(result.cachePathAndSearch, undefined);
+    assert.equal(result.response.status, 400);
+  });
+
+  test("omitted sort/limit and their explicit defaults produce the same cache key", () => {
+    const omitted = canonicalGlobalAccountsCachePath(url("/api/v1/accounts"));
+    const explicit = canonicalGlobalAccountsCachePath(
+      url("/api/v1/accounts?sort=total_stake&limit=20"),
+    );
+    assert.equal(omitted.response, undefined);
+    assert.equal(omitted.cachePathAndSearch, explicit.cachePathAndSearch);
   });
 });
 

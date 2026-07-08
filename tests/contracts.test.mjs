@@ -213,6 +213,10 @@ describe("public contract registry", () => {
         "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
       ],
       [
+        "/api/v1/accounts",
+        "ss58,hotkey_count,subnet_count,uid_count,validator_count,delegated_stake_tao,total_emission_tao,event_count,stake_dominance,last_seen_at,latest_captured_at,last_update_at,latest_block_number,subnets",
+      ],
+      [
         "/api/v1/economics/trends",
         "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       ],

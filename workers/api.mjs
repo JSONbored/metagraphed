@@ -134,6 +134,8 @@ import {
   canonicalChainTurnoverCachePath,
   handleGlobalValidators,
   canonicalGlobalValidatorsCachePath,
+  handleGlobalAccounts,
+  canonicalGlobalAccountsCachePath,
   handleValidatorDetail,
   handleValidatorNominators,
   handleValidatorHistory,
@@ -1376,6 +1378,25 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  // Global account directory from the current neurons snapshot plus ss58-level
+  // account_events aggregates (#4327). Exact path, dispatched before address-scoped
+  // /accounts/{ss58} routes so the collection-level list stays unambiguous. Edge
+  // cache busts on the newest neuron captured_at across ALL subnets (same stamp as
+  // the global validators leaderboard above).
+  if (url.pathname === "/api/v1/accounts") {
+    const accountsCache = canonicalGlobalAccountsCachePath(url, request);
+    if (accountsCache.response) return accountsCache.response;
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "global-accounts",
+      () => handleGlobalAccounts(request, env, url),
+      accountsCache.cachePathAndSearch,
+      (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+    );
+  }
+
   // Cross-subnet validator detail (#4334/7.1): single-entity drill-in of the
   // leaderboard above, keyed by hotkey. Direct dispatch (no edge cache), same
   // as the other single-entity-by-key routes (handleAccount, handleNeuron).
@@ -2415,6 +2436,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/graphql" ||
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/validators" ||
+    pathname === "/api/v1/accounts" ||
     VALIDATOR_DETAIL_PATH_PATTERN.test(pathname) ||
     VALIDATOR_NOMINATORS_PATH_PATTERN.test(pathname) ||
     VALIDATOR_HISTORY_PATH_PATTERN.test(pathname) ||

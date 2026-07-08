@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide account directory: wallets grouped across all current neuron memberships with delegated stake/emission totals, validator footprint, ss58-level account_events activity, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, hotkey_count, validator_count, event_count, last_update_at, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons + account_events D1 tiers. */
+        get: operations["globalAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}": {
         parameters: {
             query?: never;
@@ -4657,6 +4674,48 @@ export interface components {
             generated_at?: "1970-01-01T00:00:00.000Z";
         };
         GenericArtifact: components["schemas"]["ArtifactBase"];
+        /** @description One wallet ss58 row grouped across every current neuron membership in the neurons snapshot, with ss58-level account_events activity merged in. */
+        GlobalAccountEntry: {
+            delegated_stake_tao: number;
+            event_count: number;
+            hotkey_count: number;
+            /** Format: date-time */
+            last_seen_at: string | null;
+            /** Format: date-time */
+            last_update_at: string | null;
+            latest_block_number: number | null;
+            /** Format: date-time */
+            latest_captured_at: string | null;
+            ss58: string;
+            stake_dominance: number | null;
+            subnet_count: number;
+            subnets: components["schemas"]["GlobalAccountSubnet"][];
+            total_emission_tao: number;
+            uid_count: number;
+            validator_count: number;
+        };
+        /** @description Network-wide account directory: wallets grouped across all current neuron memberships and ranked by delegated stake, subnet/UID footprint, validator count, chain-event activity, or recency, served live from the neurons + account_events D1 tiers at /api/v1/accounts (no static file). */
+        GlobalAccountsArtifact: {
+            account_count: number;
+            accounts: components["schemas"]["GlobalAccountEntry"][];
+            block_number?: number | null;
+            /** Format: date-time */
+            captured_at?: string | null;
+            limit: number;
+            schema_version: number;
+            /** @enum {string} */
+            sort: "event_count" | "hotkey_count" | "last_update_at" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count" | "validator_count";
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One current subnet membership for a wallet ss58 in the network-wide account directory. Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The global directory returns at most the top ten memberships per wallet, ranked by membership stake. */
+        GlobalAccountSubnet: {
+            emission_tao: number;
+            hotkey: string | null;
+            netuid: number;
+            stake_tao: number;
+            uid: number;
+        };
         /** @description Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window. */
         GlobalIncidentsArtifact: {
             observed_at?: string | null;
@@ -7516,6 +7575,146 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ApiIndexArtifact"];
                     };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    globalAccounts: {
+        parameters: {
+            query?: {
+                sort?: "event_count" | "hotkey_count" | "last_update_at" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count" | "validator_count";
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "account_count": 1,
+                     *         "accounts": [
+                     *           {
+                     *             "delegated_stake_tao": 0.5,
+                     *             "event_count": 1,
+                     *             "hotkey_count": 1,
+                     *             "last_seen_at": "2026-06-01T00:00:00.000Z",
+                     *             "last_update_at": "2026-06-01T00:00:00.000Z",
+                     *             "latest_block_number": 5000000,
+                     *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "stake_dominance": 0.5,
+                     *             "subnet_count": 1,
+                     *             "subnets": [
+                     *               {
+                     *                 "emission_tao": 0.5,
+                     *                 "hotkey": "example",
+                     *                 "netuid": 7,
+                     *                 "stake_tao": 0.5,
+                     *                 "uid": 1
+                     *               }
+                     *             ],
+                     *             "total_emission_tao": 0.5,
+                     *             "uid_count": 1,
+                     *             "validator_count": 1
+                     *           }
+                     *         ],
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "schema_version": 1,
+                     *         "sort": "event_count"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["GlobalAccountsArtifact"];
+                    };
+                    /**
+                     * @example ss58,hotkey_count,subnet_count,uid_count,validator_count,delegated_stake_tao,total_emission_tao,event_count,stake_dominance,last_seen_at,latest_captured_at,last_update_at,latest_block_number,subnets
+                     *     5CkSample,2,3,3,1,1234.5,10.25,42,0.12,2026-07-03T00:00:00.000Z,2026-07-02T00:00:00.000Z,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0,""hotkey"":""hk_sample""}]"
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
