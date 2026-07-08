@@ -165,6 +165,7 @@ import {
   handleExtrinsics,
   handleExtrinsic,
   handleSudo,
+  handleGovernanceConfigChanges,
 } from "./request-handlers/entities.mjs";
 import {
   canonicalCompareCachePath,
@@ -312,6 +313,7 @@ import {
   EMBEDDING_SYNC_CRON,
   EVENTS_INGEST_TOKEN_HEADER,
   EVENTS_LOAD_CRON,
+  GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PRUNE_CRON,
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
@@ -2229,6 +2231,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (SUDO_CALLS_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleSudo(request, env, resolved.url);
     }
+    if (GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN.test(resolved.url.pathname)) {
+      return handleGovernanceConfigChanges(request, env, resolved.url);
+    }
     if (resolved.url.pathname === "/api/v1/incidents") {
       return withEdgeCache(request, ctx, env, "global-incidents", () =>
         handleGlobalIncidents(request, env, resolved.url),
@@ -2484,7 +2489,8 @@ function isMainnetOnlyApiPath(pathname) {
     BLOCK_EVENTS_PATH_PATTERN.test(pathname) ||
     EXTRINSICS_FEED_PATH_PATTERN.test(pathname) ||
     EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname) ||
-    SUDO_CALLS_PATH_PATTERN.test(pathname)
+    SUDO_CALLS_PATH_PATTERN.test(pathname) ||
+    GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN.test(pathname)
   );
 }
 

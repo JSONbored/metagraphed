@@ -84,6 +84,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "extrinsics-feed",
   "extrinsic-detail",
   "sudo-calls",
+  "governance-config-changes",
   "chain-activity",
   "chain-calls",
   "chain-signers",

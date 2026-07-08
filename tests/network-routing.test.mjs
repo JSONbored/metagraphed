@@ -316,6 +316,8 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/extrinsics",
       // Sudo-call feed reads the same mainnet-only extrinsics D1 tier (#4310/2.2).
       "/api/v1/testnet/sudo",
+      // Same for the AdminUtils config-change feed (#4310/2.3).
+      "/api/v1/testnet/governance/config-changes",
       `/api/v1/testnet/accounts/${SS58}`,
       "/api/v1/testnet/subnets/7/metagraph",
       "/api/v1/testnet/subnets/7/hyperparameters",
