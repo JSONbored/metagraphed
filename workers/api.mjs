@@ -253,6 +253,10 @@ import {
   validNeuronDailyRows,
 } from "../src/neuron-history.mjs";
 import {
+  rollupAccountPositionDaily,
+  pruneAccountPositionDaily,
+} from "../src/account-position-history.mjs";
+import {
   eventInsertStatements,
   pruneAccountEvents,
   rollupAccountEventsDaily,
@@ -948,7 +952,26 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
             days: archivedPrunable.complete ? undefined : archivedPrunable.days,
           }).catch(() => ({ pruned: false }))
         : { pruned: false, reason: "archive-not-confirmed" };
-    return { rolled, archived, archivedPrunable, pruned };
+    // Per-account position history (#4329/6.1): same source `neurons` table and
+    // cron tick as neuron_daily, so both stay snapshot-consistent. Simple prune,
+    // no cold-archive tier (see src/account-position-history.mjs).
+    // pruneAccountPositionDaily already self-catches its own D1 errors (unlike
+    // rollupAccountPositionDaily, which has no internal try/catch), so it needs
+    // no wrapper .catch() here.
+    const accountPositionRolled = await rollupAccountPositionDaily(env).catch(
+      () => ({ rolled: false }),
+    );
+    const accountPositionPruned = await pruneAccountPositionDaily(env, {
+      now,
+    });
+    return {
+      rolled,
+      archived,
+      archivedPrunable,
+      pruned,
+      accountPositionRolled,
+      accountPositionPruned,
+    };
   }
   return runHealthProber(env, ctx);
 }
