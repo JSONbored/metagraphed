@@ -989,7 +989,9 @@ export interface Extrinsic {
   fee_tao?: number | null;
   tip_tao?: number | null;
   call_args?: ExtrinsicCallArg[] | Record<string, unknown> | null;
+  call_args_total?: number | null;
   events?: AccountEvent[];
+  events_total?: number;
   success?: boolean | null;
   observed_at?: string; // iso
   [key: string]: unknown;

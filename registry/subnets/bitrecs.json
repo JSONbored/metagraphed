@@ -106,6 +106,25 @@
         "https://github.com/bitrecs/bitrecs-subnet/blob/main/tests/test_json.py"
       ],
       "url": "https://raw.githubusercontent.com/bitrecs/bitrecs-subnet/main/tests/data/amazon/fashion/amazon_fashion_sample_1000.json"
+    },
+    {
+      "id": "sn-122-bitrecs-llms-txt",
+      "name": "Bitrecs llms.txt docs index",
+      "kind": "data-artifact",
+      "url": "https://www.bitrecs.ai/llms.txt",
+      "provider": "bitrecs",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.bitrecs.ai/llms.txt",
+        "https://www.bitrecs.ai/"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "notes": "Machine-readable llms.txt docs index published on the official Bitrecs website; self-identifies as Bittensor subnet 122 and links the homepage, Shopify app, and Taostats subnet page."
     }
   ],
   "social": {

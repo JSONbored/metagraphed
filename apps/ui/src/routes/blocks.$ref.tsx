@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
@@ -26,14 +26,18 @@ import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { formatChainEventArgs } from "@/lib/metagraphed/chain-event-args";
 
 export const Route = createFileRoute("/blocks/$ref")({
+  // #3422: validate the ref at the router level so an invalid one renders the
+  // real not-found boundary (notFoundComponent) instead of an in-page early
+  // return. parseParams runs before the loader, so downstream code only ever
+  // sees a well-formed ref.
+  parseParams: ({ ref }) => {
+    if (!isValidBlockRef(ref)) throw notFound();
+    return { ref };
+  },
   // Prime the shared cache so head() can title the page with the real block
   // number. Non-fatal: any failure falls back to the ref-only copy and the
   // page's own useSuspenseQuery still drives the not-found/empty path.
   loader: async ({ context, params }) => {
-    if (!isValidBlockRef(params.ref)) {
-      return null;
-    }
-
     try {
       const { data } = await context.queryClient.ensureQueryData(blockQuery(params.ref));
       return { blockNumber: data?.block_number ?? null };
@@ -54,6 +58,20 @@ export const Route = createFileRoute("/blocks/$ref")({
       ],
     };
   },
+  notFoundComponent: () => (
+    <AppShell>
+      <PageHeading
+        eyebrow="Explorer"
+        title="Block not found"
+        description="Block references must be a decimal block number or a 0x-prefixed hex hash."
+      />
+      <EmptyState
+        title="Invalid block reference"
+        description="Use a decimal block number or a 0x-prefixed hexadecimal block hash."
+        action={{ label: "Back to blocks", href: "/blocks" }}
+      />
+    </AppShell>
+  ),
   component: BlockDetailPage,
 });
 
@@ -71,23 +89,8 @@ function BlockDetailPage() {
 }
 
 function BlockDetail({ refValue }: { refValue: string }) {
-  if (!isValidBlockRef(refValue)) {
-    return (
-      <>
-        <PageHeading
-          eyebrow="Explorer"
-          title="Invalid block reference"
-          description="Block references must be a decimal block number or a 0x-prefixed hex hash."
-        />
-        <EmptyState
-          title="Invalid block reference"
-          description="Use a decimal block number or a 0x-prefixed hexadecimal block hash."
-          action={{ label: "Back to blocks", href: "/blocks" }}
-        />
-      </>
-    );
-  }
-
+  // The router's parseParams rejects malformed refs before this renders, so the
+  // detail component only ever runs with a well-formed ref.
   return <ValidBlockDetail refValue={refValue} />;
 }
 
