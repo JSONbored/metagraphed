@@ -3401,6 +3401,34 @@ export async function handleSubnetRecycled(request, env, netuid) {
   );
 }
 
+// Gated D1 -> Postgres serving cutover (ADR 0013 Sequencing step 3, the
+// deploy/README.md "Serving cutover" runbook: "if FLAG[tier] == postgres: try
+// Postgres; on error -> D1"). Each tier has its own env flag so a rollback is a
+// single-flag flip, never a code change or redeploy of the fallback path.
+// `request` is forwarded UNCHANGED to the DATA_API service binding -- the caller
+// has already run the SAME validation the D1 path runs (analytics.mjs's
+// validateEntityQuery + friends), so this trusts well-formed params and treats
+// ANY failure (binding absent, network error, non-2xx, unparseable/malformed
+// body) as "fall back to D1", never as a client-facing error. Postgres never
+// gets to independently fail a request the D1 path would have served.
+async function tryPostgresTier(env, request, flagName) {
+  if (env[flagName] !== "postgres" || !env.DATA_API) return null;
+  let upstream;
+  try {
+    upstream = await env.DATA_API.fetch(request);
+  } catch {
+    return null;
+  }
+  if (!upstream.ok) return null;
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return null;
+  }
+  return body && typeof body === "object" ? body : null;
+}
+
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the
 // `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta
@@ -3447,19 +3475,21 @@ export async function handleBlocks(request, env, url) {
   const minExtrinsics = numericFilters.min_extrinsics ?? null;
   const minEvents = numericFilters.min_events ?? null;
 
-  const data = await loadBlocks(d1Runner(env), {
-    limit,
-    offset,
-    cursor,
-    author: sp.get("author") || undefined,
-    specVersion: numericFilters.spec_version ?? undefined,
-    blockStart,
-    blockEnd,
-    from,
-    to,
-    minExtrinsics,
-    minEvents,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE")) ??
+    (await loadBlocks(d1Runner(env), {
+      limit,
+      offset,
+      cursor,
+      author: sp.get("author") || undefined,
+      specVersion: numericFilters.spec_version ?? undefined,
+      blockStart,
+      blockEnd,
+      from,
+      to,
+      minExtrinsics,
+      minEvents,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.blocks,
@@ -3512,50 +3542,56 @@ export async function handleBlocksSummary(request, env, url) {
 // unknown ref / cold store → 200 with block:null (schema-stable, mirrors the
 // neuron detail route — NEVER 404/throw).
 export async function handleBlock(request, env, ref) {
-  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  // A non-hash ref must be a strict decimal block_number; anything else (0x-short,
-  // 1e3, signs, empty) is a guaranteed miss, never a Number()-coerced wrong row.
-  const blockNumber = isHash ? null : strictBlockNumber(ref);
-  const sql = isHash
-    ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
-    : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
-  // The poller stores hashes lowercase (substrateinterface emits `0x` lowercase)
-  // and D1 text columns are BINARY-collated, so a mixed/upper-case 0x ref would
-  // miss. Normalize the hash ref to lowercase before binding (same for the block-
-  // extrinsics, block-events, and extrinsic handlers below).
-  const rows =
-    isHash || blockNumber !== null
-      ? await d1All(env, sql, [isHash ? ref.toLowerCase() : blockNumber])
-      : [];
-  // prev/next chain-walk neighbors (#1853): indexed scalar lookups for the
-  // nearest STORED block numbers around the resolved height (skips pruned gaps;
-  // null at the window edges). Derived from the resolved row's number (works for
-  // the hash path too). Only when the block resolved — a cold/unknown ref has no
-  // anchor. Keep these as WHERE-bounded subqueries so public detail requests use
-  // the block_number primary key instead of scanning the retained blocks table.
-  let prev = null;
-  let next = null;
-  // D1 can return the INTEGER block_number as a numeric string, and a bare
-  // Number.isInteger(rows[0]?.block_number) guard is false for "1234" — which
-  // would skip the neighbor query and make a resolved block wrongly report
-  // prev/next_block_number: null. Coerce the anchor first (mirrors formatBlock's
-  // toBlockNumber, and the string-cell fix applied to account-events #2489).
-  const resolvedRaw = Number(rows[0]?.block_number);
-  const resolvedNumber =
-    Number.isInteger(resolvedRaw) && resolvedRaw >= 0 ? resolvedRaw : null;
-  if (resolvedNumber !== null) {
-    const nbr = await d1All(
-      env,
-      `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
-      [resolvedNumber, resolvedNumber],
-    );
-    prev = nbr[0]?.prev ?? null;
-    next = nbr[0]?.next ?? null;
+  const pg = await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE");
+  let data = pg;
+  if (!data) {
+    const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
+    // A non-hash ref must be a strict decimal block_number; anything else (0x-short,
+    // 1e3, signs, empty) is a guaranteed miss, never a Number()-coerced wrong row.
+    const blockNumber = isHash ? null : strictBlockNumber(ref);
+    const sql = isHash
+      ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
+      : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
+    // The poller stores hashes lowercase (substrateinterface emits `0x` lowercase)
+    // and D1 text columns are BINARY-collated, so a mixed/upper-case 0x ref would
+    // miss. Normalize the hash ref to lowercase before binding (same for the block-
+    // extrinsics, block-events, and extrinsic handlers below).
+    const rows =
+      isHash || blockNumber !== null
+        ? await d1All(env, sql, [isHash ? ref.toLowerCase() : blockNumber])
+        : [];
+    // prev/next chain-walk neighbors (#1853): indexed scalar lookups for the
+    // nearest STORED block numbers around the resolved height (skips pruned gaps;
+    // null at the window edges). Derived from the resolved row's number (works for
+    // the hash path too). Only when the block resolved — a cold/unknown ref has no
+    // anchor. Keep these as WHERE-bounded subqueries so public detail requests use
+    // the block_number primary key instead of scanning the retained blocks table.
+    let prev = null;
+    let next = null;
+    // D1 can return the INTEGER block_number as a numeric string, and a bare
+    // Number.isInteger(rows[0]?.block_number) guard is false for "1234" — which
+    // would skip the neighbor query and make a resolved block wrongly report
+    // prev/next_block_number: null. Coerce the anchor first (mirrors formatBlock's
+    // toBlockNumber, and the string-cell fix applied to account-events #2489).
+    const resolvedRaw = Number(rows[0]?.block_number);
+    const resolvedNumber =
+      Number.isInteger(resolvedRaw) && resolvedRaw >= 0 ? resolvedRaw : null;
+    if (resolvedNumber !== null) {
+      const nbr = await d1All(
+        env,
+        `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
+        [resolvedNumber, resolvedNumber],
+      );
+      prev = nbr[0]?.prev ?? null;
+      next = nbr[0]?.next ?? null;
+    }
+    data = buildBlock(rows[0], ref, { prev, next });
   }
-  const data = buildBlock(rows[0], ref, { prev, next });
   // Finalized block detail is immutable once resolved; a cold/unknown ref stays
-  // on the short profile so clients re-check when the block lands.
-  const cacheProfile = rows[0] ? "static" : "short";
+  // on the short profile so clients re-check when the block lands. Checked on
+  // `data.block` (not the D1-only `rows[0]` var, now scoped to the D1 branch)
+  // so this works whether the row resolved via Postgres or D1.
+  const cacheProfile = data.block ? "static" : "short";
   return envelopeResponse(
     request,
     {
@@ -3683,22 +3719,28 @@ export async function handleExtrinsics(request, env, url) {
       message: "call_hash must be a 0x-prefixed 64-character hex string.",
     });
   }
-  const data = await loadExtrinsics(d1Runner(env), {
-    block: numericFilters.block ?? undefined,
-    signer: sp.get("signer") || undefined,
-    callModule: sp.get("call_module") || undefined,
-    callFunction: sp.get("call_function") || undefined,
-    callHash: callHashRaw || undefined,
-    success:
-      successRaw === "true" ? true : successRaw === "false" ? false : undefined,
-    blockStart: numericFilters.block_start ?? undefined,
-    blockEnd: numericFilters.block_end ?? undefined,
-    from: fromMs ?? undefined,
-    to: toMs ?? undefined,
-    limit,
-    offset,
-    cursor,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    (await loadExtrinsics(d1Runner(env), {
+      block: numericFilters.block ?? undefined,
+      signer: sp.get("signer") || undefined,
+      callModule: sp.get("call_module") || undefined,
+      callFunction: sp.get("call_function") || undefined,
+      callHash: callHashRaw || undefined,
+      success:
+        successRaw === "true"
+          ? true
+          : successRaw === "false"
+            ? false
+            : undefined,
+      blockStart: numericFilters.block_start ?? undefined,
+      blockEnd: numericFilters.block_end ?? undefined,
+      from: fromMs ?? undefined,
+      to: toMs ?? undefined,
+      limit,
+      offset,
+      cursor,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       extrinsicsToCsvRows(data.extrinsics),
@@ -3927,7 +3969,9 @@ export async function handleSudoKey(request, env) {
 // embedded via a second lookup on (block_number, extrinsic_index) — bounded to 50.
 // Empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store.
 export async function handleExtrinsic(request, env, ref) {
-  const data = await loadExtrinsicDetail(d1Runner(env), ref);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    (await loadExtrinsicDetail(d1Runner(env), ref));
   return envelopeResponse(
     request,
     {

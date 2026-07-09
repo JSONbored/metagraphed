@@ -11,6 +11,9 @@
 // closed via ctx.waitUntil so it never blocks the response.
 import postgres from "postgres";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
+import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
+import { buildExtrinsic, buildExtrinsicFeed } from "../src/extrinsics.mjs";
+import { formatAccountEvent } from "../src/account-events.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -66,6 +69,26 @@ function nonNegativeIntegerParam(params, key) {
   return Number.isSafeInteger(n) ? n : null;
 }
 
+function clampOffset(raw) {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+const HASH_RE = /^0x[0-9a-fA-F]{64}$/;
+const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
+const MAX_EMBEDDED_EVENTS = 50;
+
+// The blocks/extrinsics SELECT column lists below must match src/blocks.mjs's
+// BLOCK_READ_COLUMNS / src/extrinsics.mjs's EXTRINSIC_READ_COLUMNS so
+// formatBlock/formatExtrinsic (reused unchanged, imported above) see the exact
+// same row shape from either sink. Written literally per query (not factored
+// into a shared string) because postgres.js tagged templates bind a `${...}`
+// interpolation as a query PARAMETER, not raw SQL -- a column list can't be
+// injected that way. extrinsics' call_args is cast to text: Postgres' JSONB
+// auto-parses to a JS object via the driver, but formatExtrinsic expects a
+// JSON-encoded STRING to JSON.parse, matching D1's TEXT column -- casting here
+// keeps that shared formatter untouched rather than teaching it two shapes.
+
 function coerceEvent(row) {
   return {
     ...row,
@@ -97,6 +120,196 @@ export default {
 
     try {
       await sql`SET statement_timeout = '3000ms'`;
+
+      // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
+      // feed, mirroring src/blocks.mjs's loadBlocks filter set exactly (author,
+      // spec_version, block_start/block_end, from/to, min_extrinsics/min_events,
+      // cursor). The main Worker only calls this when its per-tier serving flag
+      // is on and forwards the SAME request it already validated -- this route
+      // trusts well-formed params rather than re-deriving 400s.
+      if (url.pathname === "/api/v1/blocks") {
+        const limit = clampLimit(url.searchParams.get("limit"));
+        const offset = clampOffset(url.searchParams.get("offset"));
+        const cursor = decodeCursor(url.searchParams.get("cursor"), 1);
+        const author = url.searchParams.get("author") || null;
+        const specVersion = nonNegativeIntegerParam(
+          url.searchParams,
+          "spec_version",
+        );
+        const blockStart = nonNegativeIntegerParam(
+          url.searchParams,
+          "block_start",
+        );
+        const blockEnd = nonNegativeIntegerParam(url.searchParams, "block_end");
+        const from = nonNegativeIntegerParam(url.searchParams, "from");
+        const to = nonNegativeIntegerParam(url.searchParams, "to");
+        const minExtrinsics = nonNegativeIntegerParam(
+          url.searchParams,
+          "min_extrinsics",
+        );
+        const minEvents = nonNegativeIntegerParam(
+          url.searchParams,
+          "min_events",
+        );
+        const rows = await sql`
+          SELECT block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at
+          FROM blocks
+          WHERE TRUE
+            ${author ? sql`AND author = ${author}` : sql``}
+            ${specVersion != null ? sql`AND spec_version = ${specVersion}` : sql``}
+            ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+            ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+            ${from != null ? sql`AND observed_at >= ${from}` : sql``}
+            ${to != null ? sql`AND observed_at <= ${to}` : sql``}
+            ${minExtrinsics != null ? sql`AND extrinsic_count >= ${minExtrinsics}` : sql``}
+            ${minEvents != null ? sql`AND event_count >= ${minEvents}` : sql``}
+            ${cursor ? sql`AND block_number < ${cursor[0]}` : sql``}
+          ORDER BY block_number DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+        const last = rows.length === limit ? rows[rows.length - 1] : null;
+        const nextCursor = last
+          ? encodeCursor([numberOrNull(last.block_number)])
+          : null;
+        return json(buildBlockFeed(rows, { limit, offset, nextCursor }));
+      }
+
+      // GET /api/v1/blocks/:ref — per-block detail + nearest stored neighbors,
+      // mirroring src/blocks.mjs's loadBlock. ref is a numeric block_number or a
+      // 0x block_hash (lowercased before binding, matching the D1 path's
+      // case-insensitivity workaround).
+      const blockRef = url.pathname.match(/^\/api\/v1\/blocks\/([^/]+)$/);
+      if (blockRef) {
+        const ref = decodeURIComponent(blockRef[1]);
+        const isHash = HASH_RE.test(ref);
+        const blockNumber =
+          !isHash && /^\d+$/.test(ref) && Number.isSafeInteger(Number(ref))
+            ? Number(ref)
+            : null;
+        if (!isHash && blockNumber === null) {
+          return json(buildBlock(undefined, ref));
+        }
+        const rows = isHash
+          ? await sql`
+              SELECT block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at
+              FROM blocks WHERE block_hash = ${ref.toLowerCase()} LIMIT 1`
+          : await sql`
+              SELECT block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at
+              FROM blocks WHERE block_number = ${blockNumber} LIMIT 1`;
+        let prev = null;
+        let next = null;
+        const resolvedNumber = numberOrNull(rows[0]?.block_number);
+        if (resolvedNumber != null) {
+          const nbr = await sql`
+            SELECT
+              (SELECT MAX(block_number) FROM blocks WHERE block_number < ${resolvedNumber}) AS prev,
+              (SELECT MIN(block_number) FROM blocks WHERE block_number > ${resolvedNumber}) AS next`;
+          prev = nbr[0]?.prev ?? null;
+          next = nbr[0]?.next ?? null;
+        }
+        return json(buildBlock(rows[0], ref, { prev, next }));
+      }
+
+      // GET /api/v1/extrinsics — the recent-extrinsic feed, mirroring
+      // src/extrinsics.mjs's loadExtrinsics filter set exactly (signer,
+      // call_module, call_function, call_hash, success, block, block_start/
+      // block_end, from/to, cursor). Index selection is left to Postgres'
+      // planner (schema.sql's idx_extrinsics_signer_block / idx_extrinsics_call
+      // cover the same access patterns D1's INDEXED BY hints targeted) --
+      // Postgres has no INDEXED BY equivalent.
+      if (url.pathname === "/api/v1/extrinsics") {
+        const limit = clampLimit(url.searchParams.get("limit"));
+        const offset = clampOffset(url.searchParams.get("offset"));
+        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+        const block = nonNegativeIntegerParam(url.searchParams, "block");
+        const signer = url.searchParams.get("signer") || null;
+        const callModule = url.searchParams.get("call_module") || null;
+        const callFunction = url.searchParams.get("call_function") || null;
+        const callHashRaw = url.searchParams.get("call_hash");
+        const callHash =
+          callHashRaw && HASH_RE.test(callHashRaw) ? callHashRaw : null;
+        const successRaw = url.searchParams.get("success");
+        const success =
+          successRaw === "true" ? true : successRaw === "false" ? false : null;
+        const blockStart = nonNegativeIntegerParam(
+          url.searchParams,
+          "block_start",
+        );
+        const blockEnd = nonNegativeIntegerParam(url.searchParams, "block_end");
+        const from = nonNegativeIntegerParam(url.searchParams, "from");
+        const to = nonNegativeIntegerParam(url.searchParams, "to");
+        const rows = await sql`
+          SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
+          FROM extrinsics
+          WHERE TRUE
+            ${block != null ? sql`AND block_number = ${block}` : sql``}
+            ${signer ? sql`AND signer = ${signer}` : sql``}
+            ${callModule ? sql`AND call_module = ${callModule}` : sql``}
+            ${callFunction ? sql`AND call_function = ${callFunction}` : sql``}
+            ${callHash ? sql`AND call_args::text LIKE ${'%"' + callHash + '"%'}` : sql``}
+            ${success != null ? sql`AND success = ${success}` : sql``}
+            ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+            ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+            ${from != null ? sql`AND observed_at >= ${from}` : sql``}
+            ${to != null ? sql`AND observed_at <= ${to}` : sql``}
+            ${cursor ? sql`AND (block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY block_number DESC, extrinsic_index DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+        const last = rows.length === limit ? rows[rows.length - 1] : null;
+        const nextCursor = last
+          ? encodeCursor([
+              numberOrNull(last.block_number),
+              numberOrNull(last.extrinsic_index),
+            ])
+          : null;
+        return json(buildExtrinsicFeed(rows, { limit, offset, nextCursor }));
+      }
+
+      // GET /api/v1/extrinsics/:ref — per-extrinsic detail + embedded
+      // account_events (up to MAX_EMBEDDED_EVENTS), mirroring
+      // src/extrinsic-detail.mjs's loadExtrinsicDetail. ref is a 0x hash or a
+      // composite "block_number-extrinsic_index".
+      const extrinsicRef = url.pathname.match(
+        /^\/api\/v1\/extrinsics\/([^/]+)$/,
+      );
+      if (extrinsicRef) {
+        const ref = decodeURIComponent(extrinsicRef[1]);
+        const isHash = HASH_RE.test(ref);
+        let rows;
+        if (isHash) {
+          rows = await sql`
+            SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
+            FROM extrinsics WHERE extrinsic_hash = ${ref.toLowerCase()}
+            ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`;
+        } else {
+          const composite = COMPOSITE_REF_RE.exec(ref);
+          const blockNumber = composite ? Number(composite[1]) : NaN;
+          const extrinsicIndex = composite ? Number(composite[2]) : NaN;
+          rows =
+            composite &&
+            Number.isSafeInteger(blockNumber) &&
+            Number.isSafeInteger(extrinsicIndex)
+              ? await sql`
+                  SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
+                  FROM extrinsics WHERE block_number = ${blockNumber} AND extrinsic_index = ${extrinsicIndex} LIMIT 1`
+              : [];
+        }
+        const resolved = rows[0];
+        let events = [];
+        const resolvedBlock = numberOrNull(resolved?.block_number);
+        const resolvedIndex = numberOrNull(resolved?.extrinsic_index);
+        if (resolvedBlock != null && resolvedIndex != null) {
+          const eventRows = await sql`
+            SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+            FROM account_events
+            WHERE block_number = ${resolvedBlock} AND extrinsic_index = ${resolvedIndex}
+            ORDER BY event_index ASC LIMIT ${MAX_EMBEDDED_EVENTS}`;
+          events = eventRows.map(formatAccountEvent).filter(Boolean);
+        }
+        return json(buildExtrinsic(resolved, ref, events));
+      }
+
       // GET /api/v1/blocks/:n/chain-events — EVERY event in a block (the all-events
       // tier). Distinct from the existing /blocks/:ref/events (curated, D1, #1852).
       const block = url.pathname.match(

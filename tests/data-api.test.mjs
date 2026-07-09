@@ -18,6 +18,13 @@ const mockRows = vi.hoisted(() => ({
     },
   ],
 }));
+// A per-test queue of results for handlers that issue more than one query per
+// request (the new blocks/extrinsics detail routes: main row + a prev/next
+// neighbor lookup, or main row + embedded account_events) -- each top-level
+// sql`` call shifts the next queued result; once empty, falls back to the
+// single shared `mockRows.current` (preserving every existing chain-events
+// test's simpler one-shape-fits-all behavior unchanged).
+const mockQueue = vi.hoisted(() => ({ current: [] }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -25,6 +32,9 @@ vi.mock("postgres", () => ({
     // the handler awaits the outer query and ignores interpolated fragment values.
     const sql = (strings, ...values) => {
       sqlCalls.push({ text: Array.from(strings).join("?"), values });
+      if (mockQueue.current.length) {
+        return Promise.resolve(mockQueue.current.shift());
+      }
       return Promise.resolve(mockRows.current);
     };
     sql.end = () => Promise.resolve();
@@ -41,6 +51,7 @@ const queryText = () => sqlCalls.map((call) => call.text).join("\n");
 
 beforeEach(() => {
   sqlCalls.length = 0;
+  mockQueue.current = [];
   mockRows.current = [
     {
       block_number: "123",
@@ -254,6 +265,230 @@ test("chain-events rejects overlong or non-enumerable pallet/method filters", as
   expect(res.status).toBe(400);
   const punct = await req("/api/v1/chain-events?pallet=System;DROP");
   expect(punct.status).toBe(400);
+});
+
+// ---- D1 serving-cutover routes (#4656 followup): blocks + extrinsics -------
+
+const BLOCK_ROW = {
+  block_number: "8586300",
+  block_hash: "0xabc",
+  parent_hash: "0xdef",
+  author: "5Author",
+  extrinsic_count: 5,
+  event_count: 10,
+  spec_version: 424,
+  observed_at: "1783600000000",
+};
+
+const EXTRINSIC_HASH = `0x${"a".repeat(64)}`;
+
+const EXTRINSIC_ROW = {
+  block_number: "8586300",
+  extrinsic_index: 2,
+  extrinsic_hash: EXTRINSIC_HASH,
+  signer: "5Signer",
+  call_module: "SubtensorModule",
+  call_function: "set_weights",
+  call_args: '{"a":1}', // simulates the ::text cast of a JSONB column
+  success: true,
+  fee_tao: "0.01",
+  tip_tao: "0",
+  observed_at: "1783600000000",
+};
+
+test("GET /api/v1/blocks returns a block feed shaped like the D1 route", async () => {
+  mockRows.current = [BLOCK_ROW];
+  const res = await req("/api/v1/blocks?limit=1");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.schema_version).toBe(1);
+  expect(body.block_count).toBe(1);
+  expect(body.blocks[0].block_number).toBe(8586300);
+  expect(typeof body.blocks[0].block_number).toBe("number");
+  expect(body.blocks[0].author).toBe("5Author");
+  expect(body.next_cursor).toBe("8586300"); // rows.length === limit
+});
+
+test("GET /api/v1/blocks applies the same filter set as loadBlocks", async () => {
+  mockRows.current = [BLOCK_ROW];
+  await req(
+    "/api/v1/blocks?author=5A&spec_version=424&block_start=1&block_end=2&from=1&to=2&min_extrinsics=1&min_events=1",
+  );
+  const text = queryText();
+  expect(text).toContain("AND author =");
+  expect(text).toContain("AND spec_version =");
+  expect(text).toContain("AND block_number >=");
+  expect(text).toContain("AND block_number <=");
+  expect(text).toContain("AND observed_at >=");
+  expect(text).toContain("AND observed_at <=");
+  expect(text).toContain("AND extrinsic_count >=");
+  expect(text).toContain("AND event_count >=");
+});
+
+test("GET /api/v1/blocks uses a cursor seek instead of OFFSET when cursor is present", async () => {
+  mockRows.current = [BLOCK_ROW];
+  await req("/api/v1/blocks?cursor=8586300");
+  const text = queryText();
+  expect(text).toContain("AND block_number <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/blocks/:ref resolves a numeric ref + neighbors", async () => {
+  // Queue slot 0 is the unconditional `SET statement_timeout` call every
+  // request issues before any route matching runs.
+  mockQueue.current = [[], [BLOCK_ROW], [{ prev: 8586299, next: 8586301 }]];
+  const res = await req("/api/v1/blocks/8586300");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.block.block_number).toBe(8586300);
+  expect(body.prev_block_number).toBe(8586299);
+  expect(body.next_block_number).toBe(8586301);
+});
+
+test("GET /api/v1/blocks/:ref resolves a lowercased hash ref", async () => {
+  mockQueue.current = [[], [BLOCK_ROW], [{ prev: null, next: null }]];
+  const upperHash = `0x${"ABC".repeat(21)}D`; // 64 hex chars, mixed-case
+  const res = await req(`/api/v1/blocks/${upperHash}`);
+  expect(res.status).toBe(200);
+  expect(sqlCalls.some((c) => c.values.includes(upperHash.toLowerCase()))).toBe(
+    true,
+  );
+});
+
+test("GET /api/v1/blocks/:ref on a malformed ref skips the query entirely (block:null)", async () => {
+  const res = await req("/api/v1/blocks/not-a-real-ref");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.block).toBeNull();
+  expect(sqlCalls.length).toBe(1); // only the unconditional SET call
+});
+
+test("GET /api/v1/blocks/:ref on an unknown block skips the neighbor query", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/blocks/999999999");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.block).toBeNull();
+  expect(body.prev_block_number).toBeNull();
+  expect(body.next_block_number).toBeNull();
+  expect(sqlCalls.length).toBe(2); // SET + the main lookup, no neighbor query
+});
+
+test("GET /api/v1/extrinsics returns a feed with call_args parsed from the ::text cast", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  const res = await req("/api/v1/extrinsics?limit=1");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsic_count).toBe(1);
+  const ex = body.extrinsics[0];
+  expect(ex.block_number).toBe(8586300);
+  expect(ex.success).toBe(true);
+  expect(ex.call_args).toEqual({ a: 1 }); // parsed, not the raw string
+  expect(queryText()).toContain("call_args::text AS call_args");
+});
+
+test("GET /api/v1/extrinsics applies the same filter set as loadExtrinsics", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  await req(
+    "/api/v1/extrinsics?signer=5S&call_module=SubtensorModule&call_function=set_weights&success=true&block=1&block_start=1&block_end=2&from=1&to=2",
+  );
+  const text = queryText();
+  expect(text).toContain("AND block_number =");
+  expect(text).toContain("AND signer =");
+  expect(text).toContain("AND call_module =");
+  expect(text).toContain("AND call_function =");
+  expect(text).toContain("AND success =");
+  expect(text).toContain("AND block_number >=");
+  expect(text).toContain("AND block_number <=");
+  expect(text).toContain("AND observed_at >=");
+  expect(text).toContain("AND observed_at <=");
+});
+
+test("GET /api/v1/extrinsics with success=false filters correctly, distinct from absent", async () => {
+  mockRows.current = [{ ...EXTRINSIC_ROW, success: false }];
+  const res = await req("/api/v1/extrinsics?success=false");
+  const body = await res.json();
+  expect(body.extrinsics[0].success).toBe(false);
+  expect(queryText()).toContain("AND success =");
+  sqlCalls.length = 0;
+  await req("/api/v1/extrinsics");
+  expect(queryText()).not.toContain("AND success =");
+});
+
+test("GET /api/v1/extrinsics matches call_hash against the cast call_args text", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  const hash = `0x${"a".repeat(64)}`;
+  await req(`/api/v1/extrinsics?call_hash=${hash}`);
+  expect(queryText()).toContain("AND call_args::text LIKE");
+  const call = sqlCalls.find((c) => c.text.includes("call_args::text LIKE"));
+  expect(call.values).toContain(`%"${hash}"%`);
+});
+
+test("GET /api/v1/extrinsics ignores a malformed call_hash instead of erroring", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  const res = await req("/api/v1/extrinsics?call_hash=not-a-hash");
+  expect(res.status).toBe(200);
+  expect(queryText()).not.toContain("call_args::text LIKE");
+});
+
+test("GET /api/v1/extrinsics uses a composite cursor seek instead of OFFSET", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  await req("/api/v1/extrinsics?cursor=8586300.2");
+  const text = queryText();
+  expect(text).toContain("AND (block_number, extrinsic_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/extrinsics/:ref resolves a hash ref with embedded account_events", async () => {
+  const eventRow = {
+    block_number: "8586300",
+    event_index: 0,
+    extrinsic_index: 2,
+    event_kind: "WeightsSet",
+    hotkey: "5Hot",
+    coldkey: "5Cold",
+    netuid: 4,
+    uid: 1,
+    amount_tao: "1.5",
+    alpha_amount: "0",
+    observed_at: "1783600000000",
+  };
+  // Queue slot 0 is the unconditional `SET statement_timeout` call.
+  mockQueue.current = [[], [EXTRINSIC_ROW], [eventRow]];
+  const res = await req(`/api/v1/extrinsics/${EXTRINSIC_HASH}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsic.extrinsic_hash).toBe(EXTRINSIC_HASH);
+  expect(body.events).toHaveLength(1);
+  expect(body.events[0].event_kind).toBe("WeightsSet");
+});
+
+test("GET /api/v1/extrinsics/:ref resolves a composite block-index ref", async () => {
+  mockQueue.current = [[], [EXTRINSIC_ROW], []];
+  const res = await req("/api/v1/extrinsics/8586300-2");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsic.extrinsic_index).toBe(2);
+  expect(body.events).toEqual([]);
+});
+
+test("GET /api/v1/extrinsics/:ref on a malformed ref skips the query (extrinsic:null)", async () => {
+  const res = await req("/api/v1/extrinsics/not-a-real-ref");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsic).toBeNull();
+  expect(body.events).toEqual([]);
+  expect(sqlCalls.length).toBe(1); // only the unconditional SET call
+});
+
+test("GET /api/v1/extrinsics/:ref skips the embedded-events query on an unresolved ref", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/extrinsics/0x${"a".repeat(64)}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsic).toBeNull();
+  expect(body.events).toEqual([]);
+  expect(sqlCalls.length).toBe(2); // SET + the main lookup, no events query
 });
 
 test("POST is rejected with 405", async () => {

@@ -47,6 +47,34 @@
     // AI/VECTORIZE bindings are present, the routes serve live; otherwise they
     // return 503 ai_unavailable. Flip to "false" to instantly disable.
     "METAGRAPH_ENABLE_AI": "true",
+    // D1 -> Postgres serving-cutover flags (ADR 0013 Sequencing step 3, the
+    // deploy/README.md "Serving cutover" runbook). Set to "postgres" to route
+    // /api/v1/blocks(/{ref}) or /api/v1/extrinsics(/{ref}) through the DATA_API
+    // Hyperdrive Worker instead of D1 -- ANY failure there (binding absent,
+    // network error, bad response) transparently falls back to D1, so flipping
+    // this is a zero-downtime experiment and flipping it back is an instant
+    // rollback.
+    //
+    // blocks: live-verified byte-identical to D1 (2026-07-09, block #8586622 --
+    // every column, including block_hash/parent_hash/author/observed_at, matched
+    // exactly) -- safe to flip once ready.
+    //
+    // extrinsics: DO NOT FLIP YET. Live-verified 2026-07-09 that indexer-rs's
+    // `call_args` (Postgres JSONB) is a flat {argName: value} map with NO type
+    // metadata (e.g. {"netuid":110,"dests":[155],"weights":[65535]}), while
+    // fetch-events.py's `call_args` (D1) is an array of {name,type,value}
+    // descriptors the UI and backend depend on (Multisig call_hash detection,
+    // nested-call/batch decode, renderCallArgs' array-vs-object branch). This
+    // is systemic, not an edge case -- checked commit_timelocked_mechanism_weights
+    // and set_weights, both extrinsics disagree in shape. Reconciling requires
+    // either the Rust indexer emitting the same {name,type,value} shape (its
+    // source has no git remote yet -- ADR 0013's own tracked risk) or a
+    // shape-translation layer here that would need SCALE type metadata the flat
+    // Postgres rows don't carry. Tracked as a follow-up; blocks/{ref} and
+    // extrinsics/{ref}'s embedded account_events are NOT affected by this (their
+    // own columns have no such shape divergence).
+    "METAGRAPH_BLOCKS_SOURCE": "d1",
+    "METAGRAPH_EXTRINSICS_SOURCE": "d1",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
