@@ -160,12 +160,12 @@
         "submitted_by": "cleanjunc"
       },
       "schema_status": "machine-readable",
-      "schema_url": "https://raw.githubusercontent.com/RedTeamSubnet/rest-dfp-proxy/main/docs/pages/api-docs/openapi.json",
+      "schema_url": "https://cdn.jsdelivr.net/gh/RedTeamSubnet/rest-dfp-proxy@main/docs/pages/api-docs/openapi.json",
       "source_urls": [
         "https://github.com/RedTeamSubnet/rest-dfp-proxy",
         "https://github.com/RedTeamSubnet/RedTeam/blob/main/docs/challenges/dev_fingerprinter/README.md"
       ],
-      "url": "https://raw.githubusercontent.com/RedTeamSubnet/rest-dfp-proxy/main/docs/pages/api-docs/openapi.json"
+      "url": "https://cdn.jsdelivr.net/gh/RedTeamSubnet/rest-dfp-proxy@main/docs/pages/api-docs/openapi.json"
     }
   ],
   "contact": "oscar@theredteam.io"
