@@ -79,11 +79,11 @@ function ExtrinsicDetail({ hash }: { hash: string }) {
         <PageHeading
           eyebrow="Explorer"
           title="Invalid extrinsic reference"
-          description="Extrinsic references must be a 0x-prefixed hexadecimal hash."
+          description="Extrinsic references must be a 0x-prefixed hexadecimal hash or a block#index label (e.g. 123456-2)."
         />
         <EmptyState
           title="Invalid extrinsic reference"
-          description="Use a 0x-prefixed hexadecimal extrinsic hash."
+          description="Use a 0x-prefixed hexadecimal extrinsic hash or a block#index label (e.g. 123456-2)."
           action={{ label: "Back to extrinsics", href: "/extrinsics" }}
         />
       </>

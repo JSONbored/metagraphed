@@ -1,10 +1,18 @@
 // Helpers for the extrinsic (transaction) explorer — the sibling of blocks.ts.
 
 const EXTRINSIC_HASH = /^0x[0-9a-fA-F]{1,128}$/;
+/** block_number-extrinsic_index (e.g. 123456-2). Mirrors src/extrinsic-detail.mjs COMPOSITE_REF_RE,
+ *  but disallows a leading-zero block number so omnibox decimal-block detection stays disjoint. */
+const COMPOSITE_EXTRINSIC_REF = /^[1-9][0-9]*-[0-9]+$/;
 
-/** True when a route/API ref is a 0x-prefixed extrinsic hash. */
+/** True when a ref is a block_number-extrinsic_index composite label. */
+export function isCompositeExtrinsicRef(ref: string): boolean {
+  return COMPOSITE_EXTRINSIC_REF.test(ref);
+}
+
+/** True when a route/API ref is a 0x-prefixed extrinsic hash or a block#index composite. */
 export function isValidExtrinsicHash(ref: string): boolean {
-  return EXTRINSIC_HASH.test(ref);
+  return EXTRINSIC_HASH.test(ref) || COMPOSITE_EXTRINSIC_REF.test(ref);
 }
 
 /** Encode a validated extrinsic hash as a single URL path segment. */
