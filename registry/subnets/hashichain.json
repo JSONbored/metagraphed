@@ -75,7 +75,7 @@
       "id": "sn-115-hashichain-intro-logo",
       "kind": "data-artifact",
       "name": "HashiChain intro logo image",
-      "notes": "Public no-auth PNG brand image published in the official hashi115/hashichain repository assets directory and referenced as the SN115 on-chain subnet logo in SubnetIdentitiesV3.",
+      "notes": "Public no-auth PNG brand image published in the official hashi115/hashichain repository assets directory, referenced as the SN115 on-chain subnet logo in SubnetIdentitiesV3, and pinned to an immutable commit.",
       "provider": "hashichain",
       "public_safe": true,
       "review": {
@@ -83,10 +83,10 @@
         "submitted_by": "thomasalvaedison7777-lgtm"
       },
       "source_urls": [
-        "https://github.com/hashi115/hashichain/blob/main/assets/intro.png",
-        "https://github.com/hashi115/hashichain/tree/main/assets"
+        "https://github.com/hashi115/hashichain/blob/e4a0280c0d29cc858795b84a7cac932baae43088/assets/intro.png",
+        "https://github.com/hashi115/hashichain/tree/e4a0280c0d29cc858795b84a7cac932baae43088/assets"
       ],
-      "url": "https://raw.githubusercontent.com/hashi115/hashichain/refs/heads/main/assets/intro.png"
+      "url": "https://raw.githubusercontent.com/hashi115/hashichain/e4a0280c0d29cc858795b84a7cac932baae43088/assets/intro.png"
     }
   ],
   "contact": "hashichain@outlook.com"
