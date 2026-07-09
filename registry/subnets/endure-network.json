@@ -80,6 +80,22 @@
         "timeout_ms": 10000
       },
       "notes": "Official Endure documentation linked from the project website."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-30-endure-og-card-image",
+      "kind": "data-artifact",
+      "name": "Endure OpenGraph card image",
+      "notes": "Public no-auth JPEG brand image served at endure.network/metadata-endure.jpg and registered as the official Endure Network OpenGraph and Twitter card image for SN30 social previews.",
+      "provider": "endure",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "thomasalvaedison7777-lgtm"
+      },
+      "source_urls": ["https://endure.network/metadata-endure.jpg"],
+      "url": "https://endure.network/metadata-endure.jpg"
     }
   ],
   "social": {
