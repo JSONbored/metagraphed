@@ -138,10 +138,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Brand />
               <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
               <NavMegaMenu />
-              <div className="flex-1 flex justify-end">
+              <div className="flex-1 flex justify-end min-w-0">
                 <NavOmnibox onOpenPalette={() => setPaletteOpen(true)} />
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <ApiDrawerTrigger />
 
                 <NetworkSwitcher />
