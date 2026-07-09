@@ -1375,7 +1375,38 @@ function AccountFootprintSection({
   fallback: AccountRegistration[];
 }) {
   const subnetsResult = useQuery(accountSubnetsQuery(ss58));
-  const rows = subnetsResult.data?.data.subnets ?? fallback;
+  const card = subnetsResult.data?.data;
+
+  if (subnetsResult.isPending && !card) {
+    return (
+      <AccountFeedSectionSkeleton
+        id="footprint"
+        title="Subnet footprint"
+        subtitle="Current registrations across the indexed network, netuid-ordered, with stake distribution."
+      />
+    );
+  }
+
+  if (subnetsResult.isError) {
+    return (
+      <SectionAnchor
+        id="footprint"
+        title="Subnet footprint"
+        subtitle="Current registrations across the indexed network, netuid-ordered, with stake distribution."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load subnet footprint"
+          description="The subnet-footprint tier is optional enrichment — the rest of the account page is unaffected."
+          error={subnetsResult.error}
+          onRetry={() => void subnetsResult.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const rows = card?.subnets ?? fallback;
   if (rows.length === 0) return null;
 
   const staked = rows
