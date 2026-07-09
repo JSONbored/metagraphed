@@ -1583,6 +1583,9 @@ export interface SubnetWeightSetter {
   last_set_at: string | null;
 }
 
+/** One validator's network-wide weight-setting activity over the window (#3470). */
+export type ChainWeightSetter = SubnetWeightSetter;
+
 /**
  * Per-subnet weight-setters leaderboard over a 7d/30d window (#1657), from
  * /api/v1/subnets/{netuid}/weights/setters — the individual validators behind the
@@ -1597,6 +1600,21 @@ export interface SubnetWeightSetters {
   weight_sets: number;
   setter_count: number;
   setters: SubnetWeightSetter[];
+}
+
+/**
+ * Network-wide weight-setters leaderboard over a 7d/30d window (#3470), from
+ * GET /api/v1/chain/weights/setters — validators ranked by WeightsSet count
+ * across every subnet. Zeroed when cold.
+ */
+export interface ChainWeightSetters {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_setters: number;
+  weight_sets: number;
+  setter_count: number;
+  setters: ChainWeightSetter[];
 }
 
 /**

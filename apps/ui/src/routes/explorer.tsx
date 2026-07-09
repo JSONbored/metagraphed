@@ -23,6 +23,7 @@ import {
   chainEventsStatsQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainWeightSettersQuery,
   chainStakeFlowQuery,
   chainStakeMovesQuery,
   chainTurnoverQuery,
@@ -103,6 +104,7 @@ function ExplorerPage() {
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
+          "/api/v1/chain/weights/setters",
           "/api/v1/chain/stake-flow",
           "/api/v1/chain/stake-moves",
           "/api/v1/chain/turnover",
@@ -739,6 +741,14 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
   );
 }
 
+function fmtShare(share: number | null): string {
+  return share == null ? "—" : `${(share * 100).toFixed(1)}%`;
+}
+
+function weightSetterKey(setter: { hotkey: string | null; uid: number | null }): string {
+  return setter.hotkey ?? `uid:${setter.uid ?? "unknown"}`;
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -759,6 +769,7 @@ function ExplorerDashboard() {
     { data: feesRes },
     { data: callsRes },
     { data: signersRes },
+    { data: weightSettersRes },
     { data: stakeFlowRes },
     { data: stakeMovesRes },
     { data: turnoverRes },
@@ -772,6 +783,7 @@ function ExplorerDashboard() {
       chainFeesQuery(win),
       chainCallsQuery(win),
       chainSignersQuery(win),
+      chainWeightSettersQuery(win),
       chainStakeFlowQuery(win),
       chainStakeMovesQuery(win),
       chainTurnoverQuery(win),
@@ -785,6 +797,7 @@ function ExplorerDashboard() {
   const fees = feesRes.data;
   const calls = callsRes.data;
   const signers = signersRes.data;
+  const weightSetters = weightSettersRes.data;
   const stakeFlow = stakeFlowRes.data;
   const stakeMoves = stakeMovesRes.data;
   const turnover = turnoverRes.data;
@@ -1021,6 +1034,67 @@ function ExplorerDashboard() {
           ) : (
             <p className="font-mono text-[12px] text-ink-muted">
               No fee payers in this window yet.
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+              Network weight-setters
+            </h2>
+            <span className="font-mono text-[11px] text-ink-muted">
+              {formatNumber(weightSetters.distinct_setters)} validators
+            </span>
+          </div>
+          {weightSetters.setters.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Validator</th>
+                  <th className={`${TH} text-right`}>WeightsSet</th>
+                  <th className={`${TH} text-right`}>Share</th>
+                  <th className={`${TH} text-right`}>Last set</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {weightSetters.setters.map((setter) => (
+                  <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      {setter.hotkey ? (
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: setter.hotkey }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                          title={setter.hotkey}
+                        >
+                          {shortHash(setter.hotkey) ?? setter.hotkey}
+                        </Link>
+                      ) : (
+                        <span
+                          className="text-ink-muted"
+                          title="Uid-only setter (no network-wide hotkey)"
+                        >
+                          uid {setter.uid ?? "—"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(setter.weight_sets)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {fmtShare(setter.share)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="font-mono text-[12px] text-ink-muted">
+              No weight-setters in this window yet.
             </p>
           )}
         </section>

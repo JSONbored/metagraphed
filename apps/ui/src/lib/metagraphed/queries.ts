@@ -94,6 +94,7 @@ import type {
   ChainYield,
   ChainYieldDistribution,
   ChainSigners,
+  ChainWeightSetters,
   ChainSignerEntry,
   Extrinsic,
   ExtrinsicCallArg,
@@ -255,6 +256,7 @@ const MAX_TURNOVER_SUBNETS = 24;
 const MAX_CHAIN_EVENT_GROUPS = 100;
 const DEFAULT_CHAIN_EVENT_BLOCKS = 1000;
 const MAX_CHAIN_SIGNERS = 20;
+const MAX_CHAIN_WEIGHT_SETTERS = 20;
 const MAX_CHAIN_IDENTITY_CHANGES = 200;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
@@ -3383,6 +3385,43 @@ export const chainSignersQuery = (window: ChainWindow = "7d") =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainSigners>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeChainWeightSetters(raw: unknown, window: ChainWindow): ChainWeightSetters {
+  const rec = isRecord(raw) ? raw : {};
+  const setters = (Array.isArray(rec.setters) ? rec.setters : [])
+    .map(normalizeSubnetWeightSetter)
+    .filter(
+      (setter): setter is NonNullable<ReturnType<typeof normalizeSubnetWeightSetter>> =>
+        setter != null,
+    )
+    .slice(0, MAX_CHAIN_WEIGHT_SETTERS);
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? window,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_setters: firstFiniteNumber(rec.distinct_setters) ?? 0,
+    weight_sets: firstFiniteNumber(rec.weight_sets) ?? 0,
+    setter_count: firstFiniteNumber(rec.setter_count) ?? setters.length,
+    setters,
+  };
+}
+
+export const chainWeightSettersQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-weight-setters", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/weights/setters", {
+        params: { window, limit: 20 },
+        signal,
+      });
+      return {
+        data: normalizeChainWeightSetters(res.data, window),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainWeightSetters>;
     },
     staleTime: STALE_SHORT,
   });
