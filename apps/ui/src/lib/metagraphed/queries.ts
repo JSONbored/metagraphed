@@ -1892,6 +1892,12 @@ export const blocksSummaryQuery = () =>
     staleTime: STALE_SHORT,
   });
 
+function countExtrinsicCallArgs(raw: unknown): number | null {
+  if (Array.isArray(raw)) return raw.length;
+  if (isRecord(raw)) return Object.keys(raw).length;
+  return null;
+}
+
 function normalizeExtrinsicCallArgs(raw: unknown): Extrinsic["call_args"] {
   if (Array.isArray(raw)) {
     return raw
@@ -1972,12 +1978,15 @@ export function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic
   }
 
   const callArgs = normalizeExtrinsicCallArgs(raw.call_args);
+  const callArgsTotal = countExtrinsicCallArgs(raw.call_args);
 
   const eventsSource = Array.isArray(rawEvents)
     ? rawEvents
     : Array.isArray(raw.events)
       ? raw.events
       : [];
+
+  const eventsTotal = eventsSource.length;
 
   const events = Array.isArray(eventsSource)
     ? eventsSource
@@ -2009,7 +2018,9 @@ export function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic
     fee_tao: firstFiniteNumber(raw.fee_tao),
     tip_tao: firstFiniteNumber(raw.tip_tao),
     call_args: callArgs,
+    call_args_total: callArgsTotal,
     events,
+    events_total: eventsTotal,
     success: typeof raw.success === "boolean" ? raw.success : null,
     observed_at: firstString(raw.observed_at),
   } as Extrinsic;

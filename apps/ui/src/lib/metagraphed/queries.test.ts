@@ -77,7 +77,9 @@ describe("normalizeExtrinsic", () => {
     });
 
     expect(out?.call_args).toHaveLength(64);
+    expect(out?.call_args_total).toBe(80);
     expect(out?.events).toHaveLength(100);
+    expect(out?.events_total).toBe(120);
   });
 
   it("sanitizes deeply nested and circular call arg values before rendering", () => {
