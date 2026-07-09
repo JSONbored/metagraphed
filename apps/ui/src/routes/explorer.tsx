@@ -29,6 +29,8 @@ import {
   chainStakeTransfersQuery,
   chainTransferPairsQuery,
   economicsTrendsQuery,
+  chainServingQuery,
+  chainPrometheusQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -689,7 +691,8 @@ function ExplorerDashboard() {
   // all fast, and the full page eventually completing at ~33s with a longer
   // timeout). useSuspenseQueries fires all fetches concurrently and suspends
   // once, so the page waits on the slowest single query, not the sum. #3365
-  // adds a 10th (economics/trends, a different data source entirely).
+  // adds a 10th (economics/trends, a different data source entirely); #3463
+  // adds the serving + prometheus operations leaderboards.
   const [
     { data: activityRes },
     { data: feesRes },
@@ -699,6 +702,8 @@ function ExplorerDashboard() {
     { data: stakeMovesRes },
     { data: turnoverRes },
     { data: stakeTransfersRes },
+    { data: servingRes },
+    { data: prometheusRes },
     { data: eventMixRes },
     { data: trendsRes },
   ] = useSuspenseQueries({
@@ -711,6 +716,8 @@ function ExplorerDashboard() {
       chainStakeMovesQuery(win),
       chainTurnoverQuery(win),
       chainStakeTransfersQuery(win),
+      chainServingQuery(win),
+      chainPrometheusQuery(win),
       chainEventsStatsQuery(),
       economicsTrendsQuery(win),
     ],
@@ -723,6 +730,8 @@ function ExplorerDashboard() {
   const stakeMoves = stakeMovesRes.data;
   const turnover = turnoverRes.data;
   const stakeTransfers = stakeTransfersRes.data;
+  const serving = servingRes.data;
+  const prometheus = prometheusRes.data;
   const eventMix = eventMixRes.data;
   const trends = trendsRes.data;
 
@@ -1079,6 +1088,128 @@ function ExplorerDashboard() {
           </p>
         )}
       </section>
+
+      {/* #3463: network operations — axon-serving + prometheus-telemetry leaderboards */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-lg border border-border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Axon serving
+              </h2>
+              <p className="mt-1 font-mono text-[11px] text-ink-muted">
+                {formatNumber(serving.network.announcements)} announcements across{" "}
+                {formatNumber(serving.network.distinct_servers)} servers network-wide
+              </p>
+            </div>
+            <span className="font-mono text-[11px] text-ink-muted">
+              {serving.subnets.length} subnets
+            </span>
+          </div>
+          {serving.subnets.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Subnet</th>
+                  <th className={`${TH} text-right`}>Announcements</th>
+                  <th className={`${TH} text-right`}>Distinct servers</th>
+                  <th className={`${TH} text-right`}>Per server</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {serving.subnets.map((s) => (
+                  <tr key={s.netuid} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                      >
+                        SN{s.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(s.announcements)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(s.distinct_servers)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.announcements_per_server != null
+                        ? s.announcements_per_server.toFixed(2)
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="font-mono text-[12px] text-ink-muted">
+              No serving announcements in this window yet.
+            </p>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Prometheus telemetry
+              </h2>
+              <p className="mt-1 font-mono text-[11px] text-ink-muted">
+                {formatNumber(prometheus.network.announcements)} announcements across{" "}
+                {formatNumber(prometheus.network.distinct_exporters)} exporters network-wide
+              </p>
+            </div>
+            <span className="font-mono text-[11px] text-ink-muted">
+              {prometheus.subnets.length} subnets
+            </span>
+          </div>
+          {prometheus.subnets.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Subnet</th>
+                  <th className={`${TH} text-right`}>Announcements</th>
+                  <th className={`${TH} text-right`}>Distinct exporters</th>
+                  <th className={`${TH} text-right`}>Per exporter</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {prometheus.subnets.map((s) => (
+                  <tr key={s.netuid} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                      >
+                        SN{s.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(s.announcements)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(s.distinct_exporters)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.announcements_per_exporter != null
+                        ? s.announcements_per_exporter.toFixed(2)
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="font-mono text-[12px] text-ink-muted">
+              No telemetry announcements in this window yet.
+            </p>
+          )}
+        </section>
+      </div>
+
       <PalletEventMixSection stats={eventMix} />
     </div>
   );

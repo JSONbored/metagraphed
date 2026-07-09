@@ -2403,6 +2403,56 @@ export interface ChainStakeTransfers {
   subnets: ChainStakeTransferSubnet[];
 }
 
+/** One subnet row in the axon-serving leaderboard from GET /api/v1/chain/serving. */
+export interface ChainServingSubnet {
+  netuid: number;
+  distinct_servers: number;
+  announcements: number;
+  announcements_per_server: number | null;
+}
+
+export interface ChainServingNetwork {
+  distinct_servers: number;
+  announcements: number;
+  announcements_per_server: number | null;
+}
+
+/** Network-wide axon-serving announcement leaderboard from GET /api/v1/chain/serving. */
+export interface ChainServing {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainServingNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainServingSubnet[];
+}
+
+/** One subnet row in the Prometheus-telemetry leaderboard from GET /api/v1/chain/prometheus. */
+export interface ChainPrometheusSubnet {
+  netuid: number;
+  distinct_exporters: number;
+  announcements: number;
+  announcements_per_exporter: number | null;
+}
+
+export interface ChainPrometheusNetwork {
+  distinct_exporters: number;
+  announcements: number;
+  announcements_per_exporter: number | null;
+}
+
+/** Network-wide Prometheus-telemetry announcement leaderboard from GET /api/v1/chain/prometheus. */
+export interface ChainPrometheus {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainPrometheusNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainPrometheusSubnet[];
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;

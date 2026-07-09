@@ -80,6 +80,10 @@ import type {
   ChainTransferPairs,
   ChainStakeTransfers,
   ChainStakeTransferSubnet,
+  ChainServing,
+  ChainServingSubnet,
+  ChainPrometheus,
+  ChainPrometheusSubnet,
   ChainIntensityDistribution,
   ChainConcentration,
   ChainPerformance,
@@ -245,6 +249,8 @@ const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
 const MAX_CHAIN_TRANSFER_PAIRS = 100;
 const MAX_CHAIN_STAKE_TRANSFERS = 100;
+const MAX_CHAIN_SERVING = 100;
+const MAX_CHAIN_PROMETHEUS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -3314,6 +3320,106 @@ export const chainStakeTransfersQuery = (window = "7d", limit = 20) =>
       });
       return {
         data: normalizeChainStakeTransfers(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3463: network-wide axon-serving leaderboard over a 7d/30d window — which
+// subnets are actively announcing serving axons, ranked by announcement volume.
+// Every numeric cell coerces defensively: counts fall through to 0, the
+// per-server ratio to null (never NaN), and malformed subnet rows are dropped.
+function normalizeChainServingSubnet(raw: unknown): ChainServingSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_servers: firstFiniteNumber(raw.distinct_servers) ?? 0,
+    announcements: firstFiniteNumber(raw.announcements) ?? 0,
+    announcements_per_server: firstFiniteNumber(raw.announcements_per_server) ?? null,
+  };
+}
+
+export function normalizeChainServing(raw: unknown): ChainServing {
+  const rec = isRecord(raw) ? raw : {};
+  const networkRec = isRecord(rec.network) ? rec.network : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: {
+      distinct_servers: firstFiniteNumber(networkRec.distinct_servers) ?? 0,
+      announcements: firstFiniteNumber(networkRec.announcements) ?? 0,
+      announcements_per_server: firstFiniteNumber(networkRec.announcements_per_server) ?? null,
+    },
+    intensity_distribution: normalizeChainIntensityDistribution(rec.intensity_distribution),
+    subnets: normalizeChainRows(rec.subnets, MAX_CHAIN_SERVING, normalizeChainServingSubnet),
+  };
+}
+
+export const chainServingQuery = (window = "7d", limit = 20) =>
+  queryOptions({
+    queryKey: k("chain-serving", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainServing>>("/api/v1/chain/serving", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainServing(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3463: network-wide Prometheus-telemetry leaderboard, the exporter-side
+// sibling of the serving leaderboard. Same defensive coercion.
+function normalizeChainPrometheusSubnet(raw: unknown): ChainPrometheusSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_exporters: firstFiniteNumber(raw.distinct_exporters) ?? 0,
+    announcements: firstFiniteNumber(raw.announcements) ?? 0,
+    announcements_per_exporter: firstFiniteNumber(raw.announcements_per_exporter) ?? null,
+  };
+}
+
+export function normalizeChainPrometheus(raw: unknown): ChainPrometheus {
+  const rec = isRecord(raw) ? raw : {};
+  const networkRec = isRecord(rec.network) ? rec.network : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: {
+      distinct_exporters: firstFiniteNumber(networkRec.distinct_exporters) ?? 0,
+      announcements: firstFiniteNumber(networkRec.announcements) ?? 0,
+      announcements_per_exporter: firstFiniteNumber(networkRec.announcements_per_exporter) ?? null,
+    },
+    intensity_distribution: normalizeChainIntensityDistribution(rec.intensity_distribution),
+    subnets: normalizeChainRows(rec.subnets, MAX_CHAIN_PROMETHEUS, normalizeChainPrometheusSubnet),
+  };
+}
+
+export const chainPrometheusQuery = (window = "7d", limit = 20) =>
+  queryOptions({
+    queryKey: k("chain-prometheus", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainPrometheus>>("/api/v1/chain/prometheus", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainPrometheus(res.data),
         meta: res.meta,
         url: res.url,
       };
