@@ -21,6 +21,7 @@ import { safeExternalUrl } from "./external-link";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { isCompositeExtrinsicRef } from "@/lib/metagraphed/extrinsics";
 import { pickPromotedSubnetHit, hitKind } from "@/lib/metagraphed/search-hit-score";
 
 interface Props {
@@ -200,6 +201,18 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         params: { ref: q },
         icon: Hash,
         badge: "block",
+      });
+    }
+
+    if (isCompositeExtrinsicRef(q)) {
+      targets.push({
+        kind: "nav",
+        label: `Extrinsic ${q}`,
+        hint: "Jump to extrinsic by block#index",
+        to: "/extrinsics/$hash",
+        params: { hash: q },
+        icon: ArrowRightLeft,
+        badge: "block#index",
       });
     }
 

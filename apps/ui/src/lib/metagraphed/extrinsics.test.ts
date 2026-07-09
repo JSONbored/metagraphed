@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   extrinsicCall,
   extrinsicHashPathSegment,
+  isCompositeExtrinsicRef,
   isDecodedCall,
   isValidExtrinsicHash,
   multisigCallHash,
@@ -11,11 +12,31 @@ import {
 
 const VALID_HASH = "0xabc123def456";
 
+describe("isCompositeExtrinsicRef", () => {
+  it("accepts block_number-extrinsic_index composite labels", () => {
+    expect(isCompositeExtrinsicRef("123456-2")).toBe(true);
+    expect(isCompositeExtrinsicRef("1-0")).toBe(true);
+  });
+
+  it("rejects malformed near-misses and leading-zero block numbers", () => {
+    expect(isCompositeExtrinsicRef("123-")).toBe(false);
+    expect(isCompositeExtrinsicRef("-2")).toBe(false);
+    expect(isCompositeExtrinsicRef("123456-2-3")).toBe(false);
+    expect(isCompositeExtrinsicRef("0-2")).toBe(false);
+    expect(isCompositeExtrinsicRef("0123-2")).toBe(false);
+    expect(isCompositeExtrinsicRef(VALID_HASH)).toBe(false);
+  });
+});
+
 describe("isValidExtrinsicHash", () => {
   it("accepts 0x-prefixed hex extrinsic hashes", () => {
     expect(isValidExtrinsicHash(VALID_HASH)).toBe(true);
     expect(isValidExtrinsicHash("0xDEADBEEF")).toBe(true);
     expect(isValidExtrinsicHash(`0x${"a".repeat(128)}`)).toBe(true);
+  });
+
+  it("accepts block#index composite refs", () => {
+    expect(isValidExtrinsicHash("123456-2")).toBe(true);
   });
 
   it("rejects malformed hash refs", () => {
@@ -28,8 +49,9 @@ describe("isValidExtrinsicHash", () => {
 });
 
 describe("extrinsicHashPathSegment", () => {
-  it("returns an encoded path segment for valid hashes", () => {
+  it("returns an encoded path segment for valid hashes and composite refs", () => {
     expect(extrinsicHashPathSegment(VALID_HASH)).toBe(encodeURIComponent(VALID_HASH));
+    expect(extrinsicHashPathSegment("123456-2")).toBe("123456-2");
   });
 
   it("throws before encoding invalid hash refs", () => {
