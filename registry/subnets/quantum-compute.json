@@ -104,6 +104,25 @@
         "https://github.com/qbittensor-labs/quantum-compute"
       ],
       "url": "https://raw.githubusercontent.com/qbittensor-labs/quantum-compute/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-48-quantum-compute-openquantum-docs",
+      "kind": "docs",
+      "name": "Open Quantum documentation portal",
+      "notes": "Public no-auth official documentation portal for Open Quantum, the platform through which SN48 Quantum Compute is accessed. The official SN48 repository (qbittensor-labs/quantum-compute, GitHub description 'SN 48 Quantum Compute') names 'Subnet 48' and directs users to OpenQuantum.com in its README, and the repo homepage www.qbittensorlabs.com/quantum links the same. Covers Getting Started, the Python SDK, Qiskit/PennyLane plugins, and the API reference for submitting quantum circuits to the subnet's backends.",
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/qbittensor-labs/quantum-compute/blob/main/README.md",
+        "https://www.qbittensorlabs.com/quantum"
+      ],
+      "url": "https://docs.openquantum.com/"
     }
   ],
   "social": {
