@@ -55,6 +55,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
   const triggerRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
   const filterInputRef = useRef<HTMLInputElement>(null);
   const itemsRef = useRef<Array<HTMLAnchorElement | null>>([]);
+  const panelRef = useRef<HTMLDivElement>(null);
   const typeBufRef = useRef<string>("");
   const typeBufTimer = useRef<number | null>(null);
 
@@ -151,6 +152,30 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
   }
 
   function onPanelKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    // #3432: focus containment — while the modal panel is open, Tab / Shift+Tab
+    // cycle only through the panel's own focusable elements (the filter input,
+    // registered item links, and any inline links/buttons the content renders),
+    // wrapping at the ends, instead of escaping into the underlying page.
+    if (e.key === "Tab") {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement);
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+      return;
+    }
     const items = itemsRef.current.filter(Boolean) as HTMLAnchorElement[];
     if (items.length === 0) return;
     const currentIdx = items.findIndex((el) => el === document.activeElement);
@@ -255,8 +280,10 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
         <>
           <div aria-hidden className="mg-mega-scrim" onClick={() => setOpenKey(null)} />
           <div
+            ref={panelRef}
             className="absolute left-1/2 -translate-x-1/2 top-full mt-3 z-40"
             role="dialog"
+            aria-modal="true"
             aria-label={`${activePanel.label} menu`}
             onKeyDown={onPanelKeyDown}
             onMouseEnter={() => {
