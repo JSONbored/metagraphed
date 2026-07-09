@@ -14562,6 +14562,65 @@
           "community-docs"
         ]
       },
+      "SubnetAlphaVolumeArtifact": {
+        "additionalProperties": false,
+        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Fixed 24h window, not OHLC/price data.",
+        "properties": {
+          "buy_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "buy_volume_alpha": {
+            "type": "number"
+          },
+          "buy_volume_tao": {
+            "type": "number"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sell_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sell_volume_alpha": {
+            "type": "number"
+          },
+          "sell_volume_tao": {
+            "type": "number"
+          },
+          "total_volume_alpha": {
+            "type": "number"
+          },
+          "total_volume_tao": {
+            "type": "number"
+          },
+          "window": {
+            "enum": [
+              "24h"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "buy_volume_alpha",
+          "sell_volume_alpha",
+          "total_volume_alpha",
+          "buy_volume_tao",
+          "sell_volume_tao",
+          "total_volume_tao",
+          "buy_count",
+          "sell_count"
+        ],
+        "type": "object"
+      },
       "SubnetAxonRemovalsArtifact": {
         "additionalProperties": false,
         "description": "Per-subnet axon-removal activity over a 7d/30d window: the distinct removers (hotkeys), AxonInfoRemoved event count, and removals per remover for ONE subnet. Raw axon-teardown activity from the account_events AxonInfoRemoved stream — the removal-side companion to the AxonServed announcement activity in /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns) — served live at /api/v1/subnets/{netuid}/axon-removals (no static file); zeroed when the subnet has no AxonInfoRemoved events in the window.",
@@ -47808,6 +47867,144 @@
           }
         },
         "summary": "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/volume": {
+      "get": {
+        "operationId": "subnetAlphaVolume",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "buy_count": 1,
+                    "buy_volume_alpha": 0.5,
+                    "buy_volume_tao": 0.5,
+                    "netuid": 7,
+                    "schema_version": 1,
+                    "sell_count": 1,
+                    "sell_volume_alpha": 0.5,
+                    "sell_volume_tao": 0.5,
+                    "total_volume_alpha": 0.5,
+                    "total_volume_tao": 0.5,
+                    "window": "24h"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetAlphaVolumeArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data.",
         "tags": [
           "subnets",
           "analytics"

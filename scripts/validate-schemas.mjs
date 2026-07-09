@@ -33,6 +33,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-performance-history",
   "subnet-turnover",
   "subnet-stake-flow",
+  "subnet-alpha-volume",
   "subnet-weights",
   "subnet-weight-setters",
   "subnet-serving",

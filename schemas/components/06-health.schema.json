@@ -1360,6 +1360,37 @@
         },
         "additionalProperties": false
       },
+      "SubnetAlphaVolumeArtifact": {
+        "type": "object",
+        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Fixed 24h window, not OHLC/price data.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "buy_volume_alpha",
+          "sell_volume_alpha",
+          "total_volume_alpha",
+          "buy_volume_tao",
+          "sell_volume_tao",
+          "total_volume_tao",
+          "buy_count",
+          "sell_count"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": "string", "enum": ["24h"] },
+          "buy_volume_alpha": { "type": "number" },
+          "sell_volume_alpha": { "type": "number" },
+          "total_volume_alpha": { "type": "number" },
+          "buy_volume_tao": { "type": "number" },
+          "sell_volume_tao": { "type": "number" },
+          "total_volume_tao": { "type": "number" },
+          "buy_count": { "type": "integer", "minimum": 0 },
+          "sell_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
       "SubnetMoversArtifact": {
         "type": "object",
         "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots.",

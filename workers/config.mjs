@@ -61,6 +61,11 @@ export const SUBNET_TURNOVER_PATH_PATTERN =
 // account_events tier, no static file.
 export const SUBNET_STAKE_FLOW_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/stake-flow$/;
+// Rolling 24h buy/sell alpha volume (#4339/8.1) — unsigned, distinct from
+// stake-flow's netted capital-flow framing — summed live from the same
+// account_events tier, no static file.
+export const SUBNET_ALPHA_VOLUME_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/volume$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;

@@ -2299,6 +2299,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/volume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data. */
+        get: operations["subnetAlphaVolume"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/weights": {
         parameters: {
             query?: never;
@@ -5986,6 +6003,21 @@ export interface components {
         });
         /** @enum {unknown} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
+        /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Fixed 24h window, not OHLC/price data. */
+        SubnetAlphaVolumeArtifact: {
+            buy_count: number;
+            buy_volume_alpha: number;
+            buy_volume_tao: number;
+            netuid: number;
+            schema_version: number;
+            sell_count: number;
+            sell_volume_alpha: number;
+            sell_volume_tao: number;
+            total_volume_alpha: number;
+            total_volume_tao: number;
+            /** @enum {string} */
+            window: "24h";
+        };
         /** @description Per-subnet axon-removal activity over a 7d/30d window: the distinct removers (hotkeys), AxonInfoRemoved event count, and removals per remover for ONE subnet. Raw axon-teardown activity from the account_events AxonInfoRemoved stream — the removal-side companion to the AxonServed announcement activity in /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns) — served live at /api/v1/subnets/{netuid}/axon-removals (no static file); zeroed when the subnet has no AxonInfoRemoved events in the window. */
         SubnetAxonRemovalsArtifact: {
             distinct_removers: number;
@@ -25976,6 +26008,117 @@ export interface operations {
                      *     0,hk_sample,ck_sample,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetAlphaVolume: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "buy_count": 1,
+                     *         "buy_volume_alpha": 0.5,
+                     *         "buy_volume_tao": 0.5,
+                     *         "netuid": 7,
+                     *         "schema_version": 1,
+                     *         "sell_count": 1,
+                     *         "sell_volume_alpha": 0.5,
+                     *         "sell_volume_tao": 0.5,
+                     *         "total_volume_alpha": 0.5,
+                     *         "total_volume_tao": 0.5,
+                     *         "window": "24h"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetAlphaVolumeArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

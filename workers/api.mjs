@@ -108,6 +108,7 @@ import {
   canonicalSubnetTurnoverCachePath,
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
+  handleSubnetAlphaVolume,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -349,6 +350,7 @@ import {
   SUBNET_YIELD_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
+  SUBNET_ALPHA_VOLUME_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -1651,6 +1653,22 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         canonicalSubnetStakeFlowCachePath(resolved.url),
       );
     }
+    const alphaVolumeMatch = SUBNET_ALPHA_VOLUME_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (alphaVolumeMatch) {
+      // Rolling 24h buy/sell alpha volume summed live from account_events —
+      // deterministic per request (no query params), edge-cache like the
+      // sibling analytics routes.
+      return withEdgeCache(request, ctx, env, "subnet-alpha-volume", () =>
+        handleSubnetAlphaVolume(
+          request,
+          env,
+          Number(alphaVolumeMatch[1]),
+          resolved.url,
+        ),
+      );
+    }
     const weightSettersMatch = SUBNET_WEIGHT_SETTERS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2469,6 +2487,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_YIELD_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
+    SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
     SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||

@@ -250,6 +250,16 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/volume",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "24h");
+      assert.equal(typeof body.data.buy_volume_alpha, "number");
+      assert.equal(typeof body.data.sell_volume_alpha, "number");
+      assert.equal(typeof body.data.total_volume_alpha, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/weights?window=30d",
     (body) => {
       assert.equal(body.data.netuid, 7);

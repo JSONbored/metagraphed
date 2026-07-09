@@ -14540,6 +14540,65 @@
           "community-docs"
         ]
       },
+      "SubnetAlphaVolumeArtifact": {
+        "additionalProperties": false,
+        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Fixed 24h window, not OHLC/price data.",
+        "properties": {
+          "buy_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "buy_volume_alpha": {
+            "type": "number"
+          },
+          "buy_volume_tao": {
+            "type": "number"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sell_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sell_volume_alpha": {
+            "type": "number"
+          },
+          "sell_volume_tao": {
+            "type": "number"
+          },
+          "total_volume_alpha": {
+            "type": "number"
+          },
+          "total_volume_tao": {
+            "type": "number"
+          },
+          "window": {
+            "enum": [
+              "24h"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "buy_volume_alpha",
+          "sell_volume_alpha",
+          "total_volume_alpha",
+          "buy_volume_tao",
+          "sell_volume_tao",
+          "total_volume_tao",
+          "buy_count",
+          "sell_count"
+        ],
+        "type": "object"
+      },
       "SubnetAxonRemovalsArtifact": {
         "additionalProperties": false,
         "description": "Per-subnet axon-removal activity over a 7d/30d window: the distinct removers (hotkeys), AxonInfoRemoved event count, and removals per remover for ONE subnet. Raw axon-teardown activity from the account_events AxonInfoRemoved stream — the removal-side companion to the AxonServed announcement activity in /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns) — served live at /api/v1/subnets/{netuid}/axon-removals (no static file); zeroed when the subnet has no AxonInfoRemoved events in the window.",

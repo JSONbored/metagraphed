@@ -471,6 +471,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-alpha-volume",
+      "path": "/metagraph/subnets/{netuid}/volume.json",
+      "schema_ref": "#/components/schemas/SubnetAlphaVolumeArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-movers",
       "path": "/metagraph/subnets/movers.json",
       "schema_ref": "#/components/schemas/SubnetMoversArtifact",
@@ -5237,6 +5244,18 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/volume.json",
+      "cache": "short",
+      "description": "Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data.",
+      "id": "subnet-alpha-volume",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/volume",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/subnets/movers.json",

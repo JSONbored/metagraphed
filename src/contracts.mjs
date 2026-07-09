@@ -1020,6 +1020,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetStakeFlowArtifact",
   ),
   artifact(
+    "subnet-alpha-volume",
+    "/metagraph/subnets/{netuid}/volume.json",
+    "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as /api/v1/subnets/{netuid}/stake-flow (no static file). Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
+    "SubnetAlphaVolumeArtifact",
+  ),
+  artifact(
     "subnet-movers",
     "/metagraph/subnets/movers.json",
     "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
@@ -2232,6 +2238,17 @@ export const API_ROUTES = [
         schema: { type: "string", enum: ["all", "in", "out"] },
       },
     ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-alpha-volume",
+    "GET",
+    "/api/v1/subnets/{netuid}/volume",
+    "/metagraph/subnets/{netuid}/volume.json",
+    "Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data.",
+    "short",
+    ["subnets", "analytics"],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
