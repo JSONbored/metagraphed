@@ -81,20 +81,32 @@ export function joinHealth<
 }
 
 /**
- * #3364: join a list of rows with a per-netuid economics map, overlaying the
- * `registration_cost_tao` + `registration_allowed` fields so the /subnets
- * table's Registration column (and its sort) can read them straight off the
- * row. Mirrors `joinHealth`/the catalog join: a row with no economics entry
- * passes through unchanged (same reference), so its cell renders "—". Pure +
- * allocation-light so callers can memoize it.
+ * #3364/#3363: join a list of rows with a per-netuid economics map, overlaying
+ * the `registration_cost_tao` + `registration_allowed` + `emission_share`
+ * fields so the /subnets table's Registration and Emission columns (and their
+ * sort) can read them straight off the row. Mirrors `joinHealth`/the catalog
+ * join: a row with no economics entry passes through unchanged (same
+ * reference), so its cells render "—". Pure + allocation-light so callers can
+ * memoize it.
  */
 export function joinEconomics<
   T extends { netuid: number },
-  E extends { registration_cost_tao?: number; registration_allowed?: boolean },
+  E extends {
+    registration_cost_tao?: number;
+    registration_allowed?: boolean;
+    emission_share?: number;
+  },
 >(
   rows: T[],
   economicsMap: Record<number, E | undefined>,
-): Array<T | (T & { registration_cost_tao?: number; registration_allowed?: boolean })> {
+): Array<
+  | T
+  | (T & {
+      registration_cost_tao?: number;
+      registration_allowed?: boolean;
+      emission_share?: number;
+    })
+> {
   return rows.map((s) => {
     const e = economicsMap[s.netuid];
     return e
@@ -102,6 +114,7 @@ export function joinEconomics<
           ...s,
           registration_cost_tao: e.registration_cost_tao,
           registration_allowed: e.registration_allowed,
+          emission_share: e.emission_share,
         }
       : s;
   });

@@ -66,6 +66,9 @@ type SubnetRow = Subnet & {
   // netuid so the Registration column (and its sort) can read them off the row.
   registration_cost_tao?: number;
   registration_allowed?: boolean;
+  // #3363: live emission share joined from /api/v1/economics by netuid, so the
+  // Emission column (and its sort) can read it off the row.
+  emission_share?: number;
 };
 
 function joinCatalog(
@@ -280,10 +283,13 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   const catalogMapRaw = useSuspenseQuery(agentCatalogMapQuery()).data.data;
   const catalogMap = useMemo(() => catalogMapRaw ?? {}, [catalogMapRaw]);
 
-  // #3364: per-subnet on-chain economics — already fetched once per session for
-  // the detail EconomicsPanel, so this reuses that shared cache (no new endpoint,
-  // no backend change). Indexed by netuid into a map and joined the same way as
-  // health/catalog so the Registration column + its sort resolve off the row.
+  // #3364/#3363: per-subnet on-chain economics — already fetched once per
+  // session for the detail EconomicsPanel, so this reuses that shared cache
+  // (no new endpoint, no backend change). Indexed by netuid into a map and
+  // joined the same way as health/catalog so the Registration + Emission
+  // columns (and their sort) resolve off the row. A missing/failed fetch
+  // degrades to an empty map (every cell falls back to "—") rather than
+  // breaking the table, mirroring healthMap/catalogMap's fallback.
   const economicsRaw = useSuspenseQuery(economicsQuery()).data.data;
   const economicsMap = useMemo(() => {
     const map: Record<number, SubnetEconomics> = {};
@@ -295,8 +301,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!lastPage?.cursorInvalid;
   // Join the fetched pages with per-subnet probe health + agent-catalog
-  // capability. Memoized on its real inputs so a keystroke/hover that only
-  // re-renders the route doesn't re-flatten and re-clone every row.
+  // capability + economics. Memoized on its real inputs so a keystroke/hover
+  // that only re-renders the route doesn't re-flatten and re-clone every row.
   const all = useMemo(
     () =>
       joinEconomics(
@@ -664,6 +670,19 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                 <th className={cellPad}>Health</th>
                 <th
                   className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(search.sort === "emission_share", search.order)}
+                >
+                  <SortHeader
+                    label="Emission"
+                    field="emission_share"
+                    active={search.sort === "emission_share"}
+                    order={search.order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
                   aria-sort={ariaSort(search.sort === "updated_at", search.order)}
                 >
                   <SortHeader
@@ -759,6 +778,11 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                   </td>
                   <td className={cellPad}>
                     <HealthPill state={s.health} />
+                  </td>
+                  <td
+                    className={classNames(cellPad, "text-right font-mono text-[11px] tabular-nums")}
+                  >
+                    <EmissionCell share={s.emission_share} />
                   </td>
                   <td
                     className={classNames(
@@ -995,6 +1019,15 @@ function ReadinessCell({
         </span>
       ) : null}
     </span>
+  );
+}
+
+// #3363: live emission share as a percentage, matching EconomicsPanel's
+// per-subnet StatTile formatting exactly (economics-panel.tsx) for visual
+// consistency between the profile tile and this table column.
+function EmissionCell({ share }: { share?: number }) {
+  return (
+    <span className="tabular-nums">{share != null ? `${(share * 100).toFixed(3)}%` : "—"}</span>
   );
 }
 
