@@ -11,3 +11,8 @@ routeTree.gen.ts
 # format; it is machine-generated, not prettier-gated (same precedent as the
 # root CHANGELOG.md / packages/client/CHANGELOG.md entries).
 CHANGELOG.md
+
+# Playwright-recorded HAR fixtures (tests/e2e/record-har.mjs) -- large
+# machine-generated JSON nobody hand-edits; reformatting would just bloat
+# the diff on every re-record with no readability benefit.
+tests/e2e/har/*.har
