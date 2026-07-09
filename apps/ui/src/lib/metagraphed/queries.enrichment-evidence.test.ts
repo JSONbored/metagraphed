@@ -85,7 +85,9 @@ describe("reviewEnrichmentEvidenceQuery", () => {
   });
 
   it("coerces non-array kind fields to [] rather than passing them through", async () => {
-    resolveWith({ entries: [{ netuid: 5, missing_kinds: "openapi", direct_submission_kinds: null }] });
+    resolveWith({
+      entries: [{ netuid: 5, missing_kinds: "openapi", direct_submission_kinds: null }],
+    });
     const res = await runQuery(reviewEnrichmentEvidenceQuery());
     expect(res.data[0].missing_kinds).toEqual([]);
     expect(res.data[0].direct_submission_kinds).toEqual([]);
