@@ -106,13 +106,14 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       ? extrinsic.events_total
       : (extrinsic?.events?.length ?? 0);
   const eventsOmitted = Math.max(0, eventsTotal - events.length);
-  const callArgsTotal = typeof extrinsic?.call_args_total === "number"
-    ? extrinsic.call_args_total
-    : Array.isArray(callArgs)
-      ? callArgs.length
-      : callArgs && typeof callArgs === "object"
-        ? Object.keys(callArgs).length
-        : 0;
+  const callArgsTotal =
+    typeof extrinsic?.call_args_total === "number"
+      ? extrinsic.call_args_total
+      : Array.isArray(callArgs)
+        ? callArgs.length
+        : callArgs && typeof callArgs === "object"
+          ? Object.keys(callArgs).length
+          : 0;
   const callArgsOmitted = Math.max(0, callArgsTotal - 64);
   const realAccount = extrinsic
     ? proxyRealAccount(extrinsic.call_module, extrinsic.call_function, callArgs)
