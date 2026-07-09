@@ -7,7 +7,14 @@
 // computed at runtime. Mirrors src/account-balance.mjs's live-RPC + KV-cache
 // shape for GET /api/v1/accounts/{ss58}/balance.
 
-import { createHash } from "node:crypto";
+// node:crypto's createHash("blake2b512") is NOT implemented in the Cloudflare
+// Workers runtime (confirmed live in production: this same call throws
+// "Error: Digest method not supported" in workerd -- account-balance.mjs's
+// GET /api/v1/accounts/{ss58}/balance, which had the identical pattern, was
+// 500ing on every request for exactly this reason). @noble/hashes is
+// audited, zero-dependency, pure JS, and verified working in workerd
+// (wrangler dev) with output identical to node:crypto's blake2b512.
+import { blake2b } from "@noble/hashes/blake2.js";
 
 const SUDO_KEY_STORAGE_KEY =
   "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b";
@@ -42,16 +49,15 @@ function encodeBase58(bytes) {
 // bytes, checksum = blake2b512("SS58PRE" + payload)[0:2], address =
 // base58(payload + checksum). The exact inverse of account-balance.mjs's
 // verifyFinneySs58Checksum (decode direction) — golden-value-tested against
-// the live-confirmed 2026-07-08 Sudo key in tests/sudo-key.test.mjs. Uses
-// node:crypto's blake2b512 like account-balance.mjs — Web Crypto's
-// SubtleCrypto.digest() has no BLAKE2b algorithm.
+// the live-confirmed 2026-07-08 Sudo key in tests/sudo-key.test.mjs.
 function ss58Encode(accountIdBytes, prefix = FINNEY_SS58_PREFIX) {
   const payload = new Uint8Array(1 + accountIdBytes.length);
   payload[0] = prefix;
   payload.set(accountIdBytes, 1);
-  const hash = createHash("blake2b512")
-    .update(Buffer.concat([Buffer.from(SS58_PREIMAGE), Buffer.from(payload)]))
-    .digest();
+  const preimage = new Uint8Array(SS58_PREIMAGE.length + payload.length);
+  preimage.set(SS58_PREIMAGE, 0);
+  preimage.set(payload, SS58_PREIMAGE.length);
+  const hash = blake2b(preimage, { dkLen: 64 });
   const full = new Uint8Array(payload.length + 2);
   full.set(payload, 0);
   full[payload.length] = hash[0];

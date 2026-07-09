@@ -1,7 +1,15 @@
 // Live finney account TAO balance (free + reserved) via RPC (#1818).
 // Shared by GET /api/v1/accounts/{ss58}/balance and MCP get_account_balance.
 
-import { createHash } from "node:crypto";
+// node:crypto's createHash("blake2b512") is NOT implemented in the Cloudflare
+// Workers runtime (confirmed live: throws "Error: Digest method not
+// supported" in workerd, even though the identical call works fine under
+// Node.js/vitest, which run this code against real Node -- the local/CI test
+// suite never caught this because it never runs against workerd). Web
+// Crypto's SubtleCrypto.digest() has no BLAKE2b algorithm either. @noble/hashes
+// is audited, zero-dependency, pure JS, and verified working in workerd
+// (wrangler dev) with output identical to node:crypto's blake2b512.
+import { blake2b } from "@noble/hashes/blake2.js";
 
 const SS58_BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -51,9 +59,10 @@ function verifyFinneySs58Checksum(decoded) {
   const checksum = decoded.subarray(
     decoded.length - FINNEY_SS58_CHECKSUM_LENGTH,
   );
-  const hash = createHash("blake2b512")
-    .update(Buffer.concat([Buffer.from(SS58_PREIMAGE), Buffer.from(body)]))
-    .digest();
+  const preimage = new Uint8Array(SS58_PREIMAGE.length + body.length);
+  preimage.set(SS58_PREIMAGE, 0);
+  preimage.set(body, SS58_PREIMAGE.length);
+  const hash = blake2b(preimage, { dkLen: 64 });
   return hash[0] === checksum[0] && hash[1] === checksum[1];
 }
 

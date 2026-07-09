@@ -114,6 +114,7 @@
     "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
   },
   "dependencies": {
+    "@noble/hashes": "^2.2.0",
     "graphql": "^17.0.2",
     "postgres": "^3.4.9",
     "workers-og": "^0.0.27"
