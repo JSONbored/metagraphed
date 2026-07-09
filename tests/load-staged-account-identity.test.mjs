@@ -65,6 +65,12 @@ function mockEnv({
         prepare(sql) {
           prepared.push(sql);
           return {
+            // recordAccountIdentityChanges' latestIdentityHashes reads via
+            // prepare(sql).all() directly (no bind) — an empty history table
+            // on every run, so every staged row's hash always looks "changed".
+            async all() {
+              return { results: [] };
+            },
             bind: (...v) => ({
               sql,
               v,
@@ -97,14 +103,22 @@ test("loadStagedAccountIdentity loads JSON via parameterized batches + deletes i
   assert.equal(r.ok, true);
   assert.equal(r.rows, 3);
   assert.deepEqual(m.getCalls, [STAGED_KEY]);
-  // 3 rows / 10 per statement = 1 upsert statement in one db.batch() call.
-  assert.deepEqual(m.batches, [1]);
+  // 3 rows / 10 per statement = 1 upsert statement in one db.batch() call,
+  // then a second db.batch() call of 3 history-diff INSERTs (#4326/5.2) — the
+  // mock's empty latest-hash table means every row looks "changed".
+  assert.deepEqual(m.batches, [1, 3]);
   // SQL is parameterized — the structure is fixed and values are bound, never
   // interpolated, so a tampered staged file cannot inject SQL.
   assert.ok(
     m.prepared[0].startsWith("INSERT OR REPLACE INTO account_identity ("),
   );
   assert.ok(m.prepared[0].includes("VALUES (?"));
+  assert.ok(
+    m.prepared.some((s) =>
+      s.startsWith("INSERT INTO account_identity_history ("),
+    ),
+    "the diff-on-change history writer (#4326/5.2) must run alongside the latest-only upsert",
+  );
   // Deliberately no purge/prune statement — see loadStagedAccountIdentity's
   // own header comment for why (identity persists past a scan-pass absence).
   assert.equal(
