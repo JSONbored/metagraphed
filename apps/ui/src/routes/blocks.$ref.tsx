@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
@@ -89,11 +89,39 @@ function BlockDetail({ refValue }: { refValue: string }) {
 }
 
 function ValidBlockDetail({ refValue }: { refValue: string }) {
+  const navigate = useNavigate();
   const sourceRef = blockRefPathSegment(refValue);
   const block = useSuspenseQuery(blockQuery(refValue)).data.data;
   const extrinsicsQuery = useQuery(blockExtrinsicsQuery(refValue, { limit: 100 }));
   const eventsQuery = useQuery(blockEventsQuery(refValue, { limit: 100 }));
   const chainEventsQuery = useQuery(blockChainEventsQuery(refValue));
+
+  const prevBlockNumber = block?.prev_block_number ?? null;
+  const nextBlockNumber = block?.next_block_number ?? null;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const tgt = e.target as HTMLElement | null;
+      const inField =
+        tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable);
+      if (inField) return;
+
+      if (e.key === "ArrowLeft" && prevBlockNumber != null) {
+        e.preventDefault();
+        navigate({ to: "/blocks/$ref", params: { ref: String(prevBlockNumber) } });
+        return;
+      }
+      if (e.key === "ArrowRight" && nextBlockNumber != null) {
+        e.preventDefault();
+        navigate({ to: "/blocks/$ref", params: { ref: String(nextBlockNumber) } });
+      }
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate, prevBlockNumber, nextBlockNumber]);
 
   const extrinsics = extrinsicsQuery.data?.data.extrinsics ?? [];
   const events = eventsQuery.data?.data.events ?? [];
