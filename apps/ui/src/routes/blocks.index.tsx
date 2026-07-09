@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -12,6 +12,7 @@ import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ListShell } from "@/components/metagraphed/list-shell";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import {
   PageSizeSelect,
   ResetFiltersButton,
@@ -20,7 +21,7 @@ import {
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
-import { blocksQuery, blocksSummaryQuery } from "@/lib/metagraphed/queries";
+import { blocksQuery, blocksSummaryQuery, chainActivityQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
@@ -81,6 +82,18 @@ function BlocksPage() {
   const search = Route.useSearch();
   const blocksCsvUrl = buildUrl("/api/v1/blocks", blocksQueryParams(search));
 
+  // #3390: compact blocks-per-day sparkline in the page header, reusing the
+  // same chainActivityQuery data path explorer.tsx already proves out. Not a
+  // useSuspenseQuery — the hero's title/description render immediately, and
+  // the kpis strip simply appears once this non-blocking fetch settles
+  // (PageHero already renders nothing when `kpis` is undefined).
+  const activityResult = useQuery(chainActivityQuery());
+  const activityDays = activityResult.data?.data.days;
+  const chronoDays = activityDays ? [...activityDays].reverse() : [];
+  const dailyBlockCounts = chronoDays.map((d) => d.block_count);
+  const latestBlocksPerDay =
+    dailyBlockCounts.length > 0 ? dailyBlockCounts[dailyBlockCounts.length - 1]! : null;
+
   return (
     <AppShell>
       <PageHero
@@ -94,6 +107,28 @@ function BlocksPage() {
             <ShareButton />
           </>
         }
+        kpis={
+          dailyBlockCounts.length > 1
+            ? [
+                {
+                  label: "Blocks / day",
+                  value: latestBlocksPerDay != null ? formatNumber(latestBlocksPerDay) : "—",
+                  hint: "7d trend",
+                  chart: (
+                    <Sparkline
+                      values={dailyBlockCounts}
+                      points={dailyBlockCounts.map((v, i) => ({ t: chronoDays[i]?.day ?? "", v }))}
+                      width={140}
+                      height={28}
+                      color="var(--accent)"
+                      ariaLabel="Daily block count"
+                      formatValue={(v) => `${formatNumber(v)} blocks`}
+                    />
+                  ),
+                },
+              ]
+            : undefined
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-28 w-full mb-8" />}>
@@ -106,7 +141,7 @@ function BlocksPage() {
         </Suspense>
       </QueryErrorBoundary>
       <ApiSourceFooter
-        paths={["/api/v1/blocks", "/api/v1/blocks/summary"]}
+        paths={["/api/v1/blocks", "/api/v1/blocks/summary", "/api/v1/chain/activity"]}
         artifacts={["/metagraph/blocks.json", "/metagraph/blocks/summary.json"]}
       />
     </AppShell>
