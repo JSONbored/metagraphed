@@ -85,6 +85,25 @@
         "https://github.com/byzantiumaitao-arch/byzantium/blob/main/ai-agent-kit/byzantium.config.json"
       ],
       "url": "https://raw.githubusercontent.com/byzantiumaitao-arch/byzantium/main/ai-agent-kit/byzantium.config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-76-byzantium-validator-weights-api",
+      "kind": "subnet-api",
+      "name": "Byzantium validator weights API",
+      "notes": "Public no-auth JSON endpoint exposing SN76 Byzantium's current weight-copy validator data: per-miner score_sum, scored_clicks, computed weight, payout hotkey, and burn flag, alongside the weighting formula and the 24h reveal delay. Served from link.byzantiumai.net (a subdomain of the official byzantiumai.net website); its source is link-service/app/api/validator/weights/route.ts in the official byzantiumaitao-arch/byzantium repository, whose doc-comment designates it the sole public validator endpoint (the sibling /api/clicks route is admin-gated, returning HTTP 401).",
+      "provider": "byzantium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/byzantiumaitao-arch/byzantium/blob/main/link-service/app/api/validator/weights/route.ts",
+        "https://www.byzantiumai.net/"
+      ],
+      "url": "https://link.byzantiumai.net/api/validator/weights"
     }
   ],
   "website_url": "https://www.byzantiumai.net/"
