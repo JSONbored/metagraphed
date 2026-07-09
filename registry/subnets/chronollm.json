@@ -60,6 +60,25 @@
         "https://huggingface.co/manelalab"
       ],
       "url": "https://huggingface.co/datasets/manelalab/ChronoInstruct-SFT-v1"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "ChronoLLM TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/38 on api.taomarketcap.com returning machine-readable JSON for SN38 ChronoLLM on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/chronollm/sn38"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/38"
     }
   ],
   "source_repo": "https://github.com/chronollm/sn38",
