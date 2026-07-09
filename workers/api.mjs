@@ -2301,9 +2301,23 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleGovernanceConfigChanges(request, env, resolved.url);
     }
     if (RUNTIME_VERSIONS_PATH_PATTERN.test(resolved.url.pathname)) {
-      return withEdgeCache(request, ctx, env, "runtime-versions", () =>
-        handleRuntime(request, env, resolved.url),
+      const cacheRequest =
+        request.method === "HEAD"
+          ? new Request(request, { method: "GET" })
+          : request;
+      const response = await withEdgeCache(
+        cacheRequest,
+        ctx,
+        env,
+        "runtime-versions",
+        () => handleRuntime(cacheRequest, env, resolved.url),
       );
+      return request.method === "HEAD"
+        ? new Response(null, {
+            status: response.status,
+            headers: response.headers,
+          })
+        : response;
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
       return withEdgeCache(request, ctx, env, "global-incidents", () =>
