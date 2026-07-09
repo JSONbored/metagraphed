@@ -5,6 +5,20 @@ export function formatNumber(n: number | undefined | null, fallback = "—"): st
 }
 
 /**
+ * Compact TAO amount formatter — the single source of truth for the
+ * `Nk`/`NM` compaction + decimal-place thresholds previously hand-duplicated
+ * across economics-panel.tsx, explorer.tsx, accounts.$ss58.tsx,
+ * extrinsics.$hash.tsx, subnet-history-chart.tsx, and neuron-history-chart.tsx.
+ */
+export function formatTao(v: number | undefined | null, fallback = "—"): string {
+  if (v === undefined || v === null || !Number.isFinite(v)) return fallback;
+  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (Math.abs(v) >= 1) return `${v.toFixed(2)} τ`;
+  return `${v.toFixed(4)} τ`;
+}
+
+/**
  * The upstream registry frequently emits "1970-01-01T00:00:00.000Z" as a
  * placeholder when an artifact hasn't been timestamped yet. Treat any
  * pre-2000 date as "unknown" so the UI doesn't claim freshness/staleness

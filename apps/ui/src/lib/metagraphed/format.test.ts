@@ -5,6 +5,7 @@ import {
   durationLabel,
   formatRelative,
   isStaleFreshness,
+  formatTao,
 } from "./format";
 
 describe("isUsableTimestamp", () => {
@@ -130,5 +131,43 @@ describe("isStaleFreshness", () => {
   it("honours a custom threshold", () => {
     const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
     expect(isStaleFreshness(oneHourAgo, 30 * 60_000)).toBe(true);
+  });
+});
+
+describe("formatTao", () => {
+  it("returns the fallback for nullish / non-finite input", () => {
+    expect(formatTao(null)).toBe("—");
+    expect(formatTao(undefined)).toBe("—");
+    expect(formatTao(Number.NaN)).toBe("—");
+    expect(formatTao(Infinity)).toBe("—");
+    expect(formatTao(null, "n/a")).toBe("n/a");
+  });
+
+  it("formats sub-1-TAO values to 4 decimal places", () => {
+    expect(formatTao(0.5)).toBe("0.5000 τ");
+    expect(formatTao(0)).toBe("0.0000 τ");
+  });
+
+  it("formats 1 TAO and above to 2 decimal places, the same regardless of which call site produced it", () => {
+    // The exact boundary the issue's two divergent conventions disagreed on:
+    // the majority convention (>=1 -> 2dp) vs. the chart-only convention
+    // (<10 -> 3dp). formatTao must now produce one answer for every caller.
+    expect(formatTao(1)).toBe("1.00 τ");
+    expect(formatTao(5)).toBe("5.00 τ");
+    expect(formatTao(9.999)).toBe("10.00 τ");
+  });
+
+  it("formats 10 TAO and above the same as just under 10 (both use 2dp)", () => {
+    expect(formatTao(9.5)).toBe("9.50 τ");
+    expect(formatTao(10)).toBe("10.00 τ");
+  });
+
+  it("compacts thousands and millions with a k/M suffix", () => {
+    expect(formatTao(1_500)).toBe("1.5k τ");
+    expect(formatTao(2_500_000)).toBe("2.50M τ");
+  });
+
+  it("uses the magnitude for negative values, matching the sign-aware callers", () => {
+    expect(formatTao(-5)).toBe("-5.00 τ");
   });
 });

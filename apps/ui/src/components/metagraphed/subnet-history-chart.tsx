@@ -4,21 +4,13 @@ import { subnetHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { healthColorVar } from "@/lib/health-tokens";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetHistoryPoint } from "@/lib/metagraphed/types";
 
 // Lowercase windows, mirroring the /history API + the inline toggle conventions
 // used by health-trends.tsx. "all" maps to the API's widest supported window.
 type Win = "7d" | "30d" | "90d" | "1y" | "all";
 const WINDOWS: Win[] = ["7d", "30d", "90d", "1y", "all"];
-
-function taoStr(v?: number) {
-  if (v == null || !Number.isFinite(v)) return "—";
-  // Stake/emission can span a wide range; keep it compact and readable.
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  return `${v.toFixed(v < 10 ? 3 : 2)} τ`;
-}
 
 /**
  * Per-subnet on-chain history (#1302). A window selector drives a daily snapshot
@@ -96,7 +88,7 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
               label="Total stake"
               series={series.stake}
               color={healthColorVar("warn")}
-              format={taoStr}
+              format={formatTao}
             />
           ) : null}
           {series.emission.length > 0 ? (
@@ -104,7 +96,7 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
               label="Total emission"
               series={series.emission}
               color="var(--accent, #00c899)"
-              format={taoStr}
+              format={formatTao}
             />
           ) : null}
         </div>

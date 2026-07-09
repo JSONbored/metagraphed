@@ -10,20 +10,12 @@ import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
 import { Sparkline, type SparklinePoint } from "@/components/metagraphed/charts/sparkline";
 import { stakeMovesTileModel } from "@/lib/metagraphed/stake-moves-tile";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { stakeTransfersTileModel } from "@/lib/metagraphed/stake-transfers-tile";
 
 // #1112: per-subnet on-chain economics (emission share, alpha price, stake,
 // validators, volume) from the previously-unused /api/v1/economics. The artifact
 // carries all subnets; we fetch once (shared cache) and find this netuid.
-
-function fmtTao(v?: number): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  if (v >= 1) return `${v.toFixed(2)} τ`;
-  return `${v.toFixed(4)} τ`;
-}
 
 function Notice({ children }: { children: string }) {
   return (
@@ -169,11 +161,11 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
         value={formatNumber(e.miner_count)}
         hint={e.max_uids ? `${e.max_uids} max UIDs` : undefined}
       />
-      <StatTile eyebrow="Total stake" value={fmtTao(e.total_stake_tao)} />
-      <StatTile eyebrow="Volume" value={fmtTao(e.subnet_volume_tao)} />
-      <StatTile eyebrow="Max stake" value={fmtTao(e.max_stake_tao)} />
-      <StatTile eyebrow="Market cap" value={fmtTao(e.alpha_market_cap_tao)} hint="proxy" />
-      <StatTile eyebrow="FDV" value={fmtTao(e.alpha_fdv_tao)} hint="proxy" />
+      <StatTile eyebrow="Total stake" value={formatTao(e.total_stake_tao)} />
+      <StatTile eyebrow="Volume" value={formatTao(e.subnet_volume_tao)} />
+      <StatTile eyebrow="Max stake" value={formatTao(e.max_stake_tao)} />
+      <StatTile eyebrow="Market cap" value={formatTao(e.alpha_market_cap_tao)} hint="proxy" />
+      <StatTile eyebrow="FDV" value={formatTao(e.alpha_fdv_tao)} hint="proxy" />
       <StatTile
         eyebrow="Registration"
         tone={e.registration_allowed === false ? "down" : "default"}
