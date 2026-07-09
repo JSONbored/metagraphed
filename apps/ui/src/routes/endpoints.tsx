@@ -8,7 +8,7 @@ import { Search, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { HealthPill } from "@/components/metagraphed/chips";
+import { HealthPill, HealthDot } from "@/components/metagraphed/chips";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
@@ -396,7 +396,7 @@ function RpcEndpointsTable() {
                   </span>
                 </td>
                 <td className="px-3 py-2 text-center">
-                  <HealthPill state={statusToHealth(e.status)} />
+                  <HealthDot state={statusToHealth(e.status)} />
                 </td>
                 <td className="px-3 py-2 text-center text-[11px] text-ink-muted">
                   {e.archive_support == null ? "—" : e.archive_support ? "yes" : "no"}
