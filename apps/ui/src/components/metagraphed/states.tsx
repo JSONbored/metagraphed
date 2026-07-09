@@ -224,7 +224,11 @@ export function StaleBanner({
 }
 
 export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-surface ${className}`} />;
+  // bg-surface-2 (a step lighter than bg-surface in both themes) plus a hairline
+  // border so the pulse placeholder stays readable against a same-surface
+  // container — bg-surface alone vanished into the background in dark mode, where
+  // the surface tokens sit only a hair apart (#3993).
+  return <div className={`animate-pulse rounded border border-border bg-surface-2 ${className}`} />;
 }
 
 /**
