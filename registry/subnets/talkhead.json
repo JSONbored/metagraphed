@@ -54,21 +54,30 @@
     {
       "auth_required": false,
       "authority": "community",
-      "id": "sn-108-talkhead-pyproject-manifest",
-      "kind": "data-artifact",
-      "name": "TalkHead subnet Python project manifest",
-      "notes": "Public no-auth PEP 621 pyproject.toml from the official talkheadai/talkhead-subnet repository publishing SN108 TalkHead package metadata (project name talkhead-subnet, Python >=3.10, bittensor 10.2.0 dependency, homepage and issues URLs). Documents the canonical Python package contract for miner/validator coordination against the subnet API and executor; distinct from the talkhead-executor min_compute.yml hardware-spec surface.",
+      "id": "sn-108-talkhead-openapi",
+      "kind": "openapi",
+      "name": "TalkHead API Swagger UI",
+      "notes": "Public no-auth Swagger UI (OAS 3.0, title talkhead API v1.0.0) on api.talkhead.ai/api/docs documenting TalkHead REST routes under /api/v1 (Auth, Queue, Generation, Avatar, File, and related endpoints). The OpenAPI document is embedded in the Swagger bundle at /api/docs/swagger-ui-init.js; no standalone /openapi.json endpoint is published. Served on the same official TalkHead API host as the existing sn-108-talkhead-health surface.",
       "provider": "talkhead",
       "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
       "review": {
         "state": "community-submitted",
         "submitted_by": "carlh7777"
       },
+      "schema_status": "ui-only",
+      "schema_url": "https://api.talkhead.ai/api/docs",
       "source_urls": [
-        "https://github.com/talkheadai/talkhead-subnet/blob/main/pyproject.toml",
-        "https://www.talkhead.ai/"
+        "https://api.talkhead.ai/api/docs",
+        "https://www.talkhead.ai/",
+        "https://github.com/talkheadai/talkhead-subnet"
       ],
-      "url": "https://raw.githubusercontent.com/talkheadai/talkhead-subnet/main/pyproject.toml"
+      "url": "https://api.talkhead.ai/api/docs"
     }
   ],
   "source_repo": "https://github.com/talkheadai/talkhead-subnet",
