@@ -61,6 +61,8 @@ import type {
   EconomicsTrends,
   EconomicsTrendsDay,
   ChainCalls,
+  ChainIdentityHistory,
+  ChainIdentityChange,
   ChainStakeFlow,
   ChainStakeFlowDistribution,
   ChainStakeFlowNetwork,
@@ -249,6 +251,7 @@ const MAX_TURNOVER_SUBNETS = 24;
 const MAX_CHAIN_EVENT_GROUPS = 100;
 const DEFAULT_CHAIN_EVENT_BLOCKS = 1000;
 const MAX_CHAIN_SIGNERS = 20;
+const MAX_CHAIN_IDENTITY_CHANGES = 200;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
 const MAX_CHAIN_TRANSFER_PAIRS = 100;
@@ -3191,6 +3194,59 @@ export const chainCallsQuery = (window: ChainWindow = "7d") =>
       } as ApiResult<ChainCalls>;
     },
     staleTime: STALE_SHORT,
+  });
+
+function normalizeChainIdentityChange(raw: unknown): ChainIdentityChange | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    identity_hash: firstString(raw.identity_hash) ?? "",
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+    subnet_name: firstString(raw.subnet_name) ?? null,
+    symbol: firstString(raw.symbol) ?? null,
+    description: firstString(raw.description) ?? null,
+    github_repo: firstString(raw.github_repo) ?? null,
+    subnet_url: firstString(raw.subnet_url) ?? null,
+    logo_url: firstString(raw.logo_url) ?? null,
+    discord: firstString(raw.discord) ?? null,
+  };
+}
+
+// #3474: network-wide feed of recent subnet-identity changes, newest first.
+// Malformed rows (no netuid) drop out; a cold store yields an empty list.
+export function normalizeChainIdentityHistory(raw: unknown): ChainIdentityHistory {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    count: firstFiniteNumber(rec.count) ?? 0,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    changes: normalizeChainRows(
+      rec.changes,
+      MAX_CHAIN_IDENTITY_CHANGES,
+      normalizeChainIdentityChange,
+    ),
+  };
+}
+
+/** Network-wide feed of recent subnet-identity changes (name/symbol/etc. edits). */
+export const chainIdentityHistoryQuery = (limit = 10) =>
+  queryOptions({
+    queryKey: k("chain-identity-history", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainIdentityHistory>>("/api/v1/chain/identity-history", {
+        params: { limit },
+        signal,
+      });
+      return {
+        data: normalizeChainIdentityHistory(res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainIdentityHistory>;
+    },
+    staleTime: STALE_MED,
   });
 
 function normalizeChainEventsStatsEntry(raw: unknown): ChainEventsStatsEntry | null {

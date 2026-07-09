@@ -5,6 +5,7 @@ import {
   extrinsicHashPathSegment,
   isDecodedCall,
   isValidExtrinsicHash,
+  multisigCallHash,
   proxyRealAccount,
 } from "./extrinsics";
 
@@ -88,6 +89,60 @@ describe("proxyRealAccount", () => {
     expect(proxyRealAccount("Proxy", "proxy", [{ name: "real", value: 123 }])).toBeNull();
     expect(
       proxyRealAccount("Proxy", "proxy", [{ name: "force_proxy_type", value: "Any" }]),
+    ).toBeNull();
+  });
+});
+
+describe("multisigCallHash", () => {
+  const HASH = `0x${"a".repeat(64)}`;
+
+  it("extracts a top-level call_hash arg (approve_as_multi/cancel_as_multi shape)", () => {
+    expect(
+      multisigCallHash("Multisig", [
+        { name: "threshold", value: 2 },
+        { name: "call_hash", value: HASH },
+      ]),
+    ).toBe(HASH);
+  });
+
+  it("extracts the nested call's own call_hash (as_multi shape)", () => {
+    expect(
+      multisigCallHash("Multisig", [
+        { name: "threshold", value: 2 },
+        {
+          name: "call",
+          value: {
+            call_module: "Balances",
+            call_function: "transfer",
+            call_hash: HASH,
+          },
+        },
+      ]),
+    ).toBe(HASH);
+  });
+
+  it("prefers a direct call_hash arg over a nested one when both are present", () => {
+    const OTHER = `0x${"b".repeat(64)}`;
+    expect(
+      multisigCallHash("Multisig", [
+        { name: "call_hash", value: HASH },
+        {
+          name: "call",
+          value: { call_module: "Balances", call_function: "transfer", call_hash: OTHER },
+        },
+      ]),
+    ).toBe(HASH);
+  });
+
+  it("returns null for non-Multisig calls, missing hashes, or malformed shapes", () => {
+    expect(multisigCallHash("Balances", [{ name: "call_hash", value: HASH }])).toBeNull();
+    expect(multisigCallHash("Multisig", [{ name: "threshold", value: 2 }])).toBeNull();
+    expect(multisigCallHash("Multisig", { call_hash: HASH })).toBeNull();
+    expect(multisigCallHash("Multisig", [{ name: "call_hash", value: "not-a-hash" }])).toBeNull();
+    expect(
+      multisigCallHash("Multisig", [
+        { name: "call", value: { call_module: "Balances", call_function: "transfer" } },
+      ]),
     ).toBeNull();
   });
 });

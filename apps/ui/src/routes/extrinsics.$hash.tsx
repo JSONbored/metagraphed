@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
-import { Boxes, Clock, FileText, UserCog } from "lucide-react";
+import { Boxes, Clock, FileText, Link2, UserCog } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -13,7 +13,7 @@ import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { extrinsicQuery } from "@/lib/metagraphed/queries";
+import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import {
@@ -21,6 +21,7 @@ import {
   extrinsicHashPathSegment,
   isDecodedCall,
   isValidExtrinsicHash,
+  multisigCallHash,
   proxyRealAccount,
   type DecodedCall,
 } from "@/lib/metagraphed/extrinsics";
@@ -111,6 +112,21 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
   const realAccount = extrinsic
     ? proxyRealAccount(extrinsic.call_module, extrinsic.call_function, callArgs)
     : null;
+  // #4322: link a Multisig call to the rest of its approval chain (the
+  // initiating `as_multi`, later `approve_as_multi`s, the final execution) --
+  // all of them carry the same call_hash. A plain useQuery (not suspense):
+  // this is a secondary, best-effort section, so a slow/failed lookup
+  // shouldn't block or error the whole page. Hook order must stay stable
+  // regardless of `extrinsic`, so this runs before the not-found early return
+  // below and is simply disabled when there's no hash to look up.
+  const callHash = extrinsic ? multisigCallHash(extrinsic.call_module, callArgs) : null;
+  const relatedQuery = useQuery({
+    ...extrinsicsQuery({ call_module: "Multisig", call_hash: callHash ?? "", limit: 25 }),
+    enabled: Boolean(callHash),
+  });
+  const relatedCalls = (relatedQuery.data?.data ?? []).filter(
+    (e) => e.extrinsic_hash?.toLowerCase() !== hash.toLowerCase(),
+  );
 
   if (!extrinsic) {
     return (
@@ -259,6 +275,45 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           </p>
         ) : null}
       </SectionAnchor>
+
+      {callHash ? (
+        <SectionAnchor
+          id="multisig-chain"
+          title="Related Multisig calls"
+          subtitle="Other extrinsics approving or executing this same call_hash."
+          tone="accent"
+        >
+          {relatedQuery.isLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : relatedCalls.length > 0 ? (
+            <ul className="flex flex-col gap-2">
+              {relatedCalls.map((e) => (
+                <li key={e.extrinsic_hash ?? `${e.block_number}-${e.extrinsic_index}`}>
+                  <Link
+                    to="/extrinsics/$hash"
+                    params={{ hash: e.extrinsic_hash ?? "" }}
+                    className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2 text-sm hover:border-ink/30"
+                  >
+                    <Link2 className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
+                    <span className="font-mono text-ink-strong">
+                      {extrinsicCall(e.call_module, e.call_function)}
+                    </span>
+                    <span className="text-ink-muted">·</span>
+                    <span className="font-mono text-[11px] text-ink-muted">
+                      #{formatNumber(e.block_number ?? 0)}
+                    </span>
+                    <TimeAgo at={e.observed_at} className="ml-auto text-[11px] text-ink-muted" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-ink-muted">
+              No other extrinsics reference this call_hash yet.
+            </p>
+          )}
+        </SectionAnchor>
+      ) : null}
 
       <SectionAnchor id="events" title="Emitted events" tone="accent">
         {events.length > 0 ? (
