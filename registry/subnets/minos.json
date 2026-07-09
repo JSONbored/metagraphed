@@ -38,6 +38,26 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-gatk-config",
+      "kind": "data-artifact",
+      "name": "Minos GATK HaplotypeCaller quality parameters",
+      "notes": "Public no-auth INI-style GATK HaplotypeCaller quality-parameter specification (min_base_quality_score, min_mapping_quality_score, standard_min_confidence_threshold_for_calling, PCR indel model, assembly graph settings) published in the official minos-protocol/minos_subnet repository at configs/gatk.conf. Miners tune these miner-submittable hyperparameters for SN107 genomic variant-calling rounds; the README project layout documents configs/ as miner-tunable quality parameters and utils/config_loader.py parses the tool config files.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
+        "https://github.com/minos-protocol/minos_subnet/blob/main/configs/gatk.conf",
+        "https://github.com/minos-protocol/minos_subnet/blob/main/utils/config_loader.py"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/main/configs/gatk.conf"
     }
   ],
   "contact": "contact@theminos.ai"
