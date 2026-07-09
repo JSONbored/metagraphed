@@ -309,7 +309,7 @@ function ChainHeadTip() {
 function HomeHero() {
   return (
     <section className="mg-hero-slab relative overflow-hidden px-6 py-12 md:px-12 md:py-20">
-      <div className="relative z-10 grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      <div className="relative z-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-center">
         <div className="min-w-0 max-w-2xl">
           <div className="mg-fade-in font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted inline-flex items-center gap-2">
             <span className="mg-live-dot" />
