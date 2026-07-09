@@ -79,3 +79,30 @@ export function joinHealth<
     return h ? { ...s, health: h.health, updated_at: s.updated_at ?? h.last_checked } : s;
   });
 }
+
+/**
+ * #3364: join a list of rows with a per-netuid economics map, overlaying the
+ * `registration_cost_tao` + `registration_allowed` fields so the /subnets
+ * table's Registration column (and its sort) can read them straight off the
+ * row. Mirrors `joinHealth`/the catalog join: a row with no economics entry
+ * passes through unchanged (same reference), so its cell renders "—". Pure +
+ * allocation-light so callers can memoize it.
+ */
+export function joinEconomics<
+  T extends { netuid: number },
+  E extends { registration_cost_tao?: number; registration_allowed?: boolean },
+>(
+  rows: T[],
+  economicsMap: Record<number, E | undefined>,
+): Array<T | (T & { registration_cost_tao?: number; registration_allowed?: boolean })> {
+  return rows.map((s) => {
+    const e = economicsMap[s.netuid];
+    return e
+      ? {
+          ...s,
+          registration_cost_tao: e.registration_cost_tao,
+          registration_allowed: e.registration_allowed,
+        }
+      : s;
+  });
+}

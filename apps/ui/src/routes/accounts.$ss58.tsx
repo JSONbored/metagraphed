@@ -26,6 +26,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { TableState } from "@/components/metagraphed/table-state";
 import { PageHero } from "@/components/metagraphed/page-hero";
+import { ShareButton } from "@/components/metagraphed/share-button";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { SelectFilter } from "@/components/metagraphed/table-controls";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
@@ -183,6 +184,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         }
         actions={
           <>
+            <ShareButton />
             <a
               href="#history"
               className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-colors hover:bg-accent/15"
@@ -1303,9 +1305,15 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
     );
   }
 
+  // Each source can fail independently while the other succeeds — the
+  // combined section must not render the failed half's count as if it were
+  // a genuine zero.
+  const servingFailed = servingResult.isError && !serving;
+  const prometheusFailed = prometheusResult.isError && !prometheus;
   const servingCount = serving?.total_announcements ?? 0;
   const prometheusCount = prometheus?.total_announcements ?? 0;
-  const isEmpty = servingCount === 0 && prometheusCount === 0;
+  const isEmpty =
+    !servingFailed && !prometheusFailed && servingCount === 0 && prometheusCount === 0;
 
   return (
     <SectionAnchor
@@ -1326,16 +1334,25 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
           <StatTile
             icon={Radar}
             eyebrow="Axon serving"
-            tone="accent"
-            value={formatNumber(servingCount)}
-            hint={`AxonServed · ${windowLabel}`}
+            tone={servingFailed ? "warn" : "accent"}
+            value={servingFailed ? "—" : formatNumber(servingCount)}
+            hint={
+              servingFailed
+                ? "fetch failed · showing Prometheus only"
+                : `AxonServed · ${windowLabel}`
+            }
             className={KPI_TILE}
           />
           <StatTile
             icon={Gauge}
             eyebrow="Prometheus"
-            value={formatNumber(prometheusCount)}
-            hint={`PrometheusServed · ${windowLabel}`}
+            tone={prometheusFailed ? "warn" : "default"}
+            value={prometheusFailed ? "—" : formatNumber(prometheusCount)}
+            hint={
+              prometheusFailed
+                ? "fetch failed · showing Axon only"
+                : `PrometheusServed · ${windowLabel}`
+            }
             className={KPI_TILE}
           />
         </div>

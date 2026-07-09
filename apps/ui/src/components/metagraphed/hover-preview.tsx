@@ -5,16 +5,24 @@ interface Props {
   children: ReactNode;
   content: ReactNode;
   className?: string;
+  /**
+   * Set when `children` isn't itself a focusable element (e.g. a plain
+   * `<span>` fallback rather than a link/button) — makes the wrapper a tab
+   * stop so keyboard users can still reach the preview on focus, not only
+   * on hover.
+   */
+  focusable?: boolean;
 }
 
 /**
  * Lightweight hover/focus popover (no portal, no deps). Anchored bottom-left.
  */
-export function HoverPreview({ children, content, className }: Props) {
+export function HoverPreview({ children, content, className, focusable }: Props) {
   const [open, setOpen] = useState(false);
   return (
     <span
       className={classNames("relative inline-flex", className)}
+      tabIndex={focusable ? 0 : undefined}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}

@@ -167,6 +167,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
             {items.slice(0, 24).map((item) => (
               <li key={item.id}>
                 <HoverPreview
+                  focusable={!item.url}
                   content={
                     <div className="space-y-1.5">
                       <div className="mg-label">

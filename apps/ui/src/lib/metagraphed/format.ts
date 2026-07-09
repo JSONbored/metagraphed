@@ -5,6 +5,22 @@ export function formatNumber(n: number | undefined | null, fallback = "—"): st
 }
 
 /**
+ * Format a TAO (τ) amount for compact display, tiering the precision by
+ * magnitude so both dust and whole-subnet aggregates stay readable in a
+ * single cell: ≥1e6 → "1.23M τ", ≥1e3 → "1.2k τ", ≥1 → "1.23 τ", and
+ * sub-unit values keep 4 decimals ("0.5000 τ"). Nullish / non-finite input
+ * renders the em-dash fallback. Shared by the per-subnet EconomicsPanel tiles
+ * and the /subnets table Registration column so the two never drift.
+ */
+export function formatTao(v?: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (v >= 1) return `${v.toFixed(2)} τ`;
+  return `${v.toFixed(4)} τ`;
+}
+
+/**
  * The upstream registry frequently emits "1970-01-01T00:00:00.000Z" as a
  * placeholder when an artifact hasn't been timestamped yet. Treat any
  * pre-2000 date as "unknown" so the UI doesn't claim freshness/staleness

@@ -40,12 +40,19 @@ import {
   healthQuery,
   subnetHealthMapQuery,
   agentCatalogMapQuery,
+  economicsQuery,
 } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { joinHealth, matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
+import {
+  joinEconomics,
+  joinHealth,
+  matchesQuery,
+  sortBy,
+  tableSearchSchema,
+} from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
-import type { AgentCatalogSummary, Subnet } from "@/lib/metagraphed/types";
+import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
 
 // #9: a list row enriched with its agent-catalog capability fields (flattened
 // from the netuid-keyed catalog map so client-side sort/filter can read them).
@@ -55,6 +62,10 @@ type SubnetRow = Subnet & {
   integration_readiness?: number;
   readiness_tier?: string;
   service_count?: number;
+  // #3364: on-chain registration economics joined from /api/v1/economics by
+  // netuid so the Registration column (and its sort) can read them off the row.
+  registration_cost_tao?: number;
+  registration_allowed?: boolean;
 };
 
 function joinCatalog(
@@ -269,6 +280,17 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   const catalogMapRaw = useSuspenseQuery(agentCatalogMapQuery()).data.data;
   const catalogMap = useMemo(() => catalogMapRaw ?? {}, [catalogMapRaw]);
 
+  // #3364: per-subnet on-chain economics — already fetched once per session for
+  // the detail EconomicsPanel, so this reuses that shared cache (no new endpoint,
+  // no backend change). Indexed by netuid into a map and joined the same way as
+  // health/catalog so the Registration column + its sort resolve off the row.
+  const economicsRaw = useSuspenseQuery(economicsQuery()).data.data;
+  const economicsMap = useMemo(() => {
+    const map: Record<number, SubnetEconomics> = {};
+    for (const e of economicsRaw ?? []) map[e.netuid] = e;
+    return map;
+  }, [economicsRaw]);
+
   const pages = data.pages as Array<(typeof data.pages)[number] & { cursorInvalid?: boolean }>;
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!lastPage?.cursorInvalid;
@@ -277,14 +299,17 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // re-renders the route doesn't re-flatten and re-clone every row.
   const all = useMemo(
     () =>
-      joinCatalog(
-        joinHealth(
-          pages.flatMap((p) => (p.data ?? []) as Subnet[]),
-          healthMap,
+      joinEconomics(
+        joinCatalog(
+          joinHealth(
+            pages.flatMap((p) => (p.data ?? []) as Subnet[]),
+            healthMap,
+          ),
+          catalogMap,
         ),
-        catalogMap,
+        economicsMap,
       ),
-    [pages, healthMap, catalogMap],
+    [pages, healthMap, catalogMap, economicsMap],
   );
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
@@ -623,6 +648,19 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     align="right"
                   />
                 </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
+                >
+                  <SortHeader
+                    label="Registration"
+                    field="registration_cost_tao"
+                    active={search.sort === "registration_cost_tao"}
+                    order={search.order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
                 <th className={cellPad}>Health</th>
                 <th
                   className={classNames(cellPad, "text-right")}
@@ -698,6 +736,26 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       tier={s.readiness_tier}
                       kinds={s.service_kinds}
                     />
+                  </td>
+                  <td
+                    className={classNames(
+                      cellPad,
+                      "text-right font-mono text-[11px] tabular-nums",
+                      // #3364: dim the cost only when registration is explicitly
+                      // closed. `registration_allowed === undefined` (economics
+                      // entry present but flag absent, or no entry at all) keeps
+                      // the neutral tone — do NOT read it as "open".
+                      s.registration_allowed === false ? "text-ink-muted" : "text-ink",
+                    )}
+                    title={
+                      s.registration_allowed === false
+                        ? "Registration currently closed"
+                        : s.registration_allowed === true
+                          ? "Registration open"
+                          : undefined
+                    }
+                  >
+                    {formatTao(s.registration_cost_tao)}
                   </td>
                   <td className={cellPad}>
                     <HealthPill state={s.health} />

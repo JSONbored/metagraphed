@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { joinHealth, matchesQuery, sortBy, paginate } from "./url-state";
+import { joinEconomics, joinHealth, matchesQuery, sortBy, paginate } from "./url-state";
 
 describe("matchesQuery", () => {
   it("matches everything for an empty needle", () => {
@@ -101,6 +101,52 @@ describe("joinHealth", () => {
     const rows = [{ netuid: 1, updated_at: null as string | null }];
     joinHealth(rows, { 1: { health: "ok", last_checked: "probe-time" } });
     expect(rows[0].updated_at).toBeNull();
+  });
+});
+
+describe("joinEconomics", () => {
+  it("attaches registration cost + allowed flag from a matching entry", () => {
+    const rows = [{ netuid: 1 }, { netuid: 2 }];
+    const out = joinEconomics(rows, {
+      1: { registration_cost_tao: 256, registration_allowed: true },
+    });
+    expect(out[0]).toMatchObject({
+      netuid: 1,
+      registration_cost_tao: 256,
+      registration_allowed: true,
+    });
+  });
+
+  it("carries a closed (registration_allowed: false) entry through", () => {
+    const rows = [{ netuid: 5 }];
+    const out = joinEconomics(rows, {
+      5: { registration_cost_tao: 0.5, registration_allowed: false },
+    });
+    expect(out[0]).toMatchObject({ registration_cost_tao: 0.5, registration_allowed: false });
+  });
+
+  it("passes rows with no economics entry through by reference (unchanged)", () => {
+    const rows = [{ netuid: 9 }];
+    const out = joinEconomics(rows, { 1: { registration_cost_tao: 10 } });
+    // No entry for netuid 9 → same object reference, so its cell renders "—".
+    expect(out[0]).toBe(rows[0]);
+    expect(out[0]).not.toHaveProperty("registration_cost_tao");
+  });
+
+  it("attaches undefined fields when the entry exists but omits them", () => {
+    const rows = [{ netuid: 3 }];
+    const out = joinEconomics(rows, { 3: {} });
+    // The row is cloned (entry present) but both fields are undefined — the
+    // column must not misread this as "registration open".
+    expect(out[0]).not.toBe(rows[0]);
+    expect((out[0] as { registration_cost_tao?: number }).registration_cost_tao).toBeUndefined();
+    expect((out[0] as { registration_allowed?: boolean }).registration_allowed).toBeUndefined();
+  });
+
+  it("does not mutate the input rows", () => {
+    const rows = [{ netuid: 1 }];
+    joinEconomics(rows, { 1: { registration_cost_tao: 42, registration_allowed: true } });
+    expect(rows[0]).not.toHaveProperty("registration_cost_tao");
   });
 });
 
