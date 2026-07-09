@@ -127,7 +127,11 @@ subnets and demonstrate the product to the broader ecosystem.
    → `rpc_method_blocked`; pools finney-rpc 4/5, finney-wss 4/4, finney-archive 8/8
    eligible. Cloudflare WAF on `/rpc/*` + the flag are in place (see the runbook in
    `docs/operations.md`). This is the hosted-infra feature that separates Metagraphed
-   from a pure-registry product.
+   from a pure-registry product. **State-query methods (#4344/9.2 — SHIPPED):**
+   `state_getStorage`/`state_getKeysPaged` proxy through a second, narrower
+   allowlist with param validation, a clamped page size, a dedicated
+   `STATE_QUERY_RATE_LIMITER` budget, and a response-size cap — see
+   `docs/operations.md`.
 
 ### P2 — Performance and scale
 

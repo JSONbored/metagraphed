@@ -161,7 +161,15 @@ Enforced in the Worker:
 
 - **Method allowlist** — read-only `SAFE_RPC_METHODS` only; `DENIED_RPC_PREFIXES`
   (`author_`, `state_call`, `sudo_`, `payment_`, `contracts_`) and heavy reads
-  (`state_getMetadata`, `state_getStorage`) stay blocked.
+  (`state_getMetadata`) stay blocked.
+- **State-query methods (#4344/9.2)** — `state_getStorage` / `state_getKeysPaged` are
+  allowed through a second, narrower `SAFE_RPC_STATE_QUERY_METHODS` allowlist (still
+  denying `state_getPairs`, which has no caller-side pagination). Each call is
+  param-validated (hex key/prefix format + length cap), the `state_getKeysPaged`
+  page-size is clamped (not rejected) to `MAX_STATE_QUERY_KEYS_PAGE_SIZE`, and the
+  decoded upstream response is capped at `MAX_STATE_QUERY_RESPONSE_BYTES` (256 KB).
+  Metered by their own `STATE_QUERY_RATE_LIMITER` budget (20 req/60s per client IP,
+  `429 rpc_state_query_rate_limited`), on top of the general RPC rate limit below.
 - **Upstream SSRF guard** — only `TRUSTED_RPC_UPSTREAM_ORIGINS`, https/wss, no private IPs.
 - **Load balancing** — weighted-random across all eligible+safe pool endpoints.
 - **Body cap** 64 KB, **upstream timeout** 10 s, single JSON-RPC object only.

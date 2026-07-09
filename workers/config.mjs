@@ -364,6 +364,36 @@ export const DENIED_RPC_PREFIXES = [
   "payment_",
   "contracts_",
 ];
+// A second, narrower allowlist for the public RPC proxy (#4344/9.2, design
+// spike in docs/block-explorer-data-model.md): storage-key reads take a
+// caller-supplied key/prefix with no natural bound, unlike every SAFE_RPC_METHODS
+// entry. Membership here is NOT sufficient on its own -- the handler additionally
+// requires param-shape validation and a separate, stricter rate-limit budget
+// (STATE_QUERY_RATE_LIMITER) before forwarding. state_getPairs is deliberately
+// excluded: it has no caller-side pagination at all and can return an entire
+// pallet's storage (keys AND values) under a shallow prefix in one response --
+// state_getKeysPaged already covers the legitimate "enumerate a prefix" use case
+// with a bounded page size.
+export const SAFE_RPC_STATE_QUERY_METHODS = new Set([
+  "state_getStorage",
+  "state_getKeysPaged",
+]);
+// A real storage key is at most two twox128 hashes (16 bytes each) plus one
+// hashed map key -- even a Blake2_128Concat key on a 32-byte AccountId stays
+// well under 128 bytes decoded. 256 bytes decoded (512 hex chars + "0x") is a
+// generous ceiling above any real key/prefix, not a bound anyone legitimate
+// would hit.
+export const MAX_STATE_QUERY_KEY_HEX_CHARS = 512;
+// state_getKeysPaged's caller-supplied page-size `count` is clamped (not
+// rejected) to this ceiling, mirroring how paginated REST routes in this repo
+// clamp rather than error on an over-large `?limit` (clampInt above).
+export const MAX_STATE_QUERY_KEYS_PAGE_SIZE = 250;
+// Post-fetch response-size cap for state-query methods specifically (separate
+// from any general proxy behavior): even with the page-size clamped, cap the
+// decoded upstream body so a pathological prefix can't relay an oversized
+// payload to the client. Same order of magnitude as the general proxy's 64 KB
+// *request* cap.
+export const MAX_STATE_QUERY_RESPONSE_BYTES = 262144; // 256 KB
 export const MAX_RPC_BODY_BYTES = 65536;
 export const METAGRAPH_LATEST_KEY = "metagraph:latest";
 export const MAX_WEBHOOK_BODY_BYTES = 8192;

@@ -56,8 +56,12 @@ import {
   DENIED_RPC_PREFIXES,
   JSON_CONTENT_TYPE,
   MAX_RPC_BODY_BYTES,
+  MAX_STATE_QUERY_KEY_HEX_CHARS,
+  MAX_STATE_QUERY_KEYS_PAGE_SIZE,
+  MAX_STATE_QUERY_RESPONSE_BYTES,
   resolveClientIp,
   SAFE_RPC_METHODS,
+  SAFE_RPC_STATE_QUERY_METHODS,
   TRUSTED_RPC_UPSTREAM_ORIGINS,
 } from "../config.mjs";
 
@@ -338,15 +342,66 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     );
   }
 
-  if (!isSafeRpcMethod(rpcBody.method)) {
+  // State-query methods (#4344/9.2): a second, narrower allowlist for
+  // state_getStorage/state_getKeysPaged. Membership alone isn't sufficient --
+  // unlike every SAFE_RPC_METHODS entry, these take a caller-supplied key/
+  // prefix with no natural bound, so they additionally require the param
+  // validation + separate rate-limit budget below before forwarding. See
+  // docs/block-explorer-data-model.md's design spike.
+  const isStateQueryMethod = isSafeRpcStateQueryMethod(rpcBody.method);
+  if (!isSafeRpcMethod(rpcBody.method) && !isStateQueryMethod) {
     return errorResponse(
       "rpc_method_blocked",
       `RPC method is not allowed through this proxy: ${rpcBody.method}`,
       403,
       {
-        allowed_methods: [...SAFE_RPC_METHODS].sort(),
+        allowed_methods: [
+          ...SAFE_RPC_METHODS,
+          ...SAFE_RPC_STATE_QUERY_METHODS,
+        ].sort(),
       },
     );
+  }
+
+  if (isStateQueryMethod) {
+    // Own, stricter rate-limit budget (separate binding, not a lower shared
+    // bucket) -- consumed IN ADDITION TO the general RPC_RATE_LIMITER check
+    // above, so heavy state-query traffic from one client can't starve that
+    // same client's ordinary chain_getBlock/system_health calls through the
+    // same proxy, and vice versa.
+    if (env.STATE_QUERY_RATE_LIMITER?.limit) {
+      const clientKey = `rpc-state-query:${resolveClientIp(request)}`;
+      const { success } = await env.STATE_QUERY_RATE_LIMITER.limit({
+        key: clientKey,
+      });
+      if (!success) {
+        return errorResponse(
+          "rpc_state_query_rate_limited",
+          "Too many state-query RPC requests from this client; slow down.",
+          429,
+          {},
+          {
+            "retry-after": String(STATE_QUERY_RATE_LIMIT.windowSeconds),
+            "x-ratelimit-limit": String(STATE_QUERY_RATE_LIMIT.limit),
+            "x-ratelimit-policy": `${STATE_QUERY_RATE_LIMIT.limit};w=${STATE_QUERY_RATE_LIMIT.windowSeconds}`,
+            "x-ratelimit-remaining": "0",
+          },
+        );
+      }
+    }
+
+    const validated = validateStateQueryParams(rpcBody.method, rpcBody.params);
+    if (!validated.ok) {
+      return errorResponse("rpc_invalid_request", validated.message, 400);
+    }
+    // state_getKeysPaged's count is clamped (not rejected) server-side --
+    // rewrite both the parsed body and the raw text forwarded upstream so
+    // proxyWithFailover (which forwards `bodyText`, not `rpcBody`) sees the
+    // clamped value too.
+    if (validated.params !== rpcBody.params) {
+      rpcBody.params = validated.params;
+      bodyText = JSON.stringify(rpcBody);
+    }
   }
 
   const poolArtifact = await readRpcPoolArtifact(env);
@@ -488,6 +543,36 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     latency_ms: Date.now() - startedAt,
     cache: cacheKey ? "miss" : "bypass",
   });
+  // Post-fetch response-size cap for state-query methods (#4344/9.2): even
+  // with state_getKeysPaged's count clamped above, a pathological prefix (or a
+  // future param-validation gap) could still return a large payload -- cap the
+  // decoded upstream body rather than relay it. Only inspected for these two
+  // methods; every other proxied response is unaffected.
+  if (isStateQueryMethod && response.status === 200) {
+    let sizeCheck;
+    try {
+      sizeCheck = await readResponseTextWithLimit(
+        response.clone(),
+        MAX_STATE_QUERY_RESPONSE_BYTES,
+      );
+    } catch {
+      // proxyWithFailover already tees the upstream body and fully drains its
+      // own inspection branch before ever returning a 200 here (see its
+      // "body-read-error" handling above) -- this sibling tee branch failing
+      // independently at this point isn't reachable in practice. Kept for the
+      // same reason the pre-existing cache-classification catch below is.
+      /* v8 ignore next */
+      sizeCheck = null;
+    }
+    if (sizeCheck?.truncated) {
+      return errorResponse(
+        "rpc_response_too_large",
+        "The upstream response for this state-query method exceeded the size limit for the public proxy.",
+        502,
+      );
+    }
+  }
+
   if (!cacheKey) {
     return response;
   }
@@ -713,6 +798,9 @@ function streamRpcResponse(upstream, endpoint, attempts, status) {
 // is unavailable — we surface the static policy (mirrors wrangler.jsonc:
 // 100 requests / 60s) plus Retry-After on a 429.
 const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
+// Mirrors wrangler.jsonc's STATE_QUERY_RATE_LIMITER binding (#4344/9.2) --
+// a fifth of the general proxy's budget, its own separate bucket.
+const STATE_QUERY_RATE_LIMIT = { limit: 20, windowSeconds: 60 };
 function setRpcRateLimitHeaders(headers) {
   headers.set("x-ratelimit-limit", String(RPC_RATE_LIMIT.limit));
   headers.set(
@@ -1089,4 +1177,78 @@ function isSafeRpcMethod(method) {
     return false;
   }
   return SAFE_RPC_METHODS.has(method);
+}
+
+// #4344/9.2: same DENIED_RPC_PREFIXES defense-in-depth as isSafeRpcMethod,
+// then membership in the narrower state-query set.
+function isSafeRpcStateQueryMethod(method) {
+  if (DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))) {
+    return false;
+  }
+  return SAFE_RPC_STATE_QUERY_METHODS.has(method);
+}
+
+// A real storage key/prefix is always 0x-prefixed hex -- reject anything else
+// or anything past MAX_STATE_QUERY_KEY_HEX_CHARS outright (no real key/prefix
+// legitimately needs more).
+function isValidStateQueryHex(value) {
+  return (
+    typeof value === "string" &&
+    value.length <= MAX_STATE_QUERY_KEY_HEX_CHARS + 2 &&
+    /^0x[0-9a-fA-F]*$/.test(value)
+  );
+}
+
+// Validates + (for state_getKeysPaged) clamps the caller-supplied params for
+// a state-query method (#4344/9.2). Returns {ok:true, params} -- `params` is
+// the SAME array reference when nothing needed clamping, a new one otherwise,
+// so the caller can cheaply tell whether the request body needs re-serializing.
+// Returns {ok:false, message} on a malformed key/prefix -- the same
+// rpc_invalid_request shape the existing body-shape check above uses, no new
+// error taxonomy needed.
+function validateStateQueryParams(method, params) {
+  const args = Array.isArray(params) ? params : [];
+  if (method === "state_getStorage") {
+    if (!isValidStateQueryHex(args[0])) {
+      return {
+        ok: false,
+        message:
+          "state_getStorage requires params[0] to be a 0x-prefixed hex storage key.",
+      };
+    }
+    return { ok: true, params };
+  }
+  // state_getKeysPaged: [prefix, count, startKey?, at?]
+  if (!isValidStateQueryHex(args[0])) {
+    return {
+      ok: false,
+      message:
+        "state_getKeysPaged requires params[0] to be a 0x-prefixed hex key prefix.",
+    };
+  }
+  // startKey (params[2]), when present, is also a storage key.
+  if (args[2] !== undefined && !isValidStateQueryHex(args[2])) {
+    return {
+      ok: false,
+      message:
+        "state_getKeysPaged requires params[2] (startKey), when present, to be a 0x-prefixed hex key.",
+    };
+  }
+  const rawCount = args[1];
+  const count =
+    typeof rawCount === "number" && Number.isFinite(rawCount)
+      ? Math.trunc(rawCount)
+      : Number.NaN;
+  if (!Number.isFinite(count) || count < 0) {
+    return {
+      ok: false,
+      message:
+        "state_getKeysPaged requires params[1] (count) to be a non-negative integer.",
+    };
+  }
+  const clamped = Math.min(count, MAX_STATE_QUERY_KEYS_PAGE_SIZE);
+  if (clamped === rawCount) return { ok: true, params };
+  const nextParams = [...args];
+  nextParams[1] = clamped;
+  return { ok: true, params: nextParams };
 }

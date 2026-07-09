@@ -12,6 +12,7 @@ import {
   proxyWithFailover,
   rpcCachePolicy,
 } from "../workers/request-handlers/rpc-proxy.mjs";
+import { MAX_STATE_QUERY_KEYS_PAGE_SIZE } from "../workers/config.mjs";
 
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
 
@@ -425,6 +426,214 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
       assert.equal(cache.store.size, 0);
     } finally {
       globalThis.caches = originalCaches;
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("state-query methods (#4344/9.2)", () => {
+  const rpcPost = (body) =>
+    req("/rpc/v1/finney", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": "203.0.113.20",
+      },
+      body: JSON.stringify(body),
+    });
+  const HEX_KEY = `0x${"ab".repeat(16)}`;
+
+  test("state_getPairs stays blocked -- excluded from the narrower allowlist", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "state_getPairs",
+        params: ["0x"],
+      }),
+      rpcEnv(poolWith(ep("a", SAFE_A))),
+      url("/rpc/v1/finney"),
+    );
+    const body = await errorJson(res, 403);
+    assert.equal(body.error.code, "rpc_method_blocked");
+    // The allowed_methods hint includes the state-query methods that ARE
+    // permitted, so a caller can tell "wrong method" from "misconfigured".
+    assert.ok(body.meta.allowed_methods.includes("state_getStorage"));
+    assert.ok(!body.meta.allowed_methods.includes("state_getPairs"));
+  });
+
+  test("400 rpc_invalid_request for a malformed state_getStorage key", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "state_getStorage",
+        params: ["not-hex"],
+      }),
+      rpcEnv(poolWith(ep("a", SAFE_A))),
+      url("/rpc/v1/finney"),
+    );
+    const body = await errorJson(res, 400);
+    assert.equal(body.error.code, "rpc_invalid_request");
+    assert.match(body.error.message, /state_getStorage/);
+  });
+
+  test("400 rpc_invalid_request for a malformed state_getKeysPaged prefix", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "state_getKeysPaged",
+        params: ["0xzz", 10],
+      }),
+      rpcEnv(poolWith(ep("a", SAFE_A))),
+      url("/rpc/v1/finney"),
+    );
+    const body = await errorJson(res, 400);
+    assert.equal(body.error.code, "rpc_invalid_request");
+    assert.match(body.error.message, /state_getKeysPaged/);
+  });
+
+  test("400 rpc_invalid_request for a malformed state_getKeysPaged startKey", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "state_getKeysPaged",
+        params: [HEX_KEY, 10, "not-hex"],
+      }),
+      rpcEnv(poolWith(ep("a", SAFE_A))),
+      url("/rpc/v1/finney"),
+    );
+    const body = await errorJson(res, 400);
+    assert.equal(body.error.code, "rpc_invalid_request");
+    assert.match(body.error.message, /startKey/);
+  });
+
+  test("400 rpc_invalid_request for a non-integer/negative state_getKeysPaged count", async () => {
+    for (const count of [-1, "not-a-number", Number.NaN]) {
+      const res = await handleRpcProxyRequest(
+        rpcPost({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "state_getKeysPaged",
+          params: [HEX_KEY, count],
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+      );
+      const body = await errorJson(res, 400);
+      assert.equal(body.error.code, "rpc_invalid_request");
+    }
+  });
+
+  test("clamps an oversized state_getKeysPaged count before forwarding upstream", async () => {
+    // proxyWithFailover calls fetchFn(endpoint.url, {..., body}) -- a bare URL
+    // string plus an init object, not a Request -- so capture the init body
+    // directly rather than via scriptedFetch (which only records the URL arg).
+    const originalFetch = globalThis.fetch;
+    let forwardedBodyText = null;
+    globalThis.fetch = async (_endpointUrl, init) => {
+      forwardedBodyText = init?.body ?? null;
+      return jsonResponse(200, { jsonrpc: "2.0", id: 1, result: [] });
+    };
+    try {
+      await handleRpcProxyRequest(
+        rpcPost({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "state_getKeysPaged",
+          params: [HEX_KEY, MAX_STATE_QUERY_KEYS_PAGE_SIZE + 1000],
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+      );
+      assert.ok(forwardedBodyText, "expected the upstream fetch to be called");
+      const forwardedBody = JSON.parse(forwardedBodyText);
+      assert.equal(forwardedBody.params[1], MAX_STATE_QUERY_KEYS_PAGE_SIZE);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("429 rpc_state_query_rate_limited when the state-query limiter rejects the client", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "state_getStorage",
+        params: [HEX_KEY],
+      }),
+      rpcEnv(poolWith(ep("a", SAFE_A)), {
+        STATE_QUERY_RATE_LIMITER: { limit: async () => ({ success: false }) },
+      }),
+      url("/rpc/v1/finney"),
+    );
+    const body = await errorJson(res, 429);
+    assert.equal(body.error.code, "rpc_state_query_rate_limited");
+  });
+
+  test("200 happy path for state_getStorage", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = scriptedFetch(
+      jsonResponse(200, { jsonrpc: "2.0", id: 1, result: "0xdeadbeef" }),
+    );
+    try {
+      const res = await handleRpcProxyRequest(
+        rpcPost({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "state_getStorage",
+          params: [HEX_KEY],
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.result, "0xdeadbeef");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("502 rpc_response_too_large when the upstream response exceeds the state-query size cap", async () => {
+    const originalFetch = globalThis.fetch;
+    // A clean tee-able stream emitting > 256 KiB of valid JSON in chunks
+    // (mirrors the >64 KiB oversized-body pattern above, sized for this
+    // method's own, tighter MAX_STATE_QUERY_RESPONSE_BYTES cap).
+    const chunk = new TextEncoder().encode("x".repeat(64 * 1024));
+    let pulls = 0;
+    const bigBody = new globalThis.ReadableStream({
+      pull(controller) {
+        pulls += 1;
+        if (pulls <= 5) {
+          controller.enqueue(chunk);
+          return;
+        }
+        controller.close();
+      },
+    });
+    globalThis.fetch = scriptedFetch(
+      new Response(bigBody, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    try {
+      const res = await handleRpcProxyRequest(
+        rpcPost({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "state_getKeysPaged",
+          params: [HEX_KEY, 10],
+        }),
+        rpcEnv(poolWith(ep("a", SAFE_A))),
+        url("/rpc/v1/finney"),
+      );
+      const body = await errorJson(res, 502);
+      assert.equal(body.error.code, "rpc_response_too_large");
+    } finally {
       globalThis.fetch = originalFetch;
     }
   });

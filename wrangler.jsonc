@@ -190,5 +190,20 @@
         "period": 60,
       },
     },
+    // Per-client abuse control for the two state-query RPC methods
+    // (state_getStorage, state_getKeysPaged, #4344/9.2) — a fifth of the
+    // general RPC proxy's 100/60s, kept as its OWN binding rather than a lower
+    // shared bucket so heavy state-query traffic from one client can't starve
+    // that same client's ordinary chain_getBlock/system_health calls through
+    // the same proxy, and vice versa. Skipped when the binding is absent
+    // (local dev/CI). See docs/block-explorer-data-model.md's design spike.
+    {
+      "name": "STATE_QUERY_RATE_LIMITER",
+      "namespace_id": "1005",
+      "simple": {
+        "limit": 20,
+        "period": 60,
+      },
+    },
   ],
 }
