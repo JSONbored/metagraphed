@@ -23324,7 +23324,8 @@
                         "first_moved_at": "2026-06-01T00:00:00.000Z",
                         "last_moved_at": "2026-06-01T00:00:00.000Z",
                         "movements": 4,
-                        "netuid": 1
+                        "netuid": 1,
+                        "price_tao_at_last_move": 4.5
                       }
                     ],
                     "total_movements": 4,
