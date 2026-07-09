@@ -256,3 +256,123 @@ little-endian, Identity hasher — no hash on the map key>`, confirmed via
 `substrate.create_storage_key(...)` across netuid 0/1/4/101/65535. Shipped as
 `GET /api/v1/subnets/{netuid}/recycled` (`src/subnet-recycled.mjs`) on this basis instead of the
 issue's literal log-layer approach.
+
+## Design spike: rate-limited public state-query endpoint (#4344/9.1, 2026-07-09)
+
+Goal (the issue's own framing): expose `state_getStorage`/`state_getKeysPaged`/`state_getPairs`
+through a scoped, rate-limited public proxy — a differentiator vs. taostats gating the
+equivalent behind a paid key. **Extend the existing RPC proxy allowlist model
+(`workers/config.mjs`/`workers/request-handlers/rpc-proxy.mjs`, live at `POST /rpc/v1/finney`,
+`docs/operations.md` "RPC Proxy (enabled)"), not a new pipeline.** That proxy already enforces,
+today, for its `SAFE_RPC_METHODS` allowlist: a method allowlist + `DENIED_RPC_PREFIXES`, an
+upstream SSRF guard (`TRUSTED_RPC_UPSTREAM_ORIGINS`, https/wss-only, no private IPs), weighted
+load balancing across the eligible pool, a 64 KB body cap, a 10 s upstream timeout, single
+(non-batched) JSON-RPC objects only, and a 100 req/60 s per-client-IP rate limit via the
+`RPC_RATE_LIMITER` binding. `state_getStorage` and `state_getMetadata` are explicitly named in
+that allowlist's own comment as excluded "heavy reads" — this spike is the design for lifting
+that exclusion safely for three specific methods, not a blanket unblock.
+
+**Why these three methods need more than the existing allowlist gives them:** every other
+`SAFE_RPC_METHODS` entry (`chain_getBlock`, `system_health`, …) either takes no caller-supplied
+parameter or one bounded by the chain itself (a block hash/number). All three state-query methods
+take a caller-supplied storage key or prefix with no natural bound:
+
+| Method               | Caller input                          | Abuse shape if unbounded                                                                                                                             |
+| -------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state_getStorage`   | one storage key (hex)                 | Cheap per-call, but an unbounded key length/count is still a batching-via-repetition vector.                                                         |
+| `state_getKeysPaged` | prefix + page size + start key        | An uncapped page size returns the full keyspace under a prefix in one shot.                                                                          |
+| `state_getPairs`     | prefix only, **no pagination at all** | Can return every key **and value** under a prefix in a single response — the whole pallet's storage for a shallow prefix. This is the dangerous one. |
+
+None of this is a _confidentiality_ problem — subtensor has no private storage; every value here
+is already public consensus state (the same reasoning `authority: "community"` surfaces and this
+repo's own `RAORecycledForRegistration` read above rely on). The risk is purely **cost/availability
+abuse**: a caller scripting `state_getPairs` against a shallow prefix (or even the empty prefix)
+can force the upstream RPC endpoint to serialize and return an arbitrarily large chunk of chain
+state in one request, at zero cost to the caller and real cost (CPU + egress) to metagraphed's own
+pooled RPC endpoints and Worker subrequest budget.
+
+### Recommended shape
+
+1. **A separate, stricter method allowlist tier** — do not add these three to `SAFE_RPC_METHODS`
+   directly (that set's callers expect the existing 100/60s budget and no extra param
+   validation). Introduce `SAFE_RPC_STATE_QUERY_METHODS` alongside it in `workers/config.mjs`:
+
+   ```js
+   export const SAFE_RPC_STATE_QUERY_METHODS = new Set([
+     "state_getStorage",
+     "state_getKeysPaged",
+     // state_getPairs excluded — see below.
+   ]);
+   ```
+
+   `isSafeRpcMethod`-equivalent dispatch checks this set _in addition to_ `SAFE_RPC_METHODS`, but
+   only when the request additionally passes the param-shape and rate-limit gates below — it is
+   not a plain allowlist entry, it is a second, narrower gate.
+
+2. **Exclude `state_getPairs` from the public surface entirely (for now).** It is the one method
+   in this family with no caller-side pagination — `state_getKeysPaged` already covers the
+   legitimate "enumerate a prefix" use case with a bounded page size, and pairs-with-values-in-one-
+   shot has no safe upper bound short of hard-capping the prefix depth. If a real use case surfaces
+   that `state_getKeysPaged` + N `state_getStorage` calls can't serve, revisit as its own follow-up
+   with a mandatory minimum prefix length (e.g. requiring the full two-`twox128` pallet+item prefix,
+   never a bare pallet prefix or the empty prefix) rather than shipping it open-ended now.
+
+3. **Param validation, enforced before the upstream fetch (in the same request-shape check that
+   already rejects batched/non-single JSON-RPC bodies):**
+   - `state_getStorage`: `params[0]` must be a `0x`-prefixed hex string, length-capped (e.g. 256
+     bytes decoded — comfortably above any real storage key, which is always
+     `twox128 + twox128 + hasher(map key)` = well under 128 bytes even for a `Blake2_128Concat`
+     key on a 32-byte AccountId).
+   - `state_getKeysPaged`: `params[0]` (prefix) same hex validation; `params[1]` (count) hard-capped
+     server-side (rewrite the request to `min(caller_count, 250)` rather than reject it — mirrors
+     how paginated REST routes in this repo clamp rather than error on an over-large `?limit`,
+     `clampInt` in `workers/config.mjs`).
+   - Reject a missing/malformed key or prefix with the same `errorResponse("rpc_invalid_request", …,
+400)` shape the existing body-shape check uses — no new error taxonomy needed.
+
+4. **A separate, stricter Cloudflare Rate Limiting binding** (`STATE_QUERY_RATE_LIMITER`, its own
+   `wrangler.jsonc` binding + WAF zone rule scoped to a distinguishing path or the JSON-RPC
+   `method` field) — proposed **20 requests / 60 s per client IP**, a fifth of the general RPC
+   proxy's 100/60s. Keeping it a _separate_ binding (not a lower shared bucket) means heavy
+   state-query traffic from one client can't starve that same client's ordinary `chain_getBlock`/
+   `system_health` calls through the same proxy, and vice versa — the two tiers fail independently.
+   Reuses the exact `RPC_RATE_LIMITER` wiring shape (`resolveClientIp`, `429 rpc_rate_limited` with
+   `retry-after`/`x-ratelimit-*` headers) already in `rpc-proxy.mjs`, just against the new binding
+   and limit constant.
+
+5. **A post-fetch response-size cap.** Even with `state_getKeysPaged`'s count clamped, a pathological
+   prefix (or a future param-validation gap) could still return a large payload — cap the decoded
+   upstream response body (e.g. 256 KB, matching this proxy's existing 64 KB _request_ cap's order
+   of magnitude) and surface `502 rpc_response_too_large` rather than relaying it, mirroring the
+   `MAX_STAGED_*_BYTES` "parse-safety ceiling" pattern already used for staged ingest bodies
+   elsewhere in this codebase (`workers/config.mjs`).
+
+6. **No new endpoint path.** Route through the same `POST /rpc/v1/finney` proxy (`workers/
+request-handlers/rpc-proxy.mjs`) rather than a dedicated `/rpc/v1/finney/state` — the method
+   name in the JSON-RPC body already disambiguates, and a second path would duplicate the SSRF
+   guard, pool selection, and upstream-fetch logic for no isolation benefit (the rate-limit and
+   param-validation gates above are per-_method_, not per-_path_, so they compose cleanly into the
+   existing single entry point).
+
+### Explicitly out of scope for this spike
+
+- `state_call` (arbitrary runtime-API invocation) stays in `DENIED_RPC_PREFIXES` — categorically
+  more dangerous than a storage read (it can invoke _any_ runtime API method, not just read a
+  known key) and not part of the issue's own ask.
+- `grandpa_proveFinality` (#4344/9.3) is a sibling issue in this epic with its own, unrelated
+  shape (a finality proof for a given block, not a keyspace query) — no shared design surface with
+  this spike beyond both landing on the same allowlist infrastructure.
+- The internal, already-shipped `state_getStorage` calls this repo makes itself for known,
+  hardcoded storage keys (`src/account-balance.mjs`, `src/sudo-key.mjs`, `src/subnet-recycled.mjs`)
+  are unaffected — those are server-to-upstream calls with no caller-supplied key, not routed
+  through the public RPC proxy at all, and need no new gate.
+
+### Deliverable for 9.2 (#4346)
+
+Implement `SAFE_RPC_STATE_QUERY_METHODS` (2 methods only) + the param-validation/count-clamp step
+
+- the separate `STATE_QUERY_RATE_LIMITER` binding + the response-size cap in
+  `workers/request-handlers/rpc-proxy.mjs`, following the exact wiring shape `RPC_RATE_LIMITER`
+  already establishes. `docs/operations.md`'s "RPC Proxy (enabled)" section and
+  `docs/beta-roadmap.md`'s "Phase 2 — RPC proxy differentiator" bullet should both gain a line once
+  shipped, matching how the existing method allowlist is documented there today.

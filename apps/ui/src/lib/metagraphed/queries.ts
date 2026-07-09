@@ -14,6 +14,7 @@ import type {
   AgentCatalogService,
   AgentReadiness,
   AgentCatalogBlocker,
+  AskAnswerData,
   BulkHealthTrends,
   BulkHealthTrendSubnet,
   BulkHealthTrendPoint,
@@ -129,6 +130,9 @@ import type {
   Provider,
   ProviderEndpointSummary,
   RpcPool,
+  RpcEndpoint,
+  RpcEndpointsData,
+  RpcEndpointsSummary,
   RpcUsage,
   SchemaInfo,
   SemanticSearchResponse,
@@ -182,6 +186,7 @@ import type {
   YieldHistoryPoint,
   SubnetYieldHistory,
   SubnetProfile,
+  SubnetOverview,
   Surface,
   SurfaceLatencyPercentiles,
   SurfaceSla,
@@ -5764,6 +5769,41 @@ export const rpcPoolsQuery = () =>
     staleTime: STALE_MED,
   });
 
+function normalizeRpcEndpoint(raw: unknown): RpcEndpoint | undefined {
+  if (!isRecord(raw)) return undefined;
+  const id = asString(raw.id);
+  if (!id) return undefined;
+  return { ...(raw as object), id } as RpcEndpoint;
+}
+
+function normalizeRpcEndpointsSummary(raw: unknown): RpcEndpointsSummary | null {
+  return isRecord(raw) ? (raw as RpcEndpointsSummary) : null;
+}
+
+// /api/v1/rpc/endpoints — the base-layer Subtensor RPC/WSS registry
+// (RpcEndpointsArtifact: a summary rollup alongside the endpoint list).
+// Unlike the other `fetchList`-based queries on this page, this artifact's
+// `summary` sibling field would be silently dropped by `fetchList` (which
+// only extracts the keyed array) — verified live: `summary` lives in the
+// artifact body next to `endpoints`, not in the response envelope's `meta`
+// (only `generated_at` round-trips through `meta`, matching `rpcPoolsQuery`'s
+// `data.meta?.generated_at` freshness read). So this unwraps the keyed
+// object itself, mirroring `fetchList`'s own array-extraction, to keep both.
+export const rpcEndpointsQuery = () =>
+  queryOptions({
+    queryKey: k("rpc-endpoints"),
+    queryFn: async ({ signal }): Promise<ApiResult<RpcEndpointsData>> => {
+      const res = await apiFetch<unknown>("/api/v1/rpc/endpoints", { signal });
+      const body = isRecord(res.data) ? res.data : {};
+      const endpoints = Array.isArray(body.endpoints)
+        ? body.endpoints.map(normalizeRpcEndpoint).filter((e): e is RpcEndpoint => e != null)
+        : [];
+      const summary = normalizeRpcEndpointsSummary(body.summary);
+      return { ...res, data: { endpoints, summary } };
+    },
+    staleTime: STALE_MED,
+  });
+
 // /api/v1/rpc/usage returns a single analytics object (not a list), like the
 // global incident ledger. Cold/unmigrated D1 already yields a schema-stable
 // zeroed payload server-side; this normaliser just hardens against missing
@@ -5933,6 +5973,23 @@ export const agentResourcesQuery = () =>
     },
     staleTime: STALE_MED,
   });
+
+// POST /api/v1/ask — grounded Q&A over the registry. User-triggered on submit,
+// not a passive fetch-on-mount GET, so this is a plain typed helper for a
+// component's own useMutation to call (see ask-box.tsx), not a
+// queryOptions/useSuspenseQuery pair — matching the verify-surface-button.tsx
+// imperative-POST precedent.
+export async function askQuestion(question: string, signal?: AbortSignal): Promise<AskAnswerData> {
+  const res = await apiFetch<AskAnswerData>("/api/v1/ask", {
+    init: {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ question }),
+    },
+    signal,
+  });
+  return res.data;
+}
 
 export const endpointIncidentsQuery = () =>
   queryOptions({
@@ -6472,6 +6529,45 @@ export const subnetGapsQuery = (netuid: number) =>
       const data = normalizeSubnetGaps(res.data);
       if (!data) throw new Error("Invalid subnet gaps response");
       return { ...res, data };
+    },
+    staleTime: STALE_MED,
+  });
+
+// The composed SubnetOverviewArtifact's sub-objects (profile/health/curation/
+// gaps) are already reviewed, schema-valid payloads in their own right — this
+// only needs enough fidelity to render the summary strip (#3346), not a full
+// re-typed mirror of each sub-schema, so profile/health/curation/gaps pass
+// through as loose records (matching the existing SubnetOverview interface).
+export function normalizeSubnetOverview(raw: unknown, netuid: number): SubnetOverview {
+  const root = isRecord(raw) ? raw : {};
+  const counts = isRecord(root.counts) ? root.counts : {};
+  return {
+    netuid: optionalNumber(root.netuid) ?? netuid,
+    name: optionalString(root.name),
+    slug: optionalString(root.slug),
+    status: optionalString(root.status),
+    profile: isRecord(root.profile) ? root.profile : undefined,
+    health: isRecord(root.health) ? root.health : undefined,
+    curation: isRecord(root.curation) ? root.curation : undefined,
+    gaps: isRecord(root.gaps) ? root.gaps : undefined,
+    gap_priorities: Array.isArray(root.gap_priorities) ? root.gap_priorities : [],
+    counts: {
+      surfaces: optionalNumber(counts.surfaces) ?? 0,
+      endpoints: optionalNumber(counts.endpoints) ?? 0,
+      candidates: optionalNumber(counts.candidates) ?? 0,
+    },
+  };
+}
+
+export const subnetOverviewQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-overview", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/overview`, { signal });
+      return {
+        ...res,
+        data: normalizeSubnetOverview(res.data, netuid),
+      } as ApiResult<SubnetOverview>;
     },
     staleTime: STALE_MED,
   });

@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero } from "@/components/metagraphed/page-hero";
+import { AskBox } from "@/components/metagraphed/ask-box";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { ExternalLink } from "@/components/metagraphed/external-link";
+import { McpToolsList } from "@/components/metagraphed/mcp-tools-list";
 import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SectionHeading } from "@/components/metagraphed/section-heading";
@@ -79,12 +81,6 @@ const SDKS: { lang: string; pkg: string; install: string; url: string }[] = [
 
 const QUICKSTART: { label: string; cmd: string }[] = [
   {
-    label: "Ask a grounded question",
-    cmd: `curl -s https://api.metagraph.sh/api/v1/ask \\
-  -X POST -H 'content-type: application/json' \\
-  -d '{"question":"which subnet does image generation?"}'`,
-  },
-  {
     label: "List every callable service",
     cmd: "curl -s https://api.metagraph.sh/api/v1/agent-catalog",
   },
@@ -140,9 +136,16 @@ function AgentsBody() {
             server card
           </ExternalLink>
         </div>
-        <p className="mt-2 font-mono text-[11px] leading-relaxed text-ink-muted/70">
-          {mcp.tools.map((t) => t.name).join("  ·  ")}
-        </p>
+        <McpToolsList tools={mcp.tools} />
+      </section>
+
+      {/* Ask metagraphed directly — grounded Q&A over the registry */}
+      <section>
+        <SectionHeading
+          title="Ask metagraphed"
+          intro="Ask a question in plain English and get a grounded answer with citations back to the registry."
+        />
+        <AskBox />
       </section>
 
       {/* Two calmer alternatives, side by side */}

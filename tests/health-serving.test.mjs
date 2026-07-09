@@ -136,10 +136,67 @@ describe("mergeRpcEndpoints", () => {
     assert.equal(a.status, "failed");
     assert.equal(a.health_source, "probe-derived");
     assert.equal(a.pool_eligible, undefined);
-    assert.deepEqual(merged.summary, { total: 2 });
+    // Non-derived summary fields (anything besides by_status/archive_supported_count)
+    // pass through from the static artifact unchanged.
+    assert.equal(merged.summary.total, 2);
     assert.equal(merged.generated_at, "g");
     assert.equal(merged.operational_observed_at, "r");
     assert.equal(merged.endpoints.find((e) => e.id === "b").status, "ok"); // no live → static
+  });
+
+  test("recomputes summary.by_status and archive_supported_count from the post-overlay endpoints, never the stale static build", () => {
+    // Reproduces a live discrepancy: the static build's summary said 4 "degraded"
+    // (the state at the last full artifact rebuild), but a later live sweep
+    // recovered those same endpoints to "ok" — the served summary must reflect
+    // the sweep, not the stale build, or it silently disagrees with the endpoint
+    // rows served right alongside it.
+    const stat = {
+      schema_version: 1,
+      summary: {
+        endpoint_count: 3,
+        by_kind: { "subtensor-rpc": 3 },
+        by_status: { degraded: 2, unknown: 1 },
+        archive_supported_count: 0,
+      },
+      endpoints: [
+        { id: "a", status: "degraded", archive_support: false },
+        { id: "b", status: "degraded", archive_support: false },
+        { id: "c", status: "unknown", archive_support: null },
+      ],
+    };
+    const live = {
+      last_run_at: "r",
+      endpoints: [
+        {
+          id: "a",
+          status: "ok",
+          classification: "live",
+          archive_support: true,
+        },
+        {
+          id: "b",
+          status: "ok",
+          classification: "live",
+          archive_support: true,
+        },
+      ],
+    };
+    const merged = mergeRpcEndpoints(stat, live);
+    assert.deepEqual(merged.summary.by_status, { ok: 2, unknown: 1 });
+    assert.equal(merged.summary.archive_supported_count, 2);
+    // Fields the overlay never touches (kind/provider are static-only) pass through.
+    assert.deepEqual(merged.summary.by_kind, { "subtensor-rpc": 3 });
+    assert.equal(merged.summary.endpoint_count, 3);
+  });
+
+  test("folds a row with no status into 'unknown' when tallying by_status", () => {
+    const stat = {
+      schema_version: 1,
+      summary: {},
+      endpoints: [{ id: "a" }],
+    };
+    const merged = mergeRpcEndpoints(stat, { endpoints: [] });
+    assert.deepEqual(merged.summary.by_status, { unknown: 1 });
   });
 
   test("folds unrecognized live status into unknown on the endpoint row", () => {
@@ -711,7 +768,9 @@ describe("mergeRpcEndpoints (additional paths)", () => {
     assert.equal(a.health_source, "probe-derived");
     assert.equal(a.health_stale, false);
     assert.equal(a.pool_eligible, undefined);
-    assert.deepEqual(out.summary, { total: 1 });
+    assert.equal(out.summary.total, 1); // other static summary fields pass through
+    assert.deepEqual(out.summary.by_status, { ok: 1 }); // recomputed, not stale-static
+    assert.equal(out.summary.archive_supported_count, 1); // recomputed from the fallback value
     assert.equal(a.observed_at, "r"); // last_ok null → last_run_at
   });
 

@@ -102,6 +102,22 @@
         "https://github.com/Djinn-Inc/djinn/blob/main/CONTRIBUTING.md"
       ],
       "url": "https://raw.githubusercontent.com/Djinn-Inc/djinn/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-103-djinn-genius-leaderboard",
+      "kind": "data-artifact",
+      "name": "Djinn genius track-record leaderboard",
+      "notes": "Public no-auth JSON leaderboard of SN103 Djinn 'Genius' analysts served from the official djinn.gg site, exposing each genius's on-chain track record (totalSignals, totalPurchases, totalVolume, totalFeesEarned, aggregateQualityScore, collateralDeposited, totalSlashed, favorable/unfavorable/void counts). This is the machine-readable form of the publicly-verifiable track records the official Djinn-Inc/djinn README describes (\"Track records are publicly verifiable on-chain\"), served on the README's official djinn.gg domain.",
+      "provider": "djinn",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://github.com/Djinn-Inc/djinn/blob/main/README.md"],
+      "url": "https://www.djinn.gg/api/leaderboard"
     }
   ],
   "social": {

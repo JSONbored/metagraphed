@@ -148,6 +148,16 @@ describe("joinEconomics", () => {
     joinEconomics(rows, { 1: { registration_cost_tao: 42, registration_allowed: true } });
     expect(rows[0]).not.toHaveProperty("registration_cost_tao");
   });
+
+  it("#3363: also attaches emission_share from the same matching entry", () => {
+    const rows = [{ netuid: 1 }, { netuid: 2 }];
+    const out = joinEconomics(rows, {
+      1: { registration_cost_tao: 256, registration_allowed: true, emission_share: 0.0125 },
+    });
+    expect(out[0]).toMatchObject({ emission_share: 0.0125 });
+    // No entry for netuid 2 → passes through unchanged, "—" in the cell.
+    expect(out[1]).toBe(rows[1]);
+  });
 });
 
 describe("paginate", () => {

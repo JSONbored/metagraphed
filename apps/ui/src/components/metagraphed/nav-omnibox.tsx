@@ -356,7 +356,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search subnets, wallets, blocks, txs…"
+          placeholder="Explore Bittensor…"
           role="combobox"
           aria-label="Search the registry"
           aria-autocomplete="list"
@@ -365,16 +365,6 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           aria-activedescendant={activeOptionId}
           className="flex-1 min-w-0 bg-transparent outline-none text-ink-strong placeholder:text-ink-muted text-sm"
         />
-        <button
-          type="button"
-          onClick={onOpenPalette}
-          title="Open command palette"
-          aria-label="Open command palette"
-          className="hidden sm:inline-flex items-center gap-0.5 shrink-0 text-ink-muted hover:text-ink-strong transition-colors"
-        >
-          <Kbd>⌘</Kbd>
-          <Kbd>K</Kbd>
-        </button>
       </div>
 
       {/* Dropdown — wider than the input, right-aligned */}

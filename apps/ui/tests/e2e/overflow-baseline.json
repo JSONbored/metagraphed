@@ -30,7 +30,8 @@
   "/status@375": [
     "DIV:flex items-center gap-1",
     "DIV:flex items-center gap-1.5",
-    "DIV:flex-1 flex justify-end"
+    "DIV:flex-1 flex justify-end",
+    "SPAN:ml-auto inline-flex items-center gap-3 mg-label shrink-0"
   ],
   "/status@768": ["DIV:flex items-center gap-1"],
   "/status@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],

@@ -4,6 +4,7 @@ import { Keyboard } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Kbd } from "./kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { classNames } from "@/lib/metagraphed/format";
 
 const GOTO: Array<{ keys: string; to: string; label: string }> = [
   { keys: "g s", to: "/subnets", label: "Subnets" },
@@ -57,17 +58,22 @@ export function ShortcutsPopover() {
             <button
               type="button"
               aria-label="Keyboard shortcuts"
-              className="hidden md:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+              className={classNames(
+                "hidden md:inline-flex fixed z-40 bottom-5 left-5 md:bottom-7 md:left-7",
+                "items-center justify-center rounded-full border border-border bg-card/95 backdrop-blur",
+                "size-10 text-ink-muted shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]",
+                "hover:border-accent/60 hover:text-accent transition-colors",
+              )}
             >
               <Keyboard className="size-4" />
             </button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-[11px]">
+        <TooltipContent side="right" className="text-[11px]">
           Keyboard shortcuts (?)
         </TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" className="w-80 p-4">
+      <PopoverContent align="start" side="top" className="w-80 p-4">
         <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-3">
           Shortcuts
         </div>

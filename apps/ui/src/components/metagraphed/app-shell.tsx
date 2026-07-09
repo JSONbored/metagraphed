@@ -138,20 +138,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Brand />
               <span aria-hidden className="hidden lg:inline-block h-5 w-px bg-border mx-1" />
               <NavMegaMenu />
-              <div className="flex-1 flex justify-end">
+              <div className="flex-1 min-w-0 flex justify-end">
                 <NavOmnibox onOpenPalette={() => setPaletteOpen(true)} />
               </div>
               <div className="flex items-center gap-1">
                 <ApiDrawerTrigger />
 
                 <NetworkSwitcher />
-                <ShortcutsPopover />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link
                       to="/settings"
                       aria-label="Developer settings"
-                      className="inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-7 min-w-7 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                      className="hidden md:inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-7 min-w-7 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
                     >
                       <Webhook className="size-3.5" aria-hidden="true" />
                     </Link>
@@ -160,39 +159,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                     Developer settings — webhook subscriptions
                   </TooltipContent>
                 </Tooltip>
-                <SettingsPopover />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      href={GITHUB_HREF}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="GitHub repository"
-                      className="hidden md:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                    >
-                      <Github className="size-4" />
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[11px]">
-                    Open source on GitHub
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      href={DISCORD_HREF}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Discord community"
-                      className="hidden md:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                    >
-                      <DiscordIcon className="size-4" />
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[11px]">
-                    Join us on Discord
-                  </TooltipContent>
-                </Tooltip>
+                <div className="hidden md:inline-flex">
+                  <SettingsPopover />
+                </div>
               </div>
             </div>
             <RegistryTicker />
@@ -248,6 +217,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Compass className="size-3" /> Unofficial registry
                 </div>
                 <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/settings"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex flex-1 items-center gap-2 rounded border border-border bg-card px-3 py-2 text-[13px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                  >
+                    <Webhook className="size-3.5" aria-hidden="true" /> Developer settings
+                  </Link>
+                  <SettingsPopover />
+                </div>
                 <div className="mt-auto border-t border-border pt-3">
                   <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">
                     API base
@@ -269,6 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SiteFooter />
           <ApiDrawer />
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+          <ShortcutsPopover />
           <BackToTop />
         </div>
       </ApiSourceProvider>
