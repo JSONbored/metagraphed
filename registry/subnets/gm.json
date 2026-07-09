@@ -81,6 +81,25 @@
       },
       "source_urls": ["https://saygm.com/", "https://saygm.com/openapi.json"],
       "url": "https://saygm.com/healthz"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-28-gm-envoy-config",
+      "kind": "data-artifact",
+      "name": "gm miner Envoy data-plane configuration",
+      "notes": "Public no-auth machine-readable Envoy configuration for the SN28 gm miner data plane, committed in the official taostat/gm-miner repository (its README identifies the repo as the gm Bittensor subnet, netuid 28 mainnet, and links the registered saygm.com website). It is the canonical definition of the gm miner data plane: the provider routing table (Anthropic/OpenAI/Gemini/Chutes plus a benchmark route keyed on the x-gm-provider header), the inbound node-key auth Lua filter, HTTP local rate-limiting and load-shedding, the Prometheus metrics listener, and the RA-TLS attestation ingress listener. No secrets are present (keys and the node secret are rendered from container env at start).",
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/taostat/gm-miner",
+        "https://github.com/taostat/gm-miner/blob/main/image/envoy.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/taostat/gm-miner/refs/heads/main/image/envoy.yaml"
     }
   ],
   "social": {
