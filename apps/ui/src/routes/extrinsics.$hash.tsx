@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
 import { Boxes, Clock, FileText, Link2, UserCog } from "lucide-react";
@@ -27,13 +27,18 @@ import {
 } from "@/lib/metagraphed/extrinsics";
 
 export const Route = createFileRoute("/extrinsics/$hash")({
+  // #3422: validate the hash at the router level so an invalid one renders the
+  // real not-found boundary (notFoundComponent) instead of an in-page early
+  // return. parseParams runs before the loader, so downstream code only ever
+  // sees a well-formed hash.
+  parseParams: ({ hash }) => {
+    if (!isValidExtrinsicHash(hash)) throw notFound();
+    return { hash };
+  },
   // Prime the shared cache so head() can title with the call name. Non-fatal:
   // any failure falls back to the hash-only copy and the page's own
   // useSuspenseQuery still drives the not-found/empty path.
   loader: async ({ context, params }) => {
-    if (!isValidExtrinsicHash(params.hash)) {
-      return null;
-    }
     try {
       const { data } = await context.queryClient.ensureQueryData(extrinsicQuery(params.hash));
       return {
@@ -57,6 +62,20 @@ export const Route = createFileRoute("/extrinsics/$hash")({
       ],
     };
   },
+  notFoundComponent: () => (
+    <AppShell>
+      <PageHeading
+        eyebrow="Explorer"
+        title="Extrinsic not found"
+        description="Extrinsic references must be a 0x-prefixed hexadecimal hash or a block#index label (e.g. 123456-2)."
+      />
+      <EmptyState
+        title="Invalid extrinsic reference"
+        description="Use a 0x-prefixed hexadecimal extrinsic hash or a block#index label (e.g. 123456-2)."
+        action={{ label: "Back to extrinsics", href: "/extrinsics" }}
+      />
+    </AppShell>
+  ),
   component: ExtrinsicDetailPage,
 });
 
@@ -74,22 +93,8 @@ function ExtrinsicDetailPage() {
 }
 
 function ExtrinsicDetail({ hash }: { hash: string }) {
-  if (!isValidExtrinsicHash(hash)) {
-    return (
-      <>
-        <PageHeading
-          eyebrow="Explorer"
-          title="Invalid extrinsic reference"
-          description="Extrinsic references must be a 0x-prefixed hexadecimal hash or a block#index label (e.g. 123456-2)."
-        />
-        <EmptyState
-          title="Invalid extrinsic reference"
-          description="Use a 0x-prefixed hexadecimal extrinsic hash or a block#index label (e.g. 123456-2)."
-          action={{ label: "Back to extrinsics", href: "/extrinsics" }}
-        />
-      </>
-    );
-  }
+  // The router's parseParams rejects malformed hashes before this renders, so
+  // the detail component only ever runs with a well-formed hash.
   return <ValidExtrinsicDetail hash={hash} />;
 }
 
