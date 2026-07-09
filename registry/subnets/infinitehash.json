@@ -87,6 +87,25 @@
         "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/89"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-89-infinitehash-pool-workers-dataset",
+      "kind": "data-artifact",
+      "name": "InfiniteHash pool-workers dataset",
+      "notes": "Public no-auth CSV snapshot of SN89 InfiniteHash mining-pool workers, published in the official backend-developers-ltd/InfiniteHash repository. Each row is a real worker keyed by hotkey.ASIC-workerID with its Firmware, Hashrate (TH/PH), Efficiency, Stale/Rejected share rates, Last Share Time, and Status — the concrete form of the hotkey-in-workerID hash-contribution data the README states validators score. Machine-readable reference data for the subnet's Bitcoin-mining output.",
+      "provider": "infinitehash",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md",
+        "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/app/src/infinite_hashes/validator/tests/data/pool-workers-2025-08-21.csv"
+      ],
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/InfiniteHash/refs/heads/master/app/src/infinite_hashes/validator/tests/data/pool-workers-2025-08-21.csv"
     }
   ],
   "website_url": "https://infinitehash.xyz/",
