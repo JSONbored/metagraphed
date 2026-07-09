@@ -188,6 +188,25 @@
         "submitted_by": "galuis116"
       },
       "notes": "Public no-auth Hugging Face Datasets Server rows API for the official StreetVision roadwork dataset — returns machine-readable JSON (schema + row records with image/id/width/height/scene metadata), a distinct callable endpoint from the existing HF dataset webpage surface above. Fills the file's gap note for a verified safe public subnet API endpoint."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-72-natix-whitepaper-llms-txt",
+      "kind": "data-artifact",
+      "name": "NATIX whitepaper docs llms.txt index",
+      "notes": "Public no-auth machine-readable llms.txt index of the official StreetVision by NATIX (SN72) whitepaper documentation, served at docs.natix.network — the same official docs domain already registered as the sn-72-natix-whitepaper-docs surface and as the file's docs_url. Provides an agent-consumable Markdown map of the NATIX docs (Executive Summary, Introduction, Problem, Solution, xNodes, etc.) for LLM/agent ingestion; content begins '# NATIX Network Whitepaper'. Distinct from the HTML whitepaper docs page (a different URL and a machine-readable text/markdown artifact).",
+      "provider": "natix",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://docs.natix.network/whitepaper",
+        "https://github.com/natixnetwork/streetvision-subnet/blob/main/README.md"
+      ],
+      "url": "https://docs.natix.network/whitepaper/llms.txt"
     }
   ],
   "social": {
