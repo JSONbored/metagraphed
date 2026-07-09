@@ -309,7 +309,8 @@ open; fill the PR template with the validation commands you actually ran. Sync w
 
 `apps/ui/` is the TanStack Start + Vite + React web app at [metagraph.sh](https://metagraph.sh) —
 folded into this repo as an npm workspace via the monorepo consolidation. It has its own `ui` CI job
-(lint + typecheck + test + build + bundle-budget, see `reference.md §2`) and its own review contract,
+(lint + typecheck + test + a responsive-overflow e2e check + build + bundle-budget, see
+`reference.md §2`) and its own review contract,
 distinct from Path A/B.
 
 ### Phase C0 — Bootstrap + pick an issue
@@ -419,18 +420,21 @@ feature branch itself.
 A PR confined to `apps/ui/src/lib/**` / `apps/ui/src/hooks/**` / test files, with **no** visual change,
 skips this entirely — it isn't rendering anything different.
 
-> A devcontainer/scripted capture pipeline that automates all of the above (tracked in #3769) doesn't
-> exist yet — until it lands, follow the steps manually.
+> The devcontainer (`.devcontainer/devcontainer.json`) preinstalls Node 22 + Playwright's Chromium, so
+> setup for the steps above is zero-config there. A scripted capture pipeline that automates the
+> screenshot-taking itself (tracked in #3769) doesn't exist yet — until it lands, follow the steps
+> manually.
 
 ### Phase C3 — Test + gates locally
 
-The `ui` CI job runs lint, typecheck, test, build, and a bundle-size-budget check, in that order —
-run the same locally before pushing:
+The `ui` CI job runs lint, typecheck, test, a responsive-overflow e2e check, build, and a
+bundle-size-budget check, in that order — run the same locally before pushing:
 
 ```sh
 npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
 npm run typecheck --workspace=apps/ui
 npm test --workspace=apps/ui
+npm run test:e2e --workspace=apps/ui   # needs a Chromium browser: npx playwright install --with-deps chromium (once)
 npm run build --workspace=apps/ui
 ```
 
@@ -493,8 +497,8 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
       one-off styling.
 - [ ] If visual: a filled before/after screenshot table (mobile + dark-mode captures where relevant) —
       missing/malformed table is an automatic close.
-- [ ] `lint` + `format:check` + `typecheck` + `test` + `build` all green (`--workspace=apps/ui`); bundle
-      size still under budget.
+- [ ] `lint` + `format:check` + `typecheck` + `test` + `test:e2e` + `build` all green
+      (`--workspace=apps/ui`); bundle size still under budget.
 - [ ] If `packages/client/src` changed: rebuilt and committed `packages/client/dist`.
 - [ ] Conventional Commit (no AI attribution); `Closes #<issue>` — required, referencing an issue that's still open.
 

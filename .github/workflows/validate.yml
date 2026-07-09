@@ -713,6 +713,22 @@ jobs:
         if: env.RUN_UI_VALIDATION == 'true'
         run: npm test --workspace=apps/ui
 
+      # Uses the @playwright/test devDependency already installed by `npm ci`
+      # above (not a fresh npx fetch) -- installs just its matching browser
+      # binary, no separate version to keep in sync.
+      - name: Install Playwright Chromium
+        if: env.RUN_UI_VALIDATION == 'true'
+        working-directory: apps/ui
+        run: npx playwright install --with-deps chromium
+
+      # Baseline-diff, not zero-tolerance -- see responsive-overflow.spec.ts.
+      # Fails only on a NEW element escaping the viewport that isn't already
+      # in the known baseline, so this doesn't block on the existing tracked
+      # overflow backlog (#3930, #3931, #3985, etc.).
+      - name: Responsive overflow check (e2e)
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm run test:e2e --workspace=apps/ui
+
       # LOVABLE_SANDBOX force-enables Nitro's cloudflare-module preset outside
       # Lovable's own environment (the preset otherwise emits a static-only
       # client build with no Worker entry) -- matches the exact env Cloudflare
