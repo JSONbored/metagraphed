@@ -24,7 +24,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { TableState } from "@/components/metagraphed/table-state";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ShareButton } from "@/components/metagraphed/share-button";
@@ -211,14 +211,24 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       />
 
       <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile
-          icon={Coins}
-          eyebrow="Balance"
-          value={balanceValue}
-          hint={balance?.balance_tao != null ? "free + reserved · live RPC" : "live RPC"}
-          tone="accent"
-          className="rounded-2xl border-accent/25 bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
-        />
+        {balanceResult.isError ? (
+          // #3960: the balance live-RPC call can fail outright — surface a distinct
+          // error state with a retry instead of an indefinite loading indicator.
+          <ErrorState
+            error={balanceResult.error}
+            onRetry={() => balanceResult.refetch()}
+            context="account balance"
+          />
+        ) : (
+          <StatTile
+            icon={Coins}
+            eyebrow="Balance"
+            value={balanceValue}
+            hint={balance?.balance_tao != null ? "free + reserved · live RPC" : "live RPC"}
+            tone="accent"
+            className="rounded-2xl border-accent/25 bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
+          />
+        )}
         <StatTile
           icon={Activity}
           eyebrow="Events"
