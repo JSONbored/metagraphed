@@ -143,7 +143,10 @@ function concentrationTiles(
       key: "emission-gini",
       label: "Emission Gini",
       value: numStr(emission?.gini),
-      hint: emissionNakamoto == null ? undefined : `Nakamoto ${Math.round(emissionNakamoto)}`,
+      // Domain-prefix the emission Nakamoto coefficient so it doesn't read as a
+      // second, conflicting value for the separate stake "Nakamoto" tile.
+      hint:
+        emissionNakamoto == null ? undefined : `emission Nakamoto ${Math.round(emissionNakamoto)}`,
       tone: giniTone(emission?.gini),
     },
   ];

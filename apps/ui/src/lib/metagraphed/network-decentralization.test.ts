@@ -100,6 +100,13 @@ describe("networkDecentralizationModel", () => {
     expect(nakamoto?.value).toBe("105");
     expect(nakamoto?.tone).toBe("ok");
 
+    // The Emission Gini tile carries the *emission* Nakamoto (118) in its hint;
+    // it must be domain-prefixed so it can't be misread as a second value for
+    // the stake "Nakamoto" tile (105) above.
+    const emissionGini = findTile(model, "emission-gini");
+    expect(emissionGini?.value).toBe("0.899");
+    expect(emissionGini?.hint).toBe("emission Nakamoto 118");
+
     // Shares render as percentages.
     const top1 = findTile(model, "stake-top1");
     expect(top1?.value).toBe("44.1%");
