@@ -586,7 +586,12 @@ describe("state-query methods (#4344/9.2)", () => {
           method: "state_getStorage",
           params: [HEX_KEY],
         }),
-        rpcEnv(poolWith(ep("a", SAFE_A))),
+        // A present-and-passing limiter, distinct from the other tests here
+        // (which omit the binding entirely): exercises the `success` arm of
+        // the `!success` check below, not just its "binding absent" skip.
+        rpcEnv(poolWith(ep("a", SAFE_A)), {
+          STATE_QUERY_RATE_LIMITER: { limit: async () => ({ success: true }) },
+        }),
         url("/rpc/v1/finney"),
       );
       assert.equal(res.status, 200);
@@ -595,6 +600,21 @@ describe("state-query methods (#4344/9.2)", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  test("400 rpc_invalid_request when state_getStorage params is not an array", async () => {
+    const res = await handleRpcProxyRequest(
+      rpcPost({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "state_getStorage",
+        params: { not: "an array" },
+      }),
+      rpcEnv(poolWith(ep("a", SAFE_A))),
+      url("/rpc/v1/finney"),
+    );
+    const body = await errorJson(res, 400);
+    assert.equal(body.error.code, "rpc_invalid_request");
   });
 
   test("502 rpc_response_too_large when the upstream response exceeds the state-query size cap", async () => {
