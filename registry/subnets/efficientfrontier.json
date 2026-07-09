@@ -119,6 +119,25 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
       ],
       "url": "https://raw.githubusercontent.com/oxylok/53-EfficientFrontier/be5d620ced30b34b41c0e33b6a8a76121747d005/docs/Introduction/RankingRulesEN.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-53-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "EfficientFrontier TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/53 on api.taomarketcap.com returning machine-readable JSON for SN53 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. SignalPlus EfficientFrontier documents validator scoring in its community source repository and mining app, but exposes no verified first-party no-auth public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "thomasalvaedison7777-lgtm"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/53"
     }
   ],
   "website_url": "https://www.signalplus.com/"
