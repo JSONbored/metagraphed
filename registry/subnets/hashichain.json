@@ -49,6 +49,25 @@
         "timeout_ms": 10000
       },
       "notes": "Public HashiChain source repository for SN115."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-115-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "HashiChain TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/115 on api.taomarketcap.com returning machine-readable JSON for SN115 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. HashiChain currently has no separately verified first-party public API; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/hashi115/hashichain"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/115"
     }
   ],
   "contact": "hashichain@outlook.com"
