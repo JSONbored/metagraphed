@@ -92,6 +92,25 @@
         "https://github.com/oxylok/116-taolend/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/oxylok/116-taolend/main/const.ts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-116-taolend-hardhat-config",
+      "kind": "data-artifact",
+      "name": "TaoLend Hardhat deployment configuration",
+      "notes": "Public no-auth TypeScript Hardhat configuration from the official oxylok/116-taolend repository publishing SN116 TaoLend Bittensor EVM network endpoints (lite.chain.opentensor.ai mainnet, test.chain.opentensor.ai subevm, local dev RPC) and taostats contract-verification settings used to compile and deploy LendingPoolV1. Distinct from the sn-116-taolend-contract-constants surface (deployed addresses and precompile constants in const.ts).",
+      "provider": "taolend",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/oxylok/116-taolend/blob/main/hardhat.config.ts",
+        "https://github.com/oxylok/116-taolend/blob/main/const.ts"
+      ],
+      "url": "https://raw.githubusercontent.com/oxylok/116-taolend/main/hardhat.config.ts"
     }
   ],
   "website_url": "https://taolend.io/"
