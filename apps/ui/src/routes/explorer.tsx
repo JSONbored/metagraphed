@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useInfiniteQuery, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -614,15 +614,47 @@ function ExplorerDashboard() {
   const navigate = useNavigate({ from: Route.fullPath });
   const win = search.window;
 
-  const activity = useSuspenseQuery(chainActivityQuery(win)).data.data;
-  const fees = useSuspenseQuery(chainFeesQuery(win)).data.data;
-  const calls = useSuspenseQuery(chainCallsQuery(win)).data.data;
-  const signers = useSuspenseQuery(chainSignersQuery(win)).data.data;
-  const stakeFlow = useSuspenseQuery(chainStakeFlowQuery(win)).data.data;
-  const stakeMoves = useSuspenseQuery(chainStakeMovesQuery(win)).data.data;
-  const turnover = useSuspenseQuery(chainTurnoverQuery(win)).data.data;
-  const stakeTransfers = useSuspenseQuery(chainStakeTransfersQuery(win)).data.data;
-  const eventMix = useSuspenseQuery(chainEventsStatsQuery()).data.data;
+  // A single batched useSuspenseQueries, not 9 individual useSuspenseQuery
+  // calls: each individual call suspends the component separately, so on a
+  // cold cache (in particular during SSR) React re-renders and re-suspends
+  // once per query, resolving them in a serial waterfall instead of parallel
+  // -- 9 queries at ~5s each measured as a genuine ~33s page load in
+  // production, not a hang (confirmed by testing each endpoint standalone,
+  // all fast, and the full page eventually completing at ~33s with a longer
+  // timeout). useSuspenseQueries fires all 9 fetches concurrently and
+  // suspends once, so the page waits on the slowest single query, not the sum.
+  const [
+    { data: activityRes },
+    { data: feesRes },
+    { data: callsRes },
+    { data: signersRes },
+    { data: stakeFlowRes },
+    { data: stakeMovesRes },
+    { data: turnoverRes },
+    { data: stakeTransfersRes },
+    { data: eventMixRes },
+  ] = useSuspenseQueries({
+    queries: [
+      chainActivityQuery(win),
+      chainFeesQuery(win),
+      chainCallsQuery(win),
+      chainSignersQuery(win),
+      chainStakeFlowQuery(win),
+      chainStakeMovesQuery(win),
+      chainTurnoverQuery(win),
+      chainStakeTransfersQuery(win),
+      chainEventsStatsQuery(),
+    ],
+  });
+  const activity = activityRes.data;
+  const fees = feesRes.data;
+  const calls = callsRes.data;
+  const signers = signersRes.data;
+  const stakeFlow = stakeFlowRes.data;
+  const stakeMoves = stakeMovesRes.data;
+  const turnover = turnoverRes.data;
+  const stakeTransfers = stakeTransfersRes.data;
+  const eventMix = eventMixRes.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
