@@ -3,6 +3,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Fragment, Suspense, useState, type ReactNode } from "react";
 import {
   Activity,
+  AlertCircle,
   Boxes,
   TrendingUp,
   Sparkles,
@@ -14,6 +15,7 @@ import {
   Fingerprint,
   Gauge,
   Radar,
+  RefreshCw,
   Rows3,
   Scale,
   Unplug,
@@ -157,7 +159,19 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const signedExtrinsics = extrinsicsResult.data?.data ?? [];
   const transfers = transfersResult.data?.data ?? [];
 
-  const balanceValue = balanceResult.isPending ? (
+  const balanceValue = balanceResult.isError ? (
+    <span className="inline-flex items-center gap-2">
+      <AlertCircle aria-hidden className="size-4 text-health-down" />
+      <span className="text-base font-medium text-health-down">Unavailable</span>
+      <button
+        type="button"
+        onClick={() => void balanceResult.refetch()}
+        className="inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 text-[11px] font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
+      >
+        <RefreshCw className="size-3" /> Retry
+      </button>
+    </span>
+  ) : balanceResult.isPending ? (
     <span className="text-ink-muted">…</span>
   ) : balance?.balance_tao != null ? (
     formatTao(balance.balance_tao)
@@ -214,12 +228,18 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 
       <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
-          icon={Coins}
+          icon={balanceResult.isError ? AlertCircle : Coins}
           eyebrow="Balance"
           value={balanceValue}
-          hint={balance?.balance_tao != null ? "free + reserved · live RPC" : "live RPC"}
-          tone="accent"
-          className="rounded-2xl border-accent/25 bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
+          hint={
+            balanceResult.isError
+              ? "live RPC failed"
+              : balance?.balance_tao != null
+                ? "free + reserved · live RPC"
+                : "live RPC"
+          }
+          tone={balanceResult.isError ? "down" : "accent"}
+          className="rounded-2xl bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
         />
         <StatTile
           icon={Activity}
