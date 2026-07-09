@@ -257,6 +257,14 @@ const checks = [
       assert.equal(typeof body.data.buy_volume_alpha, "number");
       assert.equal(typeof body.data.sell_volume_alpha, "number");
       assert.equal(typeof body.data.total_volume_alpha, "number");
+      assert.equal(typeof body.data.net_volume_alpha, "number");
+      assert.ok(
+        body.data.sentiment_ratio === null ||
+          typeof body.data.sentiment_ratio === "number",
+      );
+      assert.ok(
+        ["bullish", "bearish", "neutral"].includes(body.data.sentiment),
+      );
     },
   ],
   [

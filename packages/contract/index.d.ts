@@ -2340,7 +2340,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data. */
+        /** Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Also returns a buy/sell sentiment indicator derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data. */
         get: operations["subnetAlphaVolume"];
         put?: never;
         post?: never;
@@ -6057,16 +6057,20 @@ export interface components {
         });
         /** @enum {unknown} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
-        /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Fixed 24h window, not OHLC/price data. */
+        /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data. */
         SubnetAlphaVolumeArtifact: {
             buy_count: number;
             buy_volume_alpha: number;
             buy_volume_tao: number;
+            net_volume_alpha: number;
             netuid: number;
             schema_version: number;
             sell_count: number;
             sell_volume_alpha: number;
             sell_volume_tao: number;
+            /** @enum {string} */
+            sentiment: "bullish" | "bearish" | "neutral";
+            sentiment_ratio: number | null;
             total_volume_alpha: number;
             total_volume_tao: number;
             /** @enum {string} */
@@ -26380,11 +26384,14 @@ export interface operations {
                      *         "buy_count": 1,
                      *         "buy_volume_alpha": 0.5,
                      *         "buy_volume_tao": 0.5,
+                     *         "net_volume_alpha": 0.5,
                      *         "netuid": 7,
                      *         "schema_version": 1,
                      *         "sell_count": 1,
                      *         "sell_volume_alpha": 0.5,
                      *         "sell_volume_tao": 0.5,
+                     *         "sentiment": "bullish",
+                     *         "sentiment_ratio": 0.9966,
                      *         "total_volume_alpha": 0.5,
                      *         "total_volume_tao": 0.5,
                      *         "window": "24h"

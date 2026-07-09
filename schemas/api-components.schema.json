@@ -14616,7 +14616,7 @@
       },
       "SubnetAlphaVolumeArtifact": {
         "additionalProperties": false,
-        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Fixed 24h window, not OHLC/price data.",
+        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data.",
         "properties": {
           "buy_count": {
             "minimum": 0,
@@ -14626,6 +14626,9 @@
             "type": "number"
           },
           "buy_volume_tao": {
+            "type": "number"
+          },
+          "net_volume_alpha": {
             "type": "number"
           },
           "netuid": {
@@ -14644,6 +14647,20 @@
           },
           "sell_volume_tao": {
             "type": "number"
+          },
+          "sentiment": {
+            "enum": [
+              "bullish",
+              "bearish",
+              "neutral"
+            ],
+            "type": "string"
+          },
+          "sentiment_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "total_volume_alpha": {
             "type": "number"
@@ -14669,7 +14686,10 @@
           "sell_volume_tao",
           "total_volume_tao",
           "buy_count",
-          "sell_count"
+          "sell_count",
+          "net_volume_alpha",
+          "sentiment_ratio",
+          "sentiment"
         ],
         "type": "object"
       },
