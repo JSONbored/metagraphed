@@ -55,6 +55,9 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/turnover\.json$/,
   // Net stake flow: computed live from account_events.
   /^subnets\/(?:\d+|\{netuid\})\/stake-flow\.json$/,
+  // Rolling 24h buy/sell alpha volume (#4339/8.1): computed live from the same
+  // account_events stream as stake-flow.
+  /^subnets\/(?:\d+|\{netuid\})\/volume\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.

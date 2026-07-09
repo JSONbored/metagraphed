@@ -341,6 +341,9 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/subnets/7/concentration/history",
       "/api/v1/testnet/subnets/7/turnover",
       "/api/v1/testnet/subnets/7/stake-flow",
+      // Rolling 24h alpha volume reads the same mainnet-only account_events
+      // stream as stake-flow (#4339/8.1).
+      "/api/v1/testnet/subnets/7/volume",
       "/api/v1/testnet/subnets/7/yield",
       `/api/v1/testnet/accounts/${SS58}/stake-flow`,
       `/api/v1/testnet/accounts/${SS58}/portfolio`,

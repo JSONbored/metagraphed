@@ -188,6 +188,7 @@ import {
   DEFAULT_STAKE_FLOW_DIRECTION,
   STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.mjs";
+import { loadSubnetAlphaVolume } from "../../src/alpha-volume.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
   loadValidatorNominators,
@@ -2078,6 +2079,33 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/stake-flow.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/volume (#4339/8.1): rolling 24h buy (StakeAdded)
+// vs sell (StakeRemoved) alpha volume for one subnet, summed live from the same
+// account_events stream as stake-flow — unsigned (buy + sell), never netted, and
+// a fixed 24h window (no ?window= param), matching the issue's framing as a
+// canonical market-depth figure rather than a windowed analytics view. Cold/
+// absent store → 200 with zeroed totals (schema-stable, never 404).
+export async function handleSubnetAlphaVolume(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const { data, generatedAt } = await loadSubnetAlphaVolume(
+    d1Runner(env),
+    netuid,
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/volume.json`,
         generatedAt,
       ),
     },
