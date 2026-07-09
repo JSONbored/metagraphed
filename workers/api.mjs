@@ -21,10 +21,12 @@ import {
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
 } from "./http.mjs";
 import {
+  d1TimeoutMs,
   latestPointer,
   logEvent,
   readArtifact,
   readHealthKv,
+  withTimeout,
 } from "./storage.mjs";
 import {
   contractStaleness,
@@ -580,7 +582,30 @@ export async function handleEventIngest(request, env) {
   // D1 `meta.changes` instead.
   let inserted = 0;
   if (rows.length) {
-    const results = await db.batch(eventInsertStatements(db, rows));
+    // Bounded + logged, matching d1All's read-side guard (workers/request-handlers/
+    // analytics.mjs): this D1 database now takes concurrent writes from several
+    // ingest/backfill paths, so an occasional contention timeout here is
+    // expected, not exceptional -- it must surface as a clean 500 the streamer's
+    // own retry loop already handles, never an uncaught exception (2026-07-09
+    // incident: an unguarded batch() failure here silently starved the realtime
+    // block/event feed for ~40 minutes with no server-side trace of why).
+    let results;
+    try {
+      results = await withTimeout(
+        db.batch(eventInsertStatements(db, rows)),
+        d1TimeoutMs(env),
+      );
+    } catch (error) {
+      logEvent(env, "error", "events_ingest_batch_failed", {
+        message: String(error?.message ?? error),
+        row_count: rows.length,
+      });
+      return errorResponse(
+        "ingest_write_failed",
+        "Event batch write failed; retry this payload.",
+        500,
+      );
+    }
     for (const result of results) inserted += result?.meta?.changes ?? 0;
   }
   return new Response(JSON.stringify({ ok: true, inserted }), {
@@ -670,7 +695,25 @@ export async function handleBlockIngest(request, env) {
   let blocksInserted = 0;
   let extrinsicsInserted = 0;
   if (blockStmts.length || extrinsicStmts.length) {
-    const results = await db.batch([...blockStmts, ...extrinsicStmts]);
+    // Bounded + logged, same reasoning as handleEventIngest's batch guard above.
+    let results;
+    try {
+      results = await withTimeout(
+        db.batch([...blockStmts, ...extrinsicStmts]),
+        d1TimeoutMs(env),
+      );
+    } catch (error) {
+      logEvent(env, "error", "blocks_ingest_batch_failed", {
+        message: String(error?.message ?? error),
+        block_count: blockStmts.length,
+        extrinsic_count: extrinsicStmts.length,
+      });
+      return errorResponse(
+        "ingest_write_failed",
+        "Block/extrinsic batch write failed; retry this payload.",
+        500,
+      );
+    }
     results.forEach((result, i) => {
       const changes = result?.meta?.changes ?? 0;
       if (i < blockStmts.length) blocksInserted += changes;

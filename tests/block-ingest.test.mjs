@@ -164,6 +164,45 @@ test("block ingest rejects a non-object body (400)", async () => {
   assert.equal(res.status, 400);
 });
 
+test("block ingest returns 500 ingest_write_failed when db.batch throws (#4651 incident hardening)", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }),
+      async batch() {
+        throw new Error("D1_ERROR: database is locked");
+      },
+    },
+  };
+  const res = await handleBlockIngest(
+    post({ blocks: [BLOCK], extrinsics: [EXTRINSIC] }, { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 500);
+  const body = await res.json();
+  assert.equal(body.error.code, "ingest_write_failed");
+});
+
+test("block ingest batch-failure logging falls back to the thrown value when it has no .message", async () => {
+  // A rejection can throw a non-Error (a bare string, here) -- exercises the
+  // `error?.message ?? error` fallback arm alongside the Error-with-message
+  // case above.
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }),
+      async batch() {
+        throw "db unavailable";
+      },
+    },
+  };
+  const res = await handleBlockIngest(
+    post({ blocks: [BLOCK], extrinsics: [EXTRINSIC] }, { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 500);
+});
+
 test("block ingest rejects too many rows (413)", async () => {
   const env = {
     METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
