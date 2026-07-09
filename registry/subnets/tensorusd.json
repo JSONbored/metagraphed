@@ -127,6 +127,25 @@
         "https://github.com/TensorUSD/subnet/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/TensorUSD/subnet/main/tensorusd/common/abis/tusdt_vault.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-113-tensorusd-llms-txt",
+      "kind": "data-artifact",
+      "name": "TensorUSD docs llms.txt index",
+      "notes": "Public no-auth machine-readable llms.txt index of the official SN113 TensorUSD documentation, served at the docs.tensorusd.com domain the official TensorUSD/subnet README links (README confirms netuid 113). Provides an agent-consumable Markdown map of the TensorUSD docs (introduction, components, contracts) for LLM/agent ingestion; content begins '# TensorUSD'.",
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/README.md",
+        "https://docs.tensorusd.com/"
+      ],
+      "url": "https://docs.tensorusd.com/llms.txt"
     }
   ],
   "social": {

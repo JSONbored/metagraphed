@@ -56,6 +56,8 @@ import type {
   Block,
   ChainActivity,
   ChainActivityDay,
+  EconomicsTrends,
+  EconomicsTrendsDay,
   ChainCalls,
   ChainStakeFlow,
   ChainStakeFlowDistribution,
@@ -230,6 +232,7 @@ const MAX_ACCOUNT_STAKE_MOVES_SUBNETS = 128;
 const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 const MAX_CHAIN_ACTIVITY_DAYS = 31;
+const MAX_ECONOMICS_TRENDS_DAYS = 31;
 const MAX_CHAIN_CALLS = 12;
 const MAX_STAKE_FLOW_SUBNETS = 24;
 const MAX_STAKE_MOVES_SUBNETS = 24;
@@ -2902,6 +2905,27 @@ function normalizeChainActivityDay(raw: unknown): ChainActivityDay | null {
   };
 }
 
+// #3365: network-wide economics rollup day. Distinct source (subnet_snapshots)
+// from the chain-indexer days above, so only `snapshot_date` is required —
+// every metric is independently null-able (a day can have subnets reporting
+// counts but no price, etc.), mirroring the backend's per-metric null-safety.
+function normalizeEconomicsTrendsDay(raw: unknown): EconomicsTrendsDay | null {
+  if (!isRecord(raw)) return null;
+  const snapshotDate = firstString(raw.snapshot_date);
+  const subnetCount = coerceFiniteNumber(raw.subnet_count);
+  if (!snapshotDate || subnetCount == null) return null;
+  return {
+    snapshot_date: snapshotDate,
+    subnet_count: subnetCount,
+    total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? null,
+    alpha_price_tao_weighted: coerceFiniteNumber(raw.alpha_price_tao_weighted) ?? null,
+    alpha_price_tao_median: coerceFiniteNumber(raw.alpha_price_tao_median) ?? null,
+    validator_count: coerceFiniteNumber(raw.validator_count) ?? null,
+    miner_count: coerceFiniteNumber(raw.miner_count) ?? null,
+    mean_emission_share: coerceFiniteNumber(raw.mean_emission_share) ?? null,
+  };
+}
+
 function normalizeChainCallEntry(raw: unknown): ChainCallEntry | null {
   if (!isRecord(raw)) return null;
   const callModule = firstString(raw.call_module);
@@ -3011,6 +3035,34 @@ export const chainActivityQuery = (window: ChainWindow = "7d") =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainActivity>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// #3365: network-wide economics rollup (GET /api/v1/economics/trends), a distinct
+// data source (subnet_snapshots) from the chain-indexer series above. The endpoint
+// itself accepts a wider window vocabulary (7d/30d/90d/1y/all); this reuses
+// ChainWindow ("7d" | "30d") to match the explorer page's existing window toggle
+// rather than introducing a second, unused range.
+export const economicsTrendsQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("economics-trends", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/economics/trends", {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window: firstString(d.window) ?? window,
+          day_count: firstFiniteNumber(d.day_count) ?? 0,
+          days: normalizeChainRows(d.days, MAX_ECONOMICS_TRENDS_DAYS, normalizeEconomicsTrendsDay),
+        } as EconomicsTrends,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<EconomicsTrends>;
     },
     staleTime: STALE_SHORT,
   });

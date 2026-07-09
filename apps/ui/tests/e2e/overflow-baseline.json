@@ -24,9 +24,9 @@
     "SPAN:",
     "TABLE:w-full text-sm"
   ],
-  "/endpoints@768": ["DIV:flex items-center gap-1", "TABLE:w-full text-sm"],
-  "/endpoints@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
-  "/endpoints@1280": ["DIV:flex items-center gap-1"],
+  "/endpoints@768": ["DIV:flex items-center gap-1", "SPAN:", "TABLE:w-full text-sm"],
+  "/endpoints@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end", "SPAN:"],
+  "/endpoints@1280": ["DIV:flex items-center gap-1", "SPAN:"],
   "/status@375": [
     "DIV:flex items-center gap-1",
     "DIV:flex items-center gap-1.5",
