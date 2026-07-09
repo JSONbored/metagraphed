@@ -9,6 +9,8 @@ import {
   recordSubnetHyperparamsChanges,
 } from "../src/subnet-hyperparams-history.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
+import { handleRequest } from "../workers/api.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 function stagedRow(overrides = {}) {
   return {
@@ -504,5 +506,72 @@ describe("loadSubnetHyperparamsHistory", () => {
       { limit: 10 },
     );
     assert.equal(out.next_cursor, null);
+  });
+});
+
+const ctx = { waitUntil: (p) => p };
+
+// Stub METAGRAPH_HEALTH_DB whose .all() returns the given rows and records the
+// SQL — mirrors hyperparamsEnv in tests/subnet-hyperparams.test.mjs.
+function historyEnv(rows, captured = {}) {
+  return {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        captured.sql = sql;
+        return {
+          bind(...params) {
+            captured.params = params;
+            return { all: () => Promise.resolve({ results: rows }) };
+          },
+        };
+      },
+    },
+  };
+}
+
+describe("GET /api/v1/subnets/{netuid}/hyperparameters/history via the Worker", () => {
+  test("returns the change timeline for a warm D1", async () => {
+    const captured = {};
+    const env = historyEnv([historyRow()], captured);
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/86/hyperparameters/history",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, 86);
+    assert.equal(body.data.entry_count, 1);
+    assert.equal(body.data.entries[0].hyperparameters.tempo, 360);
+    assert.match(captured.sql, /FROM subnet_hyperparams_history/);
+  });
+
+  test("is schema-stable when D1 is cold (never 404)", async () => {
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/86/hyperparameters/history",
+      ),
+      historyEnv([]),
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, 86);
+    assert.equal(body.data.entry_count, 0);
+    assert.deepEqual(body.data.entries, []);
+  });
+
+  test("an unsupported query param is a 400", async () => {
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/86/hyperparameters/history?foo=bar",
+      ),
+      historyEnv([]),
+      ctx,
+    );
+    assert.equal(res.status, 400);
   });
 });
