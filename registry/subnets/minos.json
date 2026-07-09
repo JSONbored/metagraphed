@@ -1,5 +1,6 @@
 {
   "categories": [],
+  "contact": "contact@theminos.ai",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
@@ -13,7 +14,6 @@
   },
   "source_repo": "https://github.com/minos-protocol/minos_subnet",
   "status": "active",
-  "website_url": "https://theminos.ai/",
   "surfaces": [
     {
       "auth_required": false,
@@ -38,7 +38,32 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-data-artifact",
+      "kind": "data-artifact",
+      "name": "Minos chr20 reference FAI index",
+      "notes": "Public no-auth GET for the chr20 FASTA index (.fai) served via the Minos Platform reference redirect at api.theminos.ai/reference/.... Used as REF_HEALTH_URL in the official minos_subnet status checks and documented in the README as the canonical way operators download reference genomics files.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/neurons/status.py",
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/reference/chr20/chr20.fa.fai"
     }
   ],
-  "contact": "contact@theminos.ai"
+  "website_url": "https://theminos.ai/"
 }
