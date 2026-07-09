@@ -79,6 +79,22 @@ function classifySentiment(netAlpha, grossAlpha) {
   return "neutral";
 }
 
+// 24h volume / market-cap turnover ratio (#4339/8.3) — unsigned total_volume_tao
+// (buy + sell, matching this artifact's other TAO totals) over
+// alpha_market_cap_tao (the economics artifact's own alpha_price_tao *
+// total_stake_tao proxy, scripts/lib/economics-artifacts.mjs). Both sides are
+// TAO-denominated so the ratio is dimensionless. Null when the market cap
+// input is unavailable/non-positive — this is an external, separately-loaded
+// figure (not from account_events), so unlike sentiment_ratio it can be
+// missing even when volume itself is zero. Unbounded (unlike sentiment_ratio):
+// a high-turnover day can legitimately exceed 1.
+function volMcapRatio(totalVolumeTao, marketCapTao) {
+  if (!Number.isFinite(marketCapTao) || marketCapTao <= 0) return null;
+  /* v8 ignore next -- defensive: totalVolumeTao is always roundUnit's finite output */
+  if (!Number.isFinite(totalVolumeTao)) return null;
+  return Math.round((totalVolumeTao / marketCapTao) * 1e6) / 1e6;
+}
+
 // Convert an epoch-ms timestamp to an ISO string, or null when not finite.
 // Mirrors stake-flow.mjs's coerceEpochMs/toIso pair.
 function coerceEpochMs(value) {
@@ -100,7 +116,7 @@ function toIso(value) {
 // event_count. Null-safe: no rows (cold store / empty window) yields zeroed
 // totals, never throws. Volumes are unsigned (buy + sell), never netted —
 // distinct from stake-flow's net_flow_tao.
-export function buildAlphaVolume(rows, netuid) {
+export function buildAlphaVolume(rows, netuid, { marketCapTao } = {}) {
   const list = Array.isArray(rows) ? rows : [];
   let buyAlpha = 0;
   let sellAlpha = 0;
@@ -138,6 +154,7 @@ export function buildAlphaVolume(rows, netuid) {
   }
   const netAlpha = buyAlpha - sellAlpha;
   const grossAlpha = buyAlpha + sellAlpha;
+  const totalVolumeTao = roundUnit(buyTao + sellTao);
   return {
     schema_version: 1,
     netuid,
@@ -147,7 +164,7 @@ export function buildAlphaVolume(rows, netuid) {
     total_volume_alpha: roundUnit(grossAlpha),
     buy_volume_tao: roundUnit(buyTao),
     sell_volume_tao: roundUnit(sellTao),
-    total_volume_tao: roundUnit(buyTao + sellTao),
+    total_volume_tao: totalVolumeTao,
     buy_count: buyCount,
     sell_count: sellCount,
     // Sentiment indicator (#4339/8.2), purely derived from the alpha totals
@@ -155,6 +172,9 @@ export function buildAlphaVolume(rows, netuid) {
     net_volume_alpha: roundUnit(netAlpha),
     sentiment_ratio: sentimentRatio(netAlpha, grossAlpha),
     sentiment: classifySentiment(netAlpha, grossAlpha),
+    // Vol/mcap ratio (#4339/8.3) — see volMcapRatio for the externally-loaded
+    // marketCapTao input's null semantics.
+    vol_mcap_ratio: volMcapRatio(totalVolumeTao, marketCapTao),
   };
 }
 
@@ -168,7 +188,7 @@ export function buildAlphaVolume(rows, netuid) {
 // Cold/absent D1 -> zeroed totals + generatedAt null. The 3-day account_events
 // retention (EVENT_RETENTION_MS, src/account-events.mjs) comfortably covers a
 // 24h window.
-export async function loadSubnetAlphaVolume(d1, netuid) {
+export async function loadSubnetAlphaVolume(d1, netuid, { marketCapTao } = {}) {
   const cutoff = Date.now() - DAY_MS;
   const rows = await d1(
     "SELECT event_kind, COALESCE(SUM(alpha_amount), 0) AS alpha_volume, " +
@@ -190,7 +210,7 @@ export async function loadSubnetAlphaVolume(d1, netuid) {
     }
   }
   return {
-    data: buildAlphaVolume(rows, netuid),
+    data: buildAlphaVolume(rows, netuid, { marketCapTao }),
     generatedAt: toIso(latestObserved),
   };
 }

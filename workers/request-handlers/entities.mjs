@@ -201,6 +201,9 @@ import {
   STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.mjs";
 import { loadSubnetAlphaVolume } from "../../src/alpha-volume.mjs";
+import { resolveLiveEconomics } from "../../src/health-serving.mjs";
+import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.mjs";
+import { readArtifact, readHealthKv } from "../storage.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
   loadValidatorNominators,
@@ -2193,6 +2196,36 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
   );
 }
 
+// One subnet's alpha_market_cap_tao (#4342/8.3), preferring the live economics
+// KV tier and falling back to the committed R2 economics.json when the live
+// tier is cold/stale — same fallback shape resolveEconomicsRows uses in
+// request-handlers/analytics-routes.mjs. Unmemoized (unlike api.mjs's
+// readEconomicsCurrentKv): this route's traffic doesn't warrant the isolate
+// cache analytics-routes.mjs's higher-traffic /economics + /subnets/{netuid}
+// pair share, and entities.mjs deliberately imports leaf modules directly
+// rather than taking injected deps from api.mjs (see this file's header).
+// Null when neither tier has a row for this subnet.
+async function resolveSubnetMarketCapTao(env, netuid) {
+  const live = await resolveLiveEconomics({
+    readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
+    env,
+    contractVersion: contractVersion(env),
+  });
+  let rows = Array.isArray(live?.data?.subnets) ? live.data.subnets : null;
+  if (!rows) {
+    const artifact = await readArtifact(env, "/metagraph/economics.json");
+    rows =
+      artifact.ok && Array.isArray(artifact.data?.subnets)
+        ? artifact.data.subnets
+        : [];
+  }
+  const row = rows.find((entry) => entry?.netuid === netuid);
+  const marketCap = row?.alpha_market_cap_tao;
+  return typeof marketCap === "number" && Number.isFinite(marketCap)
+    ? marketCap
+    : null;
+}
+
 // GET /api/v1/subnets/{netuid}/volume (#4339/8.1): rolling 24h buy (StakeAdded)
 // vs sell (StakeRemoved) alpha volume for one subnet, summed live from the same
 // account_events stream as stake-flow — unsigned (buy + sell), never netted, and
@@ -2202,9 +2235,13 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
 export async function handleSubnetAlphaVolume(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
+  const marketCapTao = await resolveSubnetMarketCapTao(env, netuid);
   const { data, generatedAt } = await loadSubnetAlphaVolume(
     d1Runner(env),
     netuid,
+    {
+      marketCapTao,
+    },
   );
   return envelopeResponse(
     request,

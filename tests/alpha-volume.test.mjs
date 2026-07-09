@@ -38,6 +38,7 @@ describe("buildAlphaVolume", () => {
       assert.equal(data.net_volume_alpha, 0);
       assert.equal(data.sentiment_ratio, null);
       assert.equal(data.sentiment, "neutral");
+      assert.equal(data.vol_mcap_ratio, null);
     }
   });
 
@@ -277,6 +278,71 @@ describe("buy/sell sentiment indicator (#4339/8.2)", () => {
   });
 });
 
+describe("vol/mcap turnover ratio (#4339/8.3)", () => {
+  test("divides total_volume_tao by the externally-supplied marketCapTao", () => {
+    const data = buildAlphaVolume(
+      [
+        volumeRow(STAKE_ADDED_KIND, { tao_volume: 20 }),
+        volumeRow(STAKE_REMOVED_KIND, { tao_volume: 4 }),
+      ],
+      1,
+      { marketCapTao: 480 },
+    );
+    // total_volume_tao = 24; ratio = 24/480 = 0.05.
+    assert.equal(data.total_volume_tao, 24);
+    assert.equal(data.vol_mcap_ratio, 0.05);
+  });
+
+  test("rounds to 6dp", () => {
+    const data = buildAlphaVolume(
+      [volumeRow(STAKE_ADDED_KIND, { tao_volume: 1 })],
+      1,
+      {
+        marketCapTao: 3,
+      },
+    );
+    assert.equal(data.vol_mcap_ratio, 0.333333);
+  });
+
+  test("is null when marketCapTao is not supplied", () => {
+    const data = buildAlphaVolume(
+      [volumeRow(STAKE_ADDED_KIND, { tao_volume: 20 })],
+      1,
+    );
+    assert.equal(data.vol_mcap_ratio, null);
+  });
+
+  test("is null when marketCapTao is zero, negative, or non-finite", () => {
+    for (const marketCapTao of [0, -5, NaN, Infinity, -Infinity, "480"]) {
+      const data = buildAlphaVolume(
+        [volumeRow(STAKE_ADDED_KIND, { tao_volume: 20 })],
+        1,
+        { marketCapTao },
+      );
+      assert.equal(
+        data.vol_mcap_ratio,
+        null,
+        `marketCapTao=${String(marketCapTao)}`,
+      );
+    }
+  });
+
+  test("is null on zero volume even with a valid market cap (no divide-by-zero misread)", () => {
+    const data = buildAlphaVolume([], 1, { marketCapTao: 480 });
+    assert.equal(data.total_volume_tao, 0);
+    assert.equal(data.vol_mcap_ratio, 0);
+  });
+
+  test("can exceed 1 on a high-turnover day (unbounded, unlike sentiment_ratio)", () => {
+    const data = buildAlphaVolume(
+      [volumeRow(STAKE_ADDED_KIND, { tao_volume: 1000 })],
+      1,
+      { marketCapTao: 100 },
+    );
+    assert.equal(data.vol_mcap_ratio, 10);
+  });
+});
+
 describe("loadSubnetAlphaVolume", () => {
   test("queries account_events for both stake kinds over a fixed 24h cutoff and shapes the result", async () => {
     vi.useFakeTimers();
@@ -317,6 +383,21 @@ describe("loadSubnetAlphaVolume", () => {
     // generated_at = the newest event's observed_at, rendered as an ISO string.
     assert.equal(generatedAt, new Date(1717900000000).toISOString());
     vi.useRealTimers();
+  });
+
+  test("passes marketCapTao through to buildAlphaVolume", async () => {
+    const d1 = async () => [
+      {
+        event_kind: STAKE_ADDED_KIND,
+        alpha_volume: 1,
+        tao_volume: 24,
+        event_count: 1,
+      },
+    ];
+    const { data } = await loadSubnetAlphaVolume(d1, 7, {
+      marketCapTao: 480,
+    });
+    assert.equal(data.vol_mcap_ratio, 0.05);
   });
 
   test("cold D1 (no rows) yields zeroed totals and a null generated_at", async () => {
@@ -399,10 +480,15 @@ describe("loadSubnetAlphaVolume", () => {
 const ctx = { waitUntil: (p) => p };
 
 // Stub METAGRAPH_HEALTH_DB whose .all() returns the given rows and records the
-// SQL — mirrors runtimeEnv in tests/runtime-versions.test.mjs.
+// SQL — mirrors runtimeEnv in tests/runtime-versions.test.mjs. METAGRAPH_ARCHIVE
+// is deliberately unset (unlike createLocalArtifactEnv's default) so
+// resolveSubnetMarketCapTao's R2 fallback is genuinely cold, regardless of
+// whether a local `npm run build` happens to have staged a real
+// dist/metagraph-r2/metagraph/economics.json on this machine.
 function volumeEnv(rows, captured = {}) {
   return {
     ...createLocalArtifactEnv(),
+    METAGRAPH_ARCHIVE: undefined,
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
         captured.sql = sql;
@@ -443,6 +529,9 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
     assert.equal(body.data.buy_volume_alpha, 100);
     assert.equal(body.data.net_volume_alpha, 100);
     assert.equal(body.data.sentiment, "bullish");
+    // Neither KV (METAGRAPH_CONTROL unbound) nor the R2 fallback (no local
+    // economics.json in this test env) has a market-cap row for this subnet.
+    assert.equal(body.data.vol_mcap_ratio, null);
     assert.match(captured.sql, /FROM account_events/);
   });
 
@@ -455,6 +544,121 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.total_volume_alpha, 0);
+    assert.equal(body.data.vol_mcap_ratio, null);
+  });
+
+  test("computes vol_mcap_ratio from a warm live economics KV tier", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    const env = volumeEnv([
+      {
+        event_kind: STAKE_ADDED_KIND,
+        alpha_volume: 1,
+        tao_volume: 20,
+        event_count: 1,
+      },
+      {
+        event_kind: STAKE_REMOVED_KIND,
+        alpha_volume: 1,
+        tao_volume: 4,
+        event_count: 1,
+      },
+    ]);
+    env.METAGRAPH_CONTROL = {
+      async get(key, opts) {
+        assert.equal(key, "economics:current");
+        assert.deepEqual(opts, { type: "json" });
+        return {
+          schema_version: 1,
+          captured_at: new Date().toISOString(),
+          summary: { with_economics_count: 1 },
+          subnets: [
+            { netuid: 7, emission_share: 1, alpha_market_cap_tao: 480 },
+          ],
+        };
+      },
+    };
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
+      env,
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    // total_volume_tao = 20 + 4 = 24; ratio = 24/480 = 0.05.
+    assert.equal(body.data.total_volume_tao, 24);
+    assert.equal(body.data.vol_mcap_ratio, 0.05);
+    vi.useRealTimers();
+  });
+
+  test("a stale live economics KV tier falls back to null (no committed artifact locally)", async () => {
+    const env = volumeEnv([
+      {
+        event_kind: STAKE_ADDED_KIND,
+        alpha_volume: 1,
+        tao_volume: 20,
+        event_count: 1,
+      },
+    ]);
+    env.METAGRAPH_CONTROL = {
+      async get() {
+        return {
+          schema_version: 1,
+          captured_at: "2000-01-01T00:00:00.000Z", // far outside the freshness window
+          summary: { with_economics_count: 1 },
+          subnets: [
+            { netuid: 7, emission_share: 1, alpha_market_cap_tao: 480 },
+          ],
+        };
+      },
+    };
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
+      env,
+      ctx,
+    );
+    const body = await res.json();
+    assert.equal(body.data.vol_mcap_ratio, null);
+  });
+
+  test("falls back to the committed economics.json when the live KV tier is cold", async () => {
+    const env = volumeEnv([
+      {
+        event_kind: STAKE_ADDED_KIND,
+        alpha_volume: 1,
+        tao_volume: 20,
+        event_count: 1,
+      },
+      {
+        event_kind: STAKE_REMOVED_KIND,
+        alpha_volume: 1,
+        tao_volume: 4,
+        event_count: 1,
+      },
+    ]);
+    // METAGRAPH_CONTROL stays unset (live tier cold) — only the R2 artifact
+    // fallback (resolveSubnetMarketCapTao's readArtifact branch) is wired.
+    env.METAGRAPH_ARCHIVE = {
+      async get() {
+        return {
+          async json() {
+            return {
+              subnets: [
+                { netuid: 7, emission_share: 1, alpha_market_cap_tao: 480 },
+              ],
+            };
+          },
+        };
+      },
+    };
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
+      env,
+      ctx,
+    );
+    const body = await res.json();
+    assert.equal(body.data.total_volume_tao, 24);
+    assert.equal(body.data.vol_mcap_ratio, 0.05);
   });
 
   test("an unsupported query param is a 400", async () => {

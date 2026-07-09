@@ -265,6 +265,10 @@ const checks = [
       assert.ok(
         ["bullish", "bearish", "neutral"].includes(body.data.sentiment),
       );
+      assert.ok(
+        body.data.vol_mcap_ratio === null ||
+          typeof body.data.vol_mcap_ratio === "number",
+      );
     },
   ],
   [

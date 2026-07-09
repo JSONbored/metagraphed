@@ -6164,7 +6164,7 @@ export interface components {
         });
         /** @enum {unknown} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
-        /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data. */
+        /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label — plus a vol/mcap turnover ratio (#4339/8.3): total_volume_tao over the live economics tier's alpha_market_cap_tao, null when that external input is unavailable. Fixed 24h window, not OHLC/price data. */
         SubnetAlphaVolumeArtifact: {
             buy_count: number;
             buy_volume_alpha: number;
@@ -6180,6 +6180,8 @@ export interface components {
             sentiment_ratio: number | null;
             total_volume_alpha: number;
             total_volume_tao: number;
+            /** @description total_volume_tao / alpha_market_cap_tao. Null when the live economics tier has no market-cap figure for this subnet (cold KV and no committed fallback row) — never implies zero turnover. */
+            vol_mcap_ratio: number | null;
             /** @enum {string} */
             window: "24h";
         };
@@ -26867,6 +26869,7 @@ export interface operations {
                      *         "sentiment_ratio": 0.9966,
                      *         "total_volume_alpha": 0.5,
                      *         "total_volume_tao": 0.5,
+                     *         "vol_mcap_ratio": 0.9966,
                      *         "window": "24h"
                      *       },
                      *       "meta": {
