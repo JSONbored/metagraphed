@@ -46,6 +46,8 @@ import type {
   AccountEventsPage,
   AccountCounterparties,
   AccountCounterparty,
+  AccountStakeFlow,
+  AccountStakeFlowSubnet,
   AccountHistory,
   AccountPortfolio,
   AccountStakeMoves,
@@ -2579,6 +2581,67 @@ export const accountCounterpartiesQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountCounterparties>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3341: per-account staking-behavior scorecard — net/gross flow, a direction
+// label, concentration, and a per-subnet stake/unstake breakdown over a window,
+// from the already-live /api/v1/accounts/{ss58}/stake-flow. Structured-object
+// response, so it mirrors accountSubnetsQuery's apiFetch + isRecord + per-row
+// normalize shape.
+function normalizeStakeFlowSubnet(raw: unknown): AccountStakeFlowSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    staked_tao: firstFiniteNumber(raw.staked_tao) ?? null,
+    unstaked_tao: firstFiniteNumber(raw.unstaked_tao) ?? null,
+    net_flow_tao: firstFiniteNumber(raw.net_flow_tao) ?? null,
+    gross_flow_tao: firstFiniteNumber(raw.gross_flow_tao) ?? null,
+    flow_ratio: firstFiniteNumber(raw.flow_ratio) ?? null,
+    direction: firstString(raw.direction) ?? null,
+    stake_events: firstFiniteNumber(raw.stake_events) ?? null,
+    unstake_events: firstFiniteNumber(raw.unstake_events) ?? null,
+  };
+}
+
+export const accountStakeFlowQuery = (
+  ss58: string,
+  params?: { window?: "7d" | "30d" | "90d"; direction?: "in" | "out" },
+) =>
+  queryOptions({
+    queryKey: k("account-stake-flow", ss58, params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/stake-flow`, {
+        params,
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const subnets = Array.isArray(d.subnets)
+        ? d.subnets.flatMap((row) => {
+            const s = normalizeStakeFlowSubnet(row);
+            return s ? [s] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          window: firstString(d.window) ?? params?.window ?? "30d",
+          total_staked_tao: firstFiniteNumber(d.total_staked_tao) ?? null,
+          total_unstaked_tao: firstFiniteNumber(d.total_unstaked_tao) ?? null,
+          net_flow_tao: firstFiniteNumber(d.net_flow_tao) ?? null,
+          gross_flow_tao: firstFiniteNumber(d.gross_flow_tao) ?? null,
+          direction: firstString(d.direction) ?? null,
+          concentration: firstFiniteNumber(d.concentration) ?? null,
+          dominant_netuid: firstFiniteNumber(d.dominant_netuid) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? subnets.length,
+          subnets,
+        } as AccountStakeFlow,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountStakeFlow>;
     },
     staleTime: STALE_MED,
   });

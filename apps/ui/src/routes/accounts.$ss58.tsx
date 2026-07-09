@@ -40,6 +40,7 @@ import { AccountPositionHistoryChart } from "@/components/metagraphed/account-po
 import {
   accountAxonRemovalsQuery,
   accountCounterpartiesQuery,
+  accountStakeFlowQuery,
   accountPortfolioQuery,
   accountStakeMovesQuery,
   accountDeregistrationsQuery,
@@ -61,6 +62,7 @@ import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import type {
   AccountCounterparty,
+  AccountStakeFlowSubnet,
   AccountRegistration,
   AccountSummary,
   Extrinsic,
@@ -264,6 +266,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       ) : null}
 
       <AccountFootprintSection ss58={ss58} fallback={account.registrations} />
+      {/* #3341: staking-flow scorecard over the same subnet footprint. */}
+      <AccountStakeFlowSection ss58={ss58} />
 
       <AccountPortfolioSection ss58={ss58} />
       <AccountStakeMovesSection ss58={ss58} />
@@ -350,6 +354,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
             { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
             { label: "counterparties", path: `/api/v1/accounts/${sourceRef}/counterparties` },
+            { label: "stake-flow", path: `/api/v1/accounts/${sourceRef}/stake-flow` },
             { label: "serving", path: `/api/v1/accounts/${sourceRef}/serving` },
             { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
           ]}
@@ -363,6 +368,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           `/api/v1/accounts/${sourceRef}/events`,
           `/api/v1/accounts/${sourceRef}/subnets`,
           `/api/v1/accounts/${sourceRef}/counterparties`,
+          `/api/v1/accounts/${sourceRef}/stake-flow`,
           `/api/v1/accounts/${sourceRef}/serving`,
           `/api/v1/accounts/${sourceRef}/prometheus`,
         ]}
@@ -969,6 +975,207 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
           Showing the {rows.length} highest-volume of {formatNumber(parties.length)} counterparties.
         </p>
       ) : null}
+    </SectionAnchor>
+  );
+}
+
+const STAKE_FLOW_WINDOWS = ["7d", "30d", "90d"] as const;
+
+// Direction label → tone, reusing the emerald/amber/muted convention the
+// transfers section uses for sent/received direction.
+function stakeFlowDirClass(dir: string | null | undefined): string {
+  if (dir === "accumulating") return "text-emerald-500";
+  if (dir === "exiting") return "text-amber-500";
+  if (dir === "churning") return "text-amber-400";
+  return "text-ink-muted"; // idle / unknown
+}
+
+// #3341: per-account staking-behavior scorecard — net vs gross flow, a direction
+// label, and the per-subnet stake/unstake breakdown over a selectable window,
+// from accountStakeFlowQuery. Self-contained + non-blocking (same shape as the
+// sibling subnet-breakdown sections); the window control is section-local state.
+function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
+  const [window, setWindow] = useState<(typeof STAKE_FLOW_WINDOWS)[number]>("30d");
+  const result = useQuery(accountStakeFlowQuery(ss58, { window }));
+  const f = result.data?.data;
+  const SUBTITLE =
+    "Net staking direction and per-subnet stake / unstake flow for this account over the selected window.";
+  const windowControl = (
+    <SelectFilter
+      label="Window"
+      value={window}
+      onChange={(v) =>
+        setWindow((STAKE_FLOW_WINDOWS as readonly string[]).includes(v) ? (v as never) : "30d")
+      }
+      options={STAKE_FLOW_WINDOWS.map((w) => ({ value: w, label: w }))}
+    />
+  );
+
+  if (result.isPending && !f) {
+    return <AccountFeedSectionSkeleton id="stake-flow" title="Stake flow" subtitle={SUBTITLE} />;
+  }
+  if (result.isError) {
+    return (
+      <SectionAnchor
+        id="stake-flow"
+        title="Stake flow"
+        subtitle={SUBTITLE}
+        tone="accent"
+        right={windowControl}
+      >
+        <TableState
+          variant="error"
+          title="Couldn't load stake flow"
+          description="The stake-flow tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
+  const subnets: AccountStakeFlowSubnet[] = f?.subnets ?? [];
+  const netFlow = f?.net_flow_tao ?? null;
+  const netStr =
+    netFlow == null ? "—" : `${netFlow >= 0 ? "+" : "−"}${fmtTaoCompact(Math.abs(netFlow))}`;
+  // BarMini widths are unsigned (value / cap), so bar the always-≥0 gross flow
+  // and surface each row's direction as a label in the table alongside.
+  const bars = [...subnets]
+    .filter((s) => (s.gross_flow_tao ?? 0) > 0)
+    .sort((a, b) => (b.gross_flow_tao ?? 0) - (a.gross_flow_tao ?? 0))
+    .slice(0, 12)
+    .map((s) => ({ label: `SN${s.netuid}`, value: s.gross_flow_tao ?? 0 }));
+
+  return (
+    <SectionAnchor
+      id="stake-flow"
+      title="Stake flow"
+      subtitle={SUBTITLE}
+      tone="accent"
+      info="Per-account staking behavior from /api/v1/accounts/{ss58}/stake-flow — net vs gross TAO flow, a direction label (accumulating / exiting / churning / idle), concentration, and the per-subnet stake / unstake breakdown over the window."
+      right={windowControl}
+    >
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          icon={TrendingUp}
+          eyebrow="Net flow"
+          tone="accent"
+          value={
+            <span
+              className={netFlow != null && netFlow < 0 ? "text-amber-500" : "text-emerald-500"}
+            >
+              {netStr}
+            </span>
+          }
+          hint={`over ${f?.window ?? window}`}
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Activity}
+          eyebrow="Gross flow"
+          value={fmtTaoCompact(f?.gross_flow_tao)}
+          hint="staked + unstaked"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Gauge}
+          eyebrow="Direction"
+          value={<span className={stakeFlowDirClass(f?.direction)}>{f?.direction ?? "—"}</span>}
+          hint={
+            f?.concentration != null
+              ? `${(f.concentration * 100).toFixed(0)}% concentrated`
+              : undefined
+          }
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Dominant subnet"
+          value={
+            f?.dominant_netuid != null ? (
+              <Link
+                to="/subnets/$netuid"
+                params={{ netuid: f.dominant_netuid }}
+                className="text-ink-strong hover:text-accent hover:underline"
+              >
+                SN{f.dominant_netuid}
+              </Link>
+            ) : (
+              "—"
+            )
+          }
+          hint={`${formatNumber(f?.subnet_count ?? 0)} subnets`}
+          className={KPI_TILE}
+        />
+      </div>
+
+      {bars.length > 0 ? (
+        <div className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-5 py-4 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]">
+          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            gross flow by subnet (τ)
+          </div>
+          <BarMini data={bars} showValue={false} />
+        </div>
+      ) : null}
+
+      {subnets.length > 0 ? (
+        <DataPanel>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-surface/50">
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={TH}>Direction</th>
+                <th className={`${TH} text-right`}>Net flow</th>
+                <th className={`${TH} text-right`}>Gross flow</th>
+                <th className={`${TH} text-right`}>Events</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {[...subnets]
+                .sort((a, b) => (b.gross_flow_tao ?? 0) - (a.gross_flow_tao ?? 0))
+                .slice(0, 20)
+                .map((s) => (
+                  <tr key={s.netuid} className="hover:bg-surface/30">
+                    <td className="px-5 py-4 font-mono text-[12px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="text-ink hover:text-accent hover:underline"
+                      >
+                        SN{s.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-4 font-mono text-[11px]">
+                      <span className={stakeFlowDirClass(s.direction)}>{s.direction ?? "—"}</span>
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums">
+                      {s.net_flow_tao == null ? (
+                        <span className="text-ink-muted">—</span>
+                      ) : (
+                        <span
+                          className={s.net_flow_tao >= 0 ? "text-emerald-500" : "text-amber-500"}
+                        >
+                          {s.net_flow_tao >= 0 ? "+" : "−"}
+                          {fmtStake(Math.abs(s.net_flow_tao))}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {fmtStake(s.gross_flow_tao)}
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber((s.stake_events ?? 0) + (s.unstake_events ?? 0))}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </DataPanel>
+      ) : (
+        <p className="rounded-2xl border border-border/80 bg-card/95 px-5 py-4 font-mono text-[11px] text-ink-muted">
+          No stake or unstake flow recorded for this account over the {f?.window ?? window} window.
+        </p>
+      )}
     </SectionAnchor>
   );
 }

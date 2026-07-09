@@ -1286,6 +1286,37 @@ export interface AccountCounterparties {
   counterparties: AccountCounterparty[];
   [key: string]: unknown;
 }
+/** One per-subnet stake/unstake flow row in /accounts/{ss58}/stake-flow. */
+export interface AccountStakeFlowSubnet {
+  netuid: number;
+  staked_tao: number | null;
+  unstaked_tao: number | null;
+  net_flow_tao: number | null;
+  gross_flow_tao: number | null;
+  flow_ratio: number | null;
+  direction: string | null;
+  stake_events: number | null;
+  unstake_events: number | null;
+}
+/**
+ * #3341: /api/v1/accounts/{ss58}/stake-flow — per-account staking-behavior
+ * scorecard (net/gross flow, direction, concentration) + a per-subnet breakdown
+ * over a 7d|30d|90d window.
+ */
+export interface AccountStakeFlow {
+  ss58: string;
+  window: string;
+  total_staked_tao: number | null;
+  total_unstaked_tao: number | null;
+  net_flow_tao: number | null;
+  gross_flow_tao: number | null;
+  direction: string | null;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnet_count: number;
+  subnets: AccountStakeFlowSubnet[];
+  [key: string]: unknown;
+}
 export interface AccountPortfolio {
   ss58: string;
   captured_at?: string | null;
