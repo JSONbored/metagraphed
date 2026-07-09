@@ -794,6 +794,12 @@ export function buildAccountSubnets(rows, ss58) {
 // self-transfer (from === to === ss58, i.e. hotkey === coldkey === ss58) returned
 // by the received-side query, which the hotkey-first per-row derivation would
 // otherwise mislabel `sent`, contradicting the requested filter (#2362).
+//
+// NOT price-at-tx enriched (#4332/6.3, which named this route as one of its
+// two targets): a Balances.Transfer moves native TAO between accounts with no
+// subnet/netuid involved at all, so there is no alpha price that could apply
+// to a row here. See src/account-stake-moves.mjs's header for the sibling
+// route this WAS enriched on (StakeMoved rows are netuid-scoped).
 export function buildAccountTransfers(
   rows,
   ss58,

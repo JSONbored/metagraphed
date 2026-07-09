@@ -1370,7 +1370,7 @@
       },
       "AccountStakeMovesArtifact": {
         "additionalProperties": false,
-        "description": "One account's stake-movement (re-delegation) footprint per subnet over a recent window, from the account_events StakeMoved stream: per-subnet movement count with the first/last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /accounts/{ss58}/stake-flow.",
+        "description": "One account's stake-movement (re-delegation) footprint per subnet over a recent window, from the account_events StakeMoved stream: per-subnet movement count with the first/last movement timestamps, the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup — a known daily-granularity precision limit, not a bug), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /accounts/{ss58}/stake-flow.",
         "properties": {
           "address": {
             "type": "string"
@@ -1420,13 +1420,20 @@
                 "netuid": {
                   "minimum": 0,
                   "type": "integer"
+                },
+                "price_tao_at_last_move": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
                 }
               },
               "required": [
                 "netuid",
                 "movements",
                 "first_moved_at",
-                "last_moved_at"
+                "last_moved_at",
+                "price_tao_at_last_move"
               ],
               "type": "object"
             },

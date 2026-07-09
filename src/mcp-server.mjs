@@ -9362,12 +9362,22 @@ const TOOL_OUTPUT_SCHEMAS = {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["netuid", "movements", "first_moved_at", "last_moved_at"],
+          required: [
+            "netuid",
+            "movements",
+            "first_moved_at",
+            "last_moved_at",
+            "price_tao_at_last_move",
+          ],
           properties: {
             netuid: { type: "integer" },
             movements: { type: "integer" },
             first_moved_at: NULLABLE_STRING,
             last_moved_at: NULLABLE_STRING,
+            // Alpha price on the day of the most recent move (#4332/6.3),
+            // from the daily subnet_snapshots rollup; null when that day has
+            // no snapshot yet or there was no move to date from.
+            price_tao_at_last_move: { type: ["number", "null"] },
           },
         },
       },

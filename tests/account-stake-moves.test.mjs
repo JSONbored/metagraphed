@@ -138,44 +138,117 @@ describe("buildAccountStakeMoves", () => {
     assert.equal(s2.first_moved_at, null);
     assert.equal(s2.last_moved_at, null);
   });
+
+  describe("price-at-tx enrichment (#4332/6.3)", () => {
+    test("attaches price_tao_at_last_move keyed by netuid + the last-move UTC date", () => {
+      const lastMs = Date.UTC(2026, 5, 20, 12, 0, 0); // 2026-06-20T12:00:00Z
+      const priceByNetuidDate = new Map([["1:2026-06-20", 4.5]]);
+      const d = buildAccountStakeMoves([row(1, 3, lastMs, lastMs)], ADDR, {
+        window: "7d",
+        priceByNetuidDate,
+      });
+      assert.equal(d.subnets[0].price_tao_at_last_move, 4.5);
+    });
+
+    test("is null when no price was found for that (netuid, date)", () => {
+      const lastMs = Date.UTC(2026, 5, 20, 12, 0, 0);
+      const d = buildAccountStakeMoves([row(1, 3, lastMs, lastMs)], ADDR, {
+        window: "7d",
+        priceByNetuidDate: new Map(),
+      });
+      assert.equal(d.subnets[0].price_tao_at_last_move, null);
+    });
+
+    test("is null when priceByNetuidDate is omitted (backward-compatible default)", () => {
+      const lastMs = Date.UTC(2026, 5, 20, 12, 0, 0);
+      const d = buildAccountStakeMoves([row(1, 3, lastMs, lastMs)], ADDR, {
+        window: "7d",
+      });
+      assert.equal(d.subnets[0].price_tao_at_last_move, null);
+    });
+
+    test("is null when the subnet has no last_moved_at (nothing to date the price against)", () => {
+      const d = buildAccountStakeMoves([row(1, 2, null, null)], ADDR, {
+        window: "7d",
+        priceByNetuidDate: new Map([["1:2026-06-20", 4.5]]),
+      });
+      assert.equal(d.subnets[0].price_tao_at_last_move, null);
+    });
+
+    test("prices two subnets independently by their own last-move dates", () => {
+      const dayOne = Date.UTC(2026, 5, 20, 0, 0, 0);
+      const dayTwo = Date.UTC(2026, 5, 21, 0, 0, 0);
+      const priceByNetuidDate = new Map([
+        ["1:2026-06-20", 4.5],
+        ["2:2026-06-21", 9.1],
+      ]);
+      const d = buildAccountStakeMoves(
+        [row(1, 1, dayOne, dayOne), row(2, 1, dayTwo, dayTwo)],
+        ADDR,
+        { window: "7d", priceByNetuidDate },
+      );
+      const s1 = d.subnets.find((s) => s.netuid === 1);
+      const s2 = d.subnets.find((s) => s.netuid === 2);
+      assert.equal(s1.price_tao_at_last_move, 4.5);
+      assert.equal(s2.price_tao_at_last_move, 9.1);
+    });
+  });
 });
+
+// A d1 runner that branches on the query: the stake-moves aggregate query
+// returns `stakeMoveRows`, the follow-up alpha-price lookup returns
+// `priceRows` — mirrors this session's sql.includes()-branching mock pattern
+// for a runner now issuing two distinct queries.
+function stakeMovesD1(stakeMoveRows, priceRows = [], calls = []) {
+  return async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes("FROM subnet_snapshots")) return priceRows;
+    return stakeMoveRows;
+  };
+}
 
 describe("loadAccountStakeMoves", () => {
   test("seeks the coldkey index for StakeMoved over the window and shapes it", async () => {
-    let captured;
-    const d1 = async (sql, params) => {
-      captured = { sql, params };
-      return [
+    const calls = [];
+    const d1 = stakeMovesD1(
+      [
         row(1, 3, 1_700_000_000_000, 1_700_000_000_000),
         row(2, 1, 1_700_400_000_000, 1_700_500_000_000),
         row(3, 1, null, null),
-      ];
-    };
+      ],
+      [],
+      calls,
+    );
     const { data, generatedAt } = await loadAccountStakeMoves(d1, ADDR, {
       windowLabel: "7d",
     });
+    const stakeMovesCall = calls.find((c) =>
+      c.sql.includes("FROM account_events"),
+    );
     assert.match(
-      captured.sql,
+      stakeMovesCall.sql,
       /FROM account_events INDEXED BY idx_account_events_coldkey/,
     );
-    assert.match(captured.sql, /WHERE coldkey = \? AND event_kind = \?/);
-    assert.match(captured.sql, /GROUP BY netuid/);
-    assert.equal(captured.params[0], ADDR);
-    assert.equal(captured.params[1], STAKE_MOVED_EVENT_KIND);
-    assert.equal(typeof captured.params[2], "number");
+    assert.match(stakeMovesCall.sql, /WHERE coldkey = \? AND event_kind = \?/);
+    assert.match(stakeMovesCall.sql, /GROUP BY netuid/);
+    assert.equal(stakeMovesCall.params[0], ADDR);
+    assert.equal(stakeMovesCall.params[1], STAKE_MOVED_EVENT_KIND);
+    assert.equal(typeof stakeMovesCall.params[2], "number");
     assert.equal(data.total_movements, 5);
     assert.equal(generatedAt, new Date(1_700_500_000_000).toISOString());
   });
 
   test("an unknown window label falls back to the default window days", async () => {
-    let captured;
-    const d1 = async (sql, params) => {
-      captured = { sql, params };
-      return [];
-    };
+    const calls = [];
+    const d1 = stakeMovesD1([], [], calls);
     await loadAccountStakeMoves(d1, ADDR, { windowLabel: "bogus" });
+    const stakeMovesCall = calls.find((c) =>
+      c.sql.includes("FROM account_events"),
+    );
     const expected = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    assert.ok(Math.abs(captured.params[2] - expected) < 24 * 60 * 60 * 1000);
+    assert.ok(
+      Math.abs(stakeMovesCall.params[2] - expected) < 24 * 60 * 60 * 1000,
+    );
   });
 
   test("a cold store yields a zeroed card + null generatedAt", async () => {
@@ -198,5 +271,95 @@ describe("loadAccountStakeMoves", () => {
     assert.equal(data.total_movements, 0);
     assert.deepEqual(data.subnets, []);
     assert.equal(generatedAt, null);
+  });
+
+  describe("price-at-tx enrichment (#4332/6.3)", () => {
+    test("issues a follow-up subnet_snapshots query keyed by netuid + last-move date and threads the price through", async () => {
+      const lastMs = Date.UTC(2026, 5, 20, 12, 0, 0); // 2026-06-20
+      const calls = [];
+      const d1 = stakeMovesD1(
+        [row(1, 3, lastMs, lastMs)],
+        [{ netuid: 1, snapshot_date: "2026-06-20", alpha_price_tao: 4.5 }],
+        calls,
+      );
+      const { data } = await loadAccountStakeMoves(d1, ADDR, {
+        windowLabel: "7d",
+      });
+      const priceCall = calls.find((c) =>
+        c.sql.includes("FROM subnet_snapshots"),
+      );
+      assert.match(priceCall.sql, /netuid IN \(\?\)/);
+      assert.match(priceCall.sql, /snapshot_date IN \(\?\)/);
+      assert.deepEqual(priceCall.params, [1, "2026-06-20"]);
+      assert.equal(data.subnets[0].price_tao_at_last_move, 4.5);
+    });
+
+    test("batches multiple subnets into one follow-up query, not one per subnet", async () => {
+      const dayOne = Date.UTC(2026, 5, 20, 0, 0, 0);
+      const dayTwo = Date.UTC(2026, 5, 21, 0, 0, 0);
+      const calls = [];
+      const d1 = stakeMovesD1(
+        [row(1, 1, dayOne, dayOne), row(2, 1, dayTwo, dayTwo)],
+        [
+          { netuid: 1, snapshot_date: "2026-06-20", alpha_price_tao: 4.5 },
+          { netuid: 2, snapshot_date: "2026-06-21", alpha_price_tao: 9.1 },
+        ],
+        calls,
+      );
+      await loadAccountStakeMoves(d1, ADDR, { windowLabel: "7d" });
+      const priceCalls = calls.filter((c) =>
+        c.sql.includes("FROM subnet_snapshots"),
+      );
+      assert.equal(priceCalls.length, 1);
+    });
+
+    test("skips the follow-up query entirely when there are no stake-move rows (cold store)", async () => {
+      const calls = [];
+      const d1 = stakeMovesD1([], [], calls);
+      await loadAccountStakeMoves(d1, ADDR, { windowLabel: "7d" });
+      assert.equal(
+        calls.some((c) => c.sql.includes("FROM subnet_snapshots")),
+        false,
+      );
+    });
+
+    test("a null/blank/non-numeric alpha_price_tao cell is treated as no price, not zero", async () => {
+      const lastMs = Date.UTC(2026, 5, 20, 0, 0, 0);
+      for (const alpha_price_tao of [null, "", "   ", "not-a-number"]) {
+        const d1 = stakeMovesD1(
+          [row(1, 1, lastMs, lastMs)],
+          [{ netuid: 1, snapshot_date: "2026-06-20", alpha_price_tao }],
+        );
+        const { data } = await loadAccountStakeMoves(d1, ADDR, {
+          windowLabel: "7d",
+        });
+        assert.equal(
+          data.subnets[0].price_tao_at_last_move,
+          null,
+          JSON.stringify(alpha_price_tao),
+        );
+      }
+    });
+
+    test("a non-array price-query result degrades to no prices found, not a throw", async () => {
+      const lastMs = Date.UTC(2026, 5, 20, 0, 0, 0);
+      const d1 = stakeMovesD1([row(1, 1, lastMs, lastMs)], null);
+      const { data } = await loadAccountStakeMoves(d1, ADDR, {
+        windowLabel: "7d",
+      });
+      assert.equal(data.subnets[0].price_tao_at_last_move, null);
+    });
+
+    test("no snapshot for that exact date leaves price_tao_at_last_move null", async () => {
+      const lastMs = Date.UTC(2026, 5, 20, 0, 0, 0);
+      const d1 = stakeMovesD1(
+        [row(1, 1, lastMs, lastMs)],
+        [], // no matching snapshot row at all
+      );
+      const { data } = await loadAccountStakeMoves(d1, ADDR, {
+        windowLabel: "7d",
+      });
+      assert.equal(data.subnets[0].price_tao_at_last_move, null);
+    });
   });
 });
