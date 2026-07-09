@@ -101,7 +101,7 @@ import {
   loadAccountBalance,
 } from "../../src/account-balance.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
-import { loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
+import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
@@ -3314,6 +3314,14 @@ export async function handleAccountBalance(request, env, ss58) {
 // ss58), so it shares that route's rate limiter rather than sudo-key's
 // no-limiter reasoning. recycled_tao is null on RPC failure (schema-stable).
 export async function handleSubnetRecycled(request, env, netuid) {
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
       key: `recycled:${resolveClientIp(request)}`,

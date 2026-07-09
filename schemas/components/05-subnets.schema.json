@@ -3530,7 +3530,7 @@
         "required": ["schema_version", "netuid"],
         "properties": {
           "schema_version": { "type": "integer" },
-          "netuid": { "type": "integer", "minimum": 0 },
+          "netuid": { "type": "integer", "minimum": 0, "maximum": 65535 },
           "recycled_tao": { "type": ["number", "null"] },
           "queried_at": { "type": ["string", "null"], "format": "date-time" }
         }
