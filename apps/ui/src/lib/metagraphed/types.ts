@@ -2145,6 +2145,24 @@ export interface ChainActivity {
   day_count: number;
   days: ChainActivityDay[];
 }
+// #3365: network-wide economics rollup (subnet_snapshots, not the chain-indexer
+// tables the rest of the explorer page reads from).
+export interface EconomicsTrendsDay {
+  snapshot_date: string;
+  subnet_count: number;
+  total_stake_tao: number | null;
+  alpha_price_tao_weighted: number | null;
+  alpha_price_tao_median: number | null;
+  validator_count: number | null;
+  miner_count: number | null;
+  mean_emission_share: number | null;
+}
+export interface EconomicsTrends {
+  schema_version: number;
+  window: string | null;
+  day_count: number;
+  days: EconomicsTrendsDay[];
+}
 export interface ChainCallEntry {
   call_module: string;
   call_function: string | null;

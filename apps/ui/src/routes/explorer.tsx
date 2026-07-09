@@ -28,6 +28,7 @@ import {
   chainTurnoverQuery,
   chainStakeTransfersQuery,
   chainTransferPairsQuery,
+  economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -39,6 +40,7 @@ import type {
   ChainStakeFlow,
   ChainStakeMoves,
   ChainTurnover,
+  EconomicsTrends,
 } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
@@ -111,6 +113,7 @@ function ExplorerPage() {
           "/api/v1/chain/stake-transfers",
           "/api/v1/chain-events",
           "/api/v1/chain-events/stats",
+          "/api/v1/economics/trends",
         ]}
       />
     </AppShell>
@@ -609,20 +612,84 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
   );
 }
 
+/**
+ * Network-wide economics trend (#3365) — the subnet_snapshots rollup (stake,
+ * alpha price, validator/miner counts, emission share), a distinct data source
+ * from every other section on this page (which reads the chain indexer). Reuses
+ * the page's MiniSeries idiom for consistency with "Daily activity"/"Daily fees".
+ */
+function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
+  const chrono = [...trends.days].reverse();
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Network economics trend
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">{trends.day_count} days</span>
+      </div>
+      {chrono.length > 0 ? (
+        <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
+          <MiniSeries
+            label="Total stake"
+            days={chrono.map((d) => d.snapshot_date)}
+            values={chrono.map((d) => d.total_stake_tao ?? 0)}
+            color="var(--accent)"
+            formatValue={fmtTao}
+          />
+          <MiniSeries
+            label="Alpha price"
+            days={chrono.map((d) => d.snapshot_date)}
+            values={chrono.map((d) => d.alpha_price_tao_weighted ?? 0)}
+            color="var(--chart-1)"
+            formatValue={fmtTao}
+          />
+          <MiniSeries
+            label="Emission share"
+            days={chrono.map((d) => d.snapshot_date)}
+            values={chrono.map((d) => (d.mean_emission_share ?? 0) * 100)}
+            color="var(--chart-6)"
+            formatValue={(v) => `${v.toFixed(3)}%`}
+          />
+          <MiniSeries
+            label="Validators"
+            days={chrono.map((d) => d.snapshot_date)}
+            values={chrono.map((d) => d.validator_count ?? 0)}
+            color="var(--chart-3)"
+            formatValue={(v) => formatNumber(v)}
+          />
+          <MiniSeries
+            label="Miners"
+            days={chrono.map((d) => d.snapshot_date)}
+            values={chrono.map((d) => d.miner_count ?? 0)}
+            color="var(--chart-1)"
+            formatValue={(v) => formatNumber(v)}
+          />
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">
+          No economics snapshots in this window yet.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const win = search.window;
 
-  // A single batched useSuspenseQueries, not 9 individual useSuspenseQuery
-  // calls: each individual call suspends the component separately, so on a
+  // A single batched useSuspenseQueries, not one useSuspenseQuery call per
+  // endpoint: each individual call suspends the component separately, so on a
   // cold cache (in particular during SSR) React re-renders and re-suspends
   // once per query, resolving them in a serial waterfall instead of parallel
-  // -- 9 queries at ~5s each measured as a genuine ~33s page load in
-  // production, not a hang (confirmed by testing each endpoint standalone,
+  // -- the original 9 queries at ~5s each measured as a genuine ~33s page load
+  // in production, not a hang (confirmed by testing each endpoint standalone,
   // all fast, and the full page eventually completing at ~33s with a longer
-  // timeout). useSuspenseQueries fires all 9 fetches concurrently and
-  // suspends once, so the page waits on the slowest single query, not the sum.
+  // timeout). useSuspenseQueries fires all fetches concurrently and suspends
+  // once, so the page waits on the slowest single query, not the sum. #3365
+  // adds a 10th (economics/trends, a different data source entirely).
   const [
     { data: activityRes },
     { data: feesRes },
@@ -633,6 +700,7 @@ function ExplorerDashboard() {
     { data: turnoverRes },
     { data: stakeTransfersRes },
     { data: eventMixRes },
+    { data: trendsRes },
   ] = useSuspenseQueries({
     queries: [
       chainActivityQuery(win),
@@ -644,6 +712,7 @@ function ExplorerDashboard() {
       chainTurnoverQuery(win),
       chainStakeTransfersQuery(win),
       chainEventsStatsQuery(),
+      economicsTrendsQuery(win),
     ],
   });
   const activity = activityRes.data;
@@ -655,6 +724,7 @@ function ExplorerDashboard() {
   const turnover = turnoverRes.data;
   const stakeTransfers = stakeTransfersRes.data;
   const eventMix = eventMixRes.data;
+  const trends = trendsRes.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -874,6 +944,10 @@ function ExplorerDashboard() {
           )}
         </section>
       </div>
+
+      {/* network-wide economics trend (#3365) — subnet_snapshots rollup, a
+          different data source from the chain-indexer sections above/below */}
+      <EconomicsTrendsSection trends={trends} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* call mix */}
