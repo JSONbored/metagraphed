@@ -10,6 +10,7 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
+import prettier from "prettier";
 import { findOverflowViolations } from "./find-overflow-violations.js";
 import { ROUTES, VIEWPORTS } from "./overflow-check.config.js";
 
@@ -34,5 +35,13 @@ for (const route of ROUTES) {
 await browser.close();
 
 const outPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "overflow-baseline.json");
-writeFileSync(outPath, JSON.stringify(baseline, null, 2) + "\n");
+// Prettier-formatted, not plain JSON.stringify: apps/ui's format:check gates
+// this file too, and Prettier collapses short arrays onto one line where
+// JSON.stringify always expands them -- writing raw JSON.stringify output
+// here previously failed CI's format:check every time the baseline changed.
+const formatted = await prettier.format(JSON.stringify(baseline, null, 2), {
+  ...(await prettier.resolveConfig(outPath)),
+  filepath: outPath,
+});
+writeFileSync(outPath, formatted);
 console.log(`\nWrote ${outPath}`);
