@@ -90,6 +90,10 @@ import type {
   ChainYield,
   ChainYieldDistribution,
   ChainSigners,
+  ChainServing,
+  ChainServingRow,
+  ChainPrometheus,
+  ChainPrometheusRow,
   ChainSignerEntry,
   Extrinsic,
   ExtrinsicCallArg,
@@ -3327,6 +3331,96 @@ export function normalizeChainTransferPairs(raw: unknown): ChainTransferPairs {
     pairs: normalizeChainRows(rec.pairs, MAX_CHAIN_TRANSFER_PAIRS, normalizeChainTransferPair),
   };
 }
+
+const MAX_CHAIN_SERVING = 30;
+
+function normalizeChainServingRow(raw: unknown): ChainServingRow | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  const announcements = coerceFiniteNumber(raw.announcements);
+  if (netuid == null || netuid < 0 || announcements == null) return null;
+  return {
+    netuid,
+    distinct_servers: coerceFiniteNumber(raw.distinct_servers) ?? 0,
+    announcements,
+    announcements_per_server: coerceFiniteNumber(raw.announcements_per_server) ?? null,
+  };
+}
+
+/** Network-wide per-subnet axon-serving leaderboard, ranked by announcement volume (#3463). */
+export const chainServingQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-serving", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/serving", {
+        params: { window, limit: MAX_CHAIN_SERVING },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const net = isRecord(d.network) ? d.network : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          network: {
+            distinct_servers: firstFiniteNumber(net.distinct_servers) ?? 0,
+            announcements: firstFiniteNumber(net.announcements) ?? 0,
+            announcements_per_server: coerceFiniteNumber(net.announcements_per_server) ?? null,
+          },
+          subnets: normalizeChainRows(d.subnets, MAX_CHAIN_SERVING, normalizeChainServingRow),
+        } as ChainServing,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainServing>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeChainPrometheusRow(raw: unknown): ChainPrometheusRow | null {
+  if (!isRecord(raw)) return null;
+  const netuid = coerceFiniteNumber(raw.netuid);
+  const announcements = coerceFiniteNumber(raw.announcements);
+  if (netuid == null || netuid < 0 || announcements == null) return null;
+  return {
+    netuid,
+    distinct_exporters: coerceFiniteNumber(raw.distinct_exporters) ?? 0,
+    announcements,
+    announcements_per_exporter: coerceFiniteNumber(raw.announcements_per_exporter) ?? null,
+  };
+}
+
+/** Network-wide per-subnet Prometheus-telemetry leaderboard, ranked by announcement volume (#3463). */
+export const chainPrometheusQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-prometheus", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/prometheus", {
+        params: { window, limit: MAX_CHAIN_SERVING },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const net = isRecord(d.network) ? d.network : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          network: {
+            distinct_exporters: firstFiniteNumber(net.distinct_exporters) ?? 0,
+            announcements: firstFiniteNumber(net.announcements) ?? 0,
+            announcements_per_exporter: coerceFiniteNumber(net.announcements_per_exporter) ?? null,
+          },
+          subnets: normalizeChainRows(d.subnets, MAX_CHAIN_SERVING, normalizeChainPrometheusRow),
+        } as ChainPrometheus,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainPrometheus>;
+    },
+    staleTime: STALE_SHORT,
+  });
 
 export const chainTransferPairsQuery = (
   window = "30d",

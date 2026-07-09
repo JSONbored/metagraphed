@@ -23,6 +23,8 @@ import {
   chainEventsStatsQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainServingQuery,
+  chainPrometheusQuery,
   chainStakeFlowQuery,
   chainStakeMovesQuery,
   chainTurnoverQuery,
@@ -739,6 +741,86 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
   );
 }
 
+// #3463: one network operations leaderboard (axon-serving or prometheus-telemetry).
+// Both share the netuid-keyed shape — announcements, distinct endpoints, and the
+// per-endpoint intensity ratio — so this renders either via a normalized prop set,
+// mirroring the stake-transfer leaderboard table pattern used elsewhere on the page.
+function OpsLeaderboard({
+  title,
+  endpointNoun,
+  subnetCount,
+  network,
+  rows,
+  emptyLabel,
+}: {
+  title: string;
+  endpointNoun: string;
+  subnetCount: number;
+  network: { distinct: number; announcements: number; perEndpoint: number | null };
+  rows: Array<{
+    netuid: number;
+    distinct: number;
+    announcements: number;
+    perEndpoint: number | null;
+  }>;
+  emptyLabel: string;
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            {title}
+          </h2>
+          <p className="mt-1 font-mono text-[11px] text-ink-muted">
+            {formatNumber(network.announcements)} announcements across{" "}
+            {formatNumber(network.distinct)} {endpointNoun}s network-wide
+          </p>
+        </div>
+        <span className="font-mono text-[11px] text-ink-muted">{subnetCount} subnets</span>
+      </div>
+      {rows.length > 0 ? (
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th className={TH}>Subnet</th>
+              <th className={`${TH} text-right`}>Announcements</th>
+              <th className={`${TH} text-right`}>Distinct {endpointNoun}s</th>
+              <th className={`${TH} text-right`}>Per {endpointNoun}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((r) => (
+              <tr key={r.netuid} className="hover:bg-surface/40">
+                <td className="px-4 py-2 font-mono text-[11px]">
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: r.netuid }}
+                    className="text-ink-strong hover:text-accent hover:underline"
+                  >
+                    SN{r.netuid}
+                  </Link>
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {formatNumber(r.announcements)}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {formatNumber(r.distinct)}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {r.perEndpoint != null ? r.perEndpoint.toFixed(2) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">{emptyLabel}</p>
+      )}
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -766,6 +848,8 @@ function ExplorerDashboard() {
     { data: axonChurnRes },
     { data: eventMixRes },
     { data: trendsRes },
+    { data: servingRes },
+    { data: prometheusRes },
   ] = useSuspenseQueries({
     queries: [
       chainActivityQuery(win),
@@ -779,6 +863,8 @@ function ExplorerDashboard() {
       chainAxonRemovalsQuery(win),
       chainEventsStatsQuery(),
       economicsTrendsQuery(win),
+      chainServingQuery(win),
+      chainPrometheusQuery(win),
     ],
   });
   const activity = activityRes.data;
@@ -792,6 +878,8 @@ function ExplorerDashboard() {
   const axonChurn = axonChurnRes.data;
   const eventMix = eventMixRes.data;
   const trends = trendsRes.data;
+  const serving = servingRes.data;
+  const prometheus = prometheusRes.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -1162,6 +1250,50 @@ function ExplorerDashboard() {
       </section>
 
       <AxonChurnSection churn={axonChurn} />
+
+      {/* #3463: network operations — per-subnet axon-serving + prometheus-telemetry
+          leaderboards side by side, each with its network-wide rollup. */}
+      <div>
+        <h2 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Network operations
+        </h2>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <OpsLeaderboard
+            title="Axon serving"
+            endpointNoun="server"
+            subnetCount={serving.subnet_count}
+            network={{
+              distinct: serving.network.distinct_servers,
+              announcements: serving.network.announcements,
+              perEndpoint: serving.network.announcements_per_server,
+            }}
+            rows={serving.subnets.map((s) => ({
+              netuid: s.netuid,
+              distinct: s.distinct_servers,
+              announcements: s.announcements,
+              perEndpoint: s.announcements_per_server,
+            }))}
+            emptyLabel="No serving activity in this window yet."
+          />
+          <OpsLeaderboard
+            title="Prometheus telemetry"
+            endpointNoun="exporter"
+            subnetCount={prometheus.subnet_count}
+            network={{
+              distinct: prometheus.network.distinct_exporters,
+              announcements: prometheus.network.announcements,
+              perEndpoint: prometheus.network.announcements_per_exporter,
+            }}
+            rows={prometheus.subnets.map((s) => ({
+              netuid: s.netuid,
+              distinct: s.distinct_exporters,
+              announcements: s.announcements,
+              perEndpoint: s.announcements_per_exporter,
+            }))}
+            emptyLabel="No prometheus telemetry in this window yet."
+          />
+        </div>
+      </div>
 
       <PalletEventMixSection stats={eventMix} />
     </div>

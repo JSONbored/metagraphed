@@ -2369,6 +2369,45 @@ export interface ChainFees {
   top_fee_payers: ChainFeePayer[];
 }
 
+/** One subnet's row on the network-wide axon-serving leaderboard (#3463). */
+export interface ChainServingRow {
+  netuid: number;
+  distinct_servers: number;
+  announcements: number;
+  announcements_per_server: number | null;
+}
+export interface ChainServing {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  subnet_count: number;
+  network: {
+    distinct_servers: number;
+    announcements: number;
+    announcements_per_server: number | null;
+  };
+  subnets: ChainServingRow[];
+}
+/** One subnet's row on the network-wide Prometheus-telemetry leaderboard (#3463). */
+export interface ChainPrometheusRow {
+  netuid: number;
+  distinct_exporters: number;
+  announcements: number;
+  announcements_per_exporter: number | null;
+}
+export interface ChainPrometheus {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  subnet_count: number;
+  network: {
+    distinct_exporters: number;
+    announcements: number;
+    announcements_per_exporter: number | null;
+  };
+  subnets: ChainPrometheusRow[];
+}
+
 /** One directed sender→receiver pair on the chain transfer-pairs leaderboard (#3476). */
 export interface ChainTransferPair {
   from: string;
