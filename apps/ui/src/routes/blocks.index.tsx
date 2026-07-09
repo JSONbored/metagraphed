@@ -5,6 +5,7 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChevronLeft, ChevronRight, Timer, Activity, Users } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
@@ -156,7 +157,11 @@ function BlocksTable() {
   // Only send filters the user actually set, so an empty bar is the plain feed.
   const queryParams = blocksQueryParams(search);
 
-  const rows = (useSuspenseQuery(blocksQuery(queryParams)).data.data ?? []) as Block[];
+  // Blocks turn over fast (~12s/block) — poll the first page only, so paging
+  // through older blocks (offset > 0) isn't yanked or reflowed mid-read.
+  const refetchInterval = useRefetchInterval(15_000, search.offset === 0);
+  const rows = (useSuspenseQuery({ ...blocksQuery(queryParams), refetchInterval }).data.data ??
+    []) as Block[];
 
   // Offset pagination: the API returns newest-first pages with no total. A full
   // page (rows === limit) implies more may exist; a short page is the tail.
