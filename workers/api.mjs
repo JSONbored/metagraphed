@@ -111,6 +111,7 @@ import {
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
   handleSubnetAlphaVolume,
+  handleSubnetRecycled,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -360,6 +361,7 @@ import {
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_ALPHA_VOLUME_PATH_PATTERN,
+  SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -1700,6 +1702,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         ),
       );
     }
+    const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (recycledMatch) {
+      // Live RPC + KV-cache route (like /accounts/{ss58}/balance and
+      // /sudo/key) — not D1-backed, so no withEdgeCache here.
+      return handleSubnetRecycled(request, env, Number(recycledMatch[1]));
+    }
     const weightSettersMatch = SUBNET_WEIGHT_SETTERS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2536,6 +2546,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
+    SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
     SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||

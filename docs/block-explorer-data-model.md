@@ -222,3 +222,37 @@ One caveat for 4.2: per-inner-call **success** is not part of `call_args` — it
 `extrinsic_index` (`account_events`/`chain_events`, same join `_extrinsic_success_map` already
 does for the outer extrinsic). No schema change is needed either way — `migrations/0015_
 extrinsic_call_args.sql`'s `call_args TEXT` column already holds this shape as-is.
+
+## Governance/Sudo pallet audit continued: registration-burn pallet audit (#4339/8.4, 2026-07-09)
+
+Question (#4343's own framing): is the per-registration TAO-recycled amount "derivable from
+burn-on-registration extrinsics already in the log layer, not new RPC capture"? **No — that
+premise doesn't hold.** Verified empirically against live finney (bittensor 10.4.0) at a real
+`burned_register` extrinsic (block 8,582,122, extrinsic 14, netuid 101):
+
+- The extrinsic's own `call_args` carries only `netuid` + `hotkey` — no amount.
+- Its `fee_tao` (0.00213142) is the ordinary per-byte transaction fee, unrelated to the burn.
+- `substrate.get_events(block_hash)` at that exact `extrinsic_idx` shows the burn actually posts
+  as a plain `Balances::Withdraw` event (`amount: 2131420` rao — coincidentally close to the fee
+  in this sample, not the same field) alongside `SubtensorModule::NeuronRegistered` and
+  `SubtensorModule::RAORecycledForRegistrationSet`. **No `Balances`-pallet event of any kind is
+  ingested by this codebase's `account_events` pipeline** (`INGESTED_EVENT_KINDS`,
+  `src/account-events.mjs`, is SubtensorModule-only plus a hardcoded `Transfer` — confirmed by
+  reading the full list) — so even the correct on-chain signal isn't currently captured.
+- `subnet_hyperparams_history` (#4309) captures only `min_burn_tao`/`max_burn_tao` — the
+  _bounds_ on the dynamic burn — never the live current cost at any given block.
+
+So there is no existing capture this repo has today that reconstructs a per-registration burn
+amount, contradicting the issue's stated approach. **What _is_ available, and simpler than any
+log-layer join:** `SubtensorModule::RAORecycledForRegistration` is a plain on-chain
+`StorageMap<NetUid, u64>` — the chain's own running total of rao recycled for registration on
+that subnet, confirmed to equal exactly the `amount` in the same block's
+`RAORecycledForRegistrationSet` event (154,463,660,642 rao = 154.463660642 TAO for netuid 101 at
+that block). A single `state_getStorage` query returns it directly — the same live-RPC +
+KV-cache shape this repo already uses for `/accounts/{ss58}/balance` and `/sudo/key`
+(`src/account-balance.mjs`, `src/sudo-key.mjs`), not a new capture pipeline. Storage key =
+`twox128("SubtensorModule") ++ twox128("RAORecycledForRegistration") ++ <netuid as u16,
+little-endian, Identity hasher — no hash on the map key>`, confirmed via
+`substrate.create_storage_key(...)` across netuid 0/1/4/101/65535. Shipped as
+`GET /api/v1/subnets/{netuid}/recycled` (`src/subnet-recycled.mjs`) on this basis instead of the
+issue's literal log-layer approach.

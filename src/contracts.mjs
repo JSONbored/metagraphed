@@ -1236,6 +1236,12 @@ export const PUBLIC_ARTIFACTS = [
     "SudoKeyArtifact",
   ),
   artifact(
+    "subnet-recycled",
+    "/metagraph/subnets/{netuid}/recycled.json",
+    "Live cumulative TAO recycled for registration on one subnet (#4339/8.4), queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache — not an account_events/log-layer aggregation (empirically confirmed the burn amount isn't captured by any ingested event or extrinsic field). recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.",
+    "SubnetRecycledArtifact",
+  ),
+  artifact(
     "blocks-feed",
     "/metagraph/blocks.json",
     "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
@@ -2840,6 +2846,17 @@ export const API_ROUTES = [
     ["accounts"],
     [],
     [],
+  ),
+  route(
+    "subnet-recycled",
+    "GET",
+    "/api/v1/subnets/{netuid}/recycled",
+    "/metagraph/subnets/{netuid}/recycled.json",
+    "Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.",
+    "short",
+    ["subnets"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
     "blocks-feed",

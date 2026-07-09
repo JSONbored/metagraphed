@@ -71,6 +71,11 @@ export const SUBNET_STAKE_FLOW_PATH_PATTERN =
 // account_events tier, no static file.
 export const SUBNET_ALPHA_VOLUME_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/volume$/;
+// Live cumulative TAO recycled for registration on one subnet (#4339/8.4),
+// queried from the chain's own RAORecycledForRegistration storage map at
+// request time — not a D1/account_events tier, no static file.
+export const SUBNET_RECYCLED_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/recycled$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;
