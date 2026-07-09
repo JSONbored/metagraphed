@@ -31,6 +31,8 @@ import { PageHero } from "@/components/metagraphed/page-hero";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { SelectFilter } from "@/components/metagraphed/table-controls";
+import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
+import { buildUrl, type QueryParams } from "@/lib/metagraphed/client";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
@@ -311,6 +313,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
 
       <AccountExtrinsicsSection
+        ss58={ss58}
         rows={signedExtrinsics}
         isPending={extrinsicsResult.isPending}
         isError={extrinsicsResult.isError}
@@ -425,13 +428,27 @@ function AccountFeedSectionSkeleton({
   );
 }
 
+// #3407: absolute CSV-export URL for an account sub-resource feed. The server
+// emits text/csv (with a Content-Disposition filename) for the same list routes
+// the tables read, so DownloadCsvButton just appends format=csv to this URL and
+// the export mirrors exactly the rows/filters currently in view.
+function accountCsvUrl(
+  ss58: string,
+  sub: "events" | "extrinsics" | "transfers",
+  params?: QueryParams,
+): string {
+  return buildUrl(`/api/v1/accounts/${ss58PathSegment(ss58)}/${sub}`, params);
+}
+
 function AccountExtrinsicsSection({
+  ss58,
   rows,
   isPending,
   isError,
   error,
   onRetry,
 }: {
+  ss58: string;
   rows: Extrinsic[];
   isPending?: boolean;
   isError?: boolean;
@@ -477,7 +494,12 @@ function AccountExtrinsicsSection({
       title="Signed extrinsics"
       subtitle="The newest transactions this account signed, from the chain-direct extrinsics tier."
       tone="accent"
-      right={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
+      right={
+        <div className="flex items-center gap-2">
+          <DownloadCsvButton url={accountCsvUrl(ss58, "extrinsics", { limit: 25 })} />
+          <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
+        </div>
+      }
     >
       <DataPanel>
         <table className="w-full text-left text-sm">
@@ -599,7 +621,12 @@ function AccountTransfersSection({
       title="Transfers"
       subtitle="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
       tone="accent"
-      right={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
+      right={
+        <div className="flex items-center gap-2">
+          <DownloadCsvButton url={accountCsvUrl(ss58, "transfers", { limit: 25 })} />
+          <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
+        </div>
+      }
     >
       <DataPanel>
         <table className="w-full text-left text-sm">
@@ -1739,14 +1766,17 @@ function AccountEventsSection({
       subtitle="Full first-party event feed for this account, newest first — filter by kind, page through history."
       tone="accent"
       right={
-        kindOptions.length > 0 ? (
-          <SelectFilter
-            label="Kind"
-            value={search.ev_kind ?? ""}
-            onChange={(v) => setSearch({ ev_kind: v || undefined, ev_offset: undefined })}
-            options={kindOptions.map((k) => ({ value: k.kind, label: k.kind }))}
-          />
-        ) : undefined
+        <div className="flex items-center gap-2">
+          <DownloadCsvButton url={accountCsvUrl(ss58, "events", params)} />
+          {kindOptions.length > 0 ? (
+            <SelectFilter
+              label="Kind"
+              value={search.ev_kind ?? ""}
+              onChange={(v) => setSearch({ ev_kind: v || undefined, ev_offset: undefined })}
+              options={kindOptions.map((k) => ({ value: k.kind, label: k.kind }))}
+            />
+          ) : null}
+        </div>
       }
     >
       {events.length > 0 ? (
