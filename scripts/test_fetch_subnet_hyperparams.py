@@ -46,7 +46,7 @@ class _Hp:
 
 
 class FetchCompletenessTest(unittest.TestCase):
-    def run_main(self, responses):
+    def run_main(self, responses, infos=None):
         with tempfile.TemporaryDirectory() as tmp:
             out = os.path.join(tmp, "hyperparams.json")
 
@@ -54,12 +54,13 @@ class FetchCompletenessTest(unittest.TestCase):
                 def __init__(self, network):
                     self.network = network
                     self.substrate = types.SimpleNamespace(block_number=123)
+                    discovered_infos = (
+                        [_Info(1), _Info(2), _Info(99, mechid=1)]
+                        if infos is None
+                        else infos
+                    )
                     self.metagraphs = types.SimpleNamespace(
-                        get_all_metagraphs_info=lambda all_mechanisms: [
-                            _Info(1),
-                            _Info(2),
-                            _Info(99, mechid=1),
-                        ]
+                        get_all_metagraphs_info=lambda all_mechanisms: discovered_infos
                     )
 
                     def get_subnet_hyperparameters(netuid):
@@ -91,6 +92,11 @@ class FetchCompletenessTest(unittest.TestCase):
         code, rows = self.run_main({1: _Hp(), 2: None})
         self.assertEqual(code, 1)
         self.assertEqual([row["netuid"] for row in rows], [1])
+
+    def test_empty_active_netuid_discovery_fails_instead_of_signing_empty_snapshot(self):
+        code, rows = self.run_main({}, infos=[])
+        self.assertEqual(code, 1)
+        self.assertEqual(rows, [])
 
 
 class U16RatioTest(unittest.TestCase):

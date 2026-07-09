@@ -432,7 +432,7 @@ bundle-size-budget check, in that order — run the same locally before pushing:
 
 ```sh
 npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
-npm run typecheck --workspace=apps/ui
+npm run typecheck --workspace=apps/ui  # auto-builds packages/client first (pretypecheck) -- no separate step needed
 npm test --workspace=apps/ui
 npm run test:e2e --workspace=apps/ui   # needs a Chromium browser: npx playwright install --with-deps chromium (once)
 npm run build --workspace=apps/ui

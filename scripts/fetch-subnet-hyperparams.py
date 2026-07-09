@@ -124,6 +124,11 @@ def main():
     captured_at = int(time.time() * 1000)
     rows = []
     errors = []
+    if not netuids:
+        # The downstream loader rejects empty snapshots; treat empty active-subnet
+        # discovery as a fetch failure so the refresh workflow alerts instead of
+        # signing and staging an unusable artifact.
+        errors.append("no active netuids discovered")
     for netuid in netuids:
         try:
             hp = s.subnets.get_subnet_hyperparameters(netuid=netuid)

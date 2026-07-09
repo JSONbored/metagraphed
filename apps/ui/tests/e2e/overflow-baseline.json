@@ -42,5 +42,13 @@
   ],
   "/settings@768": ["DIV:flex items-center gap-1"],
   "/settings@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
-  "/settings@1280": ["DIV:flex items-center gap-1"]
+  "/settings@1280": ["DIV:flex items-center gap-1"],
+  "/explorer@375": [
+    "DIV:flex items-center gap-1",
+    "DIV:flex items-center gap-1.5",
+    "DIV:flex-1 flex justify-end"
+  ],
+  "/explorer@768": ["DIV:flex items-center gap-1"],
+  "/explorer@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
+  "/explorer@1280": ["DIV:flex items-center gap-1"]
 }

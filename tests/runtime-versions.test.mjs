@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, describe, test } from "vitest";
 
 import {
   buildRuntimeVersionHistory,
@@ -169,6 +169,12 @@ function runtimeEnv(
   captured.calls = calls;
   return {
     ...createLocalArtifactEnv(),
+    METAGRAPH_CONTROL: {
+      async get(key, options) {
+        if (key !== "health:meta" || options?.type !== "json") return null;
+        return { last_run_at: "2026-07-09T00:00:00.000Z" };
+      },
+    },
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
         return {
@@ -182,6 +188,30 @@ function runtimeEnv(
     },
   };
 }
+
+function installRuntimeCache() {
+  const store = new Map();
+  const puts = [];
+  const matches = [];
+  globalThis.caches = {
+    default: {
+      async match(request) {
+        matches.push(request.url);
+        return store.get(request.url)?.clone();
+      },
+      async put(request, response) {
+        puts.push(request.url);
+        store.set(request.url, response.clone());
+      },
+    },
+  };
+  return { matches, puts, store };
+}
+
+let originalCaches;
+afterEach(() => {
+  globalThis.caches = originalCaches;
+});
 
 describe("GET /api/v1/runtime via the Worker", () => {
   test("returns the transition timeline for a warm D1", async () => {
@@ -248,6 +278,52 @@ describe("GET /api/v1/runtime via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 400);
+  });
+
+  test("HEAD shares and warms the GET edge cache before stripping the body", async () => {
+    originalCaches = globalThis.caches;
+    const cache = installRuntimeCache();
+    const captured = {};
+    const env = runtimeEnv(
+      [transitionRow()],
+      [{ spec_version: 218 }],
+      captured,
+    );
+
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/runtime", {
+        method: "HEAD",
+      }),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    assert.equal(await first.text(), "");
+    assert.equal(captured.calls.length, 2);
+    assert.equal(cache.matches.length, 1);
+    assert.equal(cache.puts.length, 1);
+
+    const second = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/runtime", {
+        method: "HEAD",
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(second.status, 200);
+    assert.equal(await second.text(), "");
+    assert.equal(captured.calls.length, 2);
+    assert.equal(cache.matches.length, 2);
+
+    const get = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/runtime"),
+      env,
+      ctx,
+    );
+    const body = await get.json();
+    assert.equal(body.data.current_spec_version, 218);
+    assert.equal(captured.calls.length, 2);
   });
 
   test("testnet has no variant (mainnet-only blocks D1 tier)", async () => {

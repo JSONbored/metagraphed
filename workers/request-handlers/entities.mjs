@@ -52,6 +52,13 @@ import {
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/metagraph-neurons.mjs";
+import {
+  loadAccountsList,
+  ACCOUNTS_LIST_SORTS,
+  DEFAULT_ACCOUNTS_LIST_SORT,
+  ACCOUNTS_LIST_LIMIT_DEFAULT,
+  ACCOUNTS_LIST_LIMIT_MAX,
+} from "../../src/accounts-list.mjs";
 import { loadSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
 import { loadSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.mjs";
 import {
@@ -194,6 +201,9 @@ import {
   STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.mjs";
 import { loadSubnetAlphaVolume } from "../../src/alpha-volume.mjs";
+import { resolveLiveEconomics } from "../../src/health-serving.mjs";
+import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.mjs";
+import { readArtifact, readHealthKv } from "../storage.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
   loadValidatorNominators,
@@ -302,6 +312,21 @@ const GLOBAL_VALIDATOR_CSV_COLUMNS = [
   "stake_dominance",
   "avg_validator_trust",
   "max_validator_trust",
+  "latest_captured_at",
+  "latest_block_number",
+  "subnets",
+];
+const ACCOUNTS_LIST_CSV_COLUMNS = [
+  "hotkey",
+  "coldkey",
+  "coldkey_count",
+  "subnet_count",
+  "uid_count",
+  "validator_count",
+  "miner_count",
+  "total_stake_tao",
+  "total_emission_tao",
+  "stake_dominance",
   "latest_captured_at",
   "latest_block_number",
   "subnets",
@@ -714,6 +739,86 @@ export async function handleGlobalValidators(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/validators.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts?sort=total_stake|total_emission|subnet_count|uid_count|
+// validator_count|stake_dominance|last_active&limit=20 (#4324/5.3): site-wide
+// accounts leaderboard — every currently-registered hotkey, miners included,
+// from the current neurons snapshot. The collection-level counterpart to
+// /api/v1/validators (which this route follows as its precedent), generalized
+// to every account rather than just validator_permit=1 rows. See
+// src/accounts-list.mjs's header for the "Free"/"Total" balance columns this
+// deliberately does NOT carry (no balance-tracking tier exists to derive them
+// from). Cold/absent D1 returns a schema-stable empty list.
+function parseAccountsListQuery(url) {
+  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
+  if (validationError) return { error: validationError };
+
+  const sort = url.searchParams.get("sort") || DEFAULT_ACCOUNTS_LIST_SORT;
+  if (!ACCOUNTS_LIST_SORTS.includes(sort)) {
+    return {
+      error: {
+        parameter: "sort",
+        message: `"${sort}" is not a supported sort. Supported: ${ACCOUNTS_LIST_SORTS.join(
+          ", ",
+        )}.`,
+      },
+    };
+  }
+
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: ACCOUNTS_LIST_LIMIT_DEFAULT,
+    min: 1,
+    max: ACCOUNTS_LIST_LIMIT_MAX,
+  });
+  if (limit.error) return { error: limit.error };
+
+  return { sort, limit: limit.value };
+}
+
+export function canonicalAccountsListCachePath(url, request = null) {
+  const parsed = parseAccountsListQuery(url);
+  if (parsed.error) {
+    return { response: analyticsQueryError(parsed.error) };
+  }
+  const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
+  return {
+    cachePathAndSearch: csvCacheVariant(
+      url,
+      request,
+      `${url.pathname}?${search}`,
+    ),
+  };
+}
+
+export async function handleAccountsList(request, env, url) {
+  const parsed = parseAccountsListQuery(url);
+  if (parsed.error) return analyticsQueryError(parsed.error);
+  const data = await loadAccountsList(d1Runner(env), {
+    sort: parsed.sort,
+    limit: parsed.limit,
+  });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.accounts,
+      "accounts-list",
+      "short",
+      request,
+      ACCOUNTS_LIST_CSV_COLUMNS,
+    );
+  }
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/accounts.json",
         data.captured_at,
       ),
     },
@@ -2091,6 +2196,36 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
   );
 }
 
+// One subnet's alpha_market_cap_tao (#4342/8.3), preferring the live economics
+// KV tier and falling back to the committed R2 economics.json when the live
+// tier is cold/stale — same fallback shape resolveEconomicsRows uses in
+// request-handlers/analytics-routes.mjs. Unmemoized (unlike api.mjs's
+// readEconomicsCurrentKv): this route's traffic doesn't warrant the isolate
+// cache analytics-routes.mjs's higher-traffic /economics + /subnets/{netuid}
+// pair share, and entities.mjs deliberately imports leaf modules directly
+// rather than taking injected deps from api.mjs (see this file's header).
+// Null when neither tier has a row for this subnet.
+async function resolveSubnetMarketCapTao(env, netuid) {
+  const live = await resolveLiveEconomics({
+    readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
+    env,
+    contractVersion: contractVersion(env),
+  });
+  let rows = Array.isArray(live?.data?.subnets) ? live.data.subnets : null;
+  if (!rows) {
+    const artifact = await readArtifact(env, "/metagraph/economics.json");
+    rows =
+      artifact.ok && Array.isArray(artifact.data?.subnets)
+        ? artifact.data.subnets
+        : [];
+  }
+  const row = rows.find((entry) => entry?.netuid === netuid);
+  const marketCap = row?.alpha_market_cap_tao;
+  return typeof marketCap === "number" && Number.isFinite(marketCap)
+    ? marketCap
+    : null;
+}
+
 // GET /api/v1/subnets/{netuid}/volume (#4339/8.1): rolling 24h buy (StakeAdded)
 // vs sell (StakeRemoved) alpha volume for one subnet, summed live from the same
 // account_events stream as stake-flow — unsigned (buy + sell), never netted, and
@@ -2100,9 +2235,13 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
 export async function handleSubnetAlphaVolume(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
+  const marketCapTao = await resolveSubnetMarketCapTao(env, netuid);
   const { data, generatedAt } = await loadSubnetAlphaVolume(
     d1Runner(env),
     netuid,
+    {
+      marketCapTao,
+    },
   );
   return envelopeResponse(
     request,

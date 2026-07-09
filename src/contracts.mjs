@@ -1038,6 +1038,12 @@ export const PUBLIC_ARTIFACTS = [
     "GlobalValidatorsArtifact",
   ),
   artifact(
+    "accounts-list",
+    "/metagraph/accounts.json",
+    "Site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, computed live from the neurons D1 tier at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators.",
+    "AccountsListArtifact",
+  ),
+  artifact(
     "validator-detail",
     "/metagraph/validators/{hotkey}.json",
     "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, computed live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
@@ -1172,7 +1178,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "account-stake-moves",
     "/metagraph/accounts/{ss58}/stake-moves.json",
-    "One account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first/last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-moves (no static file). The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /api/v1/accounts/{ss58}/stake-flow.",
+    "One account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first/last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-moves (no static file). The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /api/v1/accounts/{ss58}/stake-flow.",
     "AccountStakeMovesArtifact",
   ),
   artifact(
@@ -2334,6 +2340,37 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "accounts-list",
+    "GET",
+    "/api/v1/accounts",
+    "/metagraph/accounts.json",
+    "Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons.",
+    "short",
+    ["accounts", "analytics"],
+    csvRouteQuery([
+      {
+        name: "sort",
+        schema: {
+          type: "string",
+          enum: [
+            "total_stake",
+            "total_emission",
+            "subnet_count",
+            "uid_count",
+            "validator_count",
+            "stake_dominance",
+            "last_active",
+          ],
+        },
+      },
+      {
+        name: "limit",
+        schema: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    ]),
+    [],
+  ),
+  route(
     "validator-detail",
     "GET",
     "/api/v1/validators/{hotkey}",
@@ -2702,7 +2739,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/stake-moves",
     "/metagraph/accounts/{ss58}/stake-moves.json",
-    "Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow.",
+    "Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow.",
     "short",
     ["accounts", "analytics"],
     [
@@ -4207,6 +4244,12 @@ function csvExampleForRoute(entry) {
     return [
       "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
       'hk_sample,ck_sample,1,3,3,1234.5,10.25,0.12,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+    ].join("\r\n");
+  }
+  if (entry.id === "accounts-list") {
+    return [
+      "hotkey,coldkey,coldkey_count,subnet_count,uid_count,validator_count,miner_count,total_stake_tao,total_emission_tao,stake_dominance,latest_captured_at,latest_block_number,subnets",
+      'hk_sample,ck_sample,1,3,3,1,2,1234.5,10.25,0.12,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
     ].join("\r\n");
   }
   if (entry.id === "subnet-metagraph" || entry.id === "subnet-validators") {

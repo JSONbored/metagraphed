@@ -305,6 +305,9 @@ function normalizeAccountStakeMovesSample(out) {
       movements: 4,
       first_moved_at: ISO,
       last_moved_at: ISO,
+      // Price-at-tx enrichment (#4332/6.3): alpha price on the day of
+      // last_moved_at, from the daily subnet_snapshots rollup.
+      price_tao_at_last_move: 4.5,
     },
   ];
   out.total_movements = 4;

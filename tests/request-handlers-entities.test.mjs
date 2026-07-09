@@ -295,6 +295,7 @@ function dbWith({
   turnoverRows,
   stakeFlow,
   stakeMoves,
+  stakeMovesPrices,
   agg,
   kinds,
   registrations,
@@ -389,6 +390,11 @@ function dbWith({
                     /GROUP BY netuid/.test(sql)
                   ) {
                     return { results: stakeMoves || [] };
+                  }
+                  // Price-at-tx enrichment follow-up: subnet_snapshots.alpha_price_tao
+                  // lookup for the stake-moves rows' (netuid, last-moved-date) pairs.
+                  if (/FROM subnet_snapshots/.test(sql)) {
+                    return { results: stakeMovesPrices || [] };
                   }
                   // Account summary aggregates (order matters).
                   if (
@@ -4242,6 +4248,12 @@ describe("handleAccountStakeMoves", () => {
           last_observed: 1717600000000,
         },
       ],
+      // Price-at-tx enrichment (#4332/6.3): only netuid 1's date has a
+      // snapshot; netuid 7 stays null (no matching row), proving the
+      // per-subnet lookup is genuinely keyed, not a blanket fill.
+      stakeMovesPrices: [
+        { netuid: 1, snapshot_date: "2024-06-09", alpha_price_tao: 3.25 },
+      ],
     });
     const body = await json(
       await handleAccountStakeMoves(
@@ -4264,6 +4276,11 @@ describe("handleAccountStakeMoves", () => {
     assert.equal(
       body.data.subnets[0].last_moved_at,
       new Date(1717900000000).toISOString(),
+    );
+    assert.equal(body.data.subnets[0].price_tao_at_last_move, 3.25);
+    assert.equal(
+      body.data.subnets.find((s) => s.netuid === 7).price_tao_at_last_move,
+      null,
     );
     await assertValidComponent("AccountStakeMovesArtifact", body.data);
     const idx = captures.sql.findIndex((s) =>

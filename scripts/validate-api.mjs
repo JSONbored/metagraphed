@@ -265,6 +265,10 @@ const checks = [
       assert.ok(
         ["bullish", "bearish", "neutral"].includes(body.data.sentiment),
       );
+      assert.ok(
+        body.data.vol_mcap_ratio === null ||
+          typeof body.data.vol_mcap_ratio === "number",
+      );
     },
   ],
   [
@@ -489,6 +493,15 @@ const checks = [
       assert.equal(body.data.limit, 3);
       assert.equal(Array.isArray(body.data.validators), true);
       assert.equal(typeof body.data.validator_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts?sort=uid_count&limit=3",
+    (body) => {
+      assert.equal(body.data.sort, "uid_count");
+      assert.equal(body.data.limit, 3);
+      assert.equal(Array.isArray(body.data.accounts), true);
+      assert.equal(typeof body.data.account_count, "number");
     },
   ],
   [

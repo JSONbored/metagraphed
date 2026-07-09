@@ -1362,7 +1362,7 @@
       },
       "SubnetAlphaVolumeArtifact": {
         "type": "object",
-        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data.",
+        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label — plus a vol/mcap turnover ratio (#4339/8.3): total_volume_tao over the live economics tier's alpha_market_cap_tao, null when that external input is unavailable. Fixed 24h window, not OHLC/price data.",
         "required": [
           "schema_version",
           "netuid",
@@ -1377,7 +1377,8 @@
           "sell_count",
           "net_volume_alpha",
           "sentiment_ratio",
-          "sentiment"
+          "sentiment",
+          "vol_mcap_ratio"
         ],
         "properties": {
           "schema_version": { "type": "integer" },
@@ -1396,6 +1397,10 @@
           "sentiment": {
             "type": "string",
             "enum": ["bullish", "bearish", "neutral"]
+          },
+          "vol_mcap_ratio": {
+            "type": ["number", "null"],
+            "description": "total_volume_tao / alpha_market_cap_tao. Null when the live economics tier has no market-cap figure for this subnet (cold KV and no committed fallback row) — never implies zero turnover."
           }
         },
         "additionalProperties": false

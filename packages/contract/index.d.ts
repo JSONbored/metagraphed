@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons. */
+        get: operations["accountsList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}": {
         parameters: {
             query?: never;
@@ -249,7 +266,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow. */
+        /** Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow. */
         get: operations["accountStakeMoves"];
         put?: never;
         post?: never;
@@ -2876,6 +2893,44 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | "90d" | null;
         };
+        /** @description Site-wide accounts leaderboard (#4324/5.3): every currently-registered hotkey (miners included) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, served live from the neurons D1 tier at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators, generalized to every account. */
+        AccountsListArtifact: {
+            account_count: number;
+            accounts: components["schemas"]["AccountsListEntry"][];
+            block_number?: number | null;
+            /** Format: date-time */
+            captured_at?: string | null;
+            limit: number;
+            schema_version: number;
+            /** @enum {string} */
+            sort: "total_stake" | "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "stake_dominance" | "last_active";
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One account row grouped by hotkey across every current neurons-tier registration — every currently-registered hotkey, not just validator_permit=1 ones (see GlobalValidatorEntry for the validator-only leaderboard). total_stake_tao is the closest analog to a taostats-style 'Delegated' column this D1-only route can derive; there is no 'Free'/spendable-balance or 'Total' column here (no balance-tracking tier exists to source them, see the artifact description). */
+        AccountsListEntry: {
+            coldkey: string | null;
+            coldkey_count: number;
+            hotkey: string;
+            latest_block_number: number | null;
+            /** Format: date-time */
+            latest_captured_at: string | null;
+            miner_count: number;
+            stake_dominance: number | null;
+            subnet_count: number;
+            subnets: components["schemas"]["AccountsListSubnet"][];
+            total_emission_tao: number;
+            total_stake_tao: number;
+            uid_count: number;
+            validator_count: number;
+        };
+        /** @description One current subnet membership for an account in the site-wide accounts leaderboard (#4324/5.3). Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The leaderboard returns at most the top ten memberships per account, ranked by membership stake, while subnet_count/uid_count describe the full footprint. */
+        AccountsListSubnet: {
+            emission_tao: number;
+            netuid: number;
+            stake_tao: number;
+            uid: number;
+        };
         /** @description One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet. */
         AccountStakeFlowArtifact: {
             address: string;
@@ -2907,7 +2962,7 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | "90d" | null;
         };
-        /** @description One account's stake-movement (re-delegation) footprint per subnet over a recent window, from the account_events StakeMoved stream: per-subnet movement count with the first/last movement timestamps, plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /accounts/{ss58}/stake-flow. */
+        /** @description One account's stake-movement (re-delegation) footprint per subnet over a recent window, from the account_events StakeMoved stream: per-subnet movement count with the first/last movement timestamps, the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup — a known daily-granularity precision limit, not a bug), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet. The account-level companion to /api/v1/chain/stake-moves and /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in /accounts/{ss58}/stake-flow. */
         AccountStakeMovesArtifact: {
             address: string;
             concentration: number | null;
@@ -2921,6 +2976,7 @@ export interface components {
                 last_moved_at: string | null;
                 movements: number;
                 netuid: number;
+                price_tao_at_last_move: number | null;
             }[];
             total_movements: number;
             /** @enum {string|null} */
@@ -6108,7 +6164,7 @@ export interface components {
         });
         /** @enum {unknown} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
-        /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data. */
+        /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label — plus a vol/mcap turnover ratio (#4339/8.3): total_volume_tao over the live economics tier's alpha_market_cap_tao, null when that external input is unavailable. Fixed 24h window, not OHLC/price data. */
         SubnetAlphaVolumeArtifact: {
             buy_count: number;
             buy_volume_alpha: number;
@@ -6124,6 +6180,8 @@ export interface components {
             sentiment_ratio: number | null;
             total_volume_alpha: number;
             total_volume_tao: number;
+            /** @description total_volume_tao / alpha_market_cap_tao. Null when the live economics tier has no market-cap figure for this subnet (cold KV and no committed fallback row) — never implies zero turnover. */
+            vol_mcap_ratio: number | null;
             /** @enum {string} */
             window: "24h";
         };
@@ -7687,6 +7745,144 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ApiIndexArtifact"];
                     };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountsList: {
+        parameters: {
+            query?: {
+                sort?: "total_stake" | "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "stake_dominance" | "last_active";
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "account_count": 1,
+                     *         "accounts": [
+                     *           {
+                     *             "coldkey": "example",
+                     *             "coldkey_count": 1,
+                     *             "hotkey": "example",
+                     *             "latest_block_number": 5000000,
+                     *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "miner_count": 1,
+                     *             "stake_dominance": 0.5,
+                     *             "subnet_count": 1,
+                     *             "subnets": [
+                     *               {
+                     *                 "emission_tao": 0.5,
+                     *                 "netuid": 7,
+                     *                 "stake_tao": 0.5,
+                     *                 "uid": 1
+                     *               }
+                     *             ],
+                     *             "total_emission_tao": 0.5,
+                     *             "total_stake_tao": 0.5,
+                     *             "uid_count": 1,
+                     *             "validator_count": 1
+                     *           }
+                     *         ],
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "schema_version": 1,
+                     *         "sort": "total_stake"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountsListArtifact"];
+                    };
+                    /**
+                     * @example hotkey,coldkey,coldkey_count,subnet_count,uid_count,validator_count,miner_count,total_stake_tao,total_emission_tao,stake_dominance,latest_captured_at,latest_block_number,subnets
+                     *     hk_sample,ck_sample,1,3,3,1,2,1234.5,10.25,0.12,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -9382,7 +9578,8 @@ export interface operations {
                      *             "first_moved_at": "2026-06-01T00:00:00.000Z",
                      *             "last_moved_at": "2026-06-01T00:00:00.000Z",
                      *             "movements": 4,
-                     *             "netuid": 1
+                     *             "netuid": 1,
+                     *             "price_tao_at_last_move": 4.5
                      *           }
                      *         ],
                      *         "total_movements": 4,
@@ -26672,6 +26869,7 @@ export interface operations {
                      *         "sentiment_ratio": 0.9966,
                      *         "total_volume_alpha": 0.5,
                      *         "total_volume_tao": 0.5,
+                     *         "vol_mcap_ratio": 0.9966,
                      *         "window": "24h"
                      *       },
                      *       "meta": {

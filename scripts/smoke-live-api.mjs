@@ -319,6 +319,61 @@ async function runLiveSmoke() {
     }
   }
 
+  // Rollup/detail self-consistency: a real, once-live bug had
+  // /api/v1/endpoints' summary.by_status silently drift from the actual
+  // endpoints[] rows in the SAME response -- schema-valid on both sides, the
+  // values just didn't reconcile with each other, which no shape validator
+  // catches. Recompute each rollup independently from the response's own
+  // detail array and assert they still agree. Checked unpaginated (no
+  // `?limit`) -- a rollup describing a total across pages while the detail
+  // array is one page is normal pagination, not drift, so this must never
+  // run against a limited request.
+  const endpointsGlobal = await fetchJson(`${baseUrl}/api/v1/endpoints`);
+  assert.equal(
+    endpointsGlobal.status,
+    200,
+    "/api/v1/endpoints: expected HTTP 200",
+  );
+  const globalEndpoints = endpointsGlobal.body?.data?.endpoints;
+  assert.ok(
+    Array.isArray(globalEndpoints),
+    "/api/v1/endpoints: expected data.endpoints array",
+  );
+  assertRollupsReconcile(
+    "/api/v1/endpoints",
+    endpointsGlobal.body?.data?.summary,
+    globalEndpoints,
+    { by_status: "status", by_kind: "kind", by_provider: "provider" },
+  );
+
+  // Second, distinct artifact with the same rollup+detail shape (not just a
+  // second field on the same response) -- generalizes the check rather than
+  // hardcoding one endpoint.
+  const sampleProvider = Object.keys(
+    endpointsGlobal.body?.data?.summary?.by_provider ?? {},
+  )[0];
+  if (sampleProvider) {
+    const providerEndpoints = await fetchJson(
+      `${baseUrl}/api/v1/providers/${sampleProvider}/endpoints`,
+    );
+    assert.equal(
+      providerEndpoints.status,
+      200,
+      `/api/v1/providers/${sampleProvider}/endpoints: expected HTTP 200`,
+    );
+    const scopedEndpoints = providerEndpoints.body?.data?.endpoints;
+    assert.ok(
+      Array.isArray(scopedEndpoints),
+      `/api/v1/providers/${sampleProvider}/endpoints: expected data.endpoints array`,
+    );
+    assertRollupsReconcile(
+      `/api/v1/providers/${sampleProvider}/endpoints`,
+      providerEndpoints.body?.data?.summary,
+      scopedEndpoints,
+      { by_status: "status", by_kind: "kind" },
+    );
+  }
+
   console.log(
     JSON.stringify(
       {
@@ -335,6 +390,46 @@ async function runLiveSmoke() {
       null,
       2,
     ),
+  );
+}
+
+// Recomputes each named rollup from `detail` (tallying `detail[row][field]`)
+// and asserts it exactly matches `summary[rollupKey]` -- same key set, same
+// counts. Deliberately limited to plain single-field count rollups
+// (by_status/by_kind/by_provider): a derived/composite rollup (e.g.
+// by_publication_state, which folds in auth/pool-eligibility rules) would
+// need its derivation logic reimplemented here to check safely, which is
+// its own bug surface -- skip those rather than guess.
+export function reconcileRollups(summary, detail, fieldsToKeys) {
+  const mismatches = [];
+  for (const [rollupKey, field] of Object.entries(fieldsToKeys)) {
+    const rollup = summary?.[rollupKey];
+    if (!rollup || typeof rollup !== "object") continue;
+    const actual = {};
+    for (const row of detail) {
+      const value = row?.[field];
+      if (value === undefined || value === null) continue;
+      actual[value] = (actual[value] || 0) + 1;
+    }
+    const keysMatch =
+      Object.keys(rollup).sort().join(",") ===
+      Object.keys(actual).sort().join(",");
+    const countsMatch = Object.keys(rollup).every(
+      (key) => rollup[key] === actual[key],
+    );
+    if (!keysMatch || !countsMatch) {
+      mismatches.push({ rollupKey, expected: rollup, actual });
+    }
+  }
+  return mismatches;
+}
+
+function assertRollupsReconcile(routeLabel, summary, detail, fieldsToKeys) {
+  const mismatches = reconcileRollups(summary, detail, fieldsToKeys);
+  assert.deepEqual(
+    mismatches,
+    [],
+    `${routeLabel}: summary rollup(s) don't reconcile against this response's own detail array: ${JSON.stringify(mismatches)}`,
   );
 }
 
