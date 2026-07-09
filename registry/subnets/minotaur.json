@@ -50,6 +50,25 @@
         "https://github.com/subnet112/minotaur_subnet/blob/develop/scripts/check_validator.sh"
       ],
       "url": "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/operator/network-reference.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-dashboard",
+      "kind": "dashboard",
+      "name": "Minotaur App dashboard",
+      "notes": "Public no-auth Minotaur App web dashboard for SN112 (intent signing + quorum settlement), served on the official minotaursubnet.com domain (same host as the registered api.minotaursubnet.com health surface) and linked from the official docs at docs.minotaursubnet.com. Document title 'Minotaur App — Sign intents. Settle through quorum.'; wallet actions require signing but the dashboard itself loads without auth (verified HTTP 200).",
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://docs.minotaursubnet.com/",
+        "https://github.com/subnet112/minotaur_subnet"
+      ],
+      "url": "https://app.minotaursubnet.com"
     }
   ],
   "source_repo": "https://github.com/subnet112/minotaur_subnet",

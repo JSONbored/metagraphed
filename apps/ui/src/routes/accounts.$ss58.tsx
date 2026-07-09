@@ -50,7 +50,7 @@ import {
   accountSubnetsQuery,
   accountTransfersQuery,
 } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
@@ -119,25 +119,23 @@ function AccountDetail({ ss58 }: { ss58: string }) {
         <PageHeading
           eyebrow="Explorer"
           title="Invalid account address"
-          description="Account addresses must be a valid ss58 (base58) string."
+          description="Account addresses are ss58 (base58) strings, 46–49 characters long."
         />
         <EmptyState
           title="Invalid account address"
-          description="Use a valid hotkey or coldkey ss58 address."
+          description="Bittensor addresses use the base58 alphabet (no 0, O, I, or l), are 46–49 characters long, and typically start with 5. Check for a truncated or wrong-chain address, then try again."
           action={{ label: "Back to accounts", href: "/accounts" }}
         />
+        <p className="mt-3 text-center text-[11px] text-ink-muted">
+          Example:{" "}
+          <span className="font-mono break-all text-ink-strong">
+            5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+          </span>
+        </p>
       </>
     );
   }
   return <ValidAccountDetail ss58={ss58} />;
-}
-
-// Compact TAO formatter — mirrors the economics panel's fmtTao convention.
-function fmtTao(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  if (v >= 1) return `${v.toFixed(2)} τ`;
-  return `${v.toFixed(4)} τ`;
 }
 
 function ValidAccountDetail({ ss58 }: { ss58: string }) {
@@ -157,7 +155,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const balanceValue = balanceResult.isPending ? (
     <span className="text-ink-muted">…</span>
   ) : balance?.balance_tao != null ? (
-    fmtTao(balance.balance_tao)
+    formatTao(balance.balance_tao)
   ) : (
     "—"
   );

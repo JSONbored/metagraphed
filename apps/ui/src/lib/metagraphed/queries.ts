@@ -80,6 +80,8 @@ import type {
   ChainTransferPairs,
   ChainStakeTransfers,
   ChainStakeTransferSubnet,
+  ChainAxonRemovals,
+  ChainAxonRemovalSubnet,
   ChainIntensityDistribution,
   ChainConcentration,
   ChainPerformance,
@@ -88,6 +90,8 @@ import type {
   Extrinsic,
   ExtrinsicCallArg,
   SudoKey,
+  RuntimeTransition,
+  RuntimeVersionHistory,
   Transfer,
   Candidate,
   Compare,
@@ -245,6 +249,7 @@ const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
 const MAX_CHAIN_TRANSFER_PAIRS = 100;
 const MAX_CHAIN_STAKE_TRANSFERS = 100;
+const MAX_CHAIN_AXON_REMOVALS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -2095,6 +2100,47 @@ export const sudoKeyQuery = () =>
     staleTime: STALE_LONG,
   });
 
+function normalizeRuntimeTransition(raw: unknown): RuntimeTransition | null {
+  if (!isRecord(raw)) return null;
+  const specVersion = firstFiniteNumber(raw.spec_version);
+  const blockNumber = firstFiniteNumber(raw.block_number);
+  if (specVersion == null || blockNumber == null) return null;
+  return {
+    spec_version: specVersion,
+    block_number: blockNumber,
+    observed_at: firstString(raw.observed_at) ?? null,
+  };
+}
+
+/** Spec-version upgrade timeline from the `blocks` D1 tier (#4316/3.1). Small,
+ * bounded dataset (runtime upgrades are rare) — no pagination params. */
+export const runtimeVersionHistoryQuery = () =>
+  queryOptions({
+    queryKey: k("runtime-version-history"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/runtime", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      const transitions = Array.isArray(d.transitions)
+        ? d.transitions.flatMap((row) => {
+            const t = normalizeRuntimeTransition(row);
+            return t ? [t] : [];
+          })
+        : [];
+      return {
+        data: {
+          transitions,
+          transition_count: firstFiniteNumber(d.transition_count) ?? transitions.length,
+          current_spec_version: firstFiniteNumber(d.current_spec_version) ?? null,
+          coverage_from_block: firstFiniteNumber(d.coverage_from_block) ?? null,
+          coverage_from_at: firstString(d.coverage_from_at) ?? null,
+        } as RuntimeVersionHistory,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<RuntimeVersionHistory>;
+    },
+    staleTime: STALE_LONG,
+  });
+
 // Account explorer — cross-subnet activity for one hotkey/coldkey ss58. The
 // /api/v1/accounts/{ss58} summary bundles the aggregate, registrations, and a
 // recent-events sample (schema-stable zero for a cold/unknown account, never an
@@ -3314,6 +3360,61 @@ export const chainStakeTransfersQuery = (window = "7d", limit = 20) =>
       });
       return {
         data: normalizeChainStakeTransfers(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeChainAxonRemovalSubnet(raw: unknown): ChainAxonRemovalSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_removers: firstFiniteNumber(raw.distinct_removers) ?? 0,
+    removals: firstFiniteNumber(raw.removals) ?? 0,
+    removals_per_remover: firstFiniteNumber(raw.removals_per_remover) ?? null,
+  };
+}
+
+// #3464: network-wide axon-teardown ("churn") leaderboard over a 7d/30d window —
+// the teardown-side complement of the serving leaderboard. Every numeric cell
+// coerces defensively: counts fall through to 0, averages to null (never NaN),
+// and malformed subnet rows are dropped on a cold store or junk.
+export function normalizeChainAxonRemovals(raw: unknown): ChainAxonRemovals {
+  const rec = isRecord(raw) ? raw : {};
+  const networkRec = isRecord(rec.network) ? rec.network : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: {
+      distinct_removers: firstFiniteNumber(networkRec.distinct_removers) ?? 0,
+      removals: firstFiniteNumber(networkRec.removals) ?? 0,
+      removals_per_remover: firstFiniteNumber(networkRec.removals_per_remover) ?? null,
+    },
+    intensity_distribution: normalizeChainIntensityDistribution(rec.intensity_distribution),
+    subnets: normalizeChainRows(
+      rec.subnets,
+      MAX_CHAIN_AXON_REMOVALS,
+      normalizeChainAxonRemovalSubnet,
+    ),
+  };
+}
+
+export const chainAxonRemovalsQuery = (window = "7d", limit = 20) =>
+  queryOptions({
+    queryKey: k("chain-axon-removals", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainAxonRemovals>>("/api/v1/chain/axon-removals", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainAxonRemovals(res.data),
         meta: res.meta,
         url: res.url,
       };

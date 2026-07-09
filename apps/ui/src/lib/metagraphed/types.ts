@@ -1323,6 +1323,24 @@ export interface SudoKey {
   queried_at?: string | null;
 }
 
+/** One spec-version transition from /api/v1/runtime (#4316/3.1). */
+export interface RuntimeTransition {
+  spec_version: number | null;
+  block_number: number | null;
+  observed_at: string | null;
+}
+
+/** Spec-version upgrade history from /api/v1/runtime. See that route's own docs
+ * for coverage_from_*'s "earliest reading this endpoint can see" caveat — it is
+ * not a guarantee the network never upgraded before that point. */
+export interface RuntimeVersionHistory {
+  transitions: RuntimeTransition[];
+  transition_count: number;
+  current_spec_version: number | null;
+  coverage_from_block: number | null;
+  coverage_from_at: string | null;
+}
+
 /** Per-subnet on-chain economics from /api/v1/economics. */
 export interface SubnetEconomics {
   netuid: number;
@@ -2401,6 +2419,39 @@ export interface ChainStakeTransfers {
   network: ChainStakeTransferNetwork;
   intensity_distribution: ChainIntensityDistribution | null;
   subnets: ChainStakeTransferSubnet[];
+}
+
+/** One subnet's row on the network-wide axon-teardown ("churn") leaderboard (#3464). */
+export interface ChainAxonRemovalSubnet {
+  netuid: number;
+  distinct_removers: number;
+  removals: number;
+  removals_per_remover: number | null;
+}
+
+/** Network-wide axon-teardown rollup — true distinct-remover count (not a per-subnet sum) + total removals. */
+export interface ChainAxonRemovalNetwork {
+  distinct_removers: number;
+  removals: number;
+  removals_per_remover: number | null;
+}
+
+/**
+ * Network-wide axon-teardown ("churn") leaderboard over a 7d/30d window (#3464),
+ * from GET /api/v1/chain/axon-removals — the teardown-side complement of the
+ * serving leaderboard: subnets ranked by AxonInfoRemoved event count, plus the
+ * true network-wide distinct-remover rollup and a distribution summary of the
+ * per-subnet teardown intensity. Zeroed with an empty subnets list when the
+ * store is cold.
+ */
+export interface ChainAxonRemovals {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainAxonRemovalNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainAxonRemovalSubnet[];
 }
 
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */

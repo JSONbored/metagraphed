@@ -73,6 +73,25 @@
         "https://github.com/oxylok/116-taolend/blob/main/README.md"
       ],
       "url": "https://github.com/oxylok/116-taolend"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-116-taolend-contract-constants",
+      "kind": "data-artifact",
+      "name": "TaoLend contract and precompile constants",
+      "notes": "Public no-auth TypeScript constants file from the official oxylok/116-taolend repository publishing SN116 TaoLend deployed LendingPoolV1 address (0xE41852a75e51812adA39C8D0aae18c7c59935C0d) and Bittensor EVM precompile addresses (metagraph, neuron, staking, alpha, subnet, balance transfer) used by the lending protocol CLI and validator.",
+      "provider": "taolend",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://github.com/oxylok/116-taolend/blob/main/const.ts",
+        "https://github.com/oxylok/116-taolend/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/oxylok/116-taolend/main/const.ts"
     }
   ],
   "website_url": "https://taolend.io/"
