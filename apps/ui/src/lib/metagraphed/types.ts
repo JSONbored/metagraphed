@@ -1716,6 +1716,74 @@ export interface GlobalValidators {
   validators: GlobalValidator[];
 }
 
+/** One per-subnet membership row from /api/v1/validators/{hotkey} (#4335, 7.1). */
+export interface ValidatorDetailSubnet {
+  netuid: number;
+  uid: number;
+  hotkey?: string | null;
+  coldkey?: string | null;
+  active?: boolean | null;
+  validator_permit: boolean;
+  rank?: number | null;
+  trust?: number | null;
+  validator_trust?: number | null;
+  consensus?: number | null;
+  incentive?: number | null;
+  dividends?: number | null;
+  emission_tao?: number | null;
+  stake_tao?: number | null;
+  registered_at_block?: number | null;
+  is_immunity_period?: boolean | null;
+  axon?: string | null;
+}
+
+/** Cross-subnet validator detail from GET /api/v1/validators/{hotkey} (#4335, 7.1).
+ * Schema-stable: a cold/unknown hotkey returns 200 with a zeroed aggregate, never 404. */
+export interface ValidatorDetail {
+  schema_version?: number;
+  hotkey: string;
+  coldkey: string | null;
+  coldkey_count: number;
+  subnet_count: number;
+  total_stake_tao: number;
+  total_emission_tao: number;
+  avg_validator_trust: number | null;
+  max_validator_trust: number | null;
+  captured_at?: string | null;
+  block_number?: number | null;
+  subnets: ValidatorDetailSubnet[];
+}
+
+/** One nominator row from /api/v1/validators/{hotkey}/nominators (#4336, 7.2). */
+export interface ValidatorNominatorEntry {
+  coldkey: string;
+  staked_tao: number;
+  unstaked_tao: number;
+  net_staked_tao: number;
+  gross_staked_tao: number;
+  event_count: number;
+  last_observed_at?: string | null;
+}
+
+/** One daily snapshot from /api/v1/validators/{hotkey}/history (#4337, 7.3). */
+export interface ValidatorHistoryPoint {
+  snapshot_date: string;
+  subnet_count?: number | null;
+  total_stake_tao?: number | null;
+  total_emission_tao?: number | null;
+  /** Null when stake is 0/absent for the day (division by zero avoided server-side). */
+  rewards_per_1000_tao?: number | null;
+}
+
+/** Daily stake/rewards history from GET /api/v1/validators/{hotkey}/history (#4337, 7.3). */
+export interface ValidatorHistory {
+  schema_version?: number;
+  hotkey: string;
+  window?: string | null;
+  point_count: number;
+  points: ValidatorHistoryPoint[];
+}
+
 /** A single neuron snapshot from /api/v1/subnets/{netuid}/neurons/{uid}. */
 export interface SubnetNeuronSnapshot {
   netuid: number;

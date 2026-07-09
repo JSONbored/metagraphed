@@ -26,6 +26,7 @@ import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
 import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
+import { Route as ValidatorsHotkeyRouteImport } from './routes/validators.$hotkey'
 import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
@@ -117,6 +118,11 @@ const AccountsIndexRoute = AccountsIndexRouteImport.update({
   path: '/accounts/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ValidatorsHotkeyRoute = ValidatorsHotkeyRouteImport.update({
+  id: '/validators/$hotkey',
+  path: '/validators/$hotkey',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
   id: '/subnets/$netuid',
   path: '/subnets/$netuid',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts/': typeof AccountsIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts': typeof AccountsIndexRoute
   '/blocks': typeof BlocksIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/validators/$hotkey': typeof ValidatorsHotkeyRoute
   '/accounts/': typeof AccountsIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/validators/$hotkey'
     | '/accounts/'
     | '/blocks/'
     | '/extrinsics/'
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/validators/$hotkey'
     | '/accounts'
     | '/blocks'
     | '/extrinsics'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/extrinsics/$hash'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/validators/$hotkey'
     | '/accounts/'
     | '/blocks/'
     | '/extrinsics/'
@@ -308,6 +320,7 @@ export interface RootRouteChildren {
   ExtrinsicsHashRoute: typeof ExtrinsicsHashRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
+  ValidatorsHotkeyRoute: typeof ValidatorsHotkeyRoute
   AccountsIndexRoute: typeof AccountsIndexRoute
   BlocksIndexRoute: typeof BlocksIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
@@ -437,6 +450,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/validators/$hotkey': {
+      id: '/validators/$hotkey'
+      path: '/validators/$hotkey'
+      fullPath: '/validators/$hotkey'
+      preLoaderRoute: typeof ValidatorsHotkeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/subnets/$netuid': {
       id: '/subnets/$netuid'
       path: '/subnets/$netuid'
@@ -492,6 +512,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExtrinsicsHashRoute: ExtrinsicsHashRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
+  ValidatorsHotkeyRoute: ValidatorsHotkeyRoute,
   AccountsIndexRoute: AccountsIndexRoute,
   BlocksIndexRoute: BlocksIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,

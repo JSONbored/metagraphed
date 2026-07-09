@@ -1,0 +1,316 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
+import { Boxes, Coins, Gauge, Zap } from "lucide-react";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { PageHero } from "@/components/metagraphed/page-hero";
+import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
+import { ShareButton } from "@/components/metagraphed/share-button";
+import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
+import {
+  ValidatorNominatorsTable,
+  type ValidatorNominatorsSearch,
+} from "@/components/metagraphed/validator-nominators-table";
+import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-table";
+import { validatorDetailQuery, validatorNominatorsQuery } from "@/lib/metagraphed/queries";
+import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
+import { shortHash } from "@/lib/metagraphed/blocks";
+import { formatNumber } from "@/lib/metagraphed/format";
+import type { ValidatorDetailSubnet } from "@/lib/metagraphed/types";
+
+const validatorDetailSearchSchema = z.object({
+  window: fallback(z.enum(["7d", "30d", "90d"]), "30d").default("30d"),
+  sort: fallback(z.enum(["net_staked", "gross_staked", "last_activity"]), "net_staked").default(
+    "net_staked",
+  ),
+  limit: fallback(z.number().int().min(1).max(100), 20).default(20),
+  offset: fallback(z.number().int().min(0), 0).default(0),
+  coldkey: fallback(z.string(), "").default(""),
+});
+
+export const Route = createFileRoute("/validators/$hotkey")({
+  validateSearch: zodValidator(validatorDetailSearchSchema),
+  head: ({ params }) => {
+    const label = shortHash(params.hotkey) ?? params.hotkey;
+    return {
+      meta: [
+        { title: `Validator ${label} — Metagraphed` },
+        {
+          name: "description",
+          content: `Cross-subnet performance, nominators, and staking history for Bittensor validator ${label}.`,
+        },
+        { property: "og:title", content: `Validator ${label} — Metagraphed` },
+        {
+          property: "og:description",
+          content: "Cross-subnet validator performance, nominators, and staking history.",
+        },
+      ],
+    };
+  },
+  component: ValidatorDetailPage,
+});
+
+function ValidatorDetailPage() {
+  const { hotkey } = Route.useParams();
+  return (
+    <AppShell>
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+          <ValidatorDetailGate hotkey={hotkey} />
+        </Suspense>
+      </QueryErrorBoundary>
+    </AppShell>
+  );
+}
+
+function ValidatorDetailGate({ hotkey }: { hotkey: string }) {
+  if (!isValidSs58(hotkey)) {
+    return (
+      <>
+        <PageHeading
+          eyebrow="Explorer"
+          title="Invalid hotkey"
+          description="Validator hotkeys must be a valid ss58 (base58) string."
+        />
+        <EmptyState
+          title="Invalid hotkey"
+          description="Use a valid validator hotkey ss58 address."
+          action={{ label: "Back to validators", href: "/validators" }}
+        />
+      </>
+    );
+  }
+  return <ValidatorDetail hotkey={hotkey} />;
+}
+
+const TH = "px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted";
+
+function SubnetPerformanceTable({ subnets }: { subnets: ValidatorDetailSubnet[] }) {
+  if (subnets.length === 0) {
+    return (
+      <EmptyState
+        title="No active subnet memberships"
+        description="This hotkey isn't currently registered as a validator on any subnet."
+      />
+    );
+  }
+  const sorted = [...subnets].sort((a, b) => (b.stake_tao ?? 0) - (a.stake_tao ?? 0));
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-surface/50">
+          <tr>
+            <th className={TH}>Subnet</th>
+            <th className={`${TH} text-right`}>UID</th>
+            <th className={`${TH} text-right`}>Stake τ</th>
+            <th className={`${TH} text-right`}>Emission τ</th>
+            <th className={`${TH} text-right`}>Dividends</th>
+            <th className={`${TH} text-right`}>Val trust</th>
+            <th className={`${TH} text-center`}>Permit</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {sorted.map((s) => (
+            <tr key={s.netuid} className="hover:bg-surface/40">
+              <td className="px-3 py-2 font-mono text-[11px]">
+                <Link
+                  to="/subnets/$netuid"
+                  params={{ netuid: s.netuid }}
+                  className="text-ink-strong hover:text-accent hover:underline"
+                >
+                  SN{s.netuid}
+                </Link>
+              </td>
+              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink-muted">
+                {s.uid}
+              </td>
+              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink-strong">
+                {taoCompact(s.stake_tao)}
+              </td>
+              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink">
+                {taoCompact(s.emission_tao)}
+              </td>
+              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink">
+                {scoreStr(s.dividends)}
+              </td>
+              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink-muted">
+                {scoreStr(s.validator_trust)}
+              </td>
+              <td className="px-3 py-2 text-center">
+                {s.validator_permit ? (
+                  <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+                    Yes
+                  </span>
+                ) : (
+                  <span className="font-mono text-[10px] text-ink-subtle-text">—</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function nominatorsQueryParams(search: ValidatorNominatorsSearch): Record<string, string | number> {
+  const params: Record<string, string | number> = {
+    window: search.window,
+    sort: search.sort,
+    limit: search.limit,
+    offset: search.offset,
+  };
+  // Only a complete, valid ss58 is worth sending — the backend 400s on a partial
+  // match, and a partial/invalid value updates on every keystroke, so gating here
+  // keeps a mid-typing coldkey from ever reaching the API.
+  if (search.coldkey && isValidSs58(search.coldkey)) params.coldkey = search.coldkey;
+  return params;
+}
+
+function NominatorsSection({ hotkey }: { hotkey: string }) {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+
+  const setSearch = (patch: Partial<ValidatorNominatorsSearch>) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
+      resetScroll: false,
+    });
+
+  const normalizedSearch: ValidatorNominatorsSearch = {
+    window: search.window,
+    sort: search.sort,
+    limit: search.limit,
+    offset: search.offset,
+    coldkey: search.coldkey,
+  };
+
+  return (
+    <ValidatorNominatorsTable
+      queryOptions={validatorNominatorsQuery(hotkey, nominatorsQueryParams(normalizedSearch))}
+      search={normalizedSearch}
+      setSearch={setSearch}
+    />
+  );
+}
+
+function ValidatorDetail({ hotkey }: { hotkey: string }) {
+  const sourceRef = ss58PathSegment(hotkey);
+  const detail = useSuspenseQuery(validatorDetailQuery(hotkey)).data.data;
+
+  return (
+    <>
+      <PageHero
+        eyebrow="Explorer · validator"
+        live
+        title={shortHash(hotkey, 8) ?? "Validator"}
+        description={
+          // PageHero renders `description` inside a <p> — block elements (div/p)
+          // are invalid HTML there (triggers a hydration mismatch), so this uses
+          // block-styled <span>s instead of the <div>/<p> combo other detail pages
+          // use for the same "blurb + copyable chip" shape.
+          <span className="block space-y-4">
+            <span className="block max-w-2xl">
+              Cross-subnet performance, nominators, and staking history for one Bittensor validator
+              hotkey.
+            </span>
+            <span className="inline-flex max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
+              <CopyableCode value={hotkey} truncate={false} />
+            </span>
+          </span>
+        }
+        actions={<ShareButton />}
+        caption="explorer / v1"
+      />
+
+      <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile
+          icon={Coins}
+          eyebrow="Total stake"
+          value={taoCompact(detail.total_stake_tao)}
+          hint="across all subnets"
+          tone="accent"
+          className="rounded-2xl border-accent/25 bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
+        />
+        <StatTile
+          icon={Zap}
+          eyebrow="Total emission"
+          value={taoCompact(detail.total_emission_tao)}
+          hint="across all subnets"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Active subnets"
+          value={formatNumber(detail.subnet_count)}
+          hint="validator memberships"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
+          icon={Gauge}
+          eyebrow="Avg validator trust"
+          value={scoreStr(detail.avg_validator_trust)}
+          hint="mean across subnets"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+      </div>
+
+      <SectionAnchor id="subnets" title="Per-subnet performance" tone="accent">
+        <SubnetPerformanceTable subnets={detail.subnets} />
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="history"
+        title="Stake & rewards over time"
+        subtitle="Daily snapshots"
+        tone="ink"
+      >
+        <ValidatorHistoryChart hotkey={hotkey} />
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="nominators"
+        title="Nominators"
+        subtitle="Derived from stake-delegation events"
+        tone="muted"
+      >
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+            <NominatorsSection hotkey={hotkey} />
+          </Suspense>
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="call"
+        title="Call this endpoint"
+        subtitle="Copy a ready-to-run request for this validator."
+      >
+        <EndpointSnippet
+          rows={[
+            { label: "summary", path: `/api/v1/validators/${sourceRef}` },
+            { label: "nominators", path: `/api/v1/validators/${sourceRef}/nominators` },
+            { label: "history", path: `/api/v1/validators/${sourceRef}/history` },
+          ]}
+        />
+      </SectionAnchor>
+
+      <ApiSourceFooter
+        paths={[
+          `/api/v1/validators/${sourceRef}`,
+          `/api/v1/validators/${sourceRef}/nominators`,
+          `/api/v1/validators/${sourceRef}/history`,
+        ]}
+      />
+    </>
+  );
+}

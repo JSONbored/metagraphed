@@ -168,8 +168,8 @@ function ValidatorsTable({
                 <tr key={v.hotkey} className="hover:bg-surface/40">
                   <td className="px-3 py-2 font-mono text-[11px]">
                     <Link
-                      to="/accounts/$ss58"
-                      params={{ ss58: v.hotkey }}
+                      to="/validators/$hotkey"
+                      params={{ hotkey: v.hotkey }}
                       className="text-ink-strong hover:text-accent hover:underline"
                       title={v.hotkey}
                     >

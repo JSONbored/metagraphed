@@ -160,6 +160,11 @@ import type {
   GlobalValidators,
   GlobalValidatorSort,
   GlobalValidatorSubnet,
+  ValidatorDetail,
+  ValidatorDetailSubnet,
+  ValidatorNominatorEntry,
+  ValidatorHistory,
+  ValidatorHistoryPoint,
   SubnetNeuronSnapshot,
   ConcentrationMetrics,
   ScoreDistribution,
@@ -4634,6 +4639,150 @@ export const validatorsQuery = ({
         meta: res.meta,
         url: res.url,
       } as ApiResult<GlobalValidators>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeValidatorDetailSubnet(raw: unknown): ValidatorDetailSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  const uid = firstFiniteNumber(raw.uid);
+  if (netuid == null || uid == null) return null;
+  return {
+    netuid,
+    uid,
+    hotkey: firstString(raw.hotkey) ?? null,
+    coldkey: firstString(raw.coldkey) ?? null,
+    active: booleanValue(raw.active) ?? null,
+    validator_permit: booleanValue(raw.validator_permit) ?? false,
+    rank: firstFiniteNumber(raw.rank) ?? null,
+    trust: firstFiniteNumber(raw.trust) ?? null,
+    validator_trust: firstFiniteNumber(raw.validator_trust) ?? null,
+    consensus: firstFiniteNumber(raw.consensus) ?? null,
+    incentive: firstFiniteNumber(raw.incentive) ?? null,
+    dividends: firstFiniteNumber(raw.dividends) ?? null,
+    emission_tao: firstFiniteNumber(raw.emission_tao) ?? null,
+    stake_tao: firstFiniteNumber(raw.stake_tao) ?? null,
+    registered_at_block: firstFiniteNumber(raw.registered_at_block) ?? null,
+    is_immunity_period: booleanValue(raw.is_immunity_period) ?? null,
+    axon: firstString(raw.axon) ?? null,
+  };
+}
+
+/** Cross-subnet validator detail — a validator's rows joined across every subnet
+ * they operate in (#4335/7.1). Schema-stable: a cold/unknown hotkey resolves to
+ * a zeroed aggregate rather than an error, so this never throws on a bad hotkey. */
+export const validatorDetailQuery = (hotkey: string) =>
+  queryOptions({
+    queryKey: k("validator-detail", hotkey),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/validators/${ss58PathSegment(hotkey)}`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const subnets = Array.isArray(d.subnets)
+        ? d.subnets.flatMap((row) => {
+            const s = normalizeValidatorDetailSubnet(row);
+            return s ? [s] : [];
+          })
+        : [];
+      return {
+        data: {
+          hotkey: firstString(d.hotkey) ?? hotkey,
+          coldkey: firstString(d.coldkey) ?? null,
+          coldkey_count: firstFiniteNumber(d.coldkey_count) ?? 0,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
+          total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
+          avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
+          max_validator_trust: firstFiniteNumber(d.max_validator_trust) ?? null,
+          captured_at: firstString(d.captured_at) ?? null,
+          block_number: firstFiniteNumber(d.block_number) ?? null,
+          subnets,
+        } as ValidatorDetail,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ValidatorDetail>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeValidatorNominator(raw: unknown): ValidatorNominatorEntry | null {
+  if (!isRecord(raw)) return null;
+  const coldkey = firstString(raw.coldkey);
+  if (!coldkey) return null;
+  return {
+    coldkey,
+    staked_tao: firstFiniteNumber(raw.staked_tao) ?? 0,
+    unstaked_tao: firstFiniteNumber(raw.unstaked_tao) ?? 0,
+    net_staked_tao: firstFiniteNumber(raw.net_staked_tao) ?? 0,
+    gross_staked_tao: firstFiniteNumber(raw.gross_staked_tao) ?? 0,
+    event_count: firstFiniteNumber(raw.event_count) ?? 0,
+    last_observed_at: firstString(raw.last_observed_at) ?? null,
+  };
+}
+
+/** Nominator list + search for one validator, derived from stake-delegation
+ * account_events (#4336/7.2). Offset-paginated, newest/largest-first per `sort`. */
+export const validatorNominatorsQuery = (hotkey: string, params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("validator-nominators", hotkey, params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        `/api/v1/validators/${ss58PathSegment(hotkey)}/nominators`,
+        "nominators",
+        params,
+        signal,
+      );
+      const data = res.data.flatMap((row) => {
+        const n = normalizeValidatorNominator(row);
+        return n ? [n] : [];
+      });
+      return { ...res, data } as ApiResult<ValidatorNominatorEntry[]>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeValidatorHistoryPoint(raw: unknown): ValidatorHistoryPoint | null {
+  if (!isRecord(raw)) return null;
+  const snapshotDate = firstString(raw.snapshot_date);
+  if (!snapshotDate) return null;
+  return {
+    snapshot_date: snapshotDate,
+    subnet_count: firstFiniteNumber(raw.subnet_count) ?? null,
+    total_stake_tao: firstFiniteNumber(raw.total_stake_tao) ?? null,
+    total_emission_tao: firstFiniteNumber(raw.total_emission_tao) ?? null,
+    rewards_per_1000_tao: firstFiniteNumber(raw.rewards_per_1000_tao) ?? null,
+  };
+}
+
+/** Daily staked-over-time + rewards-per-1000-TAO series for one validator,
+ * reusing the neuron_daily rollup (#4337/7.3). */
+export const validatorHistoryQuery = (hotkey: string, window: string) =>
+  queryOptions({
+    queryKey: k("validator-history", hotkey, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/validators/${ss58PathSegment(hotkey)}/history`, {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const points = Array.isArray(d.points)
+        ? d.points.flatMap((row) => {
+            const p = normalizeValidatorHistoryPoint(row);
+            return p ? [p] : [];
+          })
+        : [];
+      return {
+        data: {
+          hotkey: firstString(d.hotkey) ?? hotkey,
+          window: firstString(d.window) ?? null,
+          point_count: firstFiniteNumber(d.point_count) ?? points.length,
+          points,
+        } as ValidatorHistory,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ValidatorHistory>;
     },
     staleTime: STALE_SHORT,
   });

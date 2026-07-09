@@ -21,7 +21,7 @@ export function taoCompact(v?: number | null): string {
 }
 
 /** Format a 0..1 score (trust, consensus, incentive) to three decimals. */
-function scoreStr(v?: number | null): string {
+export function scoreStr(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return v.toFixed(3);
 }
@@ -197,15 +197,27 @@ export function NeuronTable({
                   </td>
                   <td className="px-3 py-2.5 font-mono text-[11px]">
                     {n.hotkey ? (
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: n.hotkey }}
-                        className="text-ink-muted hover:text-ink hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                        title={n.hotkey}
-                      >
-                        {shortHash(n.hotkey) ?? n.hotkey}
-                      </Link>
+                      isValidator ? (
+                        <Link
+                          to="/validators/$hotkey"
+                          params={{ hotkey: n.hotkey }}
+                          className="text-ink-muted hover:text-ink hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                          title={n.hotkey}
+                        >
+                          {shortHash(n.hotkey) ?? n.hotkey}
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: n.hotkey }}
+                          className="text-ink-muted hover:text-ink hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                          title={n.hotkey}
+                        >
+                          {shortHash(n.hotkey) ?? n.hotkey}
+                        </Link>
+                      )
                     ) : (
                       "—"
                     )}
