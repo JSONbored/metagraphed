@@ -1,24 +1,11 @@
 {
-  "schema_version": 1,
-  "netuid": 115,
-  "name": "HashiChain",
-  "slug": "sn-115",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo"
   ],
-  "source_repo": "https://github.com/hashi115/hashichain",
-  "dashboard_url": "https://taomarketcap.com/subnets/115",
-  "website_url": null,
-  "notes": "Reviewed overlay for SN115 using the live HashiChain source repository. No standalone website, docs site, API, OpenAPI, SSE, or data artifact has been verified yet.",
+  "contact": "hashichain@outlook.com",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:50:00.000Z",
-    "verified_at": "2026-06-08T10:50:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "No verified standalone website yet.",
       "No verified docs site yet.",
@@ -26,30 +13,62 @@
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:50:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T10:50:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/115",
+  "name": "HashiChain",
+  "netuid": 115,
+  "notes": "Reviewed overlay for SN115 using the live HashiChain source repository. No standalone website, docs site, API, OpenAPI, SSE, or data artifact has been verified yet.",
+  "schema_version": 1,
+  "slug": "sn-115",
+  "source_repo": "https://github.com/hashi115/hashichain",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-115-hashichain-source",
-      "name": "HashiChain source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/hashi115/hashichain",
-      "provider": "hashichain",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-115-hashichain-source",
+      "kind": "source-repo",
+      "name": "HashiChain source repository",
+      "notes": "Public HashiChain source repository for SN115.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hashichain",
       "public_safe": true,
       "source_urls": [
         "https://github.com/hashi115/hashichain",
         "https://api.taomarketcap.com/public/v1/subnets/115"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
+      "url": "https://github.com/hashi115/hashichain"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-115-hashichain-protocol-readme",
+      "kind": "data-artifact",
+      "name": "HashiChain protocol specification README",
+      "notes": "Public no-auth Markdown overview of SN115's Probabilistic State Machine architecture, Yuma Consensus integration, and Proof of Entanglement design, published in the official hashichain source repository README. Served as a static raw file for machine-readable ingestion of the subnet protocol write-up.",
+      "provider": "hashichain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "luciferlive112116"
       },
-      "notes": "Public HashiChain source repository for SN115."
+      "source_urls": [
+        "https://github.com/hashi115/hashichain/blob/main/README.md",
+        "https://github.com/hashi115/hashichain"
+      ],
+      "url": "https://raw.githubusercontent.com/hashi115/hashichain/main/README.md"
     }
   ],
-  "contact": "hashichain@outlook.com"
+  "website_url": null
 }
