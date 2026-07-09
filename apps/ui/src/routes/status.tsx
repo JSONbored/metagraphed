@@ -24,6 +24,7 @@ import {
   SourceHealthTable,
 } from "@/components/metagraphed/status-diagnostics";
 import { NetworkDecentralizationPanel } from "@/components/metagraphed/network-decentralization-panel";
+import { EmissionYieldPanel } from "@/components/metagraphed/emission-yield-panel";
 
 const SURFACES_INITIAL = 10;
 // A downtime event whose last failure is within this of the latest snapshot is
@@ -115,6 +116,19 @@ function StatusPage() {
           </QueryErrorBoundary>
         </section>
 
+        {/* #3472: network emission-yield summary — the return-rate companion to
+            the decentralization scorecard: aggregate network return split by
+            validator/miner role plus the per-neuron return spread. */}
+        <section>
+          <SectionHeading
+            title="Network emission yield"
+            intro="Chain-wide emission yield — total emission over total stake, split by validator/miner role — plus the per-neuron return distribution, computed across every neuron from the metagraph snapshot."
+          />
+          <QueryErrorBoundary>
+            <EmissionYieldPanel />
+          </QueryErrorBoundary>
+        </section>
+
         {/* #8: operational diagnostics — a per-day probe drill-down and a
             provider verification rollup, both probe-derived. */}
         <section>
@@ -150,6 +164,7 @@ function StatusPage() {
           "/api/v1/source-health",
           "/api/v1/chain/concentration",
           "/api/v1/chain/performance",
+          "/api/v1/chain/yield",
         ]}
       />
     </AppShell>

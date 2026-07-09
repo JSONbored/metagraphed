@@ -2433,6 +2433,41 @@ export interface ChainPerformance {
   validator_trust: ScoreDistribution | null;
 }
 
+/** Per-neuron emission/stake return distribution summary within GET /api/v1/chain/yield. */
+export interface ChainYieldDistribution {
+  count: number;
+  mean: number;
+  median: number;
+  min: number;
+  max: number;
+  p10: number;
+  p25: number;
+  p75: number;
+  p90: number;
+}
+
+/**
+ * Network-wide emission-yield aggregate (#3472) from GET /api/v1/chain/yield —
+ * the return-rate companion to /chain/performance: total emission over total
+ * stake (network-wide and split by validator/miner role), plus the per-neuron
+ * return distribution. Yields are null when no neuron has both stake and
+ * emission; distribution is null on a cold snapshot.
+ */
+export interface ChainYield {
+  schema_version: number;
+  subnet_count: number;
+  neuron_count: number;
+  validator_count: number;
+  miner_count: number;
+  captured_at: string | null;
+  total_stake_tao: number;
+  total_emission_tao: number;
+  network_yield: number | null;
+  validator_yield: number | null;
+  miner_yield: number | null;
+  distribution: ChainYieldDistribution | null;
+}
+
 /* ===================== Theme C: registry & network-health depth ===================== */
 
 /**

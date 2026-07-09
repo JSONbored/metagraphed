@@ -83,6 +83,8 @@ import type {
   ChainIntensityDistribution,
   ChainConcentration,
   ChainPerformance,
+  ChainYield,
+  ChainYieldDistribution,
   ChainSigners,
   ChainSignerEntry,
   Extrinsic,
@@ -5053,6 +5055,61 @@ export const chainPerformanceQuery = () =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainPerformance>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeChainYieldDistribution(raw: unknown): ChainYieldDistribution | null {
+  if (!isRecord(raw)) return null;
+  const count = firstFiniteNumber(raw.count);
+  if (count == null) return null;
+  return {
+    count,
+    mean: firstFiniteNumber(raw.mean) ?? 0,
+    median: firstFiniteNumber(raw.median) ?? 0,
+    min: firstFiniteNumber(raw.min) ?? 0,
+    max: firstFiniteNumber(raw.max) ?? 0,
+    p10: firstFiniteNumber(raw.p10) ?? 0,
+    p25: firstFiniteNumber(raw.p25) ?? 0,
+    p75: firstFiniteNumber(raw.p75) ?? 0,
+    p90: firstFiniteNumber(raw.p90) ?? 0,
+  };
+}
+
+// #3472: network-wide emission-yield aggregate — the return-rate companion to
+// /chain/performance. Counts coerce to 0; the three role yields fall through to
+// null (never NaN) when no neuron has both stake and emission.
+export function normalizeChainYield(raw: unknown): ChainYield {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    neuron_count: firstFiniteNumber(rec.neuron_count) ?? 0,
+    validator_count: firstFiniteNumber(rec.validator_count) ?? 0,
+    miner_count: firstFiniteNumber(rec.miner_count) ?? 0,
+    captured_at: firstString(rec.captured_at) ?? null,
+    total_stake_tao: firstFiniteNumber(rec.total_stake_tao) ?? 0,
+    total_emission_tao: firstFiniteNumber(rec.total_emission_tao) ?? 0,
+    network_yield: firstFiniteNumber(rec.network_yield) ?? null,
+    validator_yield: firstFiniteNumber(rec.validator_yield) ?? null,
+    miner_yield: firstFiniteNumber(rec.miner_yield) ?? null,
+    distribution: normalizeChainYieldDistribution(rec.distribution),
+  };
+}
+
+/** Network-wide emission-yield aggregate — return rate split by validator/miner role. */
+export const chainYieldQuery = () =>
+  queryOptions({
+    queryKey: k("chain-yield"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainYield>>("/api/v1/chain/yield", {
+        signal,
+      });
+      return {
+        data: normalizeChainYield(res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainYield>;
     },
     staleTime: STALE_MED,
   });
