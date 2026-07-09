@@ -1,5 +1,6 @@
 {
   "categories": [],
+  "contact": "contact@theminos.ai",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
@@ -13,7 +14,6 @@
   },
   "source_repo": "https://github.com/minos-protocol/minos_subnet",
   "status": "active",
-  "website_url": "https://theminos.ai/",
   "surfaces": [
     {
       "auth_required": false,
@@ -38,7 +38,26 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Minos minimum compute specification",
+      "notes": "Public no-auth YAML specification of SN107 miner and validator hardware, storage, Docker image, dataset, and network requirements published in the official minos_subnet repository at min_compute.yml. Served as a static raw file for machine-readable ingestion of Minos compute benchmarks and deployment prerequisites.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "luciferlive112116"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/min_compute.yml",
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/main/min_compute.yml"
     }
   ],
-  "contact": "contact@theminos.ai"
+  "website_url": "https://theminos.ai/"
 }
