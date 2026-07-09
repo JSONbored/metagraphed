@@ -86,6 +86,8 @@ import type {
   Extrinsic,
   ExtrinsicCallArg,
   SudoKey,
+  RuntimeTransition,
+  RuntimeVersionHistory,
   Transfer,
   Candidate,
   Compare,
@@ -2088,6 +2090,47 @@ export const sudoKeyQuery = () =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<SudoKey>;
+    },
+    staleTime: STALE_LONG,
+  });
+
+function normalizeRuntimeTransition(raw: unknown): RuntimeTransition | null {
+  if (!isRecord(raw)) return null;
+  const specVersion = firstFiniteNumber(raw.spec_version);
+  const blockNumber = firstFiniteNumber(raw.block_number);
+  if (specVersion == null || blockNumber == null) return null;
+  return {
+    spec_version: specVersion,
+    block_number: blockNumber,
+    observed_at: firstString(raw.observed_at) ?? null,
+  };
+}
+
+/** Spec-version upgrade timeline from the `blocks` D1 tier (#4316/3.1). Small,
+ * bounded dataset (runtime upgrades are rare) — no pagination params. */
+export const runtimeVersionHistoryQuery = () =>
+  queryOptions({
+    queryKey: k("runtime-version-history"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/runtime", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      const transitions = Array.isArray(d.transitions)
+        ? d.transitions.flatMap((row) => {
+            const t = normalizeRuntimeTransition(row);
+            return t ? [t] : [];
+          })
+        : [];
+      return {
+        data: {
+          transitions,
+          transition_count: firstFiniteNumber(d.transition_count) ?? transitions.length,
+          current_spec_version: firstFiniteNumber(d.current_spec_version) ?? null,
+          coverage_from_block: firstFiniteNumber(d.coverage_from_block) ?? null,
+          coverage_from_at: firstString(d.coverage_from_at) ?? null,
+        } as RuntimeVersionHistory,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<RuntimeVersionHistory>;
     },
     staleTime: STALE_LONG,
   });

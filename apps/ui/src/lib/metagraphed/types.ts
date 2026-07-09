@@ -1323,6 +1323,24 @@ export interface SudoKey {
   queried_at?: string | null;
 }
 
+/** One spec-version transition from /api/v1/runtime (#4316/3.1). */
+export interface RuntimeTransition {
+  spec_version: number | null;
+  block_number: number | null;
+  observed_at: string | null;
+}
+
+/** Spec-version upgrade history from /api/v1/runtime. See that route's own docs
+ * for coverage_from_*'s "earliest reading this endpoint can see" caveat — it is
+ * not a guarantee the network never upgraded before that point. */
+export interface RuntimeVersionHistory {
+  transitions: RuntimeTransition[];
+  transition_count: number;
+  current_spec_version: number | null;
+  coverage_from_block: number | null;
+  coverage_from_at: string | null;
+}
+
 /** Per-subnet on-chain economics from /api/v1/economics. */
 export interface SubnetEconomics {
   netuid: number;

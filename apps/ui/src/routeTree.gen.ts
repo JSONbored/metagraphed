@@ -23,6 +23,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ValidatorsIndexRouteImport } from './routes/validators.index'
 import { Route as SudoIndexRouteImport } from './routes/sudo.index'
 import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
+import { Route as RuntimeIndexRouteImport } from './routes/runtime.index'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
@@ -105,6 +106,11 @@ const SubnetsIndexRoute = SubnetsIndexRouteImport.update({
   path: '/subnets/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RuntimeIndexRoute = RuntimeIndexRouteImport.update({
+  id: '/runtime/',
+  path: '/runtime/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
   id: '/providers/',
   path: '/providers/',
@@ -184,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
+  '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
   '/sudo/': typeof SudoIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/blocks': typeof BlocksIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
   '/providers': typeof ProvidersIndexRoute
+  '/runtime': typeof RuntimeIndexRoute
   '/subnets': typeof SubnetsIndexRoute
   '/sudo': typeof SudoIndexRoute
   '/validators': typeof ValidatorsIndexRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
+  '/runtime/': typeof RuntimeIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
   '/sudo/': typeof SudoIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/blocks/'
     | '/extrinsics/'
     | '/providers/'
+    | '/runtime/'
     | '/subnets/'
     | '/sudo/'
     | '/validators/'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/blocks'
     | '/extrinsics'
     | '/providers'
+    | '/runtime'
     | '/subnets'
     | '/sudo'
     | '/validators'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/blocks/'
     | '/extrinsics/'
     | '/providers/'
+    | '/runtime/'
     | '/subnets/'
     | '/sudo/'
     | '/validators/'
@@ -350,6 +362,7 @@ export interface RootRouteChildren {
   BlocksIndexRoute: typeof BlocksIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
+  RuntimeIndexRoute: typeof RuntimeIndexRoute
   SubnetsIndexRoute: typeof SubnetsIndexRoute
   SudoIndexRoute: typeof SudoIndexRoute
   ValidatorsIndexRoute: typeof ValidatorsIndexRoute
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubnetsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/runtime/': {
+      id: '/runtime/'
+      path: '/runtime'
+      fullPath: '/runtime/'
+      preLoaderRoute: typeof RuntimeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/providers/': {
       id: '/providers/'
       path: '/providers'
@@ -558,6 +578,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlocksIndexRoute: BlocksIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
+  RuntimeIndexRoute: RuntimeIndexRoute,
   SubnetsIndexRoute: SubnetsIndexRoute,
   SudoIndexRoute: SudoIndexRoute,
   ValidatorsIndexRoute: ValidatorsIndexRoute,

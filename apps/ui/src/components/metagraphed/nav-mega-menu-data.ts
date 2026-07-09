@@ -71,6 +71,7 @@ export const MEGA_PANELS: MegaPanel[] = [
       { to: "/accounts", label: "Accounts", hint: "Hotkey / coldkey lookup" },
       { to: "/sudo", label: "Sudo", hint: "Root-origin calls + current key" },
       { to: "/admin-changes", label: "Admin changes", hint: "AdminUtils config-change feed" },
+      { to: "/runtime", label: "Runtime", hint: "Spec-version upgrade history" },
     ],
     filters: [],
   },
