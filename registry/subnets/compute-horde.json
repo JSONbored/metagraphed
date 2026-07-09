@@ -132,6 +132,44 @@
         "submitted_by": "galuis116"
       },
       "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login."
+    },
+    {
+      "id": "sn-12-compute-horde-job-flow",
+      "name": "Compute Horde job flow reference",
+      "kind": "data-artifact",
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/86ebc5b8df46b344d1ebacea312f1bac87bab5f4/docs/job_flow.md",
+      "provider": "compute-horde",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/86ebc5b8df46b344d1ebacea312f1bac87bab5f4/miner/README.md",
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/86ebc5b8df46b344d1ebacea312f1bac87bab5f4/docs/job_flow.md"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "notes": "Public no-auth Markdown architecture reference distinguishing synthetic, organic, and streaming organic job flows in the official backend-developers-ltd/ComputeHorde repository. Cited from miner/README.md for streaming organic job behavior; diagrams in docs/ are built via docs/build_plantumls.sh. Pinned to immutable commit 86ebc5b8."
+    },
+    {
+      "id": "sn-12-compute-horde-organic-job-sequence",
+      "name": "Compute Horde organic jobs sequence diagram",
+      "kind": "data-artifact",
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/86ebc5b8df46b344d1ebacea312f1bac87bab5f4/docs/sequence-diagram-organic-jobs.md",
+      "provider": "compute-horde",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/86ebc5b8df46b344d1ebacea312f1bac87bab5f4/docs/job_flow.md",
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/86ebc5b8df46b344d1ebacea312f1bac87bab5f4/docs/organic_job.puml"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "notes": "Public no-auth Mermaid sequence diagram for organic job messaging (facilitator, validator, miner, executor) published alongside the PlantUML organic_job.puml source in the official ComputeHorde docs/ directory. Companion to job_flow.md organic job flow section. Pinned to immutable commit 86ebc5b8."
     }
   ]
 }
