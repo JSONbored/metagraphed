@@ -1231,3 +1231,25 @@ test("loadExtrinsics ANDs keyset cursor with filters and drops OFFSET", async ()
   assert.ok(params.includes(4200000));
   assert.ok(params.includes(3));
 });
+
+// #4322 — Multisig approval-chain linking: call_hash filter.
+test("loadExtrinsics binds callHash as a quoted LIKE match and omits it when unset", async () => {
+  const capture = [];
+  const d1 = recordingExtrinsicsD1(capture);
+  const hash = `0x${"a".repeat(64)}`;
+  await loadExtrinsics(d1, { callModule: "Multisig", callHash: hash });
+  assert.ok(/call_args LIKE \?/.test(capture[0].sql));
+  assert.ok(capture[0].params.includes(`%"${hash}"%`));
+
+  capture.length = 0;
+  await loadExtrinsics(d1, {});
+  assert.ok(!/call_args LIKE \?/.test(capture[0].sql));
+});
+
+test("loadExtrinsics does not force the module index when callHash is also set", async () => {
+  const capture = [];
+  const d1 = recordingExtrinsicsD1(capture);
+  const hash = `0x${"b".repeat(64)}`;
+  await loadExtrinsics(d1, { callModule: "Multisig", callHash: hash });
+  assert.ok(!/INDEXED BY idx_extrinsics_module_block/.test(capture[0].sql));
+});

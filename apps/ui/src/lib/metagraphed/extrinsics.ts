@@ -63,3 +63,26 @@ export function proxyRealAccount(
   );
   return typeof real?.value === "string" ? real.value : null;
 }
+
+const CALL_HASH = /^0x[0-9a-fA-F]{64}$/;
+
+/** The `call_hash` a `Multisig` call is keyed by, or null when this isn't a
+ * Multisig call or no hash can be found. `approve_as_multi`/`cancel_as_multi`
+ * carry `call_hash` directly as a top-level arg (they only approve/cancel a
+ * pending call, never resubmit it); `as_multi` carries the full `call`
+ * instead, decoded the same way as any other nested call -- its own
+ * `call_hash` is one level down. Either way, this is the join key linking an
+ * initiating `as_multi` to its later `approve_as_multi`s and final execution
+ * (#4322). */
+export function multisigCallHash(
+  callModule: string | null | undefined,
+  callArgs: unknown,
+): string | null {
+  if (callModule !== "Multisig" || !Array.isArray(callArgs)) return null;
+  const args = callArgs as Array<{ name?: string | null; value?: unknown }>;
+  const direct = args.find((a) => a?.name === "call_hash");
+  if (typeof direct?.value === "string" && CALL_HASH.test(direct.value)) return direct.value;
+  const wrapped = args.find((a) => a?.name === "call" && isDecodedCall(a.value));
+  const nestedHash = (wrapped?.value as DecodedCall | undefined)?.call_hash;
+  return typeof nestedHash === "string" && CALL_HASH.test(nestedHash) ? nestedHash : null;
+}
