@@ -377,7 +377,7 @@ function HeroKpis() {
   const activityPoints = activityChrono?.map((d) => ({ t: d.day, v: d.extrinsic_count }));
 
   return (
-    <div className="w-[min(380px,100%)] rounded-xl border border-border bg-card/80 overflow-hidden">
+    <div className="mx-auto w-full max-w-[560px] rounded-xl border border-border bg-card/80 overflow-hidden lg:mx-0 lg:max-w-none">
       {/* Caption strip */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-surface/40">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted inline-flex items-center gap-2">
