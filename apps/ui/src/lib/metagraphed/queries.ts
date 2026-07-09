@@ -182,6 +182,7 @@ import type {
   YieldHistoryPoint,
   SubnetYieldHistory,
   SubnetProfile,
+  SubnetOverview,
   Surface,
   SurfaceLatencyPercentiles,
   SurfaceSla,
@@ -6472,6 +6473,45 @@ export const subnetGapsQuery = (netuid: number) =>
       const data = normalizeSubnetGaps(res.data);
       if (!data) throw new Error("Invalid subnet gaps response");
       return { ...res, data };
+    },
+    staleTime: STALE_MED,
+  });
+
+// The composed SubnetOverviewArtifact's sub-objects (profile/health/curation/
+// gaps) are already reviewed, schema-valid payloads in their own right — this
+// only needs enough fidelity to render the summary strip (#3346), not a full
+// re-typed mirror of each sub-schema, so profile/health/curation/gaps pass
+// through as loose records (matching the existing SubnetOverview interface).
+export function normalizeSubnetOverview(raw: unknown, netuid: number): SubnetOverview {
+  const root = isRecord(raw) ? raw : {};
+  const counts = isRecord(root.counts) ? root.counts : {};
+  return {
+    netuid: optionalNumber(root.netuid) ?? netuid,
+    name: optionalString(root.name),
+    slug: optionalString(root.slug),
+    status: optionalString(root.status),
+    profile: isRecord(root.profile) ? root.profile : undefined,
+    health: isRecord(root.health) ? root.health : undefined,
+    curation: isRecord(root.curation) ? root.curation : undefined,
+    gaps: isRecord(root.gaps) ? root.gaps : undefined,
+    gap_priorities: Array.isArray(root.gap_priorities) ? root.gap_priorities : [],
+    counts: {
+      surfaces: optionalNumber(counts.surfaces) ?? 0,
+      endpoints: optionalNumber(counts.endpoints) ?? 0,
+      candidates: optionalNumber(counts.candidates) ?? 0,
+    },
+  };
+}
+
+export const subnetOverviewQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-overview", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/overview`, { signal });
+      return {
+        ...res,
+        data: normalizeSubnetOverview(res.data, netuid),
+      } as ApiResult<SubnetOverview>;
     },
     staleTime: STALE_MED,
   });

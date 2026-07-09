@@ -44,6 +44,7 @@ import {
   subnetCandidatesQuery,
   subnetEventsQuery,
   subnetGapsQuery,
+  subnetOverviewQuery,
   fixturesIndexQuery,
   lineageQuery,
   agentCatalogDetailQuery,
@@ -325,6 +326,16 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
   const subnetGaps = gapsResult?.data;
   return (
     <div className="space-y-6">
+      {/* 0 — Composed overview summary strip (#3346): counts + status +
+          curation from the single server-composed /overview route, at a
+          glance before the more detailed sub-panels below. Each of those
+          sub-panels owns its own deeper backend route and stays as-is. */}
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+          <OverviewSummaryStrip netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
+
       {/* 1 — Readiness scorecard: the "can I build on this, where do I start?"
           answer, up top before the operational/resource detail. */}
       <ReadinessScorecard profile={profile} />
@@ -405,6 +416,47 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
       (subnetGaps?.gap_notes.length ?? 0) > 0 ||
       (profile?.gap_notes?.length ?? 0) > 0 ? (
         <GapsPanel netuid={netuid} compact />
+      ) : null}
+    </div>
+  );
+}
+
+// #3346: the server-composed summary — counts + lifecycle status + curation
+// level + (if any) the top gap-priority hint — sourced from the one dedicated
+// /overview route instead of re-deriving equivalent state from the several
+// separate calls the sub-panels below already make. `status` here is the
+// subnet's on-chain lifecycle (e.g. "active"/"deregistered"), a different
+// vocabulary than health.status's probe-derived ok/warn/down/unknown — so it
+// renders as a plain badge rather than through HealthPill, which only knows
+// the probe vocabulary and would otherwise mislabel e.g. "active" as
+// "Unknown". health.status (when present) uses HealthPill correctly.
+function OverviewSummaryStrip({ netuid }: { netuid: number }) {
+  const { data } = useSuspenseQuery(subnetOverviewQuery(netuid));
+  const overview = data.data;
+  const health = overview.health as Record<string, unknown> | undefined;
+  const curation = overview.curation as Record<string, unknown> | undefined;
+  const topGap = overview.gap_priorities?.[0] as Record<string, unknown> | undefined;
+  const topGapHint =
+    typeof topGap?.suggested_next_action === "string" ? topGap.suggested_next_action : undefined;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {overview.status ? (
+          <span className="inline-flex items-center rounded border border-border bg-card px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            {overview.status}
+          </span>
+        ) : null}
+        {typeof health?.status === "string" ? <HealthPill state={health.status} /> : null}
+        {typeof curation?.level === "string" ? <CurationChip level={curation.level} /> : null}
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <StatTile eyebrow="Surfaces" value={formatNumber(overview.counts?.surfaces ?? 0)} />
+        <StatTile eyebrow="Endpoints" value={formatNumber(overview.counts?.endpoints ?? 0)} />
+        <StatTile eyebrow="Candidates" value={formatNumber(overview.counts?.candidates ?? 0)} />
+      </div>
+      {topGapHint ? (
+        <p className="font-mono text-[11px] text-ink-muted">Top gap: {topGapHint}</p>
       ) : null}
     </div>
   );
