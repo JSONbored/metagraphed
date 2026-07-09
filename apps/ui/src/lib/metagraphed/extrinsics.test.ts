@@ -86,6 +86,8 @@ describe("proxyRealAccount", () => {
   it("returns null when call_args isn't an array or the real arg is malformed", () => {
     expect(proxyRealAccount("Proxy", "proxy", { real: REAL })).toBeNull();
     expect(proxyRealAccount("Proxy", "proxy", [{ name: "real", value: 123 }])).toBeNull();
-    expect(proxyRealAccount("Proxy", "proxy", [{ name: "force_proxy_type", value: "Any" }])).toBeNull();
+    expect(
+      proxyRealAccount("Proxy", "proxy", [{ name: "force_proxy_type", value: "Any" }]),
+    ).toBeNull();
   });
 });
