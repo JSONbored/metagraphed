@@ -26738,8 +26738,8 @@ export interface operations {
                         data?: components["schemas"]["ExtrinsicsFeedArtifact"];
                     };
                     /**
-                     * @example extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at
-                     *     8454388-1,8454388,1,0xhash_sample,5SudoKey,Sudo,sudo,true,0.000123,0,2026-07-03T00:00:00.000Z
+                     * @example extrinsic_id,block_number,signer,call_module,call_function,success
+                     *     8454388-1,8454388,5SudoKey,Sudo,sudo,true
                      */
                     "text/csv": string;
                 };

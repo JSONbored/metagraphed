@@ -4138,8 +4138,8 @@ function csvExampleForRoute(entry) {
   }
   if (entry.id === "sudo-calls") {
     return [
-      "extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
-      "8454388-1,8454388,1,0xhash_sample,5SudoKey,Sudo,sudo,true,0.000123,0,2026-07-03T00:00:00.000Z",
+      "extrinsic_id,block_number,signer,call_module,call_function,success",
+      "8454388-1,8454388,5SudoKey,Sudo,sudo,true",
     ].join("\r\n");
   }
   if (entry.id === "governance-config-changes") {

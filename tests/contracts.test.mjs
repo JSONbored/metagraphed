@@ -225,6 +225,10 @@ describe("public contract registry", () => {
         "extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
       ],
       [
+        "/api/v1/sudo",
+        "extrinsic_id,block_number,signer,call_module,call_function,success",
+      ],
+      [
         "/api/v1/accounts/{ss58}/transfers",
         "block_number,event_index,from,to,amount_tao,direction,observed_at",
       ],

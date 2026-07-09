@@ -159,6 +159,9 @@ test("GET /api/v1/sudo?format=csv downloads the filtered rows as CSV", async () 
   assert.equal(res.status, 200);
   assert.match(res.headers.get("content-type") || "", /text\/csv/);
   const text = await res.text();
-  assert.match(text, /call_module/);
+  assert.equal(
+    text.split("\r\n")[0],
+    "extrinsic_id,block_number,signer,call_module,call_function,success",
+  );
   assert.match(text, /Sudo,sudo/);
 });
