@@ -1229,6 +1229,179 @@
         ],
         "type": "object"
       },
+      "AccountsListArtifact": {
+        "additionalProperties": true,
+        "description": "Site-wide accounts leaderboard (#4324/5.3): every currently-registered hotkey (miners included) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, served live from the neurons D1 tier at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators, generalized to every account.",
+        "properties": {
+          "account_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/AccountsListEntry"
+            },
+            "type": "array"
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "total_stake",
+              "total_emission",
+              "subnet_count",
+              "uid_count",
+              "validator_count",
+              "stake_dominance",
+              "last_active"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "sort",
+          "limit",
+          "account_count",
+          "accounts"
+        ],
+        "type": "object"
+      },
+      "AccountsListEntry": {
+        "additionalProperties": false,
+        "description": "One account row grouped by hotkey across every current neurons-tier registration — every currently-registered hotkey, not just validator_permit=1 ones (see GlobalValidatorEntry for the validator-only leaderboard). total_stake_tao is the closest analog to a taostats-style 'Delegated' column this D1-only route can derive; there is no 'Free'/spendable-balance or 'Total' column here (no balance-tracking tier exists to source them, see the artifact description).",
+        "properties": {
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "latest_block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "latest_captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stake_dominance": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/AccountsListSubnet"
+            },
+            "maxItems": 10,
+            "type": "array"
+          },
+          "total_emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "uid_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hotkey",
+          "coldkey",
+          "coldkey_count",
+          "subnet_count",
+          "uid_count",
+          "validator_count",
+          "miner_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "stake_dominance",
+          "latest_captured_at",
+          "latest_block_number",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "AccountsListSubnet": {
+        "additionalProperties": false,
+        "description": "One current subnet membership for an account in the site-wide accounts leaderboard (#4324/5.3). Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The leaderboard returns at most the top ten memberships per account, ranked by membership stake, while subnet_count/uid_count describe the full footprint.",
+        "properties": {
+          "emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "uid": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid",
+          "uid",
+          "stake_tao",
+          "emission_tao"
+        ],
+        "type": "object"
+      },
       "AccountStakeFlowArtifact": {
         "additionalProperties": false,
         "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet.",
@@ -21069,6 +21242,200 @@
         "summary": "List backend API routes and response envelope metadata.",
         "tags": [
           "contracts"
+        ]
+      }
+    },
+    "/api/v1/accounts": {
+      "get": {
+        "operationId": "accountsList",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "total_stake",
+                "total_emission",
+                "subnet_count",
+                "uid_count",
+                "validator_count",
+                "stake_dominance",
+                "last_active"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "account_count": 1,
+                    "accounts": [
+                      {
+                        "coldkey": "example",
+                        "coldkey_count": 1,
+                        "hotkey": "example",
+                        "latest_block_number": 5000000,
+                        "latest_captured_at": "2026-06-01T00:00:00.000Z",
+                        "miner_count": 1,
+                        "stake_dominance": 0.5,
+                        "subnet_count": 1,
+                        "subnets": [
+                          {
+                            "emission_tao": 0.5,
+                            "netuid": 7,
+                            "stake_tao": 0.5,
+                            "uid": 1
+                          }
+                        ],
+                        "total_emission_tao": 0.5,
+                        "total_stake_tao": 0.5,
+                        "uid_count": 1,
+                        "validator_count": 1
+                      }
+                    ],
+                    "block_number": 5000000,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "limit": 1,
+                    "schema_version": 1,
+                    "sort": "total_stake"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AccountsListArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "text/csv": {
+                "example": "hotkey,coldkey,coldkey_count,subnet_count,uid_count,validator_count,miner_count,total_stake_tao,total_emission_tao,stake_dominance,latest_captured_at,latest_block_number,subnets\r\nhk_sample,ck_sample,1,3,3,1,2,1234.5,10.25,0.12,2026-07-03T00:00:00.000Z,8454388,\"[{\"\"netuid\"\":1,\"\"uid\"\":0}]\"",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons.",
+        "tags": [
+          "accounts",
+          "analytics"
         ]
       }
     },

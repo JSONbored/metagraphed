@@ -17,6 +17,9 @@ export const R2_ONLY_PATTERNS = [
   /^incidents\.json$/,
   // Global validator/operator leaderboard, computed live from the neurons D1 tier.
   /^validators\.json$/,
+  // Site-wide accounts leaderboard (#4324/5.3), computed live from the neurons
+  // D1 tier — the collection-level counterpart to validators.json above.
+  /^accounts\.json$/,
   // Cross-subnet validator detail (#4334/7.1): computed live from the neurons D1 tier.
   /^validators\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\.json$/,
   // Validator nominator list (#4334/7.2): computed live from account_events.

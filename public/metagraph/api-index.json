@@ -492,6 +492,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "accounts-list",
+      "path": "/metagraph/accounts.json",
+      "schema_ref": "#/components/schemas/AccountsListArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "validator-detail",
       "path": "/metagraph/validators/{hotkey}.json",
       "schema_ref": "#/components/schemas/ValidatorDetailArtifact",
@@ -5362,6 +5369,53 @@
               "total_emission",
               "total_stake",
               "uid_count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts.json",
+      "cache": "short",
+      "description": "Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons.",
+      "id": "accounts-list",
+      "method": "GET",
+      "path": "/api/v1/accounts",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "total_stake",
+              "total_emission",
+              "subnet_count",
+              "uid_count",
+              "validator_count",
+              "stake_dominance",
+              "last_active"
             ],
             "type": "string"
           }

@@ -1038,6 +1038,12 @@ export const PUBLIC_ARTIFACTS = [
     "GlobalValidatorsArtifact",
   ),
   artifact(
+    "accounts-list",
+    "/metagraph/accounts.json",
+    "Site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, computed live from the neurons D1 tier at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators.",
+    "AccountsListArtifact",
+  ),
+  artifact(
     "validator-detail",
     "/metagraph/validators/{hotkey}.json",
     "Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, computed live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). The single-entity drill-in of /api/v1/validators.",
@@ -2323,6 +2329,37 @@ export const API_ROUTES = [
             "total_emission",
             "total_stake",
             "uid_count",
+          ],
+        },
+      },
+      {
+        name: "limit",
+        schema: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    ]),
+    [],
+  ),
+  route(
+    "accounts-list",
+    "GET",
+    "/api/v1/accounts",
+    "/metagraph/accounts.json",
+    "Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons.",
+    "short",
+    ["accounts", "analytics"],
+    csvRouteQuery([
+      {
+        name: "sort",
+        schema: {
+          type: "string",
+          enum: [
+            "total_stake",
+            "total_emission",
+            "subnet_count",
+            "uid_count",
+            "validator_count",
+            "stake_dominance",
+            "last_active",
           ],
         },
       },
@@ -4207,6 +4244,12 @@ function csvExampleForRoute(entry) {
     return [
       "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
       'hk_sample,ck_sample,1,3,3,1234.5,10.25,0.12,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+    ].join("\r\n");
+  }
+  if (entry.id === "accounts-list") {
+    return [
+      "hotkey,coldkey,coldkey_count,subnet_count,uid_count,validator_count,miner_count,total_stake_tao,total_emission_tao,stake_dominance,latest_captured_at,latest_block_number,subnets",
+      'hk_sample,ck_sample,1,3,3,1,2,1234.5,10.25,0.12,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
     ].join("\r\n");
   }
   if (entry.id === "subnet-metagraph" || entry.id === "subnet-validators") {

@@ -1215,6 +1215,179 @@
         ],
         "type": "object"
       },
+      "AccountsListArtifact": {
+        "additionalProperties": true,
+        "description": "Site-wide accounts leaderboard (#4324/5.3): every currently-registered hotkey (miners included) grouped across all current subnet memberships and ranked by subnet/UID footprint, cross-subnet stake/emission totals, or last activity, served live from the neurons D1 tier at /api/v1/accounts (no static file). The collection-level counterpart to /api/v1/validators, generalized to every account.",
+        "properties": {
+          "account_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/AccountsListEntry"
+            },
+            "type": "array"
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "total_stake",
+              "total_emission",
+              "subnet_count",
+              "uid_count",
+              "validator_count",
+              "stake_dominance",
+              "last_active"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "sort",
+          "limit",
+          "account_count",
+          "accounts"
+        ],
+        "type": "object"
+      },
+      "AccountsListEntry": {
+        "additionalProperties": false,
+        "description": "One account row grouped by hotkey across every current neurons-tier registration — every currently-registered hotkey, not just validator_permit=1 ones (see GlobalValidatorEntry for the validator-only leaderboard). total_stake_tao is the closest analog to a taostats-style 'Delegated' column this D1-only route can derive; there is no 'Free'/spendable-balance or 'Total' column here (no balance-tracking tier exists to source them, see the artifact description).",
+        "properties": {
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "latest_block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "latest_captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stake_dominance": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/AccountsListSubnet"
+            },
+            "maxItems": 10,
+            "type": "array"
+          },
+          "total_emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "uid_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hotkey",
+          "coldkey",
+          "coldkey_count",
+          "subnet_count",
+          "uid_count",
+          "validator_count",
+          "miner_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "stake_dominance",
+          "latest_captured_at",
+          "latest_block_number",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "AccountsListSubnet": {
+        "additionalProperties": false,
+        "description": "One current subnet membership for an account in the site-wide accounts leaderboard (#4324/5.3). Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The leaderboard returns at most the top ten memberships per account, ranked by membership stake, while subnet_count/uid_count describe the full footprint.",
+        "properties": {
+          "emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "uid": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "netuid",
+          "uid",
+          "stake_tao",
+          "emission_tao"
+        ],
+        "type": "object"
+      },
       "AccountStakeFlowArtifact": {
         "additionalProperties": false,
         "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet.",
