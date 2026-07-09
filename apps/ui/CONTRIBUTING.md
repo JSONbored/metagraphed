@@ -6,7 +6,7 @@ gets you from clone to a green PR.
 
 ## Setup
 
-Node 22 and npm are the canonical toolchain.
+**Fastest path:** open the repo root in a [devcontainer](../../.devcontainer/devcontainer.json)-aware tool (VS Code, GitHub Codespaces, the `devcontainer` CLI) — Node 22 and Playwright's Chromium come preinstalled, which covers the screenshot workflow below with no manual `npx playwright install`. Otherwise, Node 22 and npm are the canonical toolchain (`.nvmrc` at the repo root pins it).
 
 ```bash
 npm install                       # root install wires the apps/ui workspace too

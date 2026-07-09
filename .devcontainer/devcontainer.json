@@ -1,0 +1,26 @@
+{
+  "name": "metagraphed",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
+  "postCreateCommand": "npm install && npx --yes playwright@latest install --with-deps chromium",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "apps/ui dev server",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "node",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}

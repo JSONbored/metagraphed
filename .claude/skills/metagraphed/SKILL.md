@@ -35,6 +35,11 @@ green, **do not push** — an incomplete PR is auto-closed or held, not coached.
 the `kind` enum, the gate disposition, the validator list, the commit/PR rubric. Read it when a phase
 says to.
 
+**Zero-setup environment:** if you're operating in a devcontainer-aware tool, open the repo there —
+`.devcontainer/devcontainer.json` pins Node 22 and preinstalls Playwright's Chromium (needed for
+Phase C2's screenshot contract), so `npm install` is the only remaining step. Otherwise `.nvmrc` at
+the repo root pins Node 22 for `nvm use`.
+
 ---
 
 ## Three kinds of contribution — pick your path

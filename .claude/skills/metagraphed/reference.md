@@ -1,7 +1,8 @@
 # metagraphed contribution — deep reference
 
 Exhaustive tables behind the `SKILL.md` playbook. Read the section you need. All commands run from the
-repo root (Node 22, `npm install` first).
+repo root (Node 22, `npm install` first — or open `.devcontainer/devcontainer.json` for a preconfigured
+environment with Playwright's Chromium already installed).
 
 ---
 
