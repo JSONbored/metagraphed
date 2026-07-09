@@ -1578,6 +1578,42 @@ function AccountFootprintSection({
 }) {
   const subnetsResult = useQuery(accountSubnetsQuery(ss58));
   const rows = subnetsResult.data?.data.subnets ?? fallback;
+
+  // Match the loading/error handling of the sibling account feed sections
+  // (teardown, deregistration, weight-setting, endpoint-announcement): skeleton
+  // while pending with nothing to show, a distinct error state on failure.
+  const phase = accountFeedSectionPhase({
+    isPending: subnetsResult.isPending,
+    isError: subnetsResult.isError,
+    rowCount: rows.length,
+  });
+  if (phase === "skeleton") {
+    return (
+      <AccountFeedSectionSkeleton
+        id="footprint"
+        title="Subnet footprint"
+        subtitle="Current registrations across the indexed network, netuid-ordered, with stake distribution."
+      />
+    );
+  }
+  if (phase === "error") {
+    return (
+      <SectionAnchor
+        id="footprint"
+        title="Subnet footprint"
+        subtitle="Current registrations across the indexed network, netuid-ordered, with stake distribution."
+        tone="accent"
+      >
+        <TableState
+          variant="error"
+          title="Could not load subnet footprint"
+          description="The account's cross-subnet registrations could not be loaded."
+          error={subnetsResult.error}
+          onRetry={() => void subnetsResult.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
   if (rows.length === 0) return null;
 
   const staked = rows
