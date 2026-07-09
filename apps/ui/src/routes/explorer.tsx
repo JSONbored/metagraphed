@@ -29,6 +29,7 @@ import {
   chainStakeTransfersQuery,
   chainAxonRemovalsQuery,
   chainTransferPairsQuery,
+  chainTransfersQuery,
   economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -43,6 +44,7 @@ import type {
   ChainTurnover,
   EconomicsTrends,
   ChainAxonRemovals,
+  ChainTransferParty,
 } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
@@ -107,6 +109,7 @@ function ExplorerPage() {
           "/api/v1/chain/stake-moves",
           "/api/v1/chain/turnover",
           "/api/v1/chain/stake-transfers",
+          "/api/v1/chain/transfers",
           "/api/v1/chain/axon-removals",
           "/api/v1/chain-events",
           "/api/v1/chain-events/stats",
@@ -1097,6 +1100,8 @@ function ExplorerDashboard() {
 
       <TransferPairsSection win={win} />
 
+      <TransfersLeaderboardSection win={win} />
+
       <StakeFlowSection flow={stakeFlow} />
 
       <StakeMovesSection moves={stakeMoves} />
@@ -1285,6 +1290,109 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
         <p className="font-mono text-[12px] text-ink-muted">
           No transfer pairs in this window yet.
         </p>
+      )}
+    </section>
+  );
+}
+
+// One ranked column of the transfer-volume leaderboard (top senders or top
+// receivers). Each row links to the account and truncates the ss58 so a long
+// address never escapes the cell at mobile width.
+function TransferPartyTable({ title, rows }: { title: string; rows: ChainTransferParty[] }) {
+  return (
+    <div className="min-w-0">
+      <h3 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+        {title}
+      </h3>
+      {rows.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={`${TH} text-right`}>#</th>
+                <th className={TH}>Account</th>
+                <th className={`${TH} text-right`}>Volume</th>
+                <th className={`${TH} text-right`}>Transfers</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((p, i) => (
+                <tr key={p.address} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {i + 1}
+                  </td>
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: p.address }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                      title={p.address}
+                    >
+                      {shortHash(p.address) ?? p.address}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatTao(p.volume_tao)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(p.transfer_count)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No accounts in this window yet.</p>
+      )}
+    </div>
+  );
+}
+
+// Network-wide native-TAO transfer-volume leaderboard (#3475): the top senders and
+// top receivers by volume side by side, the account-scoped companion to the
+// sender→receiver corridor view above. A plain useQuery (not the page's suspense
+// batch) so it fails/loads independently of the rest of the dashboard.
+function TransfersLeaderboardSection({ win }: { win: "7d" | "30d" }) {
+  const transfersQ = useQuery(chainTransfersQuery(win, 20));
+  const t = transfersQ.data?.data;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Transfer-volume leaderboard
+          </h2>
+          {t ? (
+            <p className="mt-1 font-mono text-[11px] text-ink-muted">
+              {formatTao(t.total_volume_tao)} moved · {formatNumber(t.unique_senders)} senders ·{" "}
+              {formatNumber(t.unique_receivers)} receivers
+            </p>
+          ) : null}
+        </div>
+        {t && t.top_sender_share != null ? (
+          <span className="font-mono text-[11px] text-ink-muted">
+            top sender {(t.top_sender_share * 100).toFixed(1)}%
+          </span>
+        ) : null}
+      </div>
+
+      {transfersQ.isPending ? (
+        <Skeleton className="h-64 w-full" />
+      ) : transfersQ.error ? (
+        <ErrorState
+          error={transfersQ.error}
+          onRetry={() => transfersQ.refetch()}
+          context="transfer-volume leaderboard"
+        />
+      ) : (t?.top_senders.length ?? 0) > 0 || (t?.top_receivers.length ?? 0) > 0 ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <TransferPartyTable title="Top senders" rows={t?.top_senders ?? []} />
+          <TransferPartyTable title="Top receivers" rows={t?.top_receivers ?? []} />
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">No transfers in this window yet.</p>
       )}
     </section>
   );

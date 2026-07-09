@@ -2416,6 +2416,33 @@ export interface ChainTransferPairs {
   pairs: ChainTransferPair[];
 }
 
+/** One party (top sender or receiver) on the network-wide native-TAO transfer-volume leaderboard (#3475). */
+export interface ChainTransferParty {
+  address: string;
+  volume_tao: number;
+  transfer_count: number;
+}
+
+/**
+ * Network-wide native-TAO transfer-volume leaderboard over a 7d/30d window (#3475),
+ * from GET /api/v1/chain/transfers — the top senders and top receivers by volume,
+ * plus the window rollup (total volume, unique senders/receivers, top-sender share).
+ * Distinct from the sender→receiver corridor view (/chain/transfer-pairs); zeroed
+ * with empty lists when the store is cold.
+ */
+export interface ChainTransfers {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  total_volume_tao: number;
+  transfer_count: number;
+  unique_senders: number;
+  unique_receivers: number;
+  top_sender_share: number | null;
+  top_senders: ChainTransferParty[];
+  top_receivers: ChainTransferParty[];
+}
+
 /** One subnet's row on the network-wide stake-transfer leaderboard (#3467). */
 export interface ChainStakeTransferSubnet {
   netuid: number;
