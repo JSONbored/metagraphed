@@ -31,7 +31,7 @@ export const MEGA_PANELS: MegaPanel[] = [
       { to: "/subnets", label: "All subnets", hint: "Browse every active netuid" },
       {
         to: "/subnets",
-        search: { curation: "verified" },
+        search: { curation: "maintainer-reviewed" },
         label: "Curated",
         hint: "Maintainer-reviewed",
       },
