@@ -93,6 +93,17 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
   const extrinsic = useSuspenseQuery(extrinsicQuery(hash)).data.data;
   const callArgs = extrinsic?.call_args;
   const events = (extrinsic?.events ?? []).slice(0, 100);
+  // #3423: the events/call-args lists are sliced to bound render cost on an
+  // already-fetched payload; surface how many rows were clipped so a viewer can
+  // tell a complete record from a truncated one.
+  const eventsTotal = extrinsic?.events?.length ?? 0;
+  const eventsOmitted = Math.max(0, eventsTotal - events.length);
+  const callArgsTotal = Array.isArray(callArgs)
+    ? callArgs.length
+    : callArgs && typeof callArgs === "object"
+      ? Object.keys(callArgs).length
+      : 0;
+  const callArgsOmitted = Math.max(0, callArgsTotal - 64);
 
   if (!extrinsic) {
     return (
@@ -215,6 +226,12 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         subtitle="The decoded parameters passed to this extrinsic."
       >
         {renderCallArgs(callArgs)}
+        {callArgsOmitted > 0 ? (
+          <p className="mt-2 font-mono text-[11px] text-ink-muted">
+            Showing 64 of {formatNumber(callArgsTotal)} call args — {formatNumber(callArgsOmitted)}{" "}
+            more omitted.
+          </p>
+        ) : null}
       </SectionAnchor>
 
       <SectionAnchor id="events" title="Emitted events" tone="accent">
@@ -282,6 +299,12 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             description="No emitted events were indexed for this extrinsic."
           />
         )}
+        {eventsOmitted > 0 ? (
+          <p className="mt-2 font-mono text-[11px] text-ink-muted">
+            Showing 100 of {formatNumber(eventsTotal)} events — {formatNumber(eventsOmitted)} more
+            omitted.
+          </p>
+        ) : null}
       </SectionAnchor>
 
       <div className="mt-6">
