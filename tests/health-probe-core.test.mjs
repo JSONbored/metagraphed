@@ -191,6 +191,20 @@ describe("isUnsafePublicUrl", () => {
     }
   });
 
+  test("blocks IPv6 discard-only (0100::/8) and NAT64 local-use (64:ff9b:1::/48)", () => {
+    // Both are non-public ranges the prober guard already rejects. 64:ff9b:1::/48
+    // (RFC 8215) can tunnel a v4 the well-known-prefix (64:ff9b::/96) decoder can't
+    // see — [64:ff9b:1::a9fe:a9fe] is 169.254.169.254 (cloud metadata).
+    for (const url of [
+      "http://[100::1]/x",
+      "http://[64:ff9b:1::a9fe:a9fe]/x",
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+    // The well-known-prefix NAT64 of a public v4 stays allowed (no over-block).
+    assert.equal(isUnsafePublicUrl("https://[64:ff9b::808:808]/x"), false);
+  });
+
   test("blocks a reserved/multicast v4 tunnelled inside an IPv6 literal host", () => {
     for (const url of [
       "http://[2002:e000:1::]/x", // 6to4 of 224.0.0.1 multicast

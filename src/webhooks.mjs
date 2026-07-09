@@ -105,6 +105,8 @@ export function isPublicWebhookAddress(value) {
       host.startsWith("fc") || // unique-local fc00::/7
       host.startsWith("fd") ||
       host.startsWith("ff") || // ff00::/8 multicast — not global unicast (2000::/3), matching the prober guard (#1538)
+      host.startsWith("100:") || // 0100::/8 discard-only (RFC 6666) — not routable, matching the prober guard
+      host.startsWith("64:ff9b:1:") || // NAT64 local-use 64:ff9b:1::/48 (RFC 8215) tunnels a v4 the well-known-prefix check below can't see (e.g. 64:ff9b:1::a9fe:a9fe = 169.254.169.254)
       host.startsWith("::ffff:") // IPv4-mapped
     ) {
       return false;

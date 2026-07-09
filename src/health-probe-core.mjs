@@ -99,7 +99,13 @@ function isUnsafeIpv6Literal(host) {
     host.startsWith("fe") ||
     host.startsWith("fc") ||
     host.startsWith("fd") ||
-    host.startsWith("ff")
+    host.startsWith("ff") ||
+    // 0100::/8 discard-only (RFC 6666) and NAT64 local-use 64:ff9b:1::/48
+    // (RFC 8215, which can tunnel a v4 like 169.254.169.254 past the well-known
+    // 64:ff9b::/96 check) were missing here while the prober guard already
+    // rejects both — close the parity gap (#1538/#2375).
+    host.startsWith("100:") ||
+    host.startsWith("64:ff9b:1:")
   );
 }
 

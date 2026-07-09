@@ -75,6 +75,17 @@ describe("isPublicWebhookAddress", () => {
     assert.equal(isPublicWebhookAddress("64:ff9b::808:808"), true);
   });
 
+  test("IPv6 discard-only (0100::/8) and NAT64 local-use (64:ff9b:1::/48) → false", () => {
+    // 0100::/8 is RFC 6666 discard-only — not routable. 64:ff9b:1::/48 is RFC 8215
+    // NAT64 local-use: unlike the well-known 64:ff9b::/96 (caught by the embedded-v4
+    // check), it tunnels a v4 the guard can't decode — e.g. 64:ff9b:1::a9fe:a9fe is
+    // 169.254.169.254 (cloud metadata). The prober guard rejects both; this must too.
+    assert.equal(isPublicWebhookAddress("100::1"), false);
+    assert.equal(isPublicWebhookAddress("64:ff9b:1::a9fe:a9fe"), false);
+    // The well-known-prefix NAT64 of a public v4 is unaffected (stays routable).
+    assert.equal(isPublicWebhookAddress("64:ff9b::808:808"), true);
+  });
+
   test("private IPv4 literals → false", () => {
     assert.equal(isPublicWebhookAddress("10.0.0.1"), false);
     assert.equal(isPublicWebhookAddress("127.0.0.1"), false);
