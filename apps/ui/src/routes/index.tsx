@@ -33,6 +33,7 @@ import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-sc
 import { SubnetPriceTicker } from "@/components/metagraphed/subnet-price-ticker";
 import { HeroSubnetChips } from "@/components/metagraphed/hero-subnet-chips";
 import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
+import { RecentIdentityChanges } from "@/components/metagraphed/recent-identity-changes";
 import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
 
 import {
@@ -225,6 +226,18 @@ function OverviewPage() {
           <Suspense fallback={<TableSkeleton />}>
             <SubnetPreviewTable />
           </Suspense>
+        </QueryErrorBoundary>
+      </section>
+
+      {/* #3474: live network-wide feed of recent subnet-identity changes. */}
+      <section className="mt-section-gap">
+        <SectionHeader
+          eyebrow="Network activity"
+          title="Recent identity changes."
+          description="Subnet name, symbol, and profile edits observed on-chain across the network, newest first."
+        />
+        <QueryErrorBoundary>
+          <RecentIdentityChanges />
         </QueryErrorBoundary>
       </section>
 

@@ -1472,6 +1472,24 @@ export interface SubnetIdentityHistoryEntry {
   discord: string | null;
 }
 
+/** One network-wide subnet-identity change from GET /api/v1/chain/identity-history — a SubnetIdentityHistoryEntry plus its netuid. */
+export interface ChainIdentityChange extends SubnetIdentityHistoryEntry {
+  netuid: number;
+}
+
+/**
+ * Network-wide feed of recent subnet-identity changes (#3474) from
+ * GET /api/v1/chain/identity-history — the most recent SubnetIdentitiesV3 edits
+ * (name / symbol / description / URL / logo) across every subnet, newest first.
+ * Zeroed with an empty changes list when none have been observed.
+ */
+export interface ChainIdentityHistory {
+  schema_version: number;
+  count: number;
+  subnet_count: number;
+  changes: ChainIdentityChange[];
+}
+
 /** One subnet's consensus, economic, and governance hyperparameters (#4307/1.4).
  * *_ratio fields are 0..1 ratios; min_burn_tao/max_burn_tao are TAO floats;
  * bonds_moving_avg_raw is the raw on-chain integer (not yet ratio-converted). */
