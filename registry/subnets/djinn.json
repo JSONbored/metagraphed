@@ -116,9 +116,7 @@
         "state": "community-submitted",
         "submitted_by": "glorydavid03023"
       },
-      "source_urls": [
-        "https://github.com/Djinn-Inc/djinn/blob/main/README.md"
-      ],
+      "source_urls": ["https://github.com/Djinn-Inc/djinn/blob/main/README.md"],
       "url": "https://www.djinn.gg/api/leaderboard"
     }
   ],
