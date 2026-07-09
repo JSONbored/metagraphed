@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 116,
+  "surface_count": 117,
   "surfaces": [
     {
       "auth_required": false,
@@ -1793,6 +1793,24 @@
       "surface_id": "sn-88-investing-ratio",
       "surface_key": "srf-e606f94442e24006",
       "url": "https://api.investing88.ai/ratio"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 89,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "infinitehash",
+      "public_safe": true,
+      "subnet_name": "InfiniteHash",
+      "subnet_slug": "sn-89",
+      "surface_id": "sn-89-infinitehash-runtime-version",
+      "surface_key": "srf-bf81dada3fc65789",
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/InfiniteHash/b0313ed2edc8c07c8312effb108e9cadd580e314/app/src/infinite_hashes/testutils/simulator/runtime_version_318.json"
     },
     {
       "auth_required": false,
