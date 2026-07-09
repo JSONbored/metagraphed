@@ -117,6 +117,10 @@ function BlocksPage() {
         title="Blocks"
         description="Recent Bittensor blocks indexed directly from the chain — newest first, with author, extrinsic, and event counts."
         kpis={throughputKpi}
+        // Tighten the hero's bottom spacing when the throughput KPI is present so
+        // the sparkline reads as part of the block-production header below it,
+        // instead of floating above a large gap (#3390 review).
+        className={throughputKpi ? "!mb-0 !pb-4 md:!pb-5" : undefined}
         actions={
           <>
             <DownloadCsvButton url={blocksCsvUrl} />
