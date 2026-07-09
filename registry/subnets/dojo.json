@@ -190,6 +190,25 @@
         "https://raw.githubusercontent.com/tensorplex-labs/dojo-worker-api/main/docs/swagger.json"
       ],
       "url": "https://cdn.jsdelivr.net/gh/tensorplex-labs/dojo-worker-api@main/docs/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-52-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Dojo TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/52 on api.taomarketcap.com returning machine-readable JSON for SN52 Dojo on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/tensorplex-labs/dojo"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/52"
     }
   ],
   "contact": "jarvis@tensorplex.ai"
