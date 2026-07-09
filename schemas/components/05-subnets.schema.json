@@ -3449,6 +3449,47 @@
           "latest_spec_version": { "type": ["integer", "null"] }
         }
       },
+      "RuntimeVersionTransition": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "The earliest known block observed at a given runtime spec_version — one entry per distinct spec_version seen on the blocks D1 tier, ascending by block_number.",
+        "required": ["spec_version", "block_number"],
+        "properties": {
+          "spec_version": { "type": "integer", "minimum": 0 },
+          "block_number": { "type": "integer", "minimum": 0 },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "RuntimeVersionsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Site-wide runtime spec-version transition timeline (#4316/3.1), computed live off the blocks D1 tier's spec_version column (migrations/0017) — the earliest known block at each distinct spec_version. spec_version is best-effort/nullable on blocks (null on RPC failure or a pruned block) and was only added 2026-06-25: a block row written before that date, or on any RPC failure, has a permanently-unfilled spec_version (INSERT OR IGNORE never back-fills it), so a version already active before coverage_from_block is invisible here, not reported as absent. Served live at /api/v1/runtime (no static file).",
+        "required": [
+          "schema_version",
+          "transitions",
+          "transition_count",
+          "current_spec_version",
+          "coverage_from_block",
+          "coverage_from_at"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "transitions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RuntimeVersionTransition" }
+          },
+          "transition_count": { "type": "integer", "minimum": 0 },
+          "current_spec_version": {
+            "type": ["integer", "null"],
+            "description": "The spec_version of the latest block that carries a reading — not necessarily the chain's live runtime version: if the most recent blocks failed the spec_version RPC call (best-effort/nullable, see the artifact description), this reports the latest KNOWN reading, which can lag behind an upgrade that already happened."
+          },
+          "coverage_from_block": { "type": ["integer", "null"] },
+          "coverage_from_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        }
+      },
       "ChainActivityDay": {
         "type": "object",
         "additionalProperties": false,

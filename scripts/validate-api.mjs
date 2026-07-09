@@ -748,6 +748,13 @@ const checks = [
     },
   ],
   [
+    "/api/v1/runtime",
+    (body) => {
+      assert.equal(Array.isArray(body.data.transitions), true);
+      assert.equal(typeof body.data.transition_count, "number");
+    },
+  ],
+  [
     // Postgres-backed all-events tier (ADR 0013): DATA_API is mocked above; api.mjs
     // rewraps the bare body in the canonical envelope, so the data shape is asserted.
     "/api/v1/chain-events",

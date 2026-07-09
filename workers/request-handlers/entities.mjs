@@ -89,6 +89,7 @@ import {
   loadAccountBalance,
 } from "../../src/account-balance.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
+import { loadRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
   BLOCK_READ_COLUMNS,
@@ -3494,6 +3495,30 @@ export async function handleGovernanceConfigChanges(request, env, url) {
         env,
         "/metagraph/governance/config-changes.json",
         data.extrinsics[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/runtime (#4316/3.1): the spec-version transition timeline — the
+// earliest known block at each distinct spec_version the blocks D1 tier has
+// observed, ascending by block_number. A single-row aggregate over the whole
+// retained window, nothing to filter or paginate. See src/runtime-versions.mjs
+// for the coverage caveat (spec_version wasn't tracked before 2026-06-25 and
+// can't be back-filled for rows written before then).
+export async function handleRuntime(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadRuntimeVersionHistory(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        "/metagraph/runtime.json",
+        data.transitions[data.transitions.length - 1]?.observed_at ?? null,
       ),
     },
     "short",

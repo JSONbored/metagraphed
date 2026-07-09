@@ -1296,6 +1296,12 @@ export const PUBLIC_ARTIFACTS = [
     "ExtrinsicsFeedArtifact",
   ),
   artifact(
+    "runtime-versions",
+    "/metagraph/runtime.json",
+    "The spec-version transition timeline (#4316/3.1) — the earliest known block at each distinct runtime spec_version, ascending by block_number — computed live from the first-party blocks D1 tier at /api/v1/runtime (no static file).",
+    "RuntimeVersionsArtifact",
+  ),
+  artifact(
     "chain-activity",
     "/metagraph/chain/activity.json",
     "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
@@ -3002,6 +3008,17 @@ export const API_ROUTES = [
       { name: "from", schema: { type: "integer", minimum: 0 } },
       { name: "to", schema: { type: "integer", minimum: 0 } },
     ]),
+    [],
+  ),
+  route(
+    "runtime-versions",
+    "GET",
+    "/api/v1/runtime",
+    "/metagraph/runtime.json",
+    "Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number. No query params: a single aggregate over the whole retained blocks window. spec_version is best-effort/nullable and wasn't tracked before 2026-06-25, so coverage_from_block/coverage_from_at bound what this endpoint can see. Computed live from the first-party blocks D1 tier (#4316/3.1).",
+    "short",
+    ["blocks", "analytics"],
+    [],
     [],
   ),
   route(

@@ -13878,6 +13878,80 @@
         ],
         "type": "object"
       },
+      "RuntimeVersionsArtifact": {
+        "additionalProperties": true,
+        "description": "Site-wide runtime spec-version transition timeline (#4316/3.1), computed live off the blocks D1 tier's spec_version column (migrations/0017) — the earliest known block at each distinct spec_version. spec_version is best-effort/nullable on blocks (null on RPC failure or a pruned block) and was only added 2026-06-25: a block row written before that date, or on any RPC failure, has a permanently-unfilled spec_version (INSERT OR IGNORE never back-fills it), so a version already active before coverage_from_block is invisible here, not reported as absent. Served live at /api/v1/runtime (no static file).",
+        "properties": {
+          "coverage_from_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coverage_from_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "current_spec_version": {
+            "description": "The spec_version of the latest block that carries a reading — not necessarily the chain's live runtime version: if the most recent blocks failed the spec_version RPC call (best-effort/nullable, see the artifact description), this reports the latest KNOWN reading, which can lag behind an upgrade that already happened.",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "transition_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "transitions": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeVersionTransition"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "transitions",
+          "transition_count",
+          "current_spec_version",
+          "coverage_from_block",
+          "coverage_from_at"
+        ],
+        "type": "object"
+      },
+      "RuntimeVersionTransition": {
+        "additionalProperties": false,
+        "description": "The earliest known block observed at a given runtime spec_version — one entry per distinct spec_version seen on the blocks D1 tier, ascending by block_number.",
+        "properties": {
+          "block_number": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spec_version": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spec_version",
+          "block_number"
+        ],
+        "type": "object"
+      },
       "SchemaDriftArtifact": {
         "allOf": [
           {
@@ -39341,6 +39415,134 @@
           "rpc",
           "analytics",
           "operations"
+        ]
+      }
+    },
+    "/api/v1/runtime": {
+      "get": {
+        "operationId": "runtimeVersions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "coverage_from_at": "2026-06-01T00:00:00.000Z",
+                    "coverage_from_block": 5000000,
+                    "current_spec_version": 1,
+                    "schema_version": 1,
+                    "transition_count": 1,
+                    "transitions": [
+                      {
+                        "block_number": 5000000,
+                        "spec_version": 1
+                      }
+                    ]
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RuntimeVersionsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the spec-version transition timeline — the earliest known block at each distinct runtime spec_version, ascending by block_number. No query params: a single aggregate over the whole retained blocks window. spec_version is best-effort/nullable and wasn't tracked before 2026-06-25, so coverage_from_block/coverage_from_at bound what this endpoint can see. Computed live from the first-party blocks D1 tier (#4316/3.1).",
+        "tags": [
+          "blocks",
+          "analytics"
         ]
       }
     },

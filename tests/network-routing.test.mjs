@@ -320,6 +320,9 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/governance/config-changes",
       // The live Sudo::Key RPC read is fixed to finney, no testnet variant (#4310/2.4).
       "/api/v1/testnet/sudo/key",
+      // The spec-version transition timeline reads the same mainnet-only
+      // blocks D1 tier as /api/v1/blocks (#4316/3.1).
+      "/api/v1/testnet/runtime",
       `/api/v1/testnet/accounts/${SS58}`,
       "/api/v1/testnet/subnets/7/metagraph",
       "/api/v1/testnet/subnets/7/hyperparameters",

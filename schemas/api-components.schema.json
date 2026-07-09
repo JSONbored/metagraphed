@@ -13856,6 +13856,80 @@
         ],
         "type": "object"
       },
+      "RuntimeVersionsArtifact": {
+        "additionalProperties": true,
+        "description": "Site-wide runtime spec-version transition timeline (#4316/3.1), computed live off the blocks D1 tier's spec_version column (migrations/0017) — the earliest known block at each distinct spec_version. spec_version is best-effort/nullable on blocks (null on RPC failure or a pruned block) and was only added 2026-06-25: a block row written before that date, or on any RPC failure, has a permanently-unfilled spec_version (INSERT OR IGNORE never back-fills it), so a version already active before coverage_from_block is invisible here, not reported as absent. Served live at /api/v1/runtime (no static file).",
+        "properties": {
+          "coverage_from_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coverage_from_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "current_spec_version": {
+            "description": "The spec_version of the latest block that carries a reading — not necessarily the chain's live runtime version: if the most recent blocks failed the spec_version RPC call (best-effort/nullable, see the artifact description), this reports the latest KNOWN reading, which can lag behind an upgrade that already happened.",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "transition_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "transitions": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeVersionTransition"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "transitions",
+          "transition_count",
+          "current_spec_version",
+          "coverage_from_block",
+          "coverage_from_at"
+        ],
+        "type": "object"
+      },
+      "RuntimeVersionTransition": {
+        "additionalProperties": false,
+        "description": "The earliest known block observed at a given runtime spec_version — one entry per distinct spec_version seen on the blocks D1 tier, ascending by block_number.",
+        "properties": {
+          "block_number": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spec_version": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spec_version",
+          "block_number"
+        ],
+        "type": "object"
+      },
       "SchemaDriftArtifact": {
         "allOf": [
           {

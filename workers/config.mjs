@@ -237,6 +237,10 @@ export const SUDO_KEY_PATH_PATTERN = /^\/api\/v1\/sudo\/key$/;
 // network-config change pathway. Same D1 tier as EXTRINSICS_FEED_PATH_PATTERN.
 export const GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN =
   /^\/api\/v1\/governance\/config-changes$/;
+// Runtime spec-version transition timeline (#4316/3.1): the earliest known
+// block at each distinct spec_version seen on the blocks D1 tier. Same D1
+// tier as BLOCKS_FEED_PATH_PATTERN, a site-wide aggregate, not per-block.
+export const RUNTIME_VERSIONS_PATH_PATTERN = /^\/api\/v1\/runtime$/;
 // Per-extrinsic detail (#1345/#1848): ref is a 0x extrinsic_hash OR the canonical
 // composite id "<block_number>-<extrinsic_index>" (the guaranteed-present id, since
 // the hash is best-effort/nullable). Single capture group; the handler branches.
