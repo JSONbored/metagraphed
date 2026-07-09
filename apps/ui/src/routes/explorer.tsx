@@ -902,41 +902,55 @@ function ExplorerDashboard() {
             </span>
           </div>
           {fees.top_fee_payers.length > 0 ? (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr>
-                  <th className={TH}>Account</th>
-                  <th className={`${TH} text-right`}>Fees</th>
-                  <th className={`${TH} text-right`}>Tips</th>
-                  <th className={`${TH} text-right`}>Txs</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {fees.top_fee_payers.map((p) => (
-                  <tr key={p.signer} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: p.signer }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={p.signer}
-                      >
-                        {shortHash(p.signer) ?? p.signer}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {fmtTao(p.total_fee_tao)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {fmtTao(p.total_tip_tao)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatNumber(p.extrinsic_count)}
-                    </td>
+            <>
+              <BarMini
+                className="mb-4"
+                data={[...fees.top_fee_payers]
+                  .sort((a, b) => b.total_fee_tao - a.total_fee_tao)
+                  .slice(0, 8)
+                  .map((p) => ({
+                    label: shortHash(p.signer) ?? p.signer,
+                    value: p.total_fee_tao,
+                  }))}
+                formatValue={fmtTao}
+                ariaLabel="Top fee payers ranked by total fees paid this window"
+              />
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={TH}>Account</th>
+                    <th className={`${TH} text-right`}>Fees</th>
+                    <th className={`${TH} text-right`}>Tips</th>
+                    <th className={`${TH} text-right`}>Txs</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {fees.top_fee_payers.map((p) => (
+                    <tr key={p.signer} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: p.signer }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                          title={p.signer}
+                        >
+                          {shortHash(p.signer) ?? p.signer}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {fmtTao(p.total_fee_tao)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {fmtTao(p.total_tip_tao)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatNumber(p.extrinsic_count)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           ) : (
             <p className="font-mono text-[12px] text-ink-muted">
               No fee payers in this window yet.

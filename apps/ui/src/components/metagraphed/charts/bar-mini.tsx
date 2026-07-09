@@ -13,6 +13,8 @@ interface Props {
   className?: string;
   /** Show numeric value to the right of each bar. */
   showValue?: boolean;
+  /** Format the shown value (e.g. TAO amounts) instead of the raw number. */
+  formatValue?: (value: number) => string;
   /** Accessible name; synthesized from `data` when omitted. */
   ariaLabel?: string;
 }
@@ -22,7 +24,7 @@ interface Props {
  * proportional bar + optional value. Used for distribution rows
  * (gaps by severity, surfaces by kind, etc.).
  */
-export function BarMini({ data, max, className, showValue = true, ariaLabel }: Props) {
+export function BarMini({ data, max, className, showValue = true, formatValue, ariaLabel }: Props) {
   const cap = max ?? Math.max(1, ...data.map((d) => d.value));
   const label = ariaLabel ?? synthesizeBarMiniAriaLabel(data);
   return (
@@ -41,7 +43,9 @@ export function BarMini({ data, max, className, showValue = true, ariaLabel }: P
               />
             </span>
             {showValue ? (
-              <span className="font-mono text-[10px] tabular-nums text-ink-strong">{d.value}</span>
+              <span className="font-mono text-[10px] tabular-nums text-ink-strong">
+                {formatValue ? formatValue(d.value) : d.value}
+              </span>
             ) : null}
           </li>
         );
