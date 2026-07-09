@@ -3927,14 +3927,14 @@ export const subnetStakeFlowQuery = (netuid: number, window = "30d") =>
     staleTime: STALE_MED,
   });
 
-export const subnetEventsQuery = (netuid: number) =>
+export const subnetEventsQuery = (netuid: number, kind?: string) =>
   queryOptions({
-    queryKey: k("subnet-events", netuid),
+    queryKey: k("subnet-events", netuid, kind ?? null),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>(
-        `/api/v1/subnets/${netuid}/events?limit=100`,
-        { signal },
-      );
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/events`, {
+        params: { limit: 100, ...(kind ? { kind } : {}) },
+        signal,
+      });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const events = normalizeAccountEvents(d.events);
       return {
