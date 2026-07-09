@@ -9,6 +9,69 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.4.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.3.0...ui-v0.4.0) (2026-07-09)
+
+
+### Features
+
+* **devcontainer:** add contributor devcontainer + onboarding doc updates ([#4505](https://github.com/JSONbored/metagraphed/issues/4505)) ([de7325d](https://github.com/JSONbored/metagraphed/commit/de7325d39de44dfcaae02a672d0e68e6d005855b))
+* **ui:** add /sudo and /admin-changes explorer pages ([#4315](https://github.com/JSONbored/metagraphed/issues/4315)) ([#4470](https://github.com/JSONbored/metagraphed/issues/4470)) ([27fdbd5](https://github.com/JSONbored/metagraphed/commit/27fdbd505247ddfa9620f54fec7188f79110ea06))
+* **ui:** add /validators/$hotkey cross-subnet validator detail page ([#4338](https://github.com/JSONbored/metagraphed/issues/4338)) ([#4473](https://github.com/JSONbored/metagraphed/issues/4473)) ([f47ec2f](https://github.com/JSONbored/metagraphed/commit/f47ec2fef2d7ff5db4253fd67fb8277120abbe31))
+* **ui:** add a /validators global validator directory page ([#4287](https://github.com/JSONbored/metagraphed/issues/4287)) ([faec6e6](https://github.com/JSONbored/metagraphed/commit/faec6e66133a8adaf3cf162fa4da2295612fe91e)), closes [#3358](https://github.com/JSONbored/metagraphed/issues/3358)
+* **ui:** add a chain-head tip to the home hero ([#4426](https://github.com/JSONbored/metagraphed/issues/4426)) ([0f96143](https://github.com/JSONbored/metagraphed/commit/0f961432fae0a8aa0a2293d086e0e1cbc1edb485)), closes [#3372](https://github.com/JSONbored/metagraphed/issues/3372)
+* **ui:** add a cross-subnet biggest-movers band to the home page ([#4378](https://github.com/JSONbored/metagraphed/issues/4378)) ([6009a14](https://github.com/JSONbored/metagraphed/commit/6009a14a59cbfb57e205fa688a94d8520a07cc7f)), closes [#3344](https://github.com/JSONbored/metagraphed/issues/3344)
+* **ui:** add a Hyperparameters tab to the subnet detail page ([#4480](https://github.com/JSONbored/metagraphed/issues/4480)) ([8778cde](https://github.com/JSONbored/metagraphed/commit/8778cdec176e79d7a0618dc6e9a03f0be2746600)), closes [#4308](https://github.com/JSONbored/metagraphed/issues/4308)
+* **ui:** add a network-wide stake-moves section to the chain explorer ([#4380](https://github.com/JSONbored/metagraphed/issues/4380)) ([206697e](https://github.com/JSONbored/metagraphed/commit/206697e0b26f6347b8c376c5dbad75d8fb67c057)), closes [#3468](https://github.com/JSONbored/metagraphed/issues/3468)
+* **ui:** add a network-wide validator-turnover section to the chain explorer ([#4430](https://github.com/JSONbored/metagraphed/issues/4430)) ([4c71a73](https://github.com/JSONbored/metagraphed/commit/4c71a734d1564113a943f10643036faa3b73be0e)), closes [#3473](https://github.com/JSONbored/metagraphed/issues/3473)
+* **ui:** add a registration-cost column to the subnets table view ([#3364](https://github.com/JSONbored/metagraphed/issues/3364)) ([#4456](https://github.com/JSONbored/metagraphed/issues/4456)) ([cf96f81](https://github.com/JSONbored/metagraphed/commit/cf96f814a9e9e07dcb695ee41405b8cfc8bb43f2))
+* **ui:** add a stake-flow scorecard to the subnet Activity tab ([#4455](https://github.com/JSONbored/metagraphed/issues/4455)) ([16992a7](https://github.com/JSONbored/metagraphed/commit/16992a73db064ae89147e0efb5ef6c6f5178f67c)), closes [#3342](https://github.com/JSONbored/metagraphed/issues/3342)
+* **ui:** add a validator × subnet stake heatmap to the validators page ([#4466](https://github.com/JSONbored/metagraphed/issues/4466)) ([9a8be5f](https://github.com/JSONbored/metagraphed/commit/9a8be5f1e341d8998caab6d7ab39519c3fdd2fb2)), closes [#3495](https://github.com/JSONbored/metagraphed/issues/3495)
+* **ui:** add an emission-share column to the subnets table ([#4527](https://github.com/JSONbored/metagraphed/issues/4527)) ([94fa58c](https://github.com/JSONbored/metagraphed/commit/94fa58cc910275862927bef1e49cb7b4e712b069))
+* **ui:** add an in-app Ask metagraphed Q&A box ([#3492](https://github.com/JSONbored/metagraphed/issues/3492)) ([#4490](https://github.com/JSONbored/metagraphed/issues/4490)) ([a3999e3](https://github.com/JSONbored/metagraphed/commit/a3999e328bdcdb2bc5e380cef9b5c97ddf1e9f99))
+* **ui:** add CI responsive/overflow smoke test for apps/ui ([#4509](https://github.com/JSONbored/metagraphed/issues/4509)) ([21b8621](https://github.com/JSONbored/metagraphed/commit/21b8621ecddd38740a281095db6a172277b7bc2f))
+* **ui:** add copy buttons on extrinsics hash and signer cells ([#3396](https://github.com/JSONbored/metagraphed/issues/3396)) ([#4362](https://github.com/JSONbored/metagraphed/issues/4362)) ([80b881c](https://github.com/JSONbored/metagraphed/commit/80b881c105c833eed53c580e7ba45646e86301e1))
+* **ui:** add incidents feed subscribe card on status page ([#4419](https://github.com/JSONbored/metagraphed/issues/4419)) ([96f7dd5](https://github.com/JSONbored/metagraphed/commit/96f7dd526f9126b4228eb160cf13950cb9a110d9))
+* **ui:** add registration-activity summary to the account detail page ([#4452](https://github.com/JSONbored/metagraphed/issues/4452)) ([595f920](https://github.com/JSONbored/metagraphed/commit/595f9209dd289f301b160f2ee3b6b043600f6f17)), closes [#3730](https://github.com/JSONbored/metagraphed/issues/3730)
+* **ui:** add Share deep-link buttons to block, extrinsic, and account detail pages ([#4465](https://github.com/JSONbored/metagraphed/issues/4465)) ([26f4e97](https://github.com/JSONbored/metagraphed/commit/26f4e97984baf9614b272b3e5422a7fe02017e9e))
+* **ui:** add subnet identity-change history tab to the subnet profile ([#4376](https://github.com/JSONbored/metagraphed/issues/4376)) ([12b6120](https://github.com/JSONbored/metagraphed/commit/12b6120e315953e138965195dc7b2831c327c5c6))
+* **ui:** add transfer-pairs flow view to the explorer page ([#4413](https://github.com/JSONbored/metagraphed/issues/4413)) ([a49e883](https://github.com/JSONbored/metagraphed/commit/a49e883bee14be30fc4eec26c8a036dfaa3a45fa))
+* **ui:** add truncation notices to the extrinsic detail page ([#4497](https://github.com/JSONbored/metagraphed/issues/4497)) ([55d3080](https://github.com/JSONbored/metagraphed/commit/55d30801e89beaf8221ea16086d6bed34c031136))
+* **ui:** auto-refresh the blocks index first page ([#3374](https://github.com/JSONbored/metagraphed/issues/3374)) ([#4523](https://github.com/JSONbored/metagraphed/issues/4523)) ([92b9222](https://github.com/JSONbored/metagraphed/commit/92b92226ed27b9bb5591cddaf64e4e1fb7b09dd0))
+* **ui:** display the RPC endpoints catalog on the endpoints page ([#4496](https://github.com/JSONbored/metagraphed/issues/4496)) ([76fb3a6](https://github.com/JSONbored/metagraphed/commit/76fb3a643c967c79efa291800df6b6c7a9d48d9d))
+* **ui:** fetch the composed overview artifact in the subnet Overview tab ([#3346](https://github.com/JSONbored/metagraphed/issues/3346)) ([#4531](https://github.com/JSONbored/metagraphed/issues/4531)) ([0261493](https://github.com/JSONbored/metagraphed/commit/02614935d1e2376ccf3e6e9f2f3c87260784243c))
+* **ui:** promote exact subnet title match to omnibox Go to ([#3394](https://github.com/JSONbored/metagraphed/issues/3394)) ([#4393](https://github.com/JSONbored/metagraphed/issues/4393)) ([4b3de7b](https://github.com/JSONbored/metagraphed/commit/4b3de7b3cb7795af83378c3af9503bdfe32ee1c2))
+* **ui:** show dominance / total-stake / total-emission columns in the validator directory ([#4369](https://github.com/JSONbored/metagraphed/issues/4369)) ([6ac93c5](https://github.com/JSONbored/metagraphed/commit/6ac93c55ecb1a15e7ddb93be1a6fd22289863ae2)), closes [#3359](https://github.com/JSONbored/metagraphed/issues/3359)
+* **ui:** show market-cap and FDV proxy tiles in the subnet economics panel ([#4434](https://github.com/JSONbored/metagraphed/issues/4434)) ([1fa97e2](https://github.com/JSONbored/metagraphed/commit/1fa97e27b02e58b335b9c29dc9a4f36647e067ee)), closes [#3361](https://github.com/JSONbored/metagraphed/issues/3361)
+* **ui:** surface account stake-moves activity on the account detail page ([#4423](https://github.com/JSONbored/metagraphed/issues/4423)) ([d13de54](https://github.com/JSONbored/metagraphed/commit/d13de542b073e97046cb396d8b1e71a020dfa22c)), closes [#3732](https://github.com/JSONbored/metagraphed/issues/3732)
+* **ui:** surface serving + prometheus endpoint-announcement tiles in the operational panel ([#4431](https://github.com/JSONbored/metagraphed/issues/4431)) ([ec8e395](https://github.com/JSONbored/metagraphed/commit/ec8e395e4f89d4943b144a90546b02b32ffdd09f))
+* **ui:** wire the economics-trends time-series into an explorer trend chart ([#4547](https://github.com/JSONbored/metagraphed/issues/4547)) ([6aee4d4](https://github.com/JSONbored/metagraphed/commit/6aee4d49c079183ae6a5f2d4232ce2d420790cb4))
+
+
+### Bug Fixes
+
+* **decentralization:** disambiguate the Emission Gini tile Nakamoto hint ([#4511](https://github.com/JSONbored/metagraphed/issues/4511)) ([5b1f0bc](https://github.com/JSONbored/metagraphed/commit/5b1f0bc191c786044365ab25a584aabbb0ba4951)), closes [#3950](https://github.com/JSONbored/metagraphed/issues/3950)
+* **nav:** point mega-menu "Curated" link at a real curation level ([#4508](https://github.com/JSONbored/metagraphed/issues/4508)) ([b438444](https://github.com/JSONbored/metagraphed/commit/b4384446ec40241b876db0434dccf8fd2d377e1d)), closes [#3974](https://github.com/JSONbored/metagraphed/issues/3974)
+* **ui:** accept the status page's incident-stats span into the overflow baseline ([#4541](https://github.com/JSONbored/metagraphed/issues/4541)) ([c329179](https://github.com/JSONbored/metagraphed/commit/c32917911e0db07dc25dee1095433951d8963ed9))
+* **ui:** align leaderboard card padding with sibling KPI/panel cards ([#4299](https://github.com/JSONbored/metagraphed/issues/4299)) ([0aa81a6](https://github.com/JSONbored/metagraphed/commit/0aa81a6fa25d3417169cba92ae401ed1c294e251))
+* **ui:** auto-build packages/client before typecheck ([#4513](https://github.com/JSONbored/metagraphed/issues/4513)) ([d309772](https://github.com/JSONbored/metagraphed/commit/d30977234986a606d92f679caebd393790340bfa)), closes [#4504](https://github.com/JSONbored/metagraphed/issues/4504)
+* **ui:** balance the endpoints toolbar's wrapped control row ([#4529](https://github.com/JSONbored/metagraphed/issues/4529)) ([0cfa863](https://github.com/JSONbored/metagraphed/commit/0cfa8638a7bc582262d9a39edecd72b0cb5ff57c)), closes [#3992](https://github.com/JSONbored/metagraphed/issues/3992)
+* **ui:** correct stale hardcoded fallback colors for --accent/--ink-muted ([#4357](https://github.com/JSONbored/metagraphed/issues/4357)) ([7c010bb](https://github.com/JSONbored/metagraphed/commit/7c010bb8b61e1fde35d7ca03296ce9224419ce92))
+* **ui:** distinguish a partial endpoint-announcement fetch failure from a real zero ([#4462](https://github.com/JSONbored/metagraphed/issues/4462)) ([1cd7e76](https://github.com/JSONbored/metagraphed/commit/1cd7e76ef123562562976e62e13b27c8200a8d6f))
+* **ui:** flex-wrap the economics panel tile grid so trailing rows stretch to fill ([#4429](https://github.com/JSONbored/metagraphed/issues/4429)) ([28a76a7](https://github.com/JSONbored/metagraphed/commit/28a76a767939b76746055e6812564aa21090c999))
+* **ui:** make HoverPreview keyboard-reachable for non-link evidence items ([#4461](https://github.com/JSONbored/metagraphed/issues/4461)) ([b933451](https://github.com/JSONbored/metagraphed/commit/b933451819fa1698203b50e6d99409d7f631fa1e))
+* **ui:** make the responsive-overflow e2e check deterministic ([#4542](https://github.com/JSONbored/metagraphed/issues/4542)) ([2f9b0fc](https://github.com/JSONbored/metagraphed/commit/2f9b0fc055225450bee121298349069621a74459))
+* **ui:** parallelize explorer's 9 suspense queries, fixing a ~33s page load ([#4518](https://github.com/JSONbored/metagraphed/issues/4518)) ([a39823a](https://github.com/JSONbored/metagraphed/commit/a39823a7c635d8231a222bea72cc9f70436d226e))
+* **ui:** render uptime-timeline incident times via TimeAgo, counts via formatNumber ([#4418](https://github.com/JSONbored/metagraphed/issues/4418)) ([63bd65a](https://github.com/JSONbored/metagraphed/commit/63bd65ad29de56baed196ec5bc5820c5dc44b6e3))
+* **ui:** surface error states for account extrinsics and transfers ([#3434](https://github.com/JSONbored/metagraphed/issues/3434)) ([#4408](https://github.com/JSONbored/metagraphed/issues/4408)) ([ed3672e](https://github.com/JSONbored/metagraphed/commit/ed3672e1e183c3d6861fcea686022194bf51d7da))
+* **ui:** use shared EmptyState for the extrinsic emitted-events empty case ([#4433](https://github.com/JSONbored/metagraphed/issues/4433)) ([37b89db](https://github.com/JSONbored/metagraphed/commit/37b89db10d20ce1ce729efede76b650f7d62309e))
+* **ui:** use significant-figure precision for the yield leaderboard so distinct validator yields stop collapsing to the same string ([#3946](https://github.com/JSONbored/metagraphed/issues/3946)) ([#4488](https://github.com/JSONbored/metagraphed/issues/4488)) ([0aced08](https://github.com/JSONbored/metagraphed/commit/0aced08c7188b16c706fade46c25e1c153f57ccd))
+* **ui:** wire /health view and status params to a real validateSearch ([#4366](https://github.com/JSONbored/metagraphed/issues/4366)) ([e21146c](https://github.com/JSONbored/metagraphed/commit/e21146cd41487ba4f1622c95159e4ef243140394))
+
+
+### Documentation
+
+* note pretypecheck auto-build + missing test:e2e step ([#4521](https://github.com/JSONbored/metagraphed/issues/4521)) ([3f08d8a](https://github.com/JSONbored/metagraphed/commit/3f08d8a4d9a1dae56985202865354d00e4fa050a))
+
 ## [0.3.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.2.0...ui-v0.3.0) (2026-07-07)
 
 
