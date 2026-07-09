@@ -236,13 +236,38 @@ export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
       observed_at: liveRpcPool.last_run_at || live.last_ok || null,
     };
   });
+  // The live overlay above can change a row's `status`/`archive_support` — the
+  // two summary fields derived from them (`by_status`, `archive_supported_count`)
+  // must be recomputed from the post-overlay `endpoints`, or they silently drift
+  // from the rows actually served alongside them (found live: a fully-recovered
+  // sweep still reported stale `degraded` counts from the last static build).
+  // `by_kind`/`by_provider`/`endpoint_count` are untouched by the overlay (kind
+  // and provider are static-only fields), so those pass through unchanged.
+  const byStatus = {};
+  let archiveSupportedCount = 0;
+  for (const endpoint of endpoints) {
+    const status = endpoint.status || "unknown";
+    byStatus[status] = (byStatus[status] || 0) + 1;
+    if (endpoint.archive_support === true) archiveSupportedCount += 1;
+  }
   return {
     ...staticArtifact,
     generated_at: liveRpcPool.generated_at ?? staticArtifact.generated_at,
     source: "live-cron-prober",
     operational_observed_at: liveRpcPool.last_run_at || null,
+    summary: {
+      ...staticArtifact.summary,
+      by_status: sortedRecord(byStatus),
+      archive_supported_count: archiveSupportedCount,
+    },
     endpoints,
   };
+}
+
+function sortedRecord(record) {
+  return Object.fromEntries(
+    Object.entries(record).sort(([a], [b]) => a.localeCompare(b)),
+  );
 }
 
 // Overlay live RPC health onto the static proxy pool: an endpoint stays eligible
