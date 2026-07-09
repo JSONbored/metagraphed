@@ -505,6 +505,45 @@ describe("metagraph-accounts builders", () => {
     assert.equal(data.accounts[1].stake_dominance, null);
     assert.equal(data.accounts[0].ss58, "5CoA");
   });
+
+  test("buildGlobalAccounts rejects out-of-range captures and uid-ties subnet ordering", () => {
+    const data = buildGlobalAccounts(
+      [
+        {
+          ...NEURON_ROW,
+          coldkey: "5CoRange",
+          captured_at: 8640000000000001,
+          block_number: 1,
+        },
+        {
+          ...NEURON_ROW,
+          coldkey: "5CoUid",
+          netuid: 1,
+          uid: 2,
+          stake_tao: 10,
+          emission_tao: 1,
+        },
+        {
+          ...NEURON_ROW,
+          coldkey: "5CoUid",
+          netuid: 1,
+          uid: 1,
+          stake_tao: 10,
+          emission_tao: 1,
+        },
+      ],
+      [],
+      { limit: 10 },
+    );
+    const ranged = data.accounts.find((entry) => entry.ss58 === "5CoRange");
+    assert.equal(ranged.latest_captured_at, null);
+    assert.equal(data.captured_at, null);
+    const uidSorted = data.accounts.find((entry) => entry.ss58 === "5CoUid");
+    assert.deepEqual(
+      uidSorted.subnets.map((subnet) => subnet.uid),
+      [1, 2],
+    );
+  });
 });
 
 function combinedD1({ neurons = [], events = [] } = {}) {
