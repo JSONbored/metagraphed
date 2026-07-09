@@ -50,6 +50,25 @@
         "https://github.com/talkheadai/talkhead-subnet/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/talkheadai/talkhead-executor/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-108-talkhead-pyproject-manifest",
+      "kind": "data-artifact",
+      "name": "TalkHead subnet Python project manifest",
+      "notes": "Public no-auth PEP 621 pyproject.toml from the official talkheadai/talkhead-subnet repository publishing SN108 TalkHead package metadata (project name talkhead-subnet, Python >=3.10, bittensor 10.2.0 dependency, homepage and issues URLs). Documents the canonical Python package contract for miner/validator coordination against the subnet API and executor; distinct from the talkhead-executor min_compute.yml hardware-spec surface.",
+      "provider": "talkhead",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/talkheadai/talkhead-subnet/blob/main/pyproject.toml",
+        "https://www.talkhead.ai/"
+      ],
+      "url": "https://raw.githubusercontent.com/talkheadai/talkhead-subnet/main/pyproject.toml"
     }
   ],
   "source_repo": "https://github.com/talkheadai/talkhead-subnet",
