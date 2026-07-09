@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, type ReactNode } from "react";
+import { Fragment, Suspense, useState, type ReactNode } from "react";
 import {
   Activity,
   Boxes,
   TrendingUp,
   Sparkles,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -35,6 +36,7 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
+import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
 import {
   accountAxonRemovalsQuery,
   accountCounterpartiesQuery,
@@ -674,6 +676,15 @@ function fmtStake(v: number | null | undefined): string {
   return `${formatNumber(v)} τ`;
 }
 
+// Alpha price-at-tx (#4332/6.3, #4333/6.4) -- same precision rule as
+// subnet-price-ticker.tsx's priceStr, since this is the same alpha_price_tao
+// unit shown there.
+function fmtAlphaPrice(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (v < 0.001) return `${v.toExponential(2)} τ`;
+  return `${v < 1 ? v.toFixed(4) : v.toFixed(3)} τ`;
+}
+
 const KPI_TILE =
   "rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]";
 
@@ -775,6 +786,7 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
               <th className={TH}>Subnet</th>
               <th className={`${TH} text-right`}>Movements</th>
               <th className={`${TH} text-right`}>Last moved</th>
+              <th className={`${TH} text-right`}>Price at last move</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -794,6 +806,9 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
                 </td>
                 <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
                   {s.last_moved_at ? <TimeAgo at={s.last_moved_at} /> : "—"}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {fmtAlphaPrice(s.price_tao_at_last_move)}
                 </td>
               </tr>
             ))}
@@ -961,6 +976,10 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
 function AccountPortfolioSection({ ss58 }: { ss58: string }) {
   const result = useQuery(accountPortfolioQuery(ss58));
   const p = result.data?.data;
+  // Per-position drill-down (#4329/6.4 -- the "Alpha Holdings chart"): each
+  // row expands in place rather than navigating away, so a viewer can compare
+  // several positions' history without losing the portfolio table.
+  const [expandedNetuid, setExpandedNetuid] = useState<number | null>(null);
 
   if (result.isPending && !p) {
     return (
@@ -1036,6 +1055,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/50">
             <tr>
+              <th className={TH} aria-hidden="true" />
               <th className={TH}>Subnet</th>
               <th className={TH}>Role</th>
               <th className={`${TH} text-right`}>Stake</th>
@@ -1044,37 +1064,65 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {positions.map((pos) => (
-              <tr key={`${pos.netuid}-${pos.uid ?? "x"}`} className="hover:bg-surface/30">
-                <td className="px-5 py-4 font-mono text-[12px]">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: pos.netuid }}
-                    className="text-ink hover:text-accent hover:underline"
-                  >
-                    SN{pos.netuid}
-                  </Link>
-                </td>
-                <td className="px-5 py-4 font-mono text-[11px]">
-                  {pos.role === "validator" ? (
-                    <span className="text-emerald-500">validator</span>
-                  ) : pos.role === "miner" ? (
-                    <span className="text-sky-500">miner</span>
-                  ) : (
-                    <span className="text-ink-muted">{"—"}</span>
-                  )}
-                </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
-                  {fmtStake(pos.stake_tao)}
-                </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
-                  {fmtStake(pos.emission_tao)}
-                </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                  {pos.incentive != null ? pos.incentive.toFixed(4) : "—"}
-                </td>
-              </tr>
-            ))}
+            {positions.map((pos) => {
+              const expanded = expandedNetuid === pos.netuid;
+              return (
+                <Fragment key={`${pos.netuid}-${pos.uid ?? "x"}`}>
+                  <tr className="hover:bg-surface/30">
+                    <td className="px-3 py-4">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedNetuid(expanded ? null : pos.netuid)}
+                        aria-expanded={expanded}
+                        aria-label={`${expanded ? "Hide" : "Show"} SN${pos.netuid} position history`}
+                        className="flex size-5 items-center justify-center rounded text-ink-muted hover:text-ink-strong"
+                      >
+                        <ChevronDown
+                          className={classNames(
+                            "size-3.5 transition-transform",
+                            expanded ? "rotate-180" : "",
+                          )}
+                        />
+                      </button>
+                    </td>
+                    <td className="px-5 py-4 font-mono text-[12px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: pos.netuid }}
+                        className="text-ink hover:text-accent hover:underline"
+                      >
+                        SN{pos.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-4 font-mono text-[11px]">
+                      {pos.role === "validator" ? (
+                        <span className="text-emerald-500">validator</span>
+                      ) : pos.role === "miner" ? (
+                        <span className="text-sky-500">miner</span>
+                      ) : (
+                        <span className="text-ink-muted">{"—"}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {fmtStake(pos.stake_tao)}
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {fmtStake(pos.emission_tao)}
+                    </td>
+                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {pos.incentive != null ? pos.incentive.toFixed(4) : "—"}
+                    </td>
+                  </tr>
+                  {expanded ? (
+                    <tr className="bg-surface/20">
+                      <td colSpan={6} className="px-5 py-4">
+                        <AccountPositionHistoryChart ss58={ss58} netuid={pos.netuid} />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </DataPanel>
