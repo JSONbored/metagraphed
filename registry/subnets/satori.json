@@ -1,21 +1,7 @@
 {
-  "schema_version": 1,
-  "netuid": 119,
-  "name": "Satori",
-  "slug": "satori",
-  "status": "active",
   "categories": ["baseline-curated", "identity-reviewed", "virtual-world"],
-  "source_repo": "https://github.com/Satori119/Satori",
-  "website_url": null,
-  "docs_url": null,
-  "dashboard_url": null,
-  "notes": "Reviewed overlay for SN119 Satori. Public directories describe the subnet, but the previously listed Satori119/Satori repository currently returns 404 and no official website, API, OpenAPI schema, or docs site is verified.",
+  "contact": "akihabara119@outlook.com",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:00:00.000Z",
-    "verified_at": "2026-06-08T15:00:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "Previously discovered Satori119/Satori source repository currently returns 404.",
       "No verified official website yet.",
@@ -25,8 +11,42 @@
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T15:00:00.000Z"
   },
-  "surfaces": [],
-  "contact": "akihabara119@outlook.com"
+  "dashboard_url": null,
+  "docs_url": null,
+  "name": "Satori",
+  "netuid": 119,
+  "notes": "Reviewed overlay for SN119 Satori. Public directories describe the subnet, but the previously listed Satori119/Satori repository currently returns 404 and no official website, API, OpenAPI schema, or docs site is verified.",
+  "schema_version": 1,
+  "slug": "satori",
+  "source_repo": "https://github.com/Satori119/Satori",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-119-taomarketcap-subnet-snapshot",
+      "kind": "data-artifact",
+      "name": "SN119 on-chain subnet snapshot",
+      "notes": "Public no-auth GET /public/v1/subnets/119 on api.taomarketcap.com returning a machine-readable JSON snapshot of SN119 on-chain subnet state and SubnetIdentitiesV3 metadata (subnetName \"Satori\", owner description: AI companionship and digital residency in Japan, plus economics, registration/burn parameters, and dTAO market fields). SN119 exposes no first-party API, repository, or static dataset; this is the indexed public JSON feed for netuid 119 documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsdevninja"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://backprop.finance/dtao/subnets/119-satori"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/119"
+    }
+  ],
+  "website_url": null
 }
