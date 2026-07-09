@@ -1068,6 +1068,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetHyperparametersArtifact",
   ),
   artifact(
+    "subnet-hyperparameters-history",
+    "/metagraph/subnets/{netuid}/hyperparameters/history.json",
+    "Append-only hyperparameter-change timeline for one subnet (subnet_hyperparams field snapshots on change), served live from the subnet_hyperparams_history D1 tier at /api/v1/subnets/{netuid}/hyperparameters/history (no static file). Forward-only.",
+    "SubnetHyperparamsHistoryArtifact",
+  ),
+  artifact(
     "subnet-validators",
     "/metagraph/subnets/{netuid}/validators.json",
     "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
@@ -2381,6 +2387,21 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-hyperparameters-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/hyperparameters/history",
+    "/metagraph/subnets/{netuid}/hyperparameters/history.json",
+    "Fetch the append-only hyperparameter-change timeline for one subnet (#4309): each entry is a subnet_hyperparams snapshot recorded when any hyperparameter changed. Forward-only (no pre-feature history). Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

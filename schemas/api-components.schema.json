@@ -16298,6 +16298,95 @@
         ],
         "type": "object"
       },
+      "SubnetHyperparamsHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Append-only hyperparameter-change timeline for one subnet (#4309), served live from the subnet_hyperparams_history D1 tier at /api/v1/subnets/{netuid}/hyperparameters/history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetHyperparamsHistoryEntry"
+            },
+            "type": "array"
+          },
+          "entry_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "entry_count",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "SubnetHyperparamsHistoryEntry": {
+        "additionalProperties": false,
+        "description": "One observed subnet_hyperparams change for a subnet (#4309), recorded when the refresh-subnet-hyperparams diff detects any hyperparameter changed since the last snapshot. Forward-only — no rows before this feature shipped.",
+        "properties": {
+          "block_number": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "hyperparameters": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SubnetHyperparameters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hyperparams_hash": {
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "observed_at",
+          "hyperparams_hash"
+        ],
+        "type": "object"
+      },
       "SubnetIdentityHistoryArtifact": {
         "additionalProperties": true,
         "description": "Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",

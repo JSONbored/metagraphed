@@ -53,6 +53,7 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/metagraph-neurons.mjs";
 import { loadSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
+import { loadSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.mjs";
 import {
   loadSubnetYield,
   YIELD_HISTORY_READ_COLUMNS,
@@ -566,6 +567,43 @@ export async function handleSubnetHyperparams(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/hyperparameters.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/hyperparameters/history (#4309/1.6): append-only
+// hyperparameter-change timeline for one subnet, newest first. Forward-only —
+// rows only exist from when the diff-on-change loader started running (see
+// recordSubnetHyperparamsChanges in src/subnet-hyperparams-history.mjs).
+// Cold/absent store -> schema-stable zero, never 404.
+export async function handleSubnetHyperparamsHistory(
+  request,
+  env,
+  netuid,
+  url,
+) {
+  const validationError = validateQueryParams(url, [
+    "limit",
+    "offset",
+    "cursor",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
+  const data = await loadSubnetHyperparamsHistory(d1Runner(env), netuid, {
+    limit,
+    offset,
+    cursor,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/hyperparameters/history.json`,
+        data.entries[0]?.observed_at ?? null,
       ),
     },
     "short",

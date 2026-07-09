@@ -41,6 +41,11 @@ export const TRAJECTORY_PATH_PATTERN =
 // the subnet_hyperparams D1 tier, no static file.
 export const SUBNET_HYPERPARAMS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/hyperparameters$/;
+// Historical hyperparameter change tracking (#4309/1.6): append-only timeline
+// read from the subnet_hyperparams_history D1 tier, no static file. Detail
+// (more specific) before the base pattern above — both are anchored.
+export const SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/hyperparameters\/history$/;
 // Stake/emission concentration metrics (#2106): computed live from the neurons
 // D1 tier, no static file.
 export const SUBNET_CONCENTRATION_PATH_PATTERN =

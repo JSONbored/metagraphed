@@ -431,6 +431,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/hyperparameters/history?limit=5",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.entries), true);
+      assert.equal(body.data.entries.length <= 5, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/validators",
     (body) => {
       assert.equal(body.data.netuid, 7);

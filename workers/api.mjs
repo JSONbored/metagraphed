@@ -84,6 +84,7 @@ import {
   handleSubnetMetagraph,
   handleNeuron,
   handleSubnetHyperparams,
+  handleSubnetHyperparamsHistory,
   handleSubnetValidators,
   handleSubnetEventSummary,
   handleSubnetEvents,
@@ -332,6 +333,7 @@ import {
   resolveClientIp,
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_HYPERPARAMS_PATH_PATTERN,
+  SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN,
   SUBNET_IDENTITY_HISTORY_PATH_PATTERN,
   SUBNET_METAGRAPH_PATH_PATTERN,
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
@@ -1951,6 +1953,18 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(neuronMatch[1]),
         Number(neuronMatch[2]),
+      );
+    }
+    const hyperparamsHistoryMatch =
+      SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (hyperparamsHistoryMatch) {
+      // Append-only timeline, same cost class as handleSubnetIdentityHistory —
+      // dispatch directly, no edge-cache wrapper.
+      return handleSubnetHyperparamsHistory(
+        request,
+        env,
+        Number(hyperparamsHistoryMatch[1]),
+        resolved.url,
       );
     }
     const hyperparamsMatch = SUBNET_HYPERPARAMS_PATH_PATTERN.exec(

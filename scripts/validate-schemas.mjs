@@ -53,6 +53,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-metagraph",
   "subnet-neuron",
   "subnet-hyperparameters",
+  "subnet-hyperparameters-history",
   "subnet-validators",
   "subnet-events",
   "subnet-event-summary",

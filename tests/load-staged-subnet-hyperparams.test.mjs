@@ -94,6 +94,12 @@ function mockEnv({
         prepare(sql) {
           prepared.push(sql);
           return {
+            // recordSubnetHyperparamsChanges' latestHyperparamsHashes reads via
+            // prepare(sql).all() directly (no bind) — an empty history table on
+            // every run, so every staged row's hash always looks "changed".
+            async all() {
+              return { results: [] };
+            },
             bind: (...v) => ({
               sql,
               v,
@@ -139,14 +145,22 @@ test("loadStagedSubnetHyperparams loads JSON via parameterized batches + deletes
   assert.equal(r.ok, true);
   assert.equal(r.rows, 5);
   assert.deepEqual(m.getCalls, [STAGED_KEY]);
-  // 5 rows / 2 per statement = 3 upsert statements in one db.batch() call.
-  assert.deepEqual(m.batches, [3]);
+  // 5 rows / 2 per statement = 3 upsert statements in one db.batch() call,
+  // then a second db.batch() call of 5 history-diff INSERTs (#4309/1.6) — the
+  // mock's empty latest-hash table means every row looks "changed".
+  assert.deepEqual(m.batches, [3, 5]);
   // SQL is parameterized — the structure is fixed and values are bound, never
   // interpolated, so a tampered staged file cannot inject SQL.
   assert.ok(
     m.prepared[0].startsWith("INSERT OR REPLACE INTO subnet_hyperparams ("),
   );
   assert.ok(m.prepared[0].includes("VALUES (?"));
+  assert.ok(
+    m.prepared.some((s) =>
+      s.startsWith("INSERT INTO subnet_hyperparams_history ("),
+    ),
+    "the diff-on-change history writer (#4309/1.6) must run alongside the latest-only upsert",
+  );
   assert.ok(
     m.prepared.some((s) =>
       s.startsWith("DELETE FROM subnet_hyperparams WHERE netuid NOT IN"),
@@ -344,6 +358,10 @@ function statefulEnv(table, { failBatch = false, failPrune = false } = {}) {
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
           return {
+            // recordSubnetHyperparamsChanges' latestHyperparamsHashes read (#4309/1.6).
+            async all() {
+              return { results: [] };
+            },
             bind: (...v) => ({
               sql,
               v,

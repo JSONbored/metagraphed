@@ -28,6 +28,7 @@ import {
 } from "../config.mjs";
 import { NEURON_INSERT_COLUMNS } from "../../src/metagraph-neurons.mjs";
 import { SUBNET_HYPERPARAMS_INSERT_COLUMNS } from "../../src/subnet-hyperparams.mjs";
+import { recordSubnetHyperparamsChanges } from "../../src/subnet-hyperparams-history.mjs";
 import {
   eventInsertStatements,
   validEventRows,
@@ -615,6 +616,11 @@ export async function loadStagedSubnetHyperparams(env) {
     // re-upsert either way).
     return { ok: false, reason: "purge_failed" };
   }
+  // Diff-and-append into the history tier (#4309/1.6) once the latest-only
+  // table is confirmed updated. A failure here never fails the load — the
+  // latest table (the primary contract) already landed; the next cron's
+  // idempotent hash comparison self-heals a missed diff.
+  await recordSubnetHyperparamsChanges(env, { rows, db });
   await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
   return { ok: true, rows: rows.length, purged };
 }

@@ -527,6 +527,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-hyperparameters-history",
+      "path": "/metagraph/subnets/{netuid}/hyperparameters/history.json",
+      "schema_ref": "#/components/schemas/SubnetHyperparamsHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",
       "schema_ref": "#/components/schemas/SubnetValidatorsArtifact",
@@ -5490,6 +5497,40 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/hyperparameters/history.json",
+      "cache": "short",
+      "description": "Fetch the append-only hyperparameter-change timeline for one subnet (#4309): each entry is a subnet_hyperparams snapshot recorded when any hyperparameter changed. Forward-only (no pre-feature history). Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+      "id": "subnet-hyperparameters-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/hyperparameters/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/validators.json",

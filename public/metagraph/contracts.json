@@ -678,6 +678,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Append-only hyperparameter-change timeline for one subnet (subnet_hyperparams field snapshots on change), served live from the subnet_hyperparams_history D1 tier at /api/v1/subnets/{netuid}/hyperparameters/history (no static file). Forward-only.",
+      "id": "subnet-hyperparameters-history",
+      "path": "/metagraph/subnets/{netuid}/hyperparameters/history.json",
+      "schema_ref": "#/components/schemas/SubnetHyperparamsHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",

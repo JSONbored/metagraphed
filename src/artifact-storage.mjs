@@ -85,6 +85,9 @@ export const R2_ONLY_PATTERNS = [
   // Subnet hyperparameters (#4303/1.4): computed live from the
   // subnet_hyperparams D1 tier, refreshed daily — never written as a file.
   /^subnets\/(?:\d+|\{netuid\})\/hyperparameters\.json$/,
+  // Historical hyperparameter change tracking (#4309/1.6): computed live from
+  // the subnet_hyperparams_history D1 tier — never written as a file.
+  /^subnets\/(?:\d+|\{netuid\})\/hyperparameters\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/history\.json$/,

@@ -1490,6 +1490,47 @@
           }
         }
       },
+      "SubnetHyperparamsHistoryEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One observed subnet_hyperparams change for a subnet (#4309), recorded when the refresh-subnet-hyperparams diff detects any hyperparameter changed since the last snapshot. Forward-only — no rows before this feature shipped.",
+        "required": ["observed_at", "hyperparams_hash"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"], "minimum": 0 },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "hyperparameters": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/SubnetHyperparameters" },
+              { "type": "null" }
+            ]
+          },
+          "hyperparams_hash": { "type": "string" }
+        }
+      },
+      "SubnetHyperparamsHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Append-only hyperparameter-change timeline for one subnet (#4309), served live from the subnet_hyperparams_history D1 tier at /api/v1/subnets/{netuid}/hyperparameters/history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "required": ["schema_version", "netuid", "entry_count", "entries"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "entry_count": { "type": "integer", "minimum": 0 },
+          "limit": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "offset": { "type": ["integer", "null"], "minimum": 0 },
+          "next_cursor": { "type": ["string", "null"] },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubnetHyperparamsHistoryEntry"
+            }
+          }
+        }
+      },
       "SubnetValidatorsArtifact": {
         "type": "object",
         "additionalProperties": true,
