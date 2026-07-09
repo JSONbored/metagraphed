@@ -58,9 +58,10 @@ function sortValue(nominator, sort) {
   return nominator.net_staked_tao;
 }
 
-// Shape a hotkey's per-(coldkey, event_kind) StakeAdded/StakeRemoved aggregate
-// into a ranked nominator list. `rows` is the GROUP BY coldkey, event_kind
-// result. Null-safe: no rows (cold store / empty window / no nominators)
+// Shape a hotkey's StakeAdded/StakeRemoved aggregate into a ranked nominator
+// list. `rows` can be either the legacy GROUP BY coldkey,event_kind shape used
+// by unit tests or the SQL-paginated GROUP BY coldkey shape returned by the D1
+// read path. Null-safe: no rows (cold store / empty window / no nominators)
 // yields a zeroed, empty list — never throws, matching the sibling account
 // tiers (stake-flow, counterparties).
 export function buildValidatorNominators(
@@ -71,6 +72,7 @@ export function buildValidatorNominators(
     sort = DEFAULT_NOMINATOR_SORT,
     limit = NOMINATOR_LIMIT_DEFAULT,
     offset = 0,
+    totalCount,
   } = {},
 ) {
   const normalizedSort = NOMINATOR_SORTS.includes(sort)
@@ -90,15 +92,8 @@ export function buildValidatorNominators(
       typeof row?.coldkey === "string" && row.coldkey.length > 0
         ? row.coldkey
         : null;
+    if (!coldkey) continue;
     const kind = row?.event_kind;
-    if (
-      !coldkey ||
-      (kind !== STAKE_ADDED_KIND && kind !== STAKE_REMOVED_KIND)
-    ) {
-      continue;
-    }
-    const tao = nullableTao(row?.total_tao);
-    if (tao == null) continue;
     const bucket = perColdkey.get(coldkey) ?? {
       coldkey,
       staked_tao: 0,
@@ -106,8 +101,21 @@ export function buildValidatorNominators(
       event_count: 0,
       last_observed_ms: null,
     };
-    if (kind === STAKE_ADDED_KIND) bucket.staked_tao += tao;
-    else bucket.unstaked_tao += tao;
+    if (kind == null) {
+      const staked = nullableTao(row?.staked_tao);
+      const unstaked = nullableTao(row?.unstaked_tao);
+      if (staked == null && unstaked == null) continue;
+      bucket.staked_tao += staked ?? 0;
+      bucket.unstaked_tao += unstaked ?? 0;
+    } else {
+      if (kind !== STAKE_ADDED_KIND && kind !== STAKE_REMOVED_KIND) {
+        continue;
+      }
+      const tao = nullableTao(row?.total_tao);
+      if (tao == null) continue;
+      if (kind === STAKE_ADDED_KIND) bucket.staked_tao += tao;
+      else bucket.unstaked_tao += tao;
+    }
     bucket.event_count += Math.max(
       0,
       Math.trunc(Number(row?.event_count) || 0),
@@ -148,11 +156,14 @@ export function buildValidatorNominators(
     sort: normalizedSort,
     limit: normalizedLimit,
     offset: normalizedOffset,
-    nominator_count: nominators.length,
-    nominators: nominators.slice(
-      normalizedOffset,
-      normalizedOffset + normalizedLimit,
-    ),
+    nominator_count:
+      totalCount == null
+        ? nominators.length
+        : Math.max(0, Math.trunc(Number(totalCount))) || 0,
+    nominators:
+      totalCount == null
+        ? nominators.slice(normalizedOffset, normalizedOffset + normalizedLimit)
+        : nominators,
   };
 }
 
@@ -170,18 +181,58 @@ export async function loadValidatorNominators(
     NOMINATOR_WINDOWS[windowLabel] ??
     NOMINATOR_WINDOWS[DEFAULT_NOMINATOR_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
-  const params = [hotkey, STAKE_ADDED_KIND, STAKE_REMOVED_KIND, cutoff];
-  let sql =
-    "SELECT coldkey, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, " +
-    "COUNT(*) AS event_count, MAX(observed_at) AS last_observed " +
-    "FROM account_events INDEXED BY idx_account_events_hotkey " +
+  const normalizedSort = NOMINATOR_SORTS.includes(sort)
+    ? sort
+    : DEFAULT_NOMINATOR_SORT;
+  const flooredLimit = Math.floor(Number(limit));
+  const normalizedLimit = Number.isFinite(flooredLimit)
+    ? Math.max(0, Math.min(flooredLimit, NOMINATOR_LIMIT_MAX))
+    : NOMINATOR_LIMIT_DEFAULT;
+  const flooredOffset = Math.floor(Number(offset));
+  const normalizedOffset =
+    Number.isFinite(flooredOffset) && flooredOffset > 0 ? flooredOffset : 0;
+  const whereParams = [hotkey, STAKE_ADDED_KIND, STAKE_REMOVED_KIND, cutoff];
+  let whereSql =
     "WHERE hotkey = ? AND event_kind IN (?, ?) AND observed_at >= ?";
   if (coldkey) {
-    sql += " AND coldkey = ?";
-    params.push(coldkey);
+    whereSql += " AND coldkey = ?";
+    whereParams.push(coldkey);
   }
-  sql += " GROUP BY coldkey, event_kind";
-  const rows = await d1(sql, params);
+  const countRows = await d1(
+    "SELECT COUNT(DISTINCT coldkey) AS nominator_count " +
+      "FROM account_events INDEXED BY idx_account_events_hotkey_kind_observed " +
+      whereSql,
+    whereParams,
+  );
+  const totalCount = Math.max(
+    0,
+    Math.trunc(Number(countRows?.[0]?.nominator_count) || 0),
+  );
+  const orderBy = {
+    net_staked: "net_staked_tao DESC, coldkey ASC",
+    gross_staked: "gross_staked_tao DESC, coldkey ASC",
+    last_activity: "last_observed DESC, coldkey ASC",
+  }[normalizedSort];
+  const sql =
+    "SELECT coldkey, " +
+    "COALESCE(SUM(CASE WHEN event_kind = ? THEN amount_tao ELSE 0 END), 0) AS staked_tao, " +
+    "COALESCE(SUM(CASE WHEN event_kind = ? THEN amount_tao ELSE 0 END), 0) AS unstaked_tao, " +
+    "COUNT(*) AS event_count, MAX(observed_at) AS last_observed, " +
+    "COALESCE(SUM(CASE WHEN event_kind = ? THEN amount_tao ELSE -amount_tao END), 0) AS net_staked_tao, " +
+    "COALESCE(SUM(amount_tao), 0) AS gross_staked_tao " +
+    "FROM account_events INDEXED BY idx_account_events_hotkey_kind_observed " +
+    whereSql +
+    " GROUP BY coldkey ORDER BY " +
+    orderBy +
+    " LIMIT ? OFFSET ?";
+  const rows = await d1(sql, [
+    STAKE_ADDED_KIND,
+    STAKE_REMOVED_KIND,
+    STAKE_ADDED_KIND,
+    ...whereParams,
+    normalizedLimit,
+    normalizedOffset,
+  ]);
   let latestObserved = null;
   for (const row of Array.isArray(rows) ? rows : []) {
     const observed = coerceEpochMs(row?.last_observed);
@@ -198,6 +249,7 @@ export async function loadValidatorNominators(
       sort,
       limit,
       offset,
+      totalCount,
     }),
     generatedAt: toIso(latestObserved),
   };

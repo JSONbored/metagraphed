@@ -74,6 +74,43 @@ describe("buildValidatorNominators", () => {
     assert.equal(d.nominators[0].coldkey, "ck-a");
   });
 
+  test("folds SQL-paginated per-coldkey aggregate rows", () => {
+    const d = buildValidatorNominators(
+      [
+        {
+          coldkey: "ck-a",
+          staked_tao: 50,
+          unstaked_tao: null,
+          event_count: 2,
+          last_observed: 5000,
+        },
+        {
+          coldkey: "ck-b",
+          staked_tao: null,
+          unstaked_tao: 5,
+          event_count: 1,
+          last_observed: 4000,
+        },
+        {
+          coldkey: "ck-empty",
+          staked_tao: null,
+          unstaked_tao: null,
+          event_count: 1,
+        },
+      ],
+      HOTKEY,
+      { totalCount: 5, limit: 2, offset: 2 },
+    );
+    assert.equal(d.nominator_count, 5);
+    assert.deepEqual(
+      d.nominators.map((n) => [n.coldkey, n.staked_tao, n.unstaked_tao]),
+      [
+        ["ck-a", 50, 0],
+        ["ck-b", 0, 5],
+      ],
+    );
+  });
+
   test("skips a non-stake event_kind (e.g. Transfer rows sharing the same query)", () => {
     const d = buildValidatorNominators(
       [row("ck-a", "Transfer", 100, 1, 1000), added("ck-a", 25)],
@@ -268,12 +305,16 @@ describe("loadValidatorNominators", () => {
       windowLabel: "30d",
     });
     assert.match(calls[0].sql, /FROM account_events/);
-    assert.match(calls[0].sql, /INDEXED BY idx_account_events_hotkey/);
+    assert.match(
+      calls[0].sql,
+      /INDEXED BY idx_account_events_hotkey_kind_observed/,
+    );
     assert.match(calls[0].sql, /WHERE hotkey = \?/);
-    assert.match(calls[0].sql, /GROUP BY coldkey, event_kind/);
-    assert.equal(calls[0].params[0], HOTKEY);
-    assert.equal(calls[0].params[1], STAKE_ADDED_KIND);
-    assert.equal(calls[0].params[2], STAKE_REMOVED_KIND);
+    assert.match(calls[1].sql, /GROUP BY coldkey/);
+    assert.match(calls[1].sql, /LIMIT \? OFFSET \?/);
+    assert.equal(calls[1].params[3], HOTKEY);
+    assert.equal(calls[1].params[4], STAKE_ADDED_KIND);
+    assert.equal(calls[1].params[5], STAKE_REMOVED_KIND);
     assert.equal(d.data.nominators[0].net_staked_tao, 70);
     assert.equal(d.generatedAt, new Date(6000).toISOString());
   });
@@ -289,12 +330,26 @@ describe("loadValidatorNominators", () => {
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
     let cutoff;
     const d1 = async (sql, params) => {
-      cutoff = params[3];
+      cutoff ??= params[3];
       return [];
     };
     await loadValidatorNominators(d1, HOTKEY, { windowLabel: "bogus" });
     assert.equal(cutoff, Date.now() - 30 * 24 * 60 * 60 * 1000);
     vi.useRealTimers();
+  });
+
+  test("pushes normalized fallback pagination into SQL", async () => {
+    const calls = [];
+    const d1 = async (sql, params) => {
+      calls.push({ sql, params });
+      return [];
+    };
+    await loadValidatorNominators(d1, HOTKEY, {
+      limit: "bogus",
+      offset: -1,
+    });
+    assert.equal(calls[1].params.at(-2), 20);
+    assert.equal(calls[1].params.at(-1), 0);
   });
 
   test("coldkey narrows the query to one nominator's own flow", async () => {
@@ -352,8 +407,8 @@ describe("loadValidatorNominators", () => {
   });
 });
 
-// A minimal D1 mock scoped to this route's exact SQL shape (GROUP BY coldkey,
-// event_kind), self-contained rather than extending the broader multi-purpose
+// A minimal D1 mock scoped to this route's exact SQL shape (COUNT DISTINCT and
+// GROUP BY coldkey), self-contained rather than extending the broader multi-purpose
 // account-routes.test.mjs dispatcher.
 function accountEventsD1(rows) {
   return {
@@ -362,15 +417,53 @@ function accountEventsD1(rows) {
         bind(...params) {
           return {
             all() {
-              if (!/GROUP BY coldkey, event_kind/.test(sql)) {
-                return Promise.resolve({ results: [] });
-              }
-              let r = rows.filter((x) => x.hotkey === params[0]);
+              const whereOffset = sql.startsWith("SELECT coldkey") ? 3 : 0;
+              let r = rows.filter((x) => x.hotkey === params[whereOffset]);
               if (sql.includes("AND coldkey = ?")) {
-                const coldkeyParam = params[params.length - 1];
+                const coldkeyParam = params[whereOffset + 4];
                 r = r.filter((x) => x.coldkey === coldkeyParam);
               }
-              return Promise.resolve({ results: r });
+              if (/COUNT\(DISTINCT coldkey\)/.test(sql)) {
+                return Promise.resolve({
+                  results: [
+                    {
+                      nominator_count: new Set(r.map((x) => x.coldkey)).size,
+                    },
+                  ],
+                });
+              }
+              if (!/GROUP BY coldkey/.test(sql)) {
+                return Promise.resolve({ results: [] });
+              }
+              const buckets = new Map();
+              for (const event of r) {
+                const bucket = buckets.get(event.coldkey) ?? {
+                  coldkey: event.coldkey,
+                  staked_tao: 0,
+                  unstaked_tao: 0,
+                  event_count: 0,
+                  last_observed: null,
+                };
+                if (event.event_kind === STAKE_ADDED_KIND) {
+                  bucket.staked_tao += event.total_tao;
+                } else if (event.event_kind === STAKE_REMOVED_KIND) {
+                  bucket.unstaked_tao += event.total_tao;
+                }
+                bucket.event_count += event.event_count;
+                bucket.last_observed = Math.max(
+                  bucket.last_observed ?? 0,
+                  event.last_observed,
+                );
+                buckets.set(event.coldkey, bucket);
+              }
+              const results = [...buckets.values()].sort(
+                (a, b) =>
+                  b.staked_tao -
+                    b.unstaked_tao -
+                    (a.staked_tao - a.unstaked_tao) ||
+                  a.coldkey.localeCompare(b.coldkey),
+              );
+              return Promise.resolve({ results });
             },
           };
         },
