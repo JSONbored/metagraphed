@@ -79,6 +79,7 @@ import {
   loadStagedBlocks,
   loadStagedExtrinsics,
   loadStagedSubnetHyperparams,
+  loadStagedAccountIdentity,
 } from "./request-handlers/staging.mjs";
 import {
   handleSubnetMetagraph,
@@ -461,6 +462,7 @@ export {
   loadStagedBlocks,
   loadStagedExtrinsics,
   loadStagedSubnetHyperparams,
+  loadStagedAccountIdentity,
 };
 
 // The RPC-proxy subsystem now lives in request-handlers/rpc-proxy.mjs (#1763).
@@ -879,12 +881,14 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     //   - loadStagedEvents:  token-free chain-event load (#1346)
     //   - loadStagedBlocks / loadStagedExtrinsics: block-explorer hot window (#1345)
     //   - loadStagedSubnetHyperparams: token-free subnet hyperparams load (#4303/1.3)
+    //   - loadStagedAccountIdentity: token-free personal identity load (#4324/5.1)
     await Promise.allSettled([
       loadStagedNeurons(env),
       loadStagedEvents(env),
       loadStagedBlocks(env),
       loadStagedExtrinsics(env),
       loadStagedSubnetHyperparams(env),
+      loadStagedAccountIdentity(env),
     ]);
     return { ok: true, fast_load: true };
   }
