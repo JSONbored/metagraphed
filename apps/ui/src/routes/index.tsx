@@ -37,6 +37,7 @@ import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
 
 import {
   blocksQuery,
+  chainActivityQuery,
   coverageQuery,
   freshnessQuery,
   healthQuery,
@@ -365,6 +366,16 @@ function HeroKpis() {
   // shows the honest number with no invented trend line.
   const freshPoints = freshSeries ? buildHourlyPoints(freshSeries) : undefined;
 
+  // #3383: chain-direct activity, distinct from the registry/freshness metadata
+  // above — useQuery (not suspense), so a slow/failed fetch degrades this one
+  // cell instead of blocking the whole hero card. No fabricated fallback: the
+  // sparkline hides via HeroStatCell's own hasSeries guard when there's no data.
+  const activity = useQuery(chainActivityQuery("7d")).data?.data;
+  const activityChrono = activity?.days.length ? [...activity.days].reverse() : undefined;
+  const latestExtrinsics = activityChrono?.at(-1)?.extrinsic_count;
+  const activitySeries = activityChrono?.map((d) => d.extrinsic_count);
+  const activityPoints = activityChrono?.map((d) => ({ t: d.day, v: d.extrinsic_count }));
+
   return (
     <div className="w-[min(380px,100%)] rounded-xl border border-border bg-card/80 overflow-hidden">
       {/* Caption strip */}
@@ -397,9 +408,11 @@ function HeroKpis() {
         </div>
       </div>
 
-      {/* Two stat cells. Uptime has no exposed per-hour series, so it shows the
-          number alone; freshness charts the real per-source ages when present. */}
-      <div className="grid grid-cols-2 divide-x divide-border border-b border-border">
+      {/* Three stat cells. Uptime has no exposed per-hour series, so it shows the
+          number alone; freshness charts the real per-source ages when present;
+          chain activity is the only one sourced chain-direct rather than from
+          registry/probe metadata. */}
+      <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
         <HeroStatCell
           label="Healthy now"
           value={uptime != null ? `${(uptime * 100).toFixed(1)}%` : "—"}
@@ -414,6 +427,15 @@ function HeroKpis() {
           points={freshPoints}
           formatValue={(v) => humaniseSeconds(v)}
           tooltip="Median age of the most recent successful probe per registered source over the last 24 hours. Lower is better. Source: /api/v1/freshness."
+        />
+        <HeroStatCell
+          label="Chain activity"
+          value={latestExtrinsics != null ? formatNumber(latestExtrinsics) : "—"}
+          series={activitySeries}
+          points={activityPoints}
+          formatValue={(v) => formatNumber(v)}
+          seriesCaption="7d · daily"
+          tooltip="Extrinsics in the latest indexed day, chain-direct (not registry-derived). Source: /api/v1/chain/activity."
         />
       </div>
 
@@ -468,6 +490,7 @@ function HeroStatCell({
   formatValue,
   tooltip,
   accent,
+  seriesCaption = "24h · hourly",
 }: {
   label: string;
   value: string;
@@ -477,6 +500,8 @@ function HeroStatCell({
   formatValue?: (v: number) => string;
   tooltip?: string;
   accent?: boolean;
+  /** Cadence label under the sparkline; defaults to the freshness cell's 24h/hourly cadence. */
+  seriesCaption?: string;
 }) {
   const hasSeries = !!series && series.length > 1;
   return (
@@ -511,7 +536,7 @@ function HeroStatCell({
               className="inline-block h-px w-3"
               style={{ background: accent ? "var(--accent)" : "var(--ink-strong)" }}
             />
-            <span>24h · hourly</span>
+            <span>{seriesCaption}</span>
           </div>
         </>
       ) : null}
