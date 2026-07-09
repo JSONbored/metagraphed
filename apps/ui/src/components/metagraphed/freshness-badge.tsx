@@ -81,10 +81,7 @@ export function FreshnessBadge({ at, tier, thresholdMs, className }: Props) {
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span className={classNames("size-1.5 shrink-0 rounded-full", dotCls)} />
-        <span
-          className="font-mono text-[10px] text-ink-muted"
-          suppressHydrationWarning
-        >
+        <span className="font-mono text-[10px] text-ink-muted" suppressHydrationWarning>
           {absolutePhrase ? (
             <>
               <span>{absolutePhrase}</span>

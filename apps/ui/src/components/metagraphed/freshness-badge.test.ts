@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  freshnessBadgeTimeCopy,
-  freshnessDotClass,
-  freshnessTierLabel,
-} from "./freshness-badge";
+import { freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel } from "./freshness-badge";
 
 describe("freshnessTierLabel", () => {
   it("maps realtime to Live and daily to Daily rollup", () => {
