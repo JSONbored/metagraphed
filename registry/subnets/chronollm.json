@@ -60,6 +60,25 @@
         "https://huggingface.co/manelalab"
       ],
       "url": "https://huggingface.co/datasets/manelalab/ChronoInstruct-SFT-v1"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-chronollm-submissions-api",
+      "kind": "subnet-api",
+      "name": "ChronoLLM round submissions API",
+      "notes": "Public no-auth endpoint on the official ChronoLLM backend returning a round's miner model submissions (uid -> per-year ChronoGPT model repo@commit pins). The chronollm/sn38 miner guide documents this API: curl https://api.chronollm.com/submissions/{round}/{uid}, with the round index from https://api.chronollm.com/rounds/current.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dalledajay-coder"
+      },
+      "source_urls": [
+        "https://github.com/chronollm/sn38/blob/main/docs/miner.md",
+        "https://github.com/chronollm/sn38"
+      ],
+      "url": "https://api.chronollm.com/submissions/2"
     }
   ],
   "source_repo": "https://github.com/chronollm/sn38",
