@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import { Scale, Users, BarChart3, Activity, Percent, Coins, ShieldCheck } from "lucide-react";
 import { chainConcentrationQuery, chainPerformanceQuery } from "@/lib/metagraphed/queries";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { EmptyState } from "@/components/metagraphed/states";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import {
   networkDecentralizationModel,
   type DecentralizationTile,
@@ -27,10 +27,26 @@ const TILE_ICONS: Record<string, LucideIcon> = {
   "validator-trust-median": ShieldCheck,
 };
 
-function Notice({ children }: { children: string }) {
+// Suspense fallback that mirrors the panel's own grid (6 concentration tiles +
+// a 3-tile score row) so the skeleton occupies the same responsive height as
+// the loaded content — no layout shift when the data arrives, unlike a single
+// flat box.
+export function NetworkDecentralizationSkeleton() {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 text-xs text-ink-muted">
-      {children}
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-[76px]" />
+        ))}
+      </div>
+      <div>
+        <Skeleton className="mb-3 h-3 w-48" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[76px]" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -55,14 +71,14 @@ function Tile({ tile }: { tile: DecentralizationTile }) {
  * once (shared cache) and renders through the pure view-model helper.
  */
 export function NetworkDecentralizationPanel() {
-  const { data: cRes, isPending: cPending } = useQuery(chainConcentrationQuery());
-  const { data: pRes, isPending: pPending } = useQuery(chainPerformanceQuery());
+  // Suspense-driven loading (the Suspense fallback in status.tsx renders the
+  // Skeleton) and QueryErrorBoundary-driven errors, matching every sibling
+  // section on the status page — so a fetch error surfaces as a distinct error
+  // state rather than being conflated with a legitimately-empty result below.
+  const { data: cRes } = useSuspenseQuery(chainConcentrationQuery());
+  const { data: pRes } = useSuspenseQuery(chainPerformanceQuery());
 
   const model = networkDecentralizationModel(cRes?.data, pRes?.data);
-
-  if ((cPending || pPending) && !model.hasData) {
-    return <Notice>Loading network decentralization…</Notice>;
-  }
 
   if (!model.hasData) {
     return (

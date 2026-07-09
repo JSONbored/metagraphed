@@ -23,7 +23,10 @@ import {
   HealthHistoryDrilldown,
   SourceHealthTable,
 } from "@/components/metagraphed/status-diagnostics";
-import { NetworkDecentralizationPanel } from "@/components/metagraphed/network-decentralization-panel";
+import {
+  NetworkDecentralizationPanel,
+  NetworkDecentralizationSkeleton,
+} from "@/components/metagraphed/network-decentralization-panel";
 import { EmissionYieldPanel } from "@/components/metagraphed/emission-yield-panel";
 
 const SURFACES_INITIAL = 10;
@@ -112,7 +115,9 @@ function StatusPage() {
             intro="Chain-wide stake & emission concentration (Gini, HHI, Nakamoto coefficient, entropy, top-1% share) and the trust/consensus score spread, computed across every subnet from the metagraph snapshot."
           />
           <QueryErrorBoundary>
-            <NetworkDecentralizationPanel />
+            <Suspense fallback={<NetworkDecentralizationSkeleton />}>
+              <NetworkDecentralizationPanel />
+            </Suspense>
           </QueryErrorBoundary>
         </section>
 
