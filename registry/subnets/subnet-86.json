@@ -50,6 +50,25 @@
         "https://backprop.finance/dtao/subnets/86-subnet-86"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/86"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-86-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "SN86 TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/86 on api.taomarketcap.com returning machine-readable JSON for SN86 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. SN86 exposes no first-party API, repository, or docs site; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://backprop.finance/dtao/subnets/86-subnet-86"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/86"
     }
   ]
 }
