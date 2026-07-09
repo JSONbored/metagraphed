@@ -68,10 +68,17 @@ const MAX_STAGED_SUBNET_HYPERPARAMS_ROWS = 1_000;
 
 // Account identity (#4324/5.1): scoped to coldkeys that actually have an
 // identity SET (most never call set_identity), so this stays small — bounds
-// are generous headroom over the realistic count, not a tight fit.
+// are generous headroom over the realistic count, not a tight fit. A
+// dedicated (not shared) per-field string cap: the SDK's own set_identity CLI
+// validation (bittensor_cli/src/bittensor/utils.py, prompt_for_identity)
+// bounds image/description/additional at 1024 bytes and name/url/discord/
+// github_repo at 256 — MAX_STAGED_NEURON_STRING_BYTES (512, sized for the
+// neuron table's short hotkey/axon strings) would silently reject a
+// legitimately long, on-chain-valid description/image/additional value.
 const STAGED_ACCOUNT_IDENTITY_KEY = "metagraph/account-identity-pending.json";
 const MAX_STAGED_ACCOUNT_IDENTITY_BYTES = 5_000_000;
 const MAX_STAGED_ACCOUNT_IDENTITY_ROWS = 5_000;
+const MAX_STAGED_ACCOUNT_IDENTITY_STRING_BYTES = 1024;
 
 function neuronStagingSignPayload(rows, refreshed_netuids, captured_at) {
   if (refreshed_netuids == null && captured_at == null) {
@@ -641,25 +648,17 @@ function validStagedAccountIdentityRow(row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (typeof row.account !== "string" || row.account.length === 0) return false;
   if (!Number.isFinite(row.captured_at)) return false;
-  // No other column in ACCOUNT_IDENTITY_INSERT_COLUMNS is numeric — captured_at
-  // is already validated finite above, so a bare `typeof value === "number"`
-  // non-finite check inside the loop below (the pattern validStagedNeuronRow/
-  // validStagedSubnetHyperparamsRow use, where MANY columns are numeric) would
-  // be unreachable dead code here. Only the column allow-list + string-length +
-  // forbidden-type checks are load-bearing for this row shape.
+  // Every other column (name/url/github/image/discord/description/additional)
+  // is TEXT-only — unlike validStagedNeuronRow/validStagedSubnetHyperparamsRow,
+  // which allow numbers because many of their columns are numeric, a bare
+  // `typeof value !== "number"` check here must actively REJECT a number
+  // (or any non-string, non-null value), not just skip a non-finite one.
   for (const [key, value] of Object.entries(row)) {
     if (!ACCOUNT_IDENTITY_INSERT_COLUMNS.includes(key)) return false;
-    if (
-      typeof value === "string" &&
-      utf8Bytes(value).length > MAX_STAGED_NEURON_STRING_BYTES
-    )
-      return false;
-    if (
-      typeof value === "boolean" ||
-      typeof value === "bigint" ||
-      typeof value === "symbol" ||
-      typeof value === "function"
-    )
+    if (key === "account" || key === "captured_at") continue; // validated above
+    if (value === null) continue;
+    if (typeof value !== "string") return false;
+    if (utf8Bytes(value).length > MAX_STAGED_ACCOUNT_IDENTITY_STRING_BYTES)
       return false;
   }
   return true;
@@ -680,7 +679,13 @@ function validStagedAccountIdentityRow(row) {
 // only neuron deregistering) hasn't necessarily lost its identity, and
 // purging on absence would fight #4326/5.2's future diff-history tracking by
 // making a scan gap look like a real removal. UPSERT-only; rows only ever
-// accumulate or get refreshed in place.
+// accumulate or get refreshed in place. Believed safe from unbounded growth
+// (unlike account_events/neuron_daily, which have both hit real D1 capacity
+// limits before): setting an identity is gated behind owning at least one
+// currently-registered hotkey, an economically real barrier, not a passively-
+// logged event — live-verified 2026-07-09 at 460 rows across ~30k active
+// neurons (~1.5%). No measured growth tripwire is defined; revisit retention
+// if row count ever approaches neuron_daily's pre-outage scale.
 export async function loadStagedAccountIdentity(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;

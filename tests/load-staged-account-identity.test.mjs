@@ -202,9 +202,14 @@ test("loadStagedAccountIdentity rejects rows that fail per-field bounding", asyn
     unknown_column: { ...identityRow("5Acc0"), evil_extra: 1 },
     non_finite_captured_at: { ...identityRow("5Acc0"), captured_at: Infinity },
     boolean_value: { ...identityRow("5Acc0"), name: true },
+    // Regression case for the bug the adversarial review caught: the removed
+    // `typeof value === "number" && !Number.isFinite(value)` check only ever
+    // rejected NON-finite numbers, never a plain finite one like 12345 — a
+    // number could flow straight into a TEXT column undetected.
+    number_value: { ...identityRow("5Acc0"), name: 12345 },
     oversized_string: {
       ...identityRow("5Acc0"),
-      description: "x".repeat(513),
+      description: "x".repeat(1025),
     },
     missing_account: { ...identityRow("5Acc0"), account: "" },
     non_string_account: { ...identityRow("5Acc0"), account: 5 },

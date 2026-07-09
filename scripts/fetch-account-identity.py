@@ -6,26 +6,48 @@ scripts/fetch-native-subnets.py): this is the identity a coldkey attaches to its
 
 Zero extra RPC cost: MetagraphInfo (the same object fetch-metagraph-native.py's one
 get_all_metagraphs_info(all_mechanisms=True) call already returns) carries a
-per-UID-aligned `identities: list[Optional[ChainIdentity]]` field that
-fetch-metagraph-native.py doesn't currently read — decoded server-side by the SDK
-into a typed dataclass (bittensor/core/chain_data/chain_identity.py), same as
-`coldkeys`/`hotkeys`. This script makes its own get_all_metagraphs_info call (a
-second, mostly-redundant ~10s round trip) rather than editing the proven neuron
-pipeline in place, matching this repo's one-script-per-capture-concern convention
-(fetch-subnet-hyperparams.py / fetch-native-subnets.py / fetch-events.py are each
-separate scripts too, despite some overlapping RPC surface).
+per-UID-aligned `identities` field that fetch-metagraph-native.py doesn't currently
+read. This script makes its own get_all_metagraphs_info call (a second, mostly-
+redundant ~10s round trip) rather than editing the proven neuron pipeline in place,
+matching this repo's one-script-per-capture-concern convention (fetch-subnet-
+hyperparams.py / fetch-native-subnets.py / fetch-events.py are each separate
+scripts too, despite some overlapping RPC surface).
 
-Scope: only coldkeys with an identity actually SET (identities[uid] is not None) —
-most accounts never call set_identity, so this naturally stays small without an
-explicit keyspace-enumeration limit. Deduped by coldkey (identity is attached to
-the coldkey, not a specific hotkey/UID — the same coldkey can appear at multiple
-UIDs across subnets with an identical identity record).
+Scope — and its coverage gap: only coldkeys currently occupying at least one UID
+slot in some subnet's canonical (mechid-0) metagraph are ever considered, because
+`identities`/`coldkeys` are per-UID-aligned arrays sourced from the SAME neuron
+enumeration as fetch-metagraph-native.py's own hotkeys/coldkeys. A coldkey that set
+an identity but never registered a hotkey, or whose only hotkey has since
+deregistered, is invisible to this script and never captured — there is currently
+no other capture path in this repo that would catch it (confirmed: SubtensorModule::
+IdentitiesV2 is a plain account-keyed storage map fully decoupled from neuron
+registration on-chain, per get_delegate_identities() in the installed SDK, so the
+gap is a real, permanent scoping choice of THIS script, not a chain limitation).
+Accepted for #4325 because it still satisfies the issue's actual goal ("do not try
+to enumerate the whole keyspace") via a different, lower-risk mechanism than the
+issue's literal "scope to account_events" text (fetch scripts never read D1, and
+account_events only retains 3 days — see the PR description for the full
+rationale). #4328 (5.4, the serving route) and any future UI built on this table
+inherit this same gap and should not assume "no row in account_identity" means "no
+identity set."
 
-Field shape verified from the installed SDK's ChainIdentity dataclass
-(bittensor/core/chain_data/chain_identity.py, bittensor==10.4.0, matching the
-pinned version in refresh-metagraph.yml): name, url, github, image, discord,
-description, additional — all plain strings, empty ("") when a field was never
-set on-chain (not None; only the whole ChainIdentity entry is Optional).
+Deduped by coldkey (identity is attached to the coldkey, not a specific hotkey/
+UID — the same coldkey can appear at multiple UIDs across subnets with an
+identical identity record; only the first occurrence is kept).
+
+Field shape verified LIVE against finney, 2026-07-09 (bittensor==10.4.0, matching
+the pinned version in refresh-metagraph.yml, via
+SubtensorApi(network="finney").metagraphs.get_all_metagraphs_info(all_mechanisms=True)):
+each non-null `identities[uid]` entry is a plain dict (NOT a ChainIdentity dataclass
+instance, despite that class existing in the SDK for a different call path) with
+keys name/url/github_repo/image/discord/description/additional — note `github_repo`,
+not `github` (this script's own `account_identity.github` D1/API column keeps the
+shorter name; only the SOURCE key differs). Re-verify this shape live before
+bumping the pinned bittensor version — SubnetIdentitiesV3 (a different, subnet-
+scoped identity item) has already been revised across three chain versions in this
+codebase's history, so this personal-identity shape should not be assumed stable
+either. Unset fields decode as "" (empty string), not None; only the whole entry is
+Optional (None) when a coldkey never called set_identity.
 
 Run: uv run --with bittensor python scripts/fetch-account-identity.py
 """
@@ -37,19 +59,44 @@ import time
 
 OUT = os.environ.get("ACCOUNT_IDENTITY_JSON", "dist/metagraph-account-identity.json")
 
+# The chain's field name -> this script's output key. Only "github_repo" differs
+# from the D1/API column name (see the module docstring's live-verified shape).
+IDENTITY_FIELD_MAP = {
+    "name": "name",
+    "url": "url",
+    "github_repo": "github",
+    "image": "image",
+    "discord": "discord",
+    "description": "description",
+    "additional": "additional",
+}
+
 
 def _at(arr, i):
     return arr[i] if i < len(arr) else None
 
 
 def blank_to_null(value):
-    """The SDK decodes an unset ChainIdentity string field as "", not None —
+    """The SDK decodes an unset identity string field as "", not None —
     normalize to null so the D1/API contract matches every other nullable text
     field in this codebase rather than leaking chain-encoding empty strings."""
     if not isinstance(value, str):
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def identity_fields(identity):
+    """`identity` is a plain dict (live-verified shape, see the module
+    docstring) — dict.get, not getattr, and github_repo maps to the shorter
+    `github` output key. Never raises on an unexpected shape; a non-dict entry
+    (a future SDK change) degrades to all-null fields rather than crashing the
+    whole fetch."""
+    getter = identity.get if isinstance(identity, dict) else lambda _k: None
+    return {
+        out_key: blank_to_null(getter(chain_key))
+        for chain_key, out_key in IDENTITY_FIELD_MAP.items()
+    }
 
 
 def main():
@@ -91,13 +138,7 @@ def main():
                 continue
             identities_by_account[account] = {
                 "account": account,
-                "name": blank_to_null(getattr(identity, "name", None)),
-                "url": blank_to_null(getattr(identity, "url", None)),
-                "github": blank_to_null(getattr(identity, "github", None)),
-                "image": blank_to_null(getattr(identity, "image", None)),
-                "discord": blank_to_null(getattr(identity, "discord", None)),
-                "description": blank_to_null(getattr(identity, "description", None)),
-                "additional": blank_to_null(getattr(identity, "additional", None)),
+                **identity_fields(identity),
                 "captured_at": captured_at,
             }
 

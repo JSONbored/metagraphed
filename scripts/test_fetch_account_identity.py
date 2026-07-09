@@ -25,6 +25,7 @@ _spec.loader.exec_module(_fai)
 
 _at = _fai._at
 blank_to_null = _fai.blank_to_null
+identity_fields = _fai.identity_fields
 
 
 class AtTest(unittest.TestCase):
@@ -56,6 +57,74 @@ class BlankToNullTest(unittest.TestCase):
 
     def test_surrounding_whitespace_is_stripped(self):
         self.assertEqual(blank_to_null("  Example  "), "Example")
+
+
+class IdentityFieldsTest(unittest.TestCase):
+    def test_maps_github_repo_to_the_shorter_github_key(self):
+        # The live-verified chain field is "github_repo", not "github" — this
+        # is the regression case for the bug the adversarial review caught:
+        # the original implementation read a "github" attribute that never
+        # existed on the (dict-shaped) identity, so every field silently
+        # decoded to null.
+        out = identity_fields({"github_repo": "https://github.com/example"})
+        self.assertEqual(out["github"], "https://github.com/example")
+        self.assertNotIn("github_repo", out)
+
+    def test_extracts_every_field_from_a_full_dict(self):
+        identity = {
+            "name": "Example Team",
+            "url": "https://example.com",
+            "github_repo": "example",
+            "image": "https://example.com/logo.png",
+            "discord": "example#0001",
+            "description": "An example subnet operator.",
+            "additional": "extra info",
+        }
+        out = identity_fields(identity)
+        self.assertEqual(
+            out,
+            {
+                "name": "Example Team",
+                "url": "https://example.com",
+                "github": "example",
+                "image": "https://example.com/logo.png",
+                "discord": "example#0001",
+                "description": "An example subnet operator.",
+                "additional": "extra info",
+            },
+        )
+
+    def test_blank_chain_fields_become_null(self):
+        identity = {
+            "name": "Example",
+            "url": "",
+            "github_repo": "",
+            "image": "",
+            "discord": "",
+            "description": "",
+            "additional": "",
+        }
+        out = identity_fields(identity)
+        self.assertEqual(out["name"], "Example")
+        for key in ("url", "github", "image", "discord", "description", "additional"):
+            self.assertIsNone(out[key], key)
+
+    def test_missing_key_becomes_null_not_a_crash(self):
+        out = identity_fields({"name": "Example"})  # every other key absent
+        self.assertEqual(out["name"], "Example")
+        self.assertIsNone(out["url"])
+        self.assertIsNone(out["github"])
+
+    def test_non_dict_identity_degrades_to_all_null_fields(self):
+        # Defensive: a future SDK change that stops returning a plain dict
+        # (e.g. reverts to a dataclass instance) must not crash the fetch —
+        # it should degrade to an all-null row, not raise.
+        class NotADict:
+            name = "should not be read via attribute access"
+
+        out = identity_fields(NotADict())
+        self.assertIsNone(out["name"])
+        self.assertIsNone(out["github"])
 
 
 if __name__ == "__main__":

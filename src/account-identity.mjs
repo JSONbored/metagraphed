@@ -3,7 +3,7 @@
 // src/subnet-identity-history.mjs / src/chain-identity-history.mjs) — this is
 // the identity a coldkey attaches to itself. Field mapping documented in
 // scripts/fetch-account-identity.py's docstring and
-// migrations/0038_account_identity.sql. Mirrors NEURON_INSERT_COLUMNS's role
+// migrations/0039_account_identity.sql. Mirrors NEURON_INSERT_COLUMNS's role
 // in src/metagraph-neurons.mjs — the full column set written by the staged-
 // load path (loadStagedAccountIdentity, workers/request-handlers/staging.mjs).
 //
