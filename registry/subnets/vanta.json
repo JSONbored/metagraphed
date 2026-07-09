@@ -186,6 +186,31 @@
         "submitted_by": "rust-toml"
       },
       "notes": "Public no-auth static JSON dataset slippage_estimates.json committed in the official SN8 Vanta Network repository (github.com/taoshidev/vanta-network). Distinct from the model-coefficients surface: this is the precomputed per-asset, per-trade-size empirical slippage lookup table (e.g. crypto BTCUSDC/ETHUSDC long/short across notional buckets). The path is resolved in vali_objects/utils/vali_bkp_utils.py and loaded by the PriceSlippageModel in vali_objects/utils/price_slippage_model.py to estimate execution slippage when scoring miner positions. Whitelisted for commit in .gitignore, so it is intentionally published."
+    },
+    {
+      "id": "sn-8-vanta-openapi",
+      "name": "Vanta API OpenAPI 3.1 spec",
+      "kind": "openapi",
+      "url": "https://api.staging.vantanetwork.io/openapi.json",
+      "provider": "vanta",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/taoshidev/vanta-starter/blob/main/README.md",
+        "https://github.com/taoshidev/vanta-starter/blob/main/lib/docs/api-catalog.ts"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "reyanthony062001-ops"
+      },
+      "notes": "Public no-auth OpenAPI 3.1 document (openapi 3.1.0, 91 paths) for the Vanta API, self-describing as the REST surface over the SN8 Vanta Network (github.com/taoshidev/vanta-network) and Hyperscaled SDK. It is the team's officially-documented hosted deployment: taoshidev/vanta-starter README names api.staging.vantanetwork.io as the hosted platform API, and its lib/docs/api-catalog.ts documents GET /openapi.json as the public OpenAPI 3.1 specification. The spec document itself fetches with no auth (the per-endpoint API calls require a partner key; the spec does not). Same taoshidev org and vanta provider as the registered source-repo and model-parameter surfaces."
     }
   ],
   "social": {
