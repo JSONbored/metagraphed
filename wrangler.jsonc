@@ -55,9 +55,10 @@
     // this is a zero-downtime experiment and flipping it back is an instant
     // rollback.
     //
-    // blocks: live-verified byte-identical to D1 (2026-07-09, block #8586622 --
-    // every column, including block_hash/parent_hash/author/observed_at, matched
-    // exactly) -- safe to flip once ready.
+    // blocks: FLIPPED 2026-07-09 -- live-verified byte-identical to D1
+    // (block #8586622, every column including block_hash/parent_hash/author/
+    // observed_at matched exactly). Now serving deep history from Postgres,
+    // with automatic D1 fallback on any DATA_API failure.
     //
     // extrinsics: reconciled 2026-07-09 (#4669), still not flipped pending a
     // live cutover decision. indexer-rs's `call_args` (Postgres JSONB) is a
@@ -83,7 +84,7 @@
     // (b) raw byte-array VALUES nested inside call args stay unconverted
     // (correctly -- a bare 32-byte array is ambiguous between Hash and
     // AccountId32 with no type metadata to disambiguate generically).
-    "METAGRAPH_BLOCKS_SOURCE": "d1",
+    "METAGRAPH_BLOCKS_SOURCE": "postgres",
     "METAGRAPH_EXTRINSICS_SOURCE": "d1",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent

@@ -2,8 +2,12 @@
 
 - **Status:** Accepted (partial) — first-party ingestion + serving shipped
   (#1345 vertical slices: blocks, extrinsics, account events; Aura block-author
-  decode). Deep history (#1519 R2 SQL, #1349 archive RPC) is pending the
-  self-hosted infrastructure.
+  decode). Deep history landed via ADR 0013's Postgres/archive-node build
+  instead of #1519's originally-proposed R2 SQL columnar sibling (#1519 stays
+  open only as a declined-for-now enhancement, JSO-2054/#2518 option (a));
+  #1349's archive RPC is live (closed). `/api/v1/blocks` serves Postgres deep
+  history as of 2026-07-09 (`METAGRAPH_BLOCKS_SOURCE=postgres`); extrinsics
+  cutover is reconciled (#4669) and pending its own flip.
 - **Date:** 2026-06-23
 - **Relates to:** ADR 0006 (provenance-tiered storage — D1 for dynamic data) and
   ADR 0002 (the existing probe / RPC-pool plane this reuses).

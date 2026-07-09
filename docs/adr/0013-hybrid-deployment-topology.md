@@ -26,9 +26,11 @@
 > and `scripts/backfill-chain.py` (referenced below and in `deploy/README.md`)
 > are retired — a Rust implementation (live-follow + sharded historical backfill
 > in one binary) replaces both, verified faster and handling more event
-> coverage. Its source has no git remote yet (tracked as a real, still-open
-> risk — production-adjacent code should not live in exactly one place with no
-> backup). Separately: `deploy/postgres/schema.sql`'s TimescaleDB hypertable
+> coverage. Its source lives in the private `JSONbored/metagraphed-indexer-rs`
+> repo (a remote was added 2026-07-03, closing the "exactly one place with no
+> backup" risk this amendment originally flagged) — confirmed 2026-07-09 that
+> the repo's last commit timestamp matches the deployed image's build time to
+> within 3 minutes. Separately: `deploy/postgres/schema.sql`'s TimescaleDB hypertable
 > section, as originally committed, could never actually apply —
 > `create_hypertable()` requires the partition column (`observed_at`) in every
 > unique constraint, and none of the original primary keys included it. Fixed
