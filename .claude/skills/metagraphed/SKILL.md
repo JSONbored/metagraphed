@@ -438,6 +438,12 @@ npm run test:e2e --workspace=apps/ui   # needs a Chromium browser: npx playwrigh
 npm run build --workspace=apps/ui
 ```
 
+The responsive-overflow e2e check replays recorded API traffic (`tests/e2e/har/*.har`)
+instead of live production data, so it's deterministic regardless of live chain state. If
+your PR adds a new API call on one of the checked routes (`/`, `/subnets/1`,
+`/endpoints`, `/status`, `/settings`, `/explorer`), re-record:
+`npm run test:e2e:record-har --workspace=apps/ui` against a running dev server.
+
 CI also gzip-measures the initial client JS for a cold `/` visit against a budget (currently ~300 KB,
 `.github/workflows/validate.yml`'s "Bundle size budget" step) — keep new dependencies/imports lean; if
 a real feature legitimately grows it, raise the budget deliberately in the same PR. If your PR also

@@ -34,6 +34,15 @@ If lint flags formatting, run `npm run format --workspace=apps/ui`. Prettier is 
 single source of truth for style and is enforced through ESLint's `prettier/prettier`
 rule — don't hand-format.
 
+The responsive-overflow E2E check (`tests/e2e/responsive-overflow.spec.ts`) replays
+recorded API traffic (`tests/e2e/har/*.har`) instead of hitting live production data, so
+it stays deterministic regardless of live chain state. If your PR adds a new API call on
+one of the checked routes (`/`, `/subnets/1`, `/endpoints`, `/status`, `/settings`,
+`/explorer`), re-record the fixtures against a running dev server:
+`npm run test:e2e:record-har --workspace=apps/ui`. A stale HAR still passes (unmatched
+requests fall back to live data) but re-recording keeps the check fully offline-capable
+and avoids masking a real layout change behind stale fixture data.
+
 CI also gzip-measures the initial client JS for a cold `/` visit against a bundle-size
 budget — keep new dependencies/imports lean.
 
