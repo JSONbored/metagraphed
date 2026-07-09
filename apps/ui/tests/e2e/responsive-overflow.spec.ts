@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { findOverflowViolations } from "./find-overflow-violations.js";
 import { ROUTES, VIEWPORTS } from "./overflow-check.config.js";
-import { harPathForRoute } from "./har-path.js";
+import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.js";
 
 // Baseline-diff, not zero-tolerance: this app has pre-existing, already-tracked
 // overflow bugs (#3930, #3931, #3985, etc.) that are separately-scored
@@ -67,6 +67,17 @@ for (const route of ROUTES) {
           notFound: "fallback",
           update: false,
         });
+        // Registered AFTER routeFromHAR (Playwright matches the most-recently
+        // registered handler first), so a dated endpoint's fixture is served
+        // regardless of which date the live app requests today -- otherwise
+        // it would miss the HAR's exact-URL match and fall back to live data
+        // (see DATED_ENDPOINT_PATTERNS in har-path.js for why).
+        for (const pattern of DATED_ENDPOINT_PATTERNS) {
+          const fixture = findHarFixture(harPath, pattern);
+          if (fixture) {
+            await page.route(pattern, (route) => route.fulfill(fixture));
+          }
+        }
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await page.goto(route);
         // HAR-replayed responses resolve near-instantly (no real network

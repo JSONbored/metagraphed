@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { extrinsicCall, extrinsicHashPathSegment, isValidExtrinsicHash } from "./extrinsics";
+import {
+  extrinsicCall,
+  extrinsicHashPathSegment,
+  isDecodedCall,
+  isValidExtrinsicHash,
+  proxyRealAccount,
+} from "./extrinsics";
 
 const VALID_HASH = "0xabc123def456";
 
@@ -43,5 +49,45 @@ describe("extrinsicCall", () => {
   it("returns an em dash when both sides are absent", () => {
     expect(extrinsicCall()).toBe("—");
     expect(extrinsicCall(null, null)).toBe("—");
+  });
+});
+
+describe("isDecodedCall", () => {
+  it("accepts an object carrying string call_module and call_function", () => {
+    expect(isDecodedCall({ call_module: "Utility", call_function: "batch" })).toBe(true);
+  });
+
+  it("rejects arrays, scalars, and objects missing either field", () => {
+    expect(isDecodedCall([{ call_module: "Utility", call_function: "batch" }])).toBe(false);
+    expect(isDecodedCall("Utility.batch")).toBe(false);
+    expect(isDecodedCall(null)).toBe(false);
+    expect(isDecodedCall({ call_module: "Utility" })).toBe(false);
+    expect(isDecodedCall({ call_function: "batch" })).toBe(false);
+  });
+});
+
+describe("proxyRealAccount", () => {
+  const REAL = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  it("extracts the real arg from a Proxy.proxy call", () => {
+    expect(
+      proxyRealAccount("Proxy", "proxy", [
+        { name: "real", value: REAL },
+        { name: "call", value: { call_module: "Balances", call_function: "transfer" } },
+      ]),
+    ).toBe(REAL);
+  });
+
+  it("returns null for non-proxy calls", () => {
+    expect(proxyRealAccount("Balances", "transfer", [{ name: "dest", value: REAL }])).toBeNull();
+    expect(proxyRealAccount("Proxy", "add_proxy", [{ name: "real", value: REAL }])).toBeNull();
+  });
+
+  it("returns null when call_args isn't an array or the real arg is malformed", () => {
+    expect(proxyRealAccount("Proxy", "proxy", { real: REAL })).toBeNull();
+    expect(proxyRealAccount("Proxy", "proxy", [{ name: "real", value: 123 }])).toBeNull();
+    expect(
+      proxyRealAccount("Proxy", "proxy", [{ name: "force_proxy_type", value: "Any" }]),
+    ).toBeNull();
   });
 });

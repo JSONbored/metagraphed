@@ -3,18 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { subnetNeuronHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetNeuronHistoryPoint } from "@/lib/metagraphed/types";
 
 type Win = "7d" | "30d" | "90d" | "1y" | "all";
 const WINDOWS: Win[] = ["7d", "30d", "90d", "1y", "all"];
-
-function taoStr(v?: number) {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  return `${v.toFixed(v < 10 ? 3 : 2)} τ`;
-}
 
 function scoreStr(v?: number) {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -88,14 +81,19 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
       ) : (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           {series.stake.length > 0 ? (
-            <HistoryRow label="Stake" series={series.stake} color="var(--accent)" format={taoStr} />
+            <HistoryRow
+              label="Stake"
+              series={series.stake}
+              color="var(--accent)"
+              format={formatTao}
+            />
           ) : null}
           {series.emission.length > 0 ? (
             <HistoryRow
               label="Emission"
               series={series.emission}
               color="var(--health-warn)"
-              format={taoStr}
+              format={formatTao}
             />
           ) : null}
           {series.incentive.length > 0 ? (

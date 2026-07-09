@@ -19,6 +19,7 @@ import {
   ExternalLink,
   FileJson,
   Gauge,
+  GitBranch,
   Hash,
   KeyRound,
   Layers,
@@ -151,6 +152,13 @@ const ROUTE_INDEX: Array<{
     to: "/admin-changes",
     hint: "AdminUtils config-change feed",
     icon: SlidersHorizontal,
+    scope: "route",
+  },
+  {
+    label: "Runtime",
+    to: "/runtime",
+    hint: "Spec-version upgrade history",
+    icon: GitBranch,
     scope: "route",
   },
 ];

@@ -72,6 +72,43 @@ describe("MEGA_PANELS catalogue", () => {
       }
     }
   });
+
+  it("only links to route-consumed filter params/values on /endpoints", () => {
+    // /endpoints (routes/endpoints.tsx) reads category / health / eligibility;
+    // its facet chips enumerate the allowed values. A mega-menu link carrying a
+    // param the route never reads (the old kind / archive / pool / incidents /
+    // stale) matches zero rows and silently renders the unfiltered list. Pin
+    // every /endpoints filter link to a param+value the route actually accepts.
+    const SCHEMA_KEYS = new Set([
+      "q",
+      "category",
+      "provider",
+      "health",
+      "netuid",
+      "region",
+      "eligibility",
+      "callable",
+      "sort",
+      "order",
+      "page",
+      "pageSize",
+      "view",
+    ]);
+    const FACET_VALUES: Record<string, Set<string>> = {
+      category: new Set(["all", "rpc", "wss", "api", "sse", "data", "other"]),
+      health: new Set(["ok", "warn", "down", "unknown"]),
+      eligibility: new Set(["proxy-enabled", "pool-member", "archive-capable", "unassigned"]),
+    };
+    const endpoints = MEGA_PANELS.find((p) => p.key === "endpoints");
+    expect(endpoints).toBeDefined();
+    for (const l of [...endpoints!.browse, ...endpoints!.filters]) {
+      for (const [param, value] of Object.entries(l.search ?? {})) {
+        expect(SCHEMA_KEYS.has(param)).toBe(true);
+        const allowed = FACET_VALUES[param];
+        if (allowed) expect(allowed.has(value)).toBe(true);
+      }
+    }
+  });
 });
 
 describe("storage helpers (SSR/node-safe)", () => {
