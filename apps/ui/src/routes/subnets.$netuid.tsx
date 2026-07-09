@@ -466,8 +466,27 @@ function OverviewSummaryStrip({ netuid }: { netuid: number }) {
 // subnet pages); renders nothing unless this netuid is paired with a counterpart.
 // Reads lineageRes.data.links (NOT a top-level array).
 function SubnetLineageSection({ netuid }: { netuid: number }) {
-  const { data: lineageRes } = useQuery(lineageQuery());
+  const { data: lineageRes, isError, error, refetch } = useQuery(lineageQuery());
   const lineage = lineageRes?.data;
+
+  if (isError) {
+    return (
+      <SectionAnchor
+        id="lineage"
+        title="Lineage"
+        info="Cross-network lineage links the testnet and mainnet deployments of the same subnet, matched by chain name or source repo."
+      >
+        <TableState
+          variant="error"
+          title="Lineage unavailable"
+          description="The cross-network lineage data failed to load."
+          error={error}
+          onRetry={() => void refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+
   const link = (lineage?.links ?? []).find(
     (l) => l.mainnet_netuid === netuid || l.testnet_netuid === netuid,
   );
