@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -12,6 +12,7 @@ import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ListShell } from "@/components/metagraphed/list-shell";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import {
   PageSizeSelect,
   ResetFiltersButton,
@@ -20,7 +21,7 @@ import {
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
-import { blocksQuery, blocksSummaryQuery } from "@/lib/metagraphed/queries";
+import { blocksQuery, blocksSummaryQuery, chainActivityQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
@@ -81,6 +82,33 @@ function BlocksPage() {
   const search = Route.useSearch();
   const blocksCsvUrl = buildUrl("/api/v1/blocks", blocksQueryParams(search));
 
+  // Block-throughput sparkline (#3390): daily block_count from /api/v1/chain/activity,
+  // the same source explorer.tsx uses. Non-blocking useQuery so the hero paints
+  // immediately; the KPI appears once the daily series loads.
+  const activity = useQuery(chainActivityQuery());
+  const chrono = [...(activity.data?.data.days ?? [])].reverse();
+  const blockCounts = chrono.map((d) => d.block_count);
+  const totalBlocks = blockCounts.reduce((acc, n) => acc + n, 0);
+  const throughputKpi =
+    blockCounts.length > 0
+      ? [
+          {
+            label: "Blocks / day",
+            value: `${formatNumber(totalBlocks)} total`,
+            chart: (
+              <Sparkline
+                values={blockCounts}
+                points={chrono.map((d) => ({ t: d.day, v: d.block_count }))}
+                width={168}
+                height={34}
+                ariaLabel="Daily block throughput, oldest to newest"
+                formatValue={formatNumber}
+              />
+            ),
+          },
+        ]
+      : undefined;
+
   return (
     <AppShell>
       <PageHero
@@ -88,6 +116,7 @@ function BlocksPage() {
         live
         title="Blocks"
         description="Recent Bittensor blocks indexed directly from the chain — newest first, with author, extrinsic, and event counts."
+        kpis={throughputKpi}
         actions={
           <>
             <DownloadCsvButton url={blocksCsvUrl} />
@@ -106,7 +135,7 @@ function BlocksPage() {
         </Suspense>
       </QueryErrorBoundary>
       <ApiSourceFooter
-        paths={["/api/v1/blocks", "/api/v1/blocks/summary"]}
+        paths={["/api/v1/blocks", "/api/v1/blocks/summary", "/api/v1/chain/activity"]}
         artifacts={["/metagraph/blocks.json", "/metagraph/blocks/summary.json"]}
       />
     </AppShell>
