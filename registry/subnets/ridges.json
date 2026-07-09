@@ -91,6 +91,63 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-harbor-stdlib-contract",
+      "kind": "data-artifact",
+      "name": "Ridges Harbor stdlib runtime contract",
+      "notes": "Public no-auth stdlib-only constants for the SN62 Ridges Harbor adapter: runtime filenames, log artifact names, and agent execution phase identifiers shared between the host runner and in-container ridges_miner_runtime.py. Pinned to an immutable commit.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/ridges_harbor/README.md",
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/ridges_harbor/ridges_miner_runtime.py"
+      ],
+      "url": "https://raw.githubusercontent.com/ridgesai/ridges/06459e91e0e219dec56dfa98109967ec1c739700/ridges_harbor/_stdlib_contract.py"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-harbor-runtime-contract",
+      "kind": "data-artifact",
+      "name": "Ridges Harbor runtime failure contract",
+      "notes": "Public no-auth Pydantic schema for structured miner runtime failures (phase, traceback, exception chain) emitted by the SN62 Ridges Harbor adapter. Consumed host-side by execution/failure_classifier.py to classify agent crashes vs validator noise. Pinned to an immutable commit.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/ridges_harbor/README.md",
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/execution/failure_classifier.py"
+      ],
+      "url": "https://raw.githubusercontent.com/ridgesai/ridges/06459e91e0e219dec56dfa98109967ec1c739700/ridges_harbor/runtime_contract.py"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-reference-miner-agent",
+      "kind": "data-artifact",
+      "name": "Ridges reference miner agent template",
+      "notes": "Public no-auth reference Python miner agent at the SN62 Ridges repo root demonstrating the required agent_main(input) entry point and sandbox proxy inference/embedding calls. Used as the starter template miners upload for Harbor evaluation. Pinned to an immutable commit.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/ridges_harbor/README.md",
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/ridges_harbor/agents.py"
+      ],
+      "url": "https://raw.githubusercontent.com/ridgesai/ridges/06459e91e0e219dec56dfa98109967ec1c739700/agent.py"
     }
   ],
   "contact": "hello@ridges.ai"
