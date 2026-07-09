@@ -56,6 +56,12 @@ import {
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import {
+  eventKindCategory,
+  eventKindCategoryLabel,
+  eventKindLabel,
+  type EventKindCategory,
+} from "@/lib/metagraphed/event-kinds";
 import { TableState } from "@/components/metagraphed/table-state";
 import type {
   AccountEvent,
@@ -658,6 +664,42 @@ function ActivityPanel({ netuid }: { netuid: number }) {
   );
 }
 
+const EVENT_KIND_CATEGORY_DOT: Record<EventKindCategory, string> = {
+  registration: "var(--chart-1)",
+  stake: "var(--chart-2)",
+  serving: "var(--chart-3)",
+  consensus: "var(--chart-4)",
+  delegation: "var(--chart-5)",
+  identity: "var(--chart-6)",
+  governance: "var(--accent)",
+  transfer: "var(--health-warn)",
+  other: "var(--health-unknown)",
+};
+
+function EventKindCell({ kind }: { kind: string | null | undefined }) {
+  const category = eventKindCategory(kind);
+  const categoryLabel = eventKindCategoryLabel(category);
+  const label = eventKindLabel(kind);
+
+  return (
+    <span
+      className="inline-flex flex-wrap items-center gap-1.5"
+      title={`${label} · ${categoryLabel}`}
+    >
+      <span
+        role="img"
+        aria-label={`Category: ${categoryLabel}`}
+        className="inline-block size-2 shrink-0 rounded-full"
+        style={{ background: EVENT_KIND_CATEGORY_DOT[category] }}
+      />
+      <span className="text-[11px] text-ink-strong">{label}</span>
+      <span className="inline-flex items-center rounded border border-border bg-surface/40 px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
+        {categoryLabel}
+      </span>
+    </span>
+  );
+}
+
 function ActivityTableLoader({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetEventsQuery(netuid));
   const events = (data.data.events ?? []) as AccountEvent[];
@@ -699,8 +741,8 @@ function ActivityTableLoader({ netuid }: { netuid: number }) {
                   "—"
                 )}
               </td>
-              <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
-                {ev.event_kind ?? "—"}
+              <td className="px-4 py-2.5">
+                <EventKindCell kind={ev.event_kind} />
               </td>
               <td className="px-4 py-2.5 font-mono text-[11px]">
                 {ev.hotkey ? (
