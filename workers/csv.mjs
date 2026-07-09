@@ -1,6 +1,15 @@
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.mjs";
 
 const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
+// A plain numeric literal (including a leading-minus negative or exponent) can
+// never be a spreadsheet formula, so it must be exempt from the injection guard
+// below. Without this, a signed value like a net_flow_tao of -1250.5 serializes as
+// the literal text "'-1250.5", and every strict numeric CSV consumer (pandas,
+// spreadsheet formulas) reads that column as NaN — silent corruption across the
+// many signed columns the shared exporter emits. Formula-shaped text (=…, -1+1,
+// @SUM(), a leading tab/CR/LF) still matches SPREADSHEET_FORMULA_PREFIX and is
+// neutralized as before.
+const NUMERIC_LITERAL = /^-?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 // Keep each stream pull bounded without fragmenting typical endpoint exports
 // into overly small chunks.
 const CSV_STREAM_ROWS_PER_CHUNK = 128;
@@ -45,7 +54,10 @@ function stringifyCell(value) {
 
 function escapeCell(value) {
   const text = stringifyCell(value);
-  const safeText = SPREADSHEET_FORMULA_PREFIX.test(text) ? `'${text}` : text;
+  const safeText =
+    SPREADSHEET_FORMULA_PREFIX.test(text) && !NUMERIC_LITERAL.test(text)
+      ? `'${text}`
+      : text;
   if (!/[",\r\n]/.test(safeText)) {
     return safeText;
   }

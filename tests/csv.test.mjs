@@ -94,6 +94,25 @@ test("rowsToCsv neutralizes spreadsheet formula-leading cells", () => {
   assert.equal(csv, expected);
 });
 
+test("rowsToCsv preserves negative and exponent numbers without the formula apostrophe", () => {
+  const csv = rowsToCsv([
+    {
+      net_flow_tao: -1250.5,
+      whole: -5,
+      exponent: -1e-7,
+      as_string: "-42",
+      positive: 3.5,
+      // still-dangerous leading-minus text keeps the guard
+      formula: "-1+cmd",
+    },
+  ]);
+
+  assert.equal(
+    csv,
+    "net_flow_tao,whole,exponent,as_string,positive,formula\r\n-1250.5,-5,-1e-7,-42,3.5,'-1+cmd",
+  );
+});
+
 test("csvRequested honors format and Accept negotiation", () => {
   assert.equal(csvRequested(url("?format=csv"), req()), true);
   assert.equal(

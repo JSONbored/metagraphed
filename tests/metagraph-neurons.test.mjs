@@ -1364,7 +1364,9 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.deepEqual(lines, [
       MOVERS_CSV_HEADER,
       "1,100,250,150,150,5,9,4,80,3,4,1,10,12,2",
-      "2,50,30,'-20,'-40,4,4,0,0,2,2,0,8,8,0",
+      // Signed stake/emission deltas export as plain numbers, not the corrupted
+      // "'-20" the spreadsheet-formula guard used to emit for leading-minus cells.
+      "2,50,30,-20,-40,4,4,0,0,2,2,0,8,8,0",
     ]);
   });
 
