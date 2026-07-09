@@ -6902,6 +6902,41 @@ export const reviewEnrichmentTargetsQuery = () =>
     staleTime: STALE_LONG,
   });
 
+// #3354: the detailed candidate-evidence view behind the enrichment queue —
+// distinct from the enrichment-queue summary. GET /api/v1/review/enrichment-evidence,
+// collection key `entries`, one row per subnet.
+export const reviewEnrichmentEvidenceQuery = () =>
+  queryOptions({
+    queryKey: k("review-enrichment-evidence"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
+        "/api/v1/review/enrichment-evidence",
+        "entries",
+        undefined,
+        signal,
+      );
+      // API rows: { netuid, name, slug, lane, evidence_action, missing_kinds,
+      // direct_submission_kinds, priority_score, ... }.
+      const rows = res.data.map((r) => ({
+        id: (r.slug as string) ?? (r.name as string) ?? String(r.netuid ?? ""),
+        netuid: r.netuid as number | undefined,
+        name: r.name as string | undefined,
+        lane: r.lane as string | undefined,
+        evidenceAction: r.evidence_action as string | undefined,
+        priority:
+          typeof r.priority_score === "number"
+            ? String(Math.round(r.priority_score as number))
+            : undefined,
+        missing: Array.isArray(r.missing_kinds) ? (r.missing_kinds as string[]).join(", ") : "",
+        directSubmission: Array.isArray(r.direct_submission_kinds)
+          ? (r.direct_submission_kinds as string[]).join(", ")
+          : "",
+      }));
+      return { ...res, data: rows };
+    },
+    staleTime: STALE_LONG,
+  });
+
 function normalizeSchema(raw: unknown): SchemaInfo {
   if (!raw || typeof raw !== "object") return raw as SchemaInfo;
   const s = raw as Record<string, unknown>;
