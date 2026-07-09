@@ -38,6 +38,44 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-hap-py-docker",
+      "kind": "data-artifact",
+      "name": "Minos hap.py Docker image reference",
+      "notes": "Public no-auth Markdown reference for the genonet/hap-py:0.3.15 Docker image used by SN107 validator VCF benchmarking (hap.py + RTG Tools), published in the official minos-protocol/minos_subnet repository at docs/hap_py_docker.md. Documented in README and consumed by utils/scoring.py for reproducible AdvancedScorer runs. Pinned to immutable commit 0704552.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/0704552fc00813e45dc3b06d30f4e9506ff460b6/README.md",
+        "https://github.com/minos-protocol/minos_subnet/blob/0704552fc00813e45dc3b06d30f4e9506ff460b6/utils/scoring.py"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/0704552fc00813e45dc3b06d30f4e9506ff460b6/docs/hap_py_docker.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-tuning-guide",
+      "kind": "data-artifact",
+      "name": "Minos miner tuning guide",
+      "notes": "Public no-auth Markdown miner tuning reference (AdvancedScorer breakdown, tool parameter ranges, tuning strategy) published in the official minos-protocol/minos_subnet repository at docs/tuning_guide.md. Linked from README troubleshooting and repository layout. Pinned to immutable commit 0704552.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/0704552fc00813e45dc3b06d30f4e9506ff460b6/README.md",
+        "https://github.com/minos-protocol/minos_subnet/blob/0704552fc00813e45dc3b06d30f4e9506ff460b6/docs/tuning_guide.md"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/0704552fc00813e45dc3b06d30f4e9506ff460b6/docs/tuning_guide.md"
     }
   ],
   "contact": "contact@theminos.ai"
