@@ -51,6 +51,25 @@
         "https://github.com/neuralinternet/SN27-opencompute/blob/main/config.yaml"
       ],
       "url": "https://raw.githubusercontent.com/neuralinternet/SN27-opencompute/main/config.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-27-ni-compute-opencompute-wandb",
+      "kind": "dashboard",
+      "name": "NI Compute OpenCompute W&B dashboard",
+      "notes": "Public Weights & Biases project for SN27 NI Compute's OpenCompute GPU-hardware metrics (entity neuralinternet, project opencompute; 6000+ logged runs). Declared as the subnet's PUBLIC W&B source in the official neuralinternet/SN27-opencompute repository — server.py sets PUBLIC_WANDB_ENTITY = 'neuralinternet' and PUBLIC_WANDB_NAME = 'opencompute', and that repo's .env.example pins NETUID=27. It is the data source for the public opencompute.streamlit.app GPU dashboard the repo deploys. Publicly readable, no auth.",
+      "provider": "nodexo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/neuralinternet/SN27-opencompute/blob/main/server.py",
+        "https://github.com/neuralinternet/SN27-opencompute/blob/main/.env.example"
+      ],
+      "url": "https://wandb.ai/neuralinternet/opencompute"
     }
   ]
 }
