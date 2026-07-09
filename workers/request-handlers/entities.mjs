@@ -86,6 +86,10 @@ import {
 } from "../../src/account-events.mjs";
 import { loadAccountPortfolio } from "../../src/account-portfolio.mjs";
 import {
+  ACCOUNT_POSITION_DAILY_READ_COLUMNS,
+  buildAccountPositionHistory,
+} from "../../src/account-position-history.mjs";
+import {
   isFinneySs58Address,
   loadAccountBalance,
 } from "../../src/account-balance.mjs";
@@ -2945,6 +2949,57 @@ export async function handleAccountPortfolio(request, env, ss58) {
         env,
         `/metagraph/accounts/${ss58}/portfolio.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/subnets/{netuid}/history?window=7d|30d|90d|1y|all
+// (block-explorer Tier-1, #4329/6.2): one wallet's position on one subnet over
+// time — the "Alpha Holdings chart" — read from the account_position_daily
+// rollup tier (#4330/6.1). Same window/SQL shape as handleNeuronHistory, keyed
+// by (account, netuid) instead of (netuid, uid); source is metagraph-snapshot
+// (rolled from `neurons`), not chain-events, so this uses envelopeResponse +
+// metagraphMeta like the neuron/subnet history routes, not accountEnvelopeResponse.
+// Cold/absent store → 200 with empty points (never 404), matching every sibling
+// history route.
+export async function handleAccountPositionHistory(
+  request,
+  env,
+  ss58,
+  netuid,
+  url,
+) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [ss58, netuid];
+  let sql = `SELECT ${ACCOUNT_POSITION_DAILY_READ_COLUMNS} FROM account_position_daily WHERE account = ? AND netuid = ?`;
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildAccountPositionHistory(rows, ss58, netuid, {
+    window: label,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/subnets/${netuid}/history.json`,
+        data.points[0]?.captured_at ?? null,
       ),
     },
     "short",

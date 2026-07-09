@@ -1224,6 +1224,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountPortfolioArtifact",
   ),
   artifact(
+    "account-subnet-position-history",
+    "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
+    "One wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, served live from the account_position_daily D1 rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file).",
+    "AccountPositionHistoryArtifact",
+  ),
+  artifact(
     "account-balance",
     "/metagraph/accounts/{ss58}/balance.json",
     "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
@@ -2818,6 +2824,25 @@ export const API_ROUTES = [
     ["accounts", "analytics"],
     [],
     [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-subnet-position-history",
+    "GET",
+    "/api/v1/accounts/{ss58}/subnets/{netuid}/history",
+    "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
+    "Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["accounts", "subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [
+      { name: "ss58", schema: { type: "string" } },
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+    ],
   ),
   route(
     "account-balance",

@@ -709,6 +709,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-subnet-position-history",
+      "path": "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
+      "schema_ref": "#/components/schemas/AccountPositionHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-balance",
       "path": "/metagraph/accounts/{ss58}/balance.json",
       "schema_ref": "#/components/schemas/AccountBalanceArtifact",
@@ -6335,6 +6342,32 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
+      "cache": "short",
+      "description": "Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "id": "account-subnet-position-history",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/subnets/{netuid}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/accounts/{ss58}/balance.json",

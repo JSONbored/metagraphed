@@ -77,6 +77,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-deregistrations",
   "account-subnets",
   "account-portfolio",
+  "account-subnet-position-history",
   "account-balance",
   "sudo-key",
   "blocks-feed",

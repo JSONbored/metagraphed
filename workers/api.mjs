@@ -160,6 +160,7 @@ import {
   handleAccountAxonRemovals,
   handleAccountSubnets,
   handleAccountPortfolio,
+  handleAccountPositionHistory,
   handleBlocks,
   handleBlocksSummary,
   handleBlock,
@@ -312,6 +313,7 @@ import {
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   ACCOUNT_PORTFOLIO_PATH_PATTERN,
+  ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
   BLOCK_EXTRINSICS_PATH_PATTERN,
   BLOCK_EVENTS_PATH_PATTERN,
@@ -2113,6 +2115,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (accountPortfolioMatch) {
       return handleAccountPortfolio(request, env, accountPortfolioMatch[1]);
     }
+    // Per-account, per-subnet position history (#4329/6.2): computed live from
+    // the account_position_daily rollup tier.
+    const accountPositionHistoryMatch =
+      ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (accountPositionHistoryMatch) {
+      return handleAccountPositionHistory(
+        request,
+        env,
+        accountPositionHistoryMatch[1],
+        Number(accountPositionHistoryMatch[2]),
+        resolved.url,
+      );
+    }
     const accountExtrinsicsMatch = ACCOUNT_EXTRINSICS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2543,6 +2558,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||
     ACCOUNT_SUBNETS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PORTFOLIO_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_TRANSFERS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_COUNTERPARTIES_PATH_PATTERN.test(pathname) ||

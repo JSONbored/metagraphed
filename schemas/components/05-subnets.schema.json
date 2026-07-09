@@ -3370,6 +3370,41 @@
           }
         }
       },
+      "AccountPositionHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "One wallet's position on one subnet over time (block-explorer Tier-1, epic #4329/6.2 — the 'Alpha Holdings chart'), served live from the account_position_daily D1 rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file). Each point is the wallet's position economics on that subnet on one snapshot_date, in the same field shape as AccountPortfolioArtifact's PortfolioPosition entries (minus netuid, fixed for the whole series).",
+        "required": [
+          "schema_version",
+          "ss58",
+          "netuid",
+          "point_count",
+          "points"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "The wallet's position on this subnet on one snapshot_date (position-economics fields plus snapshot_date/captured_at).",
+              "required": ["snapshot_date"],
+              "properties": {
+                "snapshot_date": { "type": "string" },
+                "captured_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
       "AccountBalanceArtifact": {
         "type": "object",
         "additionalProperties": true,

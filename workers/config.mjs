@@ -165,6 +165,11 @@ export const ACCOUNT_SUBNETS_PATH_PATTERN =
 // + aggregates), richer than the bare /subnets registration footprint.
 export const ACCOUNT_PORTFOLIO_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/portfolio$/;
+// Per-account, per-subnet position HISTORY (block-explorer Tier-1, #4329/6.2):
+// time series read from the account_position_daily rollup tier — the "Alpha
+// Holdings chart" for one wallet's position on one subnet.
+export const ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/subnets\/(\d+)\/history$/;
 // Per-account signed extrinsics (#1844): the extrinsics this account signed,
 // matched by extrinsics.signer (a single column, not the hotkey or coldkey union).
 export const ACCOUNT_EXTRINSICS_PATH_PATTERN =

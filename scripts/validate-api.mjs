@@ -676,6 +676,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets/7/history?window=30d",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "30d");
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/balance",
     (body) => {
       assert.equal(
