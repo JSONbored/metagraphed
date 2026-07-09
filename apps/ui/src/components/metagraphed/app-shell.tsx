@@ -145,7 +145,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <ApiDrawerTrigger />
 
                 <NetworkSwitcher />
-                <ShortcutsPopover />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link
@@ -163,38 +162,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="hidden md:inline-flex">
                   <SettingsPopover />
                 </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      href={GITHUB_HREF}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="GitHub repository"
-                      className="hidden md:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                    >
-                      <Github className="size-4" />
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[11px]">
-                    Open source on GitHub
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      href={DISCORD_HREF}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Discord community"
-                      className="hidden md:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                    >
-                      <DiscordIcon className="size-4" />
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-[11px]">
-                    Join us on Discord
-                  </TooltipContent>
-                </Tooltip>
               </div>
             </div>
             <RegistryTicker />
@@ -281,6 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SiteFooter />
           <ApiDrawer />
           <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+          <ShortcutsPopover />
           <BackToTop />
         </div>
       </ApiSourceProvider>
