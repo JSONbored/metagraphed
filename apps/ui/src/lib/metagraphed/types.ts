@@ -1363,6 +1363,55 @@ export interface SubnetIdentityHistoryEntry {
   discord: string | null;
 }
 
+/** One subnet's consensus, economic, and governance hyperparameters (#4307/1.4).
+ * *_ratio fields are 0..1 ratios; min_burn_tao/max_burn_tao are TAO floats;
+ * bonds_moving_avg_raw is the raw on-chain integer (not yet ratio-converted). */
+export interface SubnetHyperparameters {
+  kappa_ratio: number | null;
+  immunity_period: number | null;
+  min_allowed_weights: number | null;
+  max_weight_limit_ratio: number | null;
+  tempo: number | null;
+  weights_version: number | null;
+  weights_rate_limit: number | null;
+  activity_cutoff: number | null;
+  activity_cutoff_factor: number | null;
+  registration_allowed: boolean;
+  target_regs_per_interval: number | null;
+  min_burn_tao: number | null;
+  max_burn_tao: number | null;
+  burn_half_life: number | null;
+  burn_increase_mult: number | null;
+  bonds_moving_avg_raw: number | null;
+  max_regs_per_block: number | null;
+  serving_rate_limit: number | null;
+  max_validators: number | null;
+  commit_reveal_period: number | null;
+  commit_reveal_enabled: boolean;
+  alpha_high_ratio: number | null;
+  alpha_low_ratio: number | null;
+  liquid_alpha_enabled: boolean;
+  alpha_sigmoid_steepness: number | null;
+  yuma_version: number | null;
+  subnet_is_active: boolean;
+  transfers_enabled: boolean;
+  bonds_reset_enabled: boolean;
+  user_liquidity_enabled: boolean;
+  owner_cut_enabled: boolean;
+  owner_cut_auto_lock_enabled: boolean;
+  min_childkey_take_ratio: number | null;
+}
+
+/** Envelope from GET /api/v1/subnets/{netuid}/hyperparameters — hyperparameters
+ * is null on a cold/absent snapshot, never a 404. */
+export interface SubnetHyperparametersDetail {
+  schema_version?: number;
+  netuid: number;
+  captured_at?: string | null;
+  block_number?: number | null;
+  hyperparameters: SubnetHyperparameters | null;
+}
+
 /** Append-only on-chain identity timeline for one subnet (#1647), newest first. */
 export interface SubnetIdentityHistory {
   schema_version: number;

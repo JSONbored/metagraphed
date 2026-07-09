@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Waves, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CandidateChip, CurationChip, ReviewChip } from "@/components/metagraphed/chips";
@@ -51,6 +51,7 @@ import {
   subnetWeightsQuery,
   subnetIdentityHistoryQuery,
   subnetStakeFlowQuery,
+  subnetHyperparametersQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -64,6 +65,7 @@ import type {
   FixtureIndexEntry,
   AgentCatalogService,
   AgentCatalogBlocker,
+  SubnetHyperparameters,
 } from "@/lib/metagraphed/types";
 import { HealthPill } from "@/components/metagraphed/chips";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
@@ -150,6 +152,7 @@ const TABS = [
   { id: "validators", label: "Validators" },
   { id: "activity", label: "Activity" },
   { id: "identity", label: "Identity history" },
+  { id: "hyperparameters", label: "Hyperparameters" },
   { id: "services", label: "Callable services" },
   { id: "surfaces", label: "Surfaces" },
   { id: "endpoints", label: "Endpoints" },
@@ -176,6 +179,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   turnover: "metagraph",
   validators: "validators",
   identity: "identity",
+  hyperparameters: "hyperparameters",
   services: "services",
   "agent-readiness": "services",
   surfaces: "surfaces",
@@ -269,6 +273,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
           {tab === "validators" ? <ValidatorsPanel netuid={netuid} /> : null}
           {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
           {tab === "identity" ? <IdentityHistoryPanel netuid={netuid} /> : null}
+          {tab === "hyperparameters" ? <HyperparametersPanel netuid={netuid} /> : null}
           {tab === "services" ? <CallableServicesPanel netuid={netuid} /> : null}
           {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
           {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
@@ -1284,6 +1289,251 @@ function SchemasPanel({ netuid }: { netuid: number }) {
         </Suspense>
       </QueryErrorBoundary>
     </SectionAnchor>
+  );
+}
+
+/* ----------------------------- hyperparameters ----------------------------- */
+
+function ratioStr(v: number | null): string {
+  return v == null ? "—" : `${(v * 100).toFixed(2)}%`;
+}
+
+function numStr(v: number | null): string {
+  if (v == null) return "—";
+  return Number.isInteger(v) ? formatNumber(v) : v.toFixed(4);
+}
+
+function boolBadge(v: boolean) {
+  return (
+    <span
+      className={classNames(
+        "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider",
+        v ? "border-accent/40 bg-accent-surface text-accent-text" : "border-border text-ink-muted",
+      )}
+    >
+      {v ? "Yes" : "No"}
+    </span>
+  );
+}
+
+type HyperparamField = {
+  key: keyof SubnetHyperparameters;
+  label: string;
+  format: (h: SubnetHyperparameters) => ReactNode;
+};
+
+const HYPERPARAM_GROUPS: { title: string; fields: HyperparamField[] }[] = [
+  {
+    title: "Registration & weights",
+    fields: [
+      {
+        key: "registration_allowed",
+        label: "Registration allowed",
+        format: (h) => boolBadge(h.registration_allowed),
+      },
+      {
+        key: "target_regs_per_interval",
+        label: "Target regs / interval",
+        format: (h) => numStr(h.target_regs_per_interval),
+      },
+      {
+        key: "max_regs_per_block",
+        label: "Max regs / block",
+        format: (h) => numStr(h.max_regs_per_block),
+      },
+      {
+        key: "immunity_period",
+        label: "Immunity period",
+        format: (h) => `${numStr(h.immunity_period)} blocks`,
+      },
+      {
+        key: "min_allowed_weights",
+        label: "Min allowed weights",
+        format: (h) => numStr(h.min_allowed_weights),
+      },
+      {
+        key: "max_weight_limit_ratio",
+        label: "Max weight limit",
+        format: (h) => ratioStr(h.max_weight_limit_ratio),
+      },
+      {
+        key: "weights_version",
+        label: "Weights version",
+        format: (h) => numStr(h.weights_version),
+      },
+      {
+        key: "weights_rate_limit",
+        label: "Weights rate limit",
+        format: (h) => `${numStr(h.weights_rate_limit)} blocks`,
+      },
+      { key: "tempo", label: "Tempo", format: (h) => `${numStr(h.tempo)} blocks` },
+      {
+        key: "activity_cutoff",
+        label: "Activity cutoff",
+        format: (h) => `${numStr(h.activity_cutoff)} blocks`,
+      },
+      {
+        key: "activity_cutoff_factor",
+        label: "Activity cutoff factor",
+        format: (h) => numStr(h.activity_cutoff_factor),
+      },
+      {
+        key: "serving_rate_limit",
+        label: "Serving rate limit",
+        format: (h) => `${numStr(h.serving_rate_limit)} blocks`,
+      },
+      { key: "max_validators", label: "Max validators", format: (h) => numStr(h.max_validators) },
+    ],
+  },
+  {
+    title: "Burn & economics",
+    fields: [
+      { key: "min_burn_tao", label: "Min burn", format: (h) => taoCompact(h.min_burn_tao) },
+      { key: "max_burn_tao", label: "Max burn", format: (h) => taoCompact(h.max_burn_tao) },
+      {
+        key: "burn_half_life",
+        label: "Burn half-life",
+        format: (h) => `${numStr(h.burn_half_life)} blocks`,
+      },
+      {
+        key: "burn_increase_mult",
+        label: "Burn increase multiplier",
+        format: (h) => numStr(h.burn_increase_mult),
+      },
+      { key: "kappa_ratio", label: "Kappa", format: (h) => ratioStr(h.kappa_ratio) },
+      {
+        key: "bonds_moving_avg_raw",
+        label: "Bonds moving avg (raw)",
+        format: (h) => numStr(h.bonds_moving_avg_raw),
+      },
+    ],
+  },
+  {
+    title: "Commit-reveal & alpha",
+    fields: [
+      {
+        key: "commit_reveal_enabled",
+        label: "Commit-reveal enabled",
+        format: (h) => boolBadge(h.commit_reveal_enabled),
+      },
+      {
+        key: "commit_reveal_period",
+        label: "Commit-reveal period",
+        format: (h) => numStr(h.commit_reveal_period),
+      },
+      {
+        key: "liquid_alpha_enabled",
+        label: "Liquid alpha enabled",
+        format: (h) => boolBadge(h.liquid_alpha_enabled),
+      },
+      { key: "alpha_high_ratio", label: "Alpha high", format: (h) => ratioStr(h.alpha_high_ratio) },
+      { key: "alpha_low_ratio", label: "Alpha low", format: (h) => ratioStr(h.alpha_low_ratio) },
+      {
+        key: "alpha_sigmoid_steepness",
+        label: "Alpha sigmoid steepness",
+        format: (h) => numStr(h.alpha_sigmoid_steepness),
+      },
+      { key: "yuma_version", label: "Yuma version", format: (h) => numStr(h.yuma_version) },
+    ],
+  },
+  {
+    title: "Network & ownership",
+    fields: [
+      {
+        key: "subnet_is_active",
+        label: "Subnet active",
+        format: (h) => boolBadge(h.subnet_is_active),
+      },
+      {
+        key: "transfers_enabled",
+        label: "Transfers enabled",
+        format: (h) => boolBadge(h.transfers_enabled),
+      },
+      {
+        key: "bonds_reset_enabled",
+        label: "Bonds reset enabled",
+        format: (h) => boolBadge(h.bonds_reset_enabled),
+      },
+      {
+        key: "user_liquidity_enabled",
+        label: "User liquidity enabled",
+        format: (h) => boolBadge(h.user_liquidity_enabled),
+      },
+      {
+        key: "owner_cut_enabled",
+        label: "Owner cut enabled",
+        format: (h) => boolBadge(h.owner_cut_enabled),
+      },
+      {
+        key: "owner_cut_auto_lock_enabled",
+        label: "Owner cut auto-lock",
+        format: (h) => boolBadge(h.owner_cut_auto_lock_enabled),
+      },
+      {
+        key: "min_childkey_take_ratio",
+        label: "Min childkey take",
+        format: (h) => ratioStr(h.min_childkey_take_ratio),
+      },
+    ],
+  },
+];
+
+function HyperparametersPanel({ netuid }: { netuid: number }) {
+  return (
+    <SectionAnchor
+      id="hyperparameters"
+      title="Hyperparameters"
+      subtitle="Consensus, economic, and governance settings for this subnet."
+      info="GET /api/v1/subnets/{netuid}/hyperparameters — refreshed daily from the subnet_hyperparams D1 tier."
+    >
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+          <HyperparametersTable netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
+    </SectionAnchor>
+  );
+}
+
+function HyperparametersTable({ netuid }: { netuid: number }) {
+  const { data: res } = useSuspenseQuery(subnetHyperparametersQuery(netuid));
+  const h = res.data.hyperparameters;
+
+  if (!h) {
+    return (
+      <EmptyState
+        title="No hyperparameters captured yet"
+        description="The refresh-subnet-hyperparams cron fills this in daily — check back shortly."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {res.data.captured_at ? (
+        <p className="font-mono text-[11px] text-ink-muted">
+          Captured <TimeAgo at={res.data.captured_at} />
+          {res.data.block_number != null ? ` · block #${formatNumber(res.data.block_number)}` : ""}
+        </p>
+      ) : null}
+      {HYPERPARAM_GROUPS.map((group) => (
+        <div key={group.title} className="rounded-xl border border-border bg-card">
+          <div className="border-b border-border px-4 py-2.5">
+            <h3 className="font-display text-sm font-semibold text-ink-strong">{group.title}</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
+            {group.fields.map((field) => (
+              <div key={field.key} className="px-4 py-2.5">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                  {field.label}
+                </div>
+                <div className="mt-1 font-mono text-[13px] text-ink-strong">{field.format(h)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

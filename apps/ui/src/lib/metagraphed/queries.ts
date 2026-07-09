@@ -140,6 +140,8 @@ import type {
   SubnetEconomics,
   SubnetHistory,
   SubnetHistoryPoint,
+  SubnetHyperparameters,
+  SubnetHyperparametersDetail,
   SubnetIdentityHistory,
   SubnetWeightSetter,
   SubnetWeightSetters,
@@ -3822,6 +3824,71 @@ export const subnetUptimeQuery = (netuid: number, window = "90d") =>
         signal,
       });
       return { data: normalizeUptime(res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// One subnet's consensus/economic/governance hyperparameters (#4307/1.4),
+// refreshed daily from the subnet_hyperparams D1 tier. Cold/absent snapshot ->
+// hyperparameters: null, never an error.
+function normalizeSubnetHyperparameters(raw: unknown): SubnetHyperparameters | null {
+  if (!isRecord(raw)) return null;
+  return {
+    kappa_ratio: firstFiniteNumber(raw.kappa_ratio) ?? null,
+    immunity_period: firstFiniteNumber(raw.immunity_period) ?? null,
+    min_allowed_weights: firstFiniteNumber(raw.min_allowed_weights) ?? null,
+    max_weight_limit_ratio: firstFiniteNumber(raw.max_weight_limit_ratio) ?? null,
+    tempo: firstFiniteNumber(raw.tempo) ?? null,
+    weights_version: firstFiniteNumber(raw.weights_version) ?? null,
+    weights_rate_limit: firstFiniteNumber(raw.weights_rate_limit) ?? null,
+    activity_cutoff: firstFiniteNumber(raw.activity_cutoff) ?? null,
+    activity_cutoff_factor: firstFiniteNumber(raw.activity_cutoff_factor) ?? null,
+    registration_allowed: booleanValue(raw.registration_allowed) ?? false,
+    target_regs_per_interval: firstFiniteNumber(raw.target_regs_per_interval) ?? null,
+    min_burn_tao: firstFiniteNumber(raw.min_burn_tao) ?? null,
+    max_burn_tao: firstFiniteNumber(raw.max_burn_tao) ?? null,
+    burn_half_life: firstFiniteNumber(raw.burn_half_life) ?? null,
+    burn_increase_mult: firstFiniteNumber(raw.burn_increase_mult) ?? null,
+    bonds_moving_avg_raw: firstFiniteNumber(raw.bonds_moving_avg_raw) ?? null,
+    max_regs_per_block: firstFiniteNumber(raw.max_regs_per_block) ?? null,
+    serving_rate_limit: firstFiniteNumber(raw.serving_rate_limit) ?? null,
+    max_validators: firstFiniteNumber(raw.max_validators) ?? null,
+    commit_reveal_period: firstFiniteNumber(raw.commit_reveal_period) ?? null,
+    commit_reveal_enabled: booleanValue(raw.commit_reveal_enabled) ?? false,
+    alpha_high_ratio: firstFiniteNumber(raw.alpha_high_ratio) ?? null,
+    alpha_low_ratio: firstFiniteNumber(raw.alpha_low_ratio) ?? null,
+    liquid_alpha_enabled: booleanValue(raw.liquid_alpha_enabled) ?? false,
+    alpha_sigmoid_steepness: firstFiniteNumber(raw.alpha_sigmoid_steepness) ?? null,
+    yuma_version: firstFiniteNumber(raw.yuma_version) ?? null,
+    subnet_is_active: booleanValue(raw.subnet_is_active) ?? false,
+    transfers_enabled: booleanValue(raw.transfers_enabled) ?? false,
+    bonds_reset_enabled: booleanValue(raw.bonds_reset_enabled) ?? false,
+    user_liquidity_enabled: booleanValue(raw.user_liquidity_enabled) ?? false,
+    owner_cut_enabled: booleanValue(raw.owner_cut_enabled) ?? false,
+    owner_cut_auto_lock_enabled: booleanValue(raw.owner_cut_auto_lock_enabled) ?? false,
+    min_childkey_take_ratio: firstFiniteNumber(raw.min_childkey_take_ratio) ?? null,
+  };
+}
+
+export const subnetHyperparametersQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-hyperparameters", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/hyperparameters`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: firstFiniteNumber(d.schema_version) ?? undefined,
+          netuid,
+          captured_at: firstString(d.captured_at) ?? null,
+          block_number: firstFiniteNumber(d.block_number) ?? null,
+          hyperparameters: normalizeSubnetHyperparameters(d.hyperparameters),
+        } as SubnetHyperparametersDetail,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetHyperparametersDetail>;
     },
     staleTime: STALE_MED,
   });
