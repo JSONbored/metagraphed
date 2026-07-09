@@ -92,6 +92,25 @@
         "https://github.com/oxylok/116-taolend/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/oxylok/116-taolend/main/const.ts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-116-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "TaoLend TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/116 on api.taomarketcap.com returning machine-readable JSON for SN116 TaoLend on-chain subnet state, hyperparameters, economics, and dTAO market fields. TaoLend exposes no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "reyanthony062001-ops"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/oxylok/116-taolend"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/116"
     }
   ],
   "website_url": "https://taolend.io/"
