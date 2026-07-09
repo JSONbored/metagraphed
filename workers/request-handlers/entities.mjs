@@ -3634,6 +3634,11 @@ export async function handleBlockEvents(request, env, ref, url) {
 // range simply matches nothing (never throws). Cold/absent store → schema-stable
 // zero. Reuses the chain-events meta since the same first-party poller fills this
 // tier. The per-row shape is bound, never interpolated.
+// A 0x-prefixed 64-hex-char hash — the same shape as extrinsic_hash (#2063),
+// reused here for call_hash (#4322). No `%`/`_` can appear in a valid match,
+// so it's also safe to interpolate into a LIKE pattern below.
+const CALL_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
+
 export async function handleExtrinsics(request, env, url) {
   const validationError = validateEntityQuery(url, [
     "limit",
@@ -3643,6 +3648,7 @@ export async function handleExtrinsics(request, env, url) {
     "signer",
     "call_module",
     "call_function",
+    "call_hash",
     "success",
     "block_start",
     "block_end",
@@ -3670,11 +3676,19 @@ export async function handleExtrinsics(request, env, url) {
       message: "success must be one of: true, false.",
     });
   }
+  const callHashRaw = sp.get("call_hash");
+  if (callHashRaw !== null && !CALL_HASH_RE.test(callHashRaw)) {
+    return analyticsQueryError({
+      parameter: "call_hash",
+      message: "call_hash must be a 0x-prefixed 64-character hex string.",
+    });
+  }
   const data = await loadExtrinsics(d1Runner(env), {
     block: numericFilters.block ?? undefined,
     signer: sp.get("signer") || undefined,
     callModule: sp.get("call_module") || undefined,
     callFunction: sp.get("call_function") || undefined,
+    callHash: callHashRaw || undefined,
     success:
       successRaw === "true" ? true : successRaw === "false" ? false : undefined,
     blockStart: numericFilters.block_start ?? undefined,

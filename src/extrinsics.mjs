@@ -289,9 +289,10 @@ export function buildBlockExtrinsics(
 
 // Filtered extrinsic feed (newest first) with keyset cursor support (#1851).
 // Supported filters mirror GET /api/v1/extrinsics (#1846): signer, callModule,
-// callFunction, block, blockStart/blockEnd, from/to (observed_at epoch-ms), and
-// success (true|false only; omit for no filter). A cursor takes precedence over
-// offset when present — uses a (block_number, extrinsic_index) row-value seek.
+// callFunction, block, blockStart/blockEnd, from/to (observed_at epoch-ms),
+// success (true|false only; omit for no filter), and callHash (#4322 — see
+// below). A cursor takes precedence over offset when present — uses a
+// (block_number, extrinsic_index) row-value seek.
 export async function loadExtrinsics(
   d1,
   {
@@ -304,6 +305,7 @@ export async function loadExtrinsics(
     from,
     to,
     success,
+    callHash,
     limit,
     offset,
     cursor,
@@ -348,6 +350,22 @@ export async function loadExtrinsics(
   if (hasCallFunctionFilter) {
     conds.push("call_function = ?");
     params.push(callFunction);
+  }
+  // #4322 (Multisig approval-chain linking): call_hash isn't its own column —
+  // it lives inside call_args' decoded JSON, either as a top-level arg
+  // (Multisig.approve_as_multi/cancel_as_multi only carry the hash, not the
+  // full call) or nested inside a wrapped call's own call_hash field
+  // (Multisig.as_multi carries the full call, decoded the same way batch's
+  // inner calls are — see docs/block-explorer-data-model.md's "Nested-call
+  // decode depth" note). A LIKE scan of the raw JSON text is the simplest
+  // correct match for either shape without a schema change; always pair this
+  // filter with callModule (the caller does) so it scans a narrow slice, not
+  // the whole table. The quoted match (`"<hash>"`) requires the hash to
+  // appear as an actual JSON string value, not an arbitrary substring.
+  const hasCallHashFilter = Boolean(callHash);
+  if (hasCallHashFilter) {
+    conds.push("call_args LIKE ?");
+    params.push(`%"${callHash}"%`);
   }
   const hasSuccessFilter = success === true || success === false;
   if (success === true) {
@@ -398,6 +416,7 @@ export async function loadExtrinsics(
     !hasBlockRangeFilter &&
     !hasSignerFilter &&
     !hasCallFunctionFilter &&
+    !hasCallHashFilter &&
     !hasSuccessFilter &&
     from == null &&
     to == null &&

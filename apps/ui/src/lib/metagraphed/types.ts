@@ -2495,6 +2495,37 @@ export interface ChainAxonRemovals {
   subnets: ChainAxonRemovalSubnet[];
 }
 
+/** One subnet's row on the network-wide neuron-deregistration leaderboard (#3466). */
+export interface ChainDeregistrationsSubnet {
+  netuid: number;
+  distinct_deregistered_hotkeys: number;
+  deregistrations: number;
+  deregistrations_per_hotkey: number | null;
+}
+
+/** Network-wide deregistration rollup — true distinct-hotkey count (not a per-subnet sum) + total deregistrations. */
+export interface ChainDeregistrationsNetwork {
+  distinct_deregistered_hotkeys: number;
+  deregistrations: number;
+  deregistrations_per_hotkey: number | null;
+}
+
+/**
+ * Network-wide neuron-deregistration activity over a 7d/30d window (#3466), from
+ * GET /api/v1/chain/deregistrations — subnets ranked by NeuronDeregistered event count,
+ * plus the true network-wide distinct-hotkey rollup and a distribution summary of
+ * per-subnet re-deregistration intensity. Zeroed with an empty subnets list when cold.
+ */
+export interface ChainDeregistrations {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainDeregistrationsNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainDeregistrationsSubnet[];
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;

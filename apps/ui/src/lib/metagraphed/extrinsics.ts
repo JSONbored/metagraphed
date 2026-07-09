@@ -1,10 +1,18 @@
 // Helpers for the extrinsic (transaction) explorer — the sibling of blocks.ts.
 
 const EXTRINSIC_HASH = /^0x[0-9a-fA-F]{1,128}$/;
+/** block_number-extrinsic_index (e.g. 123456-2). Mirrors src/extrinsic-detail.mjs COMPOSITE_REF_RE,
+ *  but disallows a leading-zero block number so omnibox decimal-block detection stays disjoint. */
+const COMPOSITE_EXTRINSIC_REF = /^[1-9][0-9]*-[0-9]+$/;
 
-/** True when a route/API ref is a 0x-prefixed extrinsic hash. */
+/** True when a ref is a block_number-extrinsic_index composite label. */
+export function isCompositeExtrinsicRef(ref: string): boolean {
+  return COMPOSITE_EXTRINSIC_REF.test(ref);
+}
+
+/** True when a route/API ref is a 0x-prefixed extrinsic hash or a block#index composite. */
 export function isValidExtrinsicHash(ref: string): boolean {
-  return EXTRINSIC_HASH.test(ref);
+  return EXTRINSIC_HASH.test(ref) || COMPOSITE_EXTRINSIC_REF.test(ref);
 }
 
 /** Encode a validated extrinsic hash as a single URL path segment. */
@@ -62,4 +70,27 @@ export function proxyRealAccount(
     (a) => a?.name === "real",
   );
   return typeof real?.value === "string" ? real.value : null;
+}
+
+const CALL_HASH = /^0x[0-9a-fA-F]{64}$/;
+
+/** The `call_hash` a `Multisig` call is keyed by, or null when this isn't a
+ * Multisig call or no hash can be found. `approve_as_multi`/`cancel_as_multi`
+ * carry `call_hash` directly as a top-level arg (they only approve/cancel a
+ * pending call, never resubmit it); `as_multi` carries the full `call`
+ * instead, decoded the same way as any other nested call -- its own
+ * `call_hash` is one level down. Either way, this is the join key linking an
+ * initiating `as_multi` to its later `approve_as_multi`s and final execution
+ * (#4322). */
+export function multisigCallHash(
+  callModule: string | null | undefined,
+  callArgs: unknown,
+): string | null {
+  if (callModule !== "Multisig" || !Array.isArray(callArgs)) return null;
+  const args = callArgs as Array<{ name?: string | null; value?: unknown }>;
+  const direct = args.find((a) => a?.name === "call_hash");
+  if (typeof direct?.value === "string" && CALL_HASH.test(direct.value)) return direct.value;
+  const wrapped = args.find((a) => a?.name === "call" && isDecodedCall(a.value));
+  const nestedHash = (wrapped?.value as DecodedCall | undefined)?.call_hash;
+  return typeof nestedHash === "string" && CALL_HASH.test(nestedHash) ? nestedHash : null;
 }

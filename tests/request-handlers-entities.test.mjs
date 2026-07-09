@@ -5515,6 +5515,35 @@ describe("handleExtrinsics", () => {
     assert.ok(!/success = \?/.test(sql));
   });
 
+  test("rejects a malformed call_hash with 400 (#4322)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?call_hash=not-a-hash"),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "call_hash");
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("call_hash binds a quoted LIKE match, scoped alongside call_module (#4322)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const hash = `0x${"c".repeat(64)}`;
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url(`/api/v1/extrinsics?call_module=Multisig&call_hash=${hash}`),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(/call_args LIKE \?/.test(sql));
+    assert.ok(captures.params.flat().includes(`%"${hash}"%`));
+  });
+
   test("forces module-index for a module-only feed path (#2082)", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     await handleExtrinsics(
@@ -5532,11 +5561,13 @@ describe("handleExtrinsics", () => {
 
   test("does not force module-index for compound module filters", async () => {
     const recentMs = Date.now() - 60_000;
+    const hash = `0x${"a".repeat(64)}`;
     for (const query of [
       "call_module=Balances&call_function=__never__",
       "call_module=Balances&success=true",
       `call_module=Balances&from=${recentMs}`,
       `call_module=Balances&to=${recentMs}`,
+      `call_module=Multisig&call_hash=${hash}`,
     ]) {
       const { env, captures } = dbWith({ extrinsics: [] });
       await handleExtrinsics(
