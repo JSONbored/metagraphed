@@ -44,6 +44,8 @@ import type {
   AccountDay,
   AccountEvent,
   AccountEventsPage,
+  AccountCounterparties,
+  AccountCounterparty,
   AccountHistory,
   AccountPortfolio,
   AccountStakeMoves,
@@ -2467,6 +2469,56 @@ export const accountSubnetsQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountSubnets>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #3340: fund-flow leaderboard — the addresses this account transacts with most
+// (by volume), from the already-live /api/v1/accounts/{ss58}/counterparties
+// (list mode). Structured-object response, so it mirrors accountSubnetsQuery's
+// apiFetch + isRecord + per-row normalize shape (not a bare fetchList).
+function normalizeCounterparty(raw: unknown): AccountCounterparty | null {
+  if (!isRecord(raw)) return null;
+  const address = firstString(raw.address);
+  if (!address) return null;
+  return {
+    address,
+    sent_tao: firstFiniteNumber(raw.sent_tao) ?? null,
+    received_tao: firstFiniteNumber(raw.received_tao) ?? null,
+    net_tao: firstFiniteNumber(raw.net_tao) ?? null,
+    transfer_count: firstFiniteNumber(raw.transfer_count) ?? null,
+    last_block: firstFiniteNumber(raw.last_block) ?? null,
+  };
+}
+
+export const accountCounterpartiesQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-counterparties", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/counterparties`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const counterparties = Array.isArray(d.counterparties)
+        ? d.counterparties.flatMap((row) => {
+            const c = normalizeCounterparty(row);
+            return c ? [c] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          counterparty_count: firstFiniteNumber(d.counterparty_count) ?? counterparties.length,
+          transfers_scanned: firstFiniteNumber(d.transfers_scanned) ?? null,
+          scan_capped: booleanValue(d.scan_capped),
+          total_sent_tao: firstFiniteNumber(d.total_sent_tao) ?? null,
+          total_received_tao: firstFiniteNumber(d.total_received_tao) ?? null,
+          counterparties,
+        } as AccountCounterparties,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountCounterparties>;
     },
     staleTime: STALE_MED,
   });

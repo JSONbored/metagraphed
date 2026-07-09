@@ -18,6 +18,7 @@ import {
   Unplug,
   UserMinus,
   UserPlus,
+  Users,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
@@ -36,6 +37,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import {
   accountAxonRemovalsQuery,
+  accountCounterpartiesQuery,
   accountPortfolioQuery,
   accountStakeMovesQuery,
   accountDeregistrationsQuery,
@@ -56,6 +58,7 @@ import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import type {
+  AccountCounterparty,
   AccountRegistration,
   AccountSummary,
   Extrinsic,
@@ -322,6 +325,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         error={transfersResult.error}
         onRetry={() => void transfersResult.refetch()}
       />
+      {/* #3340: the aggregated fund-flow view over the same transfer data. */}
+      <AccountCounterpartiesSection ss58={ss58} />
 
       <div className="mt-6">
         <Link
@@ -344,6 +349,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
             { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
             { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
+            { label: "counterparties", path: `/api/v1/accounts/${sourceRef}/counterparties` },
             { label: "serving", path: `/api/v1/accounts/${sourceRef}/serving` },
             { label: "prometheus", path: `/api/v1/accounts/${sourceRef}/prometheus` },
           ]}
@@ -356,6 +362,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           `/api/v1/accounts/${sourceRef}/history`,
           `/api/v1/accounts/${sourceRef}/events`,
           `/api/v1/accounts/${sourceRef}/subnets`,
+          `/api/v1/accounts/${sourceRef}/counterparties`,
           `/api/v1/accounts/${sourceRef}/serving`,
           `/api/v1/accounts/${sourceRef}/prometheus`,
         ]}
@@ -798,6 +805,155 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
       {subnets.length > rows.length ? (
         <p className="mt-3 font-mono text-[10px] text-ink-muted">
           Showing the {rows.length} most-active of {formatNumber(subnets.length)} subnets.
+        </p>
+      ) : null}
+    </SectionAnchor>
+  );
+}
+
+// #3340: fund-flow leaderboard for this account — the top addresses it transacts
+// with by volume, from accountCounterpartiesQuery. Self-contained + non-blocking
+// (same shape as AccountStakeMovesSection): while it loads or if it fails, the
+// rest of the account page is unaffected; a cold wallet renders nothing.
+function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountCounterpartiesQuery(ss58));
+  const c = result.data?.data;
+  const SUBTITLE =
+    "The addresses this account transacts with most, by volume — directional totals, net flow, transfer count, and last-active block.";
+
+  if (result.isPending && !c) {
+    return (
+      <AccountFeedSectionSkeleton id="counterparties" title="Counterparties" subtitle={SUBTITLE} />
+    );
+  }
+  if (result.isError) {
+    return (
+      <SectionAnchor id="counterparties" title="Counterparties" subtitle={SUBTITLE} tone="accent">
+        <TableState
+          variant="error"
+          title="Couldn't load counterparties"
+          description="The counterparties tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+  const parties = c?.counterparties ?? [];
+  if (!c || parties.length === 0) return null;
+  const volume = (p: AccountCounterparty) => (p.sent_tao ?? 0) + (p.received_tao ?? 0);
+  const rows = [...parties].sort((a, b) => volume(b) - volume(a)).slice(0, 20);
+
+  return (
+    <SectionAnchor
+      id="counterparties"
+      title="Counterparties"
+      subtitle={SUBTITLE}
+      tone="accent"
+      info="Fund-flow leaderboard from /api/v1/accounts/{ss58}/counterparties — the top addresses by transfer volume, with sent/received/net totals and the last block each was active in."
+      right={
+        <SectionBadge tone="accent">{formatNumber(c.counterparty_count)} addresses</SectionBadge>
+      }
+    >
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          icon={Users}
+          eyebrow="Counterparties"
+          tone="accent"
+          value={formatNumber(c.counterparty_count)}
+          hint="distinct addresses"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={TrendingUp}
+          eyebrow="Total sent"
+          value={fmtTaoCompact(c.total_sent_tao)}
+          hint="outflow"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Coins}
+          eyebrow="Total received"
+          value={fmtTaoCompact(c.total_received_tao)}
+          hint="inflow"
+          className={KPI_TILE}
+        />
+        <StatTile
+          icon={Activity}
+          eyebrow="Transfers scanned"
+          value={formatNumber(c.transfers_scanned ?? 0)}
+          hint={c.scan_capped ? "scan capped" : "in window"}
+          className={KPI_TILE}
+        />
+      </div>
+      <DataPanel>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-surface/50">
+            <tr>
+              <th className={TH}>Address</th>
+              <th className={`${TH} text-right`}>Sent</th>
+              <th className={`${TH} text-right`}>Received</th>
+              <th className={`${TH} text-right`}>Net flow</th>
+              <th className={`${TH} text-right`}>Transfers</th>
+              <th className={`${TH} text-right`}>Last block</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((p, i) => (
+              <tr key={`${p.address}-${i}`} className="hover:bg-surface/30">
+                <td className="px-5 py-4 font-mono text-[11px] text-ink-muted" title={p.address}>
+                  {p.address !== ss58 ? (
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: p.address }}
+                      className="hover:text-accent hover:underline"
+                    >
+                      {shortHash(p.address)}
+                    </Link>
+                  ) : (
+                    (shortHash(p.address) ?? "—")
+                  )}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {p.sent_tao != null ? `${formatNumber(p.sent_tao)} τ` : "—"}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {p.received_tao != null ? `${formatNumber(p.received_tao)} τ` : "—"}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums">
+                  {p.net_tao == null ? (
+                    <span className="text-ink-muted">—</span>
+                  ) : (
+                    <span className={p.net_tao >= 0 ? "text-emerald-500" : "text-amber-500"}>
+                      {p.net_tao >= 0 ? "+" : ""}
+                      {formatNumber(p.net_tao)} τ
+                    </span>
+                  )}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {formatNumber(p.transfer_count ?? 0)}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[12px]">
+                  {p.last_block != null ? (
+                    <Link
+                      to="/blocks/$ref"
+                      params={{ ref: String(p.last_block) }}
+                      className="text-ink hover:text-accent hover:underline"
+                    >
+                      #{formatNumber(p.last_block)}
+                    </Link>
+                  ) : (
+                    <span className="text-ink-muted">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </DataPanel>
+      {parties.length > rows.length ? (
+        <p className="mt-3 font-mono text-[10px] text-ink-muted">
+          Showing the {rows.length} highest-volume of {formatNumber(parties.length)} counterparties.
         </p>
       ) : null}
     </SectionAnchor>

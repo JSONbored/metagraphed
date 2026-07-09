@@ -1258,6 +1258,29 @@ export interface AccountStakeMoves {
   subnets: AccountStakeMovesSubnet[];
   [key: string]: unknown;
 }
+/** One counterparty row in /api/v1/accounts/{ss58}/counterparties (list mode). */
+export interface AccountCounterparty {
+  address: string;
+  sent_tao: number | null;
+  received_tao: number | null;
+  net_tao: number | null;
+  transfer_count: number | null;
+  last_block: number | null;
+}
+/**
+ * #3340: /api/v1/accounts/{ss58}/counterparties (list mode) — the fund-flow
+ * leaderboard of the addresses this account transacts with, by volume.
+ */
+export interface AccountCounterparties {
+  ss58: string;
+  counterparty_count: number;
+  transfers_scanned: number | null;
+  scan_capped: boolean | null;
+  total_sent_tao: number | null;
+  total_received_tao: number | null;
+  counterparties: AccountCounterparty[];
+  [key: string]: unknown;
+}
 export interface AccountPortfolio {
   ss58: string;
   captured_at?: string | null;
