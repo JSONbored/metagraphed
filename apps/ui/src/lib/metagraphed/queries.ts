@@ -14,6 +14,7 @@ import type {
   AgentCatalogService,
   AgentReadiness,
   AgentCatalogBlocker,
+  AskAnswerData,
   BulkHealthTrends,
   BulkHealthTrendSubnet,
   BulkHealthTrendPoint,
@@ -5662,6 +5663,23 @@ export const agentResourcesQuery = () =>
     },
     staleTime: STALE_MED,
   });
+
+// POST /api/v1/ask — grounded Q&A over the registry. User-triggered on submit,
+// not a passive fetch-on-mount GET, so this is a plain typed helper for a
+// component's own useMutation to call (see ask-box.tsx), not a
+// queryOptions/useSuspenseQuery pair — matching the verify-surface-button.tsx
+// imperative-POST precedent.
+export async function askQuestion(question: string, signal?: AbortSignal): Promise<AskAnswerData> {
+  const res = await apiFetch<AskAnswerData>("/api/v1/ask", {
+    init: {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ question }),
+    },
+    signal,
+  });
+  return res.data;
+}
 
 export const endpointIncidentsQuery = () =>
   queryOptions({

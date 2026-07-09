@@ -367,6 +367,25 @@ export interface AgentResources {
   resources: AgentResource[];
 }
 
+/** One grounding source backing an /api/v1/ask answer. */
+export interface AskCitation {
+  ref: number;
+  score: number;
+  title: string | null;
+  netuid: number | null;
+  slug: string | null;
+  url: string | null;
+}
+
+/** Response payload for POST /api/v1/ask — a grounded Q&A answer + its citations. */
+export interface AskAnswerData {
+  question: string;
+  answer: string;
+  context_count: number;
+  model: string;
+  citations: AskCitation[];
+}
+
 /** One reconstructed downtime window from /api/v1/incidents (epoch-ms timestamps). */
 export interface GlobalIncident {
   started_at: number;
