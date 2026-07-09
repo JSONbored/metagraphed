@@ -82,6 +82,8 @@ import type {
   ChainFeePayer,
   ChainTransferPair,
   ChainTransferPairs,
+  ChainTransferParty,
+  ChainTransfers,
   ChainStakeTransfers,
   ChainStakeTransferSubnet,
   ChainAxonRemovals,
@@ -3458,6 +3460,65 @@ export const chainTransferPairsQuery = (
       });
       return {
         data: normalizeChainTransferPairs(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+const MAX_CHAIN_TRANSFER_PARTIES = 50;
+
+function normalizeChainTransferParty(raw: unknown): ChainTransferParty | null {
+  if (!isRecord(raw)) return null;
+  const address = firstString(raw.address);
+  if (!address) return null;
+  return {
+    address,
+    volume_tao: firstFiniteNumber(raw.volume_tao) ?? 0,
+    transfer_count: firstFiniteNumber(raw.transfer_count) ?? 0,
+  };
+}
+
+// #3475: network-wide native-TAO transfer-volume leaderboard over a 7d/30d window
+// — the data layer for a top-senders / top-receivers ranking on the explorer, the
+// account-scoped companion to the sender→receiver corridor view (#3476). Counts and
+// volumes fall through to 0, the top-sender share to null (never NaN), and malformed
+// party rows are dropped so a cold store degrades to two empty leaderboards.
+export function normalizeChainTransfers(raw: unknown): ChainTransfers {
+  const rec = isRecord(raw) ? raw : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    total_volume_tao: firstFiniteNumber(rec.total_volume_tao) ?? 0,
+    transfer_count: firstFiniteNumber(rec.transfer_count) ?? 0,
+    unique_senders: firstFiniteNumber(rec.unique_senders) ?? 0,
+    unique_receivers: firstFiniteNumber(rec.unique_receivers) ?? 0,
+    top_sender_share: firstFiniteNumber(rec.top_sender_share) ?? null,
+    top_senders: normalizeChainRows(
+      rec.top_senders,
+      MAX_CHAIN_TRANSFER_PARTIES,
+      normalizeChainTransferParty,
+    ),
+    top_receivers: normalizeChainRows(
+      rec.top_receivers,
+      MAX_CHAIN_TRANSFER_PARTIES,
+      normalizeChainTransferParty,
+    ),
+  };
+}
+
+export const chainTransfersQuery = (window = "7d", limit = 20) =>
+  queryOptions({
+    queryKey: k("chain-transfers", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainTransfers>>("/api/v1/chain/transfers", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainTransfers(res.data),
         meta: res.meta,
         url: res.url,
       };
