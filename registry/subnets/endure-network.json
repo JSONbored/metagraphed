@@ -80,6 +80,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Endure documentation linked from the project website."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-30-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Endure Network TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/30 on api.taomarketcap.com returning machine-readable JSON for SN30 Endure Network on-chain subnet state, hyperparameters, economics, and dTAO market fields. Endure publishes a website and documentation but no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "reyanthony062001-ops"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/30/subnet.json"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/30"
     }
   ],
   "social": {
