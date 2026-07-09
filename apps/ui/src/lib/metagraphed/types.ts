@@ -1247,6 +1247,11 @@ export interface AccountStakeMovesSubnet {
   movements: number;
   first_moved_at?: string | null;
   last_moved_at?: string | null;
+  /** Alpha price (TAO) on the UTC day of last_moved_at, from the daily
+   * subnet_snapshots rollup (#4332/6.3). Null when that day has no snapshot
+   * yet or there was no move. Daily granularity, not the exact intra-day
+   * price of any one movement -- a known precision limit, not a bug. */
+  price_tao_at_last_move?: number | null;
 }
 export interface AccountStakeMoves {
   ss58: string;
@@ -1958,6 +1963,37 @@ export interface ValidatorHistory {
   window?: string | null;
   point_count: number;
   points: ValidatorHistoryPoint[];
+}
+
+/** One daily snapshot of an account's position on one subnet, from
+ * /api/v1/accounts/{ss58}/subnets/{netuid}/history (#4329/6.2 -- the "Alpha
+ * Holdings chart"). Same per-position field shape as AccountPortfolio's
+ * positions[] entries, plus the date/capture stamp. */
+export interface AccountPositionHistoryPoint {
+  snapshot_date: string;
+  captured_at?: string | null;
+  uid: number | null;
+  coldkey: string | null;
+  role: "validator" | "miner";
+  active: boolean;
+  stake_tao: number | null;
+  emission_tao: number | null;
+  rank: number | null;
+  trust: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  /** Null when stake is 0/absent for the day (division by zero avoided server-side). */
+  yield: number | null;
+}
+
+/** Daily per-position history from GET /api/v1/accounts/{ss58}/subnets/{netuid}/history (#4329/6.2). */
+export interface AccountPositionHistory {
+  schema_version?: number;
+  ss58: string;
+  netuid: number;
+  window?: string | null;
+  point_count: number;
+  points: AccountPositionHistoryPoint[];
 }
 
 /** A single neuron snapshot from /api/v1/subnets/{netuid}/neurons/{uid}. */

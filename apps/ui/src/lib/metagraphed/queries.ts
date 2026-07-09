@@ -186,6 +186,8 @@ import type {
   ValidatorNominatorEntry,
   ValidatorHistory,
   ValidatorHistoryPoint,
+  AccountPositionHistory,
+  AccountPositionHistoryPoint,
   SubnetNeuronSnapshot,
   ConcentrationMetrics,
   ScoreDistribution,
@@ -2593,6 +2595,7 @@ function normalizeAccountStakeMovesSubnet(raw: unknown): AccountStakeMovesSubnet
     movements: coerceFiniteNumber(raw.movements) ?? 0,
     first_moved_at: firstString(raw.first_moved_at) ?? null,
     last_moved_at: firstString(raw.last_moved_at) ?? null,
+    price_tao_at_last_move: firstFiniteNumber(raw.price_tao_at_last_move) ?? null,
   };
 }
 
@@ -2624,6 +2627,60 @@ export const accountStakeMovesQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountStakeMoves>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeAccountPositionHistoryPoint(raw: unknown): AccountPositionHistoryPoint | null {
+  if (!isRecord(raw)) return null;
+  const snapshotDate = firstString(raw.snapshot_date);
+  if (!snapshotDate) return null;
+  return {
+    snapshot_date: snapshotDate,
+    captured_at: firstString(raw.captured_at) ?? null,
+    uid: coerceFiniteNumber(raw.uid) ?? null,
+    coldkey: firstString(raw.coldkey) ?? null,
+    role: raw.role === "validator" ? "validator" : "miner",
+    active: raw.active === true,
+    stake_tao: firstFiniteNumber(raw.stake_tao) ?? null,
+    emission_tao: firstFiniteNumber(raw.emission_tao) ?? null,
+    rank: firstFiniteNumber(raw.rank) ?? null,
+    trust: firstFiniteNumber(raw.trust) ?? null,
+    incentive: firstFiniteNumber(raw.incentive) ?? null,
+    dividends: firstFiniteNumber(raw.dividends) ?? null,
+    yield: firstFiniteNumber(raw.yield) ?? null,
+  };
+}
+
+/** Daily position history for one account on one subnet -- the "Alpha
+ * Holdings chart" (#4329/6.2/6.4): stake/emission/yield over time, reusing
+ * the account_position_daily rollup. */
+export const accountPositionHistoryQuery = (ss58: string, netuid: number, window: string) =>
+  queryOptions({
+    queryKey: k("account-position-history", ss58, netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/subnets/${netuid}/history`,
+        { params: { window }, signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const points = Array.isArray(d.points)
+        ? d.points.flatMap((row) => {
+            const p = normalizeAccountPositionHistoryPoint(row);
+            return p ? [p] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+          window: firstString(d.window) ?? null,
+          point_count: firstFiniteNumber(d.point_count) ?? points.length,
+          points,
+        } as AccountPositionHistory,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountPositionHistory>;
     },
     staleTime: STALE_MED,
   });

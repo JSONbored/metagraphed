@@ -256,6 +256,25 @@
         "https://github.com/Luminar-Network/luminar-sn/blob/main/luminar/validator/scoring.py"
       ],
       "url": "https://raw.githubusercontent.com/Luminar-Network/luminar-sn/main/benchmark/test/test_submission.csv"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-87-luminar-docs-llms-txt",
+      "kind": "data-artifact",
+      "name": "Luminar Network docs llms.txt index",
+      "notes": "Public no-auth machine-readable llms.txt index of the official Luminar Network (SN87) documentation, served at docs.luminar.network — the same official docs domain already registered as the sn-87-luminar-docs surface and as the file's docs_url. Provides an agent-consumable Markdown map of the Luminar docs (Introduction, System Architecture, Agentic Competition, Incentive Mechanism, Tokenomics & Emissions, Roadmap) for LLM/agent ingestion; content begins '# Luminar Network'. Distinct from the HTML GitBook docs page (a different URL and a machine-readable text/markdown artifact).",
+      "provider": "luminar-network",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://docs.luminar.network/",
+        "https://luminar.network/"
+      ],
+      "url": "https://docs.luminar.network/llms.txt"
     }
   ],
   "website_url": "https://luminar.network/"
