@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
-import { Boxes, Clock, FileText } from "lucide-react";
+import { Boxes, Clock, FileText, UserCog } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -19,7 +19,10 @@ import { shortHash } from "@/lib/metagraphed/blocks";
 import {
   extrinsicCall,
   extrinsicHashPathSegment,
+  isDecodedCall,
   isValidExtrinsicHash,
+  proxyRealAccount,
+  type DecodedCall,
 } from "@/lib/metagraphed/extrinsics";
 
 export const Route = createFileRoute("/extrinsics/$hash")({
@@ -105,6 +108,9 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       ? Object.keys(callArgs).length
       : 0;
   const callArgsOmitted = Math.max(0, callArgsTotal - 64);
+  const realAccount = extrinsic
+    ? proxyRealAccount(extrinsic.call_module, extrinsic.call_function, callArgs)
+    : null;
 
   if (!extrinsic) {
     return (
@@ -143,6 +149,24 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         actions={<ShareButton />}
         caption="explorer / v1"
       />
+
+      {realAccount ? (
+        <div className="mb-8 flex flex-wrap items-center gap-3 rounded border border-accent/30 bg-accent-surface px-4 py-3">
+          <UserCog className="size-4 shrink-0 text-accent" aria-hidden="true" />
+          <span className="text-sm text-ink">
+            Executed on behalf of{" "}
+            <Link
+              to="/accounts/$ss58"
+              params={{ ss58: realAccount }}
+              className="font-mono text-ink-strong hover:underline"
+            >
+              {shortHash(realAccount) ?? realAccount}
+            </Link>{" "}
+            — the account below only relayed this <code className="font-mono">Proxy.proxy</code>{" "}
+            call, it isn't the account the inner call actually acts as.
+          </span>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
         <StatTile
@@ -339,7 +363,16 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
   );
 }
 
-function renderCallArgs(callArgs: unknown) {
+// Utility.batch/batch_all/force_batch, Multisig's `call`, and Proxy's `call`
+// all carry the SAME fully-decoded-call shape (#4319/4.1 — verified live, see
+// docs/block-explorer-data-model.md's "Nested-call decode depth" note), and
+// that decoded call's own args can nest again (a batch inside a multisig
+// inside a batch). Cap the recursion rather than flattening to raw JSON, so a
+// viewer can read a batch's inner transfers/multisig's wrapped call directly
+// instead of parsing an escaped JSON blob by eye.
+const MAX_NESTED_CALL_DEPTH = 4;
+
+function renderCallArgs(callArgs: unknown, depth = 0) {
   if (Array.isArray(callArgs)) {
     const args = (callArgs as Array<{ name?: string | null; value?: unknown }>).slice(0, 64);
     if (args.length === 0) {
@@ -357,11 +390,11 @@ function renderCallArgs(callArgs: unknown) {
           <tbody className="divide-y divide-border">
             {args.map((arg, i) => (
               <tr key={`${arg.name ?? i}`} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong align-top">
                   {arg.name ?? `arg_${i + 1}`}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {formatCallArgValue(arg.value)}
+                  {renderCallArgValue(arg.value, depth)}
                 </td>
               </tr>
             ))}
@@ -388,9 +421,11 @@ function renderCallArgs(callArgs: unknown) {
           <tbody className="divide-y divide-border">
             {entries.map(([key, value]) => (
               <tr key={key} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">{key}</td>
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong align-top">
+                  {key}
+                </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {formatCallArgValue(value)}
+                  {renderCallArgValue(value, depth)}
                 </td>
               </tr>
             ))}
@@ -401,6 +436,46 @@ function renderCallArgs(callArgs: unknown) {
   }
 
   return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
+}
+
+// One arg's value: a nested call (or a list of them, e.g. a batch's `calls`)
+// expands as its own call card; anything else prints as before.
+function renderCallArgValue(value: unknown, depth: number): ReactNode {
+  if (depth < MAX_NESTED_CALL_DEPTH) {
+    if (isDecodedCall(value)) {
+      return <NestedCallCard call={value} depth={depth} />;
+    }
+    if (Array.isArray(value) && value.length > 0 && value.every(isDecodedCall)) {
+      return (
+        <div className="flex flex-col gap-2">
+          {(value as DecodedCall[]).map((call, i) => (
+            <NestedCallCard
+              key={typeof call.call_hash === "string" ? call.call_hash : i}
+              call={call}
+              depth={depth}
+            />
+          ))}
+        </div>
+      );
+    }
+  }
+  return formatCallArgValue(value);
+}
+
+function NestedCallCard({ call, depth }: { call: DecodedCall; depth: number }) {
+  return (
+    <div className="rounded border border-border/70 bg-surface/30 p-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="font-mono text-[11px] font-semibold text-ink-strong">
+          {extrinsicCall(call.call_module, call.call_function)}
+        </span>
+        {typeof call.call_hash === "string" && call.call_hash ? (
+          <CopyableCode value={call.call_hash} label="call_hash" />
+        ) : null}
+      </div>
+      {renderCallArgs(call.call_args, depth + 1)}
+    </div>
+  );
 }
 
 function formatCallArgValue(value: unknown): string {
