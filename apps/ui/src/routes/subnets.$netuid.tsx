@@ -56,6 +56,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { TABS, SECTION_TO_TAB } from "@/lib/metagraphed/subnet-detail-tabs";
 import { TableState } from "@/components/metagraphed/table-state";
 import type {
   AccountEvent,
@@ -146,50 +147,6 @@ export const Route = createFileRoute("/subnets/$netuid")({
     </AppShell>
   ),
 });
-
-const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "metagraph", label: "Metagraph" },
-  { id: "validators", label: "Validators" },
-  { id: "activity", label: "Activity" },
-  { id: "identity", label: "Identity history" },
-  { id: "hyperparameters", label: "Hyperparameters" },
-  { id: "services", label: "Callable services" },
-  { id: "surfaces", label: "Surfaces" },
-  { id: "endpoints", label: "Endpoints" },
-  { id: "schemas", label: "Schemas" },
-  { id: "candidates", label: "Candidates" },
-  { id: "gaps", label: "Gaps" },
-  { id: "evidence", label: "Evidence" },
-  { id: "api", label: "API" },
-] as const;
-
-// Which tab does each section anchor live under? Drives cross-tab deep links.
-const SECTION_TO_TAB: Record<string, string> = {
-  "endpoints-glance": "overview",
-  "health-trends": "overview",
-  incidents: "overview",
-  economics: "overview",
-  reliability: "overview",
-  lineage: "overview",
-  evidence: "overview",
-  metagraph: "metagraph",
-  neuron: "metagraph",
-  concentration: "metagraph",
-  yield: "metagraph",
-  turnover: "metagraph",
-  validators: "validators",
-  identity: "identity",
-  hyperparameters: "hyperparameters",
-  services: "services",
-  "agent-readiness": "services",
-  surfaces: "surfaces",
-  endpoints: "endpoints",
-  "schema-drift": "schemas",
-  candidates: "candidates",
-  gaps: "gaps",
-  api: "api",
-};
 
 function SubnetDetailPage() {
   const { netuid } = Route.useParams();
