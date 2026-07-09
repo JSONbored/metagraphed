@@ -356,7 +356,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search subnets, wallets, blocks, txs…"
+          placeholder="Explore Bittensor…"
           role="combobox"
           aria-label="Search the registry"
           aria-autocomplete="list"
