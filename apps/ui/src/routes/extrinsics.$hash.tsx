@@ -17,9 +17,9 @@ import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import {
+  asDecodedCall,
   extrinsicCall,
   extrinsicHashPathSegment,
-  isDecodedCall,
   isValidExtrinsicHash,
   multisigCallHash,
   proxyRealAccount,
@@ -505,24 +505,32 @@ function renderCallArgs(callArgs: unknown, depth = 0) {
 }
 
 // One arg's value: a nested call (or a list of them, e.g. a batch's `calls`)
-// expands as its own call card; anything else prints as before.
+// expands as its own call card; anything else prints as before. asDecodedCall
+// (not the bare isDecodedCall predicate) so this recognizes a nested call
+// under EITHER ingestion pipeline's shape (#4669) -- D1's
+// {call_module,call_function,...} directly, or indexer-rs's {name,values}
+// enum-tree wrapper, normalized to the same shape before rendering.
 function renderCallArgValue(value: unknown, depth: number): ReactNode {
   if (depth < MAX_NESTED_CALL_DEPTH) {
-    if (isDecodedCall(value)) {
-      return <NestedCallCard call={value} depth={depth} />;
+    const decoded = asDecodedCall(value);
+    if (decoded) {
+      return <NestedCallCard call={decoded} depth={depth} />;
     }
-    if (Array.isArray(value) && value.length > 0 && value.every(isDecodedCall)) {
-      return (
-        <div className="flex flex-col gap-2">
-          {(value as DecodedCall[]).map((call, i) => (
-            <NestedCallCard
-              key={typeof call.call_hash === "string" ? call.call_hash : i}
-              call={call}
-              depth={depth}
-            />
-          ))}
-        </div>
-      );
+    if (Array.isArray(value) && value.length > 0) {
+      const decodedCalls = value.map(asDecodedCall);
+      if (decodedCalls.every((c): c is DecodedCall => c !== null)) {
+        return (
+          <div className="flex flex-col gap-2">
+            {decodedCalls.map((call, i) => (
+              <NestedCallCard
+                key={typeof call.call_hash === "string" ? call.call_hash : i}
+                call={call}
+                depth={depth}
+              />
+            ))}
+          </div>
+        );
+      }
     }
   }
   return formatCallArgValue(value);

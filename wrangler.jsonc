@@ -59,29 +59,30 @@
     // every column, including block_hash/parent_hash/author/observed_at, matched
     // exactly) -- safe to flip once ready.
     //
-    // extrinsics: PARTIALLY reconciled 2026-07-09 (#4669), still not flipped.
-    // indexer-rs's `call_args` (Postgres JSONB) is a flat {argName: value} map
-    // with no type metadata (e.g. {"netuid":110,"dests":[155]}), vs
-    // fetch-events.py's (D1) array of {name,type,value} descriptors -- `type`
-    // is decorative (never rendered by either shape) so this alone isn't a
-    // blocker; apps/ui/src/lib/metagraphed/extrinsics.ts's multisigCallHash/
-    // proxyRealAccount now read either shape via a shared callArgValue lookup,
-    // live-verified against real production data including a raw 32-byte
-    // call_hash array (indexer-rs's [u8;32] encoding, hex-encoded and checked
-    // byte-for-byte against the same extrinsic's D1 value). What remains
-    // unreconciled: a NESTED call (Multisig.as_multi's wrapped `call`,
-    // Utility.batch's inner calls, Proxy.proxy's wrapped call) is encoded as a
-    // recursive generic enum tree ({"name":"ModuleName","values":[...]}), not
-    // {call_module,call_function,...} -- isDecodedCall correctly doesn't
-    // recognize it, so nested-call rendering (NestedCallCard) and as_multi's
-    // own computed call_hash (a Python-side re-encode-and-hash step indexer-rs
-    // has no equivalent of) both degrade gracefully to a plain JSON dump /
-    // null rather than a crash or wrong data -- but that's still a real UX
-    // regression, not full parity. Fixing it needs either the Rust indexer's
-    // source (confirmed MISSING -- not on the indexer box, no git remote; see
-    // #4669) or a materially riskier generic-enum-tree reverse-engineering
-    // effort. Flip only once that's resolved or the UX regression is
-    // explicitly accepted.
+    // extrinsics: reconciled 2026-07-09 (#4669), still not flipped pending a
+    // live cutover decision. indexer-rs's `call_args` (Postgres JSONB) is a
+    // flat {argName: value} map with no type metadata (e.g.
+    // {"netuid":110,"dests":[155]}), vs fetch-events.py's (D1) array of
+    // {name,type,value} descriptors -- `type` is decorative (never rendered by
+    // either shape) so this alone isn't a blocker; apps/ui/src/lib/metagraphed/
+    // extrinsics.ts's multisigCallHash/proxyRealAccount read either shape via
+    // a shared callArgValue lookup, live-verified against real production data
+    // including a raw 32-byte call_hash array (indexer-rs's [u8;32] encoding,
+    // hex-encoded and checked byte-for-byte against the same extrinsic's D1
+    // value). A NESTED call (Multisig.as_multi's wrapped `call`, Utility.batch's
+    // inner calls, Proxy.proxy's wrapped call) is encoded as a recursive
+    // generic enum tree ({"name":"ModuleName","values":[...]}), not
+    // {call_module,call_function,...} -- normalizeIndexerRsCall/asDecodedCall
+    // reconstruct call_module/call_function from the enum wrapper's own tag
+    // names (safe and deterministic -- an enum variant's own name carries no
+    // Hash-vs-AccountId32 ambiguity), so NestedCallCard now renders this shape
+    // too. Two narrow, accepted gaps remain, neither a data-correctness risk:
+    // (a) as_multi's own computed call_hash (a Python-side re-encode-and-hash
+    // step indexer-rs's dump has no equivalent of, so multisigCallHash
+    // degrades to a clean null rather than a wrong hash for this one sub-case);
+    // (b) raw byte-array VALUES nested inside call args stay unconverted
+    // (correctly -- a bare 32-byte array is ambiguous between Hash and
+    // AccountId32 with no type metadata to disambiguate generically).
     "METAGRAPH_BLOCKS_SOURCE": "d1",
     "METAGRAPH_EXTRINSICS_SOURCE": "d1",
   },

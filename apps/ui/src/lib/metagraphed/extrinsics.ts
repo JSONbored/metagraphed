@@ -55,6 +55,44 @@ export function isDecodedCall(value: unknown): value is DecodedCall {
   );
 }
 
+/** indexer-rs's generic dynamic-SCALE-value encoding of a RuntimeCall-typed
+ * value (a nested call): `{name: "PalletName", values: [{name:
+ * "function_name", values: <args>}]}` -- a single-variant enum wrapping
+ * another single-variant enum, one level per nesting (#4669). Reconstructing
+ * `call_module`/`call_function` from the two `name` fields is safe and
+ * deterministic (pallet/function names are always plain strings here); this
+ * is NOT the same risk as guessing whether a bare 32-byte array is a Hash or
+ * an AccountId32 -- there's no ambiguity in an enum variant's own tag. The
+ * reconstructed `call_args` is `values` UNCHANGED (still indexer-rs's native
+ * shape recursively -- callArgValue/normalizeIndexerRsCall both already
+ * handle it), so any byte-array fields inside stay raw arrays rather than a
+ * guessed hex/SS58 encoding. */
+export function normalizeIndexerRsCall(value: unknown): DecodedCall | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const outer = value as Record<string, unknown>;
+  if (typeof outer.name !== "string") return null;
+  if (!Array.isArray(outer.values) || outer.values.length !== 1) return null;
+  const inner = outer.values[0];
+  if (!inner || typeof inner !== "object" || Array.isArray(inner)) return null;
+  const innerName = (inner as Record<string, unknown>).name;
+  if (typeof innerName !== "string") return null;
+  return {
+    call_module: outer.name,
+    call_function: innerName,
+    call_args: (inner as Record<string, unknown>).values,
+  };
+}
+
+/** A value that decodes to a nested call under EITHER shape -- D1's
+ * `{call_module, call_function, ...}` (isDecodedCall) or indexer-rs's
+ * `{name, values}` enum-tree wrapper (normalizeIndexerRsCall) -- normalized
+ * to the D1 shape either way so callers (NestedCallCard, multisigCallHash's
+ * nested branch) don't need to know which pipeline produced it. */
+export function asDecodedCall(value: unknown): DecodedCall | null {
+  if (isDecodedCall(value)) return value;
+  return normalizeIndexerRsCall(value);
+}
+
 /** Look up one named call-arg's value, regardless of which of the two valid
  * call_args shapes this extrinsic decoded to: the D1/fetch-events.py array of
  * `{name, type, value}` descriptors, or the Postgres/indexer-rs flat
@@ -121,10 +159,10 @@ function hashBytesToHex(value: unknown): string | null {
  * fetch-events.py emits it as a hex string, indexer-rs as a raw 32-byte array
  * (hex-encoded here, unambiguous at this specific field). The NESTED case
  * (`as_multi`'s wrapped `call` computing its OWN call_hash) does NOT reconcile
- * -- indexer-rs's generic dynamic-value dump has no equivalent of
- * fetch-events.py's Python-side re-encode-and-hash step, and the wrapped
- * call's shape (a recursive `{name, values}` enum tree, not
- * `{call_module, call_function, ...}`) isn't `isDecodedCall`-shaped at all, so
+ * -- asDecodedCall correctly recognizes indexer-rs's wrapped-call shape (the
+ * module/function reconstruction is safe), but indexer-rs's dynamic-value
+ * dump has no equivalent of fetch-events.py's Python-side re-encode-and-hash
+ * step, so the reconstructed call simply has no `call_hash` field to read --
  * this degrades to a clean `null` (no Related Multisig calls section) rather
  * than a wrong hash -- tracked as the remaining part of #4669. */
 export function multisigCallHash(
@@ -137,6 +175,6 @@ export function multisigCallHash(
   const directHex = hashBytesToHex(direct);
   if (directHex) return directHex;
   const wrapped = callArgValue(callArgs, "call");
-  const nestedHash = isDecodedCall(wrapped) ? wrapped.call_hash : undefined;
+  const nestedHash = asDecodedCall(wrapped)?.call_hash;
   return typeof nestedHash === "string" && CALL_HASH.test(nestedHash) ? nestedHash : null;
 }
