@@ -86,6 +86,8 @@ import type {
   ChainStakeTransferSubnet,
   ChainAxonRemovals,
   ChainAxonRemovalSubnet,
+  ChainDeregistrations,
+  ChainDeregistrationsSubnet,
   ChainIntensityDistribution,
   ChainConcentration,
   ChainPerformance,
@@ -257,6 +259,7 @@ const MAX_CHAIN_FEE_PAYERS = 12;
 const MAX_CHAIN_TRANSFER_PAIRS = 100;
 const MAX_CHAIN_STAKE_TRANSFERS = 100;
 const MAX_CHAIN_AXON_REMOVALS = 100;
+const MAX_CHAIN_DEREGISTRATIONS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -3525,6 +3528,62 @@ export const chainAxonRemovalsQuery = (window = "7d", limit = 20) =>
       });
       return {
         data: normalizeChainAxonRemovals(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeChainDeregistrationsSubnet(raw: unknown): ChainDeregistrationsSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_deregistered_hotkeys: firstFiniteNumber(raw.distinct_deregistered_hotkeys) ?? 0,
+    deregistrations: firstFiniteNumber(raw.deregistrations) ?? 0,
+    deregistrations_per_hotkey: firstFiniteNumber(raw.deregistrations_per_hotkey) ?? null,
+  };
+}
+
+// #3466: network-wide neuron-deregistration leaderboard over a 7d/30d window — the
+// exit-side twin of /api/v1/chain/registrations. Every numeric cell coerces defensively:
+// counts fall through to 0, averages to null (never NaN), and malformed subnet rows are
+// dropped on a cold store or junk.
+export function normalizeChainDeregistrations(raw: unknown): ChainDeregistrations {
+  const rec = isRecord(raw) ? raw : {};
+  const networkRec = isRecord(rec.network) ? rec.network : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: {
+      distinct_deregistered_hotkeys:
+        firstFiniteNumber(networkRec.distinct_deregistered_hotkeys) ?? 0,
+      deregistrations: firstFiniteNumber(networkRec.deregistrations) ?? 0,
+      deregistrations_per_hotkey: firstFiniteNumber(networkRec.deregistrations_per_hotkey) ?? null,
+    },
+    intensity_distribution: normalizeChainIntensityDistribution(rec.intensity_distribution),
+    subnets: normalizeChainRows(
+      rec.subnets,
+      MAX_CHAIN_DEREGISTRATIONS,
+      normalizeChainDeregistrationsSubnet,
+    ),
+  };
+}
+
+export const chainDeregistrationsQuery = (window: ChainWindow = "7d", limit = 100) =>
+  queryOptions({
+    queryKey: k("chain-deregistrations", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainDeregistrations>>("/api/v1/chain/deregistrations", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainDeregistrations(res.data),
         meta: res.meta,
         url: res.url,
       };
