@@ -39,6 +39,7 @@ import { useScrolled } from "@/hooks/use-scrolled";
 import {
   endpointsQuery,
   endpointIncidentsQuery,
+  endpointPoolsQuery,
   rpcPoolsQuery,
   rpcEndpointsQuery,
   statusToHealth,
@@ -176,6 +177,14 @@ function EndpointsPage() {
             </QueryErrorBoundary>
           </section>
           <section>
+            <SectionHeading title="Endpoint pools" />
+            <QueryErrorBoundary>
+              <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+                <EndpointPoolsTable />
+              </Suspense>
+            </QueryErrorBoundary>
+          </section>
+          <section>
             <SectionHeading title="Root RPC/WSS endpoints" />
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-24 w-full" />}>
@@ -207,6 +216,7 @@ function EndpointsPage() {
           "/api/v1/rpc/usage",
           "/api/v1/endpoints",
           "/api/v1/rpc/pools",
+          "/api/v1/endpoint-pools",
           "/api/v1/rpc/endpoints",
           "/api/v1/endpoint-incidents",
         ]}
@@ -331,6 +341,84 @@ function PoolsTable() {
       <p className="px-1 font-mono text-[10px] text-ink-muted">
         Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
         in-sync, healthy nodes and fails over automatically.
+      </p>
+    </div>
+  );
+}
+
+function EndpointPoolsTable() {
+  const { data } = useSuspenseQuery(endpointPoolsQuery());
+  const rows = (data.data ?? []) as RpcPool[];
+  const stale = isStaleFreshness(data.meta?.generated_at);
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        title="No endpoint pools tracked"
+        description="Generalized pool composition across subtensor-rpc, subtensor-wss, and archive kinds appears here once pools are scored."
+      />
+    );
+  return (
+    <div className="space-y-2">
+      {stale ? (
+        <StaleBanner
+          generatedAt={data.meta?.generated_at}
+          refreshQueryKeys={[
+            endpointPoolsQuery().queryKey,
+            endpointsQuery().queryKey,
+            endpointIncidentsQuery().queryKey,
+          ]}
+        />
+      ) : null}
+      <div className="rounded border border-border bg-card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <tr>
+              <th className="px-3 py-2 text-left">Pool</th>
+              <th className="px-3 py-2 text-left">Kind</th>
+              <th className="px-3 py-2 text-right">Endpoints</th>
+              <th className="px-3 py-2 text-left">Best endpoint</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((p) => {
+              const eligible = typeof p.eligible_count === "number" ? p.eligible_count : null;
+              const total =
+                typeof p.endpoint_count === "number"
+                  ? p.endpoint_count
+                  : typeof p.members_count === "number"
+                    ? p.members_count
+                    : null;
+              const bestId =
+                typeof p.best_endpoint_id === "string" && p.best_endpoint_id.trim()
+                  ? p.best_endpoint_id
+                  : null;
+              return (
+                <tr
+                  key={p.id}
+                  id={`endpoint-pool-${p.id}`}
+                  className="mg-row-hover scroll-mt-24 target:bg-accent/10"
+                >
+                  <td className="px-3 py-2 font-medium text-ink-strong">{p.id}</td>
+                  <td className="px-3 py-2 font-mono text-[11px]">{String(p.kind ?? "—")}</td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px]">
+                    {eligible != null && total != null
+                      ? `${eligible}/${total} eligible`
+                      : total != null
+                        ? String(total)
+                        : "—"}
+                  </td>
+                  <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
+                    {bestId ?? "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="px-1 font-mono text-[10px] text-ink-muted">
+        Covers all pool kinds (subtensor-rpc, subtensor-wss, archive) from the generalized
+        endpoint-pools artifact — distinct from the Bittensor RPC proxy pools above.
       </p>
     </div>
   );

@@ -6214,6 +6214,16 @@ export const rpcPoolsQuery = () =>
     staleTime: STALE_MED,
   });
 
+export const endpointPoolsQuery = () =>
+  queryOptions({
+    queryKey: k("endpoint-pools"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/endpoint-pools", "pools", undefined, signal);
+      return { ...res, data: res.data.map(normalizePool) } as ApiResult<RpcPool[]>;
+    },
+    staleTime: STALE_MED,
+  });
+
 function normalizeRpcEndpoint(raw: unknown): RpcEndpoint | undefined {
   if (!isRecord(raw)) return undefined;
   const id = asString(raw.id);
