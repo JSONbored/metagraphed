@@ -12,6 +12,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
@@ -89,6 +90,13 @@ function ValidatorsPage() {
           />
         </Suspense>
       </QueryErrorBoundary>
+      <div className="mt-6" id="validator-subnet-heatmap">
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+            <ValidatorSubnetHeatmap />
+          </Suspense>
+        </QueryErrorBoundary>
+      </div>
       <ApiSourceFooter paths={["/api/v1/validators"]} />
     </AppShell>
   );
