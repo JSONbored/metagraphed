@@ -1,0 +1,46 @@
+{
+  "/@375": [
+    "DIV:flex items-center gap-1",
+    "DIV:flex-1 flex justify-end",
+    "DIV:lg:col-span-12",
+    "DIV:lg:col-span-5",
+    "DIV:lg:col-span-7"
+  ],
+  "/@768": ["DIV:flex items-center gap-1"],
+  "/@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
+  "/@1280": ["DIV:flex items-center gap-1"],
+  "/subnets/1@375": [
+    "A:inline-flex items-center gap-1 underline decoration-ink/30 underline-offset-2 text-ink-strong hover:decoration-ink mt-3 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent-surface px-3 py-2 text-sm",
+    "DIV:flex items-center gap-1",
+    "DIV:flex-1 flex justify-end"
+  ],
+  "/subnets/1@768": ["DIV:flex items-center gap-1"],
+  "/subnets/1@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
+  "/subnets/1@1280": ["DIV:flex items-center gap-1"],
+  "/endpoints@375": [
+    "DIV:flex items-center gap-1",
+    "DIV:flex items-center gap-1.5",
+    "DIV:flex-1 flex justify-end",
+    "SPAN:",
+    "TABLE:w-full text-sm"
+  ],
+  "/endpoints@768": ["DIV:flex items-center gap-1", "TABLE:w-full text-sm"],
+  "/endpoints@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
+  "/endpoints@1280": ["DIV:flex items-center gap-1"],
+  "/status@375": [
+    "DIV:flex items-center gap-1",
+    "DIV:flex items-center gap-1.5",
+    "DIV:flex-1 flex justify-end"
+  ],
+  "/status@768": ["DIV:flex items-center gap-1"],
+  "/status@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
+  "/status@1280": ["DIV:flex items-center gap-1"],
+  "/settings@375": [
+    "DIV:flex items-center gap-1",
+    "DIV:flex items-center gap-1.5",
+    "DIV:flex-1 flex justify-end"
+  ],
+  "/settings@768": ["DIV:flex items-center gap-1"],
+  "/settings@1024": ["DIV:flex items-center gap-1", "DIV:flex-1 flex justify-end"],
+  "/settings@1280": ["DIV:flex items-center gap-1"]
+}

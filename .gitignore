@@ -217,3 +217,7 @@ vite.config.ts.timestamp-*
 # Python bytecode (scripts/ + python/ tests)
 __pycache__/
 *.py[cod]
+
+# Playwright local run output (apps/ui e2e)
+apps/ui/test-results/
+apps/ui/playwright-report/

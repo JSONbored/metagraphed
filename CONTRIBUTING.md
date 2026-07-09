@@ -11,7 +11,7 @@ Two kinds of contribution, two paths:
 
 ## Setup & gates
 
-Use Node 22.
+**Fastest path:** open this repo in a [devcontainer](.devcontainer/devcontainer.json)-aware tool (VS Code, GitHub Codespaces, the `devcontainer` CLI) — Node 22 and Playwright's Chromium come preinstalled, no manual setup. Otherwise, use Node 22 (`.nvmrc` pins it — `nvm use` picks it up).
 
 ```bash
 npm install
@@ -21,6 +21,8 @@ npm run build
 ```
 
 `npm run validate` runs schema, API, and OpenAPI checks. For a full local data pipeline run, use `npm run pipeline:check`. Match focused checks to what you touch (`npm run validate:schemas`, `validate:api`, `validate:openapi`, `worker:test`) rather than running everything.
+
+`npm run build` here regenerates the root schema/OpenAPI contract and is what `worker:test` depends on — it's a separate step from `apps/ui`'s own build. If you're touching `apps/ui/`, see [apps/ui/CONTRIBUTING.md](apps/ui/CONTRIBUTING.md) for its own `npm run build --workspace=apps/ui` cycle; a PR touching both may need both.
 
 ## Schema-first rule
 

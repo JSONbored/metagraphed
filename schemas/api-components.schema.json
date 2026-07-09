@@ -847,6 +847,63 @@
         ],
         "type": "object"
       },
+      "AccountPositionHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "One wallet's position on one subnet over time (block-explorer Tier-1, epic #4329/6.2 — the 'Alpha Holdings chart'), served live from the account_position_daily D1 rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file). Each point is the wallet's position economics on that subnet on one snapshot_date, in the same field shape as AccountPortfolioArtifact's PortfolioPosition entries (minus netuid, fixed for the whole series).",
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": true,
+              "description": "The wallet's position on this subnet on one snapshot_date (position-economics fields plus snapshot_date/captured_at).",
+              "properties": {
+                "captured_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "snapshot_date": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "netuid",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
+      },
       "AccountPrometheusArtifact": {
         "additionalProperties": false,
         "description": "One account's Prometheus-endpoint serving footprint per subnet over a recent window, from the account_events PrometheusServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet. Operational activity (announcing a Prometheus telemetry endpoint) — the telemetry sibling of /accounts/{ss58}/serving and the account-level companion to /api/v1/chain/prometheus and /api/v1/subnets/{netuid}/prometheus, orthogonal to /accounts/{ss58}/subnets (registration state).",
@@ -14616,7 +14673,7 @@
       },
       "SubnetAlphaVolumeArtifact": {
         "additionalProperties": false,
-        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Fixed 24h window, not OHLC/price data.",
+        "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data.",
         "properties": {
           "buy_count": {
             "minimum": 0,
@@ -14626,6 +14683,9 @@
             "type": "number"
           },
           "buy_volume_tao": {
+            "type": "number"
+          },
+          "net_volume_alpha": {
             "type": "number"
           },
           "netuid": {
@@ -14644,6 +14704,20 @@
           },
           "sell_volume_tao": {
             "type": "number"
+          },
+          "sentiment": {
+            "enum": [
+              "bullish",
+              "bearish",
+              "neutral"
+            ],
+            "type": "string"
+          },
+          "sentiment_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "total_volume_alpha": {
             "type": "number"
@@ -14669,7 +14743,10 @@
           "sell_volume_tao",
           "total_volume_tao",
           "buy_count",
-          "sell_count"
+          "sell_count",
+          "net_volume_alpha",
+          "sentiment_ratio",
+          "sentiment"
         ],
         "type": "object"
       },
@@ -18309,6 +18386,37 @@
           "distinct_exporters",
           "announcements",
           "announcements_per_exporter"
+        ],
+        "type": "object"
+      },
+      "SubnetRecycledArtifact": {
+        "additionalProperties": true,
+        "description": "Live cumulative TAO recycled for registration on one subnet (#4339/8.4), queried from the chain's own RAORecycledForRegistration storage map at request time and cached for 600s. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0, not null.",
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recycled_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid"
         ],
         "type": "object"
       },

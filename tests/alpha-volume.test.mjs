@@ -6,6 +6,15 @@ import {
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
 } from "../src/alpha-volume.mjs";
+function volumeRow(kind, overrides = {}) {
+  return {
+    event_kind: kind,
+    alpha_volume: 0,
+    tao_volume: 0,
+    event_count: 0,
+    ...overrides,
+  };
+}
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
@@ -26,6 +35,9 @@ describe("buildAlphaVolume", () => {
       assert.equal(data.total_volume_tao, 0);
       assert.equal(data.buy_count, 0);
       assert.equal(data.sell_count, 0);
+      assert.equal(data.net_volume_alpha, 0);
+      assert.equal(data.sentiment_ratio, null);
+      assert.equal(data.sentiment, "neutral");
     }
   });
 
@@ -53,6 +65,10 @@ describe("buildAlphaVolume", () => {
     assert.equal(data.total_volume_tao, 28.75);
     assert.equal(data.buy_count, 4);
     assert.equal(data.sell_count, 3);
+    // net = 100.5 - 40.25 = 60.25; gross = 140.75; ratio = 60.25/140.75 = 0.4281.
+    assert.equal(data.net_volume_alpha, 60.25);
+    assert.equal(data.sentiment_ratio, 0.4281);
+    assert.equal(data.sentiment, "bullish");
   });
 
   test("only one kind present leaves the other side zero", () => {
@@ -164,6 +180,100 @@ describe("buildAlphaVolume", () => {
     // stake-flow's skip-the-whole-row behavior.
     assert.equal(data.buy_count, 2);
     assert.equal(data.sell_count, 3);
+  });
+});
+
+describe("buy/sell sentiment indicator (#4339/8.2)", () => {
+  test("pure buy volume (no sell) reads bullish with ratio 1", () => {
+    const data = buildAlphaVolume(
+      [volumeRow(STAKE_ADDED_KIND, { alpha_volume: 10 })],
+      1,
+    );
+    assert.equal(data.net_volume_alpha, 10);
+    assert.equal(data.sentiment_ratio, 1);
+    assert.equal(data.sentiment, "bullish");
+  });
+
+  test("pure sell volume (no buy) reads bearish with ratio -1", () => {
+    const data = buildAlphaVolume(
+      [volumeRow(STAKE_REMOVED_KIND, { alpha_volume: 10 })],
+      1,
+    );
+    assert.equal(data.net_volume_alpha, -10);
+    assert.equal(data.sentiment_ratio, -1);
+    assert.equal(data.sentiment, "bearish");
+  });
+
+  test("balanced two-way volume reads neutral with ratio 0", () => {
+    const data = buildAlphaVolume(
+      [
+        volumeRow(STAKE_ADDED_KIND, { alpha_volume: 10 }),
+        volumeRow(STAKE_REMOVED_KIND, { alpha_volume: 10 }),
+      ],
+      1,
+    );
+    assert.equal(data.net_volume_alpha, 0);
+    assert.equal(data.sentiment_ratio, 0);
+    assert.equal(data.sentiment, "neutral");
+  });
+
+  test("ratio exactly at the neutral band boundary (0.2) reads bullish (inclusive)", () => {
+    // net = 2, gross = 10 -> ratio = 0.2 exactly.
+    const data = buildAlphaVolume(
+      [
+        volumeRow(STAKE_ADDED_KIND, { alpha_volume: 6 }),
+        volumeRow(STAKE_REMOVED_KIND, { alpha_volume: 4 }),
+      ],
+      1,
+    );
+    assert.equal(data.sentiment_ratio, 0.2);
+    assert.equal(data.sentiment, "bullish");
+  });
+
+  test("ratio just under the neutral band reads neutral, not bullish", () => {
+    // net = 18, gross = 100 -> ratio = 0.18.
+    const data = buildAlphaVolume(
+      [
+        volumeRow(STAKE_ADDED_KIND, { alpha_volume: 59 }),
+        volumeRow(STAKE_REMOVED_KIND, { alpha_volume: 41 }),
+      ],
+      1,
+    );
+    assert.equal(data.sentiment_ratio, 0.18);
+    assert.equal(data.sentiment, "neutral");
+  });
+
+  test("a sub-perfect ratio that rounds to 1 is clamped to 0.9999, not overstated as pure", () => {
+    // net = 199998, gross = 200000 -> raw = 0.99999, rounds to 1.0 at 4dp.
+    const data = buildAlphaVolume(
+      [
+        volumeRow(STAKE_ADDED_KIND, { alpha_volume: 199_999 }),
+        volumeRow(STAKE_REMOVED_KIND, { alpha_volume: 1 }),
+      ],
+      1,
+    );
+    assert.equal(data.sentiment_ratio, 0.9999);
+    assert.equal(data.sentiment, "bullish");
+  });
+
+  test("a sub-perfect ratio that rounds to -1 is clamped to -0.9999, not overstated as pure", () => {
+    // net = -199998, gross = 200000 -> raw = -0.99999, rounds to -1.0 at 4dp.
+    const data = buildAlphaVolume(
+      [
+        volumeRow(STAKE_ADDED_KIND, { alpha_volume: 1 }),
+        volumeRow(STAKE_REMOVED_KIND, { alpha_volume: 199_999 }),
+      ],
+      1,
+    );
+    assert.equal(data.sentiment_ratio, -0.9999);
+    assert.equal(data.sentiment, "bearish");
+  });
+
+  test("zero volume reads neutral with a null ratio, not a divide-by-zero", () => {
+    const data = buildAlphaVolume([], 1);
+    assert.equal(data.net_volume_alpha, 0);
+    assert.equal(data.sentiment_ratio, null);
+    assert.equal(data.sentiment, "neutral");
   });
 });
 
@@ -331,6 +441,8 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.window, "24h");
     assert.equal(body.data.buy_volume_alpha, 100);
+    assert.equal(body.data.net_volume_alpha, 100);
+    assert.equal(body.data.sentiment, "bullish");
     assert.match(captured.sql, /FROM account_events/);
   });
 

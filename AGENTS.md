@@ -12,6 +12,10 @@ Loaded automatically by AI coding tools: **Codex** reads this `AGENTS.md`; **Cla
 That skill is the **single source of truth** for how to contribute here. Keep it updated as the
 process evolves — edits to those files improve both Claude Code and Codex.
 
+**Prefer the devcontainer.** `.devcontainer/devcontainer.json` pins Node 22 and preinstalls
+Playwright's Chromium (for the frontend screenshot workflow) — if you're operating in a
+devcontainer-aware environment, use it instead of installing Node/Playwright yourself each session.
+
 ## The five things you must not get wrong
 
 1. **The Gittensory Gate auto-merges and auto-closes — it is not advisory.** A _contributor_ PR is

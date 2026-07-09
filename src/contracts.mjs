@@ -1022,7 +1022,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-alpha-volume",
     "/metagraph/subnets/{netuid}/volume.json",
-    "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as /api/v1/subnets/{netuid}/stake-flow (no static file). Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
+    "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as /api/v1/subnets/{netuid}/stake-flow (no static file). Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
     "SubnetAlphaVolumeArtifact",
   ),
   artifact(
@@ -1224,6 +1224,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountPortfolioArtifact",
   ),
   artifact(
+    "account-subnet-position-history",
+    "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
+    "One wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, served live from the account_position_daily D1 rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file).",
+    "AccountPositionHistoryArtifact",
+  ),
+  artifact(
     "account-balance",
     "/metagraph/accounts/{ss58}/balance.json",
     "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
@@ -1234,6 +1240,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/sudo/key.json",
     "The current Sudo::Key holder (#4310/2.4, re-scoped from the original Senate/Council membership framing — subtensor has no such pallet), queried from the finney RPC at request time with 1h KV cache (the key changes extremely rarely). hotkey is null on RPC failure or an unset sudo key.",
     "SudoKeyArtifact",
+  ),
+  artifact(
+    "subnet-recycled",
+    "/metagraph/subnets/{netuid}/recycled.json",
+    "Live cumulative TAO recycled for registration on one subnet (#4339/8.4), queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache — not an account_events/log-layer aggregation (empirically confirmed the burn amount isn't captured by any ingested event or extrinsic field). recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.",
+    "SubnetRecycledArtifact",
   ),
   artifact(
     "blocks-feed",
@@ -2257,7 +2269,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/volume",
     "/metagraph/subnets/{netuid}/volume.json",
-    "Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data.",
+    "Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Also returns a buy/sell sentiment indicator derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data.",
     "short",
     ["subnets", "analytics"],
     [],
@@ -2820,6 +2832,25 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "account-subnet-position-history",
+    "GET",
+    "/api/v1/accounts/{ss58}/subnets/{netuid}/history",
+    "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
+    "Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["accounts", "subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [
+      { name: "ss58", schema: { type: "string" } },
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+    ],
+  ),
+  route(
     "account-balance",
     "GET",
     "/api/v1/accounts/{ss58}/balance",
@@ -2840,6 +2871,17 @@ export const API_ROUTES = [
     ["accounts"],
     [],
     [],
+  ),
+  route(
+    "subnet-recycled",
+    "GET",
+    "/api/v1/subnets/{netuid}/recycled",
+    "/metagraph/subnets/{netuid}/recycled.json",
+    "Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.",
+    "short",
+    ["subnets"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
     "blocks-feed",
@@ -4193,8 +4235,8 @@ function csvExampleForRoute(entry) {
   }
   if (entry.id === "sudo-calls") {
     return [
-      "extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
-      "8454388-1,8454388,1,0xhash_sample,5SudoKey,Sudo,sudo,true,0.000123,0,2026-07-03T00:00:00.000Z",
+      "extrinsic_id,block_number,signer,call_module,call_function,success",
+      "8454388-1,8454388,5SudoKey,Sudo,sudo,true",
     ].join("\r\n");
   }
   if (entry.id === "governance-config-changes") {

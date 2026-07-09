@@ -1,7 +1,8 @@
 # metagraphed contribution — deep reference
 
 Exhaustive tables behind the `SKILL.md` playbook. Read the section you need. All commands run from the
-repo root (Node 22, `npm install` first).
+repo root (Node 22, `npm install` first — or open `.devcontainer/devcontainer.json` for a preconfigured
+environment with Playwright's Chromium already installed).
 
 ---
 
@@ -101,18 +102,21 @@ build):
 discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). Node-independent, so
   it adds no wall-clock to the long poles. The same step runs in `publish-python.yml`'s unprivileged
   `build` job before the artifact is built, so a red suite blocks a PyPI publish.
-- **`ui`** — lint + typecheck + test + build + bundle-size-budget for `apps/ui` (the TanStack
-  Start/Vite frontend, folded into this repo as an npm workspace — #3062), plus a
-  `packages/client/dist` drift check (rebuild fresh, `git diff --exit-code` against the committed
-  runtime bundle — #3066/#3294). Gated on `run_ui_validation` (`^apps/ui/` **or** `^packages/client/`
-  in the diff — the latter is required, not optional: it's the only place that verifies committed
-  `packages/client/dist/index.js`/`index.cjs` still match a fresh build, so a `packages/client`-only
-  PR must also trip this job or stale/tampered committed runtime code could merge unverified) via
-  the same per-step guard pattern `checks` uses for its docs fast lane — never a job-level skip.
-  Entirely independent of the backend's own lint/test/build; a backend-only PR touching neither
-  directory doesn't build or install `apps/ui`'s tree at all, and vice versa. Not part of the
-  Gittensory contributor gate — both `apps/ui/**` and `packages/**` are `blockedPaths` entries in
-  `.gittensory.yml`, maintainer-only.
+- **`ui`** — lint + typecheck + test + a responsive-overflow e2e check (Playwright, baseline-diffed
+  against `apps/ui/tests/e2e/overflow-baseline.json` — fails only on a NEW element escaping the
+  viewport, not the pre-existing tracked backlog like #3930/#3931/#3985; regenerate the baseline via
+  `npm run test:e2e:update-baseline --workspace=apps/ui` after a real fix or an accepted new layout),
+  build, and bundle-size-budget for `apps/ui` (the TanStack Start/Vite frontend, folded into this
+  repo as an npm workspace — #3062), plus a `packages/client/dist` drift check (rebuild fresh,
+  `git diff --exit-code` against the committed runtime bundle — #3066/#3294). Gated on
+  `run_ui_validation` (`^apps/ui/` **or** `^packages/client/` in the diff — the latter is required,
+  not optional: it's the only place that verifies committed `packages/client/dist/index.js`/`index.cjs`
+  still match a fresh build, so a `packages/client`-only PR must also trip this job or
+  stale/tampered committed runtime code could merge unverified) via the same per-step guard pattern
+  `checks` uses for its docs fast lane — never a job-level skip. Entirely independent of the
+  backend's own lint/test/build; a backend-only PR touching neither directory doesn't build or
+  install `apps/ui`'s tree at all, and vice versa. Not part of the Gittensory contributor gate —
+  both `apps/ui/**` and `packages/**` are `blockedPaths` entries in `.gittensory.yml`, maintainer-only.
 
 **The docs fast lane (`checks` only) — narrower than, and does not weaken, the "no reduced ugc
 fast-lane" rule above.** That rule is about _registry/community-surface_ content never getting a

@@ -111,6 +111,7 @@ import {
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
   handleSubnetAlphaVolume,
+  handleSubnetRecycled,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
   handleSubnetWeightSetters,
@@ -160,6 +161,7 @@ import {
   handleAccountAxonRemovals,
   handleAccountSubnets,
   handleAccountPortfolio,
+  handleAccountPositionHistory,
   handleBlocks,
   handleBlocksSummary,
   handleBlock,
@@ -312,6 +314,7 @@ import {
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   ACCOUNT_PORTFOLIO_PATH_PATTERN,
+  ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
   BLOCK_EXTRINSICS_PATH_PATTERN,
   BLOCK_EVENTS_PATH_PATTERN,
@@ -360,6 +363,7 @@ import {
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_ALPHA_VOLUME_PATH_PATTERN,
+  SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
   SUBNET_SERVING_PATH_PATTERN,
@@ -1700,6 +1704,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         ),
       );
     }
+    const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (recycledMatch) {
+      // Live RPC + KV-cache route (like /accounts/{ss58}/balance and
+      // /sudo/key) — not D1-backed, so no withEdgeCache here.
+      return handleSubnetRecycled(request, env, Number(recycledMatch[1]));
+    }
     const weightSettersMatch = SUBNET_WEIGHT_SETTERS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2112,6 +2124,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
     if (accountPortfolioMatch) {
       return handleAccountPortfolio(request, env, accountPortfolioMatch[1]);
+    }
+    // Per-account, per-subnet position history (#4329/6.2): computed live from
+    // the account_position_daily rollup tier.
+    const accountPositionHistoryMatch =
+      ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (accountPositionHistoryMatch) {
+      return handleAccountPositionHistory(
+        request,
+        env,
+        accountPositionHistoryMatch[1],
+        Number(accountPositionHistoryMatch[2]),
+        resolved.url,
+      );
     }
     const accountExtrinsicsMatch = ACCOUNT_EXTRINSICS_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -2536,6 +2561,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
+    SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
     SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||
@@ -2543,6 +2569,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||
     ACCOUNT_SUBNETS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PORTFOLIO_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_TRANSFERS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_COUNTERPARTIES_PATH_PATTERN.test(pathname) ||

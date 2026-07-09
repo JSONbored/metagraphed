@@ -127,12 +127,14 @@ def main():
     for netuid in netuids:
         try:
             hp = s.subnets.get_subnet_hyperparameters(netuid=netuid)
-        except Exception as exc:  # a single subnet's runtime call failing must
-            # not abort the whole fetch (matches fetch-native-subnets.py's
-            # per-netuid try/except around SubnetIdentitiesV3 storage reads).
+        except Exception as exc:
+            # This fetch feeds a full-snapshot loader that prunes absent netuids.
+            # A per-netuid failure must therefore fail the run instead of
+            # authenticating a partial snapshot as complete.
             errors.append(f"netuid={netuid}: {exc}")
             continue
         if hp is None:
+            errors.append(f"netuid={netuid}: empty hyperparameters response")
             continue
         block_number = int(getattr(s.substrate, "block_number", 0) or 0)
         rows.append(
@@ -217,7 +219,7 @@ def main():
     )
     for err in errors:
         sys.stderr.write(f"  {err}\n")
-    if not rows:
+    if errors or len(rows) != len(netuids):
         sys.exit(1)
 
 

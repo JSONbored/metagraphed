@@ -257,6 +257,14 @@ const checks = [
       assert.equal(typeof body.data.buy_volume_alpha, "number");
       assert.equal(typeof body.data.sell_volume_alpha, "number");
       assert.equal(typeof body.data.total_volume_alpha, "number");
+      assert.equal(typeof body.data.net_volume_alpha, "number");
+      assert.ok(
+        body.data.sentiment_ratio === null ||
+          typeof body.data.sentiment_ratio === "number",
+      );
+      assert.ok(
+        ["bullish", "bearish", "neutral"].includes(body.data.sentiment),
+      );
     },
   ],
   [
@@ -676,6 +684,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets/7/history?window=30d",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "30d");
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/balance",
     (body) => {
       assert.equal(
@@ -689,6 +711,13 @@ const checks = [
     "/api/v1/sudo/key",
     (body) => {
       assert.equal("hotkey" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/subnets/7/recycled",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal("recycled_tao" in body.data, true);
     },
   ],
   [

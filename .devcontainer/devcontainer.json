@@ -1,0 +1,30 @@
+{
+  "name": "metagraphed",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
+  // Pinned (not @latest): postCreateCommand runs unattended on every container
+  // create, so an unpinned version would auto-execute whatever a compromised
+  // upstream publish contained. When #3769 lands Playwright as a real devDependency
+  // in apps/ui/package.json, re-pin this to match that version.
+  "postCreateCommand": "npm install && npx --yes playwright@1.61.1 install --with-deps chromium",
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "apps/ui dev server",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "node",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}

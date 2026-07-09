@@ -1,10 +1,11 @@
-// Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): how much subnet
-// alpha was bought (StakeAdded) vs sold (StakeRemoved) in the last 24 hours,
-// summed from the first-party account_events stream. Pure shaping
-// (buildAlphaVolume) + a thin D1 loader (loadSubnetAlphaVolume); the Worker adds
-// the REST envelope. Null-safe: a cold store or an empty window yields
-// schema-stable zeros (never throws), matching the sibling live tiers
-// (stake-flow, turnover).
+// Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), plus a
+// buy/sell sentiment indicator derived from it (#4339/8.2 — net/gross alpha
+// lean, no new capture or query): how much subnet alpha was bought
+// (StakeAdded) vs sold (StakeRemoved) in the last 24 hours, summed from the
+// first-party account_events stream. Pure shaping (buildAlphaVolume) + a thin
+// D1 loader (loadSubnetAlphaVolume); the Worker adds the REST envelope.
+// Null-safe: a cold store or an empty window yields schema-stable zeros
+// (never throws), matching the sibling live tiers (stake-flow, turnover).
 //
 // Explicitly NOT OHLC (#2589's trader-feature fence) — a single rolling 24h
 // volume figure, not a price/candlestick series. Fixed 24h window (unlike
@@ -43,6 +44,39 @@ function roundUnit(value) {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * RAO_PER_UNIT) / RAO_PER_UNIT;
+}
+
+// |net| / gross at or above this share reads as a directional lean rather than
+// balanced two-way volume. Mirrors account-stake-flow.mjs's DIRECTIONAL_RATIO —
+// same "how decisive is this ratio" cutoff, reused rather than re-derived.
+const SENTIMENT_NEUTRAL_BAND = 0.2;
+
+// net / gross alpha volume, bounded to [-1, 1] and rounded to 4dp; null when
+// gross is 0 (no volume in the window, ratio undefined). Mirrors
+// account-stake-flow.mjs's flowRatio, including its anti-overstatement clamp:
+// a sub-perfect ratio (real counter-volume exists) must never round to an
+// exact +/-1, which this card's own contract would misread as "no sell/buy
+// volume at all" (#2997's clamp, extended to this sibling ratio).
+function sentimentRatio(netAlpha, grossAlpha) {
+  if (grossAlpha <= 0) return null;
+  const raw = netAlpha / grossAlpha;
+  const rounded = Math.round(raw * 10000) / 10000;
+  if (rounded >= 1 && raw < 1) return 0.9999;
+  if (rounded <= -1 && raw > -1) return -0.9999;
+  return rounded;
+}
+
+// Buy/sell sentiment indicator (#4339/8.2): a coarse label from the same
+// net/gross lean account-stake-flow.mjs classifies for one account's capital
+// flow, relabeled for a subnet-wide volume reading — "bullish"/"bearish" past
+// the neutral band, "neutral" both for balanced two-way volume AND a
+// zero-volume window (no data is no signal either way).
+function classifySentiment(netAlpha, grossAlpha) {
+  if (grossAlpha <= 0) return "neutral";
+  const ratio = netAlpha / grossAlpha;
+  if (ratio >= SENTIMENT_NEUTRAL_BAND) return "bullish";
+  if (ratio <= -SENTIMENT_NEUTRAL_BAND) return "bearish";
+  return "neutral";
 }
 
 // Convert an epoch-ms timestamp to an ISO string, or null when not finite.
@@ -102,18 +136,25 @@ export function buildAlphaVolume(rows, netuid) {
       sellCount += count;
     }
   }
+  const netAlpha = buyAlpha - sellAlpha;
+  const grossAlpha = buyAlpha + sellAlpha;
   return {
     schema_version: 1,
     netuid,
     window: "24h",
     buy_volume_alpha: roundUnit(buyAlpha),
     sell_volume_alpha: roundUnit(sellAlpha),
-    total_volume_alpha: roundUnit(buyAlpha + sellAlpha),
+    total_volume_alpha: roundUnit(grossAlpha),
     buy_volume_tao: roundUnit(buyTao),
     sell_volume_tao: roundUnit(sellTao),
     total_volume_tao: roundUnit(buyTao + sellTao),
     buy_count: buyCount,
     sell_count: sellCount,
+    // Sentiment indicator (#4339/8.2), purely derived from the alpha totals
+    // above — no new capture or query. See sentimentRatio/classifySentiment.
+    net_volume_alpha: roundUnit(netAlpha),
+    sentiment_ratio: sentimentRatio(netAlpha, grossAlpha),
+    sentiment: classifySentiment(netAlpha, grossAlpha),
   };
 }
 

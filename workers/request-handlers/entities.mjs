@@ -86,10 +86,15 @@ import {
 } from "../../src/account-events.mjs";
 import { loadAccountPortfolio } from "../../src/account-portfolio.mjs";
 import {
+  ACCOUNT_POSITION_DAILY_READ_COLUMNS,
+  buildAccountPositionHistory,
+} from "../../src/account-position-history.mjs";
+import {
   isFinneySs58Address,
   loadAccountBalance,
 } from "../../src/account-balance.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
+import { loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
@@ -2951,6 +2956,57 @@ export async function handleAccountPortfolio(request, env, ss58) {
   );
 }
 
+// GET /api/v1/accounts/{ss58}/subnets/{netuid}/history?window=7d|30d|90d|1y|all
+// (block-explorer Tier-1, #4329/6.2): one wallet's position on one subnet over
+// time — the "Alpha Holdings chart" — read from the account_position_daily
+// rollup tier (#4330/6.1). Same window/SQL shape as handleNeuronHistory, keyed
+// by (account, netuid) instead of (netuid, uid); source is metagraph-snapshot
+// (rolled from `neurons`), not chain-events, so this uses envelopeResponse +
+// metagraphMeta like the neuron/subnet history routes, not accountEnvelopeResponse.
+// Cold/absent store → 200 with empty points (never 404), matching every sibling
+// history route.
+export async function handleAccountPositionHistory(
+  request,
+  env,
+  ss58,
+  netuid,
+  url,
+) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const params = [ss58, netuid];
+  let sql = `SELECT ${ACCOUNT_POSITION_DAILY_READ_COLUMNS} FROM account_position_daily WHERE account = ? AND netuid = ?`;
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await d1All(env, sql, params);
+  const data = buildAccountPositionHistory(rows, ss58, netuid, {
+    window: label,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/subnets/${netuid}/history.json`,
+        data.points[0]?.captured_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
 // GET /api/v1/subnets/{netuid}/events (#1345 block explorer): the first-party
 // chain-event stream for one subnet — account_events filtered by netuid, newest
 // first (the idx_account_events_netuid index this tier was built for). Optional
@@ -3109,6 +3165,44 @@ export async function handleAccountBalance(request, env, ss58) {
     "short",
   );
 }
+
+// GET /api/v1/subnets/{netuid}/recycled (#4339/8.4): the live cumulative TAO
+// recycled for registration on one subnet, queried from the chain's own
+// RAORecycledForRegistration storage map at request time (600s KV cache via
+// METAGRAPH_CONTROL) — see src/subnet-recycled.mjs's header for why this
+// isn't a log-layer/account_events aggregation. netuid is a per-request-
+// controllable cache-busting parameter (like /accounts/{ss58}/balance's
+// ss58), so it shares that route's rate limiter rather than sudo-key's
+// no-limiter reasoning. recycled_tao is null on RPC failure (schema-stable).
+export async function handleSubnetRecycled(request, env, netuid) {
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `recycled:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "recycled_rate_limited",
+        "Too many live recycled-TAO requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  const data = await loadSubnetRecycled(env, netuid);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the
 // `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta

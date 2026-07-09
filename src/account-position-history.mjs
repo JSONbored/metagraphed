@@ -137,3 +137,124 @@ export async function pruneAccountPositionDaily(
     return { pruned: false };
   }
 }
+
+// ---- Read path (block-explorer Tier-1, epic #4329/6.2) --------------------
+// GET /api/v1/accounts/{ss58}/subnets/{netuid}/history — the per-position
+// counterpart to /accounts/{ss58}/portfolio's live cross-subnet snapshot, one
+// point per snapshot_date for a single (account, netuid) pair. Field shape
+// mirrors buildAccountPortfolio's per-position object (src/account-portfolio.mjs)
+// since account_position_daily's columns were deliberately sized to match
+// ACCOUNT_PORTFOLIO_READ_COLUMNS (see the migration's header comment) — a point
+// here and a `positions[]` entry there should read as the same "position",
+// just at different times. netuid is NOT repeated per-point (it's the fixed
+// scope of the whole query, like SubnetHistoryArtifact's points omitting the
+// netuid every row shares) — only `uid` and `coldkey` can legitimately vary
+// day-to-day for one (account, netuid) pair (a hotkey re-registering at a new
+// UID slot, or a coldkey key-rotation), so those travel with each point.
+
+// SELECT list for one (account, netuid) day of account_position_daily.
+export const ACCOUNT_POSITION_DAILY_READ_COLUMNS =
+  "snapshot_date, captured_at, uid, coldkey, active, validator_permit, " +
+  "rank, trust, incentive, dividends, stake_tao, emission_tao";
+
+// 1 TAO = 1e9 rao; round tao + yield outputs to that precision (matches
+// account-portfolio.mjs's round9 — each module owns its own copy, this
+// codebase's established convention for these small numeric coercions).
+const SCALE = 1e9;
+function round9(value) {
+  return Math.round(value * SCALE) / SCALE;
+}
+
+function toNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function nullableScore(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? round9(n) : null;
+}
+
+function toInt(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    return Number(value);
+  }
+  return null;
+}
+
+function toIso(ms) {
+  if (ms == null) return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+// Emission-per-stake return rate; null when stake is 0 (undefined return).
+// Mirrors computeYieldValue in account-portfolio.mjs.
+function computeYieldValue(emission, stake) {
+  if (!(stake > 0)) return null;
+  return round9(emission / stake);
+}
+
+// One day's position, in the same field shape as buildAccountPortfolio's
+// `positions[]` entries (minus netuid — see the read-path header comment).
+// Exported (unlike account-portfolio.mjs's inline per-row mapping) so its
+// field coercion can be unit-tested directly, matching formatRuntimeTransition
+// (src/runtime-versions.mjs)'s precedent for a history route's row formatter.
+export function formatAccountPosition(row) {
+  if (!row || typeof row !== "object") return null;
+  const stake = toNumber(row.stake_tao);
+  const emission = toNumber(row.emission_tao);
+  const isValidator = Number(row.validator_permit) === 1;
+  return {
+    uid: toInt(row.uid),
+    coldkey: row.coldkey ?? null,
+    role: isValidator ? "validator" : "miner",
+    active: Number(row.active) === 1,
+    stake_tao: round9(stake),
+    emission_tao: round9(emission),
+    rank: nullableScore(row.rank),
+    trust: nullableScore(row.trust),
+    incentive: nullableScore(row.incentive),
+    dividends: nullableScore(row.dividends),
+    yield: computeYieldValue(emission, stake),
+  };
+}
+
+// Per-account, per-subnet time series: one point per snapshot_date (the
+// handler queries newest first, bounded by MAX_HISTORY_POINTS from
+// neuron-history.mjs — the shared history-window vocabulary every other
+// history route already reuses). Mirrors buildNeuronHistory's shape
+// (src/neuron-history.mjs), the response-builder template this issue names.
+export function buildAccountPositionHistory(
+  rows,
+  ss58,
+  netuid,
+  { window } = {},
+) {
+  const points = (rows || [])
+    .map((r) => {
+      const position = formatAccountPosition(r);
+      if (!position) return null;
+      return {
+        snapshot_date: r.snapshot_date,
+        captured_at: toIso(r.captured_at),
+        ...position,
+      };
+    })
+    .filter(Boolean);
+  return {
+    schema_version: 1,
+    ss58,
+    netuid,
+    window: window ?? null,
+    point_count: points.length,
+    points,
+  };
+}

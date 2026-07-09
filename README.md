@@ -104,7 +104,7 @@ Deeper docs: [`docs/api-stability.md`](docs/api-stability.md) (the `/api/v1` con
 
 ## Contributing
 
-Issues are labeled `good first issue` and `help wanted` — start there.
+Open the repo in a [devcontainer](.devcontainer/devcontainer.json)-aware tool (VS Code, GitHub Codespaces, the `devcontainer` CLI) for a zero-setup environment — Node 22 + Playwright's Chromium preinstalled. Issues are labeled `good first issue` and `help wanted` — start there.
 
 - **Schema-first edits** require `npm run build` (regenerates `openapi.json` + types).
 - **Community submissions** are PR-first: add a surface to exactly one `registry/subnets/<slug>.json` file (via `npm run surface:add`; use `npm run subnet:new` first when that subnet has no file yet), no generated artifacts.
