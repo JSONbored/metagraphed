@@ -70,6 +70,25 @@
         "timeout_ms": 10000
       },
       "notes": "Public Academia archives dataset repository for Bittensor historical subnet/archive data."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-109-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Academia TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/109 on api.taomarketcap.com returning machine-readable JSON for SN109 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. Academia exposes source repositories and archives but no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/fx-integral/academia"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/109"
     }
   ]
 }
