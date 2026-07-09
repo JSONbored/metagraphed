@@ -4,6 +4,7 @@ import { Suspense, useEffect, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { CopyButton } from "@/components/metagraphed/copy-button";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
@@ -22,6 +23,7 @@ import {
 import { formatNumber } from "@/lib/metagraphed/format";
 import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
+import { formatChainEventArgs } from "@/lib/metagraphed/chain-event-args";
 
 export const Route = createFileRoute("/blocks/$ref")({
   // Prime the shared cache so head() can title the page with the real block
@@ -461,11 +463,13 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                     <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
                       {event.extrinsic_index != null ? formatNumber(event.extrinsic_index) : "—"}
                     </td>
-                    <td
-                      className="max-w-xs truncate px-4 py-2.5 font-mono text-[11px] text-ink-muted"
-                      title={formatChainEventArgs(event.args)}
-                    >
-                      {formatChainEventArgs(event.args)}
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                      <div className="flex max-w-xs items-center gap-1.5">
+                        <span className="truncate" title={formatChainEventArgs(event.args)}>
+                          {formatChainEventArgs(event.args)}
+                        </span>
+                        <CopyButton value={formatChainEventArgs(event.args)} label="args" />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -514,15 +518,6 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
       />
     </>
   );
-}
-
-function formatChainEventArgs(args: unknown): string {
-  if (args == null) return "—";
-  try {
-    return JSON.stringify(args) ?? "—";
-  } catch {
-    return "[Unserializable value]";
-  }
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
