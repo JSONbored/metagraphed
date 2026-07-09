@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -82,33 +82,6 @@ function BlocksPage() {
   const search = Route.useSearch();
   const blocksCsvUrl = buildUrl("/api/v1/blocks", blocksQueryParams(search));
 
-  // Block-throughput sparkline (#3390): daily block_count from /api/v1/chain/activity,
-  // the same source explorer.tsx uses. Non-blocking useQuery so the hero paints
-  // immediately; the KPI appears once the daily series loads.
-  const activity = useQuery(chainActivityQuery());
-  const chrono = [...(activity.data?.data.days ?? [])].reverse();
-  const blockCounts = chrono.map((d) => d.block_count);
-  const totalBlocks = blockCounts.reduce((acc, n) => acc + n, 0);
-  const throughputKpi =
-    blockCounts.length > 0
-      ? [
-          {
-            label: "Blocks / day",
-            value: `${formatNumber(totalBlocks)} total`,
-            chart: (
-              <Sparkline
-                values={blockCounts}
-                points={chrono.map((d) => ({ t: d.day, v: d.block_count }))}
-                width={168}
-                height={34}
-                ariaLabel="Daily block throughput, oldest to newest"
-                formatValue={formatNumber}
-              />
-            ),
-          },
-        ]
-      : undefined;
-
   return (
     <AppShell>
       <PageHero
@@ -116,11 +89,6 @@ function BlocksPage() {
         live
         title="Blocks"
         description="Recent Bittensor blocks indexed directly from the chain — newest first, with author, extrinsic, and event counts."
-        kpis={throughputKpi}
-        // Tighten the hero's bottom spacing when the throughput KPI is present so
-        // the sparkline reads as part of the block-production header below it,
-        // instead of floating above a large gap (#3390 review).
-        className={throughputKpi ? "!mb-0 !pb-4 md:!pb-5" : undefined}
         actions={
           <>
             <DownloadCsvButton url={blocksCsvUrl} />
@@ -128,6 +96,11 @@ function BlocksPage() {
           </>
         }
       />
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-24 w-full mb-3" />}>
+          <BlockThroughputCard />
+        </Suspense>
+      </QueryErrorBoundary>
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-28 w-full mb-8" />}>
           <BlockProductionHeader />
@@ -143,6 +116,38 @@ function BlocksPage() {
         artifacts={["/metagraph/blocks.json", "/metagraph/blocks/summary.json"]}
       />
     </AppShell>
+  );
+}
+
+// #3390: block-throughput sparkline — daily block_count over the default window
+// from /api/v1/chain/activity (the source explorer.tsx already uses), rendered as
+// a compact card directly above the production-stats header so the throughput
+// trend sits with the other block-production metrics (no separate hero KPI).
+function BlockThroughputCard() {
+  const chrono = [...useSuspenseQuery(chainActivityQuery()).data.data.days].reverse();
+  const blockCounts = chrono.map((d) => d.block_count);
+  if (blockCounts.length === 0) return null;
+  const totalBlocks = blockCounts.reduce((acc, n) => acc + n, 0);
+  return (
+    <div className="mb-3 flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-4">
+      <div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          Blocks / day
+        </div>
+        <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-ink-strong">
+          {formatNumber(totalBlocks)}
+          <span className="ml-1.5 text-sm font-normal text-ink-muted">total</span>
+        </div>
+      </div>
+      <Sparkline
+        values={blockCounts}
+        points={chrono.map((d) => ({ t: d.day, v: d.block_count }))}
+        width={220}
+        height={44}
+        ariaLabel="Daily block throughput, oldest to newest"
+        formatValue={formatNumber}
+      />
+    </div>
   );
 }
 
