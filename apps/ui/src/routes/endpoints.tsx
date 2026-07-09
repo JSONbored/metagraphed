@@ -748,7 +748,7 @@ function EndpointsTable() {
               : "Showing all endpoints, including directory links"
           }
           className={classNames(
-            "ml-auto inline-flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+            "inline-flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
             search.callable
               ? "border-accent/40 bg-accent/10 text-accent"
               : "border-border bg-card text-ink-muted hover:text-ink-strong",
