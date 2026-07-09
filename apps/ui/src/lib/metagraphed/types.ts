@@ -1255,6 +1255,12 @@ export interface AccountBalance {
   queried_at?: string | null;
 }
 
+/** Current Sudo::Key holder from /api/v1/sudo/key. Null hotkey = unset or RPC failure. */
+export interface SudoKey {
+  hotkey: string | null;
+  queried_at?: string | null;
+}
+
 /** Per-subnet on-chain economics from /api/v1/economics. */
 export interface SubnetEconomics {
   netuid: number;

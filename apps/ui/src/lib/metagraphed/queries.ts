@@ -84,6 +84,7 @@ import type {
   ChainSignerEntry,
   Extrinsic,
   ExtrinsicCallArg,
+  SudoKey,
   Transfer,
   Candidate,
   Compare,
@@ -2023,6 +2024,60 @@ export const extrinsicQuery = (hash: string) =>
       } as ApiResult<Extrinsic | null>;
     },
     staleTime: STALE_SHORT,
+  });
+
+/** Root-origin (Sudo) calls — the extrinsics feed hardcoded to call_module='Sudo' (#4310/2.2). */
+export const sudoCallsQuery = (params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("sudo-calls", params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/sudo", "extrinsics", params, signal);
+      const data = res.data.flatMap((row) => {
+        const x = normalizeExtrinsic(row);
+        return x ? [x] : [];
+      });
+      return { ...res, data } as ApiResult<Extrinsic[]>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/** AdminUtils config-change feed — the extrinsics feed hardcoded to call_module='AdminUtils' (#4310/2.3). */
+export const governanceConfigChangesQuery = (params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("governance-config-changes", params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        "/api/v1/governance/config-changes",
+        "extrinsics",
+        params,
+        signal,
+      );
+      const data = res.data.flatMap((row) => {
+        const x = normalizeExtrinsic(row);
+        return x ? [x] : [];
+      });
+      return { ...res, data } as ApiResult<Extrinsic[]>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/** Current Sudo::Key holder, queried live from finney RPC (#4310/2.4). Rarely changes. */
+export const sudoKeyQuery = () =>
+  queryOptions({
+    queryKey: k("sudo-key"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/sudo/key", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          hotkey: firstString(d.hotkey) ?? null,
+          queried_at: firstString(d.queried_at) ?? null,
+        } as SudoKey,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SudoKey>;
+    },
+    staleTime: STALE_LONG,
   });
 
 // Account explorer — cross-subnet activity for one hotkey/coldkey ss58. The

@@ -69,6 +69,8 @@ export const MEGA_PANELS: MegaPanel[] = [
       { to: "/blocks", search: { limit: "100" }, label: "100 per page" },
       { to: "/extrinsics", label: "Extrinsics", hint: "Transactions, newest first" },
       { to: "/accounts", label: "Accounts", hint: "Hotkey / coldkey lookup" },
+      { to: "/sudo", label: "Sudo", hint: "Root-origin calls + current key" },
+      { to: "/admin-changes", label: "Admin changes", hint: "AdminUtils config-change feed" },
     ],
     filters: [],
   },

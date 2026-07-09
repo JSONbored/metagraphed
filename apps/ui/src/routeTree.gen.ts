@@ -21,10 +21,12 @@ import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ValidatorsIndexRouteImport } from './routes/validators.index'
+import { Route as SudoIndexRouteImport } from './routes/sudo.index'
 import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ExtrinsicsIndexRouteImport } from './routes/extrinsics.index'
 import { Route as BlocksIndexRouteImport } from './routes/blocks.index'
+import { Route as AdminChangesIndexRouteImport } from './routes/admin-changes.index'
 import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
 import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
@@ -92,6 +94,11 @@ const ValidatorsIndexRoute = ValidatorsIndexRouteImport.update({
   path: '/validators/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SudoIndexRoute = SudoIndexRouteImport.update({
+  id: '/sudo/',
+  path: '/sudo/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubnetsIndexRoute = SubnetsIndexRouteImport.update({
   id: '/subnets/',
   path: '/subnets/',
@@ -110,6 +117,11 @@ const ExtrinsicsIndexRoute = ExtrinsicsIndexRouteImport.update({
 const BlocksIndexRoute = BlocksIndexRouteImport.update({
   id: '/blocks/',
   path: '/blocks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminChangesIndexRoute = AdminChangesIndexRouteImport.update({
+  id: '/admin-changes/',
+  path: '/admin-changes/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountsIndexRoute = AccountsIndexRouteImport.update({
@@ -161,10 +173,12 @@ export interface FileRoutesByFullPath {
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/accounts/': typeof AccountsIndexRoute
+  '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
+  '/sudo/': typeof SudoIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -185,10 +199,12 @@ export interface FileRoutesByTo {
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/accounts': typeof AccountsIndexRoute
+  '/admin-changes': typeof AdminChangesIndexRoute
   '/blocks': typeof BlocksIndexRoute
   '/extrinsics': typeof ExtrinsicsIndexRoute
   '/providers': typeof ProvidersIndexRoute
   '/subnets': typeof SubnetsIndexRoute
+  '/sudo': typeof SudoIndexRoute
   '/validators': typeof ValidatorsIndexRoute
 }
 export interface FileRoutesById {
@@ -210,10 +226,12 @@ export interface FileRoutesById {
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
   '/accounts/': typeof AccountsIndexRoute
+  '/admin-changes/': typeof AdminChangesIndexRoute
   '/blocks/': typeof BlocksIndexRoute
   '/extrinsics/': typeof ExtrinsicsIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/subnets/': typeof SubnetsIndexRoute
+  '/sudo/': typeof SudoIndexRoute
   '/validators/': typeof ValidatorsIndexRoute
 }
 export interface FileRouteTypes {
@@ -236,10 +254,12 @@ export interface FileRouteTypes {
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/accounts/'
+    | '/admin-changes/'
     | '/blocks/'
     | '/extrinsics/'
     | '/providers/'
     | '/subnets/'
+    | '/sudo/'
     | '/validators/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -260,10 +280,12 @@ export interface FileRouteTypes {
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/accounts'
+    | '/admin-changes'
     | '/blocks'
     | '/extrinsics'
     | '/providers'
     | '/subnets'
+    | '/sudo'
     | '/validators'
   id:
     | '__root__'
@@ -284,10 +306,12 @@ export interface FileRouteTypes {
     | '/providers/$slug'
     | '/subnets/$netuid'
     | '/accounts/'
+    | '/admin-changes/'
     | '/blocks/'
     | '/extrinsics/'
     | '/providers/'
     | '/subnets/'
+    | '/sudo/'
     | '/validators/'
   fileRoutesById: FileRoutesById
 }
@@ -309,10 +333,12 @@ export interface RootRouteChildren {
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   SubnetsNetuidRoute: typeof SubnetsNetuidRoute
   AccountsIndexRoute: typeof AccountsIndexRoute
+  AdminChangesIndexRoute: typeof AdminChangesIndexRoute
   BlocksIndexRoute: typeof BlocksIndexRoute
   ExtrinsicsIndexRoute: typeof ExtrinsicsIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
   SubnetsIndexRoute: typeof SubnetsIndexRoute
+  SudoIndexRoute: typeof SudoIndexRoute
   ValidatorsIndexRoute: typeof ValidatorsIndexRoute
 }
 
@@ -402,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ValidatorsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sudo/': {
+      id: '/sudo/'
+      path: '/sudo'
+      fullPath: '/sudo/'
+      preLoaderRoute: typeof SudoIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/subnets/': {
       id: '/subnets/'
       path: '/subnets'
@@ -428,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/blocks'
       fullPath: '/blocks/'
       preLoaderRoute: typeof BlocksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-changes/': {
+      id: '/admin-changes/'
+      path: '/admin-changes'
+      fullPath: '/admin-changes/'
+      preLoaderRoute: typeof AdminChangesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accounts/': {
@@ -493,10 +533,12 @@ const rootRouteChildren: RootRouteChildren = {
   ProvidersSlugRoute: ProvidersSlugRoute,
   SubnetsNetuidRoute: SubnetsNetuidRoute,
   AccountsIndexRoute: AccountsIndexRoute,
+  AdminChangesIndexRoute: AdminChangesIndexRoute,
   BlocksIndexRoute: BlocksIndexRoute,
   ExtrinsicsIndexRoute: ExtrinsicsIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
   SubnetsIndexRoute: SubnetsIndexRoute,
+  SudoIndexRoute: SudoIndexRoute,
   ValidatorsIndexRoute: ValidatorsIndexRoute,
 }
 export const routeTree = rootRouteImport
