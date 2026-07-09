@@ -505,17 +505,17 @@ function validStagedSubnetHyperparamsRow(row) {
 // bounded, schema-valid rows through the METAGRAPH_HEALTH_DB binding (no
 // API-token D1 permission needed) with PARAMETERIZED inserts.
 //
-// Unlike loadStagedNeurons, every fetch covers ALL active subnets in one run
-// (get_subnet_hyperparameters has no bulk variant, but the fetch script loops
-// every netuid every time — no "refreshed_netuids" partial-coverage concept
-// needed here). ~129 rows today is far smaller than the neuron snapshot, so no
-// backup/rollback complexity: each upsert batch is independently an atomic D1
-// transaction and idempotent (INSERT OR REPLACE), so a failed batch leaves
-// only correctly-upserted rows behind — safe to leave as-is, since the staged
-// object is preserved (not deleted) on failure and the next cron retries the
-// same full snapshot. The prune (deleting a deregistered subnet's stale row)
-// runs only after every upsert batch succeeds, so it never fires against a
-// partially-loaded snapshot.
+// Unlike loadStagedNeurons, every successful fetch covers ALL active subnets in
+// one run (get_subnet_hyperparameters has no bulk variant, but the fetch script
+// loops every netuid every time and exits nonzero on any missing netuid — no
+// "refreshed_netuids" partial-coverage concept needed here). ~129 rows today is
+// far smaller than the neuron snapshot, so no backup/rollback complexity: each
+// upsert batch is independently an atomic D1 transaction and idempotent (INSERT
+// OR REPLACE), so a failed batch leaves only correctly-upserted rows behind —
+// safe to leave as-is, since the staged object is preserved (not deleted) on
+// failure and the next cron retries the same full snapshot. The prune (deleting
+// a deregistered subnet's stale row) runs only after every upsert batch succeeds,
+// so it never fires against a partial loader run.
 export async function loadStagedSubnetHyperparams(env) {
   const bucket = env.METAGRAPH_ARCHIVE;
   const db = env.METAGRAPH_HEALTH_DB;
