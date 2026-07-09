@@ -27,5 +27,25 @@
       "No verified standalone static data artifact yet."
     ]
   },
-  "surfaces": []
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-herald-outlet-registry-seed",
+      "kind": "data-artifact",
+      "name": "Herald outlet registry seed data",
+      "notes": "Public no-auth JSON seed outlet registry (version_id, outlet_id, tier, domains) for SN69 Herald verified media placement. Default load path in herald/validator/news/registry.py via _SEED_PATH and load_registry(); validators map article URLs to approved outlet tiers during oracle scoring. Pinned to an immutable commit.",
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "petermilord"
+      },
+      "source_urls": [
+        "https://github.com/HeraldMedia/herald/blob/4de1577e82b74807d4081c3f61edffaee9ed718a/herald/validator/news/registry.py",
+        "https://github.com/HeraldMedia/herald/blob/4de1577e82b74807d4081c3f61edffaee9ed718a/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/HeraldMedia/herald/4de1577e82b74807d4081c3f61edffaee9ed718a/herald/validator/news/outlets.seed.json"
+    }
+  ]
 }
