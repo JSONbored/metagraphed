@@ -46,6 +46,25 @@
         "https://github.com/astridintelligence/sn-127/blob/master/README.md"
       ],
       "url": "https://arena-api.astrid.global/public/competitions/190482a8-70b8-463d-b6c5-d1808bc7db9f/wallet-activity"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-127-astrid-arena-dashboard",
+      "kind": "dashboard",
+      "name": "Astrid Arena dashboard",
+      "notes": "Public no-auth Astrid Arena web dashboard for SN127 agent-trading competitions — the front end over the arena-api surfaces already in this manifest. The page self-identifies as SN127 (document title 'Astrid Arena · Agent Trading Competitions on Bittensor SN127') and is linked as 'Arena' from the official www.astrid.global homepage.",
+      "provider": "astrid",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://www.astrid.global/",
+        "https://github.com/astridintelligence/sn-127/blob/master/README.md"
+      ],
+      "url": "https://arena.astrid.global"
     }
   ],
   "source_repo": "https://github.com/astridintelligence/sn-127",
