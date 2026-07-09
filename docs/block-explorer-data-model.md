@@ -171,3 +171,54 @@ had zero calls in the last ~104k blocks (~2 weeks) sampled 2026-07-08; `AdminUti
 the same window — this is where real activity happens. Epic #4310's 2.2 (`/api/v1/sudo`) and
 2.3 (AdminUtils config-change feed, re-scoped from the original Council/Senate framing) and 2.4
 (current Sudo key, re-scoped from Senate/Council membership) are built directly on this audit.
+
+## Nested-call decode depth (#4319/4.1, 2026-07-09)
+
+Question: does `call_args` already contain the fully-decoded inner calls of a
+`Utility.batch`/`batch_all`/`force_batch` extrinsic, or just call indices that would need a
+follow-up decode step? **Confirmed: `call_args` already contains the fully-decoded nested
+calls.** 4.2 (nested-call rendering), 4.3 (Multisig), and 4.4 (Proxy) are pure rendering —
+no backend decode addition needed.
+
+Verified live against `GET /api/v1/extrinsics?call_module=Utility&call_function=<batch|
+batch_all|force_batch>&limit=1` for all three call functions. Example (`batch_all`, block
+8,581,077, extrinsic 18):
+
+```json
+"call_args": [{
+  "name": "calls",
+  "type": "Vec<RuntimeCall>",
+  "value": [{
+    "call_index": "0x0759",
+    "call_function": "remove_stake_limit",
+    "call_module": "SubtensorModule",
+    "call_args": [
+      { "name": "hotkey", "type": "AccountId", "value": "5E4z3h9y...ULde" },
+      { "name": "netuid", "type": "NetUid", "value": 99 },
+      { "name": "amount_unstaked", "type": "AlphaBalance", "value": 200000000000 },
+      { "name": "limit_price", "type": "TaoBalance", "value": 14517744 },
+      { "name": "allow_partial", "type": "bool", "value": false }
+    ],
+    "call_hash": "0xf500a2ad...cf7054c"
+  }]
+}]
+```
+
+`batch` and `force_batch` samples (including multi-call batches) confirm the identical shape:
+each inner call carries `call_module`, `call_function`, a fully-expanded `call_args` list, and
+its own `call_hash` — everything a renderer needs per inner call with zero extra decoding.
+
+This repo does no recursive decode of its own — `scripts/fetch-events.py`'s `_extrinsic_call`
+(`call.get("call_args")` → `_safe_json`) and `src/extrinsics.mjs`'s `formatExtrinsic`
+(`JSON.parse(row.call_args)`) are both flat pass-throughs. The nesting is already present in
+`substrate-interface`'s decoded `Call`-type SCALE output (pinned `==1.8.1`,
+`.github/workflows/backfill-events.yml`) before this repo ever sees it — the recursion happens
+inside the library's decoder, not in application code. The same `Call`-typed decode applies to
+any nested-call argument (Multisig's `call`/`call_hash`, Proxy's `real`/`call`), so 4.3/4.4
+should see the identical fully-decoded shape.
+
+One caveat for 4.2: per-inner-call **success** is not part of `call_args` — it comes from
+`Utility.ItemCompleted`/`BatchInterrupted` events and needs correlating separately by
+`extrinsic_index` (`account_events`/`chain_events`, same join `_extrinsic_success_map` already
+does for the outer extrinsic). No schema change is needed either way — `migrations/0015_
+extrinsic_call_args.sql`'s `call_args TEXT` column already holds this shape as-is.
