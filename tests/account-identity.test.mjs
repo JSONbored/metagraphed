@@ -106,8 +106,15 @@ describe("buildAccountIdentity", () => {
     assert.equal(data.url, null);
   });
 
-  test("nulls an invalid/blank captured_at", () => {
-    for (const captured_at of [0, -1, "", "not-a-number", null]) {
+  test("nulls an invalid/blank/out-of-range captured_at", () => {
+    for (const captured_at of [
+      0,
+      -1,
+      "",
+      "not-a-number",
+      null,
+      "8640000000000001", // finite, but beyond Date's valid range
+    ]) {
       const data = buildAccountIdentity(identityRow({ captured_at }), "5Acc0");
       assert.equal(data.captured_at, null, `captured_at=${captured_at}`);
     }

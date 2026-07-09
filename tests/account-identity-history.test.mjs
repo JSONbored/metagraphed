@@ -331,8 +331,15 @@ describe("formatAccountIdentityHistoryEntry", () => {
     assert.equal(out.identity_hash, null);
   });
 
-  test("nulls invalid/blank observed_at values (not epoch 1970)", () => {
-    for (const observed_at of [0, -1, "", "not-a-number", null]) {
+  test("nulls invalid/blank/out-of-range observed_at values (not epoch 1970)", () => {
+    for (const observed_at of [
+      0,
+      -1,
+      "",
+      "not-a-number",
+      null,
+      "8640000000000001", // finite, but beyond Date's valid range
+    ]) {
       const out = formatAccountIdentityHistoryEntry({
         observed_at,
         identity_hash: "abc",
