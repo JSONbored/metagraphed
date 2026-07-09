@@ -29,6 +29,7 @@ import {
 import { NEURON_INSERT_COLUMNS } from "../../src/metagraph-neurons.mjs";
 import { SUBNET_HYPERPARAMS_INSERT_COLUMNS } from "../../src/subnet-hyperparams.mjs";
 import { recordSubnetHyperparamsChanges } from "../../src/subnet-hyperparams-history.mjs";
+import { ACCOUNT_IDENTITY_INSERT_COLUMNS } from "../../src/account-identity.mjs";
 import {
   eventInsertStatements,
   validEventRows,
@@ -64,6 +65,13 @@ const STAGED_SUBNET_HYPERPARAMS_KEY =
   "metagraph/subnet-hyperparams-pending.json";
 const MAX_STAGED_SUBNET_HYPERPARAMS_BYTES = 2_000_000;
 const MAX_STAGED_SUBNET_HYPERPARAMS_ROWS = 1_000;
+
+// Account identity (#4324/5.1): scoped to coldkeys that actually have an
+// identity SET (most never call set_identity), so this stays small — bounds
+// are generous headroom over the realistic count, not a tight fit.
+const STAGED_ACCOUNT_IDENTITY_KEY = "metagraph/account-identity-pending.json";
+const MAX_STAGED_ACCOUNT_IDENTITY_BYTES = 5_000_000;
+const MAX_STAGED_ACCOUNT_IDENTITY_ROWS = 5_000;
 
 function neuronStagingSignPayload(rows, refreshed_netuids, captured_at) {
   if (refreshed_netuids == null && captured_at == null) {
@@ -623,6 +631,134 @@ export async function loadStagedSubnetHyperparams(env) {
   await recordSubnetHyperparamsChanges(env, { rows, db });
   await bucket.delete(STAGED_SUBNET_HYPERPARAMS_KEY);
   return { ok: true, rows: rows.length, purged };
+}
+
+function accountIdentityStagingSignPayload(rows) {
+  return JSON.stringify(rows);
+}
+
+function validStagedAccountIdentityRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (typeof row.account !== "string" || row.account.length === 0) return false;
+  if (!Number.isFinite(row.captured_at)) return false;
+  // No other column in ACCOUNT_IDENTITY_INSERT_COLUMNS is numeric — captured_at
+  // is already validated finite above, so a bare `typeof value === "number"`
+  // non-finite check inside the loop below (the pattern validStagedNeuronRow/
+  // validStagedSubnetHyperparamsRow use, where MANY columns are numeric) would
+  // be unreachable dead code here. Only the column allow-list + string-length +
+  // forbidden-type checks are load-bearing for this row shape.
+  for (const [key, value] of Object.entries(row)) {
+    if (!ACCOUNT_IDENTITY_INSERT_COLUMNS.includes(key)) return false;
+    if (
+      typeof value === "string" &&
+      utf8Bytes(value).length > MAX_STAGED_NEURON_STRING_BYTES
+    )
+      return false;
+    if (
+      typeof value === "boolean" ||
+      typeof value === "bigint" ||
+      typeof value === "symbol" ||
+      typeof value === "function"
+    )
+      return false;
+  }
+  return true;
+}
+
+// Load a staged account-identity snapshot from R2 into D1 (#4324/5.1). The
+// refresh-account-identity CI job fetches every account with a set on-chain
+// identity first-party (scripts/fetch-account-identity.py), signs the
+// bare-array snapshot with scripts/sign-staged-neurons.mjs (reused unchanged),
+// and writes it to R2 (metagraph/account-identity-pending.json). We load only
+// authenticated, bounded, schema-valid rows through the METAGRAPH_HEALTH_DB
+// binding (no API-token D1 permission needed) with PARAMETERIZED inserts.
+//
+// Deliberately NO purge step (unlike loadStagedSubnetHyperparams, which
+// removes a deregistered subnet's stale row): an identity is a property of
+// the owning account, not of currently having an active neuron — an account
+// missing from THIS particular snapshot pass (a transient RPC gap, or its
+// only neuron deregistering) hasn't necessarily lost its identity, and
+// purging on absence would fight #4326/5.2's future diff-history tracking by
+// making a scan gap look like a real removal. UPSERT-only; rows only ever
+// accumulate or get refreshed in place.
+export async function loadStagedAccountIdentity(env) {
+  const bucket = env.METAGRAPH_ARCHIVE;
+  const db = env.METAGRAPH_HEALTH_DB;
+  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
+  if (!bucket?.get || !db?.prepare || !signingKey) {
+    return { ok: false, reason: "unavailable" };
+  }
+  const object = await bucket.get(STAGED_ACCOUNT_IDENTITY_KEY);
+  if (!object) return { ok: false, reason: "none" };
+  if (Number(object.size || 0) > MAX_STAGED_ACCOUNT_IDENTITY_BYTES) {
+    console.warn(
+      `loadStagedAccountIdentity: staged file ${object.size} bytes exceeds ${MAX_STAGED_ACCOUNT_IDENTITY_BYTES}; skipping (next cron self-heals)`,
+    );
+    return { ok: false, reason: "too_large", size: Number(object.size) };
+  }
+  let envelope;
+  try {
+    envelope = await object.json();
+  } catch {
+    await bucket.delete(STAGED_ACCOUNT_IDENTITY_KEY);
+    return { ok: false, reason: "parse_failed" };
+  }
+  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
+  if (
+    envelope?.schema_version !== 1 ||
+    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
+  ) {
+    await bucket.delete(STAGED_ACCOUNT_IDENTITY_KEY);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  if (rows.length > MAX_STAGED_ACCOUNT_IDENTITY_ROWS) {
+    await bucket.delete(STAGED_ACCOUNT_IDENTITY_KEY);
+    return { ok: false, reason: "too_many_rows" };
+  }
+  if (!rows.length || rows.some((row) => !validStagedAccountIdentityRow(row))) {
+    await bucket.delete(STAGED_ACCOUNT_IDENTITY_KEY);
+    return { ok: false, reason: "invalid" };
+  }
+  const expected = await hmacHex(
+    signingKey,
+    accountIdentityStagingSignPayload(rows),
+  );
+  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
+    await bucket.delete(STAGED_ACCOUNT_IDENTITY_KEY);
+    return { ok: false, reason: "unauthenticated" };
+  }
+  const cols = ACCOUNT_IDENTITY_INSERT_COLUMNS;
+  const colList = cols.join(",");
+  // 9 columns x 10 rows = 90 bound params/statement, matching the ~90-param
+  // convention the other staged loaders in this file target.
+  const ROWS_PER_STMT = 10;
+  const STMTS_PER_BATCH = 50;
+  const statements = [];
+  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
+    const chunk = rows.slice(i, i + ROWS_PER_STMT);
+    const tuples = chunk
+      .map(() => `(${cols.map(() => "?").join(",")})`)
+      .join(",");
+    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
+    statements.push(
+      db
+        .prepare(
+          `INSERT OR REPLACE INTO account_identity (${colList}) VALUES ${tuples}`,
+        )
+        .bind(...values),
+    );
+  }
+  try {
+    for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+      await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+    }
+  } catch {
+    // Staged object intentionally preserved: the next cron retries the full
+    // (idempotent) snapshot rather than leaving a partial load unrecovered.
+    return { ok: false, reason: "load_failed" };
+  }
+  await bucket.delete(STAGED_ACCOUNT_IDENTITY_KEY);
+  return { ok: true, rows: rows.length };
 }
 
 // Load a staged chain-event batch from R2 into D1 (#1346, epic #1345). The
