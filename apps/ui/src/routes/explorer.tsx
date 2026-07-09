@@ -30,7 +30,7 @@ import {
   chainTransferPairsQuery,
   economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import type {
@@ -76,13 +76,7 @@ function sum(values: number[]): number {
 }
 
 function fmtTaoSigned(v: number): string {
-  return v < 0 ? `-${fmtTao(-v)}` : `+${fmtTao(v)}`;
-}
-function fmtTao(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  if (v >= 1) return `${v.toFixed(2)} τ`;
-  return `${v.toFixed(4)} τ`;
+  return v < 0 ? `-${formatTao(-v)}` : `+${formatTao(v)}`;
 }
 
 function ExplorerPage() {
@@ -366,9 +360,9 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
               value={fmtTaoSigned(net.net_flow_tao)}
               tone={net.net_flow_tao >= 0 ? "ok" : "down"}
             />
-            <StakeFlowMetric label="Gross flow" value={fmtTao(net.gross_flow_tao)} />
-            <StakeFlowMetric label="Staked" value={fmtTao(net.total_staked_tao)} />
-            <StakeFlowMetric label="Unstaked" value={fmtTao(net.total_unstaked_tao)} />
+            <StakeFlowMetric label="Gross flow" value={formatTao(net.gross_flow_tao)} />
+            <StakeFlowMetric label="Staked" value={formatTao(net.total_staked_tao)} />
+            <StakeFlowMetric label="Unstaked" value={formatTao(net.total_unstaked_tao)} />
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest">
             <span className="text-health-ok">{formatNumber(net.gaining)} gaining</span>
@@ -635,14 +629,14 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
             days={chrono.map((d) => d.snapshot_date)}
             values={chrono.map((d) => d.total_stake_tao ?? 0)}
             color="var(--accent)"
-            formatValue={fmtTao}
+            formatValue={formatTao}
           />
           <MiniSeries
             label="Alpha price"
             days={chrono.map((d) => d.snapshot_date)}
             values={chrono.map((d) => d.alpha_price_tao_weighted ?? 0)}
             color="var(--chart-1)"
-            formatValue={fmtTao}
+            formatValue={formatTao}
           />
           <MiniSeries
             label="Emission share"
@@ -778,11 +772,11 @@ function ExplorerDashboard() {
           value={formatNumber(totalEvents)}
           hint={`${win} total`}
         />
-        <StatTile icon={Coins} eyebrow="Fees" value={fmtTao(totalFees)} hint={`${win} total`} />
+        <StatTile icon={Coins} eyebrow="Fees" value={formatTao(totalFees)} hint={`${win} total`} />
         <StatTile
           icon={Coins}
           eyebrow="Tips"
-          value={fmtTao(totalTips)}
+          value={formatTao(totalTips)}
           hint={`${win} total`}
           tone={totalTips > 0 ? "ok" : "default"}
         />
@@ -863,28 +857,28 @@ function ExplorerDashboard() {
                 days={feeChrono.map((d) => d.day)}
                 values={feeChrono.map((d) => d.total_fee_tao)}
                 color="var(--accent)"
-                formatValue={fmtTao}
+                formatValue={formatTao}
               />
               <MiniSeries
                 label="Avg fee"
                 days={feeChrono.map((d) => d.day)}
                 values={feeChrono.map((d) => d.avg_fee_tao ?? 0)}
                 color="var(--chart-3)"
-                formatValue={fmtTao}
+                formatValue={formatTao}
               />
               <MiniSeries
                 label="Total tips"
                 days={feeChrono.map((d) => d.day)}
                 values={feeChrono.map((d) => d.total_tip_tao)}
                 color="var(--chart-6)"
-                formatValue={fmtTao}
+                formatValue={formatTao}
               />
               <MiniSeries
                 label="Avg tip"
                 days={feeChrono.map((d) => d.day)}
                 values={feeChrono.map((d) => d.avg_tip_tao ?? 0)}
                 color="var(--chart-1)"
-                formatValue={fmtTao}
+                formatValue={formatTao}
               />
             </div>
           ) : (
@@ -925,10 +919,10 @@ function ExplorerDashboard() {
                       </Link>
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {fmtTao(p.total_fee_tao)}
+                      {formatTao(p.total_fee_tao)}
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {fmtTao(p.total_tip_tao)}
+                      {formatTao(p.total_tip_tao)}
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                       {formatNumber(p.extrinsic_count)}
@@ -986,10 +980,10 @@ function ExplorerDashboard() {
                       {formatNumber(s.tx_count)}
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {fmtTao(s.total_fee_tao)}
+                      {formatTao(s.total_fee_tao)}
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {fmtTao(s.total_tip_tao)}
+                      {formatTao(s.total_tip_tao)}
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                       {s.last_tx_block != null ? (
@@ -1103,7 +1097,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
           {pairs ? (
             <p className="mt-1 font-mono text-[11px] text-ink-muted">
               {formatNumber(pairs.unique_pairs)} sender→receiver corridors ·{" "}
-              {fmtTao(pairs.total_volume_tao)} moved
+              {formatTao(pairs.total_volume_tao)} moved
             </p>
           ) : null}
         </div>
@@ -1174,7 +1168,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
                     </Link>
                   </td>
                   <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {fmtTao(p.volume_tao)}
+                    {formatTao(p.volume_tao)}
                   </td>
                   <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                     {formatNumber(p.transfer_count)}

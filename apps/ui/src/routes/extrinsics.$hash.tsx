@@ -14,7 +14,7 @@ import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { extrinsicQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import {
   extrinsicCall,
@@ -203,12 +203,12 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           </FieldRow>
           <FieldRow label="Inclusion fee">
             <span className="font-mono text-sm text-ink-strong">
-              {extrinsic.fee_tao != null ? fmtTao(extrinsic.fee_tao) : "—"}
+              {extrinsic.fee_tao != null ? formatTao(extrinsic.fee_tao) : "—"}
             </span>
           </FieldRow>
           <FieldRow label="Tip">
             <span className="font-mono text-sm text-ink-strong">
-              {extrinsic.tip_tao != null ? fmtTao(extrinsic.tip_tao) : "—"}
+              {extrinsic.tip_tao != null ? formatTao(extrinsic.tip_tao) : "—"}
             </span>
           </FieldRow>
           <FieldRow label="Observed at">
@@ -337,13 +337,6 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       />
     </>
   );
-}
-
-function fmtTao(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  if (v >= 1) return `${v.toFixed(2)} τ`;
-  return `${v.toFixed(4)} τ`;
 }
 
 function renderCallArgs(callArgs: unknown) {

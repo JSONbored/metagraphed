@@ -50,7 +50,7 @@ import {
   accountSubnetsQuery,
   accountTransfersQuery,
 } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
@@ -132,14 +132,6 @@ function AccountDetail({ ss58 }: { ss58: string }) {
   return <ValidAccountDetail ss58={ss58} />;
 }
 
-// Compact TAO formatter — mirrors the economics panel's fmtTao convention.
-function fmtTao(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
-  if (v >= 1) return `${v.toFixed(2)} τ`;
-  return `${v.toFixed(4)} τ`;
-}
-
 function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const sourceRef = ss58PathSegment(ss58);
   const account = useSuspenseQuery(accountQuery(ss58)).data.data as AccountSummary;
@@ -157,7 +149,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const balanceValue = balanceResult.isPending ? (
     <span className="text-ink-muted">…</span>
   ) : balance?.balance_tao != null ? (
-    fmtTao(balance.balance_tao)
+    formatTao(balance.balance_tao)
   ) : (
     "—"
   );
