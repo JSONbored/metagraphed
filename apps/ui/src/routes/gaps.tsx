@@ -29,6 +29,7 @@ import {
   reviewProfileCompletenessQuery,
   reviewAdapterCandidatesQuery,
   reviewEnrichmentQueueQuery,
+  reviewEnrichmentEvidenceQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { GITHUB_REPO } from "@/lib/metagraphed/config";
@@ -201,6 +202,19 @@ function GapsPage() {
             </Suspense>
           </QueryErrorBoundary>
         </PageSection>
+
+        <PageSection
+          id="enrichment-evidence"
+          eyebrow="Evidence"
+          title="Enrichment evidence"
+          description="Detailed per-subnet evidence behind the enrichment queue — the review lane, recommended action, and the surface kinds still missing."
+        >
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+              <EnrichmentEvidence />
+            </Suspense>
+          </QueryErrorBoundary>
+        </PageSection>
       </main>
 
       <ApiSourceFooter
@@ -209,6 +223,7 @@ function GapsPage() {
           "/api/v1/review/profile-completeness",
           "/api/v1/review/adapter-candidates",
           "/api/v1/review/enrichment-queue",
+          "/api/v1/review/enrichment-evidence",
         ]}
       />
     </AppShell>
@@ -997,6 +1012,74 @@ function EnrichmentQueue() {
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px]">{r.priority ?? "—"}</td>
                 <td className="px-4 py-2.5 text-[12px] text-ink-muted">{r.note ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// #3354: detailed per-subnet evidence behind the enrichment queue. Same list
+// shape and table idiom as EnrichmentQueue above, but the granular evidence view
+// (lane / recommended action / missing + direct-submission kinds / priority),
+// sourced from the distinct reviewEnrichmentEvidenceQuery.
+function EnrichmentEvidence() {
+  const { data } = useSuspenseQuery(reviewEnrichmentEvidenceQuery());
+  const meta = data.meta;
+  const rows = data.data ?? [];
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No enrichment evidence"
+        description="Detailed evidence rows appear once the enrichment queue has candidates with recorded gaps."
+        cta={{ label: "Browse registry", href: "/subnets" }}
+        generatedAt={meta?.generated_at}
+      />
+    );
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-surface-2/60 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <tr>
+              <th className="px-4 py-2.5 text-left">Netuid</th>
+              <th className="px-4 py-2.5 text-left">Lane</th>
+              <th className="px-4 py-2.5 text-left">Evidence action</th>
+              <th className="px-4 py-2.5 text-left">Missing kinds</th>
+              <th className="px-4 py-2.5 text-left">Direct submission</th>
+              <th className="px-4 py-2.5 text-right">Priority</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((r, i) => (
+              <tr key={`${r.netuid ?? r.slug ?? r.name ?? "row"}-${i}`} className="mg-row-hover">
+                <td className="px-4 py-2.5 font-mono text-[11px]">
+                  {r.netuid != null ? (
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: r.netuid }}
+                      className="hover:text-accent"
+                    >
+                      SN{r.netuid}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-[12px] text-ink">{r.lane ?? "—"}</td>
+                <td className="px-4 py-2.5 text-[12px] text-ink">{r.evidence_action ?? "—"}</td>
+                <td className="px-4 py-2.5 text-[12px] text-ink-muted">
+                  {r.missing_kinds.length > 0 ? r.missing_kinds.join(", ") : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-[12px] text-ink-muted">
+                  {r.direct_submission_kinds.length > 0 ? r.direct_submission_kinds.join(", ") : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-strong">
+                  {r.priority_score != null ? Math.round(r.priority_score) : "—"}
+                </td>
               </tr>
             ))}
           </tbody>

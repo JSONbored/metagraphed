@@ -6361,6 +6361,42 @@ export const reviewEnrichmentQueueQuery = () =>
     staleTime: STALE_LONG,
   });
 
+// #3354: detailed per-subnet evidence behind the enrichment queue — one level
+// down from reviewEnrichmentQueueQuery's summary. Distinct endpoint/artifact
+// (collection key "entries"); mirrors the fetchList + .map() normalization the
+// two review siblings above use.
+export const reviewEnrichmentEvidenceQuery = () =>
+  queryOptions({
+    queryKey: k("review-enrichment-evidence"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
+        "/api/v1/review/enrichment-evidence",
+        "entries",
+        undefined,
+        signal,
+      );
+      // API rows (enrichmentEvidenceEntry, scripts/lib/enrichment-queue-artifacts.mjs):
+      // { netuid, name, slug, lane, evidence_action, missing_kinds,
+      // direct_submission_kinds, priority_score, ... }. Kind arrays default to []
+      // and the score to undefined so the UI never renders NaN/undefined.
+      const rows = res.data.map((r) => ({
+        netuid: r.netuid as number | undefined,
+        name: r.name as string | undefined,
+        slug: r.slug as string | undefined,
+        lane: r.lane as string | undefined,
+        evidence_action: r.evidence_action as string | undefined,
+        missing_kinds: Array.isArray(r.missing_kinds) ? (r.missing_kinds as string[]) : [],
+        direct_submission_kinds: Array.isArray(r.direct_submission_kinds)
+          ? (r.direct_submission_kinds as string[])
+          : [],
+        priority_score:
+          typeof r.priority_score === "number" ? (r.priority_score as number) : undefined,
+      }));
+      return { ...res, data: rows };
+    },
+    staleTime: STALE_LONG,
+  });
+
 function normalizeSchema(raw: unknown): SchemaInfo {
   if (!raw || typeof raw !== "object") return raw as SchemaInfo;
   const s = raw as Record<string, unknown>;
