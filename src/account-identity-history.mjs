@@ -7,19 +7,23 @@
 // staged load rather than a separate pipeline (workers/request-handlers/
 // staging.mjs's loadStagedAccountIdentity).
 //
-// Capture-only for now, matching src/account-identity.mjs's own precedent:
-// no read/format/build/route functions here yet — those land with the
-// serving route in #4328 (5.4).
+// Read/format/build functions land here with the serving route (#4328/5.4),
+// mirroring src/subnet-identity-history.mjs's read side exactly (keyed by
+// account instead of netuid, and with no block_number column — account_identity
+// carries no chain block height, only captured_at).
 
-import { ACCOUNT_IDENTITY_INSERT_COLUMNS } from "./account-identity.mjs";
+import {
+  IDENTITY_FIELDS,
+  sanitizeAccountIdentityFields,
+} from "./account-identity.mjs";
+import { encodeCursor, decodeCursor } from "./cursor.mjs";
+import {
+  clampLimit,
+  clampOffset,
+  FEED_PAGINATION,
+} from "../workers/request-params.mjs";
 
 const D1_STATEMENTS_PER_BATCH = 100;
-
-// The 7 tracked identity fields, derived from the latest-only table's own
-// column list rather than hand-duplicated a second time — strips account
-// (front) and captured_at (back), which this table carries as its own
-// separately-typed id/observed_at columns instead.
-const IDENTITY_FIELDS = ACCOUNT_IDENTITY_INSERT_COLUMNS.slice(1, -1);
 
 const INSERT_COLUMNS = [
   "account",
@@ -144,4 +148,81 @@ export async function recordAccountIdentityChanges(
   } catch {
     return { recorded: false, reason: "write_failed" };
   }
+}
+
+const READ_COLUMNS = [
+  "id",
+  "observed_at",
+  ...IDENTITY_FIELDS,
+  "identity_hash",
+].join(", ");
+
+function toIso(ms) {
+  if (ms == null) return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+export function formatAccountIdentityHistoryEntry(row) {
+  if (!row || typeof row !== "object") return null;
+  const sanitized = sanitizeAccountIdentityFields(row);
+  const entry = { observed_at: toIso(row.observed_at) };
+  for (const field of IDENTITY_FIELDS) entry[field] = sanitized[field] ?? null;
+  entry.identity_hash = row.identity_hash ?? null;
+  return entry;
+}
+
+export function buildAccountIdentityHistory(
+  rows,
+  account,
+  { limit, offset, nextCursor } = {},
+) {
+  const entries = (rows || [])
+    .map(formatAccountIdentityHistoryEntry)
+    .filter(Boolean);
+  return {
+    schema_version: 1,
+    account,
+    entry_count: entries.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    next_cursor: nextCursor ?? null,
+    entries,
+  };
+}
+
+export async function loadAccountIdentityHistory(
+  d1,
+  account,
+  { limit, offset, cursor } = {},
+) {
+  const lim = clampLimit(limit, FEED_PAGINATION);
+  const off = clampOffset(offset);
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  const params = [account];
+  let sql = `SELECT ${READ_COLUMNS} FROM account_identity_history WHERE account = ?`;
+  if (useCursor) {
+    sql += " AND (observed_at, id) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY observed_at DESC, id DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
+  const rows = await d1(sql, params);
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor =
+    last && Number.isFinite(Number(last.observed_at))
+      ? encodeCursor([Number(last.observed_at), Number(last.id)])
+      : null;
+  return buildAccountIdentityHistory(rows, account, {
+    limit: lim,
+    offset: off,
+    nextCursor,
+  });
 }

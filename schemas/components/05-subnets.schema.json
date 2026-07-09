@@ -3500,6 +3500,66 @@
           }
         }
       },
+      "AccountIdentityArtifact": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Personal chain identity for one account (epic #4301/5.4), the latest-only account_identity D1 row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false — and every field null — for the common case of an account that has never called set_identity; that's not an error. Operator-controlled untrusted data.",
+        "required": ["schema_version", "account", "has_identity"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "account": { "type": "string" },
+          "has_identity": { "type": "boolean" },
+          "name": { "type": ["string", "null"] },
+          "url": { "type": ["string", "null"], "format": "uri" },
+          "github": { "type": ["string", "null"] },
+          "image": { "type": ["string", "null"], "format": "uri" },
+          "discord": { "type": ["string", "null"], "maxLength": 200 },
+          "description": { "type": ["string", "null"] },
+          "additional": { "type": ["string", "null"] },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "AccountIdentityHistoryEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One observed personal chain identity snapshot for an account (epic #4301/5.2). Operator-controlled untrusted data.",
+        "required": ["observed_at", "identity_hash"],
+        "properties": {
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "name": { "type": ["string", "null"] },
+          "url": { "type": ["string", "null"], "format": "uri" },
+          "github": { "type": ["string", "null"] },
+          "image": { "type": ["string", "null"], "format": "uri" },
+          "discord": { "type": ["string", "null"], "maxLength": 200 },
+          "description": { "type": ["string", "null"] },
+          "additional": { "type": ["string", "null"] },
+          "identity_hash": { "type": "string" }
+        }
+      },
+      "AccountIdentityHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the account_identity_history D1 tier at /api/v1/accounts/{ss58}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "required": ["schema_version", "account", "entry_count", "entries"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "account": { "type": "string" },
+          "entry_count": { "type": "integer", "minimum": 0 },
+          "limit": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "offset": { "type": ["integer", "null"], "minimum": 0 },
+          "next_cursor": { "type": ["string", "null"] },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountIdentityHistoryEntry"
+            }
+          }
+        }
+      },
       "AccountBalanceArtifact": {
         "type": "object",
         "additionalProperties": true,

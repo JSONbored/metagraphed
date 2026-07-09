@@ -96,6 +96,8 @@ import {
   ACCOUNT_POSITION_DAILY_READ_COLUMNS,
   buildAccountPositionHistory,
 } from "../../src/account-position-history.mjs";
+import { loadAccountIdentity } from "../../src/account-identity.mjs";
+import { loadAccountIdentityHistory } from "../../src/account-identity-history.mjs";
 import {
   isFinneySs58Address,
   loadAccountBalance,
@@ -3140,6 +3142,63 @@ export async function handleAccountPositionHistory(
         env,
         `/metagraph/accounts/${ss58}/subnets/${netuid}/history.json`,
         data.points[0]?.captured_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/identity (epic #4301/5.4): the latest-only
+// personal chain identity for one account, from the same
+// MetagraphInfo.identities capture account-identity.mjs's header documents
+// (metagraph-snapshot sourced, like account position history above — not
+// account_events, so metagraphMeta not accountMeta). has_identity is false
+// for the common case (most accounts never call set_identity) — schema-stable,
+// never 404.
+export async function handleAccountIdentity(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadAccountIdentity(d1Runner(env), ss58);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/identity.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/identity-history (epic #4301/5.4): append-only
+// diff-tracking timeline for one account's identity (src/account-identity-
+// history.mjs), newest first. Mirrors handleSubnetIdentityHistory's shape
+// exactly, keyed by ss58 instead of netuid. Cold/absent store → schema-stable
+// zero entries, never 404.
+export async function handleAccountIdentityHistory(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, [
+    "limit",
+    "offset",
+    "cursor",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
+  const data = await loadAccountIdentityHistory(d1Runner(env), ss58, {
+    limit,
+    offset,
+    cursor,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/accounts/${ss58}/identity-history.json`,
+        data.entries[0]?.observed_at ?? null,
       ),
     },
     "short",

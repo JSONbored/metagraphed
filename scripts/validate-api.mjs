@@ -721,6 +721,27 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/identity",
+    (body) => {
+      assert.equal(
+        body.data.account,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(typeof body.data.has_identity, "boolean");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/identity-history?limit=5",
+    (body) => {
+      assert.equal(
+        body.data.account,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(Array.isArray(body.data.entries), true);
+      assert.equal(body.data.entries.length <= 5, true);
+    },
+  ],
+  [
     "/api/v1/sudo/key",
     (body) => {
       assert.equal("hotkey" in body.data, true);

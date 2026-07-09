@@ -723,6 +723,20 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-identity",
+      "path": "/metagraph/accounts/{ss58}/identity.json",
+      "schema_ref": "#/components/schemas/AccountIdentityArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "account-identity-history",
+      "path": "/metagraph/accounts/{ss58}/identity-history.json",
+      "schema_ref": "#/components/schemas/AccountIdentityHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-balance",
       "path": "/metagraph/accounts/{ss58}/balance.json",
       "schema_ref": "#/components/schemas/AccountBalanceArtifact",
@@ -6425,6 +6439,52 @@
               "1y",
               "all"
             ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/identity.json",
+      "cache": "short",
+      "description": "Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity D1 tier. has_identity is false for the common case of an account that never called set_identity.",
+      "id": "account-identity",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/identity",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/identity-history.json",
+      "cache": "short",
+      "description": "Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+      "id": "account-identity-history",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/identity-history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
             "type": "string"
           }
         }

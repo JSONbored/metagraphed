@@ -930,6 +930,24 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Personal chain identity for one account (epic #4301/5.4), the latest-only account_identity D1 row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false for the common case of an account that never called set_identity.",
+      "id": "account-identity",
+      "path": "/metagraph/accounts/{ss58}/identity.json",
+      "schema_ref": "#/components/schemas/AccountIdentityArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the account_identity_history D1 tier at /api/v1/accounts/{ss58}/identity-history (no static file).",
+      "id": "account-identity-history",
+      "path": "/metagraph/accounts/{ss58}/identity-history.json",
+      "schema_ref": "#/components/schemas/AccountIdentityHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
       "id": "account-balance",
       "path": "/metagraph/accounts/{ss58}/balance.json",

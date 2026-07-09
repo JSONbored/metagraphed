@@ -51,6 +51,8 @@ import {
   handleSubnetEventSummary,
   handleSubnetEvents,
   handleAccountBalance,
+  handleAccountIdentity,
+  handleAccountIdentityHistory,
   handleBlocks,
   handleBlock,
   handleBlockExtrinsics,
@@ -303,6 +305,8 @@ function dbWith({
   accountEventsDaily,
   subnetIdentityHistory,
   subnetHyperparamsHistory,
+  accountIdentity,
+  accountIdentityHistory,
   transfers,
   relationshipTransfers,
   subnetEvents,
@@ -436,6 +440,16 @@ function dbWith({
                   // Historical hyperparameter change tracking (#4309).
                   if (/FROM subnet_hyperparams_history/.test(sql)) {
                     return { results: subnetHyperparamsHistory || [] };
+                  }
+                  // Personal chain identity, latest-only (epic #4301/5.4) —
+                  // checked before the history branch below (both match
+                  // "account_identity" but this one is NOT the _history table).
+                  if (/FROM account_identity WHERE account = \?/.test(sql)) {
+                    return { results: accountIdentity || [] };
+                  }
+                  // Personal chain identity diff-tracking history (epic #4301/5.2).
+                  if (/FROM account_identity_history/.test(sql)) {
+                    return { results: accountIdentityHistory || [] };
                   }
                   // Extrinsic-emitted events embed (#1849) — before generic events.
                   if (
@@ -4706,6 +4720,114 @@ describe("handleAccountBalance", () => {
     } finally {
       globalThis.fetch = origFetch;
     }
+  });
+});
+
+function accountIdentityRow(overrides = {}) {
+  return {
+    account: SS58,
+    name: "Example Team",
+    url: "https://miao.example/",
+    github: "https://github.com/miao-team/miao-repo",
+    image: "https://miao.example/logo.png",
+    discord: "examplehandle",
+    description: "An example subnet operator.",
+    additional: null,
+    captured_at: OBSERVED_AT,
+    ...overrides,
+  };
+}
+
+describe("handleAccountIdentity", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountIdentity(
+      req(`/api/v1/accounts/${SS58}/identity`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/identity?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("has_identity is false on cold D1 (schema-stable, never 404)", async () => {
+    const body = await assertColdSchema(
+      handleAccountIdentity,
+      req(`/api/v1/accounts/${SS58}/identity`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/identity`),
+    );
+    assert.equal(body.data.account, SS58);
+    assert.equal(body.data.has_identity, false);
+  });
+
+  test("happy path returns the account's identity", async () => {
+    const { env } = dbWith({ accountIdentity: [accountIdentityRow()] });
+    const body = await json(
+      await handleAccountIdentity(
+        req(`/api/v1/accounts/${SS58}/identity`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/identity`),
+      ),
+    );
+    assert.equal(body.data.has_identity, true);
+    assert.equal(body.data.name, "Example Team");
+  });
+});
+
+describe("handleAccountIdentityHistory", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountIdentityHistory(
+      req(`/api/v1/accounts/${SS58}/identity-history`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/identity-history?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty entries on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountIdentityHistory,
+      req(`/api/v1/accounts/${SS58}/identity-history`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/identity-history`),
+    );
+    assert.equal(body.data.account, SS58);
+    assert.equal(body.data.entry_count, 0);
+    assert.deepEqual(body.data.entries, []);
+  });
+
+  test("happy path returns identity timeline rows", async () => {
+    const { env } = dbWith({
+      accountIdentityHistory: [
+        {
+          id: 10,
+          observed_at: OBSERVED_AT,
+          name: "Example Team",
+          url: null,
+          github: null,
+          image: null,
+          discord: null,
+          description: null,
+          additional: null,
+          identity_hash: "abc",
+        },
+      ],
+    });
+    const body = await json(
+      await handleAccountIdentityHistory(
+        req(`/api/v1/accounts/${SS58}/identity-history`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/identity-history?limit=20`),
+      ),
+    );
+    assert.equal(body.data.entry_count, 1);
+    assert.equal(body.data.entries[0].name, "Example Team");
+    assert.equal(body.data.limit, 20);
   });
 });
 

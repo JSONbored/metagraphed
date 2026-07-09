@@ -223,6 +223,14 @@ export const ACCOUNT_DEREGISTRATIONS_PATH_PATTERN =
 // applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
 export const ACCOUNT_BALANCE_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([^/]+)\/balance$/;
+// Personal chain identity (epic #4301/5.4): the latest-only
+// account_identity row for one account, and its append-only diff-tracking
+// timeline. Mirrors SUBNET_IDENTITY_HISTORY_PATH_PATTERN's shape, keyed by
+// ss58 instead of netuid.
+export const ACCOUNT_IDENTITY_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/identity$/;
+export const ACCOUNT_IDENTITY_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/identity-history$/;
 // Block-explorer routes (#1345): recent feed + per-block detail, computed live
 // from the `blocks` D1 tier. {ref} is a numeric block_number OR a 0x block_hash
 // (32-byte hex = 64 chars).

@@ -164,6 +164,8 @@ import {
   handleAccountSubnets,
   handleAccountPortfolio,
   handleAccountPositionHistory,
+  handleAccountIdentity,
+  handleAccountIdentityHistory,
   handleBlocks,
   handleBlocksSummary,
   handleBlock,
@@ -317,6 +319,8 @@ import {
   ACCOUNT_SUBNETS_PATH_PATTERN,
   ACCOUNT_PORTFOLIO_PATH_PATTERN,
   ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN,
+  ACCOUNT_IDENTITY_PATH_PATTERN,
+  ACCOUNT_IDENTITY_HISTORY_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
   BLOCK_EXTRINSICS_PATH_PATTERN,
   BLOCK_EVENTS_PATH_PATTERN,
@@ -2157,6 +2161,29 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    // Personal chain identity (epic #4301/5.4): latest-only + diff-tracking
+    // history, mirroring the subnet identity/identity-history route shape.
+    const accountIdentityHistoryMatch =
+      ACCOUNT_IDENTITY_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (accountIdentityHistoryMatch) {
+      return handleAccountIdentityHistory(
+        request,
+        env,
+        accountIdentityHistoryMatch[1],
+        resolved.url,
+      );
+    }
+    const accountIdentityMatch = ACCOUNT_IDENTITY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountIdentityMatch) {
+      return handleAccountIdentity(
+        request,
+        env,
+        accountIdentityMatch[1],
+        resolved.url,
+      );
+    }
     const accountExtrinsicsMatch = ACCOUNT_EXTRINSICS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2604,6 +2631,8 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_SUBNETS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PORTFOLIO_PATH_PATTERN.test(pathname) ||
     ACCOUNT_SUBNET_POSITION_HISTORY_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_IDENTITY_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_TRANSFERS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_COUNTERPARTIES_PATH_PATTERN.test(pathname) ||

@@ -770,6 +770,195 @@
         ],
         "type": "object"
       },
+      "AccountIdentityArtifact": {
+        "additionalProperties": false,
+        "description": "Personal chain identity for one account (epic #4301/5.4), the latest-only account_identity D1 row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false — and every field null — for the common case of an account that has never called set_identity; that's not an error. Operator-controlled untrusted data.",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "additional": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discord": {
+            "maxLength": 200,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "github": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "has_identity": {
+            "type": "boolean"
+          },
+          "image": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "account",
+          "has_identity"
+        ],
+        "type": "object"
+      },
+      "AccountIdentityHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the account_identity_history D1 tier at /api/v1/accounts/{ss58}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AccountIdentityHistoryEntry"
+            },
+            "type": "array"
+          },
+          "entry_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "account",
+          "entry_count",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "AccountIdentityHistoryEntry": {
+        "additionalProperties": false,
+        "description": "One observed personal chain identity snapshot for an account (epic #4301/5.2). Operator-controlled untrusted data.",
+        "properties": {
+          "additional": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discord": {
+            "maxLength": 200,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "github": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identity_hash": {
+            "type": "string"
+          },
+          "image": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "observed_at",
+          "identity_hash"
+        ],
+        "type": "object"
+      },
       "AccountPortfolioArtifact": {
         "additionalProperties": true,
         "description": "A wallet's cross-subnet neuron portfolio from the neurons D1 tier: every position registered under the hotkey with its economics + yield, plus wallet-level aggregates (totals, subnet/validator counts, overall return, and how concentrated the wallet's stake is across its subnets). Richer than AccountSubnetsArtifact. Served live at /api/v1/accounts/{ss58}/portfolio (no static file).",
