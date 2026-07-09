@@ -21,7 +21,8 @@ import { ShareButton } from "@/components/metagraphed/share-button";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
-import { extrinsicsQuery } from "@/lib/metagraphed/queries";
+import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -74,6 +75,94 @@ function extrinsicsQueryParams(search: ExtrinsicsSearch): Record<string, string 
   return queryParams;
 }
 
+function fmtTao(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (v >= 1) return `${v.toFixed(2)} τ`;
+  return `${v.toFixed(4)} τ`;
+}
+
+/** One labeled daily fee sparkline; latest value surfaced as a compact caption. */
+function FeeSpark({
+  label,
+  days,
+  values,
+  color,
+}: {
+  label: string;
+  days: string[];
+  values: number[];
+  color: string;
+}) {
+  const latest = values.length > 0 ? values[values.length - 1]! : null;
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          {label}
+        </span>
+        <span className="font-mono text-[11px] tabular-nums text-ink-strong">
+          {latest == null ? "—" : fmtTao(latest)}
+        </span>
+      </div>
+      <Sparkline
+        values={values}
+        points={values.map((v, i) => ({ t: days[i] ?? "", v }))}
+        width={320}
+        height={48}
+        color={color}
+        ariaLabel={`Daily ${label.toLowerCase()}`}
+        formatValue={fmtTao}
+      />
+    </div>
+  );
+}
+
+/**
+ * Fees-over-time trend for the extrinsics list. Reuses `chainFeesQuery`
+ * (/api/v1/chain/fees) — the same daily fee series the explorer surfaces — to
+ * give the flat extrinsics table visual trend context above it. The API returns
+ * newest-day-first; sparklines want chronological order.
+ */
+function FeesTrendCard() {
+  const fees = useSuspenseQuery(chainFeesQuery("7d")).data.data;
+  const chrono = [...fees.daily].reverse();
+  const totalFees = chrono.reduce((acc, d) => acc + d.total_fee_tao, 0);
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Fees over time
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {fmtTao(totalFees)} · {fees.day_count} days
+        </span>
+      </div>
+      {chrono.length > 0 ? (
+        <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+          <FeeSpark
+            label="Total fees"
+            days={chrono.map((d) => d.day)}
+            values={chrono.map((d) => d.total_fee_tao)}
+            color="var(--accent)"
+          />
+          <FeeSpark
+            label="Avg fee"
+            days={chrono.map((d) => d.day)}
+            values={chrono.map((d) => d.avg_fee_tao ?? 0)}
+            color="var(--chart-3)"
+          />
+        </div>
+      ) : (
+        <p className="font-mono text-[12px] text-ink-muted">
+          No fee activity indexed yet — the chain poller fills this every few minutes.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function ExtrinsicsPage() {
   const search = Route.useSearch();
   const extrinsicsCsvUrl = buildUrl("/api/v1/extrinsics", extrinsicsQueryParams(search));
@@ -93,11 +182,19 @@ function ExtrinsicsPage() {
         }
       />
       <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+          <FeesTrendCard />
+        </Suspense>
+      </QueryErrorBoundary>
+      <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <ExtrinsicsTable />
         </Suspense>
       </QueryErrorBoundary>
-      <ApiSourceFooter paths={["/api/v1/extrinsics"]} artifacts={["/metagraph/extrinsics.json"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/extrinsics", "/api/v1/chain/fees"]}
+        artifacts={["/metagraph/extrinsics.json"]}
+      />
     </AppShell>
   );
 }
