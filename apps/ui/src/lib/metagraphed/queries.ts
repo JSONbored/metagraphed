@@ -6852,6 +6852,45 @@ export const reviewEnrichmentQueueQuery = () =>
     staleTime: STALE_LONG,
   });
 
+// #3355: the per-target enrichment board — distinct from the per-subnet
+// enrichment-queue rollup above. GET /api/v1/review/enrichment-targets, flat
+// `targets` list (the `groups`/`summary` wrapper is out of scope).
+export const reviewEnrichmentTargetsQuery = () =>
+  queryOptions({
+    queryKey: k("review-enrichment-targets"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
+        "/api/v1/review/enrichment-targets",
+        "targets",
+        undefined,
+        signal,
+      );
+      // API rows: { netuid, name, target_type, target_action, priority_score,
+      // missing_kinds, recommended_action, contribution_prompt, ... }.
+      const rows = res.data.map((r) => ({
+        id:
+          (r.target_id as string) ??
+          `${(r.slug as string) ?? String(r.netuid ?? "")}-${(r.target_type as string) ?? ""}`,
+        netuid: r.netuid as number | undefined,
+        name: r.name as string | undefined,
+        targetType: (r.target_type as string) ?? (r.kind as string),
+        targetAction: r.target_action as string | undefined,
+        priority:
+          typeof r.priority_score === "number"
+            ? String(Math.round(r.priority_score as number))
+            : undefined,
+        note:
+          (Array.isArray(r.missing_kinds) && r.missing_kinds.length > 0
+            ? (r.missing_kinds as string[]).join(", ")
+            : undefined) ??
+          (r.recommended_action as string) ??
+          (r.contribution_prompt as string),
+      }));
+      return { ...res, data: rows };
+    },
+    staleTime: STALE_LONG,
+  });
+
 function normalizeSchema(raw: unknown): SchemaInfo {
   if (!raw || typeof raw !== "object") return raw as SchemaInfo;
   const s = raw as Record<string, unknown>;
