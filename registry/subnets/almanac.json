@@ -47,6 +47,25 @@
         "https://api.almanac.market/api/markets/search?q=nfl"
       ],
       "url": "https://api.almanac.market/api/markets/events/202857"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-41-almanac-docs-llms-txt",
+      "kind": "data-artifact",
+      "name": "Almanac docs llms.txt index",
+      "notes": "Public no-auth machine-readable llms.txt index of the official SN41 Almanac documentation, served at docs.almanac.market — the same almanac.market domain as the registered website_url and the api.almanac.market surfaces. The official SN41 repository (sportstensor/sn41) README pins --netuid 41, and the docs describe its official api_trading.py client. Provides an agent-consumable Markdown map of the Almanac docs (content begins '# Almanac') for LLM/agent ingestion; distinct from the existing api.almanac.market market-snapshot data-artifact.",
+      "provider": "almanac",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/sportstensor/sn41/blob/main/README.md",
+        "https://almanac.market/"
+      ],
+      "url": "https://docs.almanac.market/llms.txt"
     }
   ],
   "website_url": "https://almanac.market/"
