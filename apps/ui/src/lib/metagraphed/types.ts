@@ -293,6 +293,49 @@ export interface RpcPool {
   [key: string]: unknown;
 }
 
+/** One row from GET /api/v1/rpc/endpoints — the base-layer Subtensor RPC/WSS registry (RpcEndpoint schema). */
+export interface RpcEndpoint {
+  id: string;
+  kind?: string; // subtensor-rpc | subtensor-wss
+  url?: string;
+  provider?: string;
+  netuid?: number;
+  subnet_name?: string;
+  subnet_slug?: string;
+  status?: string; // ok | degraded | failed | unknown
+  classification?: string; // live | redirected | auth-required | dead | unsafe | unsupported | rate-limited
+  network?: string;
+  chain?: string;
+  archive_support?: boolean | null;
+  latency_ms?: number | null;
+  latest_block?: number | null;
+  auth_required?: boolean;
+  authority?: string;
+  health_source?: string;
+  health_stale?: boolean;
+  last_ok?: string | null;
+  last_checked?: string | null;
+  observed_at?: string | null;
+  error?: string | null;
+  [key: string]: unknown;
+}
+
+/** Roll-up counts accompanying GET /api/v1/rpc/endpoints (RpcEndpointsArtifact.summary). */
+export interface RpcEndpointsSummary {
+  endpoint_count?: number;
+  archive_supported_count?: number;
+  by_kind?: Record<string, number>;
+  by_provider?: Record<string, number>;
+  by_status?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+/** The unwrapped GET /api/v1/rpc/endpoints payload — the endpoint list plus its summary rollup. */
+export interface RpcEndpointsData {
+  endpoints: RpcEndpoint[];
+  summary: RpcEndpointsSummary | null;
+}
+
 export interface EndpointIncident {
   id: string;
   endpoint_id?: string;

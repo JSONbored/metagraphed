@@ -129,6 +129,9 @@ import type {
   Provider,
   ProviderEndpointSummary,
   RpcPool,
+  RpcEndpoint,
+  RpcEndpointsData,
+  RpcEndpointsSummary,
   RpcUsage,
   SchemaInfo,
   SemanticSearchResponse,
@@ -5760,6 +5763,41 @@ export const rpcPoolsQuery = () =>
     queryFn: async ({ signal }) => {
       const res = await fetchList<unknown>("/api/v1/rpc/pools", "pools", undefined, signal);
       return { ...res, data: res.data.map(normalizePool) } as ApiResult<RpcPool[]>;
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeRpcEndpoint(raw: unknown): RpcEndpoint | undefined {
+  if (!isRecord(raw)) return undefined;
+  const id = asString(raw.id);
+  if (!id) return undefined;
+  return { ...(raw as object), id } as RpcEndpoint;
+}
+
+function normalizeRpcEndpointsSummary(raw: unknown): RpcEndpointsSummary | null {
+  return isRecord(raw) ? (raw as RpcEndpointsSummary) : null;
+}
+
+// /api/v1/rpc/endpoints — the base-layer Subtensor RPC/WSS registry
+// (RpcEndpointsArtifact: a summary rollup alongside the endpoint list).
+// Unlike the other `fetchList`-based queries on this page, this artifact's
+// `summary` sibling field would be silently dropped by `fetchList` (which
+// only extracts the keyed array) — verified live: `summary` lives in the
+// artifact body next to `endpoints`, not in the response envelope's `meta`
+// (only `generated_at` round-trips through `meta`, matching `rpcPoolsQuery`'s
+// `data.meta?.generated_at` freshness read). So this unwraps the keyed
+// object itself, mirroring `fetchList`'s own array-extraction, to keep both.
+export const rpcEndpointsQuery = () =>
+  queryOptions({
+    queryKey: k("rpc-endpoints"),
+    queryFn: async ({ signal }): Promise<ApiResult<RpcEndpointsData>> => {
+      const res = await apiFetch<unknown>("/api/v1/rpc/endpoints", { signal });
+      const body = isRecord(res.data) ? res.data : {};
+      const endpoints = Array.isArray(body.endpoints)
+        ? body.endpoints.map(normalizeRpcEndpoint).filter((e): e is RpcEndpoint => e != null)
+        : [];
+      const summary = normalizeRpcEndpointsSummary(body.summary);
+      return { ...res, data: { endpoints, summary } };
     },
     staleTime: STALE_MED,
   });

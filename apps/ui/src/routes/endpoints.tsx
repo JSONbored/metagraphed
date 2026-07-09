@@ -33,12 +33,15 @@ import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
 import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { rpcEndpointsSummaryLine } from "@/lib/metagraphed/rpc-endpoints-summary";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { useScrolled } from "@/hooks/use-scrolled";
 import {
   endpointsQuery,
   endpointIncidentsQuery,
   rpcPoolsQuery,
+  rpcEndpointsQuery,
+  statusToHealth,
   providersQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
@@ -52,7 +55,7 @@ import {
   type PoolEligibility,
 } from "@/lib/metagraphed/endpoint-pool";
 
-import type { Endpoint, RpcPool, Provider, Subnet } from "@/lib/metagraphed/types";
+import type { Endpoint, RpcPool, RpcEndpoint, Provider, Subnet } from "@/lib/metagraphed/types";
 
 const endpointsSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -173,6 +176,14 @@ function EndpointsPage() {
             </QueryErrorBoundary>
           </section>
           <section>
+            <SectionHeading title="Root RPC/WSS endpoints" />
+            <QueryErrorBoundary>
+              <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+                <RpcEndpointsTable />
+              </Suspense>
+            </QueryErrorBoundary>
+          </section>
+          <section>
             <SectionHeading title="Callable endpoints" />
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-48 w-full" />}>
@@ -196,6 +207,7 @@ function EndpointsPage() {
           "/api/v1/rpc/usage",
           "/api/v1/endpoints",
           "/api/v1/rpc/pools",
+          "/api/v1/rpc/endpoints",
           "/api/v1/endpoint-incidents",
         ]}
       />
@@ -277,8 +289,8 @@ function PoolsTable() {
               <th className="px-3 py-2 text-left">Pool</th>
               <th className="px-3 py-2 text-left">Region</th>
               <th className="px-3 py-2 text-right">Members</th>
-              <th className="px-3 py-2">Archive</th>
-              <th className="px-3 py-2">Eligibility</th>
+              <th className="px-3 py-2 text-center">Archive</th>
+              <th className="px-3 py-2 text-center">Eligibility</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -297,10 +309,10 @@ function PoolsTable() {
                   <td className="px-3 py-2 font-medium text-ink-strong">{p.name ?? p.id}</td>
                   <td className="px-3 py-2 text-[12px]">{p.region ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{p.members_count ?? "—"}</td>
-                  <td className="px-3 py-2 text-[11px] text-ink-muted">
+                  <td className="px-3 py-2 text-center text-[11px] text-ink-muted">
                     {p.archive_capable ? "yes" : "—"}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 text-center">
                     <span
                       className={classNames(
                         "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest",
@@ -320,6 +332,86 @@ function PoolsTable() {
         Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
         in-sync, healthy nodes and fails over automatically.
       </p>
+    </div>
+  );
+}
+
+const CLASSIFICATION_TONE: Record<string, string> = {
+  live: "border-health-ok/40 text-health-ok",
+  redirected: "border-health-warn/40 text-health-warn",
+  "auth-required": "border-ink-subtle text-ink-muted",
+  dead: "border-health-down/40 text-health-down",
+  unsafe: "border-health-down/40 text-health-down",
+  unsupported: "border-ink-subtle text-ink-muted",
+  "rate-limited": "border-health-warn/40 text-health-warn",
+  unknown: "border-ink-subtle text-ink-muted",
+};
+
+function RpcEndpointsTable() {
+  const { data } = useSuspenseQuery(rpcEndpointsQuery());
+  const rows = data.data.endpoints;
+  const summaryLine = rpcEndpointsSummaryLine(data.data.summary);
+  const stale = isStaleFreshness(data.meta?.generated_at);
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        title="No RPC endpoints tracked"
+        description="The base-layer Subtensor RPC/WSS registry appears here once endpoints are registered."
+      />
+    );
+  return (
+    <div className="space-y-2">
+      {stale ? (
+        <StaleBanner
+          generatedAt={data.meta?.generated_at}
+          refreshQueryKeys={[rpcEndpointsQuery().queryKey]}
+        />
+      ) : null}
+      <div className="rounded border border-border bg-card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <tr>
+              <th className="px-3 py-2 text-left">Provider</th>
+              <th className="px-3 py-2 text-left">Kind</th>
+              <th className="px-3 py-2 text-left">Classification</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Archive</th>
+              <th className="px-3 py-2 text-right">Latency</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((e: RpcEndpoint) => (
+              <tr key={e.id} className="mg-row-hover">
+                <td className="px-3 py-2 font-medium text-ink-strong">{e.provider ?? "—"}</td>
+                <td className="px-3 py-2 font-mono text-[11px]">{e.kind ?? "—"}</td>
+                <td className="px-3 py-2">
+                  <span
+                    className={classNames(
+                      "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest",
+                      CLASSIFICATION_TONE[e.classification ?? "unknown"] ??
+                        CLASSIFICATION_TONE.unknown,
+                    )}
+                  >
+                    {e.classification ?? "unknown"}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-center">
+                  <HealthPill state={statusToHealth(e.status)} />
+                </td>
+                <td className="px-3 py-2 text-center text-[11px] text-ink-muted">
+                  {e.archive_support == null ? "—" : e.archive_support ? "yes" : "no"}
+                </td>
+                <td className="px-3 py-2 text-right font-mono text-[11px]">
+                  {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {summaryLine ? (
+        <p className="px-1 font-mono text-[10px] text-ink-muted">{summaryLine}</p>
+      ) : null}
     </div>
   );
 }
