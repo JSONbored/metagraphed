@@ -53,7 +53,7 @@
 // repoint safe against occasional stalls, it doesn't make repointing while
 // still mid-sync viable.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -330,6 +330,29 @@ fn acct(v: &Value<()>) -> Option<String> {
 /// BTreeSet, which DO carry their own path) use the path's last segment, with
 /// any generic type_params resolved recursively.
 fn type_name(type_id: u32, registry: &PortableRegistry) -> String {
+    type_name_inner(type_id, registry, &mut HashSet::new())
+}
+
+// Substrate/SCALE metadata is a runtime data structure, not compiler-checked
+// Rust source -- nothing stops a type graph from being genuinely cyclic (the
+// chain's own RuntimeCall is exactly this: Utility.batch's Vec<RuntimeCall>
+// field references RuntimeCall's own type_id again). Recursing without
+// tracking the current path would stack-overflow and crash the whole indexer
+// process on any such type. `visited` is scoped to the CURRENT ancestor
+// chain, not "every type_id ever seen" -- inserted on entry, removed on exit
+// (backtracking), so a type appearing twice in SIBLING positions (e.g. a
+// tuple of two Vec<u16> fields) is correctly resolved twice, not misreported
+// as cyclic.
+fn type_name_inner(type_id: u32, registry: &PortableRegistry, visited: &mut HashSet<u32>) -> String {
+    if !visited.insert(type_id) {
+        return format!("Cyclic<{type_id}>");
+    }
+    let name = type_name_uncycled(type_id, registry, visited);
+    visited.remove(&type_id);
+    name
+}
+
+fn type_name_uncycled(type_id: u32, registry: &PortableRegistry, visited: &mut HashSet<u32>) -> String {
     let Some(ty) = registry.resolve(type_id) else {
         return format!("Unknown<{type_id}>");
     };
@@ -341,21 +364,28 @@ fn type_name(type_id: u32, registry: &PortableRegistry) -> String {
     // not assumed).
     match &ty.type_def {
         TypeDef::Sequence(seq) => {
-            return format!("Vec<{}>", type_name(seq.type_param.id, registry))
+            return format!("Vec<{}>", type_name_inner(seq.type_param.id, registry, visited))
         }
         TypeDef::Array(arr) => {
-            return format!("[{}; {}]", type_name(arr.type_param.id, registry), arr.len)
+            return format!(
+                "[{}; {}]",
+                type_name_inner(arr.type_param.id, registry, visited),
+                arr.len
+            )
         }
         TypeDef::Tuple(tup) => {
             let parts: Vec<String> = tup
                 .fields
                 .iter()
-                .map(|id| type_name(id.id, registry))
+                .map(|id| type_name_inner(id.id, registry, visited))
                 .collect();
             return format!("({})", parts.join(", "));
         }
         TypeDef::Compact(c) => {
-            return format!("Compact<{}>", type_name(c.type_param.id, registry))
+            return format!(
+                "Compact<{}>",
+                type_name_inner(c.type_param.id, registry, visited)
+            )
         }
         TypeDef::Primitive(p) => return primitive_name(p).to_string(),
         _ => {}
@@ -369,7 +399,7 @@ fn type_name(type_id: u32, registry: &PortableRegistry) -> String {
             .iter()
             .map(|p| {
                 p.ty
-                    .map(|id| type_name(id.id, registry))
+                    .map(|id| type_name_inner(id.id, registry, visited))
                     .unwrap_or_else(|| "_".to_string())
             })
             .collect();
@@ -1619,3 +1649,88 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+
+#[cfg(test)]
+mod type_name_tests {
+    use super::*;
+    use scale_info::{Path, PortableRegistryBuilder, Type, TypeDefSequence};
+
+    // Hand-builds a genuinely self-referential type -- `struct Recursive {
+    // items: Vec<Recursive> }` -- the exact "Vec<Self>" shape flagged as a
+    // stack-overflow risk. Real-chain equivalent: RuntimeCall, whose
+    // Utility.batch variant holds a Vec<RuntimeCall> referencing RuntimeCall's
+    // own type_id. Registers only ONE type: a Sequence whose element type_id
+    // is its OWN id, predicted via next_type_id() before registering.
+    fn self_referential_registry() -> (u32, PortableRegistry) {
+        let mut builder = PortableRegistryBuilder::new();
+        let self_id = builder.next_type_id();
+        let ty = Type::<scale_info::form::PortableForm>::new(
+            Path::default(),
+            vec![],
+            TypeDefSequence {
+                type_param: self_id.into(),
+            },
+            vec![],
+        );
+        let assigned_id = builder.register_type(ty);
+        assert_eq!(assigned_id, self_id, "self-reference must target its own id");
+        (self_id, builder.finish())
+    }
+
+    #[test]
+    fn type_name_terminates_on_a_direct_cycle() {
+        let (id, registry) = self_referential_registry();
+        // Must return promptly (no stack overflow) and mark the cycle.
+        let name = type_name(id, &registry);
+        assert_eq!(name, format!("Vec<Cyclic<{id}>>"));
+    }
+
+    #[test]
+    fn type_name_still_resolves_a_non_cyclic_sequence() {
+        let mut builder = PortableRegistryBuilder::new();
+        let u16_id = builder.register_type(Type::<scale_info::form::PortableForm>::new(
+            Path::default(),
+            vec![],
+            TypeDefPrimitive::U16,
+            vec![],
+        ));
+        let vec_id = builder.register_type(Type::<scale_info::form::PortableForm>::new(
+            Path::default(),
+            vec![],
+            TypeDefSequence { type_param: u16_id.into() },
+            vec![],
+        ));
+        let registry = builder.finish();
+        assert_eq!(type_name(vec_id, &registry), "Vec<u16>");
+    }
+
+    #[test]
+    fn type_name_resolves_the_same_type_twice_in_sibling_positions_without_reporting_a_cycle() {
+        // (Vec<u16>, Vec<u16>) -- the SAME Vec<u16> type_id appears twice as
+        // sibling tuple elements. Must NOT be misreported as cyclic (visited
+        // is path-scoped, backtracked after each branch returns).
+        let mut builder = PortableRegistryBuilder::new();
+        let u16_id = builder.register_type(Type::<scale_info::form::PortableForm>::new(
+            Path::default(),
+            vec![],
+            TypeDefPrimitive::U16,
+            vec![],
+        ));
+        let vec_id = builder.register_type(Type::<scale_info::form::PortableForm>::new(
+            Path::default(),
+            vec![],
+            TypeDefSequence { type_param: u16_id.into() },
+            vec![],
+        ));
+        let tuple_id = builder.register_type(Type::<scale_info::form::PortableForm>::new(
+            Path::default(),
+            vec![],
+            scale_info::TypeDefTuple {
+                fields: vec![vec_id.into(), vec_id.into()],
+            },
+            vec![],
+        ));
+        let registry = builder.finish();
+        assert_eq!(type_name(tuple_id, &registry), "(Vec<u16>, Vec<u16>)");
+    }
+}
