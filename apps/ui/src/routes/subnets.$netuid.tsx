@@ -12,6 +12,7 @@ import {
   StaleBanner,
   RECOVERY,
 } from "@/components/metagraphed/states";
+import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -1310,10 +1311,11 @@ function GapsPanel({ netuid, compact }: { netuid: number; compact?: boolean }) {
   if (error) {
     return (
       <SectionAnchor id="gaps" title={compact ? "Known gaps" : "Gaps"}>
-        <EmptyState
+        <RegistryEmpty
+          variant="error"
           title="Gaps unavailable"
           description="The subnet gaps endpoint did not respond."
-          action={RECOVERY.gaps}
+          actions={[{ label: RECOVERY.gaps.label, to: RECOVERY.gaps.href, primary: true }]}
         />
       </SectionAnchor>
     );
@@ -1321,10 +1323,11 @@ function GapsPanel({ netuid, compact }: { netuid: number; compact?: boolean }) {
   if (missing.length === 0 && notes.length === 0) {
     return (
       <SectionAnchor id="gaps" title="Gaps">
-        <EmptyState
+        <RegistryEmpty
+          variant="empty"
           title="No outstanding gaps"
           description="Profile looks complete."
-          action={RECOVERY.gaps}
+          actions={[{ label: RECOVERY.gaps.label, to: RECOVERY.gaps.href }]}
         />
       </SectionAnchor>
     );

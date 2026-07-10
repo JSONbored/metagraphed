@@ -368,8 +368,8 @@ function SchemaExplorer() {
           </div>
           <ul className="flex-1 overflow-y-auto divide-y divide-border/60">
             {filtered.length === 0 ? (
-              <li className="p-8 text-center">
-                <EmptyState title="No schemas match" />
+              <li className="p-4">
+                <TableState variant="empty" title="No schemas match" className="!py-8" />
               </li>
             ) : (
               filtered.map((s) => {

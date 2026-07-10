@@ -34,9 +34,11 @@ interface Props {
 }
 
 /**
- * Unified empty / stale / error block for every registry table. Identical
- * padding, copy column, and CTA style so empty states feel consistent across
- * /endpoints, /surfaces, /providers, subnet detail tables.
+ * Empty / stale / error block for data tables and table-adjacent lists — the
+ * rounded-xl chrome shared across /endpoints pool tables, subnet activity tables,
+ * /schemas contracts, and paginated registry tables. For inline chart/section
+ * emptiness use `EmptyState`; for registry catalog provenance (freshness,
+ * evidence, action chips) use `RegistryEmpty`. See `empty-state-usage.ts`.
  */
 export function TableState({
   variant,
