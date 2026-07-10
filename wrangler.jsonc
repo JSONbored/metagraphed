@@ -55,36 +55,42 @@
     // this is a zero-downtime experiment and flipping it back is an instant
     // rollback.
     //
-    // blocks: FLIPPED 2026-07-09 -- live-verified byte-identical to D1
-    // (block #8586622, every column including block_hash/parent_hash/author/
-    // observed_at matched exactly). Now serving deep history from Postgres,
-    // with automatic D1 fallback on any DATA_API failure.
+    // blocks: REVERTED to "d1" 2026-07-09, same day it was flipped to
+    // "postgres" (commit b6d910a3). The flip's own verification (block
+    // #8586622) turned out to be methodologically unfalsifiable: it compared
+    // the API's response against a direct Postgres query, but tryPostgresTier
+    // silently swallows every DATA_API failure (network error, canceled
+    // subrequest, non-2xx, bad JSON) and falls back to D1 with zero logging --
+    // if the Postgres subrequest for that check ALSO failed silently and fell
+    // back to D1, the diff would trivially match (D1 compared against itself).
+    // Live re-testing the same day found the DATA_API service-binding
+    // subrequest reporting outcome "canceled" on a real, reproducible fraction
+    // of /api/v1/blocks/:ref requests (confirmed via `wrangler tail
+    // metagraphed-data-api` against several distinct block refs, not a fluke
+    // of one ref), and a block confirmed to exist ONLY in Postgres
+    // (block #8513820, right at a spec_version boundary D1's poller skipped)
+    // returned block:null instead of the real row. Falling back to D1 is
+    // never WORSE than pre-flip behavior, but a flag reading "postgres" while
+    // silently serving D1 most of the time looks shipped when it isn't --
+    // reverted rather than left in that ambiguous state. Tracked as its own
+    // issue (canceled-subrequest root cause + observability into which tier
+    // actually answered); re-flip only after that's fixed and re-verified
+    // against a Postgres-only block with tail-based proof, not a block present
+    // in both stores.
     //
-    // extrinsics: reconciled 2026-07-09 (#4669), still not flipped pending a
-    // live cutover decision. indexer-rs's `call_args` (Postgres JSONB) is a
-    // flat {argName: value} map with no type metadata (e.g.
-    // {"netuid":110,"dests":[155]}), vs fetch-events.py's (D1) array of
-    // {name,type,value} descriptors -- `type` is decorative (never rendered by
-    // either shape) so this alone isn't a blocker; apps/ui/src/lib/metagraphed/
-    // extrinsics.ts's multisigCallHash/proxyRealAccount read either shape via
-    // a shared callArgValue lookup, live-verified against real production data
-    // including a raw 32-byte call_hash array (indexer-rs's [u8;32] encoding,
-    // hex-encoded and checked byte-for-byte against the same extrinsic's D1
-    // value). A NESTED call (Multisig.as_multi's wrapped `call`, Utility.batch's
-    // inner calls, Proxy.proxy's wrapped call) is encoded as a recursive
-    // generic enum tree ({"name":"ModuleName","values":[...]}), not
-    // {call_module,call_function,...} -- normalizeIndexerRsCall/asDecodedCall
-    // reconstruct call_module/call_function from the enum wrapper's own tag
-    // names (safe and deterministic -- an enum variant's own name carries no
-    // Hash-vs-AccountId32 ambiguity), so NestedCallCard now renders this shape
-    // too. Two narrow, accepted gaps remain, neither a data-correctness risk:
-    // (a) as_multi's own computed call_hash (a Python-side re-encode-and-hash
-    // step indexer-rs's dump has no equivalent of, so multisigCallHash
-    // degrades to a clean null rather than a wrong hash for this one sub-case);
-    // (b) raw byte-array VALUES nested inside call args stay unconverted
-    // (correctly -- a bare 32-byte array is ambiguous between Hash and
-    // AccountId32 with no type metadata to disambiguate generically).
-    "METAGRAPH_BLOCKS_SOURCE": "postgres",
+    // extrinsics: still "d1". The call_args shape gap is BIGGER than
+    // originally scoped here on 2026-07-09 -- that note covered only the
+    // nested-call-shape and call_hash cases (#4669, fixed). A broader live
+    // audit the same day found indexer-rs's dynamic-SCALE dump also renders
+    // AccountId32 fields (hotkey/coldkey/dest/real/delegate -- the majority of
+    // SubtensorModule/Balances/Proxy call args) as newtype-wrapped raw byte
+    // arrays instead of SS58 strings, and raw byte blobs (commit/ciphertext/
+    // enc_key -- the single most common call family right now, timelocked
+    // commit-reveal weight setting) as integer arrays instead of hex. Tracked
+    // as a roadmap of sub-issues (see the parent issue linked from #4669) --
+    // do not flip this flag until that roadmap's normalizer work lands and a
+    // real parity harness (not a single-extrinsic spot check) passes clean.
+    "METAGRAPH_BLOCKS_SOURCE": "d1",
     "METAGRAPH_EXTRINSICS_SOURCE": "d1",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
