@@ -36,7 +36,12 @@ function isPlainScalar(value) {
   );
 }
 
-function isEnumTreeNode(value) {
+/** True when `value` is indexer-rs's generic `{name, values}` enum-tree node
+ * shape -- exported for #4691's nested-RuntimeCall reconstruction, which
+ * needs the identical shape check to distinguish a nested call from an
+ * ordinary enum-with-data node (both share this two-key shape; the
+ * distinction is whether `values[0]` is ITSELF another such node). */
+export function isEnumTreeNode(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const keys = Object.keys(value);
   return (
