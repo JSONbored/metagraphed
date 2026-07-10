@@ -267,6 +267,12 @@ function BlocksTable() {
         inputMode="numeric"
         className="min-w-[120px] max-w-[140px] flex-none"
       />
+      <span
+        className="font-mono text-[11px] text-ink-muted whitespace-nowrap"
+        title="Blocks are listed newest first"
+      >
+        ↓ Newest first
+      </span>
       <PageSizeSelect
         value={search.limit}
         onChange={(n) => setSearch({ limit: n, offset: 0 })}
