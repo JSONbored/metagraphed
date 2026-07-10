@@ -46,10 +46,10 @@ export const MEGA_PANELS: MegaPanel[] = [
       { to: "/subnets/74", label: "Gittensor · SN74", hint: "Adapter-backed pilot" },
     ],
     filters: [
-      { to: "/subnets", search: { kind: "api" }, label: "Has APIs" },
-      { to: "/subnets", search: { kind: "docs" }, label: "Has docs" },
-      { to: "/subnets", search: { kind: "sse" }, label: "Has SSE" },
-      { to: "/subnets", search: { stale: "1" }, label: "Stale > 24h" },
+      { to: "/subnets", search: { serviceKind: "subnet-api" }, label: "Has APIs" },
+      { to: "/subnets", search: { serviceKind: "openapi" }, label: "Has docs" },
+      { to: "/subnets", search: { serviceKind: "sse" }, label: "Has SSE" },
+      { to: "/subnets", search: { health: "unknown" }, label: "Stale > 24h" },
     ],
   },
   {

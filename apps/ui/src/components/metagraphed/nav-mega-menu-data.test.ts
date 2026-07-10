@@ -109,6 +109,38 @@ describe("MEGA_PANELS catalogue", () => {
       }
     }
   });
+
+  it("only links to route-consumed filter params/values on /subnets", () => {
+    // /subnets (routes/subnets.index.tsx) filters rows on the params its
+    // predicate actually reads — q / curation / health / serviceKind /
+    // readiness — and its facet chips enumerate the allowed values. The old
+    // kind=api|docs|sse links used a `kind` field that lives in the schema but
+    // the predicate never consumes, and stale=1 wasn't in the schema at all —
+    // both silently rendered the full unfiltered list. Pin every /subnets
+    // filter link to a param+value the predicate applies.
+    const CONSUMED_KEYS = new Set(["q", "curation", "health", "serviceKind", "readiness"]);
+    const FACET_VALUES: Record<string, Set<string>> = {
+      curation: new Set([
+        "native",
+        "candidate-discovered",
+        "machine-verified",
+        "maintainer-reviewed",
+        "adapter-backed",
+      ]),
+      health: new Set(["ok", "warn", "down", "unknown"]),
+      serviceKind: new Set(["subnet-api", "openapi", "sse", "data-artifact"]),
+      readiness: new Set(["buildable", "emerging", "identity-only", "dormant"]),
+    };
+    const subnets = MEGA_PANELS.find((p) => p.key === "subnets");
+    expect(subnets).toBeDefined();
+    for (const l of [...subnets!.browse, ...subnets!.filters]) {
+      for (const [param, value] of Object.entries(l.search ?? {})) {
+        expect(CONSUMED_KEYS.has(param)).toBe(true);
+        const allowed = FACET_VALUES[param];
+        if (allowed) expect(allowed.has(value)).toBe(true);
+      }
+    }
+  });
 });
 
 describe("storage helpers (SSR/node-safe)", () => {
