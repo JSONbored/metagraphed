@@ -196,6 +196,34 @@ describe("loadSubnetRecycled", () => {
     }
   });
 
+  test("rejects out-of-range netuids before KV or RPC work", async () => {
+    let kvReads = 0;
+    let fetchCalls = 0;
+    const env = {
+      METAGRAPH_CONTROL: {
+        get: async () => {
+          kvReads += 1;
+          return null;
+        },
+      },
+    };
+
+    await withFetchStub(
+      async () => {
+        fetchCalls += 1;
+        throw new Error("should not fetch");
+      },
+      async () => {
+        await assert.rejects(
+          () => loadSubnetRecycled(env, 65536),
+          /0\.\.65535/,
+        );
+        assert.equal(kvReads, 0);
+        assert.equal(fetchCalls, 0);
+      },
+    );
+  });
+
   test("KV cache key is scoped per netuid", async () => {
     let sawKey;
     const env = {
@@ -400,6 +428,65 @@ describe("GET /api/v1/subnets/{netuid}/recycled via the Worker", () => {
         assert.equal(res.status, 200);
         const body = await res.json();
         assert.equal(body.data.recycled_tao, null);
+      },
+    );
+  });
+
+  test("rejects out-of-range u16 netuids before rate limiting or RPC fetch", async () => {
+    let limiterCalls = 0;
+    let fetchCalls = 0;
+    const env = {
+      RPC_RATE_LIMITER: {
+        limit: async () => {
+          limiterCalls += 1;
+          return { success: true };
+        },
+      },
+    };
+
+    await withFetchStub(
+      async () => {
+        fetchCalls += 1;
+        throw new Error("should not fetch");
+      },
+      async () => {
+        const res = await handleRequest(
+          req("/api/v1/subnets/65536/recycled"),
+          env,
+          {},
+        );
+        assert.equal(res.status, 400);
+        const body = await res.json();
+        assert.equal(body.ok, false);
+        assert.equal(body.error.code, "invalid_netuid");
+        assert.match(body.error.message, /0\.\.65535/);
+        assert.equal(limiterCalls, 0);
+        assert.equal(fetchCalls, 0);
+      },
+    );
+  });
+
+  test("accepts the maximum u16 netuid", async () => {
+    let rpcStorageKey;
+    await withFetchStub(
+      async (_url, init) => {
+        const body = JSON.parse(init.body);
+        rpcStorageKey = body.params[0];
+        return {
+          ok: true,
+          json: async () => ({ result: GOLDEN_RAW_STORAGE }),
+        };
+      },
+      async () => {
+        const res = await handleRequest(
+          req("/api/v1/subnets/65535/recycled"),
+          {},
+          {},
+        );
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(body.data.netuid, 65535);
+        assert.ok(rpcStorageKey.endsWith("ffff"));
       },
     );
   });
