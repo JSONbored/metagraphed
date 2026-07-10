@@ -3411,22 +3411,49 @@ export async function handleSubnetRecycled(request, env, netuid) {
 // ANY failure (binding absent, network error, non-2xx, unparseable/malformed
 // body) as "fall back to D1", never as a client-facing error. Postgres never
 // gets to independently fail a request the D1 path would have served.
+// Every branch below logs before falling back (#4686) -- prior to this, a
+// canceled/failed DATA_API subrequest was indistinguishable from "the flag
+// isn't on," which let a silently-unreliable Postgres tier look shipped
+// while actually falling back to D1 on most requests (see the blocks-tier
+// incident this was added for: METAGRAPH_BLOCKS_SOURCE was flipped, live
+// re-testing found DATA_API subrequests reporting outcome "canceled" on a
+// real fraction of requests, and there was no signal anywhere to catch it
+// before a wider live-testing pass happened to notice).
 async function tryPostgresTier(env, request, flagName) {
   if (env[flagName] !== "postgres" || !env.DATA_API) return null;
   let upstream;
   try {
     upstream = await env.DATA_API.fetch(request);
-  } catch {
+  } catch (err) {
+    console.error(
+      `tryPostgresTier(${flagName}): DATA_API fetch failed, falling back to D1:`,
+      err,
+    );
     return null;
   }
-  if (!upstream.ok) return null;
+  if (!upstream.ok) {
+    console.error(
+      `tryPostgresTier(${flagName}): DATA_API returned ${upstream.status}, falling back to D1`,
+    );
+    return null;
+  }
   let body;
   try {
     body = await upstream.json();
-  } catch {
+  } catch (err) {
+    console.error(
+      `tryPostgresTier(${flagName}): DATA_API response body unparseable, falling back to D1:`,
+      err,
+    );
     return null;
   }
-  return body && typeof body === "object" ? body : null;
+  if (!body || typeof body !== "object") {
+    console.error(
+      `tryPostgresTier(${flagName}): DATA_API response was not a JSON object, falling back to D1`,
+    );
+    return null;
+  }
+  return body;
 }
 
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the
