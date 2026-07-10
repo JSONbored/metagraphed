@@ -48,7 +48,7 @@ function StakeMovesTile({ netuid }: { netuid: number }) {
       chart={
         <SparkLegend
           metric="Stake moves"
-          source={`On-chain StakeMoved (re-delegation) events for SN${netuid} over the trailing 30-day window — ${m.summary}.`}
+          source={`On-chain StakeMoved (re-delegation) events for SN${netuid} over the trailing ${card?.window ?? "30d"} window — ${m.summary}.`}
           windowLabel={card?.window ?? "30d"}
           updatedAt={card?.observed_at ?? null}
           staleness="Counts settle as the chain-events indexer catches up; the bar hides when no re-delegations occurred in the window."
@@ -87,7 +87,7 @@ function StakeTransfersTile({ netuid }: { netuid: number }) {
       chart={
         <SparkLegend
           metric="Stake transfers"
-          source={`On-chain stake-transfer events for SN${netuid} over the trailing 30-day window — ${m.summary}.`}
+          source={`On-chain stake-transfer events for SN${netuid} over the trailing ${card?.window ?? "30d"} window — ${m.summary}.`}
           windowLabel={card?.window ?? "30d"}
           updatedAt={card?.observed_at ?? null}
           staleness="Counts settle as the chain-events indexer catches up; the bar hides when no transfers occurred in the window."

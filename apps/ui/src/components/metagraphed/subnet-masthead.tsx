@@ -422,7 +422,7 @@ export function SubnetMasthead({
           label="Registrations"
           value={formatNumber(reg?.registrations)}
           hint={`${formatNumber(reg?.distinct_registrants ?? 0)} registrants`}
-          full="Neuron-registration events on this subnet over the trailing 30-day window."
+          full={`Neuron-registration events on this subnet over the trailing ${reg?.window ?? "30d"} window.`}
           updatedAt={reg?.observed_at ?? null}
           windowLabel={reg?.window ?? "30d"}
         />
@@ -430,7 +430,7 @@ export function SubnetMasthead({
           label="Deregistrations"
           value={formatNumber(dereg?.deregistrations)}
           hint={`${formatNumber(dereg?.distinct_deregistered_hotkeys ?? 0)} hotkeys`}
-          full="Neuron-deregistration (eviction) events on this subnet over the trailing 30-day window."
+          full={`Neuron-deregistration (eviction) events on this subnet over the trailing ${dereg?.window ?? "30d"} window.`}
           updatedAt={dereg?.observed_at ?? null}
           windowLabel={dereg?.window ?? "30d"}
         />
