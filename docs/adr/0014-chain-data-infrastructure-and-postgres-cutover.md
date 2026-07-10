@@ -247,23 +247,29 @@ silently drift from each other.
    quantify what step 4's accepted gap covers, now that it's no longer a
    precondition for the flip — do this to inform step 7's backfill scope,
    not to re-gate a decision already made.
-10. 🔲 **neurons/neuron_daily write path built (#4771), not yet flipped.**
-    Unlike blocks/extrinsics/account_events, this tier had NO Postgres
-    equivalent at all before #4771 — `workers/data-api.mjs` gained one write
-    route (`POST /api/v1/internal/neurons-sync`, `handleNeuronsSync`) that
-    upserts both tables from the same daily `refresh-metagraph.yml` fetch,
-    alongside (not replacing) the existing R2-stage-to-D1 path. Deliberately
-    NOT a fifth dedicated Worker: it targets the IDENTICAL Postgres instance
+10. ✅ **neurons/neuron_daily write path built + flipped (#4771).** Unlike
+    blocks/extrinsics/account_events, this tier had NO Postgres equivalent at
+    all before #4771 — `workers/data-api.mjs` gained one write route
+    (`POST /api/v1/internal/neurons-sync`, `handleNeuronsSync`) that upserts
+    both tables from the same daily `refresh-metagraph.yml` fetch, alongside
+    (not replacing) the existing R2-stage-to-D1 path. Deliberately NOT a
+    fifth dedicated Worker: it targets the IDENTICAL Postgres instance
     `data-api.mjs` already reads from, unlike `registry-sync-api.mjs`'s split
     (a genuinely separate database, isolated on purpose) — splitting read and
     write for the same database would have added a whole Worker/config/
     binding/secret for zero bundle-budget benefit.
-    `METAGRAPH_NEURONS_SOURCE` gates a new read tier the same way the other
-    three flags do. Left at `"d1"` until a live parity pass proves the two
-    tiers agree — this step is intentionally NOT bundled into item 4's
-    relaxed-gate decision, since that item was about accepting known gaps in
-    already-populated Postgres data, not about flipping a tier with zero
-    verification history yet.
+    A real live-cron run hit a genuine bug the first time (a bound JS array
+    serializing incorrectly under this Worker's `fetch_types: false`
+    Hyperdrive setting — fixed by binding scalars via `sql.unsafe` instead;
+    caught via `wrangler tail` against a real production payload, not a
+    guess). Once fixed, `METAGRAPH_NEURONS_SOURCE` flipped to `"postgres"`
+    the same day: the daily cron synced 30,323 rows into a Postgres that
+    started completely empty, and a sampled row (netuid=8, uid=0) matched D1
+    field-for-field, including full-precision decimals and the 0/1-to-boolean
+    mapping. Stronger than the other three tiers' first (reverted) attempt,
+    which compared a row present in BOTH stores and couldn't distinguish
+    genuine Postgres serving from a silently masked D1 fallback (#4686) —
+    here Postgres had no prior data at all, so a correct row is unambiguous.
 
 ## Links/resources
 
