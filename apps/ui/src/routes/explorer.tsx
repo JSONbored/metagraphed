@@ -13,6 +13,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
+import { Donut } from "@/components/metagraphed/charts/donut";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -169,9 +170,19 @@ function MiniSeries({
   );
 }
 
+const CALL_MIX_PALETTE = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+];
+
 /**
- * Call mix — the top modules as a BarMini, plus a click-through drill-down into
- * the selected module's call_function rows (where the grouping exposes them).
+ * Call mix — the top modules as a shared Donut with a clickable legend, plus a
+ * click-through drill-down into the selected module's call_function rows (where
+ * the grouping exposes them).
  */
 function CallMixSection({ calls }: { calls: ChainCalls }) {
   const modules = calls.calls.slice(0, 10);
@@ -181,58 +192,67 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   const functions = calls.calls.filter(
     (c) => c.call_function != null && (selected == null || c.call_module === selected),
   );
+  const moduleSegs = modules.map((c, i) => ({
+    label: c.call_module,
+    value: c.count,
+    color: CALL_MIX_PALETTE[i % CALL_MIX_PALETTE.length]!,
+  }));
 
   return (
     <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Call mix
         </h2>
-        <span className="font-mono text-[11px] text-ink-muted">
-          {formatNumber(calls.total_extrinsics)} calls
-        </span>
       </div>
       {modules.length > 0 ? (
         <div className="space-y-4">
-          <ul className="space-y-1.5">
-            {modules.map((c) => {
-              const cap = Math.max(1, ...modules.map((m) => m.count));
-              const pct = Math.max(2, Math.round((c.count / cap) * 100));
-              const active = selected === c.call_module;
-              return (
-                <li key={c.call_module}>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(active ? null : c.call_module)}
-                    className="grid w-full grid-cols-[7rem_1fr_auto] items-center gap-2 text-left"
-                    aria-pressed={active}
-                  >
-                    <span
-                      className={
-                        active
-                          ? "truncate font-mono text-[10px] uppercase tracking-widest text-accent"
-                          : "truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-                      }
+          {/* Donut + clickable legend. Stacks (donut over full-width legend) on
+              mobile so nothing crowds at 375px; side-by-side from sm up, matching
+              providers.index.tsx's ProviderOverview. */}
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+            {/* Overlay the full total ourselves (donut.tsx's built-in centerLabel
+                is a fixed 16px string) so the exact count shows at a slightly
+                smaller font that fits the larger ring cleanly. */}
+            <div className="relative shrink-0" style={{ width: 148, height: 148 }}>
+              <Donut segments={moduleSegs} size={148} strokeWidth={15} />
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-display text-sm font-semibold leading-none tabular-nums text-ink-strong">
+                  {formatNumber(calls.total_extrinsics)}
+                </span>
+                <span className="mt-1 font-mono text-[9px] uppercase tracking-widest text-ink-muted">
+                  calls
+                </span>
+              </div>
+            </div>
+            <ul className="w-full space-y-0.5 sm:min-w-0 sm:flex-1">
+              {moduleSegs.map((s) => {
+                const active = selected === s.label;
+                return (
+                  <li key={s.label}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(active ? null : s.label)}
+                      aria-pressed={active}
+                      className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left font-mono text-[10px] uppercase tracking-widest hover:bg-surface/60"
                     >
-                      {c.call_module}
-                    </span>
-                    <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
                       <span
-                        className="absolute inset-y-0 left-0 rounded-full"
-                        style={{
-                          width: `${pct}%`,
-                          background: active ? "var(--accent)" : "var(--chart-1)",
-                        }}
+                        aria-hidden
+                        className="inline-block size-2 shrink-0 rounded-sm"
+                        style={{ background: active ? "var(--accent)" : s.color }}
                       />
-                    </span>
-                    <span className="font-mono text-[10px] tabular-nums text-ink-strong">
-                      {formatNumber(c.count)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                      <span className={active ? "truncate text-accent" : "truncate text-ink"}>
+                        {s.label}
+                      </span>
+                      <span className="ml-auto shrink-0 tabular-nums text-ink-strong">
+                        {formatNumber(s.value)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
 
           {functions.length > 0 ? (
             <div className="border-t border-border pt-3">
