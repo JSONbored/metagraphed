@@ -3109,7 +3109,8 @@ export const API_ROUTES = [
       { name: "call_function", schema: { type: "string" } },
       {
         name: "call_hash",
-        description: "Requires call_module so the decoded call-args JSON scan stays scoped.",
+        description:
+          "Requires call_module so the decoded call-args JSON scan stays scoped.",
         schema: { type: "string", pattern: "^0x[0-9a-fA-F]{64}$" },
       },
       { name: "success", schema: { type: "string", enum: ["true", "false"] } },
