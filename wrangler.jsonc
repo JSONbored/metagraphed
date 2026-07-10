@@ -90,6 +90,25 @@
     // as a roadmap of sub-issues (see the parent issue linked from #4669) --
     // do not flip this flag until that roadmap's normalizer work lands and a
     // real parity harness (not a single-extrinsic spot check) passes clean.
+    //
+    // Progress on that roadmap (src/scale-normalize.mjs, src/ss58.mjs,
+    // src/bytes.mjs, src/postgres-call-args.mjs -- all chained inside
+    // formatExtrinsic, #4690/#4691): Option<T>/C-enum/newtype-scalar shapes,
+    // and indexer-rs's nested-RuntimeCall enum-tree encoding (Proxy.proxy,
+    // Utility.batch/batch_all, Multisig.as_multi wrapping Sudo/AdminUtils --
+    // confirmed to arbitrary depth against real production extrinsics), are
+    // now reconstructed server-side into D1's {call_module, call_function,
+    // call_args} shape, with AccountId32/MultiAddress/byte-blob fields WITHIN
+    // each reconstructed nested call decoded to SS58/hex. Multisig.as_multi's
+    // nested call_hash stays permanently absent (indexer-rs has no equivalent
+    // of fetch-events.py's Python-side re-encode-and-hash step) -- accepted,
+    // not a bug. Still open: a TOP-LEVEL (non-nested) call's own AccountId32/
+    // byte-blob fields -- e.g. a bare Balances.transfer's dest, or Multisig's
+    // own other_signatories/max_weight siblings -- are not yet decoded at
+    // that outer layer, only within a reconstructed nested call; Ethereum/EVM
+    // U256+H160 shapes (#4692); BTreeSet/u64/u128-precision edge cases
+    // (#4693); and MCP's extrinsics tools are still D1-only (#4694). Do not
+    // flip until those land and the parity harness (#4695) passes clean.
     "METAGRAPH_BLOCKS_SOURCE": "d1",
     "METAGRAPH_EXTRINSICS_SOURCE": "d1",
   },

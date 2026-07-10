@@ -12,6 +12,7 @@ import {
 } from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { normalizePostgresValue } from "./scale-normalize.mjs";
+import { decodePostgresCallArgs } from "./postgres-call-args.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
 // Postgres cold tier (#1519) ships. pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
@@ -157,10 +158,16 @@ export function formatExtrinsic(row) {
   let call_args = null;
   if (row.call_args != null) {
     try {
-      // normalizePostgresValue (#4690) is a no-op on D1's own call_args shape
-      // (an array of {name,type,value} descriptors) -- safe to apply
-      // unconditionally regardless of which serving tier produced this row.
-      call_args = normalizePostgresValue(JSON.parse(row.call_args));
+      // decodePostgresCallArgs (#4691) MUST run before normalizePostgresValue
+      // (#4690) -- it needs the pristine raw nested-call shape to reconstruct
+      // correctly (see its own file header for why running it second would
+      // silently lose a genuinely zero-argument nested call). Both are
+      // no-ops on D1's own call_args shape (an array of {name,type,value}
+      // descriptors) -- safe to apply unconditionally regardless of which
+      // serving tier produced this row.
+      call_args = normalizePostgresValue(
+        decodePostgresCallArgs(JSON.parse(row.call_args)),
+      );
     } catch {
       call_args = null;
     }
