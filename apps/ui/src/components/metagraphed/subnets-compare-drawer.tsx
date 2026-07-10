@@ -7,6 +7,12 @@ import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
 import { HealthPill, CurationChip } from "./chips";
+import {
+  COMPARE_GRID_OUTER_CLASS,
+  COMPARE_SUBNET_COLUMN_CLASS,
+  COMPARE_TABLE_CLASS,
+  COMPARE_TABLE_SCROLL_CLASS,
+} from "./subnets-compare-drawer-layout";
 
 /**
  * Floating bottom dock + expandable side-by-side compare drawer for selected
@@ -226,42 +232,47 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
   }
 
   return (
-    <div className="border-t border-border max-h-[55vh] overflow-auto">
-      <table className="w-full text-[12px]">
-        <thead className="sticky top-0 bg-card/95 backdrop-blur z-[1]">
-          <tr>
-            <th className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-muted w-40">
-              Metric
-            </th>
-            {netuids.map((n) => (
-              <th
-                key={n}
-                className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-strong"
-              >
-                SN{n}
+    <div className={COMPARE_GRID_OUTER_CLASS}>
+      <div className={COMPARE_TABLE_SCROLL_CLASS}>
+        <table className={COMPARE_TABLE_CLASS}>
+          <thead className="sticky top-0 bg-card/95 backdrop-blur z-[1]">
+            <tr>
+              <th className="sticky left-0 z-[2] bg-card/95 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-muted w-40">
+                Metric
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((row) => (
-            <tr key={row.label}>
-              <td className="px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted bg-paper/30">
-                {row.label}
-              </td>
               {netuids.map((n) => (
-                <td key={n} className="px-3 py-2">
-                  {isPending ? (
-                    <span className="inline-block h-3 w-12 animate-pulse rounded bg-border/60" />
-                  ) : (
-                    row.render(n)
+                <th
+                  key={n}
+                  className={classNames(
+                    "px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-strong",
+                    COMPARE_SUBNET_COLUMN_CLASS,
                   )}
-                </td>
+                >
+                  SN{n}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row) => (
+              <tr key={row.label}>
+                <td className="sticky left-0 z-[1] bg-paper/95 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                  {row.label}
+                </td>
+                {netuids.map((n) => (
+                  <td key={n} className={classNames("px-3 py-2", COMPARE_SUBNET_COLUMN_CLASS)}>
+                    {isPending ? (
+                      <span className="inline-block h-3 w-12 animate-pulse rounded bg-border/60" />
+                    ) : (
+                      row.render(n)
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

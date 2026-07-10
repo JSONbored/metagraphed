@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "data": {
+    "dimensions": ["structure", "economics", "health"],
+    "requested_netuids": [1, 8, 19, 64],
+    "subnets": [
+      {
+        "netuid": 1,
+        "name": "Apex",
+        "found": true,
+        "structure": {
+          "surface_count": 12,
+          "operational_interface_count": 8,
+          "completeness_score": 88
+        },
+        "economics": { "validator_count": 8, "miner_count": 240 },
+        "health": { "surface_count": 12, "ok_count": 11 }
+      },
+      {
+        "netuid": 8,
+        "name": "Proprietary Trading Network",
+        "found": true,
+        "structure": {
+          "surface_count": 9,
+          "operational_interface_count": 6,
+          "completeness_score": 72
+        },
+        "economics": { "validator_count": 6, "miner_count": 180 },
+        "health": { "surface_count": 9, "ok_count": 8 }
+      },
+      {
+        "netuid": 19,
+        "name": "Nineteen.ai",
+        "found": true,
+        "structure": {
+          "surface_count": 7,
+          "operational_interface_count": 5,
+          "completeness_score": 65
+        },
+        "economics": { "validator_count": 5, "miner_count": 120 },
+        "health": { "surface_count": 7, "ok_count": 6 }
+      },
+      {
+        "netuid": 64,
+        "name": "Chutes",
+        "found": true,
+        "structure": {
+          "surface_count": 15,
+          "operational_interface_count": 10,
+          "completeness_score": 91
+        },
+        "economics": { "validator_count": 8, "miner_count": 248 },
+        "health": { "surface_count": 15, "ok_count": 14 }
+      }
+    ]
+  },
+  "meta": {}
+}
