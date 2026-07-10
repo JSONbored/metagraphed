@@ -1184,40 +1184,42 @@ function ExplorerDashboard() {
           </span>
         </div>
         {stakeTransfers.subnets.length > 0 ? (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Transfers</th>
-                <th className={`${TH} text-right`}>Distinct senders</th>
-                <th className={`${TH} text-right`}>Transfers per sender</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {stakeTransfers.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                    >
-                      SN{s.netuid}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {formatNumber(s.transfers)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {formatNumber(s.distinct_senders)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Subnet</th>
+                  <th className={`${TH} text-right`}>Transfers</th>
+                  <th className={`${TH} text-right`}>Distinct senders</th>
+                  <th className={`${TH} text-right`}>Transfers per sender</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {stakeTransfers.subnets.map((s) => (
+                  <tr key={s.netuid} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                      >
+                        SN{s.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(s.transfers)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(s.distinct_senders)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <EmptyState title="No stake transfers in this window yet." />
         )}
