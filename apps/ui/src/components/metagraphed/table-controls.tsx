@@ -92,6 +92,7 @@ export function SelectFilter({
   options,
   label,
   allowEmpty = true,
+  fill = false,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -100,16 +101,25 @@ export function SelectFilter({
   // When false, omit the empty "all" option — for always-selected controls like
   // a sort key where a blank value is not meaningful.
   allowEmpty?: boolean;
+  // When true, the control stretches to fill its flex track (label stays fixed,
+  // the select grows) so a row of filters can be justified edge-to-edge.
+  fill?: boolean;
 }) {
   return (
-    <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
+    <label
+      className={`items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs ${
+        fill ? "flex w-full min-w-0" : "inline-flex"
+      }`}
+    >
       <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
         {label}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={`bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          fill ? "min-w-0 flex-1" : ""
+        }`}
       >
         {allowEmpty ? <option value="">all</option> : null}
         {options.map((o) => (
