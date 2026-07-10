@@ -6,6 +6,7 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { TableState } from "@/components/metagraphed/table-state";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
+import { FreshnessBadge } from "@/components/metagraphed/freshness-badge";
 import { classNames } from "@/lib/metagraphed/format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
@@ -64,6 +65,13 @@ export function MetagraphTableLoader({
 
   return (
     <div className="space-y-4">
+      {/* #3381: tier/freshness label for the loaded view — this metagraph is a
+          periodic ("daily rollup") capture, not live block data, so surface that
+          alongside the snapshot's generated-at stamp (previously shown only on the
+          empty state). */}
+      <div className="flex items-center justify-end">
+        <FreshnessBadge at={meta?.generated_at} tier="daily" />
+      </div>
       {/* KPI strip — neuron + validator counts and the dominant-UID stake share. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatTile
