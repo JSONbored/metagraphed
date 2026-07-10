@@ -7050,6 +7050,45 @@ export const reviewEnrichmentEvidenceQuery = () =>
     staleTime: STALE_LONG,
   });
 
+// #3356: network-wide priority-scored gap board (GET /api/v1/review/gaps), a
+// distinct backend surface from the interface-facet /api/v1/gaps list and from
+// the enrichment-queue/adapter-candidate sections. Same fetchList + inline
+// normalize idiom as reviewEnrichmentEvidenceQuery above.
+export const reviewGapPrioritiesQuery = () =>
+  queryOptions({
+    queryKey: k("review-gap-priorities"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
+        "/api/v1/review/gaps",
+        "priorities",
+        undefined,
+        signal,
+      );
+      // API rows: { netuid, name, curation_level, priority_score, missing_kinds,
+      // surface_count, candidate_count, verified_candidate_count, ... }.
+      const rows = res.data.map((r) => ({
+        id: String(r.netuid ?? (r.name as string) ?? ""),
+        netuid: r.netuid as number | undefined,
+        name: r.name as string | undefined,
+        curationLevel: r.curation_level as string | undefined,
+        missingKinds: Array.isArray(r.missing_kinds) ? (r.missing_kinds as string[]) : [],
+        surfaceCount: typeof r.surface_count === "number" ? (r.surface_count as number) : undefined,
+        candidateCount:
+          typeof r.candidate_count === "number" ? (r.candidate_count as number) : undefined,
+        verifiedCandidateCount:
+          typeof r.verified_candidate_count === "number"
+            ? (r.verified_candidate_count as number)
+            : undefined,
+        priority:
+          typeof r.priority_score === "number"
+            ? String(Math.round(r.priority_score as number))
+            : undefined,
+      }));
+      return { ...res, data: rows };
+    },
+    staleTime: STALE_LONG,
+  });
+
 function normalizeSchema(raw: unknown): SchemaInfo {
   if (!raw || typeof raw !== "object") return raw as SchemaInfo;
   const s = raw as Record<string, unknown>;

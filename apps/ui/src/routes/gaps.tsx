@@ -31,6 +31,7 @@ import {
   reviewEnrichmentQueueQuery,
   reviewEnrichmentTargetsQuery,
   reviewEnrichmentEvidenceQuery,
+  reviewGapPrioritiesQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { GITHUB_REPO } from "@/lib/metagraphed/config";
@@ -229,6 +230,19 @@ function GapsPage() {
             </Suspense>
           </QueryErrorBoundary>
         </PageSection>
+
+        <PageSection
+          id="gap-priorities"
+          eyebrow="Priorities"
+          title="Gap priorities"
+          description="Network-wide, priority-scored curation board — the subnets with the highest-value missing surfaces first."
+        >
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+              <GapPriorityList />
+            </Suspense>
+          </QueryErrorBoundary>
+        </PageSection>
       </main>
 
       <ApiSourceFooter
@@ -239,6 +253,7 @@ function GapsPage() {
           "/api/v1/review/enrichment-queue",
           "/api/v1/review/enrichment-targets",
           "/api/v1/review/enrichment-evidence",
+          "/api/v1/review/gaps",
         ]}
       />
     </AppShell>
@@ -1091,6 +1106,70 @@ function EnrichmentTargets() {
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px]">{r.priority ?? "—"}</td>
                 <td className="px-4 py-2.5 text-[12px] text-ink-muted">{r.note ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// #3356: network-wide priority-scored gap board, sourced from /api/v1/review/gaps.
+// Same table idiom as EnrichmentEvidence — highest-value missing surfaces first.
+function GapPriorityList() {
+  const { data } = useSuspenseQuery(reviewGapPrioritiesQuery());
+  const meta = data.meta;
+  const rows = data.data ?? [];
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No gap priorities"
+        description="No priority-scored curation gaps are outstanding right now."
+        cta={{ label: "Browse registry", href: "/subnets" }}
+        generatedAt={meta?.generated_at}
+      />
+    );
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-surface-2/60 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <tr>
+              <th className="px-3 py-2.5 text-left sm:px-4">Netuid</th>
+              <th className="px-3 py-2.5 text-left sm:px-4">Name</th>
+              <th className="hidden px-3 py-2.5 text-left sm:table-cell sm:px-4">Curation</th>
+              <th className="hidden px-3 py-2.5 text-left md:table-cell sm:px-4">Missing kinds</th>
+              <th className="px-3 py-2.5 text-right sm:px-4">Priority</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((r) => (
+              <tr key={r.id} className="mg-row-hover">
+                <td className="px-3 py-2.5 font-mono text-[11px] sm:px-4">
+                  {r.netuid != null ? (
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: r.netuid }}
+                      className="hover:text-accent"
+                    >
+                      SN{r.netuid}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-[12px] text-ink-strong sm:px-4">{r.name ?? "—"}</td>
+                <td className="hidden px-3 py-2.5 font-mono text-[11px] text-ink-muted sm:table-cell sm:px-4">
+                  {r.curationLevel ?? "—"}
+                </td>
+                <td className="hidden px-3 py-2.5 text-[12px] text-ink-muted md:table-cell sm:px-4">
+                  {r.missingKinds.length > 0 ? r.missingKinds.join(", ") : "—"}
+                </td>
+                <td className="px-3 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-strong sm:px-4">
+                  {r.priority ?? "—"}
+                </td>
               </tr>
             ))}
           </tbody>
