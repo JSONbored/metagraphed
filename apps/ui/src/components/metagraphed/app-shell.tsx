@@ -150,7 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <Link
                       to="/settings"
                       aria-label="Developer settings"
-                      className="hidden md:inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-7 min-w-7 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                      className="hidden md:inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
                     >
                       <Webhook className="size-3.5" aria-hidden="true" />
                     </Link>
