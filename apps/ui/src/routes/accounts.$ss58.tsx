@@ -1373,7 +1373,7 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
       <AccountFeedSectionSkeleton
         id="teardown"
         title="Teardown activity"
-        subtitle="Axon endpoint removals (AxonInfoRemoved) for this account over the trailing 30-day window."
+        subtitle={`Axon endpoint removals (AxonInfoRemoved) for this account over the trailing ${windowLabel} window.`}
       />
     );
   }
@@ -1383,7 +1383,7 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
       <SectionAnchor
         id="teardown"
         title="Teardown activity"
-        subtitle="Axon endpoint removals (AxonInfoRemoved) for this account over the trailing 30-day window."
+        subtitle={`Axon endpoint removals (AxonInfoRemoved) for this account over the trailing ${windowLabel} window.`}
         tone="accent"
       >
         <TableState
@@ -1405,7 +1405,7 @@ function AccountTeardownActivitySection({ ss58 }: { ss58: string }) {
     <SectionAnchor
       id="teardown"
       title="Teardown activity"
-      subtitle="Axon endpoint removals (AxonInfoRemoved) for this account over the trailing 30-day window."
+      subtitle={`Axon endpoint removals (AxonInfoRemoved) for this account over the trailing ${windowLabel} window.`}
       tone="accent"
       info="The account-level companion to subnet axon-removal activity — counts how often this hotkey removed an announced axon endpoint, and on how many distinct subnets."
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
@@ -1446,7 +1446,7 @@ function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
       <AccountFeedSectionSkeleton
         id="registrations"
         title="Registration activity"
-        subtitle="Neuron registrations (NeuronRegistered) for this account over the trailing 30-day window."
+        subtitle={`Neuron registrations (NeuronRegistered) for this account over the trailing ${windowLabel} window.`}
       />
     );
   }
@@ -1456,7 +1456,7 @@ function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
       <SectionAnchor
         id="registrations"
         title="Registration activity"
-        subtitle="Neuron registrations (NeuronRegistered) for this account over the trailing 30-day window."
+        subtitle={`Neuron registrations (NeuronRegistered) for this account over the trailing ${windowLabel} window.`}
         tone="accent"
       >
         <TableState
@@ -1478,7 +1478,7 @@ function AccountRegistrationActivitySection({ ss58 }: { ss58: string }) {
     <SectionAnchor
       id="registrations"
       title="Registration activity"
-      subtitle="Neuron registrations (NeuronRegistered) for this account over the trailing 30-day window."
+      subtitle={`Neuron registrations (NeuronRegistered) for this account over the trailing ${windowLabel} window.`}
       tone="accent"
       info="The account-level companion to subnet registration activity — counts how often this hotkey was registered into a subnet, and on how many distinct subnets."
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
@@ -1514,7 +1514,7 @@ function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
       <AccountFeedSectionSkeleton
         id="deregistrations"
         title="Deregistration activity"
-        subtitle="Neuron deregistrations (NeuronDeregistered) for this account over the trailing 30-day window."
+        subtitle={`Neuron deregistrations (NeuronDeregistered) for this account over the trailing ${windowLabel} window.`}
       />
     );
   }
@@ -1524,7 +1524,7 @@ function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
       <SectionAnchor
         id="deregistrations"
         title="Deregistration activity"
-        subtitle="Neuron deregistrations (NeuronDeregistered) for this account over the trailing 30-day window."
+        subtitle={`Neuron deregistrations (NeuronDeregistered) for this account over the trailing ${windowLabel} window.`}
         tone="accent"
       >
         <TableState
@@ -1546,7 +1546,7 @@ function AccountDeregistrationActivitySection({ ss58 }: { ss58: string }) {
     <SectionAnchor
       id="deregistrations"
       title="Deregistration activity"
-      subtitle="Neuron deregistrations (NeuronDeregistered) for this account over the trailing 30-day window."
+      subtitle={`Neuron deregistrations (NeuronDeregistered) for this account over the trailing ${windowLabel} window.`}
       tone="accent"
       info="The account-level companion to subnet deregistration activity — counts how often this hotkey was deregistered (evicted) from a subnet, and on how many distinct subnets."
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
@@ -1590,7 +1590,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
       <AccountFeedSectionSkeleton
         id="weight-setting"
         title="Weight-setting activity"
-        subtitle="Validator WeightsSet events for this account over the trailing 30-day window."
+        subtitle={`Validator WeightsSet events for this account over the trailing ${windowLabel} window.`}
       />
     );
   }
@@ -1600,7 +1600,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
       <SectionAnchor
         id="weight-setting"
         title="Weight-setting activity"
-        subtitle="Validator WeightsSet events for this account over the trailing 30-day window."
+        subtitle={`Validator WeightsSet events for this account over the trailing ${windowLabel} window.`}
         tone="accent"
       >
         <TableState
@@ -1618,7 +1618,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
     <SectionAnchor
       id="weight-setting"
       title="Weight-setting activity"
-      subtitle="Validator WeightsSet events for this account over the trailing 30-day window — per-subnet breakdown when this hotkey submits weights."
+      subtitle={`Validator WeightsSet events for this account over the trailing ${windowLabel} window — per-subnet breakdown when this hotkey submits weights.`}
       tone="accent"
       info="The account-level companion to subnet weight-setter leaderboards — keyed on the validator hotkey submitting its weight vector."
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
@@ -1708,7 +1708,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
       <AccountFeedSectionSkeleton
         id="endpoint-announcements"
         title="Endpoint announcements"
-        subtitle="Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing 30-day window."
+        subtitle={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
       />
     );
   }
@@ -1718,7 +1718,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
       <SectionAnchor
         id="endpoint-announcements"
         title="Endpoint announcements"
-        subtitle="Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing 30-day window."
+        subtitle={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
         tone="accent"
       >
         <TableState
@@ -1749,7 +1749,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
     <SectionAnchor
       id="endpoint-announcements"
       title="Endpoint announcements"
-      subtitle="Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing 30-day window."
+      subtitle={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
       tone="accent"
       info="The account-level companion to subnet serving + prometheus activity — counts how often this hotkey announced axon and Prometheus endpoints."
       right={<SectionBadge tone="accent">{windowLabel}</SectionBadge>}
