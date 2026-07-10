@@ -223,13 +223,19 @@ async function handleNeuronsSync(request, env) {
   }
 
   const rows = incoming.map(coerceNeuronSyncRow);
-  const netuids = [...new Set(rows.map((r) => r.netuid))];
-  let snapshotCapturedAt = 0;
+  // Per-netuid max captured_at, NOT one batch-wide value -- a global max would
+  // let one netuid's later capture prune rows this SAME request just upserted
+  // for a different, earlier-captured netuid in the same batch (the max would
+  // exceed that netuid's own captured_at, so its own just-written rows would
+  // satisfy `captured_at < max` and be deleted as if deregistered).
+  const netuidMaxCapturedAt = new Map();
   for (const row of rows) {
-    if (row.captured_at > snapshotCapturedAt) {
-      snapshotCapturedAt = row.captured_at;
-    }
+    const prev = netuidMaxCapturedAt.get(row.netuid) ?? 0;
+    if (row.captured_at > prev)
+      netuidMaxCapturedAt.set(row.netuid, row.captured_at);
   }
+  const netuids = [...netuidMaxCapturedAt.keys()];
+  const netuidThresholds = netuids.map((n) => netuidMaxCapturedAt.get(n));
 
   const sql = postgres(env.HYPERDRIVE.connectionString, {
     max: 5,
@@ -316,11 +322,18 @@ async function handleNeuronsSync(request, env) {
       // belong to. `netuids` is never empty here -- the earlier
       // `!incoming.length` check guarantees at least one row, and every row
       // has a netuid.
+      //
+      // unnest() zips netuids/netuidThresholds positionally into a per-netuid
+      // threshold table -- each netuid is only pruned against ITS OWN max
+      // captured_at, never another netuid's, closing the cross-netuid
+      // data-loss gap a single shared threshold would open.
       const pruned = await sql`
-          DELETE FROM neurons
-          WHERE netuid = ANY(${netuids})
-            AND captured_at < ${snapshotCapturedAt}
-          RETURNING netuid`;
+          DELETE FROM neurons n
+          USING unnest(${netuids}::int[], ${netuidThresholds}::bigint[])
+            AS batch(netuid, captured_at)
+          WHERE n.netuid = batch.netuid
+            AND n.captured_at < batch.captured_at
+          RETURNING n.netuid`;
 
       return writeJson({
         ok: true,

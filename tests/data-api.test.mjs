@@ -1005,10 +1005,9 @@ test("neurons-sync rejects a non-object row (400)", async () => {
 });
 
 test("neurons-sync rejects a row carrying an unknown column (400)", async () => {
-  const res = await postNeurons(
-    [neuronSyncRow({ unexpected_field: "nope" })],
-    { secret: NEURONS_SYNC_SECRET },
-  );
+  const res = await postNeurons([neuronSyncRow({ unexpected_field: "nope" })], {
+    secret: NEURONS_SYNC_SECRET,
+  });
   expect(res.status).toBe(400);
 });
 
@@ -1117,6 +1116,29 @@ test("neurons-sync scopes the deregistered-UID prune to only the netuids present
   const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
   expect(pruneCall.values[0]).toEqual(expect.arrayContaining([8, 9]));
   expect(pruneCall.values[0]).toHaveLength(2);
+});
+
+// REGRESSION (Gittensory Gate finding, 2026-07-10): the prune threshold must
+// be PER-NETUID, not one batch-wide max captured_at. A shared max let one
+// netuid's later capture prune rows THIS SAME REQUEST just upserted for a
+// different, earlier-captured netuid in the same batch (netuid 8's own rows,
+// captured_at=1000, would satisfy a shared `captured_at < 2000` threshold
+// driven by netuid 9's later capture and get wrongly deleted).
+test("neurons-sync prunes each netuid against its OWN max captured_at, not the batch-wide max", async () => {
+  await postNeurons(
+    [
+      neuronSyncRow({ netuid: 8, captured_at: 1000 }),
+      neuronSyncRow({ netuid: 9, uid: 1, captured_at: 2000 }),
+    ],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
+  const [netuids, thresholds] = pruneCall.values;
+  expect(netuids).toEqual(expect.arrayContaining([8, 9]));
+  // Each netuid's threshold must equal ITS OWN captured_at from this batch --
+  // never the other netuid's (which the old shared-max bug would have used).
+  expect(thresholds[netuids.indexOf(8)]).toBe(1000);
+  expect(thresholds[netuids.indexOf(9)]).toBe(2000);
 });
 
 test("neurons-sync reports deregistered_pruned from the DELETE's returned row count", async () => {
