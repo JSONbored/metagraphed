@@ -262,7 +262,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           icon={Clock}
           eyebrow="Last seen"
           value={<TimeAgo at={account.last_seen_at ?? undefined} />}
-          hint="chain-direct index"
+          hint="near-realtime · chain-direct index"
           className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
         />
       </div>
@@ -2183,7 +2183,7 @@ function AccountHeroAside({
           icon={Clock}
           label="First indexed"
           value={firstSeenAt ? <TimeAgo at={firstSeenAt} /> : "—"}
-          accent="chain-direct"
+          accent="near-realtime"
         />
       </div>
     </div>
