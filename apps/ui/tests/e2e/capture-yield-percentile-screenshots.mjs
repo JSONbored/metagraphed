@@ -1,5 +1,8 @@
 /**
- * Capture Yield tab percentile strip screenshots for #3934 PR table.
+ * Capture Yield tab page screenshots for #3934 PR table (Path C2 contract).
+ *
+ * Captures the fixed viewport (not fullPage, not element crops) after scrolling
+ * the Metagraph → Yield section into view so reviewers see what visitors see.
  *
  * Usage (with dev server running — pass its base URL explicitly):
  *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after node tests/e2e/capture-yield-percentile-screenshots.mjs
@@ -35,6 +38,9 @@ async function setTheme(page, theme) {
   }, theme);
 }
 
+/** Pixels above #yield to keep in frame (app header + sticky profile tabs). */
+const SCROLL_OFFSET_PX = 148;
+
 async function openYieldSection(page) {
   await page.goto(`${BASE_URL}${SUBNET_PATH}?tab=metagraph#yield`, {
     waitUntil: "networkidle",
@@ -43,22 +49,29 @@ async function openYieldSection(page) {
   await page.locator("#yield").waitFor({ state: "visible", timeout: 90_000 });
 
   const strip = page.getByLabel("Yield percentile distribution");
+  const legacyGrid = page.locator("#yield").getByText("p25", { exact: true }).first();
   try {
     await strip.waitFor({ state: "visible", timeout: 90_000 });
-    await strip.scrollIntoViewIfNeeded();
-    return strip;
   } catch {
-    // Pre-#3934 refactor: percentile Facts lived inline without aria-label.
-    const legacyGrid = page.locator("#yield").getByText("p25", { exact: true }).first();
     await legacyGrid.waitFor({ state: "visible", timeout: 30_000 });
-    const card = legacyGrid.locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
-    await card.scrollIntoViewIfNeeded();
-    return card;
   }
+
+  // Scroll so the Yield section header + percentile row sit in the viewport with
+  // page chrome (masthead tabs) visible — what a visitor sees after deep-linking.
+  await page.evaluate((offset) => {
+    const section = document.getElementById("yield");
+    if (!section) return;
+    const top = section.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(0, top), behavior: "instant" });
+  }, SCROLL_OFFSET_PX);
+
+  // Let sticky tab paint settle after programmatic scroll.
+  await page.waitForTimeout(250);
 }
 
-async function captureStrip(page, target, filePath) {
-  await target.screenshot({ path: filePath });
+/** Fixed-viewport capture per SKILL.md Path C2 — never fullPage or element crop. */
+async function captureViewport(page, filePath) {
+  await page.screenshot({ path: filePath, fullPage: false });
 }
 
 async function installYieldFixture(page) {
@@ -97,9 +110,9 @@ async function main() {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     for (const theme of THEMES) {
       await setTheme(page, theme);
-      const strip = await openYieldSection(page);
+      await openYieldSection(page);
       const file = path.join(OUT_DIR, `${VARIANT}-${viewport.name}-${theme}.png`);
-      await captureStrip(page, strip, file);
+      await captureViewport(page, file);
       console.log(`wrote ${file}`);
     }
   }
