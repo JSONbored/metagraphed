@@ -50,6 +50,25 @@
         "https://github.com/talkheadai/talkhead-subnet/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/talkheadai/talkhead-executor/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-108-talkhead-openapi",
+      "kind": "openapi",
+      "name": "TalkHead API OpenAPI/Swagger docs",
+      "notes": "Public no-auth Swagger UI for the TalkHead API on api.talkhead.ai (the same first-party host as the registered /health subnet-api). The machine-readable OpenAPI 3.0 document is served inline via the Swagger UI init script (swagger-ui-init.js), enumerating the API paths and the /api/v1 server. The TalkHead Studio web app (studio.talkhead.ai, linked from the official website) uses this same api.talkhead.ai host as its backend.",
+      "provider": "talkhead",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://api.talkhead.ai/api/docs/swagger-ui-init.js",
+        "https://www.talkhead.ai/"
+      ],
+      "url": "https://api.talkhead.ai/api/docs/"
     }
   ],
   "source_repo": "https://github.com/talkheadai/talkhead-subnet",
