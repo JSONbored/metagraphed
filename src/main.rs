@@ -63,6 +63,7 @@ use anyhow::{Context, Result};
 use blake2::digest::consts::U32;
 use blake2::{Blake2b, Digest};
 use futures::stream::{self, StreamExt};
+use scale_info::{PortableRegistry, TypeDef, TypeDefPrimitive};
 use scale_value::{Composite, Primitive, Value, ValueDef};
 use subxt::config::substrate::DigestItem;
 use subxt::config::PolkadotConfig;
@@ -310,6 +311,118 @@ fn acct(v: &Value<()>) -> Option<String> {
 
 /// The ss58 authority accounts from a decoded Aura.Authorities value (a Vec, possibly
 /// wrapped in a BoundedVec/newtype). Each authority is an sr25519 32-byte public key.
+// ---------------------------------------------------------------------------
+// Call-arg type names (metagraphed#4724 D1/Postgres call_args parity)
+// ---------------------------------------------------------------------------
+
+/// Resolves a metadata type_id to a Rust-like display name, mirroring the
+/// `type` string D1's Python poller (substrate-interface) already produces
+/// for the same field via its own metadata walk -- e.g. "Vec<u16>",
+/// "BTreeSet<NetUid>", "NetUid". Structural collection/compound kinds
+/// (Sequence/Array/Tuple/Compact) are named from their SCALE shape directly,
+/// regardless of any path-based alias, so a downstream consumer can key off a
+/// reliable "Vec<"/"BTreeSet<"-style prefix even for a bounded/aliased
+/// wrapper whose own path segment might otherwise be missing or differ from
+/// D1's naming (see metagraphed's src/scale-normalize.mjs, which collapsed a
+/// single-element Vec<u16>/BTreeSet<NetUid> to a bare scalar for exactly this
+/// reason before that fix). Named types (structs, enums, chain type aliases
+/// like NetUid/TaoBalance/MechId, and bounded collections like BoundedVec/
+/// BTreeSet, which DO carry their own path) use the path's last segment, with
+/// any generic type_params resolved recursively.
+fn type_name(type_id: u32, registry: &PortableRegistry) -> String {
+    let Some(ty) = registry.resolve(type_id) else {
+        return format!("Unknown<{type_id}>");
+    };
+    // Every UntrackedSymbol<TypeId> below (type_param/ty/tuple element) is an
+    // opaque wrapper around the same u32 index resolve() takes -- .id()
+    // unwraps it. Trips easily: PortableForm::Type is UntrackedSymbol<TypeId>,
+    // NOT a bare u32, despite PortableRegistry::resolve()'s OWN argument
+    // being a plain u32 (confirmed against scale-info 2.11.6's actual source,
+    // not assumed).
+    match &ty.type_def {
+        TypeDef::Sequence(seq) => {
+            return format!("Vec<{}>", type_name(seq.type_param.id, registry))
+        }
+        TypeDef::Array(arr) => {
+            return format!("[{}; {}]", type_name(arr.type_param.id, registry), arr.len)
+        }
+        TypeDef::Tuple(tup) => {
+            let parts: Vec<String> = tup
+                .fields
+                .iter()
+                .map(|id| type_name(id.id, registry))
+                .collect();
+            return format!("({})", parts.join(", "));
+        }
+        TypeDef::Compact(c) => {
+            return format!("Compact<{}>", type_name(c.type_param.id, registry))
+        }
+        TypeDef::Primitive(p) => return primitive_name(p).to_string(),
+        _ => {}
+    }
+    let ident = ty.path.ident().unwrap_or_else(|| "Unknown".to_string());
+    if ty.type_params.is_empty() {
+        ident
+    } else {
+        let parts: Vec<String> = ty
+            .type_params
+            .iter()
+            .map(|p| {
+                p.ty
+                    .map(|id| type_name(id.id, registry))
+                    .unwrap_or_else(|| "_".to_string())
+            })
+            .collect();
+        format!("{ident}<{}>", parts.join(", "))
+    }
+}
+
+fn primitive_name(p: &TypeDefPrimitive) -> &'static str {
+    match p {
+        TypeDefPrimitive::Bool => "bool",
+        TypeDefPrimitive::Char => "char",
+        TypeDefPrimitive::Str => "str",
+        TypeDefPrimitive::U8 => "u8",
+        TypeDefPrimitive::U16 => "u16",
+        TypeDefPrimitive::U32 => "u32",
+        TypeDefPrimitive::U64 => "u64",
+        TypeDefPrimitive::U128 => "u128",
+        TypeDefPrimitive::U256 => "u256",
+        TypeDefPrimitive::I8 => "i8",
+        TypeDefPrimitive::I16 => "i16",
+        TypeDefPrimitive::I32 => "i32",
+        TypeDefPrimitive::I64 => "i64",
+        TypeDefPrimitive::I128 => "i128",
+        TypeDefPrimitive::I256 => "i256",
+    }
+}
+
+/// Builds D1-shaped call_args JSON -- `[{name, type, value}, ...]` -- from an
+/// extrinsic's already-decoded (name, type_id, value) field triples (see
+/// `ExtrinsicCallDataField`/`iter_call_data_fields` at the call sites below,
+/// which retain each field's type_id instead of decoding the whole call into
+/// one type-erased `Value<()>` tree the way this used to work). This is the
+/// #4724 fix: previously call_args was `serde_json::to_string()`-dumped
+/// straight from a type-erased Value, giving indexer-rs's Postgres rows zero
+/// type information for the Worker's serving layer to reconcile against.
+fn call_args_json_from_fields(
+    fields: Vec<(String, u32, Value<()>)>,
+    registry: &PortableRegistry,
+) -> serde_json::Value {
+    serde_json::Value::Array(
+        fields
+            .into_iter()
+            .map(|(name, type_id, value)| {
+                serde_json::json!({
+                    "name": name,
+                    "type": type_name(type_id, registry),
+                    "value": serde_json::to_value(&value).unwrap_or(serde_json::Value::Null),
+                })
+            })
+            .collect(),
+    )
+}
+
 fn authority_accounts(v: &Value<()>) -> Vec<String> {
     let top = ordered_fields(v);
     // Descend one level through a BoundedVec/newtype wrapper if the single child
@@ -679,11 +792,17 @@ async fn block_timestamp(api: &Api, height: u64) -> Result<i64> {
     for ext in extrinsics.iter() {
         let ext = ext.context("extrinsic iter (timestamp lookup)")?;
         if ext.pallet_name() == "Timestamp" && ext.call_name() == "set" {
-            if let Some(v) = ext.decode_call_data_fields_unchecked_as::<Value<()>>().ok() {
-                let f = ordered_fields(&v);
-                if let Some(ms) = nth(&f, 0).and_then(int_of) {
-                    return Ok(ms as i64);
-                }
+            // Timestamp.set has exactly one field ("now") -- decode it
+            // directly via the per-field iterator (metagraphed#4724) rather
+            // than the whole-call Value<()> tree; int_of still unwraps a
+            // single-field newtype composite the same way either path would.
+            if let Some(ms) = ext
+                .iter_call_data_fields()
+                .next()
+                .and_then(|f| f.decode_as::<Value<()>>().ok())
+                .and_then(|v| int_of(&v))
+            {
+                return Ok(ms as i64);
             }
         }
     }
@@ -695,6 +814,10 @@ async fn decode_block(api: &Api, height: u64, head: u64) -> Result<DecodedBlock>
     let block_hash = at.block_hash();
     let spec_version = at.spec_version() as i64;
     let header = at.block_header().await.context("header")?;
+    // Borrowed for the lifetime of `at` -- reused for every extrinsic's
+    // call_args type resolution below (metagraphed#4724), no per-field or
+    // per-extrinsic metadata re-fetch.
+    let registry = at.metadata_ref().types();
 
     // --- events: decode all into DecEvent (index, pallet, variant, phase, fields)
     let events = at.events().fetch().await.context("events.fetch")?;
@@ -762,19 +885,29 @@ async fn decode_block(api: &Api, height: u64, head: u64) -> Result<DecodedBlock>
                 None
             }
         });
-        let call_args_value = ext.decode_call_data_fields_unchecked_as::<Value<()>>().ok();
+        // Per-field iterator (metagraphed#4724) -- retains each field's own
+        // type_id (via ExtrinsicCallDataField) instead of decoding the whole
+        // call into one type-erased Value<()> tree, so call_args_json below
+        // can carry a {name, type, value} triple per field like D1's own
+        // call_args shape, rather than zero type information.
+        let call_args_fields: Vec<(String, u32, Value<()>)> = ext
+            .iter_call_data_fields()
+            .filter_map(|f| {
+                let v: Value<()> = f.decode_as().ok()?;
+                Some((f.name().to_string(), f.type_id(), v))
+            })
+            .collect();
         if module == "Timestamp" && function == "set" {
-            if let Some(v) = &call_args_value {
-                let f = ordered_fields(v);
-                if let Some(ms) = nth(&f, 0).and_then(int_of) {
-                    observed_at = Some(ms as i64);
-                }
+            if let Some(ms) = call_args_fields.first().and_then(|(_, _, v)| int_of(v)) {
+                observed_at = Some(ms as i64);
             }
         }
-        let call_args_json = call_args_value
-            .as_ref()
-            .and_then(|v| serde_json::to_string(v).ok())
-            .map(strip_nul);
+        let call_args_json = serde_json::to_string(&call_args_json_from_fields(
+            call_args_fields,
+            registry,
+        ))
+        .ok()
+        .map(strip_nul);
         decoded_extr.push((index, module, function, Some(xhash), signer, call_args_json));
     }
     let extrinsic_count = decoded_extr.len() as i64;
@@ -1196,6 +1329,13 @@ fn block_to_json(d: &DecodedBlock, height: u64) -> serde_json::Value {
                 "success": match x.success { None => serde_json::Value::Null, Some(b) => serde_json::Value::Bool(b) },
                 "fee_tao": jnum(&x.fee_tao),
                 "tip_tao": jnum(&x.tip_tao),
+                // Included despite diff.py's SKIP_EXTR (call_args is
+                // display-only, its JSON shape isn't cross-checked against
+                // the python ground truth) -- VERIFY_BLOCKS is the only way
+                // to inspect a real decoded call_args shape without a DB
+                // write, which matters for reviewing call_args-shape changes
+                // like metagraphed#4724 specifically.
+                "call_args": jstr(&x.call_args),
                 "observed_at": ji(x.observed_at),
             })
         })
@@ -1478,3 +1618,4 @@ async fn main() -> Result<()> {
     eprintln!("backfill complete #{from}..#{to}");
     Ok(())
 }
+
