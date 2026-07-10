@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Percent, Activity, Users, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
@@ -11,43 +11,14 @@ import { TableState } from "@/components/metagraphed/table-state";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { YieldPercentileStrip } from "@/components/metagraphed/yield-percentile-strip";
 import type { SubnetYieldNeuron, YieldHistoryPoint } from "@/lib/metagraphed/types";
 
 type Win = "7d" | "30d" | "90d";
 const WINDOWS: Win[] = ["7d", "30d", "90d"];
 const TOP_N = 15;
 
-// Yield is an emission/stake return rate — tiny fractions (~1e-5..1e-1). Render
-// as a percentage with adaptive precision; null/non-finite collapses to em-dash.
-//
-// The 0.001-1% band uses significant-figure precision (toPrecision), not a
-// fixed decimal count (toFixed) — validator yields in this subnet-scale range
-// commonly cluster within a few percent of each other (e.g. 0.0041529% vs
-// 0.0041496% vs 0.0041425%), and a fixed toFixed(4) rounds several of them to
-// the exact same displayed string even though the underlying values genuinely
-// differ, making an otherwise-ranked leaderboard look like a data bug.
-export function fmtYield(v?: number | null): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (v === 0) return "0%";
-  const pct = v * 100;
-  if (Math.abs(pct) >= 1) return `${pct.toFixed(2)}%`;
-  if (Math.abs(pct) >= 0.001) return `${pct.toPrecision(5)}%`;
-  return `${pct.toExponential(2)}%`;
-}
-
-function Fact({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </div>
-      <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong leading-none">
-        {value}
-      </div>
-    </div>
-  );
-}
-
+import { fmtYield } from "@/components/metagraphed/yield-format";
 function VsMedian({ vs }: { vs: SubnetYieldNeuron["vs_median"] }) {
   if (vs === "above")
     return (
@@ -146,13 +117,13 @@ export function YieldLoader({ netuid }: { netuid: number }) {
           )}
         </div>
 
-        {/* Yield percentile spread. */}
-        <div className="rounded-xl border border-border bg-card p-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Fact label="p25" value={fmtYield(y.p25_yield)} />
-          <Fact label="Median" value={fmtYield(y.median_yield)} />
-          <Fact label="p75" value={fmtYield(y.p75_yield)} />
-          <Fact label="p90" value={fmtYield(y.p90_yield)} />
-        </div>
+        {/* Yield percentile spread — container-query layout (#3934). */}
+        <YieldPercentileStrip
+          p25_yield={y.p25_yield}
+          median_yield={y.median_yield}
+          p75_yield={y.p75_yield}
+          p90_yield={y.p90_yield}
+        />
       </div>
 
       {/* Per-UID yield leaderboard (top yielders). */}
