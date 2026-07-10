@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/CandlesTAO/candles",
+  "id": "candlestao",
+  "kind": "subnet-team",
+  "name": "CandlesTAO",
+  "public_notes": "",
+  "schema_version": 1,
+  "website_url": "https://github.com/CandlesTAO/candles"
+}

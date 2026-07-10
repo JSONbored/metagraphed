@@ -34,5 +34,25 @@
       "No verified standalone static data artifact yet."
     ]
   },
-  "surfaces": []
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-31-candlestao-data-artifact",
+      "kind": "data-artifact",
+      "name": "Recall minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official CandlesTAO/candles repository as min_compute.yml. Documents SN31 operator CPU, memory, storage, and network floors; the README Network Information table lists mainnet netuid 31.",
+      "provider": "candlestao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jsdevninja"
+      },
+      "source_urls": [
+        "https://github.com/CandlesTAO/candles/blob/main/min_compute.yml",
+        "https://github.com/CandlesTAO/candles"
+      ],
+      "url": "https://raw.githubusercontent.com/CandlesTAO/candles/main/min_compute.yml"
+    }
+  ]
 }
