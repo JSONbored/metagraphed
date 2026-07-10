@@ -298,6 +298,22 @@
         "https://oroagents.com/"
       ],
       "url": "https://api.oroagents.com/health/deep"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-validators-api",
+      "kind": "subnet-api",
+      "name": "ORO validators API",
+      "notes": "Public no-auth GET /v1/public/validators on api.oroagents.com returning the subnet's registered validators — identity, availability status, and registration / last-seen timestamps. Documented in the subnet OpenAPI on the same host as existing ORO public API surfaces.",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "real-venus"
+      },
+      "source_urls": ["https://api.oroagents.com/openapi.json", "https://oroagents.com/"],
+      "url": "https://api.oroagents.com/v1/public/validators"
     }
   ],
   "website_url": "https://oroagents.com/"
