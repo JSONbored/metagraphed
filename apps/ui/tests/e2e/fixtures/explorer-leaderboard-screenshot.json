@@ -1,0 +1,101 @@
+{
+  "fees": {
+    "ok": true,
+    "schema_version": 1,
+    "data": {
+      "schema_version": 1,
+      "window": "7d",
+      "observed_at": "2026-07-08T12:00:00.000Z",
+      "day_count": 7,
+      "daily": [
+        {
+          "day": "2026-07-08",
+          "extrinsic_count": 42000,
+          "total_fee_tao": 12.5,
+          "avg_fee_tao": 0.000298,
+          "total_tip_tao": 3.2,
+          "avg_tip_tao": 0.000076
+        }
+      ],
+      "top_fee_payers": [
+        {
+          "signer": "5FixtureExplorerFeePayerAccountForScreenshotPurposesOnly11111111",
+          "total_fee_tao": 2.45,
+          "total_tip_tao": 0.88,
+          "extrinsic_count": 1842
+        },
+        {
+          "signer": "5FixtureExplorerFeePayerAccountForScreenshotPurposesOnly22222222",
+          "total_fee_tao": 1.92,
+          "total_tip_tao": 0.41,
+          "extrinsic_count": 1204
+        }
+      ]
+    }
+  },
+  "signers": {
+    "ok": true,
+    "schema_version": 1,
+    "data": {
+      "schema_version": 1,
+      "window": "7d",
+      "observed_at": "2026-07-08T12:00:00.000Z",
+      "signer_count": 12,
+      "signers": [
+        {
+          "signer": "5FixtureExplorerActiveAccountForScreenshotPurposesOnly111111111",
+          "tx_count": 3204,
+          "total_fee_tao": 1.12,
+          "total_tip_tao": 0.34,
+          "last_tx_block": 8600123
+        },
+        {
+          "signer": "5FixtureExplorerActiveAccountForScreenshotPurposesOnly222222222",
+          "tx_count": 2891,
+          "total_fee_tao": 0.98,
+          "total_tip_tao": 0.22,
+          "last_tx_block": 8600118
+        }
+      ]
+    }
+  },
+  "stakeTransfers": {
+    "ok": true,
+    "schema_version": 1,
+    "data": {
+      "schema_version": 1,
+      "window": "7d",
+      "observed_at": "2026-07-08T12:00:00.000Z",
+      "subnet_count": 3,
+      "network": {
+        "distinct_senders": 128,
+        "transfers": 2048,
+        "transfers_per_sender": 16
+      },
+      "intensity_distribution": {
+        "count": 3,
+        "mean": 12.5,
+        "min": 4,
+        "p25": 8,
+        "median": 12,
+        "p75": 16,
+        "p90": 20,
+        "max": 24
+      },
+      "subnets": [
+        {
+          "netuid": 1,
+          "distinct_senders": 64,
+          "transfers": 1024,
+          "transfers_per_sender": 16
+        },
+        {
+          "netuid": 8,
+          "distinct_senders": 48,
+          "transfers": 768,
+          "transfers_per_sender": 16
+        }
+      ]
+    }
+  }
+}

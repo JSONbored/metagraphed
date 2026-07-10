@@ -14,6 +14,8 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
+import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
+import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import {
@@ -1204,7 +1206,7 @@ function ExplorerDashboard() {
                 formatValue={formatTao}
                 ariaLabel="Top fee payers ranked by total fees paid this window"
               />
-              <table className="w-full text-left text-sm">
+              <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
                 <thead>
                   <tr>
                     <th className={TH}>Account</th>
@@ -1238,7 +1240,7 @@ function ExplorerDashboard() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ExplorerLeaderboardTableShell>
             </>
           ) : (
             <EmptyState title="No fee payers in this window yet." />
@@ -1322,7 +1324,7 @@ function ExplorerDashboard() {
             Most active accounts
           </h2>
           {signers.signers.length > 0 ? (
-            <table className="w-full text-left text-sm">
+            <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}>
               <thead>
                 <tr>
                   <th className={TH}>Account</th>
@@ -1370,7 +1372,7 @@ function ExplorerDashboard() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ExplorerLeaderboardTableShell>
           ) : (
             <EmptyState title="No signers in this window yet." />
           )}
@@ -1433,42 +1435,43 @@ function ExplorerDashboard() {
                 </div>
               ))}
             </div>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr>
-                    <th className={TH}>Subnet</th>
-                    <th className={`${TH} text-right`}>Transfers</th>
-                    <th className={`${TH} text-right`}>Distinct senders</th>
-                    <th className={`${TH} text-right`}>Transfers per sender</th>
+            <ExplorerLeaderboardTableShell
+              leaderboardId={EXPLORER_LEADERBOARD_IDS.stakeTransfers}
+              visibility="desktop-only"
+            >
+              <thead>
+                <tr>
+                  <th className={TH}>Subnet</th>
+                  <th className={`${TH} text-right`}>Transfers</th>
+                  <th className={`${TH} text-right`}>Distinct senders</th>
+                  <th className={`${TH} text-right`}>Transfers per sender</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {stakeTransfers.subnets.map((s) => (
+                  <tr key={s.netuid} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                      >
+                        SN{s.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(s.transfers)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(s.distinct_senders)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {stakeTransfers.subnets.map((s) => (
-                    <tr key={s.netuid} className="hover:bg-surface/40">
-                      <td className="px-4 py-2 font-mono text-[11px]">
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: s.netuid }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                        >
-                          SN{s.netuid}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                        {formatNumber(s.transfers)}
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                        {formatNumber(s.distinct_senders)}
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                        {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </ExplorerLeaderboardTableShell>
           </>
         ) : (
           <EmptyState title="No stake transfers in this window yet." />
