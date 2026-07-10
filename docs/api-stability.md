@@ -17,7 +17,9 @@ Every `/api/v1/*` response is a JSON envelope:
 {
   "ok": true,
   "schema_version": 1,
-  "data": {/* artifact payload, possibly filtered/paginated */},
+  "data": {
+    /* artifact payload, possibly filtered/paginated */
+  },
   "meta": {
     "artifact_path": "/metagraph/subnets.json",
     "cache": "standard",
@@ -25,7 +27,9 @@ Every `/api/v1/*` response is a JSON envelope:
     "generated_at": "1970-01-01T00:00:00.000Z",
     "published_at": "2026-06-09T13:57:16.231Z",
     "source": "static-assets",
-    "pagination": {/* present on list routes; see below */},
+    "pagination": {
+      /* present on list routes; see below */
+    },
   },
 }
 ```
