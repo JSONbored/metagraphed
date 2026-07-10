@@ -153,6 +153,82 @@ describe("normalizePostgresValue", () => {
     });
   });
 
+  describe("#4724 regression: a collection-typed D1 descriptor must stay an array at ANY element count", () => {
+    test("preserves a single-destination SubtensorModule.set_weights dests (real, block 8588865/15 -- was served as bare 0, confirmed live before this fix)", () => {
+      const descriptor = { name: "dests", type: "Vec<u16>", value: [0] };
+      assert.deepEqual(normalizePostgresValue(descriptor), descriptor);
+    });
+
+    test("preserves a single-weight SubtensorModule.set_weights weights (real, block 8588865/15 -- was served as bare 65535)", () => {
+      const descriptor = { name: "weights", type: "Vec<u16>", value: [65535] };
+      assert.deepEqual(normalizePostgresValue(descriptor), descriptor);
+    });
+
+    test("preserves single-element dests/weights inside a full call_args array (both fields collapse independently -- must both survive)", () => {
+      const callArgs = [
+        { name: "netuid", type: "NetUid", value: 3 },
+        { name: "dests", type: "Vec<u16>", value: [11] },
+        { name: "weights", type: "Vec<u16>", value: [65535] },
+        { name: "version_key", type: "u64", value: 1 },
+      ];
+      assert.deepEqual(normalizePostgresValue(callArgs), callArgs);
+    });
+
+    test("preserves a single-subnet SubtensorModule.claim_root subnets (real, block 8588525/16 -- BTreeSet<NetUid>, was served as bare 104)", () => {
+      const descriptor = {
+        name: "subnets",
+        type: "BTreeSet<NetUid>",
+        value: [104],
+      };
+      assert.deepEqual(normalizePostgresValue(descriptor), descriptor);
+    });
+
+    test("preserves a single-signatory Multisig.approve_as_multi other_signatories (string-typed element, not numeric -- confirms the fix isn't scalar-type-specific)", () => {
+      const descriptor = {
+        name: "other_signatories",
+        type: "Vec<AccountId>",
+        value: ["5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"],
+      };
+      assert.deepEqual(normalizePostgresValue(descriptor), descriptor);
+    });
+
+    test("preserves a single-entry BoundedVec descriptor (generic collection prefix coverage beyond bare Vec/BTreeSet)", () => {
+      const descriptor = {
+        name: "orders",
+        type: "BoundedVec<SignedOrder<AccountId>, MaxOrdersPerBatch>",
+        value: [{ id: 1 }],
+      };
+      assert.deepEqual(normalizePostgresValue(descriptor), descriptor);
+    });
+
+    test("still collapses a genuine non-collection single-value descriptor (NOT a regression -- Moment/NetUid/etc never wrapped an array to begin with)", () => {
+      const descriptor = { name: "netuid", type: "NetUid", value: 9 };
+      assert.deepEqual(normalizePostgresValue(descriptor), descriptor);
+    });
+
+    test("falls through to generic normalize() for a collection-typed descriptor whose value isn't actually an array (defensive; not expected for a real row)", () => {
+      const descriptor = {
+        name: "subnets",
+        type: "BTreeSet<NetUid>",
+        value: null,
+      };
+      assert.deepEqual(normalizePostgresValue(descriptor), descriptor);
+    });
+
+    test("still recurses normally inside a preserved collection's elements (an element could itself be an Option/enum)", () => {
+      const descriptor = {
+        name: "maybe_list",
+        type: "Vec<Option<u16>>",
+        value: [{ name: "Some", values: [5] }],
+      };
+      assert.deepEqual(normalizePostgresValue(descriptor), {
+        name: "maybe_list",
+        type: "Vec<Option<u16>>",
+        value: [5],
+      });
+    });
+  });
+
   describe("edge cases", () => {
     test("passes through null/undefined/scalars without throwing", () => {
       assert.equal(normalizePostgresValue(null), null);

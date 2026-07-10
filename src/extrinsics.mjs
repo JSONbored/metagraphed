@@ -176,7 +176,14 @@ export function formatExtrinsic(row) {
       // conflict with running this pass afterward). All four are no-ops on
       // D1's own call_args shape (an array of {name,type,value} descriptors)
       // -- safe to apply unconditionally regardless of which serving tier
-      // produced this row.
+      // produced this row. This is a genuine guarantee, not an assumption:
+      // normalizePostgresValue (#4724) reads each D1 descriptor's own `type`
+      // string before touching its `value`, so a collection-typed field
+      // (Vec<T>/BTreeSet<T>/etc) is preserved as an array at ANY element
+      // count -- decodeBTreeSetFields is then a true no-op on D1 rows
+      // regardless, since D1's call_args never becomes the flat
+      // {fieldName: value} object shape that function's own Array.isArray
+      // early-return requires it to skip.
       //
       // u64/u128 precision (SubtensorModule.register's PoW nonce,
       // set_children's near-u64::MAX sentinel) is DELIBERATELY left as-is
