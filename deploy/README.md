@@ -148,6 +148,43 @@ Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
    project were already decommissioned 2026-07-04, ahead of and independent from
    this gated cutover — see the note above.)
 
+### `blocks` tier verification queries (#4687)
+
+Before ever re-flipping `METAGRAPH_BLOCKS_SOURCE` to `"postgres"`, re-run these
+against the indexer box's Postgres to confirm the historical gaps found in
+#4687 are actually closed — a single spot-checked block (as #4668's original
+flip relied on) does not prove this:
+
+```sh
+ssh indexeradmin@meta-indexer-01-us-lax1
+sudo docker exec -i metagraphed-indexer-postgres-1 psql -U metagraphed -d metagraphed
+```
+
+```sql
+-- 1. Zero empty-string authors (the spec_version 419/421/422 backfill-decode
+--    gap; src/blocks.mjs's formatBlock() already mitigates this at the
+--    serving layer regardless, but the underlying rows should be repaired).
+SELECT count(*) FROM blocks WHERE author = '';
+
+-- 2. Zero missing block_numbers across the known coverage hole.
+SELECT gs.block_number
+FROM generate_series(8471001, 8479999) AS gs(block_number)
+LEFT JOIN blocks b ON b.block_number = gs.block_number
+WHERE b.block_number IS NULL;
+
+-- 3. Same check across the full D1-retained window, as a general regression
+--    guard (adjust the lower bound to D1's current min if it has moved).
+SELECT gs.block_number
+FROM generate_series(8474393, (SELECT max(block_number) FROM blocks)) AS gs(block_number)
+LEFT JOIN blocks b ON b.block_number = gs.block_number
+WHERE b.block_number IS NULL;
+```
+
+All three must return zero rows before considering the `blocks` tier's
+historical coverage trustworthy again. Do **not** flag D1's own gap at block
+`8513820` as a Postgres regression — D1 is missing that block, not Postgres;
+it's expected and orthogonal (D1 is being decommissioned, not backfilled).
+
 ## Backup job (Postgres → R2)
 
 `deploy/backup/` is the scheduled durability job — `pg_dump | gzip | aws s3 cp` to

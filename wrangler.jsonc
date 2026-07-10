@@ -78,6 +78,27 @@
     // against a Postgres-only block with tail-based proof, not a block present
     // in both stores.
     //
+    // A SEPARATE, independent gap surfaced widening the parity check beyond
+    // that one spot-checked block (#4687): three scoped historical-only holes
+    // in Postgres, none present in live ingestion --
+    //   1. author = "" (not the correct SS58 string) for 1,380 rows across
+    //      three backfilled spec_versions (419/421/422) -- an indexer-rs
+    //      Aura-authority-decode gap for those specific historical runtime
+    //      versions. Mitigated at the serving layer regardless of flag state
+    //      (src/blocks.mjs's formatBlock now normalizes "" -> null, same
+    //      treatment as a blank observed_at), but the underlying Postgres
+    //      rows still need re-indexing -- see deploy/README.md's "blocks tier
+    //      verification queries" for the re-runnable check set.
+    //   2. A ~9,000-block coverage hole, 8471001-8479999, entirely missing
+    //      from Postgres (D1 still serves it).
+    //   3. Conversely Postgres has block #8513820 (a spec_version boundary)
+    //      that D1 is missing -- expected, not a regression; D1 is being
+    //      decommissioned, not backfilled.
+    // Root-cause repair is a cross-repo dependency (metagraphed-indexer-rs
+    // and/or a re-run of its historical backfill against the box's Postgres)
+    // tracked in #4687, not solved in this repo. Re-flip only after BOTH this
+    // and the canceled-subrequest issue above are resolved and re-verified.
+    //
     // extrinsics: still "d1". The call_args shape gap is BIGGER than
     // originally scoped here on 2026-07-09 -- that note covered only the
     // nested-call-shape and call_hash cases (#4669, fixed). A broader live
