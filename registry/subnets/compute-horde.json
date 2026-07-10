@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 12,
-  "name": "Compute Horde",
-  "slug": "sn-12",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "compute",
@@ -12,16 +7,7 @@
     "official-website",
     "official-source-repo"
   ],
-  "website_url": "https://computehorde.io/",
-  "source_repo": "https://github.com/backend-developers-ltd/ComputeHorde",
-  "dashboard_url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
-  "notes": "Reviewed overlay for SN12 using the official Compute Horde website/source repository and the project-linked Grafana metagraph dashboard. No safe public subnet API/OpenAPI surface is verified yet.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:45:00.000Z",
-    "verified_at": "2026-06-08T15:45:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "Project-linked Grafana metagraph dashboard is verified live.",
       "No verified official docs URL yet.",
@@ -29,109 +15,142 @@
       "No verified OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:45:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-06-08T15:45:00.000Z"
   },
+  "dashboard_url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
+  "name": "Compute Horde",
+  "netuid": 12,
+  "notes": "Reviewed overlay for SN12 using the official Compute Horde website/source repository and the project-linked Grafana metagraph dashboard. No safe public subnet API/OpenAPI surface is verified yet.",
+  "schema_version": 1,
+  "slug": "sn-12",
+  "source_repo": "https://github.com/backend-developers-ltd/ComputeHorde",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-12-compute-horde-website",
-      "name": "Compute Horde website",
-      "kind": "website",
-      "url": "https://computehorde.io/",
-      "provider": "compute-horde",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-12-compute-horde-website",
+      "kind": "website",
+      "name": "Compute Horde website",
+      "notes": "Official Compute Horde website linked from Learn Bittensor.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
       "public_safe": true,
       "source_urls": [
         "https://learnbittensor.org/subnets/12",
         "https://computehorde.io/"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Compute Horde website linked from Learn Bittensor."
+      "url": "https://computehorde.io/"
     },
     {
-      "id": "sn-12-compute-horde-source",
-      "name": "Compute Horde source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/backend-developers-ltd/ComputeHorde",
-      "provider": "compute-horde",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-12-compute-horde-source",
+      "kind": "source-repo",
+      "name": "Compute Horde source repository",
+      "notes": "Official Compute Horde source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
       "public_safe": true,
       "source_urls": [
         "https://learnbittensor.org/subnets/12",
         "https://github.com/backend-developers-ltd/ComputeHorde"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Compute Horde source repository."
+      "url": "https://github.com/backend-developers-ltd/ComputeHorde"
     },
     {
-      "id": "sn-12-compute-horde-grafana",
-      "name": "Compute Horde Grafana dashboard",
-      "kind": "dashboard",
-      "url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
-      "provider": "compute-horde",
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-12-compute-horde-grafana",
+      "kind": "dashboard",
+      "name": "Compute Horde Grafana dashboard",
+      "notes": "Project-linked public Grafana metagraph dashboard. The originally discovered bactensor.io URL redirects to bittensor.church.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
       "public_safe": true,
       "source_urls": [
         "https://github.com/backend-developers-ltd/ComputeHorde",
         "https://grafana.bactensor.io/d/subnet/metagraph-subnet?var-subnet=12",
         "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Project-linked public Grafana metagraph dashboard. The originally discovered bactensor.io URL redirects to bittensor.church."
+      "url": "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12"
     },
     {
-      "id": "sn-12-compute-horde-sdk",
-      "name": "Compute Horde Python SDK",
-      "kind": "sdk",
-      "url": "https://pypi.org/project/compute-horde-sdk/",
-      "provider": "compute-horde",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-12-compute-horde-sdk",
+      "kind": "sdk",
+      "name": "Compute Horde Python SDK",
+      "notes": "Official Python SDK (pip install compute-horde-sdk, module compute_horde_sdk.v1) for submitting organic compute jobs to the SN12 Compute Horde subnet, developed and published from the subnet's registered source repository.",
+      "provider": "compute-horde",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/backend-developers-ltd/ComputeHorde/tree/master/compute_horde_sdk"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "devmixa702"
       },
-      "notes": "Official Python SDK (pip install compute-horde-sdk, module compute_horde_sdk.v1) for submitting organic compute jobs to the SN12 Compute Horde subnet, developed and published from the subnet's registered source repository."
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/tree/master/compute_horde_sdk"
+      ],
+      "url": "https://pypi.org/project/compute-horde-sdk/"
     },
     {
-      "id": "sn-12-compute-horde-subnet-api",
-      "name": "Compute Horde subnet-api",
-      "kind": "subnet-api",
-      "url": "https://facilitator.computehorde.io/auth/nonce",
-      "provider": "compute-horde",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-12-compute-horde-subnet-api",
+      "kind": "subnet-api",
+      "name": "Compute Horde subnet-api",
+      "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login.",
+      "provider": "compute-horde",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/compute_horde_sdk/src/compute_horde_sdk/_internal/sdk.py",
-        "https://sdk.computehorde.io/"
-      ],
       "review": {
         "state": "community-submitted",
         "submitted_by": "galuis116"
       },
-      "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login."
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/compute_horde_sdk/src/compute_horde_sdk/_internal/sdk.py",
+        "https://sdk.computehorde.io/"
+      ],
+      "url": "https://facilitator.computehorde.io/auth/nonce"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-taomarketcap-data-artifact",
+      "kind": "data-artifact",
+      "name": "Compute Horde subnet-state snapshot (via TaoMarketCap)",
+      "notes": "Public no-auth GET https://api.taomarketcap.com/public/v1/subnets/12 from the TaoMarketCap developer API — a machine-readable JSON snapshot of SN12's on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields (verified live: HTTP 200, netuid 12). A standing third-party data artifact for SN12; the same universal TaoMarketCap subnet feed already registered for other subnets.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation",
+        "https://computehorde.io/"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/12"
     }
-  ]
+  ],
+  "website_url": "https://computehorde.io/"
 }
