@@ -3683,10 +3683,17 @@ export async function handleExtrinsics(request, env, url) {
       message: "call_hash must be a 0x-prefixed 64-character hex string.",
     });
   }
+  const callModule = sp.get("call_module") || undefined;
+  if (callHashRaw !== null && !callModule) {
+    return analyticsQueryError({
+      parameter: "call_module",
+      message: "call_module is required when call_hash is provided.",
+    });
+  }
   const data = await loadExtrinsics(d1Runner(env), {
     block: numericFilters.block ?? undefined,
     signer: sp.get("signer") || undefined,
-    callModule: sp.get("call_module") || undefined,
+    callModule,
     callFunction: sp.get("call_function") || undefined,
     callHash: callHashRaw || undefined,
     success:

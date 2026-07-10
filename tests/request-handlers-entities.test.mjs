@@ -5531,6 +5531,23 @@ describe("handleExtrinsics", () => {
     );
   });
 
+  test("rejects call_hash without call_module to avoid unscoped JSON scans", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const hash = `0x${"c".repeat(64)}`;
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url(`/api/v1/extrinsics?call_hash=${hash}`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "call_module");
+    assert.equal(
+      captures.sql.filter((sql) => /FROM extrinsics/.test(sql)).length,
+      0,
+    );
+  });
+
   test("call_hash binds a quoted LIKE match, scoped alongside call_module (#4322)", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const hash = `0x${"c".repeat(64)}`;
