@@ -11,6 +11,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ListShell } from "@/components/metagraphed/list-shell";
+import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import {
@@ -26,6 +27,7 @@ import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { nakamotoTone } from "@/lib/metagraphed/network-decentralization";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { Block } from "@/lib/metagraphed/types";
 
@@ -400,7 +402,19 @@ function BlocksTable() {
                   className="px-4 py-2.5 font-mono text-[11px] text-ink-muted"
                   title={b.author ?? undefined}
                 >
-                  {shortHash(b.author) ?? "—"}
+                  {b.author && isValidSs58(b.author) ? (
+                    <EntityHoverCard kind="account" ss58={b.author}>
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: b.author }}
+                        className="hover:underline"
+                      >
+                        {shortHash(b.author)}
+                      </Link>
+                    </EntityHoverCard>
+                  ) : (
+                    (shortHash(b.author) ?? "—")
+                  )}
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
                   {formatNumber(b.extrinsic_count ?? 0)}

@@ -20,6 +20,7 @@ import {
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
@@ -27,6 +28,7 @@ import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { Extrinsic } from "@/lib/metagraphed/types";
@@ -338,7 +340,22 @@ function ExtrinsicsTable() {
                   {extrinsicCall(x.call_module, x.call_function)}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"}
+                  {x.signer && isValidSs58(x.signer) ? (
+                    <EntityHoverCard kind="account" ss58={x.signer}>
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: x.signer }}
+                        className="hover:underline"
+                        title={x.signer}
+                      >
+                        {shortHash(x.signer)}
+                      </Link>
+                    </EntityHoverCard>
+                  ) : x.signer ? (
+                    <CopyableCode value={x.signer} className="max-w-full" />
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px]">
                   <SuccessBadge success={x.success} />
