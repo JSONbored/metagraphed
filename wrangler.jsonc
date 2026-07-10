@@ -270,17 +270,14 @@
   // shared-secret check. The only write path in either direction -- GitHub
   // Actions calls this route over HTTPS, never touches Postgres directly.
   "services": [
+    // #4771: the write path into the chain-indexer Postgres's neurons/
+    // neuron_daily tables (POST /api/v1/internal/neurons-sync) also lives
+    // behind THIS binding -- workers/data-api.mjs owns both read and write
+    // for this one Postgres instance, so there's no separate binding for it.
     { "binding": "DATA_API", "service": "metagraphed-data-api" },
     {
       "binding": "REGISTRY_SYNC_API",
       "service": "metagraphed-registry-sync-api",
-    },
-    // #4771: the write path into the chain-indexer Postgres's neurons/
-    // neuron_daily tables (wrangler.neurons-sync.jsonc). Reached via
-    // /api/v1/internal/neurons-sync, same shape as REGISTRY_SYNC_API above.
-    {
-      "binding": "NEURONS_SYNC_API",
-      "service": "metagraphed-neurons-sync-api",
     },
   ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV

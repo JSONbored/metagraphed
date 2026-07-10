@@ -26,18 +26,62 @@ const mockRows = vi.hoisted(() => ({
 // single shared `mockRows.current` (preserving every existing chain-events
 // test's simpler one-shape-fits-all behavior unchanged).
 const mockQueue = vi.hoisted(() => ({ current: [] }));
+// State for the neurons-sync write route's tests only (#4771) -- unused by
+// every GET-route test above.
+const neuronsSyncFailure = vi.hoisted(() => ({ error: null }));
+const neuronsSyncPruneRows = vi.hoisted(() => ({ current: [] }));
 
 vi.mock("postgres", () => ({
   default: () => {
-    // Every tagged-template call (top-level query OR nested fragment) resolves to rows;
-    // the handler awaits the outer query and ignores interpolated fragment values.
-    const sql = (strings, ...values) => {
-      sqlCalls.push({ text: Array.from(strings).join("?"), values });
+    // sql(rowsArray, ...columns) -- the bulk-insert helper (#4771's
+    // handleNeuronsSync). Called as a plain function with a plain array (no
+    // `.raw`), unlike a tagged-template call's strings array below -- returns
+    // a marker the tagged-template branch expands when it appears as a `${}`
+    // interpolation, mirroring postgres.js's real "insert multiple rows" helper.
+    function sql(first, ...rest) {
+      if (
+        Array.isArray(first) &&
+        !Object.prototype.hasOwnProperty.call(first, "raw")
+      ) {
+        const columns = rest.length ? rest : Object.keys(first[0] || {});
+        return { __bulkInsert: true, rows: first, columns };
+      }
+      // Every tagged-template call (top-level query OR nested fragment)
+      // resolves to rows; the handler awaits the outer query. A bulk-insert
+      // marker interpolation expands to its own column list + VALUES tuples
+      // instead of binding as a single opaque parameter.
+      const strings = first;
+      const values = rest;
+      let text = strings[0];
+      const boundValues = [];
+      for (let i = 0; i < values.length; i += 1) {
+        const v = values[i];
+        if (v && v.__bulkInsert) {
+          const cols = v.columns;
+          text += `(${cols.join(",")}) VALUES ${v.rows
+            .map(() => `(${cols.map(() => "?").join(",")})`)
+            .join(",")}`;
+          for (const row of v.rows) {
+            for (const col of cols) boundValues.push(row[col] ?? null);
+          }
+        } else {
+          text += "?";
+          boundValues.push(v);
+        }
+        text += strings[i + 1];
+      }
+      sqlCalls.push({ text, values: boundValues });
+      if (neuronsSyncFailure.error && /INSERT INTO neurons\b/.test(text)) {
+        return Promise.reject(neuronsSyncFailure.error);
+      }
+      if (/DELETE FROM neurons/.test(text)) {
+        return Promise.resolve(neuronsSyncPruneRows.current);
+      }
       if (mockQueue.current.length) {
         return Promise.resolve(mockQueue.current.shift());
       }
       return Promise.resolve(mockRows.current);
-    };
+    }
     sql.end = () => Promise.resolve();
     // sql.begin(["read only",] cb) reserves a connection for cb in real
     // postgres.js; the mock just invokes cb with this same sql function so
@@ -52,7 +96,11 @@ vi.mock("postgres", () => ({
 }));
 
 const { default: worker } = await import("../workers/data-api.mjs");
-const env = { HYPERDRIVE: { connectionString: "postgres://mock" } };
+const NEURONS_SYNC_SECRET = "test-neurons-sync-secret";
+const env = {
+  HYPERDRIVE: { connectionString: "postgres://mock" },
+  NEURONS_SYNC_SECRET,
+};
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
   worker.fetch(new Request(`https://d${path}`, init), env, ctx);
@@ -61,6 +109,8 @@ const queryText = () => sqlCalls.map((call) => call.text).join("\n");
 beforeEach(() => {
   sqlCalls.length = 0;
   mockQueue.current = [];
+  neuronsSyncFailure.error = null;
+  neuronsSyncPruneRows.current = [];
   mockRows.current = [
     {
       block_number: "123",
@@ -818,7 +868,276 @@ test("GET /api/v1/validators/:hotkey resolves cross-subnet validator detail", as
   expect(queryText()).toMatch(/validator_permit = TRUE/);
 });
 
-test("POST is rejected with 405", async () => {
+// #4771: POST /api/v1/internal/neurons-sync -- the one write route in this
+// otherwise-read-only Worker (see workers/data-api.mjs's handleNeuronsSync).
+function neuronSyncRow(overrides = {}) {
+  return {
+    netuid: 8,
+    uid: 3,
+    hotkey: "5Hot",
+    coldkey: "5Cold",
+    active: 1,
+    validator_permit: 1,
+    rank: 1,
+    trust: 0,
+    validator_trust: 0.5,
+    consensus: 0.4,
+    incentive: 0.3,
+    dividends: 0.2,
+    emission_tao: 1.5,
+    stake_tao: 100.25,
+    registered_at_block: 1000,
+    is_immunity_period: 0,
+    axon: "1.2.3.4:9000",
+    block_number: 5_000_000,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postNeurons(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-neurons-sync-token"] = secret;
+  return req("/api/v1/internal/neurons-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("neurons-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postNeurons([neuronSyncRow()], { secret: "wrong" });
+  expect(wrong.status).toBe(401);
+  const missing = await postNeurons([neuronSyncRow()]);
+  expect(missing.status).toBe(401);
+});
+
+test("neurons-sync is disabled (503) when NEURONS_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-neurons-sync-token": NEURONS_SYNC_SECRET,
+      },
+      body: JSON.stringify([neuronSyncRow()]),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("neurons-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-neurons-sync-token": NEURONS_SYNC_SECRET,
+      },
+      body: JSON.stringify([neuronSyncRow()]),
+    }),
+    { NEURONS_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("neurons-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postNeurons(null, {
+    secret: NEURONS_SYNC_SECRET,
+    raw: "[" + "1".repeat(33_000_000) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("neurons-sync rejects malformed JSON (400)", async () => {
+  const res = await postNeurons(null, {
+    secret: NEURONS_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync rejects a body that isn't an array or {rows:[...]} (400)", async () => {
+  const res = await postNeurons(
+    { not: "an array" },
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync accepts the {rows:[...]} wrapped form, not just a bare array", async () => {
+  const res = await postNeurons(
+    { rows: [neuronSyncRow()] },
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.neurons_written).toBe(1);
+});
+
+test("neurons-sync rejects more than the row cap (413)", async () => {
+  const many = Array.from({ length: 50_001 }, (_, i) =>
+    neuronSyncRow({ uid: i % 65_536 }),
+  );
+  const res = await postNeurons(many, { secret: NEURONS_SYNC_SECRET });
+  expect(res.status).toBe(413);
+});
+
+test("neurons-sync rejects rows with an out-of-range netuid/uid (400)", async () => {
+  const netuid = await postNeurons([neuronSyncRow({ netuid: 70_000 })], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(netuid.status).toBe(400);
+  const uid = await postNeurons([neuronSyncRow({ uid: 70_000 })], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(uid.status).toBe(400);
+});
+
+test("neurons-sync rejects a non-object row (400)", async () => {
+  const res = await postNeurons(["not-an-object"], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync rejects a row carrying an unknown column (400)", async () => {
+  const res = await postNeurons(
+    [neuronSyncRow({ unexpected_field: "nope" })],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync rejects a row with a string field over the byte cap (400)", async () => {
+  const res = await postNeurons([neuronSyncRow({ hotkey: "5".repeat(600) })], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync rejects a row with a numeric field that overflows to Infinity (400)", async () => {
+  // JSON.stringify(NaN) silently serializes to `null` (not a reproduction of
+  // this check), but a raw oversized literal like 1e400 is syntactically
+  // valid JSON that JSON.parse genuinely parses to Infinity -- a real,
+  // reachable way a non-finite number arrives here.
+  const { stake_tao: _stakeTao, ...rest } = neuronSyncRow();
+  const raw = JSON.stringify([rest]).replace(/}\]$/, `,"stake_tao":1e400}]`);
+  const res = await postNeurons(null, { secret: NEURONS_SYNC_SECRET, raw });
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync rejects a row carrying a nested object/array value instead of a scalar (400)", async () => {
+  const res = await postNeurons(
+    [neuronSyncRow({ hotkey: ["not", "a", "scalar"] })],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync rejects a row missing a valid captured_at (400)", async () => {
+  const res = await postNeurons([neuronSyncRow({ captured_at: 0 })], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync rejects an empty array (400)", async () => {
+  const res = await postNeurons([], { secret: NEURONS_SYNC_SECRET });
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync upserts neurons + neuron_daily and reports written counts", async () => {
+  const res = await postNeurons(
+    [neuronSyncRow(), neuronSyncRow({ uid: 4, netuid: 9 })],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({
+    ok: true,
+    neurons_written: 2,
+    neuron_daily_written: 2,
+    netuids_covered: 2,
+  });
+  expect(queryText()).toMatch(/INSERT INTO neurons\b/);
+  expect(queryText()).toMatch(/INSERT INTO neuron_daily/);
+  expect(queryText()).toMatch(/DELETE FROM neurons/);
+});
+
+test("neurons-sync coerces 0/1 active/validator_permit/is_immunity_period to real booleans", async () => {
+  await postNeurons(
+    [
+      neuronSyncRow({
+        active: 1,
+        validator_permit: 0,
+        is_immunity_period: 1,
+      }),
+    ],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  const neuronsInsert = sqlCalls.find((c) =>
+    /INSERT INTO neurons\b/.test(c.text),
+  );
+  expect(neuronsInsert.values).toContain(true); // active / is_immunity_period
+  expect(neuronsInsert.values).toContain(false); // validator_permit
+});
+
+test("neurons-sync defaults a missing optional column (e.g. axon) to null rather than undefined", async () => {
+  const { axon: _axon, ...withoutAxon } = neuronSyncRow();
+  const res = await postNeurons([withoutAxon], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const neuronsInsert = sqlCalls.find((c) =>
+    /INSERT INTO neurons\b/.test(c.text),
+  );
+  expect(neuronsInsert.values).toContain(null);
+});
+
+test("neurons-sync derives snapshot_date from captured_at for the neuron_daily row", async () => {
+  await postNeurons(
+    [neuronSyncRow({ captured_at: Date.parse("2026-06-20T12:00:00Z") })],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  const dailyInsert = sqlCalls.find((c) =>
+    /INSERT INTO neuron_daily/.test(c.text),
+  );
+  expect(dailyInsert.values).toContain("2026-06-20");
+});
+
+test("neurons-sync scopes the deregistered-UID prune to only the netuids present in this batch", async () => {
+  await postNeurons(
+    [neuronSyncRow({ netuid: 8 }), neuronSyncRow({ netuid: 9, uid: 1 })],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
+  expect(pruneCall.values[0]).toEqual(expect.arrayContaining([8, 9]));
+  expect(pruneCall.values[0]).toHaveLength(2);
+});
+
+test("neurons-sync reports deregistered_pruned from the DELETE's returned row count", async () => {
+  neuronsSyncPruneRows.current = [{ netuid: 8 }, { netuid: 8 }];
+  const res = await postNeurons([neuronSyncRow()], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  const body = await res.json();
+  expect(body.deregistered_pruned).toBe(2);
+});
+
+test("neurons-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  neuronsSyncFailure.error = new Error("connection reset");
+  const res = await postNeurons([neuronSyncRow()], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+test("POST to a different path is rejected with 405 (neurons-sync route only accepts its own path)", async () => {
   const res = await req("/api/v1/chain-events", { method: "POST" });
   expect(res.status).toBe(405);
 });

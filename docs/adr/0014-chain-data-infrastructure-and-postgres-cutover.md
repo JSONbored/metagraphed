@@ -249,14 +249,19 @@ silently drift from each other.
    not to re-gate a decision already made.
 10. 🔲 **neurons/neuron_daily write path built (#4771), not yet flipped.**
     Unlike blocks/extrinsics/account_events, this tier had NO Postgres
-    equivalent at all before #4771 — a fourth dedicated Worker
-    (`workers/neurons-sync-api.mjs`) now upserts both tables from the same
-    daily `refresh-metagraph.yml` fetch, alongside (not replacing) the
-    existing R2-stage-to-D1 path, and `METAGRAPH_NEURONS_SOURCE` gates a new
-    read tier in `workers/data-api.mjs` the same way the other three flags
-    do. Left at `"d1"` until a live parity pass proves the two tiers agree —
-    this step is intentionally NOT bundled into item 4's relaxed-gate
-    decision, since that item was about accepting known gaps in
+    equivalent at all before #4771 — `workers/data-api.mjs` gained one write
+    route (`POST /api/v1/internal/neurons-sync`, `handleNeuronsSync`) that
+    upserts both tables from the same daily `refresh-metagraph.yml` fetch,
+    alongside (not replacing) the existing R2-stage-to-D1 path. Deliberately
+    NOT a fifth dedicated Worker: it targets the IDENTICAL Postgres instance
+    `data-api.mjs` already reads from, unlike `registry-sync-api.mjs`'s split
+    (a genuinely separate database, isolated on purpose) — splitting read and
+    write for the same database would have added a whole Worker/config/
+    binding/secret for zero bundle-budget benefit.
+    `METAGRAPH_NEURONS_SOURCE` gates a new read tier the same way the other
+    three flags do. Left at `"d1"` until a live parity pass proves the two
+    tiers agree — this step is intentionally NOT bundled into item 4's
+    relaxed-gate decision, since that item was about accepting known gaps in
     already-populated Postgres data, not about flipping a tier with zero
     verification history yet.
 
@@ -274,9 +279,9 @@ silently drift from each other.
 - `.github/workflows/backfill-events.yml` — the manual-only D1 gap-recovery path
 - `wrangler.jsonc` — `METAGRAPH_BLOCKS_SOURCE` / `METAGRAPH_EXTRINSICS_SOURCE`
   / `METAGRAPH_ACCOUNT_EVENTS_SOURCE` / `METAGRAPH_NEURONS_SOURCE`
-- `workers/neurons-sync-api.mjs` (#4771) — the neurons/neuron_daily write
-  path, the fourth Hyperdrive-backed Worker (write-only; `data-api.mjs`
-  still owns the read side for this tier too)
+- `workers/data-api.mjs`'s `handleNeuronsSync` (#4771) — the neurons/
+  neuron_daily write route, deliberately kept in this same Worker rather
+  than a new one (same Postgres instance as its read routes)
 - #4746, #4686, #4695, #4669, #4698, #4684, #4654, #4771 — the issues this
   ADR consolidates evidence from
 - Private `JSONbored/metagraphed-indexer-rs` repo — the Rust continuous
