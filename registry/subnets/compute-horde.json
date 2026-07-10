@@ -132,6 +132,25 @@
         "submitted_by": "galuis116"
       },
       "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Compute Horde TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/12 on api.taomarketcap.com returning machine-readable JSON for SN12 Compute Horde on-chain subnet state, economics, registration/burn parameters, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API and provides the standalone public JSON data for netuid 12 alongside the subnet's first-party facilitator API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://taomarketcap.com/subnets/12"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/12"
     }
   ]
 }
