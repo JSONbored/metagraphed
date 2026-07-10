@@ -35,6 +35,14 @@ export function EligibilityChip({
     <TooltipProvider delayDuration={120}>
       <Tooltip>
         <TooltipTrigger asChild>
+          {/* #3433: tabIndex is what makes this trigger keyboard-operable at
+              all -- Radix only opens the Tooltip on a focus event, and a
+              plain span never receives one without it. Verified via a
+              scripted focus/Escape check: focus opens the tooltip
+              (data-state instant-open) and Escape closes it while keeping
+              focus on the trigger, with no extra wiring needed beyond
+              this attribute. This is the reference HeaderHint
+              (endpoint-list.tsx) now matches -- don't drop it. */}
           <span
             tabIndex={0}
             className={classNames(
