@@ -6,6 +6,7 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { TableState } from "@/components/metagraphed/table-state";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
+import { FreshnessBadge } from "@/components/metagraphed/freshness-badge";
 import { classNames } from "@/lib/metagraphed/format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
@@ -62,8 +63,14 @@ export function MetagraphTableLoader({
     );
   }
 
+  // #3381: loaded-data branch must surface meta.generated_at as a daily-rollup
+  // tier (not just the empty-state TableState). FreshnessBadge landed via #3370.
+  const freshness = <FreshnessBadge at={meta?.generated_at} tier="daily" />;
+
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">{freshness}</div>
+
       {/* KPI strip — neuron + validator counts and the dominant-UID stake share. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatTile
@@ -91,11 +98,11 @@ export function MetagraphTableLoader({
       {/* Stake distribution across the leading UIDs. */}
       {stakeBars.length > 0 ? (
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
               Stake distribution · top {stakeBars.length} UIDs
             </span>
-            <span className="font-mono text-[10px] text-ink-muted">
+            <span className="ml-auto font-mono text-[10px] text-ink-muted">
               peak {taoCompact(stakeBars[0]?.value)} τ
             </span>
           </div>
