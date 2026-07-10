@@ -49,10 +49,9 @@ export function isU16Netuid(netuid) {
   return Number.isInteger(netuid) && netuid >= 0 && netuid <= MAX_U16_NETUID;
 }
 
+// Callers (loadSubnetRecycled) validate netuid via isU16Netuid before
+// reaching here, so no redundant guard.
 function netuidStorageKeySuffix(netuid) {
-  if (!isU16Netuid(netuid)) {
-    throw new RangeError("netuid must be an integer in the u16 range 0..65535");
-  }
   const lo = (netuid % 256).toString(16).padStart(2, "0");
   const hi = Math.floor(netuid / 256)
     .toString(16)
