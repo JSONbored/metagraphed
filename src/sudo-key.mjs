@@ -7,14 +7,10 @@
 // computed at runtime. Mirrors src/account-balance.mjs's live-RPC + KV-cache
 // shape for GET /api/v1/accounts/{ss58}/balance.
 
-// node:crypto's createHash("blake2b512") is NOT implemented in the Cloudflare
-// Workers runtime (confirmed live in production: this same call throws
-// "Error: Digest method not supported" in workerd -- account-balance.mjs's
-// GET /api/v1/accounts/{ss58}/balance, which had the identical pattern, was
-// 500ing on every request for exactly this reason). @noble/hashes is
-// audited, zero-dependency, pure JS, and verified working in workerd
-// (wrangler dev) with output identical to node:crypto's blake2b512.
-import { blake2b } from "@noble/hashes/blake2.js";
+// Server-side SS58 encoding lives in src/ss58.mjs (extracted #4688) -- see
+// that module's header for why @noble/hashes' blake2b is required over
+// node:crypto's createHash("blake2b512") (unsupported in workerd).
+import { encodeAccountId32 } from "./ss58.mjs";
 
 const SUDO_KEY_STORAGE_KEY =
   "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b";
@@ -22,48 +18,7 @@ export const SUDO_KEY_KV_TTL = 3600; // seconds — the sudo key changes extreme
 export const SUDO_KEY_NEGATIVE_KV_TTL = 10; // seconds
 export const SUDO_KEY_RPC_TIMEOUT_MS = 5000;
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
-
-const SS58_BASE58_ALPHABET =
-  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const FINNEY_SS58_PREFIX = 42;
-const SS58_PREIMAGE = new TextEncoder().encode("SS58PRE");
-
-// The general base58 "leading zero byte -> leading '1' character" convention
-// (account-balance.mjs's decodeBase58 handles the inverse) doesn't apply to
-// this call site: the one caller always passes [prefix, ...accountId,
-// checksumHi, checksumLo], and FINNEY_SS58_PREFIX (42) is never zero, so the
-// byte array this function ever sees can't start with a zero byte.
-function encodeBase58(bytes) {
-  let num = 0n;
-  for (const b of bytes) num = (num << 8n) | BigInt(b);
-  let out = "";
-  while (num > 0n) {
-    const rem = num % 58n;
-    out = SS58_BASE58_ALPHABET[Number(rem)] + out;
-    num /= 58n;
-  }
-  return out;
-}
-
-// AccountId32 -> SS58 (finney prefix 42): payload = prefix_byte + 32 account
-// bytes, checksum = blake2b512("SS58PRE" + payload)[0:2], address =
-// base58(payload + checksum). The exact inverse of account-balance.mjs's
-// verifyFinneySs58Checksum (decode direction) — golden-value-tested against
-// the live-confirmed 2026-07-08 Sudo key in tests/sudo-key.test.mjs.
-function ss58Encode(accountIdBytes, prefix = FINNEY_SS58_PREFIX) {
-  const payload = new Uint8Array(1 + accountIdBytes.length);
-  payload[0] = prefix;
-  payload.set(accountIdBytes, 1);
-  const preimage = new Uint8Array(SS58_PREIMAGE.length + payload.length);
-  preimage.set(SS58_PREIMAGE, 0);
-  preimage.set(payload, SS58_PREIMAGE.length);
-  const hash = blake2b(preimage, { dkLen: 64 });
-  const full = new Uint8Array(payload.length + 2);
-  full.set(payload, 0);
-  full[payload.length] = hash[0];
-  full[payload.length + 1] = hash[1];
-  return encodeBase58(full);
-}
 
 // The one call site already validated a "0x"-prefixed 64-hex-char string via
 // regex, so this only ever strips that guaranteed prefix — not a general
@@ -113,7 +68,7 @@ export async function loadSudoKey(env) {
       const rpcBody = await rpcResp.json();
       const raw = rpcBody?.result;
       if (typeof raw === "string" && /^0x[0-9a-fA-F]{64}$/.test(raw)) {
-        hotkey = ss58Encode(hexToBytes(raw));
+        hotkey = encodeAccountId32(hexToBytes(raw), FINNEY_SS58_PREFIX);
         rpcOk = true;
       } else if (raw === null) {
         // Storage genuinely unset (sudo renounced) — a valid, not-failed result.
