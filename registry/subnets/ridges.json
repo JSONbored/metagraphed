@@ -91,6 +91,44 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-swebench-verified-dataset",
+      "kind": "data-artifact",
+      "name": "Ridges SWE-Bench Verified evaluation dataset",
+      "notes": "Public no-auth JSON dataset of 500 SWE-Bench Verified problem instances that Ridges evaluates its coding agents against. Published in the official ridgesai/abstract-agent-runner evaluation framework repository under datasets/swebench_verified/. The ridgesai GitHub organization self-identifies as 'Ridges | SN62' with website ridges.ai (the registered SN62 website), and the abstract-agent-runner repo description confirms it runs Ridges agents on SWE-Bench and Polyglot problem sets.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai",
+        "https://github.com/ridgesai/abstract-agent-runner/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/ridgesai/abstract-agent-runner/main/datasets/swebench_verified/swebench_verified.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-polyglot-dataset",
+      "kind": "data-artifact",
+      "name": "Ridges Polyglot benchmark dataset",
+      "notes": "Public no-auth JSON dataset of 33 Polyglot programming-challenge tasks used to evaluate Ridges coding agents. Published in the official ridgesai/abstract-agent-runner evaluation framework repository under datasets/polyglot/. The ridgesai GitHub organization self-identifies as 'Ridges | SN62' with website ridges.ai (the registered SN62 website), and the abstract-agent-runner repo description confirms it runs Ridges agents on SWE-Bench and Polyglot problem sets.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai",
+        "https://github.com/ridgesai/abstract-agent-runner/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/ridgesai/abstract-agent-runner/main/datasets/polyglot/polyglot.json"
     }
   ],
   "contact": "hello@ridges.ai"
