@@ -17,6 +17,7 @@ import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { unwrapByteArray, decodeBytesField } from "@/lib/metagraphed/bytes";
+import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import {
   asDecodedCall,
   extrinsicCall,
@@ -359,8 +360,11 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                         "—"
                       )}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
-                      {ev.event_kind ?? "—"}
+                    <td
+                      className="px-4 py-2.5 font-mono text-[11px] text-ink-strong"
+                      title={ev.event_kind ?? undefined}
+                    >
+                      {eventKindLabel(ev.event_kind)}
                     </td>
                     <td className="px-4 py-2.5 font-mono text-[11px]">
                       {ev.hotkey ? (

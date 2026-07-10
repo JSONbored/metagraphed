@@ -62,6 +62,7 @@ import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
+import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import type {
   AccountCounterparty,
   AccountStakeFlowSubnet,
@@ -2043,8 +2044,11 @@ function AccountEventsSection({
                       "—"
                     )}
                   </td>
-                  <td className="px-5 py-4 font-mono text-[11px] text-ink-strong">
-                    {ev.event_kind ?? "—"}
+                  <td
+                    className="px-5 py-4 font-mono text-[11px] text-ink-strong"
+                    title={ev.event_kind ?? undefined}
+                  >
+                    {eventKindLabel(ev.event_kind)}
                   </td>
                   <td className="px-5 py-4 font-mono text-[11px] text-ink-muted">
                     {ev.netuid != null ? (
