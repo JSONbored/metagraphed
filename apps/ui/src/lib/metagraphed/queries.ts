@@ -126,6 +126,7 @@ import type {
   FixtureIndexEntry,
   Freshness,
   Gap,
+  ReviewGapPriority,
   GlobalIncident,
   GlobalIncidents,
   GlobalIncidentSurface,
@@ -7044,6 +7045,37 @@ export const reviewEnrichmentEvidenceQuery = () =>
           typeof r.priority_score === "number"
             ? String(Math.round(r.priority_score as number))
             : undefined,
+      }));
+      return { ...res, data: rows };
+    },
+    staleTime: STALE_LONG,
+  });
+
+// #3356: the priority-scored per-subnet gap board -- distinct from gapsQuery()
+// (/api/v1/gaps, the interface-facet dataset already on this page) and from
+// the enrichment-queue/-targets/-evidence sections above. GET
+// /api/v1/review/gaps, flat `priorities` list.
+export const reviewGapPrioritiesQuery = () =>
+  queryOptions({
+    queryKey: k("review-gap-priorities"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
+        "/api/v1/review/gaps",
+        "priorities",
+        undefined,
+        signal,
+      );
+      // API rows: { netuid, name, curation_level, priority_score, missing_kinds,
+      // surface_count, verified_candidate_count, candidate_count, ... }.
+      const rows: ReviewGapPriority[] = res.data.map((r) => ({
+        netuid: r.netuid as number | undefined,
+        name: r.name as string | undefined,
+        curation_level: r.curation_level as CurationLevel | string | undefined,
+        priority_score: r.priority_score as number | undefined,
+        missing_kinds: Array.isArray(r.missing_kinds) ? (r.missing_kinds as string[]) : [],
+        surface_count: r.surface_count as number | undefined,
+        candidate_count: r.candidate_count as number | undefined,
+        verified_candidate_count: r.verified_candidate_count as number | undefined,
       }));
       return { ...res, data: rows };
     },

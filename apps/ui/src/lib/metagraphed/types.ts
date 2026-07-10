@@ -535,6 +535,21 @@ export interface Gap {
   [key: string]: unknown;
 }
 
+// #3356: the priority-scored per-subnet gap board from GET /api/v1/review/gaps
+// (artifact /metagraph/review/gap-priorities.json) -- distinct from Gap above,
+// which is sourced from the unrelated /api/v1/gaps interface-facet dataset.
+export interface ReviewGapPriority {
+  netuid?: number;
+  name?: string;
+  curation_level?: CurationLevel | string;
+  priority_score?: number;
+  missing_kinds?: string[];
+  surface_count?: number;
+  candidate_count?: number;
+  verified_candidate_count?: number;
+  [key: string]: unknown;
+}
+
 export interface HealthSummary {
   total?: number;
   ok?: number;
