@@ -38,6 +38,25 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-min-compute-spec",
+      "kind": "data-artifact",
+      "name": "Minos minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official minos-protocol/minos_subnet repository as min_compute.yml. Documents SN107 operator CPU/GPU/memory/storage/network floors referenced by subnet setup documentation.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/min_compute.yml",
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/main/min_compute.yml"
     }
   ],
   "contact": "contact@theminos.ai"
