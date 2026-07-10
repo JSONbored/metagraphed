@@ -20,6 +20,7 @@ import {
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { AccountCell } from "@/components/metagraphed/account-cell";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
@@ -338,7 +339,12 @@ function ExtrinsicsTable() {
                   {extrinsicCall(x.call_module, x.call_function)}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"}
+                  <AccountCell
+                    ss58={x.signer}
+                    fallback={
+                      x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"
+                    }
+                  />
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px]">
                   <SuccessBadge success={x.success} />
