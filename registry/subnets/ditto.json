@@ -268,6 +268,25 @@
         "https://github.com/ditto-assistant/dittobench-starter-kit/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/ditto-assistant/dittobench-starter-kit/main/fixtures/seed-user/memory_cases.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-118-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Ditto public subnet-state API (via TaoMarketCap)",
+      "notes": "Public no-auth GET https://api.taomarketcap.com/public/v1/subnets/118 from the TaoMarketCap developer API — returns machine-readable JSON for SN118's on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields (verified live: HTTP 200, netuid 118). Ditto's own first-party endpoints under heyditto.ai are auth-gated, so this is the subnet's verified public no-auth API surface.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation",
+        "https://heyditto.ai/"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/118"
     }
   ],
   "website_url": "https://heyditto.ai/"
