@@ -973,173 +973,175 @@ function EndpointsTable() {
               })}
             </div>
           ) : (
-            <div className="rounded border border-border bg-card overflow-x-clip">
-              <table className="w-full text-sm">
-                <thead className="sticky top-[6.75rem] z-10 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85 text-[10px] font-mono uppercase tracking-widest text-ink-muted shadow-[0_1px_0_0_var(--border)]">
-                  <tr>
-                    <Th
-                      label="Netuid"
-                      k="netuid"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                    />
-                    <Th
-                      label="Kind"
-                      k="kind"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                    />
-                    <th className="px-3 py-2 text-left">URL</th>
-                    <Th
-                      label="Provider"
-                      k="provider"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                    />
-                    <Th
-                      label="Region"
-                      k="region"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                    />
-                    <Th
-                      label="Health"
-                      k="health"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                      align="center"
-                    />
-                    <Th
-                      label="Latency"
-                      k="latency"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                      align="right"
-                    />
-                    <Th
-                      label="Probed"
-                      k="probed"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                      align="right"
-                    />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {pageRows.map((e) => {
-                    const provSlug = e.provider_slug;
-                    const prov = provSlug ? providerById.get(provSlug) : undefined;
-                    const sn = e.netuid != null ? subnetById.get(e.netuid) : undefined;
-                    return (
-                      <tr key={e.id} className="mg-row-accent hover:bg-surface/40">
-                        <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                          {e.netuid != null ? (
-                            <Link
-                              to="/subnets/$netuid"
-                              params={{ netuid: e.netuid }}
-                              className="inline-flex items-center gap-1.5 hover:text-ink-strong"
-                            >
-                              <BrandIcon
-                                url={sn?.website}
-                                iconUrl={sn?.icon_url}
-                                netuid={e.netuid}
-                                name={sn?.name}
-                                fallback={e.netuid}
-                                size={14}
-                              />
-                              {String(e.netuid).padStart(3, "0")}
-                            </Link>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-[11px]">{e.kind ?? "—"}</td>
-                        <td className="px-3 py-2 font-mono text-[11px] max-w-[36ch]">
-                          {e.url ? (
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <ExternalLink href={e.url} className="truncate text-[11px]">
-                                {e.url}
-                              </ExternalLink>
-                              <CopyButton value={e.url} label="URL" />
-                            </div>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-[12px]">
-                          {provSlug ? (
-                            <Link
-                              to="/providers/$slug"
-                              params={{ slug: provSlug }}
-                              className="inline-flex items-center gap-1.5 hover:underline min-w-0"
-                            >
-                              <BrandIcon
-                                url={prov?.website ?? prov?.homepage}
-                                iconUrl={prov?.icon_url}
-                                repoUrl={prov?.repo}
-                                providerSlug={provSlug}
-                                name={prov?.name ?? e.provider ?? provSlug}
-                                fallback={provSlug}
-                                size={16}
-                              />
-                              <span className="truncate">
-                                {e.provider ?? prov?.name ?? provSlug}
-                              </span>
-                            </Link>
-                          ) : (
-                            (e.provider ?? "—")
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-[12px]">{e.region ?? "—"}</td>
-                        <td className="px-3 py-2 text-center">
-                          <SparkLegend
-                            metric="Endpoint health"
-                            source="/api/v1/endpoints"
-                            windowLabel={windowLabel}
-                            updatedAt={e.last_probed_at}
-                            staleness="Falls back to last known state when the probe hasn't completed."
-                          >
-                            <HealthPill state={e.health} />
-                          </SparkLegend>
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-[11px]">
-                          {e.latency_ms != null ? (
+            <div className="rounded border border-border bg-card overflow-hidden">
+              <div className="overflow-x-auto overflow-y-clip">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-[6.75rem] z-10 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85 text-[10px] font-mono uppercase tracking-widest text-ink-muted shadow-[0_1px_0_0_var(--border)]">
+                    <tr>
+                      <Th
+                        label="Netuid"
+                        k="netuid"
+                        sortKey={search.sort}
+                        sortOrder={search.order}
+                        onSort={toggleSort}
+                      />
+                      <Th
+                        label="Kind"
+                        k="kind"
+                        sortKey={search.sort}
+                        sortOrder={search.order}
+                        onSort={toggleSort}
+                      />
+                      <th className="px-3 py-2 text-left">URL</th>
+                      <Th
+                        label="Provider"
+                        k="provider"
+                        sortKey={search.sort}
+                        sortOrder={search.order}
+                        onSort={toggleSort}
+                      />
+                      <Th
+                        label="Region"
+                        k="region"
+                        sortKey={search.sort}
+                        sortOrder={search.order}
+                        onSort={toggleSort}
+                      />
+                      <Th
+                        label="Health"
+                        k="health"
+                        sortKey={search.sort}
+                        sortOrder={search.order}
+                        onSort={toggleSort}
+                        align="center"
+                      />
+                      <Th
+                        label="Latency"
+                        k="latency"
+                        sortKey={search.sort}
+                        sortOrder={search.order}
+                        onSort={toggleSort}
+                        align="right"
+                      />
+                      <Th
+                        label="Probed"
+                        k="probed"
+                        sortKey={search.sort}
+                        sortOrder={search.order}
+                        onSort={toggleSort}
+                        align="right"
+                      />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {pageRows.map((e) => {
+                      const provSlug = e.provider_slug;
+                      const prov = provSlug ? providerById.get(provSlug) : undefined;
+                      const sn = e.netuid != null ? subnetById.get(e.netuid) : undefined;
+                      return (
+                        <tr key={e.id} className="mg-row-accent hover:bg-surface/40">
+                          <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
+                            {e.netuid != null ? (
+                              <Link
+                                to="/subnets/$netuid"
+                                params={{ netuid: e.netuid }}
+                                className="inline-flex items-center gap-1.5 hover:text-ink-strong"
+                              >
+                                <BrandIcon
+                                  url={sn?.website}
+                                  iconUrl={sn?.icon_url}
+                                  netuid={e.netuid}
+                                  name={sn?.name}
+                                  fallback={e.netuid}
+                                  size={14}
+                                />
+                                {String(e.netuid).padStart(3, "0")}
+                              </Link>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-[11px]">{e.kind ?? "—"}</td>
+                          <td className="px-3 py-2 font-mono text-[11px] max-w-[36ch]">
+                            {e.url ? (
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <ExternalLink href={e.url} className="truncate text-[11px]">
+                                  {e.url}
+                                </ExternalLink>
+                                <CopyButton value={e.url} label="URL" />
+                              </div>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-[12px]">
+                            {provSlug ? (
+                              <Link
+                                to="/providers/$slug"
+                                params={{ slug: provSlug }}
+                                className="inline-flex items-center gap-1.5 hover:underline min-w-0"
+                              >
+                                <BrandIcon
+                                  url={prov?.website ?? prov?.homepage}
+                                  iconUrl={prov?.icon_url}
+                                  repoUrl={prov?.repo}
+                                  providerSlug={provSlug}
+                                  name={prov?.name ?? e.provider ?? provSlug}
+                                  fallback={provSlug}
+                                  size={16}
+                                />
+                                <span className="truncate">
+                                  {e.provider ?? prov?.name ?? provSlug}
+                                </span>
+                              </Link>
+                            ) : (
+                              (e.provider ?? "—")
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-[12px]">{e.region ?? "—"}</td>
+                          <td className="px-3 py-2 text-center">
                             <SparkLegend
-                              metric="Latency"
-                              source="/api/v1/endpoints (last probe)"
+                              metric="Endpoint health"
+                              source="/api/v1/endpoints"
                               windowLabel={windowLabel}
                               updatedAt={e.last_probed_at}
-                              staleness="No new measurement is taken between probes — last measured value is shown."
+                              staleness="Falls back to last known state when the probe hasn't completed."
                             >
-                              <span>{e.latency_ms}ms</span>
+                              <HealthPill state={e.health} />
                             </SparkLegend>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
-                          <SparkLegend
-                            metric="Last probe"
-                            source="/api/v1/endpoints"
-                            windowLabel={windowLabel}
-                            updatedAt={e.last_probed_at}
-                            staleness="Rows older than the probe cycle are dimmed in tooltips elsewhere."
-                          >
-                            <TimeAgo at={e.last_probed_at} />
-                          </SparkLegend>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-[11px]">
+                            {e.latency_ms != null ? (
+                              <SparkLegend
+                                metric="Latency"
+                                source="/api/v1/endpoints (last probe)"
+                                windowLabel={windowLabel}
+                                updatedAt={e.last_probed_at}
+                                staleness="No new measurement is taken between probes — last measured value is shown."
+                              >
+                                <span>{e.latency_ms}ms</span>
+                              </SparkLegend>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
+                            <SparkLegend
+                              metric="Last probe"
+                              source="/api/v1/endpoints"
+                              windowLabel={windowLabel}
+                              updatedAt={e.last_probed_at}
+                              staleness="Rows older than the probe cycle are dimmed in tooltips elsewhere."
+                            >
+                              <TimeAgo at={e.last_probed_at} />
+                            </SparkLegend>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
