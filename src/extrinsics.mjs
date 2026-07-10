@@ -20,9 +20,22 @@ import {
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.mjs";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 
-// D1 safety-valve: 365-day retention prevents unbounded growth before the
-// Postgres cold tier (#1519) ships. pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
-export const EXTRINSIC_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+// D1 safety-valve, ORIGINALLY 365 days ("prevents unbounded growth before the
+// Postgres cold tier (#1519) ships") -- but #1519 never shipped, and like
+// account_events before its own emergency cut (see EVENT_RETENTION_MS in
+// account-events.mjs), 365 days of retention never actually got old enough to
+// prune: the table is younger than that, so the "safety valve" never engaged
+// and extrinsics grew unbounded. Measured 2026-07-10: ~101k rows/day, ~900
+// bytes/row of call_args alone, and the shared D1 database was already at
+// ~9.0GB of its hard, unraisable 10GB-per-database cap with this table still
+// growing -- a full 365 days at this rate would be ~45GB, many times over the
+// cap on its own. 5 days is what the measured ingestion rate can sustainably
+// fit with real headroom under 10GB across all tables sharing this database --
+// this is an emergency-driven number, not an arbitrary product decision; raise
+// it only once the raw/long-history chain data lives in Postgres (self-hosted,
+// no cap) instead of D1, per ADR 0013's own "demote/retire D1" end state.
+// pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
+export const EXTRINSIC_RETENTION_MS = 5 * 24 * 60 * 60 * 1000;
 
 // Columns written to extrinsics — THE load contract. scripts/fetch-events.py
 // emits rows with exactly these keys; loadStagedExtrinsics binds them in this

@@ -10,6 +10,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
+import { EXTRINSIC_RETENTION_MS } from "../src/extrinsics.mjs";
 import { MOVERS_WINDOWS } from "../src/movers.mjs";
 import { unsupportedWindowMessage } from "../src/neuron-history.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
@@ -5748,9 +5749,7 @@ describe("handleExtrinsics", () => {
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
         env,
-        url(
-          `/api/v1/extrinsics?to=${now - 365 * 24 * 60 * 60 * 1000 + 60_000}`,
-        ),
+        url(`/api/v1/extrinsics?to=${now - EXTRINSIC_RETENTION_MS + 60_000}`),
       );
       const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
       assert.ok(sql, "a near-floor one-sided to filter must reach D1");

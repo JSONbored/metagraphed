@@ -10,9 +10,19 @@ import {
 } from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
-// D1 safety-valve: 365-day retention prevents unbounded growth before the
-// Postgres cold tier (#1519) ships. pruneBlocks runs in the HEALTH_PRUNE_CRON.
-export const BLOCK_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+// D1 safety-valve, ORIGINALLY 365 days -- but blocks is small per-row (a header,
+// not a payload) so at measured volume (~4k rows/day) even a full 365-day
+// window is only ~600MB, nowhere near D1's 10GB cap on its own. 30 days keeps a
+// generous "recent blocks" hot window (comfortably longer than the pruned
+// extrinsics/account_events retention below it) while still being a real,
+// enforced bound rather than the effectively-unbounded 365 days that let
+// extrinsics (same table family, same cron) grow unchecked into the exact
+// D1_ERROR: Exceeded maximum DB size outage account_events already hit once
+// (see EVENT_RETENTION_MS in account-events.mjs). Raise it once the raw/
+// long-history chain data lives in Postgres (self-hosted, no cap) instead of
+// D1, per ADR 0013's "demote/retire D1" end state. pruneBlocks runs in the
+// HEALTH_PRUNE_CRON.
+export const BLOCK_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Columns written to blocks — THE load contract. scripts/fetch-events.py emits
 // rows with exactly these keys; loadStagedBlocks binds them in this order. Values
