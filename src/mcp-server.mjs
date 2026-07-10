@@ -18,6 +18,7 @@ import {
 import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
@@ -936,6 +937,46 @@ function mcpD1Runner(ctx) {
       return [];
     }
   };
+}
+
+// Synthetic GET /api/v1/extrinsics{...} requests forwarded UNCHANGED to
+// DATA_API via tryPostgresTier (#4694) -- MCP tool handlers receive
+// structured args, not an inbound Request the way REST's handleExtrinsics
+// does, so this reconstructs the identical query-string shape
+// workers/data-api.mjs's extrinsics routes parse. list_extrinsics'
+// inputSchema has no call_hash param (REST-only, #4322), so that filter is
+// never forwarded here -- nothing else to reconcile. The host in the URL is
+// never dispatched to (DATA_API.fetch resolves the binding directly, the
+// same convention src/data-api-mcp.mjs's dataApiFetchJson already uses).
+function mcpExtrinsicsListRequest(args) {
+  const params = new URLSearchParams();
+  const block = optionalNonNegativeInt(args, "block");
+  if (block != null) params.set("block", String(block));
+  const signer = optionalString(args, "signer");
+  if (signer) params.set("signer", signer);
+  const callModule = optionalString(args, "call_module");
+  if (callModule) params.set("call_module", callModule);
+  const callFunction = optionalString(args, "call_function");
+  if (callFunction) params.set("call_function", callFunction);
+  const success = optionalSuccessFilter(args);
+  if (success !== undefined) params.set("success", String(success));
+  const blockStart = optionalNonNegativeInt(args, "block_start");
+  if (blockStart != null) params.set("block_start", String(blockStart));
+  const blockEnd = optionalNonNegativeInt(args, "block_end");
+  if (blockEnd != null) params.set("block_end", String(blockEnd));
+  const from = optionalNonNegativeInt(args, "from");
+  if (from != null) params.set("from", String(from));
+  const to = optionalNonNegativeInt(args, "to");
+  if (to != null) params.set("to", String(to));
+  if (args?.limit != null) params.set("limit", String(args.limit));
+  if (args?.offset != null) params.set("offset", String(args.offset));
+  const cursor = optionalString(args, "cursor");
+  if (cursor) params.set("cursor", cursor);
+  return new Request(`https://d/api/v1/extrinsics?${params.toString()}`);
+}
+
+function mcpExtrinsicDetailRequest(ref) {
+  return new Request(`https://d/api/v1/extrinsics/${encodeURIComponent(ref)}`);
 }
 
 // One subnet's economics: live KV tier (KV-primary), else the committed R2
@@ -5404,20 +5445,31 @@ export const MCP_TOOLS = [
       const callModule = optionalString(args, "call_module");
       const callFunction = optionalString(args, "call_function");
       const cursor = optionalString(args, "cursor");
-      return loadExtrinsics(mcpD1Runner(ctx), {
-        block: optionalNonNegativeInt(args, "block") ?? undefined,
-        signer: signer ?? undefined,
-        callModule: callModule ?? undefined,
-        callFunction: callFunction ?? undefined,
-        success: optionalSuccessFilter(args),
-        blockStart: optionalNonNegativeInt(args, "block_start") ?? undefined,
-        blockEnd: optionalNonNegativeInt(args, "block_end") ?? undefined,
-        from: optionalNonNegativeInt(args, "from") ?? undefined,
-        to: optionalNonNegativeInt(args, "to") ?? undefined,
-        limit: args?.limit,
-        offset: args?.offset,
-        cursor: cursor ?? undefined,
-      });
+      // Mirrors REST's handleExtrinsics: try Postgres first (#4694), fall
+      // back to D1 on any failure -- same tryPostgresTier contract, same
+      // METAGRAPH_EXTRINSICS_SOURCE flag, so this tool and GET
+      // /api/v1/extrinsics never diverge on which tier answered.
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpExtrinsicsListRequest(args),
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        (await loadExtrinsics(mcpD1Runner(ctx), {
+          block: optionalNonNegativeInt(args, "block") ?? undefined,
+          signer: signer ?? undefined,
+          callModule: callModule ?? undefined,
+          callFunction: callFunction ?? undefined,
+          success: optionalSuccessFilter(args),
+          blockStart: optionalNonNegativeInt(args, "block_start") ?? undefined,
+          blockEnd: optionalNonNegativeInt(args, "block_end") ?? undefined,
+          from: optionalNonNegativeInt(args, "from") ?? undefined,
+          to: optionalNonNegativeInt(args, "to") ?? undefined,
+          limit: args?.limit,
+          offset: args?.offset,
+          cursor: cursor ?? undefined,
+        }))
+      );
     },
   },
   {
@@ -5446,7 +5498,15 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      return loadExtrinsicDetail(mcpD1Runner(ctx), ref);
+      // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall
+      // back to D1 on any failure.
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpExtrinsicDetailRequest(ref),
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ?? (await loadExtrinsicDetail(mcpD1Runner(ctx), ref))
+      );
     },
   },
   {
