@@ -1,10 +1,13 @@
 # ADR 0012 — Chain-data ingestion: bootstrap poller → self-hosted archive indexer
 
-- **Status:** Accepted — ratified 2026-06-24 (the self-hosted archive node is being
-  provisioned). The bootstrap poller is now archive-ready (cursor-driven gap
-  recovery, #1749) and stays as the interim tier until the continuous indexer is
-  live.
-- **Date:** 2026-06-24
+- **Status:** Superseded by [ADR 0014](0014-chain-data-infrastructure-and-postgres-cutover.md).
+  The continuous indexer this ADR aimed at (`indexer-rs`) is live and has been
+  for some time; the "bootstrap poller" this ADR made archive-ready was
+  retired 2026-07-04, not on the precondition this ADR predicted (indexer
+  live + backfilled) but earlier, for an unrelated reason (the realtime
+  streamer got a self-hosted redundant copy) — see ADR 0014 for why that
+  retirement's safety premise has since needed re-examining.
+- **Date:** 2026-06-24 (ratified)
 - **Relates to:** ADR 0010 (chain-direct block explorer — this is the Phase-2
   ingestion it deferred), ADR 0006 (provenance-tiered storage), and the
   own-the-core infrastructure program (#1345, #1349, #1519).
