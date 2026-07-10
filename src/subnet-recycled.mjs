@@ -36,6 +36,7 @@
 export const RECYCLED_KV_TTL = 600; // seconds — a registration-count counter, not a live price
 export const RECYCLED_NEGATIVE_KV_TTL = 10; // seconds
 export const RECYCLED_RPC_TIMEOUT_MS = 5000;
+export const MAX_U16_NETUID = 65535;
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 // twox128("SubtensorModule") ++ twox128("RAORecycledForRegistration").
@@ -44,9 +45,18 @@ const RECYCLED_STORAGE_KEY_PREFIX =
 
 // netuid (0..65535) as a u16, little-endian, 2 hex bytes — the Identity-hashed
 // map-key suffix appended to the fixed prefix above.
+export function isU16Netuid(netuid) {
+  return Number.isInteger(netuid) && netuid >= 0 && netuid <= MAX_U16_NETUID;
+}
+
 function netuidStorageKeySuffix(netuid) {
-  const lo = (netuid & 0xff).toString(16).padStart(2, "0");
-  const hi = ((netuid >> 8) & 0xff).toString(16).padStart(2, "0");
+  if (!isU16Netuid(netuid)) {
+    throw new RangeError("netuid must be an integer in the u16 range 0..65535");
+  }
+  const lo = (netuid % 256).toString(16).padStart(2, "0");
+  const hi = Math.floor(netuid / 256)
+    .toString(16)
+    .padStart(2, "0");
   return lo + hi;
 }
 
@@ -77,6 +87,10 @@ function raoToTao(rao) {
 // registrations reads back the chain's own 0x00...0 ValueQuery default,
 // decoding to a real 0, not null.
 export async function loadSubnetRecycled(env, netuid) {
+  if (!isU16Netuid(netuid)) {
+    throw new RangeError("netuid must be an integer in the u16 range 0..65535");
+  }
+
   const cacheKey = `recycled:${netuid}`;
   const kv = env?.METAGRAPH_CONTROL;
 

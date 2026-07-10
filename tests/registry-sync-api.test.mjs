@@ -29,6 +29,11 @@ vi.mock("postgres", () => ({
     };
     sql.json = (value) => value;
     sql.end = () => Promise.resolve();
+    // sql.begin(cb) reserves a connection for cb in real postgres.js; the
+    // mock just invokes cb with this same sql function so every existing
+    // tagged-template assertion (sqlCalls) still sees the identical call
+    // stream, and resolves to (or rejects with) whatever cb does.
+    sql.begin = (cb) => cb(sql);
     return sql;
   },
 }));

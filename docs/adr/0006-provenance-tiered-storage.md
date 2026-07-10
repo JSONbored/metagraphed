@@ -1,6 +1,16 @@
 # ADR 0006 — Provenance-tiered storage: git for human inputs, R2/D1 for machine data
 
-Status: Accepted (partial), 2026-06-14 — step 1 (#571) shipped; steps 2–4 pending.
+Status: Accepted (partial), 2026-06-14 — step 1 (#571) shipped. Steps 2-4 of
+the originally-proposed migration were investigated and decided against, not
+left pending (#597 closed "net-negative after investigation" 2026-06-14;
+#1003 closed completed 2026-06-17 with its own step 1 shipped via #1016) —
+the committed machine files (`registry/native/*`, `registry/candidates/
+generated/*`, `registry/verification/*`, `registry/adapters/latest/*`) stay
+git-tracked, deliberately, rather than moving off git. The dynamic-data
+(D1/computed-on-read) tier's own trajectory is now owned by
+[ADR 0014](0014-chain-data-infrastructure-and-postgres-cutover.md), which
+documents the D1→Postgres cutover for chain data; the git and R2 tiers below
+are unaffected and remain current.
 
 Refines [ADR 0001](0001-r2-only-data-artifacts.md). Builds on
 [ADR 0002](0002-live-operational-health.md).

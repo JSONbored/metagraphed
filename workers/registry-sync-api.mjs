@@ -116,11 +116,21 @@ export default {
       subnets_deleted: 0,
     };
     try {
-      await sql`SET statement_timeout = '10000ms'`;
+      // sql.begin() reserves ONE physical connection for the whole batch,
+      // including the SET -- Hyperdrive resets session state when a
+      // connection is returned to its pool, so a bare SET (no transaction)
+      // has no guarantee it applies to the writes that follow it (Hyperdrive's
+      // connection-lifecycle docs; same root cause as #4686). This also makes
+      // the batch atomic: previously a mid-batch failure left whatever had
+      // already been written committed and the rest silently never applied,
+      // a partial-sync state with no way to tell it happened; now the whole
+      // batch commits together or rolls back together.
+      return await sql.begin(async (sql) => {
+        await sql`SET statement_timeout = '10000ms'`;
 
-      for (const p of providers) {
-        if (!p.id || !p.overlay || !p.source_commit) continue;
-        await sql`
+        for (const p of providers) {
+          if (!p.id || !p.overlay || !p.source_commit) continue;
+          await sql`
           INSERT INTO providers (id, overlay, source_commit)
           VALUES (${p.id}, ${sql.json(p.overlay)}, ${p.source_commit})
           ON CONFLICT (id) DO UPDATE SET
@@ -128,20 +138,20 @@ export default {
             source_commit = EXCLUDED.source_commit,
             updated_at = now()
           WHERE providers.overlay IS DISTINCT FROM EXCLUDED.overlay`;
-        summary.providers_written += 1;
-      }
+          summary.providers_written += 1;
+        }
 
-      const writtenSubnetNetuids = new Set();
-      for (const s of subnets) {
-        if (
-          !Number.isInteger(s.netuid) ||
-          !s.slug ||
-          !s.name ||
-          !s.overlay ||
-          !s.source_commit
-        )
-          continue;
-        await sql`
+        const writtenSubnetNetuids = new Set();
+        for (const s of subnets) {
+          if (
+            !Number.isInteger(s.netuid) ||
+            !s.slug ||
+            !s.name ||
+            !s.overlay ||
+            !s.source_commit
+          )
+            continue;
+          await sql`
           INSERT INTO subnets (netuid, slug, name, source, overlay, source_commit)
           VALUES (${s.netuid}, ${s.slug}, ${s.name}, ${s.source || "community"}, ${sql.json(s.overlay)}, ${s.source_commit})
           ON CONFLICT (netuid) DO UPDATE SET
@@ -151,86 +161,86 @@ export default {
             overlay = EXCLUDED.overlay,
             source_commit = EXCLUDED.source_commit,
             updated_at = now()`;
-        summary.subnets_written += 1;
-        writtenSubnetNetuids.add(s.netuid);
-      }
+          summary.subnets_written += 1;
+          writtenSubnetNetuids.add(s.netuid);
+        }
 
-      for (const prune of pruneSurfaces) {
-        if (
-          !Number.isInteger(prune.subnet_netuid) ||
-          !Array.isArray(prune.current_surfaces) ||
-          !prune.source_commit
-        )
-          continue;
-        const keepKeys = prune.current_surfaces
-          .filter((surface) => surface?.kind && surface?.url)
-          .map((surface) => `${surface.kind}\u001f${surface.url}`);
-        // `authority_scope: "community"` (set by the merge-triggered fast path,
-        // scripts/sync-registry-to-postgres.mjs) bounds this prune to ONLY the
-        // community-authority rows for the subnet -- the fast path's
-        // current_surfaces comes from a single registry/subnets/<slug>.json file
-        // and has no visibility into machine-generated/candidate-promoted
-        // surfaces (authority: "registry-observed") the same subnet may also
-        // carry, so without this scope it would delete those rows on every
-        // merge that touches the file. The scheduled full resync
-        // (scripts/backfill-registry-postgres.mjs) computes current_surfaces
-        // from the complete baseline-augmented view and omits authority_scope,
-        // so it keeps pruning across every authority as before. Passed as a
-        // plain boolean parameter (not spliced SQL) so the condition is a
-        // no-op OR branch when unscoped, rather than composing raw fragments.
-        const scopeToCommunity = prune.authority_scope === "community";
-        const deleted = keepKeys.length
-          ? await sql`
+        for (const prune of pruneSurfaces) {
+          if (
+            !Number.isInteger(prune.subnet_netuid) ||
+            !Array.isArray(prune.current_surfaces) ||
+            !prune.source_commit
+          )
+            continue;
+          const keepKeys = prune.current_surfaces
+            .filter((surface) => surface?.kind && surface?.url)
+            .map((surface) => `${surface.kind}\u001f${surface.url}`);
+          // `authority_scope: "community"` (set by the merge-triggered fast path,
+          // scripts/sync-registry-to-postgres.mjs) bounds this prune to ONLY the
+          // community-authority rows for the subnet -- the fast path's
+          // current_surfaces comes from a single registry/subnets/<slug>.json file
+          // and has no visibility into machine-generated/candidate-promoted
+          // surfaces (authority: "registry-observed") the same subnet may also
+          // carry, so without this scope it would delete those rows on every
+          // merge that touches the file. The scheduled full resync
+          // (scripts/backfill-registry-postgres.mjs) computes current_surfaces
+          // from the complete baseline-augmented view and omits authority_scope,
+          // so it keeps pruning across every authority as before. Passed as a
+          // plain boolean parameter (not spliced SQL) so the condition is a
+          // no-op OR branch when unscoped, rather than composing raw fragments.
+          const scopeToCommunity = prune.authority_scope === "community";
+          const deleted = keepKeys.length
+            ? await sql`
               DELETE FROM surfaces
               WHERE subnet_netuid = ${prune.subnet_netuid}
                 AND (NOT ${scopeToCommunity} OR authority = ${"community"})
                 AND NOT (kind || ${"\u001f"} || url = ANY(${keepKeys}))
               RETURNING id, subnet_netuid, overlay`
-          : await sql`
+            : await sql`
               DELETE FROM surfaces
               WHERE subnet_netuid = ${prune.subnet_netuid}
                 AND (NOT ${scopeToCommunity} OR authority = ${"community"})
               RETURNING id, subnet_netuid, overlay`;
-        for (const row of deleted) {
-          await sql`
+          for (const row of deleted) {
+            await sql`
             INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit)
             VALUES (${row.id}, ${row.subnet_netuid}, ${"delete"}, ${sql.json(row.overlay)}, ${prune.source_commit})`;
-          summary.surfaces_deleted += 1;
+            summary.surfaces_deleted += 1;
+          }
         }
-      }
 
-      for (const deletion of deleteSubnets) {
-        if (!Number.isInteger(deletion.netuid) || !deletion.source_commit)
-          continue;
-        if (writtenSubnetNetuids.has(deletion.netuid)) continue;
-        const deletedSurfaces = await sql`
+        for (const deletion of deleteSubnets) {
+          if (!Number.isInteger(deletion.netuid) || !deletion.source_commit)
+            continue;
+          if (writtenSubnetNetuids.has(deletion.netuid)) continue;
+          const deletedSurfaces = await sql`
           DELETE FROM surfaces
           WHERE subnet_netuid = ${deletion.netuid}
           RETURNING id, subnet_netuid, overlay`;
-        for (const row of deletedSurfaces) {
-          await sql`
+          for (const row of deletedSurfaces) {
+            await sql`
             INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit)
             VALUES (${row.id}, ${row.subnet_netuid}, ${"delete"}, ${sql.json(row.overlay)}, ${deletion.source_commit})`;
-          summary.surfaces_deleted += 1;
-        }
-        const deletedSubnets = await sql`
+            summary.surfaces_deleted += 1;
+          }
+          const deletedSubnets = await sql`
           DELETE FROM subnets
           WHERE netuid = ${deletion.netuid}
           RETURNING netuid`;
-        summary.subnets_deleted += deletedSubnets.length;
-      }
+          summary.subnets_deleted += deletedSubnets.length;
+        }
 
-      for (const surf of surfaces) {
-        if (
-          !Number.isInteger(surf.subnet_netuid) ||
-          !surf.surface_key ||
-          !surf.kind ||
-          !surf.url ||
-          !surf.overlay ||
-          !surf.source_commit
-        )
-          continue;
-        const result = await sql`
+        for (const surf of surfaces) {
+          if (
+            !Number.isInteger(surf.subnet_netuid) ||
+            !surf.surface_key ||
+            !surf.kind ||
+            !surf.url ||
+            !surf.overlay ||
+            !surf.source_commit
+          )
+            continue;
+          const result = await sql`
           INSERT INTO surfaces (
             subnet_netuid, provider_id, surface_key, kind, url,
             authority, review_state, probe_eligible, public_safe,
@@ -254,21 +264,24 @@ export default {
             updated_at = now()
           WHERE surfaces.overlay IS DISTINCT FROM EXCLUDED.overlay
           RETURNING (xmax = 0) AS inserted`;
-        if (result.length) {
-          const action = result[0].inserted ? "insert" : "update";
-          await sql`
+          if (result.length) {
+            const action = result[0].inserted ? "insert" : "update";
+            await sql`
             INSERT INTO surface_history (subnet_netuid, action, overlay, source_commit)
             VALUES (${surf.subnet_netuid}, ${action}, ${sql.json(surf.overlay)}, ${surf.source_commit})`;
-          summary.surfaces_written += 1;
+            summary.surfaces_written += 1;
+          }
         }
-      }
 
-      return json({ ok: true, ...summary });
+        return json({ ok: true, ...summary });
+      });
     } catch (err) {
       console.error("registry-sync-api write failed:", err);
       return json({ error: "write failed" }, 502);
-    } finally {
-      await sql.end({ timeout: 5 });
     }
+    // No sql.end() here: Hyperdrive automatically cleans up the connection
+    // when the request/invocation ends (Cloudflare's documented pattern) --
+    // the previous await sql.end(...) was undocumented, unnecessary extra
+    // work that also delayed every response by however long teardown took.
   },
 };
