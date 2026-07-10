@@ -1,5 +1,7 @@
 // Helpers for the extrinsic (transaction) explorer — the sibling of blocks.ts.
 
+import { unwrapByteArray, bytesToHex } from "./bytes";
+
 const EXTRINSIC_HASH = /^0x[0-9a-fA-F]{1,128}$/;
 /** block_number-extrinsic_index (e.g. 123456-2). Mirrors src/extrinsic-detail.mjs COMPOSITE_REF_RE,
  *  but disallows a leading-zero block number so omnibox decimal-block detection stays disjoint. */
@@ -134,16 +136,13 @@ const CALL_HASH = /^0x[0-9a-fA-F]{64}$/;
  * field position that's semantically KNOWN to be a hash (like `call_hash`) --
  * a bare 32-byte array is otherwise ambiguous with an AccountId32, which this
  * repo encodes SS58 instead, and indexer-rs's dump carries no type metadata
- * to tell the two apart generically. */
+ * to tell the two apart generically. Reuses bytes.ts's depth-agnostic
+ * unwrapByteArray/bytesToHex (#4689) rather than a second hardcoded-depth
+ * hex-encoder, so a hash value works whether indexer-rs emits it flat
+ * (confirmed for Multisig's call_hash) or newtype-wrapped. */
 function hashBytesToHex(value: unknown): string | null {
-  if (
-    Array.isArray(value) &&
-    value.length === 32 &&
-    value.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)
-  ) {
-    return `0x${(value as number[]).map((n) => n.toString(16).padStart(2, "0")).join("")}`;
-  }
-  return null;
+  const bytes = unwrapByteArray(value);
+  return bytes && bytes.length === 32 ? bytesToHex(bytes) : null;
 }
 
 /** The `call_hash` a `Multisig` call is keyed by, or null when this isn't a
