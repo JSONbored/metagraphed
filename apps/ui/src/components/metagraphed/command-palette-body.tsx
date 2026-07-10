@@ -478,6 +478,16 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
   };
 
   const showSuggestions = !debounced;
+  // #3401: a debounced query that matches nothing is a dead-end with just
+  // "No matches." — surface the same Recent/Try recovery block (plus a heading)
+  // so the user always has a concrete next step.
+  const noResults =
+    !!debounced &&
+    !isFetching &&
+    !isSemanticFetching &&
+    hits.length === 0 &&
+    filteredRoutes.length === 0 &&
+    navigateTargets.length === 0;
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
@@ -517,8 +527,13 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           {isFetching ? "Searching…" : debounced ? "No matches." : "Start typing to search."}
         </CommandEmpty>
 
-        {showSuggestions ? (
+        {showSuggestions || noResults ? (
           <div className="px-3 py-3 space-y-3 border-b border-border">
+            {noResults ? (
+              <div className="mg-label text-ink-muted">
+                No matches for "{debounced}" — try instead:
+              </div>
+            ) : null}
             {recent.length > 0 ? (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
