@@ -190,6 +190,20 @@
     // turnover/analytics) remain D1-only, portable one at a time under this
     // same flag in follow-up work.
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "postgres",
+    // neurons/neuron_daily (#4771): FLIPPED to "postgres" 2026-07-10, after a
+    // live parity pass. refresh-metagraph.yml's real daily-cron run (not just
+    // a manual trigger) synced 30,323 rows into a Postgres that started
+    // completely empty; a sampled row (netuid=8, uid=0) matched D1 field-for-
+    // field, including full-precision decimals (dividends) and the 0/1-to-
+    // boolean mapping (active/validator_permit/is_immunity_period) -- a
+    // stronger check than the other three tiers' first (reverted) attempt,
+    // which compared a row present in BOTH stores and couldn't distinguish
+    // genuine Postgres serving from a silently masked D1 fallback (#4686).
+    // Here Postgres had no prior data at all, so a correct sampled row is
+    // unambiguous proof the new pipeline (workers/data-api.mjs's
+    // handleNeuronsSync) actually works end-to-end. tryPostgresTier still
+    // falls back to D1 on any failure, so this remains a single-flag revert.
+    "METAGRAPH_NEURONS_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
@@ -262,6 +276,10 @@
   // shared-secret check. The only write path in either direction -- GitHub
   // Actions calls this route over HTTPS, never touches Postgres directly.
   "services": [
+    // #4771: the write path into the chain-indexer Postgres's neurons/
+    // neuron_daily tables (POST /api/v1/internal/neurons-sync) also lives
+    // behind THIS binding -- workers/data-api.mjs owns both read and write
+    // for this one Postgres instance, so there's no separate binding for it.
     { "binding": "DATA_API", "service": "metagraphed-data-api" },
     {
       "binding": "REGISTRY_SYNC_API",

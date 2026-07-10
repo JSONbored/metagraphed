@@ -20,6 +20,7 @@ import {
   handleNeuron,
   handleSubnetValidators,
   handleGlobalValidators,
+  handleValidatorDetail,
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetIdentityHistory,
@@ -5532,6 +5533,23 @@ describe("handleExtrinsics", () => {
     );
   });
 
+  test("rejects call_hash without call_module to avoid unscoped JSON scans", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const hash = `0x${"c".repeat(64)}`;
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url(`/api/v1/extrinsics?call_hash=${hash}`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "call_module");
+    assert.equal(
+      captures.sql.filter((sql) => /FROM extrinsics/.test(sql)).length,
+      0,
+    );
+  });
+
   test("call_hash binds a quoted LIKE match, scoped alongside call_module (#4322)", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const hash = `0x${"c".repeat(64)}`;
@@ -6217,6 +6235,217 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleAccountEvents(req(path), env, SS58, url(path)),
     );
     assert.equal(body.data.event_count, 1);
+  });
+
+  // #4771: neurons/neuron_daily's new Postgres tier, same shared-fallback
+  // wiring as blocks/extrinsics/account_events above (METAGRAPH_NEURONS_SOURCE).
+  test("handleSubnetMetagraph: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        neuron_count: 99,
+        captured_at: null,
+        block_number: null,
+        neurons: [],
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/metagraph`;
+    const body = await json(
+      await handleSubnetMetagraph(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.neuron_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetMetagraph: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/metagraph`;
+    const body = await json(
+      await handleSubnetMetagraph(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.neuron_count, 1);
+  });
+
+  test("handleNeuron: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        captured_at: null,
+        block_number: null,
+        neuron: { ...neuronRow(), hotkey: "postgres-hotkey" },
+      }),
+    );
+    const body = await json(
+      await handleNeuron(
+        req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
+        env,
+        NETUID,
+        UID,
+      ),
+    );
+    assert.equal(body.data.neuron.hotkey, "postgres-hotkey");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleNeuron: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleNeuron(
+        req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
+        env,
+        NETUID,
+        UID,
+      ),
+    );
+    assert.equal(body.data.neuron.hotkey, SS58);
+  });
+
+  test("handleSubnetValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        validator_count: 99,
+        captured_at: null,
+        block_number: null,
+        validators: [],
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/validators`;
+    const body = await json(
+      await handleSubnetValidators(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.validator_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetValidators: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/validators`;
+    const body = await json(
+      await handleSubnetValidators(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.validator_count, 1);
+  });
+
+  test("handleGlobalValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      neurons: [neuronRow({ netuid: NETUID })],
+    });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        sort: "subnet_count",
+        limit: 20,
+        captured_at: null,
+        block_number: null,
+        validator_count: 99,
+        validators: [],
+      }),
+    );
+    const body = await json(
+      await handleGlobalValidators(
+        req("/api/v1/validators"),
+        env,
+        url("/api/v1/validators"),
+      ),
+    );
+    assert.equal(body.data.validator_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleGlobalValidators: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ neurons: [neuronRow({ netuid: NETUID })] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleGlobalValidators(
+        req("/api/v1/validators"),
+        env,
+        url("/api/v1/validators"),
+      ),
+    );
+    assert.equal(body.data.validator_count, 1);
+  });
+
+  test("handleValidatorDetail: happy path returns cross-subnet validator detail from D1", async () => {
+    const { env } = dbWith({ neurons: [neuronRow({ netuid: NETUID })] });
+    const body = await json(
+      await handleValidatorDetail(req(`/api/v1/validators/${SS58}`), env, SS58),
+    );
+    assert.equal(body.data.hotkey, SS58);
+    assert.equal(body.data.subnet_count, 1);
+  });
+
+  test("handleValidatorDetail: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        hotkey: SS58,
+        coldkey: null,
+        coldkey_count: 0,
+        subnet_count: 99,
+        total_stake_tao: 0,
+        total_emission_tao: 0,
+        avg_validator_trust: null,
+        max_validator_trust: null,
+        captured_at: null,
+        block_number: null,
+        subnets: [],
+      }),
+    );
+    const body = await json(
+      await handleValidatorDetail(req(`/api/v1/validators/${SS58}`), env, SS58),
+    );
+    assert.equal(body.data.subnet_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleValidatorDetail: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ neurons: [neuronRow({ netuid: NETUID })] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleValidatorDetail(req(`/api/v1/validators/${SS58}`), env, SS58),
+    );
+    assert.equal(body.data.subnet_count, 1);
   });
 });
 

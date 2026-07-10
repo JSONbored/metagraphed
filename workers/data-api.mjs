@@ -6,15 +6,21 @@
 // the serving half of ADR 0013 — the indexer + Rust backfill write the rich Postgres
 // tiers (chain_events / deep history); this exposes them to the public API.
 //
-// READ-ONLY. Every query is parameterized (postgres.js tagged templates). The
-// client is created fresh per request through Hyperdrive (Cloudflare's
-// documented pattern -- Hyperdrive itself is the warm connection pool, so
-// this is cheap) and every request's queries run inside a single read-only
-// sql.begin() transaction for connection affinity (#4686). Hyperdrive cleans
-// up the connection automatically when the request ends -- no sql.end().
+// Mostly read-only, parameterized (postgres.js tagged templates), one request one
+// sql.begin("read only", ...) transaction (#4686 connection-affinity). The ONE
+// exception is POST /api/v1/internal/neurons-sync (#4771): the write path into
+// this SAME Postgres instance's neurons/neuron_daily tables. It does NOT get its
+// own dedicated Worker the way registry-sync-api.mjs does -- that split is
+// justified by registry-sync-api targeting a genuinely SEPARATE Postgres instance,
+// deliberately isolated so a bug in one can't take the other down. Here, splitting
+// read and write for the IDENTICAL database would buy nothing (both need the same
+// postgres.js driver either way) while adding a whole extra Worker/config/binding/
+// secret for zero bundle-budget benefit. handleNeuronsSync below owns its own
+// auth gate + connection, kept clearly separate from the read path's shared
+// per-request client and response headers (a write ack must never carry the
+// read routes' `cache-control: public, max-age=10`).
 import postgres from "postgres";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
-import { MAX_OFFSET } from "./request-params.mjs";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "../src/extrinsics.mjs";
 import {
@@ -22,6 +28,24 @@ import {
   formatAccountEvent,
 } from "../src/account-events.mjs";
 import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
+import { timingSafeEqual } from "../src/webhooks.mjs";
+import {
+  BLOCK_PAGINATION,
+  clampLimit as clampRequestLimit,
+  clampOffset as clampRequestOffset,
+} from "./request-params.mjs";
+import {
+  buildSubnetMetagraph,
+  buildSubnetValidators,
+  buildGlobalValidators,
+  buildNeuronDetail,
+  buildValidatorDetail,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+  NEURON_INSERT_COLUMNS,
+} from "../src/metagraph-neurons.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -29,6 +53,316 @@ const FILTER_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
 function validEventFilter(value) {
   return value == null || value === "" || FILTER_PATTERN.test(value);
+}
+
+// --- POST /api/v1/internal/neurons-sync (#4771) -----------------------------
+// The write path into this Worker's own Postgres for neurons/neuron_daily.
+// Reached only via the main Worker's DATA_API service binding (no public
+// routes of its own) -- see workers/api.mjs's handleNeuronsSyncProxy, which
+// forwards the request here unchanged. The shared-secret check below is the
+// only auth gate in the whole path, mirroring workers/registry-sync-api.mjs's
+// shape (shared-secret POST, no R2/HMAC envelope needed since the secret
+// header IS the transport's auth).
+//
+// This is the write path .github/workflows/refresh-metagraph.yml's
+// sign-and-stage job POSTs scripts/fetch-metagraph-native.py's output to,
+// alongside (not replacing, during the #4771 verification window) the
+// existing R2-stage-to-D1 path. The payload is the SAME bare-array shape
+// already produced for D1 (NEURON_INSERT_COLUMNS) -- no new fetch/shape work
+// needed, only a new destination.
+//
+// Collapses D1's two-step architecture (loadStagedNeurons loads the latest
+// snapshot; a SEPARATE daily cron, rollupNeuronDaily, later snapshots that
+// table into neuron_daily via SQL) into ONE step: every row already carries
+// its own captured_at, so this upserts BOTH neurons (latest-only) AND
+// neuron_daily (dated) from the same payload in the same transaction. No
+// Postgres-side rollup cron is needed, and therefore none of D1's
+// archive-then-prune complexity (src/neuron-history.mjs, #4770) has an
+// equivalent here to build.
+const NEURONS_SYNC_TOKEN_HEADER = "x-neurons-sync-token";
+// ~33k rows today (129 subnets x <=256 UIDs); generous headroom over that
+// (matches the D1 staging path's MAX_STAGED_NEURON_ROWS/MAX_STAGED_NEURONS_BYTES,
+// workers/request-handlers/staging.mjs) without inviting a pathological body.
+const NEURONS_SYNC_MAX_BODY_BYTES = 32_000_000;
+const NEURONS_SYNC_MAX_ROWS = 50_000;
+const NEURONS_SYNC_MAX_STRING_BYTES = 512;
+const NEURONS_SYNC_MAX_NETUID = 65_535;
+const NEURONS_SYNC_MAX_UID = 65_535;
+// Multi-row VALUES tuples per statement (postgres.js's sql(rows, ...cols)
+// helper) -- bounds a single statement's size while still batching the whole
+// ~33k-row snapshot in a couple dozen round-trips rather than one per row.
+const NEURONS_SYNC_ROWS_PER_STATEMENT = 1_000;
+const NEURONS_SYNC_BOOLEAN_COLUMNS = new Set([
+  "active",
+  "validator_permit",
+  "is_immunity_period",
+]);
+
+// Separate from the read path's json() -- a write ack must never carry the
+// GET routes' `cache-control: public, max-age=10` (or the CORS wildcard,
+// meaningless for a service-binding-only route).
+function writeJson(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+function utf8Bytes(value) {
+  return new TextEncoder().encode(value);
+}
+
+// Bounds-check one incoming row against NEURON_INSERT_COLUMNS -- the exact
+// same trust posture as workers/request-handlers/staging.mjs's
+// validStagedNeuronRow (this payload arrives over a different transport, but
+// it's the same untrusted-until-checked shape from the same producer script).
+function validNeuronSyncRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (
+    !Number.isInteger(row.netuid) ||
+    row.netuid < 0 ||
+    row.netuid > NEURONS_SYNC_MAX_NETUID
+  )
+    return false;
+  if (
+    !Number.isInteger(row.uid) ||
+    row.uid < 0 ||
+    row.uid > NEURONS_SYNC_MAX_UID
+  )
+    return false;
+  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  for (const [key, value] of Object.entries(row)) {
+    if (!NEURON_INSERT_COLUMNS.includes(key)) return false;
+    if (
+      typeof value === "string" &&
+      utf8Bytes(value).length > NEURONS_SYNC_MAX_STRING_BYTES
+    )
+      return false;
+    if (typeof value === "number" && !Number.isFinite(value)) return false;
+    // Every column here is a TEXT/INTEGER/NUMERIC/BOOLEAN scalar (never
+    // JSONB) -- a nested object or array slipping through would only be
+    // caught later as an opaque Postgres bind error (a 502), so reject it
+    // here as a clean 400 instead. (bigint/symbol/function are NOT checked:
+    // JSON.parse, this row's only real source, can never produce them.)
+    if (value !== null && typeof value === "object") return false;
+  }
+  return true;
+}
+
+// captured_at is epoch ms; snapshot_date is the UTC day, matching D1's
+// rollupNeuronDaily (`date(captured_at / 1000, 'unixepoch')`).
+function neuronSyncSnapshotDate(capturedAtMs) {
+  return new Date(capturedAtMs).toISOString().slice(0, 10);
+}
+
+// Coerce one validated row into the exact JS types each Postgres column
+// expects: 0/1 -> boolean for the BOOLEAN columns (the fetch script emits
+// 0/1 integers, same convention D1's INTEGER columns use), everything else
+// passes through (postgres.js binds numbers/strings/nulls as-is).
+function coerceNeuronSyncRow(row) {
+  const out = {};
+  for (const col of NEURON_INSERT_COLUMNS) {
+    const value = row[col] ?? null;
+    out[col] = NEURONS_SYNC_BOOLEAN_COLUMNS.has(col)
+      ? Boolean(Number(value))
+      : value;
+  }
+  return out;
+}
+
+async function handleNeuronsSync(request, env) {
+  if (!env.NEURONS_SYNC_SECRET) {
+    return writeJson(
+      { error: "neurons sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(NEURONS_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.NEURONS_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${NEURONS_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > NEURONS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${NEURONS_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      { error: "body must be a JSON array of neuron rows (or {rows:[...]})" },
+      400,
+    );
+  }
+  if (incoming.length > NEURONS_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${NEURONS_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validNeuronSyncRow)) {
+    return writeJson({ error: "rows must match the neuron row shape" }, 400);
+  }
+
+  const rows = incoming.map(coerceNeuronSyncRow);
+  // Per-netuid max captured_at, NOT one batch-wide value -- a global max would
+  // let one netuid's later capture prune rows this SAME request just upserted
+  // for a different, earlier-captured netuid in the same batch (the max would
+  // exceed that netuid's own captured_at, so its own just-written rows would
+  // satisfy `captured_at < max` and be deleted as if deregistered).
+  const netuidMaxCapturedAt = new Map();
+  for (const row of rows) {
+    const prev = netuidMaxCapturedAt.get(row.netuid) ?? 0;
+    if (row.captured_at > prev)
+      netuidMaxCapturedAt.set(row.netuid, row.captured_at);
+  }
+  const netuids = [...netuidMaxCapturedAt.keys()];
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    // sql.begin() reserves ONE physical connection for the whole batch, same
+    // connection-affinity reasoning as the read path above (#4686) -- and
+    // makes the whole snapshot atomic: a mid-batch failure must never leave
+    // `neurons` upserted with stale UIDs left un-pruned, or `neuron_daily`
+    // partially written for the day.
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+
+      const dailyRows = rows.map((row) => ({
+        ...row,
+        snapshot_date: neuronSyncSnapshotDate(row.captured_at),
+        updated_at: Date.now(),
+      }));
+
+      for (let i = 0; i < rows.length; i += NEURONS_SYNC_ROWS_PER_STATEMENT) {
+        const chunk = rows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
+        await sql`
+          INSERT INTO neurons ${sql(chunk, ...NEURON_INSERT_COLUMNS)}
+          ON CONFLICT (netuid, uid) DO UPDATE SET
+            hotkey = EXCLUDED.hotkey,
+            coldkey = EXCLUDED.coldkey,
+            active = EXCLUDED.active,
+            validator_permit = EXCLUDED.validator_permit,
+            rank = EXCLUDED.rank,
+            trust = EXCLUDED.trust,
+            validator_trust = EXCLUDED.validator_trust,
+            consensus = EXCLUDED.consensus,
+            incentive = EXCLUDED.incentive,
+            dividends = EXCLUDED.dividends,
+            emission_tao = EXCLUDED.emission_tao,
+            stake_tao = EXCLUDED.stake_tao,
+            registered_at_block = EXCLUDED.registered_at_block,
+            is_immunity_period = EXCLUDED.is_immunity_period,
+            axon = EXCLUDED.axon,
+            block_number = EXCLUDED.block_number,
+            captured_at = EXCLUDED.captured_at
+          WHERE neurons.captured_at <= EXCLUDED.captured_at`;
+      }
+
+      for (
+        let i = 0;
+        i < dailyRows.length;
+        i += NEURONS_SYNC_ROWS_PER_STATEMENT
+      ) {
+        const chunk = dailyRows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
+        await sql`
+          INSERT INTO neuron_daily ${sql(chunk, ...NEURON_INSERT_COLUMNS, "snapshot_date", "updated_at")}
+          ON CONFLICT (netuid, uid, snapshot_date) DO UPDATE SET
+            hotkey = EXCLUDED.hotkey,
+            coldkey = EXCLUDED.coldkey,
+            active = EXCLUDED.active,
+            validator_permit = EXCLUDED.validator_permit,
+            rank = EXCLUDED.rank,
+            trust = EXCLUDED.trust,
+            validator_trust = EXCLUDED.validator_trust,
+            consensus = EXCLUDED.consensus,
+            incentive = EXCLUDED.incentive,
+            dividends = EXCLUDED.dividends,
+            emission_tao = EXCLUDED.emission_tao,
+            stake_tao = EXCLUDED.stake_tao,
+            registered_at_block = EXCLUDED.registered_at_block,
+            is_immunity_period = EXCLUDED.is_immunity_period,
+            axon = EXCLUDED.axon,
+            block_number = EXCLUDED.block_number,
+            captured_at = EXCLUDED.captured_at,
+            updated_at = EXCLUDED.updated_at
+          WHERE neuron_daily.captured_at <= EXCLUDED.captured_at`;
+      }
+
+      // Prune UIDs that no longer appear in the snapshot for a netuid this
+      // batch actually covers (deregistered/replaced UIDs) -- scoped to ONLY
+      // the netuids present in this payload, so a partial-coverage batch can
+      // never wipe an unrelated subnet's rows. Mirrors D1's loadStagedNeurons
+      // prune, minus its "legacy" whole-table branch: every batch here
+      // declares its own coverage implicitly via which netuids its rows
+      // belong to. `netuids` is never empty here -- the earlier
+      // `!incoming.length` check guarantees at least one row, and every row
+      // has a netuid.
+      //
+      // The VALUES join builds a per-netuid threshold table -- each netuid is
+      // only pruned against ITS OWN max captured_at, never another netuid's,
+      // closing the cross-netuid data-loss gap a single shared threshold
+      // would open. Built via sql.unsafe with explicit-cast positional
+      // placeholders (plain scalar binds, one per cell) rather than a bound
+      // JS array -- confirmed live 2026-07-10 that Hyperdrive's recommended
+      // `fetch_types: false` (this Worker's own setting, above) breaks
+      // postgres.js's automatic ARRAY-literal serialization (`ANY($1)`/
+      // `unnest($1::int[])` sent a malformed literal with no braces), while
+      // scalar binds -- the only kind every other query in this Worker
+      // uses -- are unaffected.
+      const valuesSql = netuids
+        .map((_, i) => `($${i * 2 + 1}::int, $${i * 2 + 2}::bigint)`)
+        .join(", ");
+      const pruneParams = netuids.flatMap((netuid) => [
+        netuid,
+        netuidMaxCapturedAt.get(netuid),
+      ]);
+      const pruned = await sql.unsafe(
+        `DELETE FROM neurons n
+         USING (VALUES ${valuesSql}) AS batch(netuid, captured_at)
+         WHERE n.netuid = batch.netuid
+           AND n.captured_at < batch.captured_at
+         RETURNING n.netuid`,
+        pruneParams,
+      );
+
+      return writeJson({
+        ok: true,
+        neurons_written: rows.length,
+        neuron_daily_written: dailyRows.length,
+        netuids_covered: netuids.length,
+        deregistered_pruned: pruned.length,
+      });
+    });
+  } catch (err) {
+    console.error("data-api neurons-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+  // No sql.end() here: Hyperdrive automatically cleans up the connection when
+  // the request/invocation ends (Cloudflare's documented pattern).
 }
 
 function json(data, status = 200) {
@@ -77,10 +411,12 @@ function nonNegativeIntegerParam(params, key) {
   return Number.isSafeInteger(n) ? n : null;
 }
 
+function clampBlockLimit(raw) {
+  return clampRequestLimit(raw, BLOCK_PAGINATION);
+}
+
 function clampOffset(raw) {
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return 0;
-  return Math.min(Math.floor(n), MAX_OFFSET);
+  return clampRequestOffset(raw);
 }
 
 const HASH_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -123,6 +459,15 @@ function coerceEvent(row) {
 export default {
   async fetch(request, env, _ctx) {
     const url = new URL(request.url);
+    // The one write route (#4771) -- checked before the GET-only gate below,
+    // same as how the main Worker's own POST-accepting routes (webhooks, MCP,
+    // ingest) run ahead of its read-only method gate.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/neurons-sync"
+    ) {
+      return handleNeuronsSync(request, env);
+    }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
     if (!env.HYPERDRIVE?.connectionString) {
@@ -158,7 +503,7 @@ export default {
         // is on and forwards the SAME request it already validated -- this route
         // trusts well-formed params rather than re-deriving 400s.
         if (url.pathname === "/api/v1/blocks") {
-          const limit = clampLimit(url.searchParams.get("limit"));
+          const limit = clampBlockLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
           const cursor = decodeCursor(url.searchParams.get("cursor"), 1);
           const author = url.searchParams.get("author") || null;
@@ -517,6 +862,95 @@ export default {
             groups: rows.length,
             activity: rows,
           });
+        }
+
+        // GET /api/v1/subnets/:netuid/metagraph?validator_permit=true (#4771):
+        // the per-UID metagraph tier, mirroring src/metagraph-neurons.mjs's
+        // loadSubnetMetagraph. Same column list as the neuron detail/validators
+        // routes below (NEURON_COLUMNS) -- written literally per this file's
+        // own convention (a `${...}` interpolation binds a PARAMETER, not raw
+        // SQL, so a shared column-list string can't be spliced in).
+        const subnetMetagraph = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/metagraph$/,
+        );
+        if (subnetMetagraph) {
+          const netuid = Number(subnetMetagraph[1]);
+          const validatorsOnly =
+            url.searchParams.get("validator_permit") === "true";
+          const rows = validatorsOnly
+            ? await sql`
+              SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+              FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE ORDER BY uid`
+            : await sql`
+              SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+              FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
+          return json(buildSubnetMetagraph(rows, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/neurons/:uid (#4771): per-UID detail,
+        // mirroring loadNeuron. A miss returns neuron:null (schema-stable,
+        // never 404 -- matches the D1 path's own contract).
+        const neuronDetail = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/,
+        );
+        if (neuronDetail) {
+          const netuid = Number(neuronDetail[1]);
+          const uid = Number(neuronDetail[2]);
+          const rows = await sql`
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          FROM neurons WHERE netuid = ${netuid} AND uid = ${uid} LIMIT 1`;
+          return json(buildNeuronDetail(rows[0] ?? null, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/validators (#4771): validator_permit=1
+        // rows for one subnet, ranked by stake. Mirrors loadSubnetValidators.
+        const subnetValidators = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/validators$/,
+        );
+        if (subnetValidators) {
+          const netuid = Number(subnetValidators[1]);
+          const rows = await sql`
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE
+          ORDER BY stake_tao DESC, uid ASC`;
+          return json(buildSubnetValidators(rows, netuid));
+        }
+
+        // GET /api/v1/validators?sort=&limit= (#4771): network-wide validator
+        // leaderboard, mirroring loadGlobalValidators. Trusts already-validated
+        // sort/limit params (the caller, workers/request-handlers/entities.mjs's
+        // handleGlobalValidators, validates them before forwarding here).
+        if (url.pathname === "/api/v1/validators") {
+          const sortParam = url.searchParams.get("sort");
+          const sort = GLOBAL_VALIDATOR_SORTS.includes(sortParam)
+            ? sortParam
+            : DEFAULT_GLOBAL_VALIDATOR_SORT;
+          const limitParam = Number(url.searchParams.get("limit"));
+          const limit =
+            Number.isInteger(limitParam) &&
+            limitParam >= 1 &&
+            limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
+              ? limitParam
+              : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
+          const rows = await sql`
+          SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at
+          FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
+          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`;
+          return json(buildGlobalValidators(rows, { sort, limit }));
+        }
+
+        // GET /api/v1/validators/:hotkey (#4771): cross-subnet validator detail,
+        // mirroring loadValidatorDetail.
+        const validatorDetail = url.pathname.match(
+          /^\/api\/v1\/validators\/([^/]+)$/,
+        );
+        if (validatorDetail) {
+          const hotkey = decodeURIComponent(validatorDetail[1]);
+          const rows = await sql`
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, netuid
+          FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
+          ORDER BY netuid ASC, uid ASC`;
+          return json(buildValidatorDetail(rows, hotkey));
         }
 
         return json({ error: "not found" }, 404);

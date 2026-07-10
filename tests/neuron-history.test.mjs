@@ -945,7 +945,50 @@ describe("R2 cold archive + prune (PR-A2)", () => {
     assert.equal(res.subnets, 0);
   });
 
-  test("archivePrunableNeuronDaily stops and reports the first day that fails to archive", async () => {
+  test("archivePrunableNeuronDaily skips a day that fails to archive and reports it, rather than aborting the batch", async () => {
+    const emptyDay = "2026-03-19";
+    const goodDay = "2026-03-20";
+    const db = {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            return {
+              all: () => {
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({
+                    results: [{ day: emptyDay }, { day: goodDay }],
+                  });
+                }
+                // The emptyDay archive read finds no rows → archiveNeuronDaily
+                // returns {archived:false}; goodDay finds one row and succeeds.
+                if (params[0] === emptyDay) {
+                  return Promise.resolve({ results: [] });
+                }
+                return Promise.resolve({
+                  results: [{ netuid: 7, uid: 0, snapshot_date: goodDay }],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const bucket = { put: () => Promise.resolve() };
+    const now = Date.parse("2026-06-22T00:00:00Z");
+    const res = await archivePrunableNeuronDaily({}, { db, bucket, now });
+    // One day succeeded, so the batch as a whole is still archived:true --
+    // but the failed day is reported separately, never silently dropped, and
+    // never counted as archived (see pruneNeuronDaily: it must not be deleted).
+    assert.equal(res.archived, true);
+    assert.deepEqual(res.days, [goodDay]);
+    assert.deepEqual(res.skippedDays, [emptyDay]);
+    assert.equal(res.complete, false); // a skip always means incomplete
+  });
+
+  test("archivePrunableNeuronDaily reports archived:false when every day in the batch fails", async () => {
+    // All-fail must never regress to archived:true with an empty days array --
+    // pruneNeuronDaily's caller gates the entire prune on this flag, and an
+    // empty-days blanket delete would drop unarchived rows (see pruneNeuronDaily).
     const emptyDay = "2026-03-19";
     const db = {
       prepare(sql) {
@@ -956,8 +999,6 @@ describe("R2 cold archive + prune (PR-A2)", () => {
                 if (sql.includes("DISTINCT snapshot_date")) {
                   return Promise.resolve({ results: [{ day: emptyDay }] });
                 }
-                // The per-day archive read finds no rows → archiveNeuronDaily
-                // returns {archived:false} and the loop bails out.
                 return Promise.resolve({ results: [] });
               },
             };
@@ -969,10 +1010,71 @@ describe("R2 cold archive + prune (PR-A2)", () => {
     const now = Date.parse("2026-06-22T00:00:00Z");
     const res = await archivePrunableNeuronDaily({}, { db, bucket, now });
     assert.equal(res.archived, false);
-    assert.equal(res.reason, "archive-failed");
-    assert.equal(res.day, emptyDay);
     assert.deepEqual(res.days, []);
-    assert.equal(res.failed.archived, false);
+    assert.deepEqual(res.skippedDays, [emptyDay]);
+    assert.equal(res.complete, false);
+  });
+
+  test("archivePrunableNeuronDaily skips a day whose archive call throws, and continues the batch", async () => {
+    const throwingDay = "2026-03-19";
+    const goodDay = "2026-03-20";
+    const db = {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            return {
+              all: () => {
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({
+                    results: [{ day: throwingDay }, { day: goodDay }],
+                  });
+                }
+                if (params[0] === throwingDay) {
+                  return Promise.reject(new Error("subrequest limit"));
+                }
+                return Promise.resolve({
+                  results: [{ netuid: 7, uid: 0, snapshot_date: goodDay }],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const bucket = { put: () => Promise.resolve() };
+    const now = Date.parse("2026-06-22T00:00:00Z");
+    const res = await archivePrunableNeuronDaily({}, { db, bucket, now });
+    assert.equal(res.archived, true);
+    assert.deepEqual(res.days, [goodDay]);
+    assert.deepEqual(res.skippedDays, [throwingDay]);
+  });
+
+  test("archivePrunableNeuronDaily logs a non-Error throw via the String(err) fallback", async () => {
+    // Workers CPU/subrequest-limit failures aren't guaranteed to surface as a
+    // proper Error instance -- exercises the `err?.message ?? err` fallback
+    // when the rejection is a bare string with no `.message`.
+    const throwingDay = "2026-03-19";
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              all: () => {
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({ results: [{ day: throwingDay }] });
+                }
+                return Promise.reject("Exceeded CPU time limit");
+              },
+            };
+          },
+        };
+      },
+    };
+    const bucket = { put: () => Promise.resolve() };
+    const now = Date.parse("2026-06-22T00:00:00Z");
+    const res = await archivePrunableNeuronDaily({}, { db, bucket, now });
+    assert.equal(res.archived, false);
+    assert.deepEqual(res.skippedDays, [throwingDay]);
   });
 
   test("pruneNeuronDaily deletes below the 90-day retention cutoff", async () => {
@@ -1255,6 +1357,76 @@ describe("handleScheduled rollup cron (#1345)", () => {
     assert.deepEqual(result.pruned.days, oldDays);
     assert.match(capturedDeletes[0].sql, /snapshot_date IN/);
     assert.deepEqual(capturedDeletes[0].params, oldDays);
+  });
+
+  test("a partially-skipped backlog batch prunes only the succeeded days, never a blanket delete (#4770)", async () => {
+    // The backlog is fully drained in one batch (fewer prunable days than the
+    // limit), but one of them fails to archive. `complete` must still be false
+    // here so the caller passes the explicit archived-only `days` list to
+    // pruneNeuronDaily rather than `undefined` -- otherwise pruneNeuronDaily's
+    // no-explicit-days fallback (`DELETE ... WHERE snapshot_date < cutoff`)
+    // would blanket-delete the skipped day's still-unarchived D1 rows.
+    const latestDay = "2026-06-21";
+    const failingDay = "2026-03-19";
+    const goodDay = "2026-03-20";
+    const capturedDeletes = [];
+    const db = {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            return {
+              run: () => {
+                if (sql.startsWith("DELETE")) {
+                  capturedDeletes.push({ sql, params });
+                }
+                return Promise.resolve({ meta: { changes: 1 } });
+              },
+              all: () => {
+                if (sql.includes("MAX(snapshot_date)")) {
+                  return Promise.resolve({ results: [{ day: latestDay }] });
+                }
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({
+                    results: [{ day: failingDay }, { day: goodDay }],
+                  });
+                }
+                if (params[0] === failingDay) {
+                  return Promise.resolve({ results: [] }); // archive-failed
+                }
+                return Promise.resolve({
+                  results: [
+                    {
+                      netuid: 7,
+                      uid: 0,
+                      snapshot_date: params[0],
+                      stake_tao: 1,
+                    },
+                  ],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      METAGRAPH_ARCHIVE: { put: () => Promise.resolve() },
+    };
+
+    const result = await handleScheduled(
+      { cron: NEURON_HISTORY_ROLLUP_CRON },
+      env,
+      ctx,
+    );
+
+    assert.equal(result.archivedPrunable.archived, true);
+    assert.equal(result.archivedPrunable.complete, false);
+    assert.deepEqual(result.archivedPrunable.skippedDays, [failingDay]);
+    assert.equal(result.pruned.pruned, true);
+    assert.deepEqual(result.pruned.days, [goodDay]);
+    assert.match(capturedDeletes[0].sql, /snapshot_date IN/);
+    assert.deepEqual(capturedDeletes[0].params, [goodDay]);
   });
 
   test("isolates a rejected backlog archive and skips the gated prune", async () => {

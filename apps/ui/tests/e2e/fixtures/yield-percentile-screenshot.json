@@ -1,0 +1,49 @@
+{
+  "ok": true,
+  "schema_version": 1,
+  "data": {
+    "schema_version": 1,
+    "netuid": 64,
+    "captured_at": "2026-07-08T12:00:00.000Z",
+    "block_number": 8600000,
+    "neuron_count": 256,
+    "validator_count": 8,
+    "miner_count": 248,
+    "total_stake_tao": 1250000,
+    "total_emission_tao": 420,
+    "subnet_yield": 0.000336,
+    "mean_yield": 0.0038,
+    "median_yield": 0.000016,
+    "p25_yield": 0.000016,
+    "p75_yield": 0.007467,
+    "p90_yield": 0.007468,
+    "neurons": [
+      {
+        "uid": 1,
+        "hotkey": "5FixtureHotkeyForScreenshotPurposesOnly111111111111",
+        "role": "validator",
+        "stake_tao": 50000,
+        "emission_tao": 40,
+        "yield": 0.0008,
+        "vs_median": "above"
+      },
+      {
+        "uid": 2,
+        "hotkey": "5FixtureHotkeyForScreenshotPurposesOnly222222222222",
+        "role": "miner",
+        "stake_tao": 1200,
+        "emission_tao": 0.9,
+        "yield": 0.00075,
+        "vs_median": "above"
+      }
+    ]
+  },
+  "meta": {
+    "artifact_path": "/metagraph/subnets/64/yield.json",
+    "cache": "short",
+    "contract_version": "2026-06-06.1",
+    "generated_at": "2026-07-08T12:00:00.000Z",
+    "published_at": "2026-07-08T12:00:00.000Z",
+    "source": "metagraph-snapshot"
+  }
+}

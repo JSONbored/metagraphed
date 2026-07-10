@@ -12,6 +12,14 @@
   "main": "workers/registry-sync-api.mjs",
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
+  // Smart placement: run the Worker close to the Hyperdrive origin (the registry
+  // Postgres instance, reached via Cloudflare Tunnel) rather than at the nearest
+  // edge to the caller (GitHub Actions) -- the case for this is if anything
+  // stronger than wrangler.data.jsonc's read-only sibling: a single sync run
+  // does a whole batch of sequential INSERT/UPDATE/DELETE round-trips (one per
+  // provider/subnet/surface), so shaving latency off each round-trip compounds
+  // across the whole batch rather than mattering once per request.
+  "placement": { "mode": "smart" },
   // This is a write path into a database, unlike wrangler.data.jsonc's
   // read-only sibling -- explicitly disabled (wrangler otherwise defaults
   // workers.dev to enabled) so the shared-secret check is the only way in,

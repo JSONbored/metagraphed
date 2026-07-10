@@ -1,9 +1,11 @@
 -- Per-UID metagraph snapshot (#1303, epic #1302): the chain-level depth
 -- metagraphed previously lacked. One row per (netuid, uid), refreshed daily by
--- the refresh-metagraph workflow (Taostats source) — latest-only, REPLACE-on-
--- conflict, so the table stays bounded (~33k rows: 129 subnets x <=256 UIDs) and
--- never grows unbounded. Powers /api/v1/subnets/{netuid}/metagraph + /neurons/{uid}
--- (#1304) and /validators (#1305).
+-- the refresh-metagraph workflow -- first-party via the Bittensor SDK (#1348,
+-- no Taostats, no API key) -- latest-only, REPLACE-on-conflict, so the table
+-- stays bounded (~33k rows: 129 subnets x <=256 UIDs) and never grows
+-- unbounded. Powers /api/v1/subnets/{netuid}/metagraph + /neurons/{uid}
+-- (#1304) and /validators (#1305). Mirrored into Postgres by
+-- workers/neurons-sync-api.mjs (#4771; see deploy/postgres/schema.sql).
 --
 -- Units (verified against /api/v1/economics ground truth 2026-06-21):
 --   stake_tao   = Taostats total_alpha_stake / 1e9  (sum matches economics total_stake_tao)

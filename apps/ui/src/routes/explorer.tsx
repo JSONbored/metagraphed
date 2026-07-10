@@ -14,6 +14,8 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
+import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
+import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import {
@@ -25,6 +27,8 @@ import {
   chainSignersQuery,
   chainWeightSettersQuery,
   chainRegistrationsQuery,
+  chainServingQuery,
+  chainPrometheusQuery,
   chainStakeFlowQuery,
   chainStakeMovesQuery,
   chainTurnoverQuery,
@@ -47,6 +51,8 @@ import type {
   EconomicsTrends,
   ChainAxonRemovals,
   ChainRegistrations,
+  ChainServing,
+  ChainPrometheus,
   ChainTransfers,
 } from "@/lib/metagraphed/types";
 
@@ -110,6 +116,8 @@ function ExplorerPage() {
           "/api/v1/chain/signers",
           "/api/v1/chain/weights/setters",
           "/api/v1/chain/registrations",
+          "/api/v1/chain/serving",
+          "/api/v1/chain/prometheus",
           "/api/v1/chain/stake-flow",
           "/api/v1/chain/stake-moves",
           "/api/v1/chain/turnover",
@@ -516,6 +524,173 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
           in the busiest subnet, across {formatNumber(dist.count)} subnets.
         </p>
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * #3463: network-wide axon-serving and Prometheus-telemetry leaderboards side
+ * by side — which subnets are actively announcing operational endpoints. The
+ * wrapping section leaves room for #3464's axon-removals panel to slot in later.
+ */
+function NetworkOperationsSection({
+  serving,
+  prometheus,
+}: {
+  serving: ChainServing;
+  prometheus: ChainPrometheus;
+}) {
+  return (
+    <section>
+      <h2 className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+        Network operations
+      </h2>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChainServingLeaderboard board={serving} />
+        <ChainPrometheusLeaderboard board={prometheus} />
+      </div>
+    </section>
+  );
+}
+
+function ChainServingLeaderboard({ board }: { board: ChainServing }) {
+  const net = board.network;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Axon serving
+        </h3>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(board.subnet_count)} subnets
+        </span>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StakeFlowMetric label="Announcements" value={formatNumber(net.announcements)} />
+        <StakeFlowMetric label="Distinct servers" value={formatNumber(net.distinct_servers)} />
+        <StakeFlowMetric
+          label="Per server"
+          value={
+            net.announcements_per_server != null ? net.announcements_per_server.toFixed(2) : "—"
+          }
+        />
+      </div>
+
+      {board.subnets.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Announcements</th>
+                <th className={`${TH} text-right`}>Distinct servers</th>
+                <th className={`${TH} text-right`}>Per server</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {board.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.announcements)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.distinct_servers)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {s.announcements_per_server != null
+                      ? s.announcements_per_server.toFixed(2)
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="No serving activity in this window yet." />
+      )}
+    </section>
+  );
+}
+
+function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
+  const net = board.network;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Prometheus telemetry
+        </h3>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(board.subnet_count)} subnets
+        </span>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StakeFlowMetric label="Announcements" value={formatNumber(net.announcements)} />
+        <StakeFlowMetric label="Distinct exporters" value={formatNumber(net.distinct_exporters)} />
+        <StakeFlowMetric
+          label="Per exporter"
+          value={
+            net.announcements_per_exporter != null ? net.announcements_per_exporter.toFixed(2) : "—"
+          }
+        />
+      </div>
+
+      {board.subnets.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Announcements</th>
+                <th className={`${TH} text-right`}>Distinct exporters</th>
+                <th className={`${TH} text-right`}>Per exporter</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {board.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.announcements)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.distinct_exporters)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {s.announcements_per_exporter != null
+                      ? s.announcements_per_exporter.toFixed(2)
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="No Prometheus telemetry in this window yet." />
+      )}
     </section>
   );
 }
@@ -976,6 +1151,8 @@ function ExplorerDashboard() {
     { data: signersRes },
     { data: weightSettersRes },
     { data: registrationsRes },
+    { data: servingRes },
+    { data: prometheusRes },
     { data: stakeFlowRes },
     { data: stakeMovesRes },
     { data: turnoverRes },
@@ -992,6 +1169,8 @@ function ExplorerDashboard() {
       chainSignersQuery(win),
       chainWeightSettersQuery(win),
       chainRegistrationsQuery(win),
+      chainServingQuery(win),
+      chainPrometheusQuery(win),
       chainStakeFlowQuery(win),
       chainStakeMovesQuery(win),
       chainTurnoverQuery(win),
@@ -1008,6 +1187,8 @@ function ExplorerDashboard() {
   const signers = signersRes.data;
   const weightSetters = weightSettersRes.data;
   const registrations = registrationsRes.data;
+  const serving = servingRes.data;
+  const prometheus = prometheusRes.data;
   const stakeFlow = stakeFlowRes.data;
   const stakeMoves = stakeMovesRes.data;
   const turnover = turnoverRes.data;
@@ -1204,7 +1385,7 @@ function ExplorerDashboard() {
                 formatValue={formatTao}
                 ariaLabel="Top fee payers ranked by total fees paid this window"
               />
-              <table className="w-full text-left text-sm">
+              <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
                 <thead>
                   <tr>
                     <th className={TH}>Account</th>
@@ -1238,7 +1419,7 @@ function ExplorerDashboard() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ExplorerLeaderboardTableShell>
             </>
           ) : (
             <EmptyState title="No fee payers in this window yet." />
@@ -1322,7 +1503,7 @@ function ExplorerDashboard() {
             Most active accounts
           </h2>
           {signers.signers.length > 0 ? (
-            <table className="w-full text-left text-sm">
+            <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}>
               <thead>
                 <tr>
                   <th className={TH}>Account</th>
@@ -1370,12 +1551,14 @@ function ExplorerDashboard() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ExplorerLeaderboardTableShell>
           ) : (
             <EmptyState title="No signers in this window yet." />
           )}
         </section>
       </div>
+
+      <NetworkOperationsSection serving={serving} prometheus={prometheus} />
 
       <TransferPairsSection win={win} />
 
@@ -1404,40 +1587,73 @@ function ExplorerDashboard() {
           </span>
         </div>
         {stakeTransfers.subnets.length > 0 ? (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Transfers</th>
-                <th className={`${TH} text-right`}>Distinct senders</th>
-                <th className={`${TH} text-right`}>Transfers per sender</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
+          <>
+            {/* < md: a squeezed 4-column table either clips its last column or
+                requires an undiscoverable horizontal scroll, so narrow
+                viewports get a stacked card per subnet instead (mirrors the
+                cards/table split ListShell uses for paginated lists). */}
+            <div className="md:hidden space-y-2">
               {stakeTransfers.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                <div key={s.netuid} className="rounded border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
+                      className="font-mono text-[12px] font-medium text-ink-strong hover:text-accent hover:underline"
                     >
                       SN{s.netuid}
                     </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {formatNumber(s.transfers)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {formatNumber(s.distinct_senders)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
-                  </td>
-                </tr>
+                    <span className="font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.transfers_per_sender != null
+                        ? `${s.transfers_per_sender.toFixed(2)} / sender`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                    <span>{formatNumber(s.transfers)} transfers</span>
+                    <span>{formatNumber(s.distinct_senders)} senders</span>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+            <ExplorerLeaderboardTableShell
+              leaderboardId={EXPLORER_LEADERBOARD_IDS.stakeTransfers}
+              visibility="desktop-only"
+            >
+              <thead>
+                <tr>
+                  <th className={TH}>Subnet</th>
+                  <th className={`${TH} text-right`}>Transfers</th>
+                  <th className={`${TH} text-right`}>Distinct senders</th>
+                  <th className={`${TH} text-right`}>Transfers per sender</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {stakeTransfers.subnets.map((s) => (
+                  <tr key={s.netuid} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                      >
+                        SN{s.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(s.transfers)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(s.distinct_senders)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </ExplorerLeaderboardTableShell>
+          </>
         ) : (
           <EmptyState title="No stake transfers in this window yet." />
         )}

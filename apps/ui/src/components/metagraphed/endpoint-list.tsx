@@ -398,7 +398,14 @@ function HeaderHint({ label, hint }: { label: string; hint: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-flex items-center gap-1 cursor-help underline-offset-2 decoration-dotted decoration-ink-subtle hover:decoration-ink-muted">
+        {/* #3433: tabIndex so this trigger is reachable by keyboard at all --
+            without it, Radix's Tooltip never receives the focus event that
+            opens it, so it can't be opened (or Escape-dismissed) via
+            keyboard. Matches EligibilityChip's trigger. */}
+        <span
+          tabIndex={0}
+          className="inline-flex items-center gap-1 cursor-help rounded underline-offset-2 decoration-dotted decoration-ink-subtle hover:decoration-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           {label}
         </span>
       </TooltipTrigger>

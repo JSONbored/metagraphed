@@ -511,9 +511,11 @@ export async function handleSubnetMetagraph(request, env, netuid, url) {
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
-  const data = await loadSubnetMetagraph(d1Runner(env), netuid, {
-    validatorsOnly,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadSubnetMetagraph(d1Runner(env), netuid, {
+      validatorsOnly,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.neurons,
@@ -571,7 +573,9 @@ export async function handleSubnetYield(request, env, netuid, url) {
 export async function handleNeuron(request, env, netuid, uid) {
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
-  const data = await loadNeuron(d1Runner(env), netuid, uid);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadNeuron(d1Runner(env), netuid, uid));
   return envelopeResponse(
     request,
     {
@@ -648,7 +652,9 @@ export async function handleSubnetHyperparamsHistory(
 export async function handleSubnetValidators(request, env, netuid, url) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadSubnetValidators(d1Runner(env), netuid);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadSubnetValidators(d1Runner(env), netuid));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.validators,
@@ -722,10 +728,12 @@ export function canonicalGlobalValidatorsCachePath(url, request = null) {
 export async function handleGlobalValidators(request, env, url) {
   const parsed = parseGlobalValidatorsQuery(url);
   if (parsed.error) return analyticsQueryError(parsed.error);
-  const data = await loadGlobalValidators(d1Runner(env), {
-    sort: parsed.sort,
-    limit: parsed.limit,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadGlobalValidators(d1Runner(env), {
+      sort: parsed.sort,
+      limit: parsed.limit,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.validators,
@@ -836,7 +844,9 @@ export async function handleAccountsList(request, env, url) {
 // empty subnets array, consistent with handleNeuron's absent-uid contract
 // (never 404 on a cold/absent live D1 tier).
 export async function handleValidatorDetail(request, env, hotkey) {
-  const data = await loadValidatorDetail(d1Runner(env), hotkey);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadValidatorDetail(d1Runner(env), hotkey));
   return envelopeResponse(
     request,
     {
@@ -3702,12 +3712,19 @@ export async function handleExtrinsics(request, env, url) {
       message: "call_hash must be a 0x-prefixed 64-character hex string.",
     });
   }
+  const callModule = sp.get("call_module") || undefined;
+  if (callHashRaw !== null && !callModule) {
+    return analyticsQueryError({
+      parameter: "call_module",
+      message: "call_module is required when call_hash is provided.",
+    });
+  }
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
     (await loadExtrinsics(d1Runner(env), {
       block: numericFilters.block ?? undefined,
       signer: sp.get("signer") || undefined,
-      callModule: sp.get("call_module") || undefined,
+      callModule,
       callFunction: sp.get("call_function") || undefined,
       callHash: callHashRaw || undefined,
       success:

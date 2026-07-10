@@ -3,6 +3,11 @@
   // api.mjs Worker so the postgres.js driver + growing read surface don't eat the
   // main Worker's bundle budget. Reached only via the main Worker's DATA_API service
   // binding (no public routes of its own). Deploy: wrangler deploy -c wrangler.data.jsonc
+  //
+  // Also owns the one write route into this same Postgres instance (#4771,
+  // POST /api/v1/internal/neurons-sync -- see workers/data-api.mjs's
+  // handleNeuronsSync) -- requires its own secret, set via:
+  //   wrangler secret put NEURONS_SYNC_SECRET -c wrangler.data.jsonc
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-data-api",
   "main": "workers/data-api.mjs",

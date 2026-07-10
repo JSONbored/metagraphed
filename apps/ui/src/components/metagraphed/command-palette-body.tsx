@@ -479,6 +479,27 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
 
   const showSuggestions = !debounced;
 
+  const showNoMatches =
+    debounced &&
+    !isFetching &&
+    hits.length === 0 &&
+    filteredRoutes.length === 0 &&
+    navigateTargets.length === 0;
+
+  const filterSubnetsByQuery = useCallback(() => {
+    pushRecent(debounced);
+    trackAction("filter:subnets");
+    onOpenChange(false);
+    navigate({ to: "/subnets", search: { q: debounced } as never });
+  }, [debounced, navigate, onOpenChange]);
+
+  const filterEndpointsByQuery = useCallback(() => {
+    pushRecent(debounced);
+    trackAction("filter:endpoints");
+    onOpenChange(false);
+    navigate({ to: "/endpoints", search: { q: debounced } as never });
+  }, [debounced, navigate, onOpenChange]);
+
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput
@@ -514,8 +535,63 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
 
       <CommandList className="max-h-[60vh]">
         <CommandEmpty>
-          {isFetching ? "Searching…" : debounced ? "No matches." : "Start typing to search."}
+          {isFetching
+            ? "Searching…"
+            : showNoMatches
+              ? `No matches for "${debounced}"`
+              : debounced
+                ? "No matches."
+                : "Start typing to search."}
         </CommandEmpty>
+
+        {showNoMatches ? (
+          <div className="px-3 py-3 space-y-3 border-b border-border">
+            <p className="font-mono text-[11px] text-ink-muted">
+              Try a suggested query or filter a list by your search.
+            </p>
+            <div>
+              <div className="mg-label mb-1.5">Try</div>
+              <ul className="flex flex-wrap gap-1">
+                {SUGGESTED_QUERIES.map((s) => (
+                  <li key={s}>
+                    <button
+                      type="button"
+                      onClick={() => setQ(s)}
+                      className="rounded-full border border-dashed border-ink-subtle bg-paper px-2.5 py-1 text-[11px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                    >
+                      {s}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="mg-label mb-1.5">Filter</div>
+              <ul className="flex flex-col gap-1.5">
+                <li>
+                  <button
+                    type="button"
+                    onClick={filterSubnetsByQuery}
+                    className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
+                  >
+                    <Search className="size-4 shrink-0 text-ink-muted" />
+                    <span>Filter /subnets by "{debounced}"</span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={filterEndpointsByQuery}
+                    className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm text-ink-strong hover:border-accent/40 hover:bg-surface transition-colors"
+                  >
+                    <Wifi className="size-4 shrink-0 text-ink-muted" />
+                    <span>Filter /endpoints by "{debounced}"</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        ) : null}
 
         {showSuggestions ? (
           <div className="px-3 py-3 space-y-3 border-b border-border">
@@ -720,18 +796,13 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           </CommandGroup>
         ) : null}
 
-        {debounced ? (
+        {debounced && !showNoMatches ? (
           <>
             <CommandSeparator />
             <CommandGroup heading="Actions">
               <CommandItem
                 value={`filter subnets ${debounced}`}
-                onSelect={() => {
-                  pushRecent(debounced);
-                  trackAction("filter:subnets");
-                  onOpenChange(false);
-                  navigate({ to: "/subnets", search: { q: debounced } as never });
-                }}
+                onSelect={filterSubnetsByQuery}
                 className="flex items-center gap-3"
               >
                 <Search className="size-4 text-ink-muted" />
@@ -739,12 +810,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
               </CommandItem>
               <CommandItem
                 value={`filter endpoints ${debounced}`}
-                onSelect={() => {
-                  pushRecent(debounced);
-                  trackAction("filter:endpoints");
-                  onOpenChange(false);
-                  navigate({ to: "/endpoints", search: { q: debounced } as never });
-                }}
+                onSelect={filterEndpointsByQuery}
                 className="flex items-center gap-3"
               >
                 <Wifi className="size-4 text-ink-muted" />

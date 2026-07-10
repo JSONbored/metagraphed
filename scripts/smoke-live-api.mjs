@@ -405,7 +405,7 @@ export function reconcileRollups(summary, detail, fieldsToKeys) {
   for (const [rollupKey, field] of Object.entries(fieldsToKeys)) {
     const rollup = summary?.[rollupKey];
     if (!rollup || typeof rollup !== "object") continue;
-    const actual = {};
+    const actual = Object.create(null);
     for (const row of detail) {
       const value = row?.[field];
       if (value === undefined || value === null) continue;
@@ -418,7 +418,7 @@ export function reconcileRollups(summary, detail, fieldsToKeys) {
       (key) => rollup[key] === actual[key],
     );
     if (!keysMatch || !countsMatch) {
-      mismatches.push({ rollupKey, expected: rollup, actual });
+      mismatches.push({ rollupKey, expected: rollup, actual: { ...actual } });
     }
   }
   return mismatches;

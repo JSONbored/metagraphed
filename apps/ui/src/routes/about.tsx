@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Github,
   ArrowUpRight,
-  AlertCircle,
   FileCode2,
   Network as NetworkIcon,
   Activity,
@@ -17,7 +16,8 @@ import { PageHero } from "@/components/metagraphed/page-hero";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
-import { Skeleton } from "@/components/metagraphed/states";
+import { Skeleton, StatUnavailable } from "@/components/metagraphed/states";
+import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -167,8 +167,6 @@ function Term({ name, desc }: { name: string; desc: string }) {
   );
 }
 
-type StatPhase = "pending" | "error" | "ready";
-
 function AtAGlance() {
   // Track each source query's own loading/error state so the sidebar can
   // distinguish "still loading" (skeleton) and "failed" (error glyph) from a
@@ -185,8 +183,6 @@ function AtAGlance() {
   // surface first_party_subnet_count (73), which is a different metric.
   const curationCounts = (coverageRaw.curation_level_counts ?? {}) as Record<string, number>;
   const adapterBacked = curationCounts["adapter-backed"];
-  const phase = (r: { isPending: boolean; isError: boolean }): StatPhase =>
-    r.isError ? "error" : r.isPending ? "pending" : "ready";
   const stats: Array<{
     icon: React.ElementType;
     label: string;
@@ -199,28 +195,28 @@ function AtAGlance() {
       label: "Active subnets",
       value: coverage.netuids_active != null ? formatNumber(coverage.netuids_active) : "—",
       to: "/subnets",
-      phase: phase(coverageResult),
+      phase: statPhase(coverageResult),
     },
     {
       icon: FileCode2,
       label: "Adapter-backed",
       value: adapterBacked != null ? formatNumber(adapterBacked) : "—",
       to: "/providers",
-      phase: phase(coverageResult),
+      phase: statPhase(coverageResult),
     },
     {
       icon: Activity,
       label: "Healthy",
       value: health.ok != null && health.total ? `${health.ok}/${health.total}` : "—",
       to: "/health",
-      phase: phase(healthResult),
+      phase: statPhase(healthResult),
     },
     {
       icon: Clock,
       label: "Avg freshness",
       value: freshness.avg_age_seconds != null ? humaniseSeconds(freshness.avg_age_seconds) : "—",
       to: "/health",
-      phase: phase(freshnessResult),
+      phase: statPhase(freshnessResult),
     },
   ];
   return (
@@ -244,9 +240,7 @@ function AtAGlance() {
                   {phase === "pending" ? (
                     <Skeleton className="mt-1 h-4 w-16" />
                   ) : phase === "error" ? (
-                    <span className="inline-flex items-center gap-1 text-sm font-medium text-health-down">
-                      <AlertCircle className="size-3.5" /> Unavailable
-                    </span>
+                    <StatUnavailable />
                   ) : (
                     value
                   )}

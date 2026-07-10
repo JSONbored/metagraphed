@@ -1115,7 +1115,11 @@ function WeightsSummaryLoader({ netuid }: { netuid: number }) {
     },
   ];
   return (
-    <div className="mb-4 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-card">
+    // #3939: stack to a single column below `sm`, matching the breakpoint
+    // AccountWeightSettingSection (accounts.$ss58.tsx) already uses for its
+    // sibling weight-setting KPI strip -- divide-y/divide-x swap with it so
+    // the stacked cells still get a separator line at mobile.
+    <div className="mb-4 grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
       {cells.map((c) => (
         <div key={c.label} className="px-4 py-3">
           <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
