@@ -80,8 +80,22 @@ function isAccountField(keyHint) {
 // named-struct-args call has an object there), so it can't reuse
 // isEnumTreeNode (which requires Array.isArray(value.values)) for that half
 // of the check.
+//
+// Excludes "Some"/"None" as the OUTER name: an Option<T> wrapping an
+// enum-shaped T (e.g. Option<MultiSignature>, confirmed real shape --
+// Drand.write_pulse's `signature`: {name:"Some", values:[{name:"Sr25519",
+// values:[bytes]}]}) is structurally IDENTICAL to a nested-call encoding --
+// both are "an outer {name,values} node wrapping exactly one inner
+// {name,values}-shaped node." Without this guard, that Option wrapper gets
+// misreconstructed as call_module:"Some", call_function:"Sr25519" (caught
+// during #4692's Ethereum/EVM decoder work, which was the first real fixture
+// exercising an Option wrapping an enum -- every #4691 fixture's wrapped
+// value lacked its own string `.name`, so this never fired there). Safe:
+// "Some"/"None" are Rust/Option-reserved names, never a real pallet
+// identifier, so this can't produce a false negative for a genuine call.
 function tryReconstructNestedCall(value) {
   if (!isEnumTreeNode(value) || value.values.length !== 1) return null;
+  if (value.name === "Some" || value.name === "None") return null;
   const inner = value.values[0];
   if (!inner || typeof inner !== "object" || Array.isArray(inner)) return null;
   if (typeof inner.name !== "string") return null;

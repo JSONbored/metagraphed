@@ -441,6 +441,27 @@ describe("decodePostgresCallArgs", () => {
       };
       assert.equal(decodePostgresCallArgs(raw).name, "Id");
     });
+
+    test("an Option<T> wrapping an enum-shaped T is NOT reconstructed as a nested call (real Drand.write_pulse signature, block 8543971/2) -- regression, caught during #4692", () => {
+      // {name:"Some", values:[{name:"Sr25519", values:[bytes]}]} is
+      // structurally IDENTICAL to a nested-call encoding (an outer
+      // {name,values} node wrapping exactly one inner {name,values}-shaped
+      // node) -- every #4691 fixture's Option-wrapped value lacked its own
+      // string `.name`, so this ambiguity went untested until a real
+      // Option<MultiSignature> fixture surfaced it. Without the "Some"/"None"
+      // exclusion in tryReconstructNestedCall, this misreconstructs to
+      // {call_module:"Some", call_function:"Sr25519", call_args:[bytes]}.
+      const raw = {
+        name: "Some",
+        values: [{ name: "Sr25519", values: [[1, 2, 3]] }],
+      };
+      const out = decodePostgresCallArgs(raw);
+      assert.equal("call_module" in out, false);
+      assert.deepEqual(out, raw);
+      // normalizePostgresValue then correctly Some-unwraps it, leaving the
+      // bare Sr25519 enum-tree node for #4692's decoder to recognize.
+      assert.deepEqual(decode(raw), { name: "Sr25519", values: [[1, 2, 3]] });
+    });
   });
 
   describe("D1-shaped idempotence (must be a no-op on D1's own call_args shapes)", () => {

@@ -13,6 +13,7 @@ import {
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { normalizePostgresValue } from "./scale-normalize.mjs";
 import { decodePostgresCallArgs } from "./postgres-call-args.mjs";
+import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
 // Postgres cold tier (#1519) ships. pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
@@ -161,12 +162,20 @@ export function formatExtrinsic(row) {
       // decodePostgresCallArgs (#4691) MUST run before normalizePostgresValue
       // (#4690) -- it needs the pristine raw nested-call shape to reconstruct
       // correctly (see its own file header for why running it second would
-      // silently lose a genuinely zero-argument nested call). Both are
-      // no-ops on D1's own call_args shape (an array of {name,type,value}
-      // descriptors) -- safe to apply unconditionally regardless of which
-      // serving tier produced this row.
-      call_args = normalizePostgresValue(
-        decodePostgresCallArgs(JSON.parse(row.call_args)),
+      // silently lose a genuinely zero-argument nested call). Ethereum/EVM
+      // decode (#4692) can safely run last -- U256/H160/tuple-variant-enum
+      // shapes are untouched by either earlier pass (verified: neither the
+      // newtype-scalar rule nor the nested-call detector matches an
+      // array-wrapping-an-array or a payload lacking its own string `.name`).
+      // All three are no-ops on D1's own call_args shape (an array of
+      // {name,type,value} descriptors) -- safe to apply unconditionally
+      // regardless of which serving tier produced this row.
+      call_args = decodeEthereumEvmCallArgs(
+        row.call_module,
+        row.call_function,
+        normalizePostgresValue(
+          decodePostgresCallArgs(JSON.parse(row.call_args)),
+        ),
       );
     } catch {
       call_args = null;

@@ -105,10 +105,36 @@
     // not a bug. Still open: a TOP-LEVEL (non-nested) call's own AccountId32/
     // byte-blob fields -- e.g. a bare Balances.transfer's dest, or Multisig's
     // own other_signatories/max_weight siblings -- are not yet decoded at
-    // that outer layer, only within a reconstructed nested call; Ethereum/EVM
-    // U256+H160 shapes (#4692); BTreeSet/u64/u128-precision edge cases
-    // (#4693); and MCP's extrinsics tools are still D1-only (#4694). Do not
-    // flip until those land and the parity harness (#4695) passes clean.
+    // that outer layer, only within a reconstructed nested call.
+    //
+    // #4692 (src/indexer-rs-ethereum-decode.mjs, chained last in
+    // formatExtrinsic): Ethereum.transact's U256 fields (nonce/value/
+    // gas_limit/max_fee_per_gas/max_priority_fee_per_gas), its `action`/
+    // `transaction` tuple-variant-enum shorthand, EVM.withdraw's H160
+    // `address`, and the Signature::Sr25519 payload shared by
+    // LimitOrders.execute_batched_orders/Drand.write_pulse are now decoded.
+    // MevShield was suspected as a third Sr25519 user but does NOT use that
+    // type (verified against real data, not assumed). U256 fields are a
+    // DELIBERATE type divergence from D1: tracing scripts/fetch-events.py
+    // shows D1's storage is actually lossless (json.dumps on Python's
+    // arbitrary-precision int); the precision loss for large values happens
+    // in the SHARED formatExtrinsic's JSON.parse(row.call_args) call itself
+    // (same mechanism already accepted for SubtensorModule.register's PoW
+    // nonce), not anything D1-specific. Since Postgres hands us the 4 raw
+    // limbs before that JSON.parse ever runs, U256 fields decode to an exact
+    // decimal STRING via BigInt instead of reproducing that precision loss --
+    // real data already has `value` (wei) past Number.MAX_SAFE_INTEGER for
+    // any transfer above ~0.009 ETH, the normal case, not a 2^256 edge case.
+    //
+    // Still open: a TOP-LEVEL (non-nested) call's own AccountId32/byte-blob
+    // fields -- e.g. a bare Balances.transfer's dest, or Multisig's own
+    // other_signatories/max_weight siblings -- are not yet decoded at that
+    // outer layer, only within a reconstructed nested call; BTreeSet/u64/
+    // u128-precision edge cases elsewhere (#4693, likely also the right home
+    // to reconsider the register-nonce JSON.parse precision issue generally,
+    // now that #4692 traced its root cause); MCP's extrinsics tools are
+    // still D1-only (#4694). Do not flip until those land and the parity
+    // harness (#4695) passes clean.
     "METAGRAPH_BLOCKS_SOURCE": "d1",
     "METAGRAPH_EXTRINSICS_SOURCE": "d1",
   },
