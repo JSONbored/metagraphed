@@ -14,6 +14,7 @@ import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "../src/extrinsics.mjs";
 import { formatAccountEvent } from "../src/account-events.mjs";
+import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -89,12 +90,20 @@ const MAX_EMBEDDED_EVENTS = 50;
 // JSON-encoded STRING to JSON.parse, matching D1's TEXT column -- casting here
 // keeps that shared formatter untouched rather than teaching it two shapes.
 
+// args (#4685): decode AccountId32 byte arrays to SS58 (or hex for
+// non-account/untagged values) before this ever reaches a consumer -- REST
+// and the three MCP tools that select `args` (list_chain_events,
+// get_block_chain_events, get_extrinsic_chain_events) all route through this
+// one function, so there's a single decode point rather than three. Guarded
+// on `!== undefined` since chain-events/stats' GROUP BY query never selects
+// `args` at all and shouldn't gain a spurious `args: null` key.
 function coerceEvent(row) {
   return {
     ...row,
     ...(row.block_number !== undefined
       ? { block_number: numberOrNull(row.block_number) }
       : {}),
+    ...(row.args !== undefined ? { args: decodeChainEventArgs(row.args) } : {}),
     observed_at: numberOrNull(row.observed_at),
   };
 }

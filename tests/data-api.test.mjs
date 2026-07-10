@@ -121,6 +121,116 @@ test("GET /api/v1/blocks/:n/chain-events returns the block's events", async () =
   expect(typeof body.events[0].observed_at).toBe("number");
 });
 
+// #4685: chain_events.args decodes AccountId32 byte arrays to SS58 (or hex
+// for non-account/untagged values) -- fixtures below are real production
+// rows, independently re-verified directly against Postgres during this
+// session, not synthetic examples.
+test("chain-events decodes an account-keyed field (TransactionFeePaid.who) to SS58", async () => {
+  mockRows.current = [
+    {
+      block_number: "8587754",
+      event_index: 412,
+      pallet: "TransactionPayment",
+      method: "TransactionFeePaid",
+      args: {
+        tip: 0,
+        who: [
+          [
+            230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117,
+            251, 19, 70, 95, 132, 123, 114, 171, 235, 189, 66, 130, 2, 183, 175,
+            143, 88,
+          ],
+        ],
+        actual_fee: 2131419,
+      },
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 200,
+      observed_at: "100",
+    },
+  ];
+  const res = await req("/api/v1/chain-events?limit=1");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.events[0].args.who).toBe(
+    "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+  );
+  expect(body.events[0].args.tip).toBe(0);
+  expect(body.events[0].args.actual_fee).toBe(2131419);
+});
+
+test("chain-events decodes both account-keyed fields of a Balances.Transfer (to and from)", async () => {
+  mockRows.current = [
+    {
+      block_number: "8587754",
+      event_index: 119,
+      pallet: "Balances",
+      method: "Transfer",
+      args: {
+        to: [
+          [
+            109, 111, 100, 108, 115, 117, 98, 116, 101, 110, 115, 114, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          ],
+        ],
+        from: [
+          [
+            109, 111, 100, 108, 115, 117, 98, 116, 101, 110, 115, 114, 15, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          ],
+        ],
+        amount: 30681,
+      },
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 100,
+      observed_at: "100",
+    },
+  ];
+  const res = await req("/api/v1/blocks/123/chain-events");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.events[0].args.to).toBe(
+    "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+  );
+  expect(body.events[0].args.from).toBe(
+    "5EYCAe5jLQhn6ofDSvuKE7htj4zVF4Tq1J7DTNzTePVJucfX",
+  );
+  expect(body.events[0].args.amount).toBe(30681);
+});
+
+test("chain-events hex-encodes an untagged positional 32-byte value (no field name to key SS58 off of)", async () => {
+  // Real SubtensorModule.TimelockedWeightsRevealed row (block 8587756, event
+  // 2): args has no field names at all for non-System/Balances pallets --
+  // must degrade to hex, never guess an SS58 address with no key hint.
+  mockRows.current = [
+    {
+      block_number: "8587756",
+      event_index: 2,
+      pallet: "SubtensorModule",
+      method: "TimelockedWeightsRevealed",
+      args: [
+        78,
+        [
+          [
+            162, 193, 121, 87, 196, 67, 129, 183, 243, 158, 111, 10, 171, 37,
+            31, 122, 9, 152, 89, 131, 234, 97, 249, 41, 16, 168, 179, 154, 146,
+            252, 209, 69,
+          ],
+        ],
+      ],
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 50,
+      observed_at: "100",
+    },
+  ];
+  const res = await req("/api/v1/blocks/123/chain-events");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.events[0].args).toEqual([
+    78,
+    "0xa2c17957c44381b7f39e6f0aab251f7a09985983ea61f92910a8b39a92fcd145",
+  ]);
+});
+
 test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)", async () => {
   const res = await req(
     "/api/v1/chain-events?limit=1&pallet=System&method=ExtrinsicSuccess&before=500",
