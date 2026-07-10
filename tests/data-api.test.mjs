@@ -2,6 +2,7 @@
 // is mocked so the routing + response shaping are tested with no real DB — the live
 // Hyperdrive→Railway path is validated separately.
 import { beforeEach, test, expect, vi } from "vitest";
+import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.mjs";
 
 const sqlCalls = vi.hoisted(() => []);
 const mockRows = vi.hoisted(() => ({
@@ -464,6 +465,17 @@ test("GET /api/v1/blocks uses a cursor seek instead of OFFSET when cursor is pre
   const text = queryText();
   expect(text).toContain("AND block_number <");
   expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/blocks clamps page size and offset before querying Postgres", async () => {
+  mockRows.current = [BLOCK_ROW];
+  await req("/api/v1/blocks?limit=999999&offset=999999999");
+
+  const queryValues = sqlCalls.flatMap((call) => call.values);
+  expect(queryValues).toContain(BLOCK_PAGINATION.maxLimit);
+  expect(queryValues).toContain(MAX_OFFSET);
+  expect(queryValues).not.toContain(999999);
+  expect(queryValues).not.toContain(999999999);
 });
 
 test("GET /api/v1/blocks/:ref resolves a numeric ref + neighbors", async () => {
