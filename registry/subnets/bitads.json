@@ -117,6 +117,25 @@
         "https://github.com/study-service/BitAds.ai/blob/main/min_compute.yml"
       ],
       "url": "https://raw.githubusercontent.com/study-service/BitAds.ai/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-16-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "BitAds TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/16 on api.taomarketcap.com returning machine-readable JSON for SN16 BitAds on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/study-service/BitAds.ai"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/16"
     }
   ],
   "social": {
