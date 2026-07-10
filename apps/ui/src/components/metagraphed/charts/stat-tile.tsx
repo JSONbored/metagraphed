@@ -58,12 +58,12 @@ export function StatTile({
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate">
           {eyebrow}
         </div>
-        <div className="mt-1 flex items-baseline gap-1.5">
-          <span className="font-display text-2xl font-semibold tabular-nums leading-none text-ink-strong">
+        <div className="mt-1 flex min-w-0 items-baseline gap-1.5">
+          <span className="min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl">
             {value}
           </span>
           {hint ? (
-            <span className="font-mono text-[10px] text-ink-muted truncate">{hint}</span>
+            <span className="min-w-0 font-mono text-[10px] text-ink-muted truncate">{hint}</span>
           ) : null}
         </div>
       </div>

@@ -13,6 +13,7 @@ import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { TableState } from "@/components/metagraphed/table-state";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
+import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import type {
   ConcentrationMetrics,
   ConcentrationHistoryPoint,
@@ -69,7 +70,7 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-4">
       {/* KPI tiles — stake-weighted by default (the headline distribution). */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className={PROFILE_KPI_GRID_CLASS}>
         <StatTile
           icon={Scale}
           eyebrow="Stake Gini"
@@ -100,7 +101,7 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Holders / entity context strip. */}
-      <div className="rounded-xl border border-border bg-card p-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="rounded-xl border border-border bg-card p-4 grid grid-cols-2 gap-3 min-[400px]:grid-cols-4">
         <Fact label="Stake holders" value={stake?.holders ?? "—"} />
         <Fact label="Emission holders" value={emission?.holders ?? "—"} />
         <Fact label="Entities" value={c.entity_count ?? "—"} />
@@ -154,11 +155,11 @@ function pctToBar(v?: number | null): number {
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+    <div className="min-w-0">
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate">
         {label}
       </div>
-      <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong leading-none">
+      <div className="mt-1 min-w-0 truncate font-display text-base font-semibold tabular-nums text-ink-strong leading-none min-[400px]:text-lg">
         {value}
       </div>
     </div>
@@ -216,7 +217,7 @@ function DriftCard({ netuid }: { netuid: number }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Concentration drift
         </span>
@@ -282,11 +283,9 @@ function DriftRow({
 }) {
   const last = series[series.length - 1];
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 font-mono text-[11px] uppercase tracking-wider text-ink-muted">
-        {label}
-      </span>
-      <div className="flex-1 min-w-0">
+    <div className="grid grid-cols-1 gap-1 min-[400px]:grid-cols-[minmax(0,7rem)_1fr_auto] min-[400px]:items-center min-[400px]:gap-3">
+      <span className="font-mono text-[11px] uppercase tracking-wider text-ink-muted">{label}</span>
+      <div className="min-w-0">
         <Sparkline
           values={series}
           color={color}
@@ -296,7 +295,7 @@ function DriftRow({
           ariaLabel={label}
         />
       </div>
-      <span className="w-20 shrink-0 text-right font-display text-sm font-semibold tabular-nums text-ink-strong">
+      <span className="min-w-0 font-display text-sm font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
         {last != null ? format(last) : "—"}
       </span>
     </div>
@@ -336,7 +335,7 @@ function PerformanceLoader({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-4">
       {/* KPI tiles — incentive-weighted (the headline reward distribution). */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className={PROFILE_KPI_GRID_CLASS}>
         <StatTile
           icon={Scale}
           eyebrow="Incentive Gini"

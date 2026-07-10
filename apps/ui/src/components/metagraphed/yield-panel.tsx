@@ -12,6 +12,7 @@ import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { YieldPercentileStrip } from "@/components/metagraphed/yield-percentile-strip";
+import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import type { SubnetYieldNeuron, YieldHistoryPoint } from "@/lib/metagraphed/types";
 
 type Win = "7d" | "30d" | "90d";
@@ -82,7 +83,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-4">
       {/* KPI tiles — the headline return + central tendency. */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className={PROFILE_KPI_GRID_CLASS}>
         <StatTile
           icon={Percent}
           eyebrow="Subnet yield"
@@ -242,7 +243,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Yield drift
         </span>
@@ -275,11 +276,9 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
 function DriftRow({ label, series, color }: { label: string; series: number[]; color: string }) {
   const last = series[series.length - 1];
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 font-mono text-[11px] uppercase tracking-wider text-ink-muted">
-        {label}
-      </span>
-      <div className="flex-1 min-w-0">
+    <div className="grid grid-cols-1 gap-1 min-[400px]:grid-cols-[minmax(0,7rem)_1fr_auto] min-[400px]:items-center min-[400px]:gap-3">
+      <span className="font-mono text-[11px] uppercase tracking-wider text-ink-muted">{label}</span>
+      <div className="min-w-0">
         <Sparkline
           values={series}
           color={color}
@@ -289,7 +288,7 @@ function DriftRow({ label, series, color }: { label: string; series: number[]; c
           ariaLabel={label}
         />
       </div>
-      <span className="w-20 shrink-0 text-right font-display text-sm font-semibold tabular-nums text-ink-strong">
+      <span className="min-w-0 font-display text-sm font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
         {last != null ? fmtYield(last) : "—"}
       </span>
     </div>

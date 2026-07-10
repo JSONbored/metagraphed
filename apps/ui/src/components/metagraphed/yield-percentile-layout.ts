@@ -31,7 +31,7 @@ export const YIELD_PERCENTILE_LABEL_CLASS =
  * to the shared `Fact` display size used elsewhere on subnet profile cards.
  */
 export const YIELD_PERCENTILE_VALUE_CLASS =
-  "mt-1 min-w-0 font-display text-base font-semibold tabular-nums text-ink-strong leading-none @min-[28rem]:text-lg";
+  "mt-1 min-w-0 truncate font-display text-sm font-semibold tabular-nums text-ink-strong leading-none @min-[20rem]:text-base @min-[28rem]:text-lg";
 
 export type YieldPercentileKey = "p25" | "median" | "p75" | "p90";
 

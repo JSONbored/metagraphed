@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   YIELD_PERCENTILE_FOUR_COL_MIN_WIDTH,
   YIELD_PERCENTILE_STRIP_GRID_CLASS,
+  YIELD_PERCENTILE_VALUE_CLASS,
   buildYieldPercentileData,
   shouldUseYieldPercentileFourColumnLayout,
 } from "./yield-percentile-layout";
@@ -9,6 +10,11 @@ import {
 describe("yield percentile layout tokens", () => {
   it("pins the four-column container threshold at 28rem (#3934)", () => {
     expect(YIELD_PERCENTILE_FOUR_COL_MIN_WIDTH).toBe("28rem");
+  });
+
+  it("scales percentile values down on narrow containers", () => {
+    expect(YIELD_PERCENTILE_VALUE_CLASS).toContain("text-sm");
+    expect(YIELD_PERCENTILE_VALUE_CLASS).toContain("truncate");
   });
 
   it("defaults to a 2-column grid and promotes to four columns via container query", () => {
