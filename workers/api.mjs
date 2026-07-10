@@ -1161,6 +1161,40 @@ async function handleRegistrySyncProxy(request, env) {
   });
 }
 
+// Proxies POST /api/v1/internal/neurons-sync to the dedicated neurons-sync
+// Worker (NEURONS_SYNC_API service binding, #4771), the write path into the
+// chain-indexer Postgres's neurons/neuron_daily tables. Mirrors
+// handleRegistrySyncProxy exactly: forwards the request as-is (including the
+// x-neurons-sync-token header), the shared-secret check happens once,
+// downstream in workers/neurons-sync-api.mjs.
+async function handleNeuronsSyncProxy(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "Only POST is supported.", 405);
+  }
+  if (!env.NEURONS_SYNC_API) {
+    return errorResponse(
+      "neurons_sync_unavailable",
+      "The neurons-sync tier is not bound to this deployment.",
+      503,
+    );
+  }
+  const upstream = await env.NEURONS_SYNC_API.fetch(request);
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(
+      "neurons_sync_unavailable",
+      "The neurons-sync tier returned an unreadable response.",
+      502,
+    );
+  }
+  return new Response(JSON.stringify(body), {
+    status: upstream.status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
 export async function handleRequest(request, env = {}, ctx = {}) {
   let url = new URL(request.url);
 
@@ -1265,6 +1299,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // for the chain-data tier.
   if (url.pathname === "/api/v1/internal/registry-sync") {
     return handleRegistrySyncProxy(request, env);
+  }
+  // The write path into the chain-indexer Postgres's neurons/neuron_daily
+  // tables (#4771) -- refresh-metagraph.yml's sign-and-stage job calls this
+  // over HTTPS alongside its existing R2-stage-to-D1 step. Proxies to the
+  // dedicated neurons-sync Worker (wrangler.neurons-sync.jsonc), same shape
+  // as the registry-sync proxy above.
+  if (url.pathname === "/api/v1/internal/neurons-sync") {
+    return handleNeuronsSyncProxy(request, env);
   }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs

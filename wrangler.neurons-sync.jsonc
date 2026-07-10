@@ -1,0 +1,51 @@
+{
+  // Dedicated neurons-sync Worker (#4771) — the write path into the chain-
+  // indexer Postgres's `neurons`/`neuron_daily` tables. Deployed separately
+  // from the main api.mjs Worker for the same bundle-budget reason
+  // wrangler.data.jsonc/wrangler.registry.jsonc already are: the postgres.js
+  // driver shouldn't grow every Worker that merely proxies to it. Reached
+  // only via the main Worker's NEURONS_SYNC_API service binding (no public
+  // routes of its own). Deploy: wrangler deploy -c wrangler.neurons-sync.jsonc
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metagraphed-neurons-sync-api",
+  "main": "workers/neurons-sync-api.mjs",
+  "compatibility_date": "2026-06-06",
+  "compatibility_flags": ["nodejs_compat"],
+  // Smart placement: run the Worker close to the Hyperdrive origin (the
+  // chain-indexer Postgres, reached via Cloudflare Tunnel) rather than at the
+  // nearest edge to the caller (GitHub Actions) -- same reasoning as
+  // wrangler.registry.jsonc's sibling config: a single sync writes ~33k rows
+  // across a couple dozen batched round-trips, so shaving latency off each
+  // one compounds across the whole run.
+  "placement": { "mode": "smart" },
+  // This is a write path into a database -- explicitly disabled (wrangler
+  // otherwise defaults workers.dev to enabled) so the shared-secret check is
+  // the only way in, not "the shared-secret check, or just don't send one
+  // and see" (matches wrangler.registry.jsonc).
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+    },
+  },
+  "hyperdrive": [
+    {
+      // Same Hyperdrive resource as wrangler.data.jsonc: this Worker WRITES
+      // to the identical chain-indexer Postgres instance that one reads
+      // from, so it shares the same pooled-connection config rather than
+      // provisioning a second Hyperdrive resource against the same origin.
+      "binding": "HYPERDRIVE",
+      "id": "2e989d5380044b57b57cb6481c18487e",
+      "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
+    },
+  ],
+}

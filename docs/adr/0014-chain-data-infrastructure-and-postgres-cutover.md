@@ -247,6 +247,18 @@ silently drift from each other.
    quantify what step 4's accepted gap covers, now that it's no longer a
    precondition for the flip — do this to inform step 7's backfill scope,
    not to re-gate a decision already made.
+10. 🔲 **neurons/neuron_daily write path built (#4771), not yet flipped.**
+    Unlike blocks/extrinsics/account_events, this tier had NO Postgres
+    equivalent at all before #4771 — a fourth dedicated Worker
+    (`workers/neurons-sync-api.mjs`) now upserts both tables from the same
+    daily `refresh-metagraph.yml` fetch, alongside (not replacing) the
+    existing R2-stage-to-D1 path, and `METAGRAPH_NEURONS_SOURCE` gates a new
+    read tier in `workers/data-api.mjs` the same way the other three flags
+    do. Left at `"d1"` until a live parity pass proves the two tiers agree —
+    this step is intentionally NOT bundled into item 4's relaxed-gate
+    decision, since that item was about accepting known gaps in
+    already-populated Postgres data, not about flipping a tier with zero
+    verification history yet.
 
 ## Links/resources
 
@@ -261,9 +273,12 @@ silently drift from each other.
   streamer and its "no automatic backstop" reasoning, now under review (#4746)
 - `.github/workflows/backfill-events.yml` — the manual-only D1 gap-recovery path
 - `wrangler.jsonc` — `METAGRAPH_BLOCKS_SOURCE` / `METAGRAPH_EXTRINSICS_SOURCE`
-  / `METAGRAPH_ACCOUNT_EVENTS_SOURCE`
-- #4746, #4686, #4695, #4669, #4698, #4684, #4654 — the issues this ADR
-  consolidates evidence from
+  / `METAGRAPH_ACCOUNT_EVENTS_SOURCE` / `METAGRAPH_NEURONS_SOURCE`
+- `workers/neurons-sync-api.mjs` (#4771) — the neurons/neuron_daily write
+  path, the fourth Hyperdrive-backed Worker (write-only; `data-api.mjs`
+  still owns the read side for this tier too)
+- #4746, #4686, #4695, #4669, #4698, #4684, #4654, #4771 — the issues this
+  ADR consolidates evidence from
 - Private `JSONbored/metagraphed-indexer-rs` repo — the Rust continuous
   indexer + backfill implementation
 - JSO-2054/#2518 — the archive-node hardware decision

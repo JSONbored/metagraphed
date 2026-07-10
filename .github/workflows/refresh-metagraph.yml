@@ -93,6 +93,29 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # #4771 verification window: ALSO write the same unsigned snapshot to the
+      # new Postgres write path (workers/neurons-sync-api.mjs), alongside (not
+      # replacing) the R2/D1 step above. METAGRAPH_NEURONS_SOURCE stays "d1"
+      # until a live parity pass confirms Postgres agrees with D1 -- this step
+      # only populates that comparison, it does not change what's served.
+      # continue-on-error: a failure here must never fail the D1 path this
+      # workflow's whole job (and #1345's daily rollup cron) depends on. Skips
+      # cleanly (exit 0) until NEURONS_SYNC_SECRET is provisioned, same
+      # not-yet-configured convention as notify-on-failure's webhook guard below.
+      - name: Sync neurons to the Postgres write path (#4771, verification window)
+        continue-on-error: true
+        run: |
+          if [ -z "$NEURONS_SYNC_SECRET" ]; then
+            echo "NEURONS_SYNC_SECRET not set; skipping Postgres sync"
+            exit 0
+          fi
+          curl -fsS -X POST "https://api.metagraph.sh/api/v1/internal/neurons-sync" \
+            -H "x-neurons-sync-token: ${NEURONS_SYNC_SECRET}" \
+            -H "content-type: application/json" \
+            --data-binary @dist/metagraph-neurons.json
+        env:
+          NEURONS_SYNC_SECRET: ${{ secrets.NEURONS_SYNC_SECRET }}
+
   notify-on-failure:
     needs: [fetch, sign-and-stage]
     if: ${{ always() && (needs.fetch.result == 'failure' || needs.sign-and-stage.result == 'failure') }}

@@ -691,6 +691,133 @@ test("GET /api/v1/accounts/:ss58/events with no matching rows returns a schema-s
   expect(body.next_cursor).toBeNull();
 });
 
+// #4771: per-UID metagraph tier, mirroring src/metagraph-neurons.mjs's D1
+// loaders + builders unchanged. Rows carry native Postgres BOOLEAN (not D1's
+// 0/1 INTEGER) and NUMERIC/BIGINT-as-string cells, exercising the same
+// toD1Flag/nullableNumber/nonNegativeInt coercions those builders already use.
+const NEURON_ROW = {
+  uid: 3,
+  hotkey: "5Hot",
+  coldkey: "5Cold",
+  active: true,
+  validator_permit: true,
+  rank: "0.5",
+  trust: "0.9",
+  validator_trust: "0.8",
+  consensus: "0.7",
+  incentive: "0.6",
+  dividends: "0.4",
+  emission_tao: "1.23",
+  stake_tao: "456.7",
+  registered_at_block: "100",
+  is_immunity_period: false,
+  axon: "1.2.3.4:9000",
+  block_number: "5000000",
+  captured_at: "1780000000000",
+};
+
+test("GET /api/v1/subnets/:netuid/metagraph returns a subnet metagraph shaped like the D1 route", async () => {
+  mockRows.current = [NEURON_ROW];
+  const res = await req("/api/v1/subnets/7/metagraph");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.neuron_count).toBe(1);
+  expect(body.neurons[0].uid).toBe(3);
+  expect(body.neurons[0].active).toBe(true);
+  expect(body.neurons[0].stake_tao).toBe(456.7);
+  expect(queryText()).toMatch(/FROM neurons WHERE netuid = /);
+  expect(queryText()).not.toMatch(/validator_permit = TRUE/);
+});
+
+test("GET /api/v1/subnets/:netuid/metagraph?validator_permit=true adds the validator filter", async () => {
+  mockRows.current = [NEURON_ROW];
+  const res = await req("/api/v1/subnets/7/metagraph?validator_permit=true");
+  expect(res.status).toBe(200);
+  expect(queryText()).toMatch(/validator_permit = TRUE/);
+});
+
+test("GET /api/v1/subnets/:netuid/neurons/:uid resolves a neuron detail", async () => {
+  mockRows.current = [NEURON_ROW];
+  const res = await req("/api/v1/subnets/7/neurons/3");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.neuron.uid).toBe(3);
+  expect(body.neuron.hotkey).toBe("5Hot");
+});
+
+test("GET /api/v1/subnets/:netuid/neurons/:uid on an unknown uid returns neuron:null, never 404", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/7/neurons/999");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.neuron).toBeNull();
+});
+
+test("GET /api/v1/subnets/:netuid/validators ranks validator_permit rows by stake", async () => {
+  mockRows.current = [NEURON_ROW];
+  const res = await req("/api/v1/subnets/7/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.validator_count).toBe(1);
+  expect(body.validators[0].uid).toBe(3);
+  expect(queryText()).toMatch(/validator_permit = TRUE/);
+  expect(queryText()).toMatch(/ORDER BY stake_tao DESC, uid ASC/);
+});
+
+test("GET /api/v1/validators returns the network-wide validator leaderboard with defaults", async () => {
+  mockRows.current = [
+    {
+      netuid: 7,
+      uid: 3,
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      validator_trust: "0.8",
+      emission_tao: "1.23",
+      stake_tao: "456.7",
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.sort).toBe("subnet_count");
+  expect(body.limit).toBe(20);
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].total_stake_tao).toBe(456.7);
+});
+
+test("GET /api/v1/validators respects an explicit valid sort + limit", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/validators?sort=total_stake&limit=5");
+  const body = await res.json();
+  expect(body.sort).toBe("total_stake");
+  expect(body.limit).toBe(5);
+});
+
+test("GET /api/v1/validators falls back to the default sort/limit on invalid values", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/validators?sort=not-a-sort&limit=9999");
+  const body = await res.json();
+  expect(body.sort).toBe("subnet_count");
+  expect(body.limit).toBe(20);
+});
+
+test("GET /api/v1/validators/:hotkey resolves cross-subnet validator detail", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  const res = await req("/api/v1/validators/5Hot");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.hotkey).toBe("5Hot");
+  expect(body.subnet_count).toBe(1);
+  expect(body.subnets[0].netuid).toBe(7);
+  expect(queryText()).toMatch(/WHERE hotkey = /);
+  expect(queryText()).toMatch(/validator_permit = TRUE/);
+});
+
 test("POST is rejected with 405", async () => {
   const res = await req("/api/v1/chain-events", { method: "POST" });
   expect(res.status).toBe(405);

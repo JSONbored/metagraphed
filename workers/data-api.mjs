@@ -26,6 +26,17 @@ import {
   clampLimit as clampRequestLimit,
   clampOffset as clampRequestOffset,
 } from "./request-params.mjs";
+import {
+  buildSubnetMetagraph,
+  buildSubnetValidators,
+  buildGlobalValidators,
+  buildNeuronDetail,
+  buildValidatorDetail,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+} from "../src/metagraph-neurons.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -523,6 +534,95 @@ export default {
             groups: rows.length,
             activity: rows,
           });
+        }
+
+        // GET /api/v1/subnets/:netuid/metagraph?validator_permit=true (#4771):
+        // the per-UID metagraph tier, mirroring src/metagraph-neurons.mjs's
+        // loadSubnetMetagraph. Same column list as the neuron detail/validators
+        // routes below (NEURON_COLUMNS) -- written literally per this file's
+        // own convention (a `${...}` interpolation binds a PARAMETER, not raw
+        // SQL, so a shared column-list string can't be spliced in).
+        const subnetMetagraph = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/metagraph$/,
+        );
+        if (subnetMetagraph) {
+          const netuid = Number(subnetMetagraph[1]);
+          const validatorsOnly =
+            url.searchParams.get("validator_permit") === "true";
+          const rows = validatorsOnly
+            ? await sql`
+              SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+              FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE ORDER BY uid`
+            : await sql`
+              SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+              FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
+          return json(buildSubnetMetagraph(rows, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/neurons/:uid (#4771): per-UID detail,
+        // mirroring loadNeuron. A miss returns neuron:null (schema-stable,
+        // never 404 -- matches the D1 path's own contract).
+        const neuronDetail = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/,
+        );
+        if (neuronDetail) {
+          const netuid = Number(neuronDetail[1]);
+          const uid = Number(neuronDetail[2]);
+          const rows = await sql`
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          FROM neurons WHERE netuid = ${netuid} AND uid = ${uid} LIMIT 1`;
+          return json(buildNeuronDetail(rows[0] ?? null, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/validators (#4771): validator_permit=1
+        // rows for one subnet, ranked by stake. Mirrors loadSubnetValidators.
+        const subnetValidators = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/validators$/,
+        );
+        if (subnetValidators) {
+          const netuid = Number(subnetValidators[1]);
+          const rows = await sql`
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE
+          ORDER BY stake_tao DESC, uid ASC`;
+          return json(buildSubnetValidators(rows, netuid));
+        }
+
+        // GET /api/v1/validators?sort=&limit= (#4771): network-wide validator
+        // leaderboard, mirroring loadGlobalValidators. Trusts already-validated
+        // sort/limit params (the caller, workers/request-handlers/entities.mjs's
+        // handleGlobalValidators, validates them before forwarding here).
+        if (url.pathname === "/api/v1/validators") {
+          const sortParam = url.searchParams.get("sort");
+          const sort = GLOBAL_VALIDATOR_SORTS.includes(sortParam)
+            ? sortParam
+            : DEFAULT_GLOBAL_VALIDATOR_SORT;
+          const limitParam = Number(url.searchParams.get("limit"));
+          const limit =
+            Number.isInteger(limitParam) &&
+            limitParam >= 1 &&
+            limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
+              ? limitParam
+              : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
+          const rows = await sql`
+          SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at
+          FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
+          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`;
+          return json(buildGlobalValidators(rows, { sort, limit }));
+        }
+
+        // GET /api/v1/validators/:hotkey (#4771): cross-subnet validator detail,
+        // mirroring loadValidatorDetail.
+        const validatorDetail = url.pathname.match(
+          /^\/api\/v1\/validators\/([^/]+)$/,
+        );
+        if (validatorDetail) {
+          const hotkey = decodeURIComponent(validatorDetail[1]);
+          const rows = await sql`
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, netuid
+          FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
+          ORDER BY netuid ASC, uid ASC`;
+          return json(buildValidatorDetail(rows, hotkey));
         }
 
         return json({ error: "not found" }, 404);

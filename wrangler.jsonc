@@ -190,6 +190,14 @@
     // turnover/analytics) remain D1-only, portable one at a time under this
     // same flag in follow-up work.
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "postgres",
+    // neurons/neuron_daily (#4771): the per-UID metagraph pipeline has NO
+    // Postgres equivalent yet as of this flag's addition -- refresh-metagraph.yml
+    // writes to the new neurons-sync Worker alongside its existing D1 path
+    // (verification window), but nothing has confirmed Postgres and D1 agree
+    // yet. Left "d1" (the tryPostgresTier fallback is a no-op at "d1") until a
+    // live verification pass proves parity, per ADR 0014's flip criteria --
+    // do NOT flip this alongside the other three just because they're nearby.
+    "METAGRAPH_NEURONS_SOURCE": "d1",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
@@ -266,6 +274,13 @@
     {
       "binding": "REGISTRY_SYNC_API",
       "service": "metagraphed-registry-sync-api",
+    },
+    // #4771: the write path into the chain-indexer Postgres's neurons/
+    // neuron_daily tables (wrangler.neurons-sync.jsonc). Reached via
+    // /api/v1/internal/neurons-sync, same shape as REGISTRY_SYNC_API above.
+    {
+      "binding": "NEURONS_SYNC_API",
+      "service": "metagraphed-neurons-sync-api",
     },
   ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV

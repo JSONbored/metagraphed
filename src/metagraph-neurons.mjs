@@ -1,6 +1,8 @@
-// Shape D1 `neurons` rows (migration 0007, populated by the refresh-metagraph
-// cron from Taostats) into the per-UID metagraph API responses for #1304/#1305
-// (epic #1302). Pure + exported for tests; the Worker handlers run the D1 query
+// Shape `neurons` rows (migration 0007; also the Postgres mirror written by
+// workers/neurons-sync-api.mjs, #4771) into the per-UID metagraph API
+// responses for #1304/#1305 (epic #1302). Populated by the refresh-metagraph
+// cron first-party via the Bittensor SDK (#1348) -- no Taostats, no API key.
+// Pure + exported for tests; the Worker handlers run the D1 or Postgres query
 // and call these builders.
 
 // The columns the handlers SELECT for a neuron row.
