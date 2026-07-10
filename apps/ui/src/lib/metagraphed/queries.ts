@@ -90,6 +90,8 @@ import type {
   ChainAxonRemovalSubnet,
   ChainDeregistrations,
   ChainDeregistrationsSubnet,
+  ChainRegistrations,
+  ChainRegistrationsSubnet,
   ChainIntensityDistribution,
   ChainConcentration,
   ChainPerformance,
@@ -267,6 +269,7 @@ const MAX_CHAIN_TRANSFER_PAIRS = 100;
 const MAX_CHAIN_STAKE_TRANSFERS = 100;
 const MAX_CHAIN_AXON_REMOVALS = 100;
 const MAX_CHAIN_DEREGISTRATIONS = 100;
+const MAX_CHAIN_REGISTRATIONS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -3717,6 +3720,62 @@ function normalizeChainDeregistrationsSubnet(raw: unknown): ChainDeregistrations
     deregistrations_per_hotkey: firstFiniteNumber(raw.deregistrations_per_hotkey) ?? null,
   };
 }
+
+function normalizeChainRegistrationsSubnet(raw: unknown): ChainRegistrationsSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_registrants: firstFiniteNumber(raw.distinct_registrants) ?? 0,
+    registrations: firstFiniteNumber(raw.registrations) ?? 0,
+    registrations_per_registrant: firstFiniteNumber(raw.registrations_per_registrant) ?? null,
+  };
+}
+
+// #3465: network-wide neuron-registration leaderboard over a 7d/30d window — the
+// entry-side twin of /api/v1/chain/deregistrations. Every numeric cell coerces
+// defensively: counts fall through to 0, averages to null (never NaN), and
+// malformed subnet rows are dropped on a cold store or junk.
+export function normalizeChainRegistrations(raw: unknown): ChainRegistrations {
+  const rec = isRecord(raw) ? raw : {};
+  const networkRec = isRecord(rec.network) ? rec.network : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: {
+      distinct_registrants: firstFiniteNumber(networkRec.distinct_registrants) ?? 0,
+      registrations: firstFiniteNumber(networkRec.registrations) ?? 0,
+      registrations_per_registrant:
+        firstFiniteNumber(networkRec.registrations_per_registrant) ?? null,
+    },
+    intensity_distribution: normalizeChainIntensityDistribution(rec.intensity_distribution),
+    subnets: normalizeChainRows(
+      rec.subnets,
+      MAX_CHAIN_REGISTRATIONS,
+      normalizeChainRegistrationsSubnet,
+    ),
+  };
+}
+
+export const chainRegistrationsQuery = (window: ChainWindow = "7d", limit = 100) =>
+  queryOptions({
+    queryKey: k("chain-registrations", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainRegistrations>>("/api/v1/chain/registrations", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainRegistrations(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
 
 // #3466: network-wide neuron-deregistration leaderboard over a 7d/30d window — the
 // exit-side twin of /api/v1/chain/registrations. Every numeric cell coerces defensively:

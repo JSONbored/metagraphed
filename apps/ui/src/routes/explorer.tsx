@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery, useSuspenseQueries } from "@tanstack/react-
 import { Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Activity, Boxes, Coins, Layers, Zap } from "lucide-react";
+import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -24,6 +24,7 @@ import {
   chainFeesQuery,
   chainSignersQuery,
   chainWeightSettersQuery,
+  chainRegistrationsQuery,
   chainStakeFlowQuery,
   chainStakeMovesQuery,
   chainTurnoverQuery,
@@ -44,6 +45,7 @@ import type {
   ChainTurnover,
   EconomicsTrends,
   ChainAxonRemovals,
+  ChainRegistrations,
 } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
@@ -105,6 +107,7 @@ function ExplorerPage() {
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
           "/api/v1/chain/weights/setters",
+          "/api/v1/chain/registrations",
           "/api/v1/chain/stake-flow",
           "/api/v1/chain/stake-moves",
           "/api/v1/chain/turnover",
@@ -580,6 +583,94 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
 }
 
 /**
+ * Network-wide neuron-registration leaderboard (#3465) — subnets ranked by
+ * NeuronRegistered volume over the window. Chain-direct: GET /api/v1/chain/registrations.
+ */
+function NetworkRegistrationsSection({ registrations }: { registrations: ChainRegistrations }) {
+  const net = registrations.network;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Network registrations
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(registrations.subnet_count)} subnets
+        </span>
+      </div>
+
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        <StatTile
+          icon={UserPlus}
+          eyebrow="Registrations"
+          value={formatNumber(net.registrations)}
+          hint={`${registrations.window ?? "window"} total`}
+          tone="accent"
+        />
+        <StatTile
+          icon={UserPlus}
+          eyebrow="Distinct registrants"
+          value={formatNumber(net.distinct_registrants)}
+          hint="network-wide hotkeys"
+        />
+        <StatTile
+          icon={UserPlus}
+          eyebrow="Per registrant"
+          value={
+            net.registrations_per_registrant != null
+              ? net.registrations_per_registrant.toFixed(2)
+              : "—"
+          }
+          hint="avg registrations"
+        />
+      </div>
+
+      {registrations.subnets.length > 0 ? (
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th className={TH}>Subnet</th>
+              <th className={`${TH} text-right`}>Registrations</th>
+              <th className={`${TH} text-right`}>Distinct registrants</th>
+              <th className={`${TH} text-right`}>Per registrant</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {registrations.subnets.map((s) => (
+              <tr key={s.netuid} className="hover:bg-surface/40">
+                <td className="px-4 py-2 font-mono text-[11px]">
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: s.netuid }}
+                    className="text-ink-strong hover:text-accent hover:underline"
+                  >
+                    SN{s.netuid}
+                  </Link>
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {formatNumber(s.registrations)}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {formatNumber(s.distinct_registrants)}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {s.registrations_per_registrant != null
+                    ? s.registrations_per_registrant.toFixed(2)
+                    : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <EmptyState title="No registrations in this window yet." />
+      )}
+    </section>
+  );
+}
+
+/**
  * Network-wide validator-set turnover (#3473) — how much each subnet's validator
  * set churned over the window (entered / exited, retention, stability), plus the
  * most volatile subnets. Chain-direct: GET /api/v1/chain/turnover. Placed here
@@ -766,6 +857,7 @@ function ExplorerDashboard() {
     { data: callsRes },
     { data: signersRes },
     { data: weightSettersRes },
+    { data: registrationsRes },
     { data: stakeFlowRes },
     { data: stakeMovesRes },
     { data: turnoverRes },
@@ -780,6 +872,7 @@ function ExplorerDashboard() {
       chainCallsQuery(win),
       chainSignersQuery(win),
       chainWeightSettersQuery(win),
+      chainRegistrationsQuery(win),
       chainStakeFlowQuery(win),
       chainStakeMovesQuery(win),
       chainTurnoverQuery(win),
@@ -794,6 +887,7 @@ function ExplorerDashboard() {
   const calls = callsRes.data;
   const signers = signersRes.data;
   const weightSetters = weightSettersRes.data;
+  const registrations = registrationsRes.data;
   const stakeFlow = stakeFlowRes.data;
   const stakeMoves = stakeMovesRes.data;
   const turnover = turnoverRes.data;
@@ -1166,6 +1260,8 @@ function ExplorerDashboard() {
       <StakeMovesSection moves={stakeMoves} />
 
       <ValidatorTurnoverSection turnover={turnover} />
+
+      <NetworkRegistrationsSection registrations={registrations} />
 
       {/* stake-transfer leaderboard */}
       <section className="rounded-lg border border-border bg-card p-5">

@@ -2628,6 +2628,37 @@ export interface ChainDeregistrations {
   subnets: ChainDeregistrationsSubnet[];
 }
 
+/** One subnet's row on the network-wide neuron-registration leaderboard (#3465). */
+export interface ChainRegistrationsSubnet {
+  netuid: number;
+  distinct_registrants: number;
+  registrations: number;
+  registrations_per_registrant: number | null;
+}
+
+/** Network-wide registration rollup — true distinct-registrant count (not a per-subnet sum) + total registrations. */
+export interface ChainRegistrationsNetwork {
+  distinct_registrants: number;
+  registrations: number;
+  registrations_per_registrant: number | null;
+}
+
+/**
+ * Network-wide neuron-registration activity over a 7d/30d window (#3465), from
+ * GET /api/v1/chain/registrations — subnets ranked by NeuronRegistered event count,
+ * plus the true network-wide distinct-registrant rollup and a distribution summary of
+ * per-subnet re-registration intensity. Zeroed with an empty subnets list when cold.
+ */
+export interface ChainRegistrations {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainRegistrationsNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainRegistrationsSubnet[];
+}
+
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */
 export interface ChainConcentration {
   schema_version: number;
