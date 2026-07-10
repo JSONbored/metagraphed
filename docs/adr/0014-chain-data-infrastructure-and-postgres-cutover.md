@@ -47,18 +47,18 @@ this is explicitly a stopgap, not a design choice, and nothing should be
 built assuming it's permanent. Deep historical re-backfill work (below) is
 gated on this node reaching steady state; live-forward ingestion is not.
 
-**D1 is fed by a second, independent live-following pipeline — the realtime
-streamer — and that pipeline is now a confirmed reliability problem, not an
-assumed-safe one.** `scripts/stream-events.py` (a Python process, container
-`metagraphed-streamer` on the same indexer box) subscribes to finalized heads
-and pushes decoded rows to the edge Worker's `/api/v1/internal/blocks` and
-`/internal/events`, which write to D1's `blocks`/`extrinsics`/`account_events`
-tables. This is genuinely a _different_ codebase and a _different_ live
-indexer from `indexer-rs` — two independent processes, right now, both
-following the chain tip, writing to two different databases. The GitHub
-Actions backstop poller that used to catch gaps in this specific pipeline
-(`refresh-events.yml`) was deleted 2026-07-04 on the premise that the
-self-hosted streamer alone would be reliable enough. **That premise is now
+**D1 was fed by a second, independent live-following pipeline — the realtime
+streamer — which turned out to be a confirmed reliability problem, and has
+since been stopped rather than fixed.** `scripts/stream-events.py` (a Python
+process, container `metagraphed-streamer` on the same indexer box) subscribed
+to finalized heads and pushed decoded rows to the edge Worker's
+`/api/v1/internal/blocks` and `/internal/events`, which write to D1's
+`blocks`/`extrinsics`/`account_events` tables — a genuinely _different_
+codebase and a _different_ live indexer from `indexer-rs`, two independent
+processes following the same chain tip into two different databases. The
+GitHub Actions backstop poller that used to catch gaps in this specific
+pipeline (`refresh-events.yml`) was deleted 2026-07-04 on the premise that the
+self-hosted streamer alone would be reliable enough. **That premise was
 disproven:** #4746 found the streamer sustaining 154 `ingest_write_failed`
 errors and 15 WebSocket reconnects in a 3-hour window, continuously, with
 zero container restarts — not a crash, a live degradation — traced to a
@@ -68,6 +68,12 @@ reconnect silently, permanently skips whatever finalized during the gap
 (finalized-head subscriptions don't backfill missed notifications). This
 produced measured recent-block coverage as low as 38–61% missing in several
 1000-block windows near the chain tip, against 0% missing in an older window.
+**Resolved 2026-07-10, same day, by stopping the streamer entirely**
+(`docker stop metagraphed-streamer`, `unless-stopped` policy so it stays
+stopped) rather than hardening it: once D1 stopped being the primary serving
+tier (see below), keeping a second live indexer running just to keep a
+now-secondary fallback fresh no longer made sense — one first-party live
+indexer is enough. See `docs/realtime-streamer.md`.
 
 **D1 has now hit its ~10GB hard capacity ceiling in production once, and was
 independently found teetering on it again today.** `account_events` grew
@@ -101,8 +107,7 @@ connection as the query that followed it (Hyperdrive resets session state
 between pooled connections); both also called `sql.end()` on every request,
 which Cloudflare's docs explicitly say is unsupported, unnecessary extra
 work. Both are fixed (each request's queries now run inside `sql.begin()`;
-the manual teardown is removed) but **not yet re-verified live** — the next
-concrete step, not an assumption to build further work on top of.
+the manual teardown is removed).
 
 **Extrinsics carries an additional, separate blocker beyond the connection
 bugs above.** `indexer-rs`'s decoded `call_args` diverged from D1's decode
@@ -111,15 +116,19 @@ shape across roughly 45 of 105 sampled call types (SS58/hex encoding,
 U256/H160 shapes, and more). The root bug in `indexer-rs` was fixed
 2026-07-10, but only for blocks decoded from ~8589233 onward — every row
 written before that fix still has the old, wrong shape, and needs a full
-re-decode once the archive node is available for it. This is independent of,
-and does not block, the connection-affinity fix above.
+re-decode once the archive node is available for it. This is independent of
+the connection-affinity fix above.
 
-**All three cutover flags currently read `"d1"`** (`wrangler.jsonc`:
-`METAGRAPH_BLOCKS_SOURCE`, `METAGRAPH_EXTRINSICS_SOURCE`,
-`METAGRAPH_ACCOUNT_EVENTS_SOURCE`). D1 is today's sole production default not
-because it's the durable, correct end state, but because the Postgres
-alternative hasn't yet been proven reliable in production — the opposite of
-what "hot cache, Postgres is truth" was supposed to mean by now.
+**All three cutover flags flipped to `"postgres"` 2026-07-10**
+(`wrangler.jsonc`: `METAGRAPH_BLOCKS_SOURCE`, `METAGRAPH_EXTRINSICS_SOURCE`,
+`METAGRAPH_ACCOUNT_EVENTS_SOURCE`), same day as the connection-affinity fix.
+Given no real production traffic yet, the remaining known gaps (the #4687
+9,000-block Postgres hole for blocks; the pre-fix mixed `call_args` shape for
+extrinsics) were accepted rather than re-verified against a fully clean
+sustained window first — a deliberate, explicit trade-off for the current
+pre-launch state, not a quiet abandonment of the stricter criteria this ADR
+sets out below for a real launch. `tryPostgresTier` still falls back to D1 on
+any failure, so this remains reversible with a single-flag revert.
 
 ## Decision
 
@@ -207,32 +216,37 @@ silently drift from each other.
    `registry-sync-api.mjs` now run each request's queries inside a
    transaction and no longer call `sql.end()` (merged 2026-07-10),
    addressing #4686's two documented root-cause candidates.
-4. 🔲 **Re-verify blocks Postgres serving live** against a Postgres-only
-   block per Decision point 3's criteria; re-flip `METAGRAPH_BLOCKS_SOURCE`
-   only on a clean, sustained result — not a repeat of the first spot check.
-5. 🔲 **Fix the streamer's push-retry/subscription coupling** (#4746's
-   remaining half) so D1 stays reliable for however long it remains
-   load-bearing during the transition.
-6. 🔲 **Reconsider automatic gap-detection for the streamer**, now that "the
-   self-hosted streamer alone is reliable enough" has been disproven once —
-   don't leave gap recovery manual-only without re-justifying that decision
-   against current evidence.
-7. 🔲 **Complete the extrinsics parity harness** (#4695) and flip
-   `METAGRAPH_EXTRINSICS_SOURCE` once shape-verified, independent of the
-   connection-affinity fix which only addresses transport reliability, not
-   decode-shape correctness.
-8. 🔲 **account_events:** the Postgres serving route already exists (#4696);
-   verify per Decision point 3's criteria and flip
-   `METAGRAPH_ACCOUNT_EVENTS_SOURCE`.
-9. 🔲 **Full historical re-backfill (archive-gated, ~1–2 week external
-   timeline).** Re-decode pre-fix blocks/extrinsics in Postgres once the
-   archive node reaches chain tip; do not attempt this against the temporary
-   OnFinality source — that source exists for exactly this reason.
-10. 🔲 **Retire D1.** Once every tier is proven reliable on Postgres: delete
-    the prune-and-discard logic, the D1 tables, and the realtime streamer
-    (superseded by `indexer-rs`, which already covers live-follow) — don't
-    leave a redundant second live pipeline running once it's no longer
-    load-bearing.
+4. ✅ **All three flags flipped to `"postgres"`, same day.** With no real
+   production traffic yet, the accepted-gap trade-off in Decision point 3 was
+   deliberately relaxed for blocks and extrinsics (the known #4687 9,000-block
+   hole, and the pre-2026-07-10 mixed extrinsics call_args shape,
+   respectively) rather than waiting for a fully clean sustained-window
+   re-verification — a call made explicitly because of the current
+   no-users/pre-launch state, not a retraction of the stricter criteria this
+   ADR sets for a real launch. Revisit before one.
+5. ✅ **Realtime streamer stopped**, not fixed. Once serving no longer
+   depended on D1 being fresh, the better fix for "two independent live
+   indexers writing to two databases" was removing the redundant one, not
+   hardening its push-retry/subscription coupling (#4746's remaining half is
+   now moot — there's no live D1 writer left to have that bug). D1's data is
+   frozen at whatever it held when the streamer stopped and will shrink to
+   nothing on its own via the existing prune cron (30d/5d/3d windows) — no
+   further action needed to wind it down.
+6. ✅ **account_events flipped alongside the other two** (#4696's route,
+   no shape-parity risk regardless).
+7. 🔲 **Full historical re-backfill (archive-gated, ~1–2 week external
+   timeline).** Re-decode pre-fix blocks/extrinsics in Postgres and backfill
+   the #4687 gap once the archive node reaches chain tip; do not attempt this
+   against the temporary OnFinality source — that source exists for exactly
+   this reason. This is the one item that actually needs the archive.
+8. 🔲 **Delete D1's tables and prune logic once they're empty.** The streamer
+   stopping means this is now just a matter of time (item 5), not a blocking
+   migration — revisit once D1's row counts hit zero and remove the dead
+   code/schema rather than leaving it as inert legacy weight indefinitely.
+9. 🔲 **The extrinsics parity harness (#4695)** remains valuable to actually
+   quantify what step 4's accepted gap covers, now that it's no longer a
+   precondition for the flip — do this to inform step 7's backfill scope,
+   not to re-gate a decision already made.
 
 ## Links/resources
 

@@ -1,4 +1,19 @@
-# Realtime chain-event streamer (Option B)
+# Realtime chain-event streamer (Option B) — STOPPED 2026-07-10
+
+**Stopped, not deleted** (`docker stop metagraphed-streamer` on the indexer
+box; `unless-stopped` restart policy means it stays stopped). Its only
+purpose was keeping D1 fresh in real time as a second, independent
+live-following pipeline alongside `indexer-rs` (the actual source of truth,
+writing to Postgres). Now that `METAGRAPH_BLOCKS_SOURCE`,
+`METAGRAPH_EXTRINSICS_SOURCE`, and `METAGRAPH_ACCOUNT_EVENTS_SOURCE` all read
+`"postgres"` (ADR 0014), running two independent live indexers to two
+different databases was exactly the duplication/drift risk ADR 0014 called
+out — one first-party live indexer (`indexer-rs`) is enough. D1's data is now
+frozen at whatever it held when the streamer stopped, and will shrink on its
+own as `pruneBlocks`/`pruneExtrinsics`/`pruneAccountEvents` age it out (30d /
+5d / 3d retention respectively) — no further action needed to wind it down.
+The rest of this doc describes how the streamer worked while it was running,
+kept for history; don't restart it without re-reading ADR 0014 first.
 
 A tiny always-on process (#1361) subscribes to finalized finney heads, decodes
 each block, and pushes the events to the Worker ingest endpoint (#1360) — true
