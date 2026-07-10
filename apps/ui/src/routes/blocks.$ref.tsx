@@ -24,6 +24,7 @@ import { formatNumber } from "@/lib/metagraphed/format";
 import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { formatChainEventArgs } from "@/lib/metagraphed/chain-event-args";
+import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 
 export const Route = createFileRoute("/blocks/$ref")({
   // #3422: validate the ref at the router level so an invalid one renders the
@@ -388,8 +389,11 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                       key={`${event.block_number}-${event.event_index}-${event.event_kind ?? "unknown"}`}
                       className="hover:bg-surface/40"
                     >
-                      <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
-                        {event.event_kind ?? "—"}
+                      <td
+                        className="px-4 py-2.5 font-mono text-[11px] text-ink-strong"
+                        title={event.event_kind ?? undefined}
+                      >
+                        {eventKindLabel(event.event_kind)}
                       </td>
                       <td className="px-4 py-2.5 font-mono text-[11px] text-ink">
                         {event.hotkey ? (

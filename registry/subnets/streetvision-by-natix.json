@@ -207,6 +207,25 @@
         "https://github.com/natixnetwork/streetvision-subnet/blob/main/README.md"
       ],
       "url": "https://docs.natix.network/whitepaper/llms.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-72-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "StreetVision TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/72 on api.taomarketcap.com returning machine-readable JSON for SN72 StreetVision on-chain subnet state, hyperparameters, economics, and dTAO market fields. NATIX publishes websites, docs, and dataset artifacts but no verified first-party public subnet API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "reyanthony062001-ops"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/natixnetwork/streetvision-subnet"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/72"
     }
   ],
   "social": {

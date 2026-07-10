@@ -22,8 +22,9 @@ import { ShareButton } from "@/components/metagraphed/share-button";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { CopyButton } from "@/components/metagraphed/copy-button";
 import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
-import { extrinsicsQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
+import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
@@ -94,12 +95,56 @@ function ExtrinsicsPage() {
         }
       />
       <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="mb-6 h-24 w-full" />}>
+          <FeesTrendCard />
+        </Suspense>
+      </QueryErrorBoundary>
+      <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <ExtrinsicsTable />
         </Suspense>
       </QueryErrorBoundary>
-      <ApiSourceFooter paths={["/api/v1/extrinsics"]} artifacts={["/metagraph/extrinsics.json"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/extrinsics", "/api/v1/chain/fees"]}
+        artifacts={["/metagraph/extrinsics.json"]}
+      />
     </AppShell>
+  );
+}
+
+/**
+ * Fees-over-time sparkline (#3385) — reuses chainFeesQuery + Sparkline the same
+ * way explorer.tsx charts "Total fees". Fixed 7d window; no ?window= toggle here.
+ */
+function FeesTrendCard() {
+  const fees = useSuspenseQuery(chainFeesQuery("7d")).data.data;
+  const feeChrono = [...fees.daily].reverse();
+  const values = feeChrono.map((d) => d.total_fee_tao);
+  const latest = values.length > 0 ? values[values.length - 1]! : null;
+
+  return (
+    <section className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <div className="flex items-baseline gap-2">
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Fees, last 7d
+          </h2>
+          <span className="font-mono text-[11px] text-ink-muted">{fees.day_count} days</span>
+        </div>
+        <span className="font-mono text-[11px] tabular-nums text-ink-strong">
+          {latest == null ? "—" : formatTao(latest)}
+        </span>
+      </div>
+      <Sparkline
+        values={values}
+        points={feeChrono.map((d) => ({ t: d.day, v: d.total_fee_tao }))}
+        width={640}
+        height={48}
+        color="var(--accent)"
+        ariaLabel="Daily total fees"
+        formatValue={formatTao}
+      />
+    </section>
   );
 }
 

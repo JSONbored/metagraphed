@@ -291,6 +291,89 @@ test("formatExtrinsic parses call_args (array, object, parse-failure->null)", ()
   assert.equal(sparse.fee_tao, null);
 });
 
+test("formatExtrinsic preserves a U256 value past Number.MAX_SAFE_INTEGER through the REAL JSON.parse path, not just pre-parsed objects (#4692 review fix)", () => {
+  // Gittensory review caught that the original #4692 PR's precision claim
+  // was false: decodeEthereumEvmCallArgs ran on the output of a plain
+  // JSON.parse(row.call_args), which had already silently rounded any U256
+  // limb past 2^53 before decodeU256Limbs ever saw it. This constructs the
+  // call_args as a raw JSON TEXT string (as it would exist in Postgres'
+  // call_args::text column) containing the true, exact large-limb literal --
+  // NOT a JS object built from a number literal in source code, which would
+  // already be rounded by the JS parser before ever reaching JSON.stringify.
+  const callArgsText =
+    '{"transaction":{"name":"EIP1559","values":[{"value":[[9131459485341369597,0,0,0]],"nonce":[[69392,0,0,0]]}]}}';
+  const out = formatExtrinsic({
+    block_number: 8587453,
+    extrinsic_index: 9,
+    call_module: "Ethereum",
+    call_function: "transact",
+    call_args: callArgsText,
+  });
+  assert.equal(out.call_args.transaction.EIP1559.value, "9131459485341369597");
+  assert.equal(out.call_args.transaction.EIP1559.nonce, "69392");
+});
+
+test("formatExtrinsic does NOT extend the big-int-safe parse to call types outside indexer-rs-ethereum-decode.mjs's dispatch table -- preserves existing (already-imprecise) D1-serving behavior for out-of-scope call types", () => {
+  // Scoping the fix to hasEthereumEvmDecoder's 4 call types is deliberate:
+  // SubtensorModule.register's PoW nonce precision loss is an existing,
+  // already-accepted issue (#4693's scope) -- this must not silently change
+  // that field's type from number to string as a side effect of #4692.
+  const out = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_module: "SubtensorModule",
+    call_function: "register",
+    call_args: '{"nonce":[9131459485341369597]}',
+  });
+  assert.equal(typeof out.call_args.nonce, "number");
+  assert.equal(out.call_args.nonce, 9131459485341369000);
+});
+
+test("formatExtrinsic unwraps a single-element BTreeSet (real SubtensorModule.claim_root, block 8587445/19, #4693)", () => {
+  const out = formatExtrinsic({
+    block_number: 8587445,
+    extrinsic_index: 19,
+    call_module: "SubtensorModule",
+    call_function: "claim_root",
+    call_args: '{"subnets": [[104]]}',
+  });
+  assert.deepEqual(out.call_args.subnets, [104]);
+});
+
+test("formatExtrinsic pins SubtensorModule.register's PoW nonce precision as an accepted, tested invariant (real block 8556317/20, #4693) -- Postgres's exact literal converges on the same value D1 already serves, not a regression to fix here", () => {
+  // nonce is a BARE u64 scalar in the real Postgres row (confirmed via
+  // direct query -- not newtype-wrapped like most other fields), and
+  // formatExtrinsic deliberately does NOT route SubtensorModule.register
+  // through the big-int-safe parse (#4692's hasEthereumEvmDecoder gate) --
+  // per #4693's explicit requirement, this ticket pins the current
+  // convergent-but-lossy behavior rather than fixing it.
+  const out = formatExtrinsic({
+    block_number: 8556317,
+    extrinsic_index: 20,
+    call_module: "SubtensorModule",
+    call_function: "register",
+    call_args:
+      '{"work":[16,64,112,106],"nonce":9131459485341369597,"netuid":21}',
+  });
+  assert.equal(out.call_args.nonce, 9131459485341369000);
+});
+
+test("formatExtrinsic pins SubtensorModule.set_children's near-u64::MAX sentinel precision as an accepted, tested invariant (real block 8585337/19, #4693)", () => {
+  // children is Vec<(u64, AccountId32)> -- children[0][0] is the proportion
+  // (here the true u64::MAX "take-all" sentinel), children[0][1] the child's
+  // AccountId32 (untouched here -- top-level AccountId32 decode is a
+  // separate, not-yet-covered gap, out of #4693's scope).
+  const out = formatExtrinsic({
+    block_number: 8585337,
+    extrinsic_index: 19,
+    call_module: "SubtensorModule",
+    call_function: "set_children",
+    call_args:
+      '{"netuid":121,"children":[[18446744073709551615,[[100,65,10,124,236,80,140,19,181,73,132,35,107,50,57,120,44,20,174,42,203,246,252,17,211,55,209,239,75,249,82,33]]]]}',
+  });
+  assert.equal(out.call_args.children[0][0], 18446744073709552000);
+});
+
 test("formatExtrinsic normalizes success (0->false, null->null)", () => {
   assert.equal(
     formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: 0 })

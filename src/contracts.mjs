@@ -2956,7 +2956,12 @@ export const API_ROUTES = [
     "short",
     ["subnets"],
     [],
-    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
   ),
   route(
     "blocks-feed",

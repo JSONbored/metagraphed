@@ -46,6 +46,8 @@ import type {
   AccountEventsPage,
   AccountCounterparties,
   AccountCounterparty,
+  AccountStakeFlow,
+  AccountStakeFlowSubnet,
   AccountHistory,
   AccountPortfolio,
   AccountStakeMoves,
@@ -82,18 +84,23 @@ import type {
   ChainFeePayer,
   ChainTransferPair,
   ChainTransferPairs,
+  ChainTransferEntry,
+  ChainTransfers,
   ChainStakeTransfers,
   ChainStakeTransferSubnet,
   ChainAxonRemovals,
   ChainAxonRemovalSubnet,
   ChainDeregistrations,
   ChainDeregistrationsSubnet,
+  ChainRegistrations,
+  ChainRegistrationsSubnet,
   ChainIntensityDistribution,
   ChainConcentration,
   ChainPerformance,
   ChainYield,
   ChainYieldDistribution,
   ChainSigners,
+  ChainWeightSetters,
   ChainSignerEntry,
   Extrinsic,
   ExtrinsicCallArg,
@@ -123,6 +130,7 @@ import type {
   FixtureIndexEntry,
   Freshness,
   Gap,
+  ReviewGapPriority,
   GlobalIncident,
   GlobalIncidents,
   GlobalIncidentSurface,
@@ -255,6 +263,8 @@ const MAX_TURNOVER_SUBNETS = 24;
 const MAX_CHAIN_EVENT_GROUPS = 100;
 const DEFAULT_CHAIN_EVENT_BLOCKS = 1000;
 const MAX_CHAIN_SIGNERS = 20;
+const MAX_CHAIN_TRANSFERS = 20;
+const MAX_CHAIN_WEIGHT_SETTERS = 20;
 const MAX_CHAIN_IDENTITY_CHANGES = 200;
 const MAX_CHAIN_FEE_DAYS = 31;
 const MAX_CHAIN_FEE_PAYERS = 12;
@@ -262,6 +272,7 @@ const MAX_CHAIN_TRANSFER_PAIRS = 100;
 const MAX_CHAIN_STAKE_TRANSFERS = 100;
 const MAX_CHAIN_AXON_REMOVALS = 100;
 const MAX_CHAIN_DEREGISTRATIONS = 100;
+const MAX_CHAIN_REGISTRATIONS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -2594,6 +2605,67 @@ export const accountCounterpartiesQuery = (ss58: string) =>
     staleTime: STALE_MED,
   });
 
+// #3341: per-account staking-behavior scorecard — net/gross flow, a direction
+// label, concentration, and a per-subnet stake/unstake breakdown over a window,
+// from the already-live /api/v1/accounts/{ss58}/stake-flow. Structured-object
+// response, so it mirrors accountSubnetsQuery's apiFetch + isRecord + per-row
+// normalize shape.
+function normalizeStakeFlowSubnet(raw: unknown): AccountStakeFlowSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    staked_tao: firstFiniteNumber(raw.staked_tao) ?? null,
+    unstaked_tao: firstFiniteNumber(raw.unstaked_tao) ?? null,
+    net_flow_tao: firstFiniteNumber(raw.net_flow_tao) ?? null,
+    gross_flow_tao: firstFiniteNumber(raw.gross_flow_tao) ?? null,
+    flow_ratio: firstFiniteNumber(raw.flow_ratio) ?? null,
+    direction: firstString(raw.direction) ?? null,
+    stake_events: firstFiniteNumber(raw.stake_events) ?? null,
+    unstake_events: firstFiniteNumber(raw.unstake_events) ?? null,
+  };
+}
+
+export const accountStakeFlowQuery = (
+  ss58: string,
+  params?: { window?: "7d" | "30d" | "90d"; direction?: "in" | "out" },
+) =>
+  queryOptions({
+    queryKey: k("account-stake-flow", ss58, params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/stake-flow`, {
+        params,
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const subnets = Array.isArray(d.subnets)
+        ? d.subnets.flatMap((row) => {
+            const s = normalizeStakeFlowSubnet(row);
+            return s ? [s] : [];
+          })
+        : [];
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          window: firstString(d.window) ?? params?.window ?? "30d",
+          total_staked_tao: firstFiniteNumber(d.total_staked_tao) ?? null,
+          total_unstaked_tao: firstFiniteNumber(d.total_unstaked_tao) ?? null,
+          net_flow_tao: firstFiniteNumber(d.net_flow_tao) ?? null,
+          gross_flow_tao: firstFiniteNumber(d.gross_flow_tao) ?? null,
+          direction: firstString(d.direction) ?? null,
+          concentration: firstFiniteNumber(d.concentration) ?? null,
+          dominant_netuid: firstFiniteNumber(d.dominant_netuid) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? subnets.length,
+          subnets,
+        } as AccountStakeFlow,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountStakeFlow>;
+    },
+    staleTime: STALE_MED,
+  });
+
 // #3491: the economics-rich companion to accountSubnetsQuery — every neuron
 // position under this hotkey with stake/emission/yield, plus wallet aggregates.
 // Non-blocking on the entity page; a cold wallet returns an empty positions[].
@@ -3387,6 +3459,98 @@ export const chainSignersQuery = (window: ChainWindow = "7d") =>
     staleTime: STALE_SHORT,
   });
 
+// #3475: network-wide native-TAO transfer-volume leaderboard -- separate
+// top-senders/top-receivers rankings, distinct from chainTransferPairsQuery's
+// directed sender->receiver corridors (#3476, a different endpoint/shape).
+function normalizeChainTransferEntry(raw: unknown): ChainTransferEntry | null {
+  if (!isRecord(raw)) return null;
+  const address = firstString(raw.address);
+  const volumeTao = coerceFiniteNumber(raw.volume_tao);
+  const transferCount = coerceFiniteNumber(raw.transfer_count);
+  if (!address || !isValidSs58(address) || volumeTao == null || transferCount == null) {
+    return null;
+  }
+  return {
+    address: address.trim(),
+    volume_tao: volumeTao,
+    transfer_count: transferCount,
+  };
+}
+
+export const chainTransfersQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-transfers", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/transfers", {
+        params: { window, limit: 25 },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          total_volume_tao: firstFiniteNumber(d.total_volume_tao) ?? 0,
+          transfer_count: firstFiniteNumber(d.transfer_count) ?? 0,
+          unique_senders: firstFiniteNumber(d.unique_senders) ?? 0,
+          unique_receivers: firstFiniteNumber(d.unique_receivers) ?? 0,
+          top_sender_share: firstFiniteNumber(d.top_sender_share) ?? null,
+          top_senders: normalizeChainRows(
+            d.top_senders,
+            MAX_CHAIN_TRANSFERS,
+            normalizeChainTransferEntry,
+          ),
+          top_receivers: normalizeChainRows(
+            d.top_receivers,
+            MAX_CHAIN_TRANSFERS,
+            normalizeChainTransferEntry,
+          ),
+        } as ChainTransfers,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainTransfers>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+function normalizeChainWeightSetters(raw: unknown, window: ChainWindow): ChainWeightSetters {
+  const rec = isRecord(raw) ? raw : {};
+  const setters = (Array.isArray(rec.setters) ? rec.setters : [])
+    .map(normalizeSubnetWeightSetter)
+    .filter(
+      (setter): setter is NonNullable<ReturnType<typeof normalizeSubnetWeightSetter>> =>
+        setter != null,
+    )
+    .slice(0, MAX_CHAIN_WEIGHT_SETTERS);
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? window,
+    observed_at: firstString(rec.observed_at) ?? null,
+    distinct_setters: firstFiniteNumber(rec.distinct_setters) ?? 0,
+    weight_sets: firstFiniteNumber(rec.weight_sets) ?? 0,
+    setter_count: firstFiniteNumber(rec.setter_count) ?? setters.length,
+    setters,
+  };
+}
+
+export const chainWeightSettersQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-weight-setters", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/weights/setters", {
+        params: { window, limit: 20 },
+        signal,
+      });
+      return {
+        data: normalizeChainWeightSetters(res.data, window),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainWeightSetters>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
 export const chainFeesQuery = (window: ChainWindow = "7d") =>
   queryOptions({
     queryKey: k("chain-fees", window),
@@ -3614,6 +3778,62 @@ function normalizeChainDeregistrationsSubnet(raw: unknown): ChainDeregistrations
     deregistrations_per_hotkey: firstFiniteNumber(raw.deregistrations_per_hotkey) ?? null,
   };
 }
+
+function normalizeChainRegistrationsSubnet(raw: unknown): ChainRegistrationsSubnet | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid);
+  if (netuid == null) return null;
+  return {
+    netuid,
+    distinct_registrants: firstFiniteNumber(raw.distinct_registrants) ?? 0,
+    registrations: firstFiniteNumber(raw.registrations) ?? 0,
+    registrations_per_registrant: firstFiniteNumber(raw.registrations_per_registrant) ?? null,
+  };
+}
+
+// #3465: network-wide neuron-registration leaderboard over a 7d/30d window — the
+// entry-side twin of /api/v1/chain/deregistrations. Every numeric cell coerces
+// defensively: counts fall through to 0, averages to null (never NaN), and
+// malformed subnet rows are dropped on a cold store or junk.
+export function normalizeChainRegistrations(raw: unknown): ChainRegistrations {
+  const rec = isRecord(raw) ? raw : {};
+  const networkRec = isRecord(rec.network) ? rec.network : {};
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    subnet_count: firstFiniteNumber(rec.subnet_count) ?? 0,
+    network: {
+      distinct_registrants: firstFiniteNumber(networkRec.distinct_registrants) ?? 0,
+      registrations: firstFiniteNumber(networkRec.registrations) ?? 0,
+      registrations_per_registrant:
+        firstFiniteNumber(networkRec.registrations_per_registrant) ?? null,
+    },
+    intensity_distribution: normalizeChainIntensityDistribution(rec.intensity_distribution),
+    subnets: normalizeChainRows(
+      rec.subnets,
+      MAX_CHAIN_REGISTRATIONS,
+      normalizeChainRegistrationsSubnet,
+    ),
+  };
+}
+
+export const chainRegistrationsQuery = (window: ChainWindow = "7d", limit = 100) =>
+  queryOptions({
+    queryKey: k("chain-registrations", window, limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<ChainRegistrations>>("/api/v1/chain/registrations", {
+        params: { window, limit },
+        signal,
+      });
+      return {
+        data: normalizeChainRegistrations(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
 
 // #3466: network-wide neuron-deregistration leaderboard over a 7d/30d window — the
 // exit-side twin of /api/v1/chain/registrations. Every numeric cell coerces defensively:
@@ -6906,6 +7126,73 @@ export const reviewEnrichmentTargetsQuery = () =>
             : undefined) ??
           (r.recommended_action as string) ??
           (r.contribution_prompt as string),
+      }));
+      return { ...res, data: rows };
+    },
+    staleTime: STALE_LONG,
+  });
+
+// #3354: the per-subnet evidence behind the enrichment queue -- distinct from
+// the enrichment-queue rollup and the enrichment-targets board above (per the
+// MCP tool description, "distinct from list_enrichment_queue"). GET
+// /api/v1/review/enrichment-evidence, flat `entries` list.
+export const reviewEnrichmentEvidenceQuery = () =>
+  queryOptions({
+    queryKey: k("review-enrichment-evidence"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
+        "/api/v1/review/enrichment-evidence",
+        "entries",
+        undefined,
+        signal,
+      );
+      // API rows: { netuid, name, slug, lane, evidence_action, missing_kinds,
+      // direct_submission_kinds, priority_score, ... }.
+      const rows = res.data.map((r) => ({
+        id: (r.slug as string) ?? (r.name as string) ?? String(r.netuid ?? ""),
+        netuid: r.netuid as number | undefined,
+        name: r.name as string | undefined,
+        lane: r.lane as string | undefined,
+        evidenceAction: r.evidence_action as string | undefined,
+        missingKinds: Array.isArray(r.missing_kinds) ? (r.missing_kinds as string[]) : [],
+        directSubmissionKinds: Array.isArray(r.direct_submission_kinds)
+          ? (r.direct_submission_kinds as string[])
+          : [],
+        priority:
+          typeof r.priority_score === "number"
+            ? String(Math.round(r.priority_score as number))
+            : undefined,
+      }));
+      return { ...res, data: rows };
+    },
+    staleTime: STALE_LONG,
+  });
+
+// #3356: the priority-scored per-subnet gap board -- distinct from gapsQuery()
+// (/api/v1/gaps, the interface-facet dataset already on this page) and from
+// the enrichment-queue/-targets/-evidence sections above. GET
+// /api/v1/review/gaps, flat `priorities` list.
+export const reviewGapPrioritiesQuery = () =>
+  queryOptions({
+    queryKey: k("review-gap-priorities"),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<Record<string, unknown>>(
+        "/api/v1/review/gaps",
+        "priorities",
+        undefined,
+        signal,
+      );
+      // API rows: { netuid, name, curation_level, priority_score, missing_kinds,
+      // surface_count, verified_candidate_count, candidate_count, ... }.
+      const rows: ReviewGapPriority[] = res.data.map((r) => ({
+        netuid: r.netuid as number | undefined,
+        name: r.name as string | undefined,
+        curation_level: r.curation_level as CurationLevel | string | undefined,
+        priority_score: r.priority_score as number | undefined,
+        missing_kinds: Array.isArray(r.missing_kinds) ? (r.missing_kinds as string[]) : [],
+        surface_count: r.surface_count as number | undefined,
+        candidate_count: r.candidate_count as number | undefined,
+        verified_candidate_count: r.verified_candidate_count as number | undefined,
       }));
       return { ...res, data: rows };
     },

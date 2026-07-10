@@ -16,6 +16,8 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { unwrapByteArray, decodeBytesField } from "@/lib/metagraphed/bytes";
+import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import {
   asDecodedCall,
   extrinsicCall,
@@ -278,7 +280,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         title="Call arguments"
         subtitle="The decoded parameters passed to this extrinsic."
       >
-        {renderCallArgs(callArgs)}
+        {renderCallArgs(callArgs, extrinsic.call_module, extrinsic.call_function)}
         {callArgsOmitted > 0 ? (
           <p className="mt-2 font-mono text-[11px] text-ink-muted">
             Showing 64 of {formatNumber(callArgsTotal)} call args — {formatNumber(callArgsOmitted)}{" "}
@@ -358,8 +360,11 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                         "—"
                       )}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
-                      {ev.event_kind ?? "—"}
+                    <td
+                      className="px-4 py-2.5 font-mono text-[11px] text-ink-strong"
+                      title={ev.event_kind ?? undefined}
+                    >
+                      {eventKindLabel(ev.event_kind)}
                     </td>
                     <td className="px-4 py-2.5 font-mono text-[11px]">
                       {ev.hotkey ? (
@@ -438,7 +443,12 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
 // instead of parsing an escaped JSON blob by eye.
 const MAX_NESTED_CALL_DEPTH = 4;
 
-function renderCallArgs(callArgs: unknown, depth = 0) {
+function renderCallArgs(
+  callArgs: unknown,
+  callModule: string | null | undefined,
+  callFunction: string | null | undefined,
+  depth = 0,
+) {
   if (Array.isArray(callArgs)) {
     const args = (callArgs as Array<{ name?: string | null; value?: unknown }>).slice(0, 64);
     if (args.length === 0) {
@@ -460,7 +470,7 @@ function renderCallArgs(callArgs: unknown, depth = 0) {
                   {arg.name ?? `arg_${i + 1}`}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {renderCallArgValue(arg.value, depth)}
+                  {renderCallArgValue(arg.value, arg.name, callModule, callFunction, depth)}
                 </td>
               </tr>
             ))}
@@ -491,7 +501,7 @@ function renderCallArgs(callArgs: unknown, depth = 0) {
                   {key}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {renderCallArgValue(value, depth)}
+                  {renderCallArgValue(value, key, callModule, callFunction, depth)}
                 </td>
               </tr>
             ))}
@@ -510,7 +520,22 @@ function renderCallArgs(callArgs: unknown, depth = 0) {
 // under EITHER ingestion pipeline's shape (#4669) -- D1's
 // {call_module,call_function,...} directly, or indexer-rs's {name,values}
 // enum-tree wrapper, normalized to the same shape before rendering.
-function renderCallArgValue(value: unknown, depth: number): ReactNode {
+//
+// A raw byte-blob value (Postgres/indexer-rs's Vec<u8>/BoundedVec<u8>/Bytes
+// shape, #4689) decodes via decodeBytesField before falling to the generic
+// JSON dump -- this runs AFTER the nested-call checks (mutually exclusive
+// shapes: a decoded call requires string call_module/call_function fields,
+// never a bare integer array) and is deliberately generic on VALUE shape
+// alone, not fieldName -- unlike an eventual AccountId32 check (#4691, not
+// yet wired here), which must run before this to avoid this ever
+// hex-encoding what should be an SS58 address.
+function renderCallArgValue(
+  value: unknown,
+  fieldName: string | null | undefined,
+  callModule: string | null | undefined,
+  callFunction: string | null | undefined,
+  depth: number,
+): ReactNode {
   if (depth < MAX_NESTED_CALL_DEPTH) {
     const decoded = asDecodedCall(value);
     if (decoded) {
@@ -533,6 +558,15 @@ function renderCallArgValue(value: unknown, depth: number): ReactNode {
       }
     }
   }
+  // length > 0: an empty array is vacuously a valid (empty) byte blob per
+  // unwrapByteArray's own contract, but it's indistinguishable from a
+  // genuinely empty Vec<T> of some other element type (e.g. a Multisig with
+  // no other_signatories) -- default to the generic "[]" JSON rendering for
+  // that ambiguous case rather than a misleading "0x".
+  const bytes = unwrapByteArray(value);
+  if (bytes && bytes.length > 0) {
+    return decodeBytesField(callModule, callFunction, fieldName ?? "", bytes);
+  }
   return formatCallArgValue(value);
 }
 
@@ -547,7 +581,7 @@ function NestedCallCard({ call, depth }: { call: DecodedCall; depth: number }) {
           <CopyableCode value={call.call_hash} label="call_hash" />
         ) : null}
       </div>
-      {renderCallArgs(call.call_args, depth + 1)}
+      {renderCallArgs(call.call_args, call.call_module, call.call_function, depth + 1)}
     </div>
   );
 }

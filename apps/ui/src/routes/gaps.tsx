@@ -30,11 +30,14 @@ import {
   reviewAdapterCandidatesQuery,
   reviewEnrichmentQueueQuery,
   reviewEnrichmentTargetsQuery,
+  reviewEnrichmentEvidenceQuery,
+  reviewGapPrioritiesQuery,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { GITHUB_REPO } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
+import { CurationChip } from "@/components/metagraphed/chips";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
 import type { CurationLevel, Gap, Subnet } from "@/lib/metagraphed/types";
 
@@ -215,6 +218,32 @@ function GapsPage() {
             </Suspense>
           </QueryErrorBoundary>
         </PageSection>
+
+        <PageSection
+          id="enrichment-evidence"
+          eyebrow="Evidence"
+          title="Enrichment evidence"
+          description="The detailed candidate evidence behind the enrichment queue — one level down from the summary above."
+        >
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+              <EnrichmentEvidence />
+            </Suspense>
+          </QueryErrorBoundary>
+        </PageSection>
+
+        <PageSection
+          id="gap-priorities"
+          eyebrow="Priorities"
+          title="Gap priorities"
+          description="Priority-scored per-subnet gap board — ranked separately from the interface-facet gaps above."
+        >
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+              <GapPriorityList />
+            </Suspense>
+          </QueryErrorBoundary>
+        </PageSection>
       </main>
 
       <ApiSourceFooter
@@ -224,6 +253,8 @@ function GapsPage() {
           "/api/v1/review/adapter-candidates",
           "/api/v1/review/enrichment-queue",
           "/api/v1/review/enrichment-targets",
+          "/api/v1/review/enrichment-evidence",
+          "/api/v1/review/gaps",
         ]}
       />
     </AppShell>
@@ -1082,5 +1113,129 @@ function EnrichmentTargets() {
         </table>
       </div>
     </div>
+  );
+}
+
+// #3354: the detailed candidate evidence behind the enrichment queue -- one
+// level down from EnrichmentQueue's summary rollup. Mirrors the same table
+// idiom, sourced from /api/v1/review/enrichment-evidence.
+function EnrichmentEvidence() {
+  const { data } = useSuspenseQuery(reviewEnrichmentEvidenceQuery());
+  const meta = data.meta;
+  const rows = data.data ?? [];
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No enrichment evidence"
+        description="No candidate evidence is currently behind the enrichment queue."
+        cta={{ label: "Browse registry", href: "/subnets" }}
+        generatedAt={meta?.generated_at}
+      />
+    );
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-surface-2/60 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <tr>
+              <th className="px-4 py-2.5 text-left">Netuid</th>
+              <th className="px-4 py-2.5 text-left">Lane</th>
+              <th className="px-4 py-2.5 text-left">Evidence action</th>
+              <th className="px-4 py-2.5 text-left">Missing kinds</th>
+              <th className="px-4 py-2.5 text-left">Direct submission kinds</th>
+              <th className="px-4 py-2.5 text-left">Priority</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((r) => (
+              <tr key={r.id} className="mg-row-hover">
+                <td className="px-4 py-2.5 font-mono text-[11px]">
+                  {r.netuid != null ? (
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: r.netuid }}
+                      className="hover:text-accent"
+                    >
+                      SN{r.netuid}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                  {r.lane ?? "—"}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                  {r.evidenceAction ?? "—"}
+                </td>
+                <td className="px-4 py-2.5 text-[12px] text-ink-muted">
+                  {r.missingKinds.length > 0 ? r.missingKinds.join(", ") : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-[12px] text-ink-muted">
+                  {r.directSubmissionKinds.length > 0 ? r.directSubmissionKinds.join(", ") : "—"}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[11px]">{r.priority ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// #3356: the priority-scored per-subnet gap board -- distinct from the
+// interface-facet OpenGapsSection above and from the enrichment-queue/
+// -targets/-evidence sections, which are enrichment-pipeline data, not
+// gap-priority scoring. Mirrors AdapterCandidates's row-list idiom.
+function GapPriorityList() {
+  const { data } = useSuspenseQuery(reviewGapPrioritiesQuery());
+  const meta = data.meta;
+  const rows = data.data ?? [];
+  if (rows.length === 0)
+    return (
+      <TableState
+        variant="empty"
+        title="No gap priorities"
+        description="The priority-scored gap board is empty — nothing currently ranked."
+        cta={{ label: "Browse registry", href: "/subnets" }}
+        generatedAt={meta?.generated_at}
+      />
+    );
+  return (
+    <ul className="space-y-1.5">
+      {rows.map((r, i) => (
+        <li
+          key={`${r.netuid}-${i}`}
+          className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5"
+        >
+          {r.netuid != null ? (
+            <Link
+              to="/subnets/$netuid"
+              params={{ netuid: r.netuid }}
+              className="font-mono text-[11px] text-ink-muted hover:text-accent w-12 shrink-0"
+            >
+              SN{r.netuid}
+            </Link>
+          ) : (
+            <span className="font-mono text-[11px] text-ink-muted w-12 shrink-0">—</span>
+          )}
+          <span className="flex-1 text-[13px] text-ink truncate">{r.name ?? "—"}</span>
+          <CurationChip level={r.curation_level} />
+          <span className="hidden sm:block max-w-[240px] truncate text-[11px] text-ink-muted">
+            {r.missing_kinds && r.missing_kinds.length > 0 ? r.missing_kinds.join(", ") : "—"}
+          </span>
+          {r.priority_score != null ? (
+            <span
+              className="font-mono text-[11px] text-ink-strong tabular-nums shrink-0"
+              title="Priority score"
+            >
+              {Math.round(r.priority_score)}
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }

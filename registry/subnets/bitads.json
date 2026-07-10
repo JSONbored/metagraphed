@@ -98,6 +98,44 @@
         "timeout_ms": 10000
       },
       "notes": "Official BitAds source repository."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-16-bitads-min-compute",
+      "kind": "data-artifact",
+      "name": "BitAds minimum compute requirements",
+      "notes": "Public no-auth machine-readable min_compute.yml specifying the minimum and recommended hardware (CPU/RAM/storage/OS and network bandwidth) to run an SN16 BitAds miner or validator, published in the official BitAds source repository study-service/BitAds.ai — whose README states 'netuid 16' and whose GitHub homepage is the registered bitads.ai website. A standalone machine-readable reference artifact the registry did not yet capture (the manifest's source_repo field points at the operator's older FirstTensorLabs/BitAds repo; the live code now lives at study-service/BitAds.ai).",
+      "provider": "bitads",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/study-service/BitAds.ai/blob/main/README.md",
+        "https://github.com/study-service/BitAds.ai/blob/main/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/study-service/BitAds.ai/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-16-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "BitAds TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/16 on api.taomarketcap.com returning machine-readable JSON for SN16 BitAds on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/study-service/BitAds.ai"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/16"
     }
   ],
   "social": {

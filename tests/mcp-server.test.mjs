@@ -12866,6 +12866,155 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.match(res.body.result.content[0].text, /ref/);
   });
 
+  // #4694: list_extrinsics/get_extrinsic mirror REST's handleExtrinsics/
+  // handleExtrinsic tier-selection exactly (same METAGRAPH_EXTRINSICS_SOURCE
+  // flag, same tryPostgresTier fallback contract) -- see the equivalent
+  // "flag=postgres" tests for handleExtrinsics/handleExtrinsic in
+  // tests/request-handlers-entities.test.mjs, which this block mirrors.
+  describe("D1 -> Postgres serving cutover (#4694)", () => {
+    function dataApi(response) {
+      return { fetch: async (request) => response ?? { request } };
+    }
+
+    test("list_extrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+      const capture = [];
+      const env = chainD1({ extrinsics: [] }, capture);
+      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.DATA_API = dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 99,
+          limit: 50,
+          offset: 0,
+          next_cursor: null,
+          extrinsics: [],
+        }),
+      );
+      const res = await callTool("list_extrinsics", {}, { env });
+      assert.equal(res.body.result.structuredContent.extrinsic_count, 99);
+      assert.deepEqual(capture, []);
+    });
+
+    test("list_extrinsics: flag=postgres falls back to D1 on failure", async () => {
+      const env = chainD1({ extrinsics: [EXTRINSIC_ROW] });
+      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.DATA_API = {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      };
+      const res = await callTool("list_extrinsics", {}, { env });
+      assert.equal(res.body.result.structuredContent.extrinsic_count, 1);
+    });
+
+    test("list_extrinsics: flag absent uses D1 even when DATA_API is bound (zero regression, unflipped)", async () => {
+      const capture = [];
+      const env = chainD1({ extrinsics: [EXTRINSIC_ROW] }, capture);
+      env.DATA_API = dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 99,
+          extrinsics: [],
+        }),
+      );
+      const res = await callTool("list_extrinsics", {}, { env });
+      assert.equal(res.body.result.structuredContent.extrinsic_count, 1);
+      assert.ok(capture.length > 0, "D1 must actually be queried");
+    });
+
+    test("list_extrinsics: flag=postgres forwards filters as REST-equivalent query params", async () => {
+      const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+      let seenUrl;
+      const env = chainD1({ extrinsics: [] });
+      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.DATA_API = {
+        fetch: async (request) => {
+          seenUrl = new URL(request.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            extrinsics: [],
+          });
+        },
+      };
+      await callTool(
+        "list_extrinsics",
+        {
+          block: 4200000,
+          signer: SS58,
+          call_module: "SubtensorModule",
+          call_function: "set_weights",
+          success: true,
+          limit: 10,
+          offset: 20,
+        },
+        { env },
+      );
+      assert.equal(seenUrl.pathname, "/api/v1/extrinsics");
+      assert.equal(seenUrl.searchParams.get("block"), "4200000");
+      assert.equal(seenUrl.searchParams.get("offset"), "20");
+      assert.equal(seenUrl.searchParams.get("signer"), SS58);
+      assert.equal(seenUrl.searchParams.get("call_module"), "SubtensorModule");
+      assert.equal(seenUrl.searchParams.get("call_function"), "set_weights");
+      assert.equal(seenUrl.searchParams.get("success"), "true");
+      assert.equal(seenUrl.searchParams.get("limit"), "10");
+    });
+
+    test("get_extrinsic: flag=postgres uses Postgres data, D1 never queried", async () => {
+      const hash = "0x" + "c".repeat(64);
+      const capture = [];
+      const env = chainD1({ extrinsic: EXTRINSIC_ROW }, capture);
+      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.DATA_API = dataApi(
+        Response.json({
+          schema_version: 1,
+          ref: hash,
+          extrinsic: { ...EXTRINSIC_ROW, signer: "postgres-signer" },
+          events: [],
+        }),
+      );
+      const res = await callTool("get_extrinsic", { ref: hash }, { env });
+      assert.equal(
+        res.body.result.structuredContent.extrinsic.signer,
+        "postgres-signer",
+      );
+      assert.deepEqual(capture, []);
+    });
+
+    test("get_extrinsic: flag=postgres falls back to D1 on failure", async () => {
+      const hash = "0x" + "c".repeat(64);
+      const env = chainD1({ extrinsic: EXTRINSIC_ROW });
+      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.DATA_API = {
+        fetch: async () => new Response("err", { status: 500 }),
+      };
+      const res = await callTool("get_extrinsic", { ref: hash }, { env });
+      assert.equal(
+        res.body.result.structuredContent.extrinsic.extrinsic_hash,
+        hash,
+      );
+    });
+
+    test("get_extrinsic: flag=postgres forwards the ref in the request path", async () => {
+      let seenUrl;
+      const env = chainD1({ extrinsic: EXTRINSIC_ROW });
+      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.DATA_API = {
+        fetch: async (request) => {
+          seenUrl = new URL(request.url);
+          return Response.json({
+            schema_version: 1,
+            ref: "4200000-3",
+            extrinsic: null,
+            events: [],
+          });
+        },
+      };
+      await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
+      assert.equal(seenUrl.pathname, "/api/v1/extrinsics/4200000-3");
+    });
+  });
+
   test("block-explorer payloads validate against their declared outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
     const validatorFor = (name) =>

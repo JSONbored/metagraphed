@@ -34,6 +34,7 @@ import {
   envelopeResponse,
   publishedAt,
 } from "../responses.mjs";
+import { tryPostgresTier } from "../postgres-tier.mjs";
 import { csvRequested, csvResponse } from "../csv.mjs";
 import {
   analyticsQueryError,
@@ -103,7 +104,7 @@ import {
   loadAccountBalance,
 } from "../../src/account-balance.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
-import { loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
+import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
@@ -2705,15 +2706,17 @@ export async function handleAccountEvents(request, env, ss58, url) {
       message: `"${kind}" is not a supported event kind. Supported: ${INGESTED_EVENT_KINDS.join(", ")}.`,
     });
   }
-  const data = await loadAccountEvents(d1Runner(env), ss58, {
-    limit: url.searchParams.get("limit"),
-    offset: url.searchParams.get("offset"),
-    kind,
-    netuid: netuid.value,
-    cursor: url.searchParams.get("cursor"),
-    blockStart: blockStart.value,
-    blockEnd: blockEnd.value,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountEvents(d1Runner(env), ss58, {
+      limit: url.searchParams.get("limit"),
+      offset: url.searchParams.get("offset"),
+      kind,
+      netuid: netuid.value,
+      cursor: url.searchParams.get("cursor"),
+      blockStart: blockStart.value,
+      blockEnd: blockEnd.value,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.events,
@@ -3373,6 +3376,14 @@ export async function handleAccountBalance(request, env, ss58) {
 // ss58), so it shares that route's rate limiter rather than sudo-key's
 // no-limiter reasoning. recycled_tao is null on RPC failure (schema-stable).
 export async function handleSubnetRecycled(request, env, netuid) {
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
       key: `recycled:${resolveClientIp(request)}`,
@@ -3399,34 +3410,6 @@ export async function handleSubnetRecycled(request, env, netuid) {
     { data, meta: { contract_version: contractVersion(env) } },
     "short",
   );
-}
-
-// Gated D1 -> Postgres serving cutover (ADR 0013 Sequencing step 3, the
-// deploy/README.md "Serving cutover" runbook: "if FLAG[tier] == postgres: try
-// Postgres; on error -> D1"). Each tier has its own env flag so a rollback is a
-// single-flag flip, never a code change or redeploy of the fallback path.
-// `request` is forwarded UNCHANGED to the DATA_API service binding -- the caller
-// has already run the SAME validation the D1 path runs (analytics.mjs's
-// validateEntityQuery + friends), so this trusts well-formed params and treats
-// ANY failure (binding absent, network error, non-2xx, unparseable/malformed
-// body) as "fall back to D1", never as a client-facing error. Postgres never
-// gets to independently fail a request the D1 path would have served.
-async function tryPostgresTier(env, request, flagName) {
-  if (env[flagName] !== "postgres" || !env.DATA_API) return null;
-  let upstream;
-  try {
-    upstream = await env.DATA_API.fetch(request);
-  } catch {
-    return null;
-  }
-  if (!upstream.ok) return null;
-  let body;
-  try {
-    body = await upstream.json();
-  } catch {
-    return null;
-  }
-  return body && typeof body === "object" ? body : null;
 }
 
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the

@@ -37,6 +37,7 @@ export default [
         Request: "readonly",
         Response: "readonly",
         URL: "readonly",
+        URLSearchParams: "readonly",
         console: "readonly",
         crypto: "readonly",
         fetch: "readonly",

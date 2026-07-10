@@ -45,6 +45,25 @@
         "https://github.com/toptensor/CliqueAI/blob/main/min_compute.yml"
       ],
       "url": "https://raw.githubusercontent.com/toptensor/CliqueAI/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "CliqueAI TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/83 on api.taomarketcap.com returning machine-readable JSON for SN83 CliqueAI on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/toptensor/CliqueAI"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/83"
     }
   ],
   "source_repo": "https://github.com/toptensor/CliqueAI",
