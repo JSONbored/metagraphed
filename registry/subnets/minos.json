@@ -38,6 +38,25 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-taomarketcap-subnet-snapshot",
+      "kind": "data-artifact",
+      "name": "SN107 on-chain subnet snapshot",
+      "notes": "Public no-auth GET /public/v1/subnets/107 on api.taomarketcap.com returning a machine-readable JSON snapshot of SN107 Minos on-chain subnet state (owner, emission, registration/burn parameters, and dTAO market fields) for netuid 107. This is the indexed public JSON feed for netuid 107 documented in the TaoMarketCap developer API, filling the subnet's standalone-data-artifact gap.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://taomarketcap.com/subnets/107"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/107"
     }
   ],
   "contact": "contact@theminos.ai"
