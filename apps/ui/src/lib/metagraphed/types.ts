@@ -2647,6 +2647,37 @@ export interface ChainDeregistrations {
   subnets: ChainDeregistrationsSubnet[];
 }
 
+/** One subnet's row on the network-wide weight-setting activity leaderboard. */
+export interface ChainWeightsSubnet {
+  netuid: number;
+  distinct_setters: number;
+  weight_sets: number;
+  sets_per_setter: number | null;
+}
+
+/** Network-wide weight-setting rollup — true distinct-setter count (not a per-subnet sum) + total WeightsSet events. */
+export interface ChainWeightsNetwork {
+  distinct_setters: number;
+  weight_sets: number;
+  sets_per_setter: number | null;
+}
+
+/**
+ * Network-wide validator weight-setting activity over a 7d/30d window, from
+ * GET /api/v1/chain/weights — subnets ranked by WeightsSet event count, plus the true
+ * network-wide distinct-setter rollup and a distribution summary of per-subnet update
+ * intensity (WeightsSet events per validator). Zeroed with an empty subnets list when cold.
+ */
+export interface ChainWeights {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainWeightsNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainWeightsSubnet[];
+}
+
 /** One subnet's row on the network-wide neuron-registration leaderboard (#3465). */
 export interface ChainRegistrationsSubnet {
   netuid: number;
