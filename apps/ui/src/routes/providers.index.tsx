@@ -275,41 +275,46 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
       <ProviderOverview providers={rows} counts={counts} />
       <SourceHealthRollup />
 
-      {/* Toolbar */}
-      <div className="sticky top-14 z-10 -mx-1 px-1 py-2 backdrop-blur bg-paper/85 border-b border-border/60 flex flex-wrap items-center gap-2">
-        <div className="flex-1 min-w-[180px] max-w-sm">
-          <SearchInput
-            value={q}
-            onChange={(v) => setSearch({ q: v })}
-            placeholder="Search providers, slugs, hosts…"
+      {/* Filter toolbar — edge-to-edge sticky bar on mobile, an inset card on desktop,
+          matching the subnets grid toolbar treatment. */}
+      <div className="sticky top-14 z-20 -mx-4 border-y border-border bg-paper/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-paper/80 md:mx-0 md:rounded-lg md:border md:bg-card md:px-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-[180px] max-w-sm flex-1">
+            <SearchInput
+              value={q}
+              onChange={(v) => setSearch({ q: v })}
+              placeholder="Search providers, slugs, hosts…"
+            />
+          </div>
+          <SelectFilter
+            label="Kind"
+            value={kind}
+            onChange={(v) => setSearch({ kind: v })}
+            options={kinds.map((k) => ({ value: k, label: k }))}
           />
+          <SelectFilter
+            label="Authority"
+            value={authority}
+            onChange={(v) => setSearch({ authority: v })}
+            options={authorityOptions.map((a) => ({ value: a, label: a }))}
+          />
+          <SelectFilter
+            label="Sort"
+            value={sortKey}
+            onChange={(v) => setSearch({ sort: v as ProviderSortKey })}
+            options={providerSortKeys.map((s) => ({ value: s, label: s }))}
+            allowEmpty={false}
+          />
+          <div className="ml-auto flex items-center gap-2.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted tabular-nums">
+              {sorted.length} of {rows.length}
+            </span>
+            <ResetFiltersButton
+              active={hasFilters}
+              onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
+            />
+          </div>
         </div>
-        <SelectFilter
-          label="Kind"
-          value={kind}
-          onChange={(v) => setSearch({ kind: v })}
-          options={kinds.map((k) => ({ value: k, label: k }))}
-        />
-        <SelectFilter
-          label="Authority"
-          value={authority}
-          onChange={(v) => setSearch({ authority: v })}
-          options={authorityOptions.map((a) => ({ value: a, label: a }))}
-        />
-        <SelectFilter
-          label="Sort"
-          value={sortKey}
-          onChange={(v) => setSearch({ sort: v as ProviderSortKey })}
-          options={providerSortKeys.map((s) => ({ value: s, label: s }))}
-          allowEmpty={false}
-        />
-        <ResetFiltersButton
-          active={hasFilters}
-          onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
-        />
-        <span className="ml-auto font-mono text-[10px] text-ink-muted">
-          {sorted.length} of {rows.length} providers
-        </span>
       </div>
 
       {sorted.length === 0 ? (
