@@ -94,16 +94,20 @@ const MAX_EMBEDDED_EVENTS = 50;
 // non-account/untagged values) before this ever reaches a consumer -- REST
 // and the three MCP tools that select `args` (list_chain_events,
 // get_block_chain_events, get_extrinsic_chain_events) all route through this
-// one function, so there's a single decode point rather than three. Guarded
-// on `!== undefined` since chain-events/stats' GROUP BY query never selects
-// `args` at all and shouldn't gain a spurious `args: null` key.
+// one function, so there's a single decode point rather than three.
+// Unconditional (unlike the block_number guard below): both call sites
+// always select `args` in their SQL (chain-events/stats, which doesn't,
+// never calls coerceEvent at all) -- and decodeChainEventArgs(undefined)
+// resolves to `args: undefined`, which JSON.stringify drops from the
+// response the same as an absent key, so there's no schema-shape risk in
+// leaving this unconditional.
 function coerceEvent(row) {
   return {
     ...row,
     ...(row.block_number !== undefined
       ? { block_number: numberOrNull(row.block_number) }
       : {}),
-    ...(row.args !== undefined ? { args: decodeChainEventArgs(row.args) } : {}),
+    args: decodeChainEventArgs(row.args),
     observed_at: numberOrNull(row.observed_at),
   };
 }
