@@ -16,7 +16,9 @@ import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import {
+  blocksQuery,
   chainActivityQuery,
   chainCallsQuery,
   chainEventsInfiniteQuery,
@@ -38,6 +40,7 @@ import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import type {
+  Block,
   ChainCalls,
   ChainEvent,
   ChainEventsStats,
@@ -86,6 +89,49 @@ function fmtTaoSigned(v: number): string {
   return v < 0 ? `-${formatTao(-v)}` : `+${formatTao(v)}`;
 }
 
+/**
+ * Live chain-head band (#3373): the current block number + its recency, tucked
+ * under the hero alongside the daily-aggregate KPI grid. Sourced from
+ * /api/v1/blocks (newest-first, limit 1) — the same block_number/observed_at
+ * pairing blocks.index.tsx renders — and polled on a visibility-gated interval
+ * so the tip stays fresh. useQuery (not suspense) so a cold poller degrades to a
+ * placeholder instead of blocking the page or fabricating a block number.
+ */
+function ChainHeadBand() {
+  const refetchInterval = useRefetchInterval(12_000);
+  const { data, isPending } = useQuery({ ...blocksQuery({ limit: 1 }), refetchInterval });
+  const head = data?.data?.[0] as Block | undefined;
+
+  return (
+    <div className="-mt-8 mb-12 md:-mt-10 md:mb-16">
+      <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-card px-3 py-2">
+        <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <span className="mg-live-dot" />
+          Chain head
+        </span>
+        {head ? (
+          <>
+            <Link
+              to="/blocks/$ref"
+              params={{ ref: String(head.block_number) }}
+              className="font-display text-lg font-semibold tabular-nums leading-none text-ink-strong hover:text-accent"
+            >
+              #{formatNumber(head.block_number)}
+            </Link>
+            <span className="font-mono text-[11px] text-ink-muted">
+              · <TimeAgo at={head.observed_at} />
+            </span>
+          </>
+        ) : (
+          <span className="font-mono text-[11px] text-ink-muted">
+            {isPending ? "syncing…" : "no blocks indexed yet"}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ExplorerPage() {
   return (
     <AppShell>
@@ -96,6 +142,7 @@ function ExplorerPage() {
         description="The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers."
         actions={<ShareButton />}
       />
+      <ChainHeadBand />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-[40rem] w-full" />}>
           <ExplorerDashboard />
@@ -104,6 +151,7 @@ function ExplorerPage() {
       <ChainEventsFeedSection />
       <ApiSourceFooter
         paths={[
+          "/api/v1/blocks",
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
