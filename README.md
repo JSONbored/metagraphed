@@ -125,7 +125,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**128 curated subnets** — 115 with a site, 44 with docs, 117 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**129 curated subnets** — 116 with a site, 44 with docs, 118 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -257,6 +257,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[8 Ball](https://metagraph.sh/subnets/125)** `SN125` — `prediction-market` · [site](https://8ball125.com/) · [docs](https://github.com/Barbariandev/8Ball_miner#readme) · [repo](https://github.com/Barbariandev/8Ball_miner)
 - **[Poker44](https://metagraph.sh/subnets/126)** `SN126` · [site](https://poker44.net/) · [repo](https://github.com/Poker44/Poker44-subnet)
 - **[Astrid](https://metagraph.sh/subnets/127)** `SN127` · [site](https://www.astrid.global/) · [repo](https://github.com/astridintelligence/sn-127)
+- **[ByteLeap](https://metagraph.sh/subnets/128)** `SN128` · [site](https://byteleap.ai) · [repo](https://github.com/byteleapai/byteleap-Validator)
 
 <sub>Auto-generated from the curated overlays in `registry/subnets/` by `scripts/generate-registry-readme-section.mjs` — enrich a subnet (one PR) and it appears here. Not the live list; browse + monitor everything at [metagraph.sh](https://metagraph.sh).</sub>
 
