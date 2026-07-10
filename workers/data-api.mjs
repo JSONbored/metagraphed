@@ -14,6 +14,11 @@ import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "../src/extrinsics.mjs";
 import { formatAccountEvent } from "../src/account-events.mjs";
+import {
+  BLOCK_PAGINATION,
+  clampLimit as clampRequestLimit,
+  clampOffset as clampRequestOffset,
+} from "./request-params.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -69,9 +74,12 @@ function nonNegativeIntegerParam(params, key) {
   return Number.isSafeInteger(n) ? n : null;
 }
 
+function clampBlockLimit(raw) {
+  return clampRequestLimit(raw, BLOCK_PAGINATION);
+}
+
 function clampOffset(raw) {
-  const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  return clampRequestOffset(raw);
 }
 
 const HASH_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -128,7 +136,7 @@ export default {
       // is on and forwards the SAME request it already validated -- this route
       // trusts well-formed params rather than re-deriving 400s.
       if (url.pathname === "/api/v1/blocks") {
-        const limit = clampLimit(url.searchParams.get("limit"));
+        const limit = clampBlockLimit(url.searchParams.get("limit"));
         const offset = clampOffset(url.searchParams.get("offset"));
         const cursor = decodeCursor(url.searchParams.get("cursor"), 1);
         const author = url.searchParams.get("author") || null;
