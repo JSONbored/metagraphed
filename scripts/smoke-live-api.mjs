@@ -418,7 +418,7 @@ export function reconcileRollups(summary, detail, fieldsToKeys) {
       (key) => rollup[key] === actual[key],
     );
     if (!keysMatch || !countsMatch) {
-      mismatches.push({ rollupKey, expected: rollup, actual });
+      mismatches.push({ rollupKey, expected: rollup, actual: { ...actual } });
     }
   }
   return mismatches;
