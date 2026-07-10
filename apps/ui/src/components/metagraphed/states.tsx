@@ -228,6 +228,20 @@ export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
 }
 
 /**
+ * Compact inline "Unavailable" indicator for a KPI/stat cell whose source query
+ * failed — a distinct error affordance so failure reads differently from a
+ * loading skeleton or a legitimately-empty "—". Used in the homepage KPI panels
+ * (#3964) and the About "At a glance" sidebar (#3968).
+ */
+export function StatUnavailable({ iconClassName = "size-3.5" }: { iconClassName?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-sm font-medium text-health-down">
+      <AlertCircle className={iconClassName} /> Unavailable
+    </span>
+  );
+}
+
+/**
  * Standardized recovery links used by EmptyState / ErrorState across profile
  * pages. Keep labels identical everywhere so the UI feels consistent.
  */
