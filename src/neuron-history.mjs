@@ -10,6 +10,7 @@ import {
   NEURON_COLUMNS,
   formatNeuron,
 } from "./metagraph-neurons.mjs";
+import { logEvent } from "../workers/storage.mjs";
 
 // Columns copied verbatim from `neurons` into `neuron_daily` (identical shape).
 const ROLLUP_COLUMNS = NEURON_INSERT_COLUMNS;
@@ -119,7 +120,19 @@ export async function rollupNeuronDaily(env, { now = Date.now() } = {}) {
 export const NEURON_DAILY_RETENTION_DAYS = 90;
 // Bound cold-archive work per cron tick so a large retention cut/backlog cannot
 // consume the whole Worker invocation before any D1 space is recovered.
-export const NEURON_DAILY_ARCHIVE_BATCH_DAYS = 7;
+//
+// Was 7 -- but the 400->90 day cut above (2026-07-04) left a ~200+ day backlog,
+// and confirmed 2026-07-10: the backlog-clearing path had made ZERO progress in
+// the 6 days since, while the single-current-day archive (~129 R2 puts, one per
+// subnet) kept working every day in that same window. 7 days is ~900 R2 puts in
+// one invocation, on top of the rollup + current-day archive that precede it in
+// the same cron tick (workers/api.mjs's NEURON_HISTORY_ROLLUP_CRON handler) --
+// a plausible fit for a Workers subrequest/CPU-time ceiling. Cut to 2: still
+// bounded well under the proven-working single-day footprint's neighborhood,
+// while keeping enough per-tick width that archivePrunableNeuronDaily's
+// skip-and-continue (below) can make progress past one persistently-failing day
+// within the same tick, not just get stuck retrying it forever.
+export const NEURON_DAILY_ARCHIVE_BATCH_DAYS = 2;
 
 // R2 cold-archive key: one immutable gzip-NDJSON object per subnet per UTC day.
 export function coldArchiveKey(netuid, day) {
@@ -215,6 +228,20 @@ async function prunableDays(
  * Archive a bounded batch of neuron_daily days eligible for the retention prune.
  * This closes the data-loss gap where a successful latest-day archive could gate
  * deletion of older days that had never been written to R2.
+ *
+ * A single day's failure (including a THROWN exception, e.g. a Workers
+ * subrequest/CPU-time limit -- archiveNeuronDaily has no try/catch of its own)
+ * no longer aborts the whole batch: it's logged and skipped, and the loop
+ * continues to the next day. This is deliberate -- confirmed 2026-07-10 that a
+ * single persistently-failing old day (the oldest is always re-returned by
+ * prunableDays() until it's archived) had silently frozen the ENTIRE backlog
+ * for 6+ days, since the old all-or-nothing behavior meant nothing past that
+ * one day ever got a chance to archive+prune. Returns `archived: true` only if
+ * at least one day actually succeeded -- pruneNeuronDaily's caller must never
+ * see `archived: true` with an EMPTY `days` array, since its own fallback for
+ * "no explicit days list" is a blanket `DELETE ... WHERE snapshot_date < cutoff`
+ * with no R2-archive check at all (see pruneNeuronDaily below) -- exactly the
+ * data-loss gap this function's own docstring says it exists to close.
  */
 export async function archivePrunableNeuronDaily(
   env,
@@ -235,31 +262,53 @@ export async function archivePrunableNeuronDaily(
   let rows = 0;
   let subnets = 0;
   const archivedDays = [];
+  const skippedDays = [];
   for (const day of days) {
-    const res = await archiveNeuronDaily(env, {
-      day,
-      db: database,
-      bucket: r2,
-    });
-    if (!res.archived) {
-      return {
-        archived: false,
-        reason: "archive-failed",
-        cutoff,
+    let res;
+    try {
+      res = await archiveNeuronDaily(env, {
         day,
-        days: archivedDays,
-        failed: res,
-      };
+        db: database,
+        bucket: r2,
+      });
+    } catch (err) {
+      logEvent(env, "error", "neuron_daily_archive_threw", {
+        day,
+        message: String(err?.message ?? err),
+      });
+      skippedDays.push(day);
+      continue;
+    }
+    if (!res.archived) {
+      logEvent(env, "error", "neuron_daily_archive_failed", {
+        day,
+        reason: res.reason,
+      });
+      skippedDays.push(day);
+      continue;
     }
     archivedDays.push(day);
     rows += res.rows ?? 0;
     subnets += res.subnets ?? 0;
   }
   return {
-    archived: true,
+    // Vacuously true when there was nothing to archive (an empty backlog is
+    // the steady-state norm -- see prunableDays), otherwise true only once at
+    // least one day actually succeeded. False exclusively when there WERE
+    // prunable days and every single one failed, so the caller's gate
+    // correctly withholds the prune rather than risk the blanket-delete path.
+    archived: days.length === 0 || archivedDays.length > 0,
     cutoff,
     days: archivedDays,
-    complete: days.length < limit,
+    skippedDays,
+    // `complete` gates the caller's choice between a targeted delete (specific
+    // `days`) and the blanket `snapshot_date < cutoff` delete (see
+    // pruneNeuronDaily) -- it must mean "every prunable day through cutoff is
+    // now archived", not just "no more backlog was fetched". A batch with any
+    // skippedDays is never complete, even if it exhausted the backlog, so the
+    // caller falls back to deleting only archivedDays and retries the skipped
+    // ones next tick instead of blanket-deleting unarchived rows.
+    complete: skippedDays.length === 0 && days.length < limit,
     subnets,
     rows,
   };
