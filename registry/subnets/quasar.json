@@ -39,6 +39,9 @@
   "notes": "Reviewed overlay for SN24 using the official SILX Labs website, Quasar source repository, README, and public model artifacts.",
   "schema_version": 1,
   "slug": "sn-24",
+  "social": {
+    "x": "https://x.com/quasarmodels"
+  },
   "source_repo": "https://github.com/SILX-LABS/QUASAR-SUBNET",
   "status": "active",
   "surfaces": [
@@ -218,10 +221,26 @@
         "https://huggingface.co/silx-ai"
       ],
       "url": "https://huggingface.co/datasets/silx-ai/Quasar-SN3"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-24-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Quasar public subnet-state API (via TaoMarketCap)",
+      "notes": "Public no-auth GET https://api.taomarketcap.com/public/v1/subnets/24 from the TaoMarketCap developer API — returns machine-readable JSON for SN24's on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields (verified live: HTTP 200, netuid 24). Quasar's first-party site (silxinc.com) and repo expose no verified no-auth public subnet API, so this is its verified public no-auth API surface.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation",
+        "https://silxinc.com/"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/24"
     }
   ],
-  "website_url": "https://silxinc.com/",
-  "social": {
-    "x": "https://x.com/quasarmodels"
-  }
+  "website_url": "https://silxinc.com/"
 }
