@@ -291,6 +291,44 @@ test("formatExtrinsic parses call_args (array, object, parse-failure->null)", ()
   assert.equal(sparse.fee_tao, null);
 });
 
+test("formatExtrinsic preserves a U256 value past Number.MAX_SAFE_INTEGER through the REAL JSON.parse path, not just pre-parsed objects (#4692 review fix)", () => {
+  // Gittensory review caught that the original #4692 PR's precision claim
+  // was false: decodeEthereumEvmCallArgs ran on the output of a plain
+  // JSON.parse(row.call_args), which had already silently rounded any U256
+  // limb past 2^53 before decodeU256Limbs ever saw it. This constructs the
+  // call_args as a raw JSON TEXT string (as it would exist in Postgres'
+  // call_args::text column) containing the true, exact large-limb literal --
+  // NOT a JS object built from a number literal in source code, which would
+  // already be rounded by the JS parser before ever reaching JSON.stringify.
+  const callArgsText =
+    '{"transaction":{"name":"EIP1559","values":[{"value":[[9131459485341369597,0,0,0]],"nonce":[[69392,0,0,0]]}]}}';
+  const out = formatExtrinsic({
+    block_number: 8587453,
+    extrinsic_index: 9,
+    call_module: "Ethereum",
+    call_function: "transact",
+    call_args: callArgsText,
+  });
+  assert.equal(out.call_args.transaction.EIP1559.value, "9131459485341369597");
+  assert.equal(out.call_args.transaction.EIP1559.nonce, "69392");
+});
+
+test("formatExtrinsic does NOT extend the big-int-safe parse to call types outside indexer-rs-ethereum-decode.mjs's dispatch table -- preserves existing (already-imprecise) D1-serving behavior for out-of-scope call types", () => {
+  // Scoping the fix to hasEthereumEvmDecoder's 4 call types is deliberate:
+  // SubtensorModule.register's PoW nonce precision loss is an existing,
+  // already-accepted issue (#4693's scope) -- this must not silently change
+  // that field's type from number to string as a side effect of #4692.
+  const out = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_module: "SubtensorModule",
+    call_function: "register",
+    call_args: '{"nonce":[9131459485341369597]}',
+  });
+  assert.equal(typeof out.call_args.nonce, "number");
+  assert.equal(out.call_args.nonce, 9131459485341369000);
+});
+
 test("formatExtrinsic normalizes success (0->false, null->null)", () => {
   assert.equal(
     formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: 0 })

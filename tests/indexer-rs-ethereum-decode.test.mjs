@@ -72,10 +72,38 @@ describe("decodeU256Limbs", () => {
     assert.deepEqual(decodeU256Limbs([[1, 2, 3]]), [[1, 2, 3]]);
   });
 
-  test("is a no-op when one of the 4 limbs isn't a non-negative integer", () => {
+  test("is a no-op when one of the 4 limbs isn't a non-negative integer or a numeric string", () => {
     assert.deepEqual(decodeU256Limbs([[1, -1, 0, 0]]), [[1, -1, 0, 0]]);
     assert.deepEqual(decodeU256Limbs([[1, 2.5, 0, 0]]), [[1, 2.5, 0, 0]]);
-    assert.deepEqual(decodeU256Limbs([[1, "2", 0, 0]]), [[1, "2", 0, 0]]);
+    assert.deepEqual(decodeU256Limbs([[1, "abc", 0, 0]]), [[1, "abc", 0, 0]]);
+    assert.deepEqual(decodeU256Limbs([[1, "-2", 0, 0]]), [[1, "-2", 0, 0]]);
+    assert.deepEqual(decodeU256Limbs([[1, null, 0, 0]]), [[1, null, 0, 0]]);
+  });
+
+  describe("string-limb support (src/big-int-safe-json.mjs quotes a limb large enough to lose precision under plain JSON.parse)", () => {
+    test("accepts a numeric-string limb the same as a number limb", () => {
+      assert.equal(decodeU256Limbs([["69392", 0, 0, 0]]), "69392");
+    });
+
+    test("preserves exact precision when one limb arrives as a string (the real corruption case caught by Gittensory review)", () => {
+      // 9131459485341369597 exceeds Number.MAX_SAFE_INTEGER -- this is exactly
+      // the shape src/big-int-safe-json.mjs's parseJsonPreservingBigInts
+      // produces: the large limb pre-quoted as a string, the other 3 (small,
+      // usually 0) limbs left as plain numbers.
+      assert.equal(
+        decodeU256Limbs([["9131459485341369597", 0, 0, 0]]),
+        "9131459485341369597",
+      );
+    });
+
+    test("combines a string limb with number limbs across multiple positions", () => {
+      const expected =
+        9131459485341369597n + (5n << 64n) + (3n << 128n) + (1n << 192n);
+      assert.equal(
+        decodeU256Limbs([["9131459485341369597", 5, 3, 1]]),
+        expected.toString(),
+      );
+    });
   });
 });
 

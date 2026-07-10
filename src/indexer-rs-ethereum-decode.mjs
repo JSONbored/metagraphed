@@ -30,19 +30,48 @@
 // SubtensorModule.register's PoW nonce" are the same underlying JS
 // large-integer/JSON.parse issue, not something unique to the EVM fields.
 //
-// Given Postgres hands us the 4 raw little-endian u64 limbs with NO
-// precision lost yet, and real production data already has `value` (wei)
-// fields exceeding Number.MAX_SAFE_INTEGER for perfectly ordinary transfers
-// (confirmed: 0.02-1.5 ETH = 2e16-1.5e18 wei, all past 9007199254740991) --
-// this is the normal case for any non-trivial transfer, not a remote edge
-// case at 2^256 -- this decoder DIVERGES from reproducing that precision
-// loss: U256 fields decode to an EXACT decimal STRING via BigInt, matching
-// how ethers.js/web3.js/viem represent U256 (never a plain JS number, for
-// exactly this reason). This is a real type divergence from D1's current
-// (already-lossy) plain-number shape even for small values that fit safely
-// -- a deliberate, documented choice per Requirement 2, not an oversight.
+// Given real production data already has `value` (wei) fields exceeding
+// Number.MAX_SAFE_INTEGER for perfectly ordinary transfers (confirmed:
+// 0.02-1.5 ETH = 2e16-1.5e18 wei, all past 9007199254740991) -- the normal
+// case for any non-trivial transfer, not a remote edge case at 2^256 -- this
+// decoder DIVERGES from reproducing that precision loss: U256 fields decode
+// to an EXACT decimal STRING via BigInt, matching how ethers.js/web3.js/viem
+// represent U256 (never a plain JS number, for exactly this reason).
+//
+// IMPORTANT: this decision is only real if the limbs Postgres hands over
+// actually survive intact to this point. A first version of this module
+// (caught by Gittensory review on the original #4692 PR) reconstructed the
+// BigInt correctly but from an ALREADY-corrupted input: src/extrinsics.mjs's
+// formatExtrinsic ran plain `JSON.parse(row.call_args)` before this decoder
+// ever ran, and standard JSON.parse silently rounds any bare integer literal
+// past 2^53 the exact same way -- so a limb like 9131459485341369597 arrived
+// here already rounded to 9131459485341369344, and the resulting decimal
+// string LOOKED exact while being built from imprecise input. Fixed by
+// routing row.call_args through src/big-int-safe-json.mjs's
+// parseJsonPreservingBigInts instead of bare JSON.parse -- see that module's
+// header for the mechanism. toLimbBigInt below accepts either a plain number
+// (the common case: 3 of a U256's 4 limbs are usually 0, safe either way) or
+// the numeric STRING that parser produces for a limb large enough to need it.
 import { isEnumTreeNode } from "./scale-normalize.mjs";
 import { unwrapByteArray, bytesToHex } from "./bytes.mjs";
+
+// A single limb (u64, up to 2^64-1) as delivered by src/extrinsics.mjs's
+// parseJsonPreservingBigInts (#4692 review fix): most limbs are small enough
+// to survive plain JSON.parse as a JS number (the common case -- 3 of a
+// U256's 4 limbs are usually 0), but a limb large enough to lose precision
+// under standard JSON.parse arrives pre-quoted as an exact numeric STRING
+// instead. Accepts either; returns null for anything else (so a genuinely
+// malformed/negative/fractional limb correctly fails unwrapU256Limbs rather
+// than silently coercing).
+function toLimbBigInt(limb) {
+  if (typeof limb === "number") {
+    return Number.isInteger(limb) && limb >= 0 ? BigInt(limb) : null;
+  }
+  if (typeof limb === "string") {
+    return /^\d+$/.test(limb) ? BigInt(limb) : null;
+  }
+  return null;
+}
 
 // Peels indexer-rs's one newtype-wrap layer around a U256's 4-limb
 // little-endian u64 array ([[limb0,limb1,limb2,limb3]]). Limbs are u64
@@ -54,11 +83,8 @@ function unwrapU256Limbs(value) {
   }
   const limbs = value[0];
   if (limbs.length !== 4) return null;
-  return limbs.every(
-    (n) => typeof n === "number" && Number.isInteger(n) && n >= 0,
-  )
-    ? limbs
-    : null;
+  const bigLimbs = limbs.map(toLimbBigInt);
+  return bigLimbs.every((b) => b !== null) ? bigLimbs : null;
 }
 
 /** 4-limb little-endian u64 array -> exact decimal string (see module header
@@ -68,7 +94,7 @@ function unwrapU256Limbs(value) {
 export function decodeU256Limbs(value) {
   const limbs = unwrapU256Limbs(value);
   if (!limbs) return value;
-  const [l0, l1, l2, l3] = limbs.map(BigInt);
+  const [l0, l1, l2, l3] = limbs;
   return (l0 + (l1 << 64n) + (l2 << 128n) + (l3 << 192n)).toString();
 }
 
@@ -235,4 +261,16 @@ const DECODERS = {
 export function decodeEthereumEvmCallArgs(callModule, callFunction, callArgs) {
   const decoder = DECODERS[`${callModule}.${callFunction}`];
   return decoder ? decoder(callArgs) : callArgs;
+}
+
+/** True for exactly the 4 call types this module decodes. Lets
+ * formatExtrinsic route ONLY these through the big-int-safe JSON parse
+ * (src/big-int-safe-json.mjs) instead of every extrinsic -- deliberately
+ * narrow: applying that parse globally would ALSO silently change other
+ * call types' already-known-imprecise large-integer fields (e.g.
+ * SubtensorModule.register's PoW nonce) from a number to a string, which is
+ * #4693's scope to fix, not a side effect to smuggle in here. Reuses this
+ * module's own dispatch table so the two lists can't drift apart. */
+export function hasEthereumEvmDecoder(callModule, callFunction) {
+  return `${callModule}.${callFunction}` in DECODERS;
 }
