@@ -660,6 +660,18 @@ test("GET /api/v1/accounts/:ss58/events applies the same filter set as loadAccou
   expect(text).toContain("AND block_number <=");
 });
 
+test("GET /api/v1/accounts/:ss58/events caps oversized offsets before Postgres", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  await req(`/api/v1/accounts/${SS58}/events?limit=1&offset=999999999999`);
+  const accountEventsCall = sqlCalls.find((call) =>
+    call.text.includes("FROM account_events"),
+  );
+  expect(accountEventsCall).toBeTruthy();
+  const boundValues = sqlCalls.flatMap((call) => call.values);
+  expect(boundValues).toContain(1_000_000);
+  expect(boundValues).not.toContain(999999999999);
+});
+
 test("GET /api/v1/accounts/:ss58/events uses a composite cursor seek instead of OFFSET", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   await req(`/api/v1/accounts/${SS58}/events?cursor=8586300.0`);

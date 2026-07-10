@@ -14,6 +14,7 @@
 // up the connection automatically when the request ends -- no sql.end().
 import postgres from "postgres";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
+import { MAX_OFFSET } from "./request-params.mjs";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "../src/extrinsics.mjs";
 import {
@@ -78,7 +79,8 @@ function nonNegativeIntegerParam(params, key) {
 
 function clampOffset(raw) {
   const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(Math.floor(n), MAX_OFFSET);
 }
 
 const HASH_RE = /^0x[0-9a-fA-F]{64}$/;
