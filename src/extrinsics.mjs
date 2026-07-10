@@ -18,6 +18,7 @@ import {
   hasEthereumEvmDecoder,
 } from "./indexer-rs-ethereum-decode.mjs";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.mjs";
+import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
 // Postgres cold tier (#1519) ships. pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
@@ -167,13 +168,23 @@ export function formatExtrinsic(row) {
       // (#4690) -- it needs the pristine raw nested-call shape to reconstruct
       // correctly (see its own file header for why running it second would
       // silently lose a genuinely zero-argument nested call). Ethereum/EVM
-      // decode (#4692) can safely run last -- U256/H160/tuple-variant-enum
-      // shapes are untouched by either earlier pass (verified: neither the
-      // newtype-scalar rule nor the nested-call detector matches an
-      // array-wrapping-an-array or a payload lacking its own string `.name`).
-      // All three are no-ops on D1's own call_args shape (an array of
-      // {name,type,value} descriptors) -- safe to apply unconditionally
-      // regardless of which serving tier produced this row.
+      // decode (#4692) and the BTreeSet unwrap (#4693) can safely run last --
+      // neither earlier pass touches the shapes they target (verified: the
+      // newtype-scalar rule only partially/coincidentally collapses a
+      // SINGLE-element BTreeSet as an unrelated side effect -- see
+      // postgres-collection-normalize.mjs's header for why that doesn't
+      // conflict with running this pass afterward). All four are no-ops on
+      // D1's own call_args shape (an array of {name,type,value} descriptors)
+      // -- safe to apply unconditionally regardless of which serving tier
+      // produced this row.
+      //
+      // u64/u128 precision (SubtensorModule.register's PoW nonce,
+      // set_children's near-u64::MAX sentinel) is DELIBERATELY left as-is
+      // here -- #4693 pins this as an accepted, tested invariant (Postgres's
+      // exact literal converges on the same IEEE-754 double D1 already
+      // serves for the two confirmed fixtures) rather than attempting a fix;
+      // see tests/extrinsics.test.mjs's precision-pinning tests and
+      // wrangler.jsonc's METAGRAPH_EXTRINSICS_SOURCE comment.
       //
       // parseJsonPreservingBigInts (#4692 review fix) is gated to ONLY the
       // call types indexer-rs-ethereum-decode.mjs actually decodes: plain
@@ -191,11 +202,15 @@ export function formatExtrinsic(row) {
       )
         ? parseJsonPreservingBigInts
         : JSON.parse;
-      call_args = decodeEthereumEvmCallArgs(
+      call_args = decodeBTreeSetFields(
         row.call_module,
         row.call_function,
-        normalizePostgresValue(
-          decodePostgresCallArgs(parseCallArgs(row.call_args)),
+        decodeEthereumEvmCallArgs(
+          row.call_module,
+          row.call_function,
+          normalizePostgresValue(
+            decodePostgresCallArgs(parseCallArgs(row.call_args)),
+          ),
         ),
       );
     } catch {

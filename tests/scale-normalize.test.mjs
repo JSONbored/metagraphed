@@ -52,7 +52,7 @@ describe("normalizePostgresValue", () => {
   });
 
   describe("generic newtype-scalar unwrap", () => {
-    test("unwraps a 1-tuple wrapping a plain number (real LimitOrders.execute_batched_orders fee_rate, block 8587347/16)", () => {
+    test("unwraps a 1-tuple wrapping a plain number (real LimitOrders.execute_batched_orders fee_rate, block 8587347/16) -- satisfies #4693's scalar-newtype-generalization requirement: this rule was never special-cased to byte-blob-shaped wrappers only", () => {
       assert.equal(normalizePostgresValue([0]), 0);
     });
 

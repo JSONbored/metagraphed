@@ -126,15 +126,36 @@
     // real data already has `value` (wei) past Number.MAX_SAFE_INTEGER for
     // any transfer above ~0.009 ETH, the normal case, not a 2^256 edge case.
     //
+    // #4693 (src/postgres-collection-normalize.mjs): BTreeSet<T> fields
+    // (confirmed: SubtensorModule.claim_root's `subnets`) now unwrap
+    // indexer-rs's extra array-nesting layer the same way D1 serves them.
+    // The generic scalar-newtype unwrap (#4690) already generalized beyond
+    // byte-blob-shaped wrappers with no changes needed (verified against
+    // LimitOrders.execute_batched_orders' fee_rate).
+    //
+    // u64/u128 precision (SubtensorModule.register's PoW nonce,
+    // set_children's near-u64::MAX sentinel): ACCEPTED, not fixed, per
+    // #4693's explicit requirement. Traced the mechanism during #4692:
+    // fetch-events.py's stored D1 text is itself lossless (Python's
+    // arbitrary-precision int via json.dumps); the rounding happens in the
+    // SHARED formatExtrinsic's plain JSON.parse(row.call_args), applied
+    // identically to both tiers. Verified the two confirmed fixtures
+    // (register nonce, set_children children[0][0]) converge on the exact
+    // same IEEE-754 double D1 already serves -- so flipping the flag would
+    // not change what's served for these two fields today; pinned as tested
+    // invariants in tests/extrinsics.test.mjs rather than "fixed," since a
+    // real fix would need the same big-int-safe parse #4692 built for
+    // Ethereum/EVM, applied more broadly -- deliberately out of scope here
+    // to avoid an uncontrolled type-change blast radius (number -> string)
+    // across every call type; a real investigation into that broader
+    // question is tracked separately.
+    //
     // Still open: a TOP-LEVEL (non-nested) call's own AccountId32/byte-blob
     // fields -- e.g. a bare Balances.transfer's dest, or Multisig's own
     // other_signatories/max_weight siblings -- are not yet decoded at that
-    // outer layer, only within a reconstructed nested call; BTreeSet/u64/
-    // u128-precision edge cases elsewhere (#4693, likely also the right home
-    // to reconsider the register-nonce JSON.parse precision issue generally,
-    // now that #4692 traced its root cause); MCP's extrinsics tools are
-    // still D1-only (#4694). Do not flip until those land and the parity
-    // harness (#4695) passes clean.
+    // outer layer, only within a reconstructed nested call; MCP's extrinsics
+    // tools are still D1-only (#4694). Do not flip until those land and the
+    // parity harness (#4695) passes clean.
     "METAGRAPH_BLOCKS_SOURCE": "d1",
     "METAGRAPH_EXTRINSICS_SOURCE": "d1",
   },
