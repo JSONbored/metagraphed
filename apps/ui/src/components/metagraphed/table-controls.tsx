@@ -91,11 +91,16 @@ export function SelectFilter({
   onChange,
   options,
   label,
+  align = "left",
 }: {
   value: string;
   onChange: (v: string) => void;
   options: Array<{ value: string; label: string }>;
   label: string;
+  // The native select sizes to its widest option, so a short selection (e.g.
+  // "all") can float far from the chevron. `align="right"` sits the value beside
+  // the arrow instead. Opt-in — existing callers are unchanged.
+  align?: "left" | "right";
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
@@ -105,7 +110,9 @@ export function SelectFilter({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={`bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring${
+          align === "right" ? " text-right" : ""
+        }`}
       >
         <option value="">all</option>
         {options.map((o) => (

@@ -60,8 +60,10 @@ import {
   eventKindCategory,
   eventKindCategoryLabel,
   eventKindLabel,
+  EVENT_KIND_LABELS,
   type EventKindCategory,
 } from "@/lib/metagraphed/event-kinds";
+import { SelectFilter } from "@/components/metagraphed/table-controls";
 import { TableState } from "@/components/metagraphed/table-state";
 import type {
   AccountEvent,
@@ -91,6 +93,9 @@ type SearchParams = {
   tab?: string;
   sev?: string;
   uid?: number;
+  // On-chain activity feed: filter by event kind (#3369). Named to match the
+  // accounts page's ev_kind so the kind-filter UX stays consistent site-wide.
+  ev_kind?: string;
 };
 
 export const Route = createFileRoute("/subnets/$netuid")({
@@ -100,6 +105,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
       tab: typeof s.tab === "string" ? s.tab : undefined,
       sev: typeof s.sev === "string" ? s.sev : undefined,
       uid: Number.isInteger(uidNum) && uidNum >= 0 ? uidNum : undefined,
+      ev_kind: typeof s.ev_kind === "string" && s.ev_kind ? s.ev_kind : undefined,
     };
   },
   parseParams: ({ netuid }) => {
@@ -666,22 +672,48 @@ function StakeFlowScorecard({ netuid }: { netuid: number }) {
 }
 
 function ActivityPanel({ netuid }: { netuid: number }) {
+  const { ev_kind: kind } = Route.useSearch();
+  const navigate = Route.useNavigate();
+
   return (
     <SectionAnchor
       id="activity"
       title="On-chain activity"
       subtitle="First-party chain events for this subnet, newest first."
       info="Registrations, stake, weights, axon, delegation, lifecycle, and transfers decoded directly from finney System.Events for recent finalized blocks (the rolling first-party event window) — not Taostats."
+      right={
+        <SelectFilter
+          label="Kind"
+          align="right"
+          value={kind ?? ""}
+          onChange={(v) =>
+            navigate({
+              to: ".",
+              search: (prev: SearchParams) => ({ ...prev, ev_kind: v || undefined }),
+              replace: true,
+              resetScroll: false,
+            })
+          }
+          options={SUBNET_EVENT_KIND_OPTIONS}
+        />
+      }
     >
       <StakeFlowScorecard netuid={netuid} />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <ActivityTableLoader netuid={netuid} />
+          <ActivityTableLoader netuid={netuid} kind={kind} />
         </Suspense>
       </QueryErrorBoundary>
     </SectionAnchor>
   );
 }
+
+// #3369: subnets expose no per-subnet event_kinds summary to derive filter
+// options from (unlike AccountSummary.event_kinds), so source the kind dropdown
+// from the shared label map, ordered by human-readable label.
+const SUBNET_EVENT_KIND_OPTIONS = Object.entries(EVENT_KIND_LABELS)
+  .map(([value, label]) => ({ value, label }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 
 const EVENT_KIND_CATEGORY_DOT: Record<EventKindCategory, string> = {
   registration: "var(--chart-1)",
@@ -719,15 +751,19 @@ function EventKindCell({ kind }: { kind: string | null | undefined }) {
   );
 }
 
-function ActivityTableLoader({ netuid }: { netuid: number }) {
-  const { data } = useSuspenseQuery(subnetEventsQuery(netuid));
+function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }) {
+  const { data } = useSuspenseQuery(subnetEventsQuery(netuid, kind));
   const events = (data.data.events ?? []) as AccountEvent[];
   if (events.length === 0) {
     return (
       <TableState
         variant="empty"
-        title="No recent on-chain activity"
-        description="No first-party chain events are indexed for this subnet in the current window — a quiet or newly-added subnet may have none yet. Registrations, stake, weights, delegation, and transfers will appear here as they're decoded."
+        title={kind ? `No ${eventKindLabel(kind)} events` : "No recent on-chain activity"}
+        description={
+          kind
+            ? "No events of this kind are indexed for this subnet in the current window. Clear the filter to see the full activity feed."
+            : "No first-party chain events are indexed for this subnet in the current window — a quiet or newly-added subnet may have none yet. Registrations, stake, weights, delegation, and transfers will appear here as they're decoded."
+        }
         generatedAt={data.meta?.generated_at}
       />
     );

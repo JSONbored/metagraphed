@@ -4213,14 +4213,18 @@ export const subnetStakeFlowQuery = (netuid: number, window = "30d") =>
     staleTime: STALE_MED,
   });
 
-export const subnetEventsQuery = (netuid: number) =>
+export const subnetEventsQuery = (netuid: number, kind?: string) =>
   queryOptions({
-    queryKey: k("subnet-events", netuid),
+    queryKey: k("subnet-events", netuid, kind ?? null),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>(
-        `/api/v1/subnets/${netuid}/events?limit=100`,
-        { signal },
-      );
+      // The backend validates `kind` against INGESTED_EVENT_KINDS server-side
+      // (handleSubnetEvents); forward it alongside the fixed limit when set.
+      const params: Record<string, string | number> = { limit: 100 };
+      if (kind) params.kind = kind;
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/events`, {
+        params,
+        signal,
+      });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const events = normalizeAccountEvents(d.events);
       return {
