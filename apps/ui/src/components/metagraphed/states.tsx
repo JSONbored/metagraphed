@@ -93,6 +93,11 @@ export function ErrorState({
   );
 }
 
+/**
+ * Lightweight dashed-border empty block for inline sections, charts, and simple
+ * panels — not for data-table shells (use `TableState`) or registry catalog
+ * surfaces with provenance (use `RegistryEmpty`). See `empty-state-usage.ts`.
+ */
 export function EmptyState({
   title = "Nothing here yet",
   description,

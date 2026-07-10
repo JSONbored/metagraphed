@@ -10,7 +10,8 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill, HealthDot } from "@/components/metagraphed/chips";
 import { CopyButton } from "@/components/metagraphed/copy-button";
-import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { TableState } from "@/components/metagraphed/table-state";
+import { Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
@@ -275,7 +276,8 @@ function PoolsTable() {
   const stale = isStaleFreshness(data.meta?.generated_at);
   if (rows.length === 0)
     return (
-      <EmptyState
+      <TableState
+        variant="empty"
         title="No RPC pools tracked"
         description="The proxy routes across registered pools — pool members and their eligibility appear here once registered."
       />
@@ -352,7 +354,8 @@ function EndpointPoolsTable() {
   const stale = isStaleFreshness(data.meta?.generated_at);
   if (rows.length === 0)
     return (
-      <EmptyState
+      <TableState
+        variant="empty"
         title="No endpoint pools tracked"
         description="Generalized pool composition across subtensor-rpc, subtensor-wss, and archive kinds appears here once pools are scored."
       />
@@ -442,7 +445,8 @@ function RpcEndpointsTable() {
   const stale = isStaleFreshness(data.meta?.generated_at);
   if (rows.length === 0)
     return (
-      <EmptyState
+      <TableState
+        variant="empty"
         title="No RPC endpoints tracked"
         description="The base-layer Subtensor RPC/WSS registry appears here once endpoints are registered."
       />

@@ -57,9 +57,11 @@ const TONE = {
 } as const;
 
 /**
- * Unified empty/error/stale state for registry surfaces. Surfaces a clear
- * headline, a plain-language explainer, an optional freshness hint, and a
- * compact row of "next actions" so users always know what to do next.
+ * Registry-catalog empty/error/stale state with provenance affordances:
+ * freshness hints, evidence links, and next-action chips. Use on /endpoints,
+ * /surfaces, /gaps, and subnet gaps — not for generic table emptiness
+ * (`TableState`) or lightweight inline sections (`EmptyState`).
+ * See `empty-state-usage.ts`.
  */
 export function RegistryEmpty({
   variant,
