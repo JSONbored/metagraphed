@@ -55,62 +55,48 @@
     // response) transparently falls back to D1, so flipping this is a
     // zero-downtime experiment and flipping it back is an instant rollback.
     //
-    // blocks: REVERTED to "d1" 2026-07-09, same day it was flipped to
-    // "postgres" (commit b6d910a3). The flip's own verification (block
-    // #8586622) turned out to be methodologically unfalsifiable: it compared
-    // the API's response against a direct Postgres query, but tryPostgresTier
-    // silently swallows every DATA_API failure (network error, canceled
-    // subrequest, non-2xx, bad JSON) and falls back to D1 with zero logging --
-    // if the Postgres subrequest for that check ALSO failed silently and fell
-    // back to D1, the diff would trivially match (D1 compared against itself).
-    // Live re-testing the same day found the DATA_API service-binding
-    // subrequest reporting outcome "canceled" on a real, reproducible fraction
-    // of /api/v1/blocks/:ref requests (confirmed via `wrangler tail
-    // metagraphed-data-api` against several distinct block refs, not a fluke
-    // of one ref), and a block confirmed to exist ONLY in Postgres
-    // (block #8513820, right at a spec_version boundary D1's poller skipped)
-    // returned block:null instead of the real row. Falling back to D1 is
-    // never WORSE than pre-flip behavior, but a flag reading "postgres" while
-    // silently serving D1 most of the time looks shipped when it isn't --
-    // reverted rather than left in that ambiguous state. Tracked as its own
-    // issue (canceled-subrequest root cause + observability into which tier
-    // actually answered); re-flip only after that's fixed and re-verified
-    // against a Postgres-only block with tail-based proof, not a block present
-    // in both stores.
+    // blocks: RE-FLIPPED to "postgres" 2026-07-10. Root cause of the
+    // 2026-07-09 revert (DATA_API subrequest reporting outcome "canceled" on
+    // a real fraction of requests, #4686) found and fixed the same day:
+    // neither data-api.mjs nor registry-sync-api.mjs wrapped their per-request
+    // queries in a transaction, so a standalone SET statement_timeout had no
+    // guarantee of landing on the same physical connection as the query that
+    // followed it (Hyperdrive resets session state between pooled
+    // connections); both also called sql.end() on every request, which
+    // Cloudflare's Hyperdrive docs say is unsupported, unnecessary extra work.
+    // Both are fixed: every request's queries now run inside sql.begin()
+    // ("read only" for data-api.mjs), and the manual teardown is removed.
+    // See ADR 0014 for the full writeup.
     //
-    // A SEPARATE, independent gap surfaced widening the parity check beyond
-    // that one spot-checked block (#4687): three scoped historical-only holes
-    // in Postgres, none present in live ingestion --
-    //   1. author = "" (not the correct SS58 string) for 1,380 rows across
-    //      three backfilled spec_versions (419/421/422) -- an indexer-rs
-    //      Aura-authority-decode gap for those specific historical runtime
-    //      versions. Mitigated at the serving layer regardless of flag state
-    //      (src/blocks.mjs's formatBlock now normalizes "" -> null, same
-    //      treatment as a blank observed_at), but the underlying Postgres
-    //      rows still need re-indexing -- see deploy/README.md's "blocks tier
-    //      verification queries" for the re-runnable check set.
-    //   2. A ~9,000-block coverage hole, 8471001-8479999, entirely missing
-    //      from Postgres (D1 still serves it).
-    //   3. Conversely Postgres has block #8513820 (a spec_version boundary)
-    //      that D1 is missing -- expected, not a regression; D1 is being
-    //      decommissioned, not backfilled.
-    // Root-cause repair is a cross-repo dependency (metagraphed-indexer-rs
-    // and/or a re-run of its historical backfill against the box's Postgres)
-    // tracked in #4687, not solved in this repo. Re-flip only after BOTH this
-    // and the canceled-subrequest issue above are resolved and re-verified.
+    // #4687's empty-author gap is resolved at the data layer too (Postgres
+    // now shows 0 rows with author = ''), confirmed via direct query
+    // 2026-07-10. The other #4687 finding -- a ~9,000-block coverage hole,
+    // 8471001-8479999, entirely missing from Postgres -- is NOT yet
+    // backfilled (confirmed still 0 rows in that range via direct query the
+    // same day); a request for a block in that range will get block:null from
+    // Postgres where D1 would have served it. Accepted as a known, narrow,
+    // pre-launch gap rather than blocking the flip on it: this repo has no
+    // real production traffic yet, and a full historical re-backfill is
+    // already planned once the self-hosted archive node finishes syncing
+    // (ADR 0014) -- backfilling this specific range now would be redone by
+    // that pass anyway. Revisit this trade-off before any real launch.
+    // Conversely Postgres has block #8513820 (a spec_version boundary) that
+    // D1 is missing -- expected, not a regression; D1 is being decommissioned,
+    // not backfilled.
     //
-    // extrinsics: still "d1". The call_args shape gap is BIGGER than
-    // originally scoped here on 2026-07-09 -- that note covered only the
-    // nested-call-shape and call_hash cases (#4669, fixed). A broader live
-    // audit the same day found indexer-rs's dynamic-SCALE dump also renders
-    // AccountId32 fields (hotkey/coldkey/dest/real/delegate -- the majority of
-    // SubtensorModule/Balances/Proxy call args) as newtype-wrapped raw byte
-    // arrays instead of SS58 strings, and raw byte blobs (commit/ciphertext/
-    // enc_key -- the single most common call family right now, timelocked
-    // commit-reveal weight setting) as integer arrays instead of hex. Tracked
-    // as a roadmap of sub-issues (see the parent issue linked from #4669) --
-    // do not flip this flag until that roadmap's normalizer work lands and a
-    // real parity harness (not a single-extrinsic spot check) passes clean.
+    // extrinsics: RE-FLIPPED to "postgres" 2026-07-10, same connection-
+    // affinity fix as blocks above (#4686). The call_args shape-reconciliation
+    // roadmap below (#4669/#4688-#4694) closes the great majority of the
+    // divergence server-side in formatExtrinsic; what's NOT yet covered
+    // (documented per-item below: top-level-only AccountId32/byte-blob
+    // fields outside a reconstructed nested call, the pre-2026-07-10 mixed
+    // call_args shape in historical rows) is accepted as a known, narrow,
+    // pre-launch gap rather than blocking the flip on it -- no real
+    // production traffic yet, and the same full re-backfill planned for the
+    // blocks-tier gap (ADR 0014, gated on the self-hosted archive node)
+    // covers this too. Revisit before any real launch; #4695's parity
+    // harness remains valuable follow-up work to quantify what's left, not a
+    // precondition for this flip.
     //
     // Progress on that roadmap (src/scale-normalize.mjs, src/ss58.mjs,
     // src/bytes.mjs, src/postgres-call-args.mjs -- all chained inside
@@ -189,20 +175,21 @@
     // shape. extrinsics.call_args in Postgres is a MIX of both shapes until
     // a full re-backfill replaces the old rows (blocked on the self-hosted
     // archive node reaching steady-state, ~51% synced as of 2026-07-10).
-    // Do not flip this flag until the parity harness (#4695) accounts for
-    // that mixed-shape reality -- see #4669's tracking-issue comment thread
-    // for the full writeup.
-    "METAGRAPH_BLOCKS_SOURCE": "d1",
-    "METAGRAPH_EXTRINSICS_SOURCE": "d1",
-    // account_events: no shape-parity risk (#4696) -- account_events is 11
-    // scalar Postgres columns with its own dedicated writer, never modeled
-    // as a generic call_args/chain_events-style SCALE dump, so none of the
-    // AccountId32/byte-blob/nested-call divergence family above applies.
-    // Gates only GET /api/v1/accounts/{ss58}/events; the other
-    // account_events-derived readers (account summary, transfers, subnet
-    // events, leaderboard/turnover/analytics) remain D1-only, portable one
-    // at a time under this same flag in follow-up work.
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "d1",
+    // See #4669's tracking-issue comment thread for the full shape-
+    // reconciliation writeup.
+    "METAGRAPH_BLOCKS_SOURCE": "postgres",
+    "METAGRAPH_EXTRINSICS_SOURCE": "postgres",
+    // account_events: RE-FLIPPED to "postgres" 2026-07-10 alongside the other
+    // two, same connection-affinity fix (#4686). No shape-parity risk (#4696)
+    // regardless -- account_events is 11 scalar Postgres columns with its own
+    // dedicated writer, never modeled as a generic call_args/chain_events-
+    // style SCALE dump, so none of the AccountId32/byte-blob/nested-call
+    // divergence family above ever applied here. Gates only GET
+    // /api/v1/accounts/{ss58}/events; the other account_events-derived
+    // readers (account summary, transfers, subnet events, leaderboard/
+    // turnover/analytics) remain D1-only, portable one at a time under this
+    // same flag in follow-up work.
+    "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
