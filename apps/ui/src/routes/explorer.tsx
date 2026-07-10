@@ -1184,40 +1184,72 @@ function ExplorerDashboard() {
           </span>
         </div>
         {stakeTransfers.subnets.length > 0 ? (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Transfers</th>
-                <th className={`${TH} text-right`}>Distinct senders</th>
-                <th className={`${TH} text-right`}>Transfers per sender</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
+          <>
+            {/* < md: a squeezed 4-column table either clips its last column or
+                requires an undiscoverable horizontal scroll, so narrow
+                viewports get a stacked card per subnet instead (mirrors the
+                cards/table split ListShell uses for paginated lists). */}
+            <div className="md:hidden space-y-2">
               {stakeTransfers.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                <div key={s.netuid} className="rounded border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
+                      className="font-mono text-[12px] font-medium text-ink-strong hover:text-accent hover:underline"
                     >
                       SN{s.netuid}
                     </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {formatNumber(s.transfers)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {formatNumber(s.distinct_senders)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
-                  </td>
-                </tr>
+                    <span className="font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.transfers_per_sender != null
+                        ? `${s.transfers_per_sender.toFixed(2)} / sender`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                    <span>{formatNumber(s.transfers)} transfers</span>
+                    <span>{formatNumber(s.distinct_senders)} senders</span>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={TH}>Subnet</th>
+                    <th className={`${TH} text-right`}>Transfers</th>
+                    <th className={`${TH} text-right`}>Distinct senders</th>
+                    <th className={`${TH} text-right`}>Transfers per sender</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {stakeTransfers.subnets.map((s) => (
+                    <tr key={s.netuid} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: s.netuid }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                        >
+                          SN{s.netuid}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {formatNumber(s.transfers)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatNumber(s.distinct_senders)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <EmptyState title="No stake transfers in this window yet." />
         )}
