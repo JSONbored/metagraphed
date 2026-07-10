@@ -13,7 +13,10 @@ import postgres from "postgres";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
 import { buildExtrinsic, buildExtrinsicFeed } from "../src/extrinsics.mjs";
-import { formatAccountEvent } from "../src/account-events.mjs";
+import {
+  buildAccountEvents,
+  formatAccountEvent,
+} from "../src/account-events.mjs";
 import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
 
 const MAX_LIMIT = 200;
@@ -321,6 +324,61 @@ export default {
           events = eventRows.map(formatAccountEvent).filter(Boolean);
         }
         return json(buildExtrinsic(resolved, ref, events));
+      }
+
+      // GET /api/v1/accounts/:ss58/events — the per-account signed-event feed
+      // (#4696), mirroring src/account-events.mjs's loadAccountEvents filter
+      // set (kind, netuid, block_start/block_end, cursor). account_events has
+      // no shape-parity risk (11 scalar columns, its own dedicated writer,
+      // never a generic call_args/chain_events-style SCALE dump) -- unlike
+      // extrinsics/blocks, this tier only needed the query layer built, not a
+      // decode-shape reconciliation.
+      //
+      // D1's hotkey/coldkey union is two INDEXED BY branches combined with
+      // UNION ALL (each SQLite index can only ever seek ONE column), with a
+      // second-branch guard to stop UNION ALL from double-counting a row
+      // where both columns equal the same ss58. Postgres has no INDEXED BY
+      // equivalent and evaluates a flat `WHERE (hotkey = $1 OR coldkey = $1)`
+      // as one plan, so a matching row is naturally visited exactly once --
+      // the double-count guard has nothing to do here and is deliberately
+      // omitted, not an oversight.
+      const acctEvents = url.pathname.match(
+        /^\/api\/v1\/accounts\/([^/]+)\/events$/,
+      );
+      if (acctEvents) {
+        const ss58 = decodeURIComponent(acctEvents[1]);
+        const limit = clampLimit(url.searchParams.get("limit"));
+        const offset = clampOffset(url.searchParams.get("offset"));
+        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+        const kind = url.searchParams.get("kind") || null;
+        const netuid = nonNegativeIntegerParam(url.searchParams, "netuid");
+        const blockStart = nonNegativeIntegerParam(
+          url.searchParams,
+          "block_start",
+        );
+        const blockEnd = nonNegativeIntegerParam(url.searchParams, "block_end");
+        const rows = await sql`
+          SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+          FROM account_events
+          WHERE (hotkey = ${ss58} OR coldkey = ${ss58})
+            ${kind ? sql`AND event_kind = ${kind}` : sql``}
+            ${netuid != null ? sql`AND netuid = ${netuid}` : sql``}
+            ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+            ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+            ${cursor ? sql`AND (block_number, event_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY block_number DESC, event_index DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+        const last = rows.length === limit ? rows[rows.length - 1] : null;
+        const nextCursor = last
+          ? encodeCursor([
+              numberOrNull(last.block_number),
+              numberOrNull(last.event_index),
+            ])
+          : null;
+        return json(
+          buildAccountEvents(rows, ss58, { limit, offset, nextCursor }),
+        );
       }
 
       // GET /api/v1/blocks/:n/chain-events — EVERY event in a block (the all-events

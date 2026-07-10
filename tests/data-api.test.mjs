@@ -406,6 +406,21 @@ const EXTRINSIC_ROW = {
   observed_at: "1783600000000",
 };
 
+const SS58 = "5Hot";
+const ACCOUNT_EVENT_ROW = {
+  block_number: "8586300",
+  event_index: 0,
+  extrinsic_index: 2,
+  event_kind: "StakeAdded",
+  hotkey: SS58,
+  coldkey: "5Cold",
+  netuid: 4,
+  uid: 1,
+  amount_tao: "1.5",
+  alpha_amount: "0",
+  observed_at: "1783600000000",
+};
+
 test("GET /api/v1/blocks returns a block feed shaped like the D1 route", async () => {
   mockRows.current = [BLOCK_ROW];
   const res = await req("/api/v1/blocks?limit=1");
@@ -599,6 +614,61 @@ test("GET /api/v1/extrinsics/:ref skips the embedded-events query on an unresolv
   expect(body.extrinsic).toBeNull();
   expect(body.events).toEqual([]);
   expect(sqlCalls.length).toBe(2); // SET + the main lookup, no events query
+});
+
+test("GET /api/v1/accounts/:ss58/events returns a feed shaped like the D1 route", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  const res = await req(`/api/v1/accounts/${SS58}/events?limit=1`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ss58).toBe(SS58);
+  expect(body.event_count).toBe(1);
+  const ev = body.events[0];
+  expect(ev.block_number).toBe(8586300);
+  expect(ev.event_kind).toBe("StakeAdded");
+  expect(ev.amount_tao).toBe(1.5);
+});
+
+test("GET /api/v1/accounts/:ss58/events matches hotkey OR coldkey in one flat WHERE, no INDEXED BY / dedup guard", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  await req(`/api/v1/accounts/${SS58}/events`);
+  const text = queryText();
+  expect(text).toContain("WHERE (hotkey =");
+  expect(text).toContain("OR coldkey =");
+  expect(text).not.toContain("INDEXED BY");
+  expect(text).not.toContain("UNION");
+  expect(text).not.toContain("hotkey <>");
+});
+
+test("GET /api/v1/accounts/:ss58/events applies the same filter set as loadAccountEvents", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  await req(
+    `/api/v1/accounts/${SS58}/events?kind=StakeAdded&netuid=4&block_start=1&block_end=2`,
+  );
+  const text = queryText();
+  expect(text).toContain("AND event_kind =");
+  expect(text).toContain("AND netuid =");
+  expect(text).toContain("AND block_number >=");
+  expect(text).toContain("AND block_number <=");
+});
+
+test("GET /api/v1/accounts/:ss58/events uses a composite cursor seek instead of OFFSET", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  await req(`/api/v1/accounts/${SS58}/events?cursor=8586300.0`);
+  const text = queryText();
+  expect(text).toContain("AND (block_number, event_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/events with no matching rows returns a schema-stable empty feed", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/accounts/${SS58}/events`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ss58).toBe(SS58);
+  expect(body.event_count).toBe(0);
+  expect(body.events).toEqual([]);
+  expect(body.next_cursor).toBeNull();
 });
 
 test("POST is rejected with 405", async () => {

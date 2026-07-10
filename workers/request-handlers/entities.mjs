@@ -2706,15 +2706,17 @@ export async function handleAccountEvents(request, env, ss58, url) {
       message: `"${kind}" is not a supported event kind. Supported: ${INGESTED_EVENT_KINDS.join(", ")}.`,
     });
   }
-  const data = await loadAccountEvents(d1Runner(env), ss58, {
-    limit: url.searchParams.get("limit"),
-    offset: url.searchParams.get("offset"),
-    kind,
-    netuid: netuid.value,
-    cursor: url.searchParams.get("cursor"),
-    blockStart: blockStart.value,
-    blockEnd: blockEnd.value,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountEvents(d1Runner(env), ss58, {
+      limit: url.searchParams.get("limit"),
+      offset: url.searchParams.get("offset"),
+      kind,
+      netuid: netuid.value,
+      cursor: url.searchParams.get("cursor"),
+      blockStart: blockStart.value,
+      blockEnd: blockEnd.value,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.events,

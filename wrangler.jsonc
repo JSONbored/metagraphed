@@ -49,11 +49,11 @@
     "METAGRAPH_ENABLE_AI": "true",
     // D1 -> Postgres serving-cutover flags (ADR 0013 Sequencing step 3, the
     // deploy/README.md "Serving cutover" runbook). Set to "postgres" to route
-    // /api/v1/blocks(/{ref}) or /api/v1/extrinsics(/{ref}) through the DATA_API
-    // Hyperdrive Worker instead of D1 -- ANY failure there (binding absent,
-    // network error, bad response) transparently falls back to D1, so flipping
-    // this is a zero-downtime experiment and flipping it back is an instant
-    // rollback.
+    // /api/v1/blocks(/{ref}), /api/v1/extrinsics(/{ref}), or
+    // /api/v1/accounts/{ss58}/events through the DATA_API Hyperdrive Worker
+    // instead of D1 -- ANY failure there (binding absent, network error, bad
+    // response) transparently falls back to D1, so flipping this is a
+    // zero-downtime experiment and flipping it back is an instant rollback.
     //
     // blocks: REVERTED to "d1" 2026-07-09, same day it was flipped to
     // "postgres" (commit b6d910a3). The flip's own verification (block
@@ -150,14 +150,38 @@
     // across every call type; a real investigation into that broader
     // question is tracked separately.
     //
-    // Still open: a TOP-LEVEL (non-nested) call's own AccountId32/byte-blob
-    // fields -- e.g. a bare Balances.transfer's dest, or Multisig's own
-    // other_signatories/max_weight siblings -- are not yet decoded at that
-    // outer layer, only within a reconstructed nested call; MCP's extrinsics
-    // tools are still D1-only (#4694). Do not flip until those land and the
-    // parity harness (#4695) passes clean.
+    // MCP's extrinsics tools (list_extrinsics/get_extrinsic) are wired
+    // through this same flag as of #4694 -- no longer D1-only.
+    //
+    // 2026-07-10: root-caused and fixed the underlying reason Postgres's
+    // call_args ever needed all the reconciliation above -- indexer-rs
+    // (separate private repo metagraphed-indexer-rs) was decoding call
+    // arguments into subxt's type-erased form and serializing that directly,
+    // discarding the chain metadata it already fetches per-block. Fixed at
+    // the source (metagraphed-indexer-rs#1/#2, merged + redeployed to the
+    // live indexer): Postgres's extrinsics.call_args now carries the same
+    // [{name, type, value}, ...] shape D1 produces, verified end-to-end
+    // against real freshly-indexed blocks. IMPORTANT: this only affects rows
+    // written from ~block 8589233 onward -- every row written before that
+    // (the live-indexed history back to ~block 8540006, plus whatever the
+    // separate backfill container processed) still has the old type-blind
+    // shape. extrinsics.call_args in Postgres is a MIX of both shapes until
+    // a full re-backfill replaces the old rows (blocked on the self-hosted
+    // archive node reaching steady-state, ~51% synced as of 2026-07-10).
+    // Do not flip this flag until the parity harness (#4695) accounts for
+    // that mixed-shape reality -- see #4669's tracking-issue comment thread
+    // for the full writeup.
     "METAGRAPH_BLOCKS_SOURCE": "d1",
     "METAGRAPH_EXTRINSICS_SOURCE": "d1",
+    // account_events: no shape-parity risk (#4696) -- account_events is 11
+    // scalar Postgres columns with its own dedicated writer, never modeled
+    // as a generic call_args/chain_events-style SCALE dump, so none of the
+    // AccountId32/byte-blob/nested-call divergence family above applies.
+    // Gates only GET /api/v1/accounts/{ss58}/events; the other
+    // account_events-derived readers (account summary, transfers, subnet
+    // events, leaderboard/turnover/analytics) remain D1-only, portable one
+    // at a time under this same flag in follow-up work.
+    "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "d1",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the

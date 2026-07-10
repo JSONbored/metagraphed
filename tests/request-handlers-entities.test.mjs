@@ -6164,6 +6164,61 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.extrinsic.extrinsic_hash, HASH);
   });
+
+  test("handleAccountEvents: flag absent, uses D1 even when DATA_API is bound", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        ss58: SS58,
+        event_count: 99,
+        events: [],
+      }),
+    );
+    const path = `/api/v1/accounts/${SS58}/events`;
+    const body = await json(
+      await handleAccountEvents(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.event_count, 1); // the D1 fixture's count, not 99
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleAccountEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        ss58: SS58,
+        event_count: 99,
+        limit: 50,
+        offset: 0,
+        next_cursor: null,
+        events: [],
+      }),
+    );
+    const path = `/api/v1/accounts/${SS58}/events`;
+    const body = await json(
+      await handleAccountEvents(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.event_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountEvents: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/accounts/${SS58}/events`;
+    const body = await json(
+      await handleAccountEvents(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.event_count, 1);
+  });
 });
 
 // ---- Cross-handler contract smoke tests -------------------------------------
