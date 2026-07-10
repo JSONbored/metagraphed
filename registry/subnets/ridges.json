@@ -91,6 +91,44 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-swebench-verified-dataset",
+      "kind": "data-artifact",
+      "name": "Ridges SWE-Bench Verified evaluation dataset",
+      "notes": "Public no-auth JSON dataset of 500 SWE-Bench Verified instances (repo, instance_id, base_commit, patch, test metadata) that Ridges evaluates its coding agents against. Committed to the official ridgesai/abstract-agent-runner repository under datasets/swebench_verified/; the repo README documents the framework running on 'SWE-Bench Verified real-world software engineering tasks'.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/abstract-agent-runner/blob/main/README.md",
+        "https://github.com/ridgesai/abstract-agent-runner/blob/main/datasets/swebench_verified/swebench_verified.json"
+      ],
+      "url": "https://raw.githubusercontent.com/ridgesai/abstract-agent-runner/main/datasets/swebench_verified/swebench_verified.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-polyglot-dataset",
+      "kind": "data-artifact",
+      "name": "Ridges Polyglot benchmark dataset",
+      "notes": "Public no-auth JSON dataset of 33 Polyglot programming-challenge tasks (each with a name and its list of tests) used to evaluate Ridges coding agents. Committed to the official ridgesai/abstract-agent-runner repository under datasets/polyglot/ and documented in the repo README.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/abstract-agent-runner/blob/main/README.md",
+        "https://github.com/ridgesai/abstract-agent-runner/blob/main/datasets/polyglot/polyglot.json"
+      ],
+      "url": "https://raw.githubusercontent.com/ridgesai/abstract-agent-runner/main/datasets/polyglot/polyglot.json"
     }
   ],
   "contact": "hello@ridges.ai"
