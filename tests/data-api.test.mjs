@@ -83,6 +83,19 @@ vi.mock("postgres", () => ({
       return Promise.resolve(mockRows.current);
     }
     sql.end = () => Promise.resolve();
+    // sql.unsafe(text, params) -- the neurons-sync prune's per-netuid VALUES
+    // join (#4771 hotfix: a bound JS array broke under this Worker's real
+    // Hyperdrive `fetch_types: false` setting, so the prune builds its own
+    // placeholder text instead of relying on tagged-template array binding).
+    // Recorded into the SAME sqlCalls list so existing assertions work
+    // unchanged regardless of which call form produced them.
+    sql.unsafe = (text, params = []) => {
+      sqlCalls.push({ text, values: params });
+      if (/DELETE FROM neurons/.test(text)) {
+        return Promise.resolve(neuronsSyncPruneRows.current);
+      }
+      return Promise.resolve(mockRows.current);
+    };
     // sql.begin(["read only",] cb) reserves a connection for cb in real
     // postgres.js; the mock just invokes cb with this same sql function so
     // every existing tagged-template assertion (sqlCalls, mockQueue) still
@@ -1067,6 +1080,24 @@ test("neurons-sync upserts neurons + neuron_daily and reports written counts", a
   expect(queryText()).toMatch(/DELETE FROM neurons/);
 });
 
+test("neurons-sync computes one max captured_at per netuid across its many UID rows (the realistic multi-UID-per-subnet case)", async () => {
+  // Real payloads have ~256 UID rows per netuid sharing one captured_at; a
+  // later row for a netuid already seen must not incorrectly lower or
+  // duplicate its recorded threshold.
+  await postNeurons(
+    [
+      neuronSyncRow({ netuid: 8, uid: 0, captured_at: 1000 }),
+      neuronSyncRow({ netuid: 8, uid: 1, captured_at: 1000 }),
+      neuronSyncRow({ netuid: 8, uid: 2, captured_at: 1000 }),
+    ],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
+  // One (netuid, captured_at) pair, not three -- the repeat rows for netuid 8
+  // collapse to a single threshold entry.
+  expect(pruneCall.values).toEqual([8, 1000]);
+});
+
 test("neurons-sync coerces 0/1 active/validator_permit/is_immunity_period to real booleans", async () => {
   await postNeurons(
     [
@@ -1114,8 +1145,11 @@ test("neurons-sync scopes the deregistered-UID prune to only the netuids present
     { secret: NEURONS_SYNC_SECRET },
   );
   const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
-  expect(pruneCall.values[0]).toEqual(expect.arrayContaining([8, 9]));
-  expect(pruneCall.values[0]).toHaveLength(2);
+  // Flat (netuid, captured_at) pairs -- sql.unsafe positional params, not a
+  // bound array (see the #4771 hotfix comment in handleNeuronsSync).
+  expect(pruneCall.values).toEqual(expect.arrayContaining([8, 9]));
+  expect(pruneCall.values).toHaveLength(4);
+  expect(pruneCall.text).toMatch(/\$1::int, \$2::bigint/);
 });
 
 // REGRESSION (Gittensory Gate finding, 2026-07-10): the prune threshold must
@@ -1133,12 +1167,16 @@ test("neurons-sync prunes each netuid against its OWN max captured_at, not the b
     { secret: NEURONS_SYNC_SECRET },
   );
   const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
-  const [netuids, thresholds] = pruneCall.values;
-  expect(netuids).toEqual(expect.arrayContaining([8, 9]));
+  // Flat (netuid, captured_at) pairs, in netuid-first-seen order.
+  const pairs = [];
+  for (let i = 0; i < pruneCall.values.length; i += 2) {
+    pairs.push([pruneCall.values[i], pruneCall.values[i + 1]]);
+  }
+  const byNetuid = new Map(pairs);
   // Each netuid's threshold must equal ITS OWN captured_at from this batch --
   // never the other netuid's (which the old shared-max bug would have used).
-  expect(thresholds[netuids.indexOf(8)]).toBe(1000);
-  expect(thresholds[netuids.indexOf(9)]).toBe(2000);
+  expect(byNetuid.get(8)).toBe(1000);
+  expect(byNetuid.get(9)).toBe(2000);
 });
 
 test("neurons-sync reports deregistered_pruned from the DELETE's returned row count", async () => {

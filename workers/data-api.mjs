@@ -235,7 +235,6 @@ async function handleNeuronsSync(request, env) {
       netuidMaxCapturedAt.set(row.netuid, row.captured_at);
   }
   const netuids = [...netuidMaxCapturedAt.keys()];
-  const netuidThresholds = netuids.map((n) => netuidMaxCapturedAt.get(n));
 
   const sql = postgres(env.HYPERDRIVE.connectionString, {
     max: 5,
@@ -323,17 +322,32 @@ async function handleNeuronsSync(request, env) {
       // `!incoming.length` check guarantees at least one row, and every row
       // has a netuid.
       //
-      // unnest() zips netuids/netuidThresholds positionally into a per-netuid
-      // threshold table -- each netuid is only pruned against ITS OWN max
-      // captured_at, never another netuid's, closing the cross-netuid
-      // data-loss gap a single shared threshold would open.
-      const pruned = await sql`
-          DELETE FROM neurons n
-          USING unnest(${netuids}::int[], ${netuidThresholds}::bigint[])
-            AS batch(netuid, captured_at)
-          WHERE n.netuid = batch.netuid
-            AND n.captured_at < batch.captured_at
-          RETURNING n.netuid`;
+      // The VALUES join builds a per-netuid threshold table -- each netuid is
+      // only pruned against ITS OWN max captured_at, never another netuid's,
+      // closing the cross-netuid data-loss gap a single shared threshold
+      // would open. Built via sql.unsafe with explicit-cast positional
+      // placeholders (plain scalar binds, one per cell) rather than a bound
+      // JS array -- confirmed live 2026-07-10 that Hyperdrive's recommended
+      // `fetch_types: false` (this Worker's own setting, above) breaks
+      // postgres.js's automatic ARRAY-literal serialization (`ANY($1)`/
+      // `unnest($1::int[])` sent a malformed literal with no braces), while
+      // scalar binds -- the only kind every other query in this Worker
+      // uses -- are unaffected.
+      const valuesSql = netuids
+        .map((_, i) => `($${i * 2 + 1}::int, $${i * 2 + 2}::bigint)`)
+        .join(", ");
+      const pruneParams = netuids.flatMap((netuid) => [
+        netuid,
+        netuidMaxCapturedAt.get(netuid),
+      ]);
+      const pruned = await sql.unsafe(
+        `DELETE FROM neurons n
+         USING (VALUES ${valuesSql}) AS batch(netuid, captured_at)
+         WHERE n.netuid = batch.netuid
+           AND n.captured_at < batch.captured_at
+         RETURNING n.netuid`,
+        pruneParams,
+      );
 
       return writeJson({
         ok: true,
