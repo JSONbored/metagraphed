@@ -1,5 +1,6 @@
 {
   "categories": [],
+  "contact": "crew@crunchdao.com",
   "curation": {
     "level": "community-seeded",
     "review_state": "unreviewed"
@@ -8,6 +9,10 @@
   "netuid": 38,
   "schema_version": 1,
   "slug": "sn-38",
+  "social": {
+    "x": "https://x.com/chronollm"
+  },
+  "source_repo": "https://github.com/chronollm/sn38",
   "status": "active",
   "surfaces": [
     {
@@ -60,12 +65,26 @@
         "https://huggingface.co/manelalab"
       ],
       "url": "https://huggingface.co/datasets/manelalab/ChronoInstruct-SFT-v1"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "ChronoLLM public subnet-state API (via TaoMarketCap)",
+      "notes": "Public no-auth GET https://api.taomarketcap.com/public/v1/subnets/38 from the TaoMarketCap developer API — returns machine-readable JSON for SN38's on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields (verified live: HTTP 200, netuid 38). ChronoLLM publishes docs and HuggingFace datasets but no first-party no-auth public subnet API, so this is its verified public no-auth API surface.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation",
+        "https://chronollm.crunchdao.com/"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/38"
     }
   ],
-  "source_repo": "https://github.com/chronollm/sn38",
-  "contact": "crew@crunchdao.com",
-  "website_url": "https://chronollm.crunchdao.com/",
-  "social": {
-    "x": "https://x.com/chronollm"
-  }
+  "website_url": "https://chronollm.crunchdao.com/"
 }
