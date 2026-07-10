@@ -7,7 +7,7 @@ import { Activity, Boxes, Coins, Layers, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
@@ -249,7 +249,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
           )}
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No calls yet.</p>
+        <EmptyState title="No calls yet." />
       )}
     </section>
   );
@@ -301,7 +301,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
           })}
         </ul>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No raw pallet events indexed yet.</p>
+        <EmptyState title="No raw pallet events indexed yet." />
       )}
     </section>
   );
@@ -422,7 +422,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
           </ul>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No stake flow in this window yet.</p>
+        <EmptyState title="No stake flow in this window yet." />
       )}
 
       {dist ? (
@@ -501,7 +501,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
           </ul>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No stake moves in this window yet.</p>
+        <EmptyState title="No stake moves in this window yet." />
       )}
 
       {dist ? (
@@ -573,9 +573,7 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
           </table>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">
-          No axon teardowns in this window yet.
-        </p>
+        <EmptyState title="No axon teardowns in this window yet." />
       )}
     </section>
   );
@@ -665,7 +663,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
           </ul>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No turnover in this window yet.</p>
+        <EmptyState title="No turnover in this window yet." />
       )}
 
       {net ? (
@@ -733,9 +731,7 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
           />
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">
-          No economics snapshots in this window yet.
-        </p>
+        <EmptyState title="No economics snapshots in this window yet." />
       )}
     </section>
   );
@@ -921,9 +917,7 @@ function ExplorerDashboard() {
             />
           </div>
         ) : (
-          <p className="font-mono text-[12px] text-ink-muted">
-            No activity indexed yet — the chain poller fills this every few minutes.
-          </p>
+          <EmptyState title="No activity indexed yet — the chain poller fills this every few minutes." />
         )}
       </section>
 
@@ -968,7 +962,7 @@ function ExplorerDashboard() {
               />
             </div>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">No fees in this window yet.</p>
+            <EmptyState title="No fees in this window yet." />
           )}
         </section>
 
@@ -1032,9 +1026,7 @@ function ExplorerDashboard() {
               </table>
             </>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">
-              No fee payers in this window yet.
-            </p>
+            <EmptyState title="No fee payers in this window yet." />
           )}
         </section>
 
@@ -1093,9 +1085,7 @@ function ExplorerDashboard() {
               </tbody>
             </table>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">
-              No weight-setters in this window yet.
-            </p>
+            <EmptyState title="No weight-setters in this window yet." />
           )}
         </section>
       </div>
@@ -1164,7 +1154,7 @@ function ExplorerDashboard() {
               </tbody>
             </table>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">No signers in this window yet.</p>
+            <EmptyState title="No signers in this window yet." />
           )}
         </section>
       </div>
@@ -1229,9 +1219,7 @@ function ExplorerDashboard() {
             </tbody>
           </table>
         ) : (
-          <p className="font-mono text-[12px] text-ink-muted">
-            No stake transfers in this window yet.
-          </p>
+          <EmptyState title="No stake transfers in this window yet." />
         )}
       </section>
 
@@ -1356,9 +1344,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
           </table>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">
-          No transfer pairs in this window yet.
-        </p>
+        <EmptyState title="No transfer pairs in this window yet." />
       )}
     </section>
   );
@@ -1420,11 +1406,13 @@ function ChainEventsFeedSection() {
   );
 
   const emptyNode = (
-    <p className="font-mono text-[12px] text-ink-muted">
-      {filtersActive
-        ? "No chain events match these filters."
-        : "No chain events indexed yet — the all-events backfill fills this feed."}
-    </p>
+    <EmptyState
+      title={
+        filtersActive
+          ? "No chain events match these filters."
+          : "No chain events indexed yet — the all-events backfill fills this feed."
+      }
+    />
   );
 
   const table = (
