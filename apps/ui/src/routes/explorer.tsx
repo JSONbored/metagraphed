@@ -30,6 +30,7 @@ import {
   chainStakeTransfersQuery,
   chainAxonRemovalsQuery,
   chainTransferPairsQuery,
+  chainTransfersQuery,
   economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -44,6 +45,7 @@ import type {
   ChainTurnover,
   EconomicsTrends,
   ChainAxonRemovals,
+  ChainTransfers,
 } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
@@ -113,6 +115,7 @@ function ExplorerPage() {
           "/api/v1/chain-events",
           "/api/v1/chain-events/stats",
           "/api/v1/economics/trends",
+          "/api/v1/chain/transfers",
         ]}
       />
     </AppShell>
@@ -745,6 +748,121 @@ function weightSetterKey(setter: { hotkey: string | null; uid: number | null }):
   return setter.hotkey ?? `uid:${setter.uid ?? "unknown"}`;
 }
 
+/**
+ * Network-wide native-TAO transfer-volume leaderboard (#3475) — separate
+ * top-senders/top-receivers rankings, distinct from the directed
+ * sender->receiver corridor view (#3476, chainTransferPairsQuery). Chain-direct:
+ * GET /api/v1/chain/transfers.
+ */
+function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers }) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Transfers leaderboard
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(transfers.transfer_count)} transfers
+        </span>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StakeFlowMetric label="Total volume" value={formatTao(transfers.total_volume_tao)} />
+        <StakeFlowMetric label="Transfers" value={formatNumber(transfers.transfer_count)} />
+        <StakeFlowMetric label="Unique senders" value={formatNumber(transfers.unique_senders)} />
+        <StakeFlowMetric
+          label="Unique receivers"
+          value={formatNumber(transfers.unique_receivers)}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Top senders
+          </div>
+          {transfers.top_senders.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Account</th>
+                  <th className={`${TH} text-right`}>Volume</th>
+                  <th className={`${TH} text-right`}>Transfers</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {transfers.top_senders.map((s) => (
+                  <tr key={s.address} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: s.address }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                        title={s.address}
+                      >
+                        {shortHash(s.address) ?? s.address}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatTao(s.volume_tao)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(s.transfer_count)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="font-mono text-[12px] text-ink-muted">No senders in this window yet.</p>
+          )}
+        </div>
+
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Top receivers
+          </div>
+          {transfers.top_receivers.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Account</th>
+                  <th className={`${TH} text-right`}>Volume</th>
+                  <th className={`${TH} text-right`}>Transfers</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {transfers.top_receivers.map((r) => (
+                  <tr key={r.address} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: r.address }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                        title={r.address}
+                      >
+                        {shortHash(r.address) ?? r.address}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatTao(r.volume_tao)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(r.transfer_count)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="font-mono text-[12px] text-ink-muted">No receivers in this window yet.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -773,6 +891,7 @@ function ExplorerDashboard() {
     { data: axonChurnRes },
     { data: eventMixRes },
     { data: trendsRes },
+    { data: transfersRes },
   ] = useSuspenseQueries({
     queries: [
       chainActivityQuery(win),
@@ -787,6 +906,7 @@ function ExplorerDashboard() {
       chainAxonRemovalsQuery(win),
       chainEventsStatsQuery(),
       economicsTrendsQuery(win),
+      chainTransfersQuery(win),
     ],
   });
   const activity = activityRes.data;
@@ -801,6 +921,7 @@ function ExplorerDashboard() {
   const axonChurn = axonChurnRes.data;
   const eventMix = eventMixRes.data;
   const trends = trendsRes.data;
+  const transfers = transfersRes.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -1093,6 +1214,9 @@ function ExplorerDashboard() {
       {/* network-wide economics trend (#3365) — subnet_snapshots rollup, a
           different data source from the chain-indexer sections above/below */}
       <EconomicsTrendsSection trends={trends} />
+
+      {/* network-wide native-TAO transfer-volume leaderboard (#3475) */}
+      <TransfersLeaderboardSection transfers={transfers} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* call mix */}

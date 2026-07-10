@@ -84,6 +84,8 @@ import type {
   ChainFeePayer,
   ChainTransferPair,
   ChainTransferPairs,
+  ChainTransferEntry,
+  ChainTransfers,
   ChainStakeTransfers,
   ChainStakeTransferSubnet,
   ChainAxonRemovals,
@@ -259,6 +261,7 @@ const MAX_TURNOVER_SUBNETS = 24;
 const MAX_CHAIN_EVENT_GROUPS = 100;
 const DEFAULT_CHAIN_EVENT_BLOCKS = 1000;
 const MAX_CHAIN_SIGNERS = 20;
+const MAX_CHAIN_TRANSFERS = 20;
 const MAX_CHAIN_WEIGHT_SETTERS = 20;
 const MAX_CHAIN_IDENTITY_CHANGES = 200;
 const MAX_CHAIN_FEE_DAYS = 31;
@@ -3449,6 +3452,61 @@ export const chainSignersQuery = (window: ChainWindow = "7d") =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainSigners>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// #3475: network-wide native-TAO transfer-volume leaderboard -- separate
+// top-senders/top-receivers rankings, distinct from chainTransferPairsQuery's
+// directed sender->receiver corridors (#3476, a different endpoint/shape).
+function normalizeChainTransferEntry(raw: unknown): ChainTransferEntry | null {
+  if (!isRecord(raw)) return null;
+  const address = firstString(raw.address);
+  const volumeTao = coerceFiniteNumber(raw.volume_tao);
+  const transferCount = coerceFiniteNumber(raw.transfer_count);
+  if (!address || !isValidSs58(address) || volumeTao == null || transferCount == null) {
+    return null;
+  }
+  return {
+    address: address.trim(),
+    volume_tao: volumeTao,
+    transfer_count: transferCount,
+  };
+}
+
+export const chainTransfersQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-transfers", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/transfers", {
+        params: { window, limit: 25 },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          total_volume_tao: firstFiniteNumber(d.total_volume_tao) ?? 0,
+          transfer_count: firstFiniteNumber(d.transfer_count) ?? 0,
+          unique_senders: firstFiniteNumber(d.unique_senders) ?? 0,
+          unique_receivers: firstFiniteNumber(d.unique_receivers) ?? 0,
+          top_sender_share: firstFiniteNumber(d.top_sender_share) ?? null,
+          top_senders: normalizeChainRows(
+            d.top_senders,
+            MAX_CHAIN_TRANSFERS,
+            normalizeChainTransferEntry,
+          ),
+          top_receivers: normalizeChainRows(
+            d.top_receivers,
+            MAX_CHAIN_TRANSFERS,
+            normalizeChainTransferEntry,
+          ),
+        } as ChainTransfers,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainTransfers>;
     },
     staleTime: STALE_SHORT,
   });

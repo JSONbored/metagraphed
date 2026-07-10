@@ -2466,6 +2466,25 @@ export interface ChainSigners {
   signer_count: number;
   signers: ChainSignerEntry[];
 }
+// #3475: network-wide native-TAO transfer-volume leaderboard -- distinct from
+// ChainTransferPairs (#3476, directed sender->receiver corridors).
+export interface ChainTransferEntry {
+  address: string;
+  volume_tao: number;
+  transfer_count: number;
+}
+export interface ChainTransfers {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  total_volume_tao: number;
+  transfer_count: number;
+  unique_senders: number;
+  unique_receivers: number;
+  top_sender_share: number | null;
+  top_senders: ChainTransferEntry[];
+  top_receivers: ChainTransferEntry[];
+}
 export interface ChainFeeDay {
   day: string;
   extrinsic_count: number;
