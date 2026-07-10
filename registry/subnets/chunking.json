@@ -95,6 +95,25 @@
         "https://github.com/salahawk/chunking_subnet/blob/main/min_compute.yml"
       ],
       "url": "https://raw.githubusercontent.com/salahawk/chunking_subnet/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-40-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Chunking TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/40 on api.taomarketcap.com returning machine-readable JSON for SN40 Chunking on-chain subnet state, hyperparameters, economics, and dTAO market fields. Chunking publishes a website, source repository, and compute spec but no verified first-party public API endpoint; this indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "reyanthony062001-ops"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/salahawk/chunking_subnet"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/40"
     }
   ],
   "website_url": "https://subnet.chunking.com/"

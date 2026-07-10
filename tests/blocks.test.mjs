@@ -112,6 +112,33 @@ test("formatBlock maps a D1 row to an API block (ISO time)", () => {
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
+test("formatBlock treats an empty-string author as null (Postgres backfill gap, not a valid value)", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    author: "",
+  });
+  assert.equal(out.author, null);
+});
+
+test("formatBlock treats a whitespace-only author as null", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    author: "   ",
+  });
+  assert.equal(out.author, null);
+});
+
+test("formatBlock preserves a real decoded author string unchanged", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    author: "5HjhkCMa89QJbFULs8WPZBgVg8kMq5qdX1nx7CnQpZgoyKAN",
+  });
+  assert.equal(out.author, "5HjhkCMa89QJbFULs8WPZBgVg8kMq5qdX1nx7CnQpZgoyKAN");
+});
+
 test("formatBlock coerces string-typed observed_at cells to ISO timestamps", () => {
   const out = formatBlock({
     block_number: 1000,

@@ -47,6 +47,149 @@
     // AI/VECTORIZE bindings are present, the routes serve live; otherwise they
     // return 503 ai_unavailable. Flip to "false" to instantly disable.
     "METAGRAPH_ENABLE_AI": "true",
+    // D1 -> Postgres serving-cutover flags (ADR 0013 Sequencing step 3, the
+    // deploy/README.md "Serving cutover" runbook). Set to "postgres" to route
+    // /api/v1/blocks(/{ref}), /api/v1/extrinsics(/{ref}), or
+    // /api/v1/accounts/{ss58}/events through the DATA_API Hyperdrive Worker
+    // instead of D1 -- ANY failure there (binding absent, network error, bad
+    // response) transparently falls back to D1, so flipping this is a
+    // zero-downtime experiment and flipping it back is an instant rollback.
+    //
+    // blocks: RE-FLIPPED to "postgres" 2026-07-10. Root cause of the
+    // 2026-07-09 revert (DATA_API subrequest reporting outcome "canceled" on
+    // a real fraction of requests, #4686) found and fixed the same day:
+    // neither data-api.mjs nor registry-sync-api.mjs wrapped their per-request
+    // queries in a transaction, so a standalone SET statement_timeout had no
+    // guarantee of landing on the same physical connection as the query that
+    // followed it (Hyperdrive resets session state between pooled
+    // connections); both also called sql.end() on every request, which
+    // Cloudflare's Hyperdrive docs say is unsupported, unnecessary extra work.
+    // Both are fixed: every request's queries now run inside sql.begin()
+    // ("read only" for data-api.mjs), and the manual teardown is removed.
+    // See ADR 0014 for the full writeup.
+    //
+    // #4687's empty-author gap is resolved at the data layer too (Postgres
+    // now shows 0 rows with author = ''), confirmed via direct query
+    // 2026-07-10. The other #4687 finding -- a ~9,000-block coverage hole,
+    // 8471001-8479999, entirely missing from Postgres -- is NOT yet
+    // backfilled (confirmed still 0 rows in that range via direct query the
+    // same day); a request for a block in that range will get block:null from
+    // Postgres where D1 would have served it. Accepted as a known, narrow,
+    // pre-launch gap rather than blocking the flip on it: this repo has no
+    // real production traffic yet, and a full historical re-backfill is
+    // already planned once the self-hosted archive node finishes syncing
+    // (ADR 0014) -- backfilling this specific range now would be redone by
+    // that pass anyway. Revisit this trade-off before any real launch.
+    // Conversely Postgres has block #8513820 (a spec_version boundary) that
+    // D1 is missing -- expected, not a regression; D1 is being decommissioned,
+    // not backfilled.
+    //
+    // extrinsics: RE-FLIPPED to "postgres" 2026-07-10, same connection-
+    // affinity fix as blocks above (#4686). The call_args shape-reconciliation
+    // roadmap below (#4669/#4688-#4694) closes the great majority of the
+    // divergence server-side in formatExtrinsic; what's NOT yet covered
+    // (documented per-item below: top-level-only AccountId32/byte-blob
+    // fields outside a reconstructed nested call, the pre-2026-07-10 mixed
+    // call_args shape in historical rows) is accepted as a known, narrow,
+    // pre-launch gap rather than blocking the flip on it -- no real
+    // production traffic yet, and the same full re-backfill planned for the
+    // blocks-tier gap (ADR 0014, gated on the self-hosted archive node)
+    // covers this too. Revisit before any real launch; #4695's parity
+    // harness remains valuable follow-up work to quantify what's left, not a
+    // precondition for this flip.
+    //
+    // Progress on that roadmap (src/scale-normalize.mjs, src/ss58.mjs,
+    // src/bytes.mjs, src/postgres-call-args.mjs -- all chained inside
+    // formatExtrinsic, #4690/#4691): Option<T>/C-enum/newtype-scalar shapes,
+    // and indexer-rs's nested-RuntimeCall enum-tree encoding (Proxy.proxy,
+    // Utility.batch/batch_all, Multisig.as_multi wrapping Sudo/AdminUtils --
+    // confirmed to arbitrary depth against real production extrinsics), are
+    // now reconstructed server-side into D1's {call_module, call_function,
+    // call_args} shape, with AccountId32/MultiAddress/byte-blob fields WITHIN
+    // each reconstructed nested call decoded to SS58/hex. Multisig.as_multi's
+    // nested call_hash stays permanently absent (indexer-rs has no equivalent
+    // of fetch-events.py's Python-side re-encode-and-hash step) -- accepted,
+    // not a bug. Still open: a TOP-LEVEL (non-nested) call's own AccountId32/
+    // byte-blob fields -- e.g. a bare Balances.transfer's dest, or Multisig's
+    // own other_signatories/max_weight siblings -- are not yet decoded at
+    // that outer layer, only within a reconstructed nested call.
+    //
+    // #4692 (src/indexer-rs-ethereum-decode.mjs, chained last in
+    // formatExtrinsic): Ethereum.transact's U256 fields (nonce/value/
+    // gas_limit/max_fee_per_gas/max_priority_fee_per_gas), its `action`/
+    // `transaction` tuple-variant-enum shorthand, EVM.withdraw's H160
+    // `address`, and the Signature::Sr25519 payload shared by
+    // LimitOrders.execute_batched_orders/Drand.write_pulse are now decoded.
+    // MevShield was suspected as a third Sr25519 user but does NOT use that
+    // type (verified against real data, not assumed). U256 fields are a
+    // DELIBERATE type divergence from D1: tracing scripts/fetch-events.py
+    // shows D1's storage is actually lossless (json.dumps on Python's
+    // arbitrary-precision int); the precision loss for large values happens
+    // in the SHARED formatExtrinsic's JSON.parse(row.call_args) call itself
+    // (same mechanism already accepted for SubtensorModule.register's PoW
+    // nonce), not anything D1-specific. Since Postgres hands us the 4 raw
+    // limbs before that JSON.parse ever runs, U256 fields decode to an exact
+    // decimal STRING via BigInt instead of reproducing that precision loss --
+    // real data already has `value` (wei) past Number.MAX_SAFE_INTEGER for
+    // any transfer above ~0.009 ETH, the normal case, not a 2^256 edge case.
+    //
+    // #4693 (src/postgres-collection-normalize.mjs): BTreeSet<T> fields
+    // (confirmed: SubtensorModule.claim_root's `subnets`) now unwrap
+    // indexer-rs's extra array-nesting layer the same way D1 serves them.
+    // The generic scalar-newtype unwrap (#4690) already generalized beyond
+    // byte-blob-shaped wrappers with no changes needed (verified against
+    // LimitOrders.execute_batched_orders' fee_rate).
+    //
+    // u64/u128 precision (SubtensorModule.register's PoW nonce,
+    // set_children's near-u64::MAX sentinel): ACCEPTED, not fixed, per
+    // #4693's explicit requirement. Traced the mechanism during #4692:
+    // fetch-events.py's stored D1 text is itself lossless (Python's
+    // arbitrary-precision int via json.dumps); the rounding happens in the
+    // SHARED formatExtrinsic's plain JSON.parse(row.call_args), applied
+    // identically to both tiers. Verified the two confirmed fixtures
+    // (register nonce, set_children children[0][0]) converge on the exact
+    // same IEEE-754 double D1 already serves -- so flipping the flag would
+    // not change what's served for these two fields today; pinned as tested
+    // invariants in tests/extrinsics.test.mjs rather than "fixed," since a
+    // real fix would need the same big-int-safe parse #4692 built for
+    // Ethereum/EVM, applied more broadly -- deliberately out of scope here
+    // to avoid an uncontrolled type-change blast radius (number -> string)
+    // across every call type; a real investigation into that broader
+    // question is tracked separately.
+    //
+    // MCP's extrinsics tools (list_extrinsics/get_extrinsic) are wired
+    // through this same flag as of #4694 -- no longer D1-only.
+    //
+    // 2026-07-10: root-caused and fixed the underlying reason Postgres's
+    // call_args ever needed all the reconciliation above -- indexer-rs
+    // (separate private repo metagraphed-indexer-rs) was decoding call
+    // arguments into subxt's type-erased form and serializing that directly,
+    // discarding the chain metadata it already fetches per-block. Fixed at
+    // the source (metagraphed-indexer-rs#1/#2, merged + redeployed to the
+    // live indexer): Postgres's extrinsics.call_args now carries the same
+    // [{name, type, value}, ...] shape D1 produces, verified end-to-end
+    // against real freshly-indexed blocks. IMPORTANT: this only affects rows
+    // written from ~block 8589233 onward -- every row written before that
+    // (the live-indexed history back to ~block 8540006, plus whatever the
+    // separate backfill container processed) still has the old type-blind
+    // shape. extrinsics.call_args in Postgres is a MIX of both shapes until
+    // a full re-backfill replaces the old rows (blocked on the self-hosted
+    // archive node reaching steady-state, ~51% synced as of 2026-07-10).
+    // See #4669's tracking-issue comment thread for the full shape-
+    // reconciliation writeup.
+    "METAGRAPH_BLOCKS_SOURCE": "postgres",
+    "METAGRAPH_EXTRINSICS_SOURCE": "postgres",
+    // account_events: RE-FLIPPED to "postgres" 2026-07-10 alongside the other
+    // two, same connection-affinity fix (#4686). No shape-parity risk (#4696)
+    // regardless -- account_events is 11 scalar Postgres columns with its own
+    // dedicated writer, never modeled as a generic call_args/chain_events-
+    // style SCALE dump, so none of the AccountId32/byte-blob/nested-call
+    // divergence family above ever applied here. Gates only GET
+    // /api/v1/accounts/{ss58}/events; the other account_events-derived
+    // readers (account summary, transfers, subnet events, leaderboard/
+    // turnover/analytics) remain D1-only, portable one at a time under this
+    // same flag in follow-up work.
+    "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the

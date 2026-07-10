@@ -10,6 +10,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
+import { EXTRINSIC_RETENTION_MS } from "../src/extrinsics.mjs";
 import { MOVERS_WINDOWS } from "../src/movers.mjs";
 import { unsupportedWindowMessage } from "../src/neuron-history.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
@@ -5765,9 +5766,7 @@ describe("handleExtrinsics", () => {
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
         env,
-        url(
-          `/api/v1/extrinsics?to=${now - 365 * 24 * 60 * 60 * 1000 + 60_000}`,
-        ),
+        url(`/api/v1/extrinsics?to=${now - EXTRINSIC_RETENTION_MS + 60_000}`),
       );
       const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
       assert.ok(sql, "a near-floor one-sided to filter must reach D1");
@@ -5990,6 +5989,251 @@ describe("handleExtrinsic", () => {
     assert.equal(body.data.events.length, 1);
     assert.equal(body.data.events[0].event_kind, "StakeAdded");
     assert.equal(body.data.events[0].extrinsic_index, 2);
+  });
+});
+
+describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
+  // Shared across handleBlocks/handleBlock/handleExtrinsics/handleExtrinsic: a
+  // per-tier env flag tries the DATA_API service binding first and falls back
+  // to D1 on ANY failure (absent binding, network error, non-2xx, unparseable
+  // body) -- never a client-facing error. dbWith(...) gives each test a D1
+  // fixture distinguishable from the Postgres fixture, so passing tests prove
+  // WHICH source actually served the response, not just that a 200 came back.
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("flag absent: uses D1 even when DATA_API is bound", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    env.DATA_API = dataApi(
+      Response.json({ schema_version: 1, block_count: 99, blocks: [] }),
+    );
+    const body = await json(
+      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
+    );
+    assert.equal(body.data.block_count, 1); // the D1 fixture's count, not 99
+    assert.ok(captures.sql.length > 0); // D1 was actually queried
+  });
+
+  test("flag=postgres + DATA_API succeeds: Postgres data wins, D1 never queried", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({ schema_version: 1, block_count: 99, blocks: [] }),
+    );
+    const body = await json(
+      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
+    );
+    assert.equal(body.data.block_count, 99); // the Postgres fixture, not D1's
+    assert.deepEqual(captures.sql, []); // D1 was never touched
+  });
+
+  test("flag=postgres + DATA_API throws: falls back to D1 seamlessly", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("network error");
+      },
+    };
+    const body = await json(
+      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
+    );
+    assert.equal(body.data.block_count, 1); // the D1 fixture, not an error
+  });
+
+  test("flag=postgres + DATA_API returns non-2xx: falls back to D1", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = dataApi(new Response("upstream error", { status: 502 }));
+    const body = await json(
+      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
+    );
+    assert.equal(body.data.block_count, 1);
+  });
+
+  test("flag=postgres + DATA_API returns unparseable JSON: falls back to D1", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = dataApi(new Response("not json", { status: 200 }));
+    const body = await json(
+      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
+    );
+    assert.equal(body.data.block_count, 1);
+  });
+
+  test("flag=postgres + DATA_API returns valid JSON that isn't an object: falls back to D1", async () => {
+    // A 200 with a bare JSON scalar (not `null`, which JSON.parse also accepts)
+    // parses without throwing but isn't a usable payload shape.
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = dataApi(Response.json(42));
+    const body = await json(
+      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
+    );
+    assert.equal(body.data.block_count, 1);
+  });
+
+  test("handleBlock: flag=postgres uses Postgres data over the D1 fixture", async () => {
+    const { env, captures } = dbWith({ blockDetail: blockRow() });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        ref: String(BLOCK_NUM),
+        block: { ...blockRow(), author: "postgres-author" },
+        prev_block_number: null,
+        next_block_number: null,
+      }),
+    );
+    const body = await json(
+      await handleBlock(
+        req(`/api/v1/blocks/${BLOCK_NUM}`),
+        env,
+        String(BLOCK_NUM),
+      ),
+    );
+    assert.equal(body.data.block.author, "postgres-author");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleBlock: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ blockDetail: blockRow() });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = { fetch: async () => new Response("err", { status: 500 }) };
+    const body = await json(
+      await handleBlock(
+        req(`/api/v1/blocks/${BLOCK_NUM}`),
+        env,
+        String(BLOCK_NUM),
+      ),
+    );
+    assert.equal(body.data.block.block_number, BLOCK_NUM);
+  });
+
+  test("handleExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        extrinsic_count: 99,
+        limit: 50,
+        offset: 0,
+        next_cursor: null,
+        extrinsics: [],
+      }),
+    );
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleExtrinsics: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 1);
+  });
+
+  test("handleExtrinsic: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ extrinsicDetail: extrinsicRow() });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        ref: HASH,
+        extrinsic: { ...extrinsicRow(), signer: "postgres-signer" },
+        events: [],
+      }),
+    );
+    const body = await json(
+      await handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), env, HASH),
+    );
+    assert.equal(body.data.extrinsic.signer, "postgres-signer");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleExtrinsic: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ extrinsicDetail: extrinsicRow() });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = { fetch: async () => new Response("err", { status: 500 }) };
+    const body = await json(
+      await handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), env, HASH),
+    );
+    assert.equal(body.data.extrinsic.extrinsic_hash, HASH);
+  });
+
+  test("handleAccountEvents: flag absent, uses D1 even when DATA_API is bound", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        ss58: SS58,
+        event_count: 99,
+        events: [],
+      }),
+    );
+    const path = `/api/v1/accounts/${SS58}/events`;
+    const body = await json(
+      await handleAccountEvents(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.event_count, 1); // the D1 fixture's count, not 99
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleAccountEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        ss58: SS58,
+        event_count: 99,
+        limit: 50,
+        offset: 0,
+        next_cursor: null,
+        events: [],
+      }),
+    );
+    const path = `/api/v1/accounts/${SS58}/events`;
+    const body = await json(
+      await handleAccountEvents(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.event_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountEvents: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/accounts/${SS58}/events`;
+    const body = await json(
+      await handleAccountEvents(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.event_count, 1);
   });
 });
 

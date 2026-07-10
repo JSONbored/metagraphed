@@ -10,9 +10,19 @@ import {
 } from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
-// D1 safety-valve: 365-day retention prevents unbounded growth before the
-// Postgres cold tier (#1519) ships. pruneBlocks runs in the HEALTH_PRUNE_CRON.
-export const BLOCK_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+// D1 safety-valve, ORIGINALLY 365 days -- but blocks is small per-row (a header,
+// not a payload) so at measured volume (~4k rows/day) even a full 365-day
+// window is only ~600MB, nowhere near D1's 10GB cap on its own. 30 days keeps a
+// generous "recent blocks" hot window (comfortably longer than the pruned
+// extrinsics/account_events retention below it) while still being a real,
+// enforced bound rather than the effectively-unbounded 365 days that let
+// extrinsics (same table family, same cron) grow unchecked into the exact
+// D1_ERROR: Exceeded maximum DB size outage account_events already hit once
+// (see EVENT_RETENTION_MS in account-events.mjs). Raise it once the raw/
+// long-history chain data lives in Postgres (self-hosted, no cap) instead of
+// D1, per ADR 0013's "demote/retire D1" end state. pruneBlocks runs in the
+// HEALTH_PRUNE_CRON.
+export const BLOCK_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Columns written to blocks — THE load contract. scripts/fetch-events.py emits
 // rows with exactly these keys; loadStagedBlocks binds them in this order. Values
@@ -48,6 +58,19 @@ function toBlockNumber(value) {
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+// Coerce a decoded-author cell to a non-empty string or null. Postgres's
+// backfilled blocks for spec_versions 419/421/422 (#4687 -- an indexer-rs
+// Aura-authority-digest decode gap for those three historical runtime
+// versions, not a live-ingestion defect) have `author = ""` instead of the
+// SS58 string D1 has for the same rows. A bare `row.author ?? null` only
+// catches null/undefined, so it was serving the empty string as if it were
+// a decoded value -- present-looking but wrong, worse than an honest null.
+function toAuthorOrNull(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  return value;
 }
 
 // Keep only well-formed blocks rows (a valid block_number primary key + a
@@ -122,7 +145,7 @@ export function formatBlock(row) {
     block_number: toBlockNumber(row.block_number),
     block_hash: row.block_hash ?? null,
     parent_hash: row.parent_hash ?? null,
-    author: row.author ?? null,
+    author: toAuthorOrNull(row.author),
     // extrinsic_count / event_count / spec_version (D1 INTEGER columns) — coerce
     // through toBlockNumber like block_number above, so a numeric string never
     // leaks the string form into these ["integer","null"] contract fields.

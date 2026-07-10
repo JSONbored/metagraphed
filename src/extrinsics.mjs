@@ -11,10 +11,31 @@ import {
   clampOffset,
 } from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
+import { normalizePostgresValue } from "./scale-normalize.mjs";
+import { decodePostgresCallArgs } from "./postgres-call-args.mjs";
+import {
+  decodeEthereumEvmCallArgs,
+  hasEthereumEvmDecoder,
+} from "./indexer-rs-ethereum-decode.mjs";
+import { parseJsonPreservingBigInts } from "./big-int-safe-json.mjs";
+import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 
-// D1 safety-valve: 365-day retention prevents unbounded growth before the
-// Postgres cold tier (#1519) ships. pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
-export const EXTRINSIC_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+// D1 safety-valve, ORIGINALLY 365 days ("prevents unbounded growth before the
+// Postgres cold tier (#1519) ships") -- but #1519 never shipped, and like
+// account_events before its own emergency cut (see EVENT_RETENTION_MS in
+// account-events.mjs), 365 days of retention never actually got old enough to
+// prune: the table is younger than that, so the "safety valve" never engaged
+// and extrinsics grew unbounded. Measured 2026-07-10: ~101k rows/day, ~900
+// bytes/row of call_args alone, and the shared D1 database was already at
+// ~9.0GB of its hard, unraisable 10GB-per-database cap with this table still
+// growing -- a full 365 days at this rate would be ~45GB, many times over the
+// cap on its own. 5 days is what the measured ingestion rate can sustainably
+// fit with real headroom under 10GB across all tables sharing this database --
+// this is an emergency-driven number, not an arbitrary product decision; raise
+// it only once the raw/long-history chain data lives in Postgres (self-hosted,
+// no cap) instead of D1, per ADR 0013's own "demote/retire D1" end state.
+// pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
+export const EXTRINSIC_RETENTION_MS = 5 * 24 * 60 * 60 * 1000;
 
 // Columns written to extrinsics — THE load contract. scripts/fetch-events.py
 // emits rows with exactly these keys; loadStagedExtrinsics binds them in this
@@ -156,7 +177,62 @@ export function formatExtrinsic(row) {
   let call_args = null;
   if (row.call_args != null) {
     try {
-      call_args = JSON.parse(row.call_args);
+      // decodePostgresCallArgs (#4691) MUST run before normalizePostgresValue
+      // (#4690) -- it needs the pristine raw nested-call shape to reconstruct
+      // correctly (see its own file header for why running it second would
+      // silently lose a genuinely zero-argument nested call). Ethereum/EVM
+      // decode (#4692) and the BTreeSet unwrap (#4693) can safely run last --
+      // neither earlier pass touches the shapes they target (verified: the
+      // newtype-scalar rule only partially/coincidentally collapses a
+      // SINGLE-element BTreeSet as an unrelated side effect -- see
+      // postgres-collection-normalize.mjs's header for why that doesn't
+      // conflict with running this pass afterward). All four are no-ops on
+      // D1's own call_args shape (an array of {name,type,value} descriptors)
+      // -- safe to apply unconditionally regardless of which serving tier
+      // produced this row. This is a genuine guarantee, not an assumption:
+      // normalizePostgresValue (#4724) reads each D1 descriptor's own `type`
+      // string before touching its `value`, so a collection-typed field
+      // (Vec<T>/BTreeSet<T>/etc) is preserved as an array at ANY element
+      // count -- decodeBTreeSetFields is then a true no-op on D1 rows
+      // regardless, since D1's call_args never becomes the flat
+      // {fieldName: value} object shape that function's own Array.isArray
+      // early-return requires it to skip.
+      //
+      // u64/u128 precision (SubtensorModule.register's PoW nonce,
+      // set_children's near-u64::MAX sentinel) is DELIBERATELY left as-is
+      // here -- #4693 pins this as an accepted, tested invariant (Postgres's
+      // exact literal converges on the same IEEE-754 double D1 already
+      // serves for the two confirmed fixtures) rather than attempting a fix;
+      // see tests/extrinsics.test.mjs's precision-pinning tests and
+      // wrangler.jsonc's METAGRAPH_EXTRINSICS_SOURCE comment.
+      //
+      // parseJsonPreservingBigInts (#4692 review fix) is gated to ONLY the
+      // call types indexer-rs-ethereum-decode.mjs actually decodes: plain
+      // JSON.parse would ALREADY silently round a U256 limb past
+      // Number.MAX_SAFE_INTEGER before decodeU256Limbs ever saw it (caught by
+      // Gittensory review on the original #4692 PR -- see that module's
+      // header). Scoping to hasEthereumEvmDecoder's 4 call types, rather than
+      // applying it to every extrinsic, avoids ALSO silently changing other
+      // call types' already-known-imprecise large-integer fields (e.g.
+      // SubtensorModule.register's PoW nonce) from a number to a string --
+      // that's #4693's scope, not a side effect to smuggle in here.
+      const parseCallArgs = hasEthereumEvmDecoder(
+        row.call_module,
+        row.call_function,
+      )
+        ? parseJsonPreservingBigInts
+        : JSON.parse;
+      call_args = decodeBTreeSetFields(
+        row.call_module,
+        row.call_function,
+        decodeEthereumEvmCallArgs(
+          row.call_module,
+          row.call_function,
+          normalizePostgresValue(
+            decodePostgresCallArgs(parseCallArgs(row.call_args)),
+          ),
+        ),
+      );
     } catch {
       call_args = null;
     }

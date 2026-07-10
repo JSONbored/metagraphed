@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Github,
   ArrowUpRight,
+  AlertCircle,
   FileCode2,
   Network as NetworkIcon,
   Activity,
@@ -16,6 +17,7 @@ import { PageHero } from "@/components/metagraphed/page-hero";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
+import { Skeleton } from "@/components/metagraphed/states";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -165,43 +167,60 @@ function Term({ name, desc }: { name: string; desc: string }) {
   );
 }
 
+type StatPhase = "pending" | "error" | "ready";
+
 function AtAGlance() {
-  const coverageRaw = (useQuery(coverageQuery()).data?.data ?? {}) as Record<string, unknown>;
+  // Track each source query's own loading/error state so the sidebar can
+  // distinguish "still loading" (skeleton) and "failed" (error glyph) from a
+  // legitimately-null value ("—"), instead of collapsing all three to a dash.
+  const coverageResult = useQuery(coverageQuery());
+  const freshnessResult = useQuery(freshnessQuery());
+  const healthResult = useQuery(healthQuery());
+  const coverageRaw = (coverageResult.data?.data ?? {}) as Record<string, unknown>;
   const coverage = coverageRaw as Record<string, number | undefined>;
-  const freshness = (useQuery(freshnessQuery()).data?.data ?? {}) as Record<
-    string,
-    number | undefined
-  >;
-  const health = (useQuery(healthQuery()).data?.data ?? {}) as Record<string, number | undefined>;
+  const freshness = (freshnessResult.data?.data ?? {}) as Record<string, number | undefined>;
+  const health = (healthResult.data?.data ?? {}) as Record<string, number | undefined>;
   // The accurate adapter-backed count is curation_level_counts['adapter-backed']
   // (=2). coverage.adapter_backed does not exist; the old fallback path could
   // surface first_party_subnet_count (73), which is a different metric.
   const curationCounts = (coverageRaw.curation_level_counts ?? {}) as Record<string, number>;
   const adapterBacked = curationCounts["adapter-backed"];
-  const stats: Array<{ icon: React.ElementType; label: string; value: string; to: string }> = [
+  const phase = (r: { isPending: boolean; isError: boolean }): StatPhase =>
+    r.isError ? "error" : r.isPending ? "pending" : "ready";
+  const stats: Array<{
+    icon: React.ElementType;
+    label: string;
+    value: string;
+    to: string;
+    phase: StatPhase;
+  }> = [
     {
       icon: NetworkIcon,
       label: "Active subnets",
       value: coverage.netuids_active != null ? formatNumber(coverage.netuids_active) : "—",
       to: "/subnets",
+      phase: phase(coverageResult),
     },
     {
       icon: FileCode2,
       label: "Adapter-backed",
       value: adapterBacked != null ? formatNumber(adapterBacked) : "—",
       to: "/providers",
+      phase: phase(coverageResult),
     },
     {
       icon: Activity,
       label: "Healthy",
       value: health.ok != null && health.total ? `${health.ok}/${health.total}` : "—",
       to: "/health",
+      phase: phase(healthResult),
     },
     {
       icon: Clock,
       label: "Avg freshness",
       value: freshness.avg_age_seconds != null ? humaniseSeconds(freshness.avg_age_seconds) : "—",
       to: "/health",
+      phase: phase(freshnessResult),
     },
   ];
   return (
@@ -210,7 +229,7 @@ function AtAGlance() {
         <span className="mg-live-dot" /> At a glance
       </div>
       <ul className="space-y-2.5">
-        {stats.map(({ icon: Icon, label, value, to }) => (
+        {stats.map(({ icon: Icon, label, value, to, phase }) => (
           <li key={label}>
             <Link
               to={to}
@@ -222,7 +241,15 @@ function AtAGlance() {
               <div className="min-w-0 flex-1">
                 <div className="mg-label">{label}</div>
                 <div className="font-display text-base font-semibold text-ink-strong tabular-nums">
-                  {value}
+                  {phase === "pending" ? (
+                    <Skeleton className="mt-1 h-4 w-16" />
+                  ) : phase === "error" ? (
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-health-down">
+                      <AlertCircle className="size-3.5" /> Unavailable
+                    </span>
+                  ) : (
+                    value
+                  )}
                 </div>
               </div>
               <ArrowUpRight className="size-3.5 text-ink-muted group-hover:text-ink-strong group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />

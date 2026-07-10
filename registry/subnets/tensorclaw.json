@@ -149,6 +149,25 @@
         "https://github.com/fx-integral/academia-archives/blob/main/repos/tensorclaw__tensorclaw/README.md"
       ],
       "url": "https://raw.githubusercontent.com/fx-integral/academia-archives/main/repos/tensorclaw__tensorclaw/VALID_MODEL_SERIES.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-92-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "Tensorclaw TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/92 on api.taomarketcap.com returning machine-readable JSON for SN92 Tensorclaw on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. This indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/tensorclaw/tensorclaw"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/92"
     }
   ]
 }

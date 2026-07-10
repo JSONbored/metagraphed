@@ -1,10 +1,14 @@
 # ADR 0013 — Hybrid deployment topology: Cloudflare edge · Railway core · Postgres migration
 
-- **Status:** Accepted — ratified 2026-06-27. Implements the deployment + storage
-  topology for the continuous indexer that ADR 0012 left as "the end state."
-  Foundation (this ADR + the portable schema + runbook) shipped; provisioning and
-  the serving cutover are gated, phased steps (see _Sequencing_).
-- **Date:** 2026-06-27
+- **Status:** Superseded by [ADR 0014](0014-chain-data-infrastructure-and-postgres-cutover.md).
+  This ADR's own inline amendments (below) already tracked three real pivots
+  since ratification (Railway retirement, the Rust rewrite, the node-tier
+  reversal), and each amendment was itself stale or contradicted within days —
+  most notably, Decision 1's "Railway core" is factually wrong today (the
+  indexer box is bare metal, not Railway), and the serving cutover this ADR
+  targets was attempted once and reverted the same day (#4686). ADR 0014 is a
+  fresh, single, directly-verified snapshot rather than another amendment.
+- **Date:** 2026-06-27 (ratified)
 - **Relates to:** ADR 0010 (chain-direct block explorer), ADR 0012 (chain-data
   ingestion — the continuous indexer this deploys), ADR 0001/0006 (storage tiers),
   and the own-the-core infrastructure program (#1345, #1349, #1519, #1749).
@@ -26,9 +30,11 @@
 > and `scripts/backfill-chain.py` (referenced below and in `deploy/README.md`)
 > are retired — a Rust implementation (live-follow + sharded historical backfill
 > in one binary) replaces both, verified faster and handling more event
-> coverage. Its source has no git remote yet (tracked as a real, still-open
-> risk — production-adjacent code should not live in exactly one place with no
-> backup). Separately: `deploy/postgres/schema.sql`'s TimescaleDB hypertable
+> coverage. Its source lives in the private `JSONbored/metagraphed-indexer-rs`
+> repo (a remote was added 2026-07-03, closing the "exactly one place with no
+> backup" risk this amendment originally flagged) — confirmed 2026-07-09 that
+> the repo's last commit timestamp matches the deployed image's build time to
+> within 3 minutes. Separately: `deploy/postgres/schema.sql`'s TimescaleDB hypertable
 > section, as originally committed, could never actually apply —
 > `create_hypertable()` requires the partition column (`observed_at`) in every
 > unique constraint, and none of the original primary keys included it. Fixed

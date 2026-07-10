@@ -3,11 +3,11 @@ import { useInfiniteQuery, useQuery, useSuspenseQueries } from "@tanstack/react-
 import { Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Activity, Boxes, Coins, Layers, Zap } from "lucide-react";
+import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
@@ -23,12 +23,15 @@ import {
   chainEventsStatsQuery,
   chainFeesQuery,
   chainSignersQuery,
+  chainWeightSettersQuery,
+  chainRegistrationsQuery,
   chainStakeFlowQuery,
   chainStakeMovesQuery,
   chainTurnoverQuery,
   chainStakeTransfersQuery,
   chainAxonRemovalsQuery,
   chainTransferPairsQuery,
+  chainTransfersQuery,
   economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -43,6 +46,8 @@ import type {
   ChainTurnover,
   EconomicsTrends,
   ChainAxonRemovals,
+  ChainRegistrations,
+  ChainTransfers,
 } from "@/lib/metagraphed/types";
 
 const explorerSearchSchema = z.object({
@@ -103,6 +108,8 @@ function ExplorerPage() {
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
+          "/api/v1/chain/weights/setters",
+          "/api/v1/chain/registrations",
           "/api/v1/chain/stake-flow",
           "/api/v1/chain/stake-moves",
           "/api/v1/chain/turnover",
@@ -111,6 +118,7 @@ function ExplorerPage() {
           "/api/v1/chain-events",
           "/api/v1/chain-events/stats",
           "/api/v1/economics/trends",
+          "/api/v1/chain/transfers",
         ]}
       />
     </AppShell>
@@ -247,7 +255,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
           )}
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No calls yet.</p>
+        <EmptyState title="No calls yet." />
       )}
     </section>
   );
@@ -299,7 +307,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
           })}
         </ul>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No raw pallet events indexed yet.</p>
+        <EmptyState title="No raw pallet events indexed yet." />
       )}
     </section>
   );
@@ -420,7 +428,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
           </ul>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No stake flow in this window yet.</p>
+        <EmptyState title="No stake flow in this window yet." />
       )}
 
       {dist ? (
@@ -499,7 +507,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
           </ul>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No stake moves in this window yet.</p>
+        <EmptyState title="No stake moves in this window yet." />
       )}
 
       {dist ? (
@@ -571,9 +579,95 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
           </table>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">
-          No axon teardowns in this window yet.
-        </p>
+        <EmptyState title="No axon teardowns in this window yet." />
+      )}
+    </section>
+  );
+}
+
+/**
+ * Network-wide neuron-registration leaderboard (#3465) — subnets ranked by
+ * NeuronRegistered volume over the window. Chain-direct: GET /api/v1/chain/registrations.
+ */
+function NetworkRegistrationsSection({ registrations }: { registrations: ChainRegistrations }) {
+  const net = registrations.network;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Network registrations
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(registrations.subnet_count)} subnets
+        </span>
+      </div>
+
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        <StatTile
+          icon={UserPlus}
+          eyebrow="Registrations"
+          value={formatNumber(net.registrations)}
+          hint={`${registrations.window ?? "window"} total`}
+          tone="accent"
+        />
+        <StatTile
+          icon={UserPlus}
+          eyebrow="Distinct registrants"
+          value={formatNumber(net.distinct_registrants)}
+          hint="network-wide hotkeys"
+        />
+        <StatTile
+          icon={UserPlus}
+          eyebrow="Per registrant"
+          value={
+            net.registrations_per_registrant != null
+              ? net.registrations_per_registrant.toFixed(2)
+              : "—"
+          }
+          hint="avg registrations"
+        />
+      </div>
+
+      {registrations.subnets.length > 0 ? (
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th className={TH}>Subnet</th>
+              <th className={`${TH} text-right`}>Registrations</th>
+              <th className={`${TH} text-right`}>Distinct registrants</th>
+              <th className={`${TH} text-right`}>Per registrant</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {registrations.subnets.map((s) => (
+              <tr key={s.netuid} className="hover:bg-surface/40">
+                <td className="px-4 py-2 font-mono text-[11px]">
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: s.netuid }}
+                    className="text-ink-strong hover:text-accent hover:underline"
+                  >
+                    SN{s.netuid}
+                  </Link>
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  {formatNumber(s.registrations)}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {formatNumber(s.distinct_registrants)}
+                </td>
+                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  {s.registrations_per_registrant != null
+                    ? s.registrations_per_registrant.toFixed(2)
+                    : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <EmptyState title="No registrations in this window yet." />
       )}
     </section>
   );
@@ -663,7 +757,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
           </ul>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">No turnover in this window yet.</p>
+        <EmptyState title="No turnover in this window yet." />
       )}
 
       {net ? (
@@ -731,10 +825,131 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
           />
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">
-          No economics snapshots in this window yet.
-        </p>
+        <EmptyState title="No economics snapshots in this window yet." />
       )}
+    </section>
+  );
+}
+
+function fmtShare(share: number | null): string {
+  return share == null ? "—" : `${(share * 100).toFixed(1)}%`;
+}
+
+function weightSetterKey(setter: { hotkey: string | null; uid: number | null }): string {
+  return setter.hotkey ?? `uid:${setter.uid ?? "unknown"}`;
+}
+
+/**
+ * Network-wide native-TAO transfer-volume leaderboard (#3475) — separate
+ * top-senders/top-receivers rankings, distinct from the directed
+ * sender->receiver corridor view (#3476, chainTransferPairsQuery). Chain-direct:
+ * GET /api/v1/chain/transfers.
+ */
+function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers }) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Transfers leaderboard
+        </h2>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(transfers.transfer_count)} transfers
+        </span>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StakeFlowMetric label="Total volume" value={formatTao(transfers.total_volume_tao)} />
+        <StakeFlowMetric label="Transfers" value={formatNumber(transfers.transfer_count)} />
+        <StakeFlowMetric label="Unique senders" value={formatNumber(transfers.unique_senders)} />
+        <StakeFlowMetric
+          label="Unique receivers"
+          value={formatNumber(transfers.unique_receivers)}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Top senders
+          </div>
+          {transfers.top_senders.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Account</th>
+                  <th className={`${TH} text-right`}>Volume</th>
+                  <th className={`${TH} text-right`}>Transfers</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {transfers.top_senders.map((s) => (
+                  <tr key={s.address} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: s.address }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                        title={s.address}
+                      >
+                        {shortHash(s.address) ?? s.address}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatTao(s.volume_tao)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(s.transfer_count)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="font-mono text-[12px] text-ink-muted">No senders in this window yet.</p>
+          )}
+        </div>
+
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Top receivers
+          </div>
+          {transfers.top_receivers.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Account</th>
+                  <th className={`${TH} text-right`}>Volume</th>
+                  <th className={`${TH} text-right`}>Transfers</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {transfers.top_receivers.map((r) => (
+                  <tr key={r.address} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: r.address }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                        title={r.address}
+                      >
+                        {shortHash(r.address) ?? r.address}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatTao(r.volume_tao)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(r.transfer_count)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="font-mono text-[12px] text-ink-muted">No receivers in this window yet.</p>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
@@ -759,6 +974,8 @@ function ExplorerDashboard() {
     { data: feesRes },
     { data: callsRes },
     { data: signersRes },
+    { data: weightSettersRes },
+    { data: registrationsRes },
     { data: stakeFlowRes },
     { data: stakeMovesRes },
     { data: turnoverRes },
@@ -766,12 +983,15 @@ function ExplorerDashboard() {
     { data: axonChurnRes },
     { data: eventMixRes },
     { data: trendsRes },
+    { data: transfersRes },
   ] = useSuspenseQueries({
     queries: [
       chainActivityQuery(win),
       chainFeesQuery(win),
       chainCallsQuery(win),
       chainSignersQuery(win),
+      chainWeightSettersQuery(win),
+      chainRegistrationsQuery(win),
       chainStakeFlowQuery(win),
       chainStakeMovesQuery(win),
       chainTurnoverQuery(win),
@@ -779,12 +999,15 @@ function ExplorerDashboard() {
       chainAxonRemovalsQuery(win),
       chainEventsStatsQuery(),
       economicsTrendsQuery(win),
+      chainTransfersQuery(win),
     ],
   });
   const activity = activityRes.data;
   const fees = feesRes.data;
   const calls = callsRes.data;
   const signers = signersRes.data;
+  const weightSetters = weightSettersRes.data;
+  const registrations = registrationsRes.data;
   const stakeFlow = stakeFlowRes.data;
   const stakeMoves = stakeMovesRes.data;
   const turnover = turnoverRes.data;
@@ -792,6 +1015,7 @@ function ExplorerDashboard() {
   const axonChurn = axonChurnRes.data;
   const eventMix = eventMixRes.data;
   const trends = trendsRes.data;
+  const transfers = transfersRes.data;
 
   // The API returns newest-day-first; sparklines want chronological order.
   const chrono = [...activity.days].reverse();
@@ -908,9 +1132,7 @@ function ExplorerDashboard() {
             />
           </div>
         ) : (
-          <p className="font-mono text-[12px] text-ink-muted">
-            No activity indexed yet — the chain poller fills this every few minutes.
-          </p>
+          <EmptyState title="No activity indexed yet — the chain poller fills this every few minutes." />
         )}
       </section>
 
@@ -955,7 +1177,7 @@ function ExplorerDashboard() {
               />
             </div>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">No fees in this window yet.</p>
+            <EmptyState title="No fees in this window yet." />
           )}
         </section>
 
@@ -1019,9 +1241,66 @@ function ExplorerDashboard() {
               </table>
             </>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">
-              No fee payers in this window yet.
-            </p>
+            <EmptyState title="No fee payers in this window yet." />
+          )}
+        </section>
+
+        <section className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+              Network weight-setters
+            </h2>
+            <span className="font-mono text-[11px] text-ink-muted">
+              {formatNumber(weightSetters.distinct_setters)} validators
+            </span>
+          </div>
+          {weightSetters.setters.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th className={TH}>Validator</th>
+                  <th className={`${TH} text-right`}>WeightsSet</th>
+                  <th className={`${TH} text-right`}>Share</th>
+                  <th className={`${TH} text-right`}>Last set</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {weightSetters.setters.map((setter) => (
+                  <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      {setter.hotkey ? (
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: setter.hotkey }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                          title={setter.hotkey}
+                        >
+                          {shortHash(setter.hotkey) ?? setter.hotkey}
+                        </Link>
+                      ) : (
+                        <span
+                          className="text-ink-muted"
+                          title="Uid-only setter (no network-wide hotkey)"
+                        >
+                          uid {setter.uid ?? "—"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(setter.weight_sets)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {fmtShare(setter.share)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <EmptyState title="No weight-setters in this window yet." />
           )}
         </section>
       </div>
@@ -1029,6 +1308,9 @@ function ExplorerDashboard() {
       {/* network-wide economics trend (#3365) — subnet_snapshots rollup, a
           different data source from the chain-indexer sections above/below */}
       <EconomicsTrendsSection trends={trends} />
+
+      {/* network-wide native-TAO transfer-volume leaderboard (#3475) */}
+      <TransfersLeaderboardSection transfers={transfers} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* call mix */}
@@ -1090,7 +1372,7 @@ function ExplorerDashboard() {
               </tbody>
             </table>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">No signers in this window yet.</p>
+            <EmptyState title="No signers in this window yet." />
           )}
         </section>
       </div>
@@ -1102,6 +1384,8 @@ function ExplorerDashboard() {
       <StakeMovesSection moves={stakeMoves} />
 
       <ValidatorTurnoverSection turnover={turnover} />
+
+      <NetworkRegistrationsSection registrations={registrations} />
 
       {/* stake-transfer leaderboard */}
       <section className="rounded-lg border border-border bg-card p-5">
@@ -1155,9 +1439,7 @@ function ExplorerDashboard() {
             </tbody>
           </table>
         ) : (
-          <p className="font-mono text-[12px] text-ink-muted">
-            No stake transfers in this window yet.
-          </p>
+          <EmptyState title="No stake transfers in this window yet." />
         )}
       </section>
 
@@ -1282,9 +1564,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
           </table>
         </div>
       ) : (
-        <p className="font-mono text-[12px] text-ink-muted">
-          No transfer pairs in this window yet.
-        </p>
+        <EmptyState title="No transfer pairs in this window yet." />
       )}
     </section>
   );
@@ -1346,11 +1626,13 @@ function ChainEventsFeedSection() {
   );
 
   const emptyNode = (
-    <p className="font-mono text-[12px] text-ink-muted">
-      {filtersActive
-        ? "No chain events match these filters."
-        : "No chain events indexed yet — the all-events backfill fills this feed."}
-    </p>
+    <EmptyState
+      title={
+        filtersActive
+          ? "No chain events match these filters."
+          : "No chain events indexed yet — the all-events backfill fills this feed."
+      }
+    />
   );
 
   const table = (

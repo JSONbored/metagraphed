@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Compass, Github, Menu, Webhook, X } from "lucide-react";
+import { ChevronRight, Compass, Github, Menu, Rss, Webhook, X } from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -307,6 +307,20 @@ function SiteFooter() {
               className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
             >
               <DiscordIcon className="size-4" />
+            </a>
+            {/* #3351: discoverable RSS/Atom feed for the registry-changes feed
+                (/api/v1/feeds/registry, content-negotiated; .rss for a predictable
+                browser click). Same guarded external-link pattern as the openapi
+                link and the GitHub/Discord icons above. */}
+            <a
+              href={safeExternalUrl(`${API_BASE}/api/v1/feeds/registry.rss`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Registry changes RSS feed"
+              title="Subscribe to the registry-changes feed (RSS)"
+              className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+            >
+              <Rss className="size-4" />
             </a>
           </div>
         </div>

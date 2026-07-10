@@ -77,7 +77,9 @@ CREATE TABLE IF NOT EXISTS surfaces (
   -- source_urls lives only in `overlay` (JSONB array) -- real registry files
   -- use both a legacy singular `source_url` and the current plural
   -- `source_urls` shape, so normalizing it to one dedicated column here would
-  -- misrepresent one of the two. Query it from `overlay` when needed.
+  -- misrepresent one of the two. Query it from `overlay` when needed, via
+  -- src/registry-overlay.mjs's normalizeSurfaceSourceUrls() (#4697) -- the one
+  -- place this reconciliation lives, rather than re-deriving it per route.
   authority        TEXT NOT NULL DEFAULT 'community',
   review_state     TEXT NOT NULL DEFAULT 'community-submitted',
   probe_eligible   BOOLEAN NOT NULL DEFAULT false,

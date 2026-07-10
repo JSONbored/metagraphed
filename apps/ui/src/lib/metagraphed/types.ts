@@ -535,6 +535,21 @@ export interface Gap {
   [key: string]: unknown;
 }
 
+// #3356: the priority-scored per-subnet gap board from GET /api/v1/review/gaps
+// (artifact /metagraph/review/gap-priorities.json) -- distinct from Gap above,
+// which is sourced from the unrelated /api/v1/gaps interface-facet dataset.
+export interface ReviewGapPriority {
+  netuid?: number;
+  name?: string;
+  curation_level?: CurationLevel | string;
+  priority_score?: number;
+  missing_kinds?: string[];
+  surface_count?: number;
+  candidate_count?: number;
+  verified_candidate_count?: number;
+  [key: string]: unknown;
+}
+
 export interface HealthSummary {
   total?: number;
   ok?: number;
@@ -1288,6 +1303,37 @@ export interface AccountCounterparties {
   counterparties: AccountCounterparty[];
   [key: string]: unknown;
 }
+/** One per-subnet stake/unstake flow row in /accounts/{ss58}/stake-flow. */
+export interface AccountStakeFlowSubnet {
+  netuid: number;
+  staked_tao: number | null;
+  unstaked_tao: number | null;
+  net_flow_tao: number | null;
+  gross_flow_tao: number | null;
+  flow_ratio: number | null;
+  direction: string | null;
+  stake_events: number | null;
+  unstake_events: number | null;
+}
+/**
+ * #3341: /api/v1/accounts/{ss58}/stake-flow — per-account staking-behavior
+ * scorecard (net/gross flow, direction, concentration) + a per-subnet breakdown
+ * over a 7d|30d|90d window.
+ */
+export interface AccountStakeFlow {
+  ss58: string;
+  window: string;
+  total_staked_tao: number | null;
+  total_unstaked_tao: number | null;
+  net_flow_tao: number | null;
+  gross_flow_tao: number | null;
+  direction: string | null;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnet_count: number;
+  subnets: AccountStakeFlowSubnet[];
+  [key: string]: unknown;
+}
 export interface AccountPortfolio {
   ss58: string;
   captured_at?: string | null;
@@ -1583,6 +1629,9 @@ export interface SubnetWeightSetter {
   last_set_at: string | null;
 }
 
+/** One validator's network-wide weight-setting activity over the window (#3470). */
+export type ChainWeightSetter = SubnetWeightSetter;
+
 /**
  * Per-subnet weight-setters leaderboard over a 7d/30d window (#1657), from
  * /api/v1/subnets/{netuid}/weights/setters — the individual validators behind the
@@ -1597,6 +1646,21 @@ export interface SubnetWeightSetters {
   weight_sets: number;
   setter_count: number;
   setters: SubnetWeightSetter[];
+}
+
+/**
+ * Network-wide weight-setters leaderboard over a 7d/30d window (#3470), from
+ * GET /api/v1/chain/weights/setters — validators ranked by WeightsSet count
+ * across every subnet. Zeroed when cold.
+ */
+export interface ChainWeightSetters {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  distinct_setters: number;
+  weight_sets: number;
+  setter_count: number;
+  setters: ChainWeightSetter[];
 }
 
 /**
@@ -2402,6 +2466,25 @@ export interface ChainSigners {
   signer_count: number;
   signers: ChainSignerEntry[];
 }
+// #3475: network-wide native-TAO transfer-volume leaderboard -- distinct from
+// ChainTransferPairs (#3476, directed sender->receiver corridors).
+export interface ChainTransferEntry {
+  address: string;
+  volume_tao: number;
+  transfer_count: number;
+}
+export interface ChainTransfers {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  total_volume_tao: number;
+  transfer_count: number;
+  unique_senders: number;
+  unique_receivers: number;
+  top_sender_share: number | null;
+  top_senders: ChainTransferEntry[];
+  top_receivers: ChainTransferEntry[];
+}
 export interface ChainFeeDay {
   day: string;
   extrinsic_count: number;
@@ -2562,6 +2645,37 @@ export interface ChainDeregistrations {
   network: ChainDeregistrationsNetwork;
   intensity_distribution: ChainIntensityDistribution | null;
   subnets: ChainDeregistrationsSubnet[];
+}
+
+/** One subnet's row on the network-wide neuron-registration leaderboard (#3465). */
+export interface ChainRegistrationsSubnet {
+  netuid: number;
+  distinct_registrants: number;
+  registrations: number;
+  registrations_per_registrant: number | null;
+}
+
+/** Network-wide registration rollup — true distinct-registrant count (not a per-subnet sum) + total registrations. */
+export interface ChainRegistrationsNetwork {
+  distinct_registrants: number;
+  registrations: number;
+  registrations_per_registrant: number | null;
+}
+
+/**
+ * Network-wide neuron-registration activity over a 7d/30d window (#3465), from
+ * GET /api/v1/chain/registrations — subnets ranked by NeuronRegistered event count,
+ * plus the true network-wide distinct-registrant rollup and a distribution summary of
+ * per-subnet re-registration intensity. Zeroed with an empty subnets list when cold.
+ */
+export interface ChainRegistrations {
+  schema_version: number;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainRegistrationsNetwork;
+  intensity_distribution: ChainIntensityDistribution | null;
+  subnets: ChainRegistrationsSubnet[];
 }
 
 /** Network-wide stake/emission concentration from GET /api/v1/chain/concentration. */

@@ -78,4 +78,14 @@ describe("reconcileRollups", () => {
     });
     assert.deepEqual(mismatches, []);
   });
+
+  test("counts rollup keys that collide with Object prototype properties", () => {
+    const mismatches = reconcileRollups(
+      { by_provider: { constructor: 1, "has-own-property": 1 } },
+      [{ provider: "constructor" }, { provider: "has-own-property" }],
+      { by_provider: "provider" },
+    );
+
+    assert.deepEqual(mismatches, []);
+  });
 });
