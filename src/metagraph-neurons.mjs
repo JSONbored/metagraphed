@@ -111,6 +111,18 @@ function round(value, dp = 6) {
   return Math.round(value * factor) / factor;
 }
 
+// Share/ratio variant of `round` for a part-of-total value: a sub-total share
+// (value < 1) must never round UP to a flat 1.0, which would overstate one
+// entity as owning the whole set. Mirrors the anti-overstatement clamp used by
+// the sibling share rounders (roundRatio/roundShare/roundConcentration). The
+// caller here always passes a finite value (network total is guarded > 0 and
+// numberOrZero coerces the numerator), so no null handling is needed.
+function roundShare(value, dp = 6) {
+  const factor = 10 ** dp;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
+}
+
 // Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
 // must not pass through Boolean(), which treats any non-empty string as true.
 // Mirrors the local toD1Flag added to formatRegistration by #2487.
@@ -267,7 +279,7 @@ function applyStakeDominance(validators) {
   }
   return validators.map((entry) => ({
     ...entry,
-    stake_dominance: round(
+    stake_dominance: roundShare(
       numberOrZero(entry.total_stake_tao) / networkStakeTotal,
     ),
   }));

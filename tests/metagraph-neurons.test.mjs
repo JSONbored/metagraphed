@@ -820,6 +820,36 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
+  test("buildGlobalValidators clamps a sub-total stake dominance away from a flat 1", () => {
+    // hk-monopoly holds 999999.6 of a 1,000,000 TAO network total (a 0.9999996
+    // share), while the other validators hold a real 0.4 TAO between them — so
+    // the monopoly does NOT own the whole network. Its share rounds to 1.000000
+    // at 6dp and must be clamped down to 0.999999 rather than overstate it as
+    // owning 100% of network validator stake.
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 1,
+          uid: 0,
+          hotkey: "hk-monopoly",
+          stake_tao: 999999.6,
+        },
+        { ...ROW, netuid: 2, uid: 1, hotkey: "hk-a", stake_tao: 0.1 },
+        { ...ROW, netuid: 3, uid: 2, hotkey: "hk-b", stake_tao: 0.1 },
+        { ...ROW, netuid: 4, uid: 3, hotkey: "hk-c", stake_tao: 0.1 },
+        { ...ROW, netuid: 5, uid: 4, hotkey: "hk-d", stake_tao: 0.1 },
+      ],
+      { sort: "total_stake", limit: 10 },
+    );
+
+    const monopoly = data.validators.find((v) => v.hotkey === "hk-monopoly");
+    assert.equal(monopoly.total_stake_tao, 999999.6);
+    // Pre-fix this was 1 (overstated as owning the whole network); the
+    // anti-overstatement clamp keeps a sub-total share strictly below 1.
+    assert.equal(monopoly.stake_dominance, 0.999999);
+  });
+
   test("buildGlobalValidators nulls stake dominance when network stake is zero", () => {
     const data = buildGlobalValidators(
       [
