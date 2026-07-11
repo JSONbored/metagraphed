@@ -532,6 +532,34 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_surface_uptime_daily_key_day_unique
 CREATE INDEX IF NOT EXISTS idx_surface_uptime_daily_day_netuid
   ON surface_uptime_daily (day, netuid);
 
+-- RPC reverse-proxy usage telemetry (#4832 gap-closure; mirrors D1
+-- migrations/0004_rpc_proxy_usage.sql + 0010_perf_indexes.sql). Written
+-- best-effort per proxied request (workers/request-handlers/rpc-proxy.mjs's
+-- recordRpcUsage), not a cron/workflow batch like every other #4832 table --
+-- confirmed live 2026-07-11 the real volume is trivial (69 rows over ~25
+-- days), so this stays a plain table like subnet_hyperparams/
+-- subnet_snapshots above rather than a hypertable; revisit if traffic grows.
+-- Same 30-day pruning window as surface_checks (src/health-prober.mjs's
+-- pruneHealthHistory).
+CREATE TABLE IF NOT EXISTS rpc_proxy_events (
+  id          BIGSERIAL PRIMARY KEY,
+  observed_at BIGINT NOT NULL,
+  network     TEXT NOT NULL,
+  endpoint_id TEXT,
+  provider    TEXT,
+  ok          BOOLEAN NOT NULL,
+  status      INTEGER,
+  attempts    INTEGER,
+  latency_ms  INTEGER,
+  cache       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_rpc_proxy_events_observed
+  ON rpc_proxy_events (observed_at);
+CREATE INDEX IF NOT EXISTS idx_rpc_proxy_events_network_observed
+  ON rpc_proxy_events (network, observed_at);
+CREATE INDEX IF NOT EXISTS idx_rpc_proxy_events_observed_endpoint
+  ON rpc_proxy_events (observed_at, endpoint_id);
+
 -- ---------------------------------------------------------------------------
 -- Indexer coordination
 -- ---------------------------------------------------------------------------

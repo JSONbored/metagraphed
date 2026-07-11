@@ -431,6 +431,131 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
   });
 });
 
+// #4832 gap-closure: syncRpcUsageEventToPostgres (the Pattern-C per-request
+// Postgres mirror recordRpcUsage fires before its D1 write) is unexported, so
+// these drive it the same way the telemetry test above drives recordRpcUsage
+// itself -- through a guaranteed-502 handleRpcProxyRequest call (both
+// upstreams throw) that deterministically reaches the served-event write.
+describe("syncRpcUsageEventToPostgres wiring (#4832 gap-closure)", () => {
+  const rpcPost = (body) =>
+    req("/rpc/v1/finney", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": "203.0.113.20",
+      },
+      body: JSON.stringify(body),
+    });
+
+  function dataApiCapture() {
+    const calls = [];
+    return {
+      calls,
+      fetch: async (request) => {
+        calls.push(request);
+        return Response.json({ ok: true });
+      },
+    };
+  }
+
+  const failBothUpstreams = () =>
+    scriptedFetch(
+      () => {
+        throw new Error("net");
+      },
+      () => {
+        throw new Error("net");
+      },
+    );
+
+  test("posts a mirrored event to DATA_API when the sync secret is configured", async () => {
+    const db = captureDb();
+    const dataApi = dataApiCapture();
+    let waited = null;
+    const ctx = {
+      waitUntil: (p) => {
+        waited = p;
+      },
+    };
+    const original = globalThis.fetch;
+    globalThis.fetch = failBothUpstreams();
+    try {
+      const res = await handleRpcProxyRequest(
+        rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
+        rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B)), {
+          METAGRAPH_HEALTH_DB: db,
+          DATA_API: dataApi,
+          RPC_USAGE_SYNC_SECRET: "test-secret",
+        }),
+        url("/rpc/v1/finney"),
+        ctx,
+      );
+      await errorJson(res, 502);
+      assert.equal(dataApi.calls.length, 1);
+      const sent = dataApi.calls[0];
+      assert.equal(
+        sent.url,
+        "https://api.metagraph.sh/api/v1/internal/rpc-usage-sync",
+      );
+      assert.equal(sent.method, "POST");
+      assert.equal(sent.headers.get("x-rpc-usage-sync-token"), "test-secret");
+      const body = await sent.json();
+      assert.equal(body.network, "finney");
+      assert.equal(body.ok, false);
+      assert.equal(body.attempts, 2);
+      // ctx.waitUntil actually received the fire-and-forget promise.
+      assert.ok(waited);
+      await waited;
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("skips the Postgres mirror when RPC_USAGE_SYNC_SECRET is not configured", async () => {
+    const db = captureDb();
+    const dataApi = dataApiCapture();
+    const ctx = { waitUntil: () => {} };
+    const original = globalThis.fetch;
+    globalThis.fetch = failBothUpstreams();
+    try {
+      await handleRpcProxyRequest(
+        rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
+        rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B)), {
+          METAGRAPH_HEALTH_DB: db,
+          DATA_API: dataApi,
+        }),
+        url("/rpc/v1/finney"),
+        ctx,
+      );
+      assert.equal(dataApi.calls.length, 0);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("skips the Postgres mirror when ctx.waitUntil is not a function", async () => {
+    const db = captureDb();
+    const dataApi = dataApiCapture();
+    const original = globalThis.fetch;
+    globalThis.fetch = failBothUpstreams();
+    try {
+      await handleRpcProxyRequest(
+        rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
+        rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B)), {
+          METAGRAPH_HEALTH_DB: db,
+          DATA_API: dataApi,
+          RPC_USAGE_SYNC_SECRET: "test-secret",
+        }),
+        url("/rpc/v1/finney"),
+        {},
+      );
+      assert.equal(dataApi.calls.length, 0);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
 describe("state-query methods (#4344/9.2)", () => {
   const rpcPost = (body) =>
     req("/rpc/v1/finney", {

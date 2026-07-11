@@ -224,6 +224,7 @@ import {
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   UPTIME_WINDOWS,
   MAX_UPTIME_ROWS,
+  RPC_USAGE_BUCKETS,
 } from "./config.mjs";
 import {
   formatBulkTrends,
@@ -233,6 +234,7 @@ import {
   formatGlobalIncidents,
   formatUptime,
   formatTrajectory,
+  formatRpcUsage,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.mjs";
@@ -1964,6 +1966,90 @@ async function handleSubnetSnapshotSync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/rpc-usage-sync (#4832 gap-closure) ------------
+//
+// Best-effort Postgres mirror of recordRpcUsage's D1 insert
+// (workers/request-handlers/rpc-proxy.mjs's syncRpcUsageEventToPostgres) --
+// Pattern C, unlike every sync route above: one fire-and-forget POST per
+// live proxied RPC request under the caller's own ctx.waitUntil, not a
+// cron/workflow batch. Justified only after confirming live production
+// volume is trivial (69 rows / ~25 days, wrangler d1 execute 2026-07-11) --
+// batching would be premature for traffic this low. One event per request,
+// not an array, matching the caller's one-row-per-call shape.
+const RPC_USAGE_SYNC_TOKEN_HEADER = "x-rpc-usage-sync-token";
+// A single event object is a few hundred bytes; generous headroom.
+const RPC_USAGE_SYNC_MAX_BODY_BYTES = 4_000;
+
+async function handleRpcUsageEventSync(request, env) {
+  if (!env.RPC_USAGE_SYNC_SECRET) {
+    return writeJson(
+      { error: "rpc-usage sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(RPC_USAGE_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.RPC_USAGE_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${RPC_USAGE_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > RPC_USAGE_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${RPC_USAGE_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let event;
+  try {
+    event = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  if (
+    !event ||
+    typeof event !== "object" ||
+    Array.isArray(event) ||
+    !Number.isFinite(event.observed_at) ||
+    typeof event.network !== "string" ||
+    !event.network
+  ) {
+    return writeJson({ error: "malformed rpc usage event" }, 400);
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    await sql`
+      INSERT INTO rpc_proxy_events
+        (observed_at, network, endpoint_id, provider, ok, status, attempts, latency_ms, cache)
+      VALUES (
+        ${event.observed_at},
+        ${event.network},
+        ${typeof event.endpoint_id === "string" ? event.endpoint_id : null},
+        ${typeof event.provider === "string" ? event.provider : null},
+        ${Boolean(event.ok)},
+        ${Number.isFinite(event.status) ? event.status : null},
+        ${Number.isFinite(event.attempts) ? event.attempts : null},
+        ${Number.isFinite(event.latency_ms) ? event.latency_ms : null},
+        ${typeof event.cache === "string" ? event.cache : null}
+      )`;
+    return writeJson({ ok: true });
+  } catch (err) {
+    console.error("data-api rpc-usage-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -2124,6 +2210,12 @@ export default {
       url.pathname === "/api/v1/internal/subnet-snapshot-sync"
     ) {
       return handleSubnetSnapshotSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/rpc-usage-sync"
+    ) {
+      return handleRpcUsageEventSync(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
@@ -4189,6 +4281,101 @@ export default {
             buildEconomicsTrends(rows, {
               window: windowLabel,
               capped: rows.length >= ECONOMICS_TRENDS_ROW_CAP,
+            }),
+          );
+        }
+
+        // GET /api/v1/rpc/usage?window= (#4832 gap-closure): RPC
+        // reverse-proxy usage analytics -- request volume, latency p50/p95,
+        // failover + error rate, cache-hit rate, per-endpoint/network
+        // breakdown, and bounded time buckets. Mirrors
+        // src/rpc-usage-loader.mjs's loadRpcUsage exactly (same 5 parallel
+        // queries feeding formatRpcUsage): the D1 rank-CTE p50/p95 becomes
+        // PERCENTILE_CONT (live-verified via psql 2026-07-11, same
+        // precedent as the health-trends/percentiles routes above), and D1's
+        // `ok = 1` becomes the bare BOOLEAN column. window is already
+        // validated by handleRpcUsage before tryPostgresTier ever forwards
+        // this request, so an unrecognized label just falls back to the
+        // default here (same convention as windowCutoff/windowLabelFor
+        // everywhere else in this file).
+        if (url.pathname === "/api/v1/rpc/usage") {
+          const windowLabel = windowLabelFor(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const bucketConfig = RPC_USAGE_BUCKETS[windowLabel];
+          const [
+            totalsRows,
+            latencyRows,
+            endpointRows,
+            networkRows,
+            bucketRows,
+            freshRows,
+          ] = await Promise.all([
+            sql`
+            SELECT COUNT(*)::int AS total,
+                   SUM(CASE WHEN ok THEN 1 ELSE 0 END)::int AS ok_count,
+                   SUM(CASE WHEN attempts > 1 THEN 1 ELSE 0 END)::int AS failover_count,
+                   SUM(CASE WHEN cache = 'hit' THEN 1 ELSE 0 END)::int AS cache_hits,
+                   AVG(latency_ms) AS avg_latency_ms
+            FROM rpc_proxy_events
+            WHERE observed_at >= ${cutoff}`,
+            sql`
+            SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50,
+                   PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95
+            FROM rpc_proxy_events
+            WHERE observed_at >= ${cutoff} AND latency_ms IS NOT NULL`,
+            sql`
+            SELECT endpoint_id, provider,
+                   COUNT(*)::int AS requests,
+                   SUM(CASE WHEN ok THEN 1 ELSE 0 END)::int AS ok_count,
+                   AVG(latency_ms) AS avg_latency_ms
+            FROM rpc_proxy_events
+            WHERE observed_at >= ${cutoff} AND endpoint_id IS NOT NULL
+            GROUP BY endpoint_id, provider
+            ORDER BY requests DESC, endpoint_id ASC, provider ASC
+            LIMIT 50`,
+            sql`
+            SELECT network,
+                   COUNT(*)::int AS requests,
+                   SUM(CASE WHEN ok THEN 1 ELSE 0 END)::int AS ok_count
+            FROM rpc_proxy_events
+            WHERE observed_at >= ${cutoff}
+            GROUP BY network
+            ORDER BY requests DESC, network ASC`,
+            sql`
+            SELECT ts, requests, errors, avg_latency_ms FROM (
+              SELECT (observed_at / ${bucketConfig.bucketMs}::bigint)::bigint * ${bucketConfig.bucketMs}::bigint AS ts,
+                     COUNT(*)::int AS requests,
+                     SUM(CASE WHEN ok THEN 0 ELSE 1 END)::int AS errors,
+                     AVG(latency_ms) AS avg_latency_ms
+              FROM rpc_proxy_events
+              WHERE observed_at >= ${cutoff}
+              GROUP BY ts
+              ORDER BY ts DESC
+              LIMIT ${bucketConfig.maxBuckets}
+            ) sub
+            ORDER BY ts ASC`,
+            sql`
+            SELECT MAX(observed_at) AS newest_observed
+            FROM rpc_proxy_events WHERE observed_at >= ${cutoff}`,
+          ]);
+          return json(
+            formatRpcUsage({
+              window: windowLabel,
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              totals: totalsRows[0],
+              latency: latencyRows[0],
+              endpointRows,
+              networkRows,
+              bucketRows,
+              bucketGranularity: bucketConfig.granularity,
             }),
           );
         }

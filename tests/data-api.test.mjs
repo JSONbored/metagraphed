@@ -69,6 +69,7 @@ const subnetIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
 const healthChecksSyncFailure = vi.hoisted(() => ({ error: null }));
 const healthUptimeRollupSyncFailure = vi.hoisted(() => ({ error: null }));
 const subnetSnapshotSyncFailure = vi.hoisted(() => ({ error: null }));
+const rpcUsageSyncFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -136,6 +137,12 @@ vi.mock("postgres", () => ({
         /INSERT INTO subnet_snapshots\b/.test(text)
       ) {
         return Promise.reject(subnetSnapshotSyncFailure.error);
+      }
+      if (
+        rpcUsageSyncFailure.error &&
+        /INSERT INTO rpc_proxy_events\b/.test(text)
+      ) {
+        return Promise.reject(rpcUsageSyncFailure.error);
       }
       if (
         subnetIdentitySyncFailure.error &&
@@ -209,6 +216,7 @@ const ACCOUNT_IDENTITY_SYNC_SECRET = "test-account-identity-sync-secret";
 const SUBNET_IDENTITY_SYNC_SECRET = "test-subnet-identity-sync-secret";
 const HEALTH_CHECKS_SYNC_SECRET = "test-health-checks-sync-secret";
 const SUBNET_SNAPSHOT_SYNC_SECRET = "test-subnet-snapshot-sync-secret";
+const RPC_USAGE_SYNC_SECRET = "test-rpc-usage-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
@@ -218,6 +226,7 @@ const env = {
   SUBNET_IDENTITY_SYNC_SECRET,
   HEALTH_CHECKS_SYNC_SECRET,
   SUBNET_SNAPSHOT_SYNC_SECRET,
+  RPC_USAGE_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -240,6 +249,7 @@ beforeEach(() => {
   healthChecksSyncFailure.error = null;
   subnetSnapshotSyncFailure.error = null;
   healthUptimeRollupSyncFailure.error = null;
+  rpcUsageSyncFailure.error = null;
   mockRows.current = [
     {
       block_number: "123",
@@ -5252,6 +5262,205 @@ test("subnet-snapshot-sync maps a DB failure to a clean 502 instead of throwing"
   subnetSnapshotSyncFailure.error = new Error("connection reset");
   const res = await postSubnetSnapshot([snapshotRow()], {
     secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+});
+
+test("GET /api/v1/rpc/usage: formats the 6 parallel queries via formatRpcUsage", async () => {
+  // Queue order MUST match the route's Promise.all array: totals, latency,
+  // endpoints, networks, buckets, freshRows -- each is a separate top-level
+  // sql`` call, constructed eagerly (before Promise.all resolves anything),
+  // so mockQueue.current is consumed in that same left-to-right order. The
+  // leading [] is the router's own `SET statement_timeout` query.
+  mockQueue.current = [
+    [], // SET statement_timeout
+    [
+      {
+        total: 100,
+        ok_count: 95,
+        failover_count: 5,
+        cache_hits: 20,
+        avg_latency_ms: "150",
+      },
+    ],
+    [{ p50: "120", p95: "400" }],
+    [
+      {
+        endpoint_id: "fx",
+        provider: "onfinality",
+        requests: 100,
+        ok_count: 95,
+        avg_latency_ms: "140",
+      },
+    ],
+    [{ network: "finney", requests: 100, ok_count: 95 }],
+    [{ ts: 1_718_323_200_000, requests: 100, errors: 5, avg_latency_ms: 150 }],
+    [{ newest_observed: 1_718_323_200_000 }],
+  ];
+  const res = await req("/api/v1/rpc/usage?window=30d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("30d");
+  expect(body.source).toBe("rpc-proxy");
+  expect(body.summary.total_requests).toBe(100);
+  expect(body.summary.error_requests).toBe(5);
+  expect(body.summary.latency_ms.p50).toBe(120);
+  expect(body.endpoints[0].endpoint_id).toBe("fx");
+  expect(body.networks[0].network).toBe("finney");
+  expect(body.buckets[0].ts).toBe(1_718_323_200_000);
+  expect(body.observed_at).toBe(new Date(1_718_323_200_000).toISOString());
+});
+
+test("GET /api/v1/rpc/usage: unrecognized window falls back to the 7d default", async () => {
+  mockQueue.current = [[], [], [], [], [], [], []]; // SET + 6 route queries
+  const res = await req("/api/v1/rpc/usage?window=bogus");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("7d");
+  expect(body.summary.total_requests).toBe(0);
+});
+
+function rpcUsageEvent(overrides = {}) {
+  return {
+    observed_at: 1_718_323_200_000,
+    network: "finney",
+    endpoint_id: "fx",
+    provider: "onfinality",
+    ok: true,
+    status: 200,
+    attempts: 1,
+    latency_ms: 140,
+    cache: "miss",
+    ...overrides,
+  };
+}
+
+function postRpcUsageEvent(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-rpc-usage-sync-token"] = secret;
+  return req("/api/v1/internal/rpc-usage-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? rpcUsageEvent()),
+  });
+}
+
+test("rpc-usage-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postRpcUsageEvent(rpcUsageEvent(), { secret: "wrong" });
+  expect(wrong.status).toBe(401);
+  const missing = await postRpcUsageEvent(rpcUsageEvent());
+  expect(missing.status).toBe(401);
+});
+
+test("rpc-usage-sync is disabled (503) when RPC_USAGE_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/rpc-usage-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-rpc-usage-sync-token": RPC_USAGE_SYNC_SECRET,
+      },
+      body: JSON.stringify(rpcUsageEvent()),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rpc-usage-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/rpc-usage-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-rpc-usage-sync-token": RPC_USAGE_SYNC_SECRET,
+      },
+      body: JSON.stringify(rpcUsageEvent()),
+    }),
+    { RPC_USAGE_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rpc-usage-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postRpcUsageEvent(null, {
+    secret: RPC_USAGE_SYNC_SECRET,
+    raw: `{"network":"${"a".repeat(4_000)}"}`,
+  });
+  expect(res.status).toBe(413);
+});
+
+test("rpc-usage-sync rejects malformed JSON (400)", async () => {
+  const res = await postRpcUsageEvent(null, {
+    secret: RPC_USAGE_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("rpc-usage-sync rejects an event missing required fields (400)", async () => {
+  const res = await postRpcUsageEvent(
+    { observed_at: 1_718_323_200_000 },
+    { secret: RPC_USAGE_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("rpc-usage-sync rejects a JSON array body (400)", async () => {
+  const res = await postRpcUsageEvent([rpcUsageEvent()], {
+    secret: RPC_USAGE_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("rpc-usage-sync inserts a single row and defaults optional fields to null", async () => {
+  const res = await postRpcUsageEvent(
+    { observed_at: 1_718_323_200_000, network: "finney", ok: false },
+    { secret: RPC_USAGE_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true });
+  expect(queryText()).toMatch(/INSERT INTO rpc_proxy_events\b/);
+  const call = sqlCalls.at(-1);
+  expect(call.values).toEqual([
+    1_718_323_200_000,
+    "finney",
+    null,
+    null,
+    false,
+    null,
+    null,
+    null,
+    null,
+  ]);
+});
+
+test("rpc-usage-sync inserts a fully-populated row", async () => {
+  const res = await postRpcUsageEvent(rpcUsageEvent(), {
+    secret: RPC_USAGE_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const call = sqlCalls.at(-1);
+  expect(call.values).toEqual([
+    1_718_323_200_000,
+    "finney",
+    "fx",
+    "onfinality",
+    true,
+    200,
+    1,
+    140,
+    "miss",
+  ]);
+});
+
+test("rpc-usage-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  rpcUsageSyncFailure.error = new Error("connection reset");
+  const res = await postRpcUsageEvent(rpcUsageEvent(), {
+    secret: RPC_USAGE_SYNC_SECRET,
   });
   expect(res.status).toBe(502);
 });

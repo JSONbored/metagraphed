@@ -197,6 +197,62 @@ describe("handleRpcUsage", () => {
     assert.equal(body.data.networks[0].network, "finney");
     assert.equal(body.data.buckets.length, 1);
   });
+
+  // #4832 gap-closure: METAGRAPH_RPC_USAGE_SOURCE is a NEW flag, deliberately
+  // left unset in wrangler.jsonc (no historical backfill -- see
+  // handleRpcUsage's own header comment) -- these tests only prove the
+  // wiring, not a live flip.
+  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            source: "rpc-proxy",
+            summary: { total_requests: 42 },
+            endpoints: [],
+            networks: [],
+            buckets: [],
+          }),
+      },
+      get METAGRAPH_HEALTH_DB() {
+        d1Called = true;
+        throw new Error("D1 must not be queried when Postgres serves");
+      },
+    };
+    const body = await json(
+      await handleRpcUsage(
+        req("/api/v1/rpc/usage"),
+        env,
+        url("/api/v1/rpc/usage"),
+      ),
+    );
+    assert.equal(body.data.summary.total_requests, 42);
+    assert.equal(d1Called, false);
+  });
+
+  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const env = {
+      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const body = await json(
+      await handleRpcUsage(
+        req("/api/v1/rpc/usage"),
+        env,
+        url("/api/v1/rpc/usage"),
+      ),
+    );
+    assert.equal(body.data.source, "rpc-proxy");
+    assert.equal(body.data.summary.total_requests, 0);
+  });
 });
 
 describe("handleSurfaceVerify", () => {
