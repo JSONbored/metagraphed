@@ -39,22 +39,24 @@ export function formatRelative(iso?: string | null): string {
   const diff = Date.now() - t;
   const abs = Math.abs(diff);
   const past = diff >= 0;
-  let value: number;
-  let unit: string;
-  if (abs < 60_000) {
-    value = Math.max(1, Math.round(abs / 1000));
-    unit = "s";
-  } else if (abs < 3_600_000) {
-    value = Math.round(abs / 60_000);
-    unit = "m";
-  } else if (abs < 86_400_000) {
-    value = Math.round(abs / 3_600_000);
-    unit = "h";
+  // Pick the unit from the *rounded* value, cascading upward: choosing the unit
+  // from the raw `abs` before rounding let a value that rounds up to the next
+  // unit's boundary overflow it — e.g. 59.5s rendered as "60s" instead of "1m",
+  // ~59.9m as "60m" instead of "1h", and ~23.9h as "24h" instead of "1d".
+  let label: string;
+  const s = Math.round(abs / 1000);
+  if (s < 60) {
+    label = `${Math.max(1, s)}s`;
   } else {
-    value = Math.round(abs / 86_400_000);
-    unit = "d";
+    const m = Math.round(abs / 60_000);
+    if (m < 60) {
+      label = `${m}m`;
+    } else {
+      const h = Math.round(abs / 3_600_000);
+      label = h < 24 ? `${h}h` : `${Math.round(abs / 86_400_000)}d`;
+    }
   }
-  return past ? `${value}${unit} ago` : `in ${value}${unit}`;
+  return past ? `${label} ago` : `in ${label}`;
 }
 
 export function isStaleFreshness(iso?: string | null, thresholdMs = 12 * 60 * 60_000): boolean {

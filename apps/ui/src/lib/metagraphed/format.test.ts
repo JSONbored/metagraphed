@@ -114,6 +114,24 @@ describe("formatRelative", () => {
   it("labels future timestamps with 'in'", () => {
     expect(formatRelative(new Date(Date.now() + 5 * 60_000).toISOString())).toMatch(/^in \d+m$/);
   });
+
+  it("promotes to the next unit instead of overflowing at a boundary", () => {
+    // ~59.7s must read "1m ago", not the overflowed "60s ago".
+    expect(formatRelative(new Date(Date.now() - 59_700).toISOString())).toBe("1m ago");
+    // ~59.7m must read "1h ago", not "60m ago".
+    expect(formatRelative(new Date(Date.now() - 59_700 * 60).toISOString())).toBe("1h ago");
+    // ~23.95h must read "1d ago", not "24h ago".
+    expect(formatRelative(new Date(Date.now() - 86_220_000).toISOString())).toBe("1d ago");
+  });
+
+  it("never renders an overflowed unit value", () => {
+    for (const ms of [59_500, 59_999, 3_595_000, 3_599_000, 86_100_000, 86_399_000]) {
+      const label = formatRelative(new Date(Date.now() - ms).toISOString());
+      expect(label).not.toMatch(/\b60s\b/);
+      expect(label).not.toMatch(/\b60m\b/);
+      expect(label).not.toMatch(/\b24h\b/);
+    }
+  });
 });
 
 describe("isStaleFreshness", () => {
