@@ -217,6 +217,19 @@
     // widened to NUMERIC (#4843) before this flip. tryPostgresTier still
     // falls back to D1 on any failure, so this remains a single-flag revert.
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "postgres",
+    // account_identity (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
+    // after a live parity pass. refresh-account-identity.yml's real
+    // workflow_dispatch run synced all 455 accounts (Postgres started
+    // completely empty) into workers/data-api.mjs's
+    // handleAccountIdentitySync. Also caught and fixed a real bug during
+    // this pass: one real account's discord/additional fields carried a
+    // literal U+0000 placeholder -- Postgres' TEXT type rejects an embedded
+    // NUL byte outright (SQLite's D1 storage silently tolerates it), 502-ing
+    // the whole upsert; fixed by stripping NUL bytes before both the
+    // latest-only upsert and the history hash (#4849) before this flip.
+    // tryPostgresTier still falls back to D1 on any failure, so this remains
+    // a single-flag revert.
+    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
