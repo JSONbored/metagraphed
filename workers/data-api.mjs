@@ -3919,9 +3919,9 @@ export default {
             .join(", ");
           const rows = await sql.unsafe(
             `SELECT netuid,
-                    COUNT(*) AS surface_count,
-                    SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-                    ROUND(AVG(CASE WHEN status = 'ok' AND latency_ms IS NOT NULL THEN latency_ms END)) AS avg_latency_ms
+                    COUNT(*)::int AS surface_count,
+                    SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END)::int AS ok_count,
+                    ROUND(AVG(CASE WHEN status = 'ok' AND latency_ms IS NOT NULL THEN latency_ms END))::int AS avg_latency_ms
              FROM surface_status
              WHERE netuid IN (${placeholders})
              GROUP BY netuid`,
