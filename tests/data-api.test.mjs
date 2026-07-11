@@ -582,6 +582,106 @@ test("GET /api/v1/blocks/:ref on an unknown block skips the neighbor query", asy
   expect(sqlCalls.length).toBe(2); // SET + the main lookup, no neighbor query
 });
 
+test("GET /api/v1/blocks/summary is matched before /blocks/:ref (never treats 'summary' as a ref)", async () => {
+  mockRows.current = [BLOCK_ROW];
+  const res = await req("/api/v1/blocks/summary");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.block_count).toBe(1);
+  expect(body.last_block).toBe(8586300);
+  expect(queryText()).toContain("FROM blocks ORDER BY block_number DESC LIMIT");
+});
+
+test("GET /api/v1/blocks/summary with no rows returns the zeroed card, not a throw", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/blocks/summary");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.block_count).toBe(0);
+});
+
+test("GET /api/v1/blocks/:ref/extrinsics resolves the ref then reads the block's extrinsics in index order", async () => {
+  mockQueue.current = [
+    [], // SET
+    [{ block_number: 8586300 }], // resolveBlockNumberPg
+    [EXTRINSIC_ROW],
+  ];
+  const res = await req("/api/v1/blocks/8586300/extrinsics");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.block_number).toBe(8586300);
+  expect(body.data.extrinsics[0].signer).toBe("5Signer");
+  expect(queryText()).toContain("ORDER BY extrinsic_index ASC");
+});
+
+test("GET /api/v1/blocks/:ref/extrinsics on an unresolved ref returns block_number:null, extrinsics:[] without querying extrinsics", async () => {
+  mockQueue.current = [[], []]; // SET, resolveBlockNumberPg finds nothing
+  const res = await req("/api/v1/blocks/999999999/extrinsics");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.block_number).toBeNull();
+  expect(body.data.extrinsics).toEqual([]);
+  expect(sqlCalls.length).toBe(2); // SET + the resolve query, no extrinsics query
+});
+
+test("GET /api/v1/blocks/:ref/events resolves the ref then reads the block's account_events in index order", async () => {
+  mockQueue.current = [
+    [], // SET
+    [{ block_number: 8586300 }], // resolveBlockNumberPg
+    [ACCOUNT_EVENT_ROW],
+  ];
+  const res = await req("/api/v1/blocks/8586300/events");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.block_number).toBe(8586300);
+  expect(body.data.events[0].event_kind).toBe("StakeAdded");
+  expect(queryText()).toContain("FROM account_events WHERE block_number");
+  expect(queryText()).toContain("ORDER BY event_index ASC");
+});
+
+test("GET /api/v1/blocks/:ref/events on an unresolved ref returns block_number:null, events:[] without querying account_events", async () => {
+  mockQueue.current = [[], []]; // SET, resolveBlockNumberPg finds nothing
+  const res = await req("/api/v1/blocks/999999999/events");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.block_number).toBeNull();
+  expect(body.data.events).toEqual([]);
+  expect(sqlCalls.length).toBe(2); // SET + the resolve query, no events query
+});
+
+test("GET /api/v1/blocks/:ref/extrinsics resolves a 0x block_hash ref", async () => {
+  const upperHash = `0x${"ABC".repeat(21)}D`; // 64 hex chars, mixed-case
+  mockQueue.current = [
+    [], // SET
+    [{ block_number: 8586300 }], // resolveBlockNumberPg
+    [EXTRINSIC_ROW],
+  ];
+  const res = await req(`/api/v1/blocks/${upperHash}/extrinsics`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.block_number).toBe(8586300);
+  expect(sqlCalls.some((c) => c.values.includes(upperHash.toLowerCase()))).toBe(
+    true,
+  );
+});
+
+test("GET /api/v1/blocks/:ref/extrinsics on a malformed ref skips every query but SET", async () => {
+  const res = await req("/api/v1/blocks/not-a-real-ref/extrinsics");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.block_number).toBeNull();
+  expect(body.data.extrinsics).toEqual([]);
+  expect(sqlCalls.length).toBe(1); // only the unconditional SET call
+});
+
+test("GET /api/v1/blocks/:ref/extrinsics on a numeric ref past MAX_SAFE_INTEGER skips every query but SET", async () => {
+  const res = await req("/api/v1/blocks/99999999999999999999/extrinsics");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.block_number).toBeNull();
+  expect(sqlCalls.length).toBe(1); // only the unconditional SET call
+});
+
 test("GET /api/v1/extrinsics returns a feed with call_args parsed from the ::text cast", async () => {
   mockRows.current = [EXTRINSIC_ROW];
   const res = await req("/api/v1/extrinsics?limit=1");
@@ -764,6 +864,134 @@ test("GET /api/v1/accounts/:ss58/events with no matching rows returns a schema-s
   expect(body.event_count).toBe(0);
   expect(body.events).toEqual([]);
   expect(body.next_cursor).toBeNull();
+});
+
+test("GET /api/v1/accounts/:ss58/extrinsics matches the signer column only, not hotkey/coldkey", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  const res = await req(`/api/v1/accounts/${SS58}/extrinsics`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsic_count).toBe(1);
+  expect(body.extrinsics[0].signer).toBe("5Signer");
+  expect(queryText()).toContain("WHERE signer =");
+});
+
+test("GET /api/v1/accounts/:ss58/extrinsics applies block_start/block_end bounds", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/extrinsics?block_start=1&block_end=2`);
+  const text = queryText();
+  expect(text).toContain("AND block_number >=");
+  expect(text).toContain("AND block_number <=");
+});
+
+test("GET /api/v1/accounts/:ss58/extrinsics with an inverted block range short-circuits to empty, never querying Postgres", async () => {
+  const res = await req(
+    `/api/v1/accounts/${SS58}/extrinsics?block_start=5&block_end=1`,
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsics).toEqual([]);
+  expect(sqlCalls.length).toBe(1); // only the unconditional SET call
+});
+
+test("GET /api/v1/accounts/:ss58/extrinsics uses a composite cursor seek instead of OFFSET", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  await req(`/api/v1/accounts/${SS58}/extrinsics?cursor=8586300.2`);
+  const text = queryText();
+  expect(text).toContain("AND (block_number, extrinsic_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/extrinsics returns a next_cursor when the page is full", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  const res = await req(`/api/v1/accounts/${SS58}/extrinsics?limit=1`);
+  const body = await res.json();
+  expect(body.next_cursor).toBe("8586300.2");
+});
+
+test("GET /api/v1/sudo filters to call_module='Sudo' and never exposes signer/call_module params", async () => {
+  mockRows.current = [{ ...EXTRINSIC_ROW, call_module: "Sudo" }];
+  const res = await req("/api/v1/sudo?call_function=sudo&success=true");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsics[0].call_module).toBe("Sudo");
+  const text = queryText();
+  expect(text).toContain("WHERE call_module =");
+  expect(text).toContain("AND call_function =");
+  expect(text).toContain("AND success =");
+  const call = sqlCalls.find((c) => c.text.includes("WHERE call_module ="));
+  expect(call.values).toContain("Sudo");
+});
+
+test("GET /api/v1/governance/config-changes filters to call_module='AdminUtils'", async () => {
+  mockRows.current = [{ ...EXTRINSIC_ROW, call_module: "AdminUtils" }];
+  const res = await req("/api/v1/governance/config-changes");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.extrinsics[0].call_module).toBe("AdminUtils");
+  const call = sqlCalls.find((c) => c.text.includes("WHERE call_module ="));
+  expect(call.values).toContain("AdminUtils");
+});
+
+test("GET /api/v1/sudo applies block/block_start/block_end/from/to filters and a cursor seek", async () => {
+  mockRows.current = [];
+  await req(
+    "/api/v1/sudo?block=1&block_start=1&block_end=2&from=1&to=2&cursor=8586300.2",
+  );
+  const text = queryText();
+  expect(text).toContain("AND block_number =");
+  expect(text).toContain("AND block_number >=");
+  expect(text).toContain("AND block_number <=");
+  expect(text).toContain("AND observed_at >=");
+  expect(text).toContain("AND observed_at <=");
+  expect(text).toContain("AND (block_number, extrinsic_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/sudo with success=false filters correctly, distinct from absent", async () => {
+  mockRows.current = [
+    { ...EXTRINSIC_ROW, call_module: "Sudo", success: false },
+  ];
+  const res = await req("/api/v1/sudo?success=false");
+  const body = await res.json();
+  expect(body.extrinsics[0].success).toBe(false);
+  expect(queryText()).toContain("AND success =");
+});
+
+test("GET /api/v1/sudo returns a next_cursor when the page is full", async () => {
+  mockRows.current = [{ ...EXTRINSIC_ROW, call_module: "Sudo" }];
+  const res = await req("/api/v1/sudo?limit=1");
+  const body = await res.json();
+  expect(body.next_cursor).toBe("8586300.2");
+});
+
+test("GET /api/v1/runtime returns the spec-version transition timeline", async () => {
+  mockQueue.current = [
+    [], // SET
+    [
+      {
+        spec_version: 423,
+        block_number: 8000000,
+        observed_at: "1783500000000",
+      },
+    ],
+    [{ spec_version: 424 }],
+  ];
+  const res = await req("/api/v1/runtime");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.transitions[0].spec_version).toBe(423);
+  expect(body.current_spec_version).toBe(424);
+  expect(queryText()).toContain("GROUP BY spec_version");
+});
+
+test("GET /api/v1/runtime with no readings returns the schema-stable empty timeline", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/runtime");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.transitions).toEqual([]);
+  expect(body.current_spec_version).toBeNull();
 });
 
 // #4771: per-UID metagraph tier, mirroring src/metagraph-neurons.mjs's D1

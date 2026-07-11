@@ -2913,13 +2913,15 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
-  const data = await loadAccountExtrinsics(d1Runner(env), ss58, {
-    limit: url.searchParams.get("limit"),
-    offset: url.searchParams.get("offset"),
-    cursor: url.searchParams.get("cursor"),
-    blockStart: blockStart.value,
-    blockEnd: blockEnd.value,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    (await loadAccountExtrinsics(d1Runner(env), ss58, {
+      limit: url.searchParams.get("limit"),
+      offset: url.searchParams.get("offset"),
+      cursor: url.searchParams.get("cursor"),
+      blockStart: blockStart.value,
+      blockEnd: blockEnd.value,
+    }));
   if (csvRequested(url, request)) {
     const csvRows = data.extrinsics.map((extrinsic) => ({
       ...extrinsic,
@@ -3534,7 +3536,9 @@ export async function handleBlocks(request, env, url) {
 export async function handleBlocksSummary(request, env, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadBlocksSummary(d1Runner(env));
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE")) ??
+    (await loadBlocksSummary(d1Runner(env)));
   return envelopeResponse(
     request,
     {
@@ -3628,10 +3632,12 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
   const validationError = validateQueryParams(url, ["limit", "offset"]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
-  const { data } = await loadBlockExtrinsics(d1Runner(env), ref, {
-    limit,
-    offset,
-  });
+  const { data } =
+    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    (await loadBlockExtrinsics(d1Runner(env), ref, {
+      limit,
+      offset,
+    }));
   return envelopeResponse(
     request,
     {
@@ -3656,10 +3662,12 @@ export async function handleBlockEvents(request, env, ref, url) {
   const validationError = validateQueryParams(url, ["limit", "offset"]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
-  const { data } = await loadBlockEvents(d1Runner(env), ref, {
-    limit,
-    offset,
-  });
+  const { data } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadBlockEvents(d1Runner(env), ref, {
+      limit,
+      offset,
+    }));
   return envelopeResponse(
     request,
     {
@@ -3822,20 +3830,26 @@ export async function handleSudo(request, env, url) {
       message: "success must be one of: true, false.",
     });
   }
-  const data = await loadExtrinsics(d1Runner(env), {
-    callModule: "Sudo",
-    block: numericFilters.block ?? undefined,
-    callFunction: sp.get("call_function") || undefined,
-    success:
-      successRaw === "true" ? true : successRaw === "false" ? false : undefined,
-    blockStart: numericFilters.block_start ?? undefined,
-    blockEnd: numericFilters.block_end ?? undefined,
-    from: numericFilters.from ?? undefined,
-    to: numericFilters.to ?? undefined,
-    limit,
-    offset,
-    cursor,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    (await loadExtrinsics(d1Runner(env), {
+      callModule: "Sudo",
+      block: numericFilters.block ?? undefined,
+      callFunction: sp.get("call_function") || undefined,
+      success:
+        successRaw === "true"
+          ? true
+          : successRaw === "false"
+            ? false
+            : undefined,
+      blockStart: numericFilters.block_start ?? undefined,
+      blockEnd: numericFilters.block_end ?? undefined,
+      from: numericFilters.from ?? undefined,
+      to: numericFilters.to ?? undefined,
+      limit,
+      offset,
+      cursor,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       extrinsicsToCsvRows(data.extrinsics),
@@ -3897,20 +3911,26 @@ export async function handleGovernanceConfigChanges(request, env, url) {
       message: "success must be one of: true, false.",
     });
   }
-  const data = await loadExtrinsics(d1Runner(env), {
-    callModule: "AdminUtils",
-    block: numericFilters.block ?? undefined,
-    callFunction: sp.get("call_function") || undefined,
-    success:
-      successRaw === "true" ? true : successRaw === "false" ? false : undefined,
-    blockStart: numericFilters.block_start ?? undefined,
-    blockEnd: numericFilters.block_end ?? undefined,
-    from: numericFilters.from ?? undefined,
-    to: numericFilters.to ?? undefined,
-    limit,
-    offset,
-    cursor,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    (await loadExtrinsics(d1Runner(env), {
+      callModule: "AdminUtils",
+      block: numericFilters.block ?? undefined,
+      callFunction: sp.get("call_function") || undefined,
+      success:
+        successRaw === "true"
+          ? true
+          : successRaw === "false"
+            ? false
+            : undefined,
+      blockStart: numericFilters.block_start ?? undefined,
+      blockEnd: numericFilters.block_end ?? undefined,
+      from: numericFilters.from ?? undefined,
+      to: numericFilters.to ?? undefined,
+      limit,
+      offset,
+      cursor,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       extrinsicsToCsvRows(data.extrinsics),
@@ -3943,7 +3963,9 @@ export async function handleGovernanceConfigChanges(request, env, url) {
 export async function handleRuntime(request, env, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadRuntimeVersionHistory(d1Runner(env));
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE")) ??
+    (await loadRuntimeVersionHistory(d1Runner(env)));
   return envelopeResponse(
     request,
     {

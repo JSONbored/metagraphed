@@ -22,12 +22,23 @@
 import postgres from "postgres";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
-import { buildExtrinsic, buildExtrinsicFeed } from "../src/extrinsics.mjs";
+import {
+  buildExtrinsic,
+  buildExtrinsicFeed,
+  buildBlockExtrinsics,
+  buildAccountExtrinsics,
+} from "../src/extrinsics.mjs";
 import {
   buildAccountEvents,
   formatAccountEvent,
   buildAccountTransfers,
+  buildBlockEvents,
 } from "../src/account-events.mjs";
+import {
+  buildBlocksSummary,
+  BLOCKS_SUMMARY_SCAN_CAP,
+} from "../src/blocks-summary.mjs";
+import { buildRuntimeVersionHistory } from "../src/runtime-versions.mjs";
 import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
 import {
   buildValidatorNominators,
@@ -568,6 +579,22 @@ const HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
 const MAX_EMBEDDED_EVENTS = 50;
 
+// Resolve a /blocks/:ref sub-resource's ref (numeric block_number or a 0x
+// block_hash) to its block_number, mirroring src/block-subresources.mjs's
+// resolveBlockNumber. Returns null for a malformed ref or an unknown block
+// (never throws) -- the two sub-resource routes below both need this ahead of
+// their own extrinsics/account_events query, same as the D1 path.
+async function resolveBlockNumberPg(sql, ref) {
+  const isHash = HASH_RE.test(ref);
+  if (!isHash && !/^\d+$/.test(ref)) return null;
+  const blockNumber = isHash ? null : Number(ref);
+  if (!isHash && !Number.isSafeInteger(blockNumber)) return null;
+  const rows = isHash
+    ? await sql`SELECT block_number FROM blocks WHERE block_hash = ${ref.toLowerCase()} LIMIT 1`
+    : await sql`SELECT block_number FROM blocks WHERE block_number = ${blockNumber} LIMIT 1`;
+  return numberOrNull(rows[0]?.block_number);
+}
+
 // The blocks/extrinsics SELECT column lists below must match src/blocks.mjs's
 // BLOCK_READ_COLUMNS / src/extrinsics.mjs's EXTRINSIC_READ_COLUMNS so
 // formatBlock/formatExtrinsic (reused unchanged, imported above) see the exact
@@ -697,6 +724,17 @@ export default {
           return json(buildBlockFeed(rows, { limit, offset, nextCursor }));
         }
 
+        // GET /api/v1/blocks/summary — block-production health over the most
+        // recent BLOCKS_SUMMARY_SCAN_CAP blocks, mirroring src/blocks-summary.mjs's
+        // loadBlocksSummary. Checked BEFORE the /blocks/:ref match below --
+        // "summary" would otherwise parse as a (invalid) ref.
+        if (url.pathname === "/api/v1/blocks/summary") {
+          const rows = await sql`
+          SELECT block_number, author, extrinsic_count, event_count, spec_version, observed_at
+          FROM blocks ORDER BY block_number DESC LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`;
+          return json(buildBlocksSummary(rows));
+        }
+
         // GET /api/v1/blocks/:ref — per-block detail + nearest stored neighbors,
         // mirroring src/blocks.mjs's loadBlock. ref is a numeric block_number or a
         // 0x block_hash (lowercased before binding, matching the D1 path's
@@ -731,6 +769,56 @@ export default {
             next = nbr[0]?.next ?? null;
           }
           return json(buildBlock(rows[0], ref, { prev, next }));
+        }
+
+        // GET /api/v1/blocks/:ref/extrinsics — the extrinsics in one block, natural
+        // read order (extrinsic_index ASC), mirroring src/block-subresources.mjs's
+        // loadBlockExtrinsics. block_number:null + extrinsics:[] for an unresolved
+        // ref (never throws).
+        const blockRefExtrinsics = url.pathname.match(
+          /^\/api\/v1\/blocks\/([^/]+)\/extrinsics$/,
+        );
+        if (blockRefExtrinsics) {
+          const ref = decodeURIComponent(blockRefExtrinsics[1]);
+          const limit = clampBlockLimit(url.searchParams.get("limit"));
+          const offset = clampOffset(url.searchParams.get("offset"));
+          const blockNumber = await resolveBlockNumberPg(sql, ref);
+          const rows =
+            blockNumber == null
+              ? []
+              : await sql`
+              SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
+              FROM extrinsics WHERE block_number = ${blockNumber}
+              ORDER BY extrinsic_index ASC LIMIT ${limit} OFFSET ${offset}`;
+          return json({
+            data: buildBlockExtrinsics(rows, ref, blockNumber, {
+              limit,
+              offset,
+            }),
+          });
+        }
+
+        // GET /api/v1/blocks/:ref/events — the decoded account_events in one block,
+        // natural read order (event_index ASC), mirroring
+        // src/block-subresources.mjs's loadBlockEvents.
+        const blockRefEvents = url.pathname.match(
+          /^\/api\/v1\/blocks\/([^/]+)\/events$/,
+        );
+        if (blockRefEvents) {
+          const ref = decodeURIComponent(blockRefEvents[1]);
+          const limit = clampLimit(url.searchParams.get("limit"));
+          const offset = clampOffset(url.searchParams.get("offset"));
+          const blockNumber = await resolveBlockNumberPg(sql, ref);
+          const rows =
+            blockNumber == null
+              ? []
+              : await sql`
+              SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+              FROM account_events WHERE block_number = ${blockNumber}
+              ORDER BY event_index ASC LIMIT ${limit} OFFSET ${offset}`;
+          return json({
+            data: buildBlockEvents(rows, ref, blockNumber, { limit, offset }),
+          });
         }
 
         // GET /api/v1/extrinsics — the recent-extrinsic feed, mirroring
@@ -794,6 +882,79 @@ export default {
               ])
             : null;
           return json(buildExtrinsicFeed(rows, { limit, offset, nextCursor }));
+        }
+
+        // GET /api/v1/sudo and GET /api/v1/governance/config-changes share this
+        // shape: the same extrinsics feed as /extrinsics above, with call_module
+        // fixed rather than caller-supplied (mirroring src/extrinsics.mjs's
+        // loadExtrinsics({callModule: "Sudo"|"AdminUtils", ...}) call sites in
+        // entities.mjs) -- so neither accepts ?signer=/?call_module=/?call_hash=.
+        const SUDO_GOVERNANCE_ROUTES = {
+          "/api/v1/sudo": "Sudo",
+          "/api/v1/governance/config-changes": "AdminUtils",
+        };
+        if (Object.hasOwn(SUDO_GOVERNANCE_ROUTES, url.pathname)) {
+          const callModule = SUDO_GOVERNANCE_ROUTES[url.pathname];
+          const limit = clampBlockLimit(url.searchParams.get("limit"));
+          const offset = clampOffset(url.searchParams.get("offset"));
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const block = nonNegativeIntegerParam(url.searchParams, "block");
+          const callFunction = url.searchParams.get("call_function") || null;
+          const successRaw = url.searchParams.get("success");
+          const success =
+            successRaw === "true"
+              ? true
+              : successRaw === "false"
+                ? false
+                : null;
+          const blockStart = nonNegativeIntegerParam(
+            url.searchParams,
+            "block_start",
+          );
+          const blockEnd = nonNegativeIntegerParam(
+            url.searchParams,
+            "block_end",
+          );
+          const from = nonNegativeIntegerParam(url.searchParams, "from");
+          const to = nonNegativeIntegerParam(url.searchParams, "to");
+          const rows = await sql`
+          SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
+          FROM extrinsics
+          WHERE call_module = ${callModule}
+            ${block != null ? sql`AND block_number = ${block}` : sql``}
+            ${callFunction ? sql`AND call_function = ${callFunction}` : sql``}
+            ${success != null ? sql`AND success = ${success}` : sql``}
+            ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+            ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+            ${from != null ? sql`AND observed_at >= ${from}` : sql``}
+            ${to != null ? sql`AND observed_at <= ${to}` : sql``}
+            ${cursor ? sql`AND (block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY block_number DESC, extrinsic_index DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          const last = rows.length === limit ? rows[rows.length - 1] : null;
+          const nextCursor = last
+            ? encodeCursor([
+                numberOrNull(last.block_number),
+                numberOrNull(last.extrinsic_index),
+              ])
+            : null;
+          return json(buildExtrinsicFeed(rows, { limit, offset, nextCursor }));
+        }
+
+        // GET /api/v1/runtime — the spec-version transition timeline, mirroring
+        // src/runtime-versions.mjs's loadRuntimeVersionHistory. Two small
+        // aggregate reads (GROUP BY's earliest-block-per-version, then the
+        // truly-latest reading), no filters/pagination.
+        if (url.pathname === "/api/v1/runtime") {
+          const rows = await sql`
+          SELECT spec_version, MIN(block_number) AS block_number, MIN(observed_at) AS observed_at
+          FROM blocks WHERE spec_version IS NOT NULL
+          GROUP BY spec_version ORDER BY block_number ASC`;
+          const latestRows = await sql`
+          SELECT spec_version FROM blocks WHERE spec_version IS NOT NULL
+          ORDER BY block_number DESC LIMIT 1`;
+          return json(buildRuntimeVersionHistory(rows, latestRows[0] ?? null));
         }
 
         // GET /api/v1/extrinsics/:ref — per-extrinsic detail + embedded
@@ -895,6 +1056,51 @@ export default {
             : null;
           return json(
             buildAccountEvents(rows, ss58, { limit, offset, nextCursor }),
+          );
+        }
+
+        // GET /api/v1/accounts/:ss58/extrinsics — extrinsics SIGNED by this account
+        // (the `signer` column only, not a hotkey/coldkey union -- `extrinsics` has
+        // no hotkey/coldkey columns), mirroring src/account-events.mjs's
+        // loadAccountExtrinsics.
+        const acctExtrinsics = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/extrinsics$/,
+        );
+        if (acctExtrinsics) {
+          const ss58 = decodeURIComponent(acctExtrinsics[1]);
+          const limit = clampLimit(url.searchParams.get("limit"));
+          const offset = clampOffset(url.searchParams.get("offset"));
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const blockStart = nonNegativeIntegerParam(
+            url.searchParams,
+            "block_start",
+          );
+          const blockEnd = nonNegativeIntegerParam(
+            url.searchParams,
+            "block_end",
+          );
+          const rows =
+            blockStart != null && blockEnd != null && blockStart > blockEnd
+              ? []
+              : await sql`
+              SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
+              FROM extrinsics
+              WHERE signer = ${ss58}
+                ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+                ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+                ${cursor ? sql`AND (block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
+              ORDER BY block_number DESC, extrinsic_index DESC
+              LIMIT ${limit}
+              ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          const last = rows.length === limit ? rows[rows.length - 1] : null;
+          const nextCursor = last
+            ? encodeCursor([
+                numberOrNull(last.block_number),
+                numberOrNull(last.extrinsic_index),
+              ])
+            : null;
+          return json(
+            buildAccountExtrinsics(rows, ss58, { limit, offset, nextCursor }),
           );
         }
 

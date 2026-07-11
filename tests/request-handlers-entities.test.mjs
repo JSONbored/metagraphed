@@ -67,6 +67,10 @@ import {
   handleBlock,
   handleBlockExtrinsics,
   handleBlockEvents,
+  handleBlocksSummary,
+  handleSudo,
+  handleGovernanceConfigChanges,
+  handleRuntime,
   handleExtrinsics,
   handleExtrinsic,
   canonicalSubnetHistoryCachePath,
@@ -7252,6 +7256,341 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         SS58,
         url(`/api/v1/accounts/${SS58}/counterparties`),
       ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  // #4832 Tier 1a: blocks/extrinsics-derived handlers that were reading D1
+  // directly with no Postgres tier at all -- silently serving data frozen
+  // since the streamer stopped. Same pattern as the blocks above.
+
+  test("handleBlockExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg", extrinsics: [] },
+        }),
+    };
+    const body = await json(
+      await handleBlockExtrinsics(
+        req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleBlockExtrinsics: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({
+      blockDetail: blockRow(),
+      extrinsics: [extrinsicRow()],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleBlockExtrinsics(
+        req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleBlockEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ blockEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg", events: [] },
+        }),
+    };
+    const body = await json(
+      await handleBlockEvents(
+        req(`/api/v1/blocks/${BLOCK_NUM}/events`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/events`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleBlockEvents: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({
+      blockDetail: blockRow(),
+      blockEvents: [accountEventRow()],
+    });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleBlockEvents(
+        req(`/api/v1/blocks/${BLOCK_NUM}/events`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/events`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleBlocksSummary: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", block_count: 0 }),
+    };
+    const body = await json(
+      await handleBlocksSummary(
+        req("/api/v1/blocks/summary"),
+        env,
+        url("/api/v1/blocks/summary"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleBlocksSummary: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleBlocksSummary(
+        req("/api/v1/blocks/summary"),
+        env,
+        url("/api/v1/blocks/summary"),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleAccountExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
+    };
+    const body = await json(
+      await handleAccountExtrinsics(
+        req(`/api/v1/accounts/${SS58}/extrinsics`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/extrinsics`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountExtrinsics: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccountExtrinsics(
+        req(`/api/v1/accounts/${SS58}/extrinsics`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/extrinsics`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleSudo: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "Sudo" })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
+    };
+    const body = await json(
+      await handleSudo(req("/api/v1/sudo"), env, url("/api/v1/sudo")),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSudo: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "Sudo" })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleSudo(
+        req("/api/v1/sudo?success=true"),
+        env,
+        url("/api/v1/sudo?success=true"),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleSudo: D1 fallback narrows to success=false, distinct from absent", async () => {
+    const { env } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "Sudo", success: 0 })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = { fetch: async () => new Response("err", { status: 500 }) };
+    const body = await json(
+      await handleSudo(
+        req("/api/v1/sudo?success=false"),
+        env,
+        url("/api/v1/sudo?success=false"),
+      ),
+    );
+    assert.equal(body.data.extrinsics[0].success, false);
+  });
+
+  test("handleSudo: D1 fallback with no success param leaves the filter unset", async () => {
+    const { env } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "Sudo" })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = { fetch: async () => new Response("err", { status: 500 }) };
+    const body = await json(
+      await handleSudo(req("/api/v1/sudo"), env, url("/api/v1/sudo")),
+    );
+    assert.equal(body.data.extrinsics[0].call_module, "Sudo");
+  });
+
+  test("handleGovernanceConfigChanges: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "AdminUtils" })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
+    };
+    const body = await json(
+      await handleGovernanceConfigChanges(
+        req("/api/v1/governance/config-changes"),
+        env,
+        url("/api/v1/governance/config-changes"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleGovernanceConfigChanges: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "AdminUtils" })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleGovernanceConfigChanges(
+        req("/api/v1/governance/config-changes?success=true"),
+        env,
+        url("/api/v1/governance/config-changes?success=true"),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleGovernanceConfigChanges: D1 fallback narrows to success=false, distinct from absent", async () => {
+    const { env } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "AdminUtils", success: 0 })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = { fetch: async () => new Response("err", { status: 500 }) };
+    const body = await json(
+      await handleGovernanceConfigChanges(
+        req("/api/v1/governance/config-changes?success=false"),
+        env,
+        url("/api/v1/governance/config-changes?success=false"),
+      ),
+    );
+    assert.equal(body.data.extrinsics[0].success, false);
+  });
+
+  test("handleGovernanceConfigChanges: D1 fallback with no success param leaves the filter unset", async () => {
+    const { env } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "AdminUtils" })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = { fetch: async () => new Response("err", { status: 500 }) };
+    const body = await json(
+      await handleGovernanceConfigChanges(
+        req("/api/v1/governance/config-changes"),
+        env,
+        url("/api/v1/governance/config-changes"),
+      ),
+    );
+    assert.equal(body.data.extrinsics[0].call_module, "AdminUtils");
+  });
+
+  test("handleRuntime: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", transitions: [] }),
+    };
+    const body = await json(
+      await handleRuntime(req("/api/v1/runtime"), env, url("/api/v1/runtime")),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleRuntime: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleRuntime(req("/api/v1/runtime"), env, url("/api/v1/runtime")),
     );
     assert.equal(body.data.marker, undefined);
     assert.ok(captures.sql.length > 0);
