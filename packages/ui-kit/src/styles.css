@@ -1306,8 +1306,3 @@ html[data-density="compact"] .bg-card > table td {
     transform: translateX(-50%);
   }
 }
-
-/* Scaffold placeholder (#4860) -- removed once the first real component migrates (#4862). */
-.ui-kit-placeholder-card {
-  display: block;
-}

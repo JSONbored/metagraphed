@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@jsonbored/ui-kit";
 import { BrandIcon } from "./brand-icon";
 import { CurationChip, HealthPill } from "./chips";
 import { TimeAgo } from "./time-ago";

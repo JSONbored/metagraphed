@@ -7,7 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@jsonbored/ui-kit";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-summary";

@@ -7,7 +7,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { Skeleton } from "@/components/metagraphed/states";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
 
 interface Props {
   netuid: number;

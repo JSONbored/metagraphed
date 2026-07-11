@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 
 export const SCOPES = [

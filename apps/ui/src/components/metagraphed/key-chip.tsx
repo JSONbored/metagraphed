@@ -1,4 +1,4 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
 import { useCopy } from "@/hooks/use-copy";
 import { classNames } from "@/lib/metagraphed/format";
 import { CopyIconToggle } from "./copy-icon-toggle";

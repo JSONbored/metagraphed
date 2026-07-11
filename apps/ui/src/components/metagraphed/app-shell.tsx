@@ -15,7 +15,7 @@ import { useEndpointHealth, type EndpointHealth } from "@/hooks/use-endpoint-hea
 import { NetworkSwitcher } from "./network-switcher";
 import { CopyableCode } from "./copyable-code";
 import { SettingsPopover } from "./settings-popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import { safeExternalUrl } from "./external-link";
 import { DiscordIcon } from "./discord-icon";

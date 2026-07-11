@@ -1,4 +1,4 @@
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import { ELIGIBILITY_LABEL, type PoolEligibility } from "@/lib/metagraphed/endpoint-pool";
 

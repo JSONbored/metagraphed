@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Code2, ExternalLink as ExternalLinkIcon, Loader2, X } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@jsonbored/ui-kit";
 import { useApiSourceCtx, type ApiSource } from "@/lib/metagraphed/api-source-context";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { metagraphedQueryKey } from "@/lib/metagraphed/queries";

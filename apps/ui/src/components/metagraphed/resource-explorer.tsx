@@ -15,8 +15,16 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { useCopy } from "@/hooks/use-copy";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import {
   useSubnetFilter,

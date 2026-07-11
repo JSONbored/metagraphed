@@ -14,7 +14,7 @@ import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import type { Endpoint } from "@/lib/metagraphed/types";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 
 interface Field {

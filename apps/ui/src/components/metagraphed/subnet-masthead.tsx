@@ -11,7 +11,7 @@ import {
   ArrowUpRight,
   Minus,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
 import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";

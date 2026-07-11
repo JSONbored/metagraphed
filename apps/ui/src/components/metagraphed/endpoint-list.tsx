@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLink as ExternalLinkIcon } from "lucide-react";
 import { useMemo } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 import { HealthDot } from "./chips";
 import { EligibilityChip } from "./eligibility-chip";
 import { TimeAgo } from "./time-ago";

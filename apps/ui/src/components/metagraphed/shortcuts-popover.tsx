@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Keyboard } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@jsonbored/ui-kit";
 import { Kbd } from "./kbd";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { classNames } from "@/lib/metagraphed/format";
 
 const GOTO: Array<{ keys: string; to: string; label: string }> = [

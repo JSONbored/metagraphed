@@ -21,7 +21,7 @@ import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-sc
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { ErrorState } from "@/components/metagraphed/states";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";

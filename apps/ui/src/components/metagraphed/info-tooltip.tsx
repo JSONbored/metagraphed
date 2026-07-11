@@ -1,5 +1,5 @@
 import { Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 
 /**
  * Small inline info icon with hover/focus tooltip. Use next to section titles,

@@ -41,7 +41,7 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from "@/components/ui/command";
+} from "@jsonbored/ui-kit";
 import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";

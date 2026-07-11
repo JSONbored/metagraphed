@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@jsonbored/ui-kit";
 
 interface Props {
   netuid: number;

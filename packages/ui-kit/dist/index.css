@@ -995,6 +995,3 @@ html[data-density=compact] .bg-card > table td {
     transform: translateX(-50%);
   }
 }
-.ui-kit-placeholder-card {
-  display: block;
-}
