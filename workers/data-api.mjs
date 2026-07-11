@@ -286,6 +286,13 @@ import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
 } from "../src/chain-identity-history.mjs";
+import {
+  buildChainActivity,
+  buildChainCalls,
+  buildChainFees,
+  buildChainSigners,
+} from "../src/chain-analytics.mjs";
+import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -2965,6 +2972,232 @@ export default {
               observedAt: latestObservedIso(totalsRows, "newest_observed"),
               totals: totalsRows[0] ?? null,
               pairs: pairRows,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/signers (#4832 gap-closure, extrinsics-derived
+        // cluster): windowed most-active-account leaderboard, mirroring
+        // src/chain-query-loaders.mjs's loadChainSigners. sort/call_module are
+        // already validated D1-side before this route is ever reached. A
+        // separate freshness query is needed (unlike totals-style routes
+        // above) because the grouped rows below carry last_tx_block, not a
+        // network-wide observed_at -- confirmed live via psql: both this
+        // query and the freshness lookup run well under 1s at current
+        // extrinsics volume (~1.2M rows/7d), so no timeout widening needed.
+        const chainSigners = url.pathname.match(/^\/api\/v1\/chain\/signers$/);
+        if (chainSigners) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const limit = chainLimit(url, 50);
+          const sortParam = url.searchParams.get("sort");
+          const sort = CHAIN_SIGNERS_SORTS.includes(sortParam)
+            ? sortParam
+            : "tx_count";
+          const callModule = url.searchParams.get("call_module") || null;
+          const moduleClause = callModule
+            ? sql`AND call_module = ${callModule}`
+            : sql``;
+          const orderBy =
+            sort === "total_fee_tao" ? sql`total_fee_tao` : sql`tx_count`;
+          const freshRows = await sql`
+          SELECT MAX(observed_at) AS newest_observed
+          FROM extrinsics WHERE observed_at >= ${cutoff}`;
+          const rows = await sql`
+          SELECT signer, COUNT(*) AS tx_count, SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao, MAX(block_number) AS last_tx_block
+          FROM extrinsics WHERE observed_at >= ${cutoff} AND signer IS NOT NULL
+            ${moduleClause}
+          GROUP BY signer ORDER BY ${orderBy} DESC, signer ASC LIMIT ${limit}`;
+          return json(
+            buildChainSigners({
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              sort,
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              rows,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/calls (#4832 gap-closure): extrinsic call-mix
+        // breakdown, mirroring src/analytics-live.mjs's loadChainCalls. The
+        // share denominator (total) is read separately so the LIMIT-truncated
+        // grouped rows never skew shares, exactly like the D1 loader.
+        const chainCalls = url.pathname.match(/^\/api\/v1\/chain\/calls$/);
+        if (chainCalls) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const limit = chainLimit(url, 50);
+          const groupBy =
+            url.searchParams.get("group_by") === "module_function"
+              ? "module_function"
+              : "module";
+          const callModule = url.searchParams.get("call_module") || null;
+          const moduleClause = callModule
+            ? sql`AND call_module = ${callModule}`
+            : sql``;
+          const orderBy =
+            groupBy === "module_function"
+              ? sql`count DESC, call_module ASC, call_function ASC`
+              : sql`count DESC, call_module ASC`;
+          const freshRows = await sql`
+          SELECT MAX(observed_at) AS newest_observed
+          FROM extrinsics WHERE observed_at >= ${cutoff}`;
+          const rows =
+            groupBy === "module_function"
+              ? await sql`
+                SELECT call_module, call_function, COUNT(*) AS count
+                FROM extrinsics WHERE observed_at >= ${cutoff} AND call_module IS NOT NULL
+                  ${moduleClause}
+                GROUP BY call_module, call_function ORDER BY ${orderBy} LIMIT ${limit}`
+              : await sql`
+                SELECT call_module, COUNT(*) AS count
+                FROM extrinsics WHERE observed_at >= ${cutoff} AND call_module IS NOT NULL
+                  ${moduleClause}
+                GROUP BY call_module ORDER BY ${orderBy} LIMIT ${limit}`;
+          const totalRows = await sql`
+          SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ${cutoff}
+            ${moduleClause}`;
+          return json(
+            buildChainCalls({
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              groupBy,
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              total: totalRows[0]?.total ?? 0,
+              rows,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/activity (#4832 gap-closure): per-UTC-day
+        // extrinsic/event/block counts, success rate, and unique signers,
+        // mirroring src/analytics-live.mjs's loadNetworkActivity. The base
+        // extrinsics aggregate + blocks aggregate are cheap (confirmed live
+        // via psql: well under 500ms each at current volume), but
+        // COUNT(DISTINCT signer) per day forces a per-group sort that
+        // measured ~2.7s against production data (confirmed live,
+        // 2026-07-11) -- the same disease as chain/transfers' DISTINCT
+        // counts, just under the 1.2M-row extrinsics table instead of
+        // account_events' 10M. Splitting it into its own statement and
+        // widening only this route's budget avoids relying on a razor-thin
+        // (2.7s vs 3s default) timeout margin that could flip under load.
+        const chainActivity = url.pathname.match(
+          /^\/api\/v1\/chain\/activity$/,
+        );
+        if (chainActivity) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          await sql`SET LOCAL statement_timeout = '8000ms'`;
+          const extrinsicBase = await sql`
+          SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
+                 COUNT(*) AS extrinsic_count,
+                 SUM(CASE WHEN success THEN 1 ELSE 0 END) AS successful_extrinsics
+          FROM extrinsics WHERE observed_at >= ${cutoff} GROUP BY day`;
+          const extrinsicSigners = await sql`
+          SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
+                 COUNT(DISTINCT signer) AS unique_signers
+          FROM extrinsics WHERE observed_at >= ${cutoff} GROUP BY day`;
+          const signersByDay = new Map(
+            extrinsicSigners.map((r) => [r.day, r.unique_signers]),
+          );
+          const extrinsicRows = extrinsicBase.map((r) => ({
+            ...r,
+            unique_signers: signersByDay.get(r.day) ?? 0,
+          }));
+          const blockRows = await sql`
+          SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
+                 COUNT(*) AS block_count, SUM(event_count) AS event_count
+          FROM blocks WHERE observed_at >= ${cutoff} GROUP BY day`;
+          const freshRows = await sql`
+          SELECT MAX(observed_at) AS newest_observed
+          FROM blocks WHERE observed_at >= ${cutoff}`;
+          return json(
+            buildChainActivity({
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              extrinsicRows,
+              blockRows,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/fees (#4832 gap-closure): per-UTC-day fee/tip
+        // series plus a windowed top-fee-payer leaderboard, mirroring
+        // src/analytics-live.mjs's loadChainFees. Postgres has no equivalent
+        // of the D1 loader's sample-capped rank+partition median CTEs --
+        // PERCENTILE_CONT computes exact per-day medians directly, but
+        // (confirmed live via psql) costs the same ~2.5s per-group-sort as
+        // chain/activity's DISTINCT count, so this route widens its budget
+        // too rather than trust a thin margin under the 3s default.
+        const chainFees = url.pathname.match(/^\/api\/v1\/chain\/fees$/);
+        if (chainFees) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const limit = chainLimit(url, 25);
+          const callModule = url.searchParams.get("call_module") || null;
+          const moduleClause = callModule
+            ? sql`AND call_module = ${callModule}`
+            : sql``;
+          await sql`SET LOCAL statement_timeout = '8000ms'`;
+          const dailyRows = await sql`
+          SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
+                 COUNT(*) AS extrinsic_count,
+                 SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
+          FROM extrinsics WHERE observed_at >= ${cutoff}
+            ${moduleClause}
+          GROUP BY day`;
+          const payerRows = await sql`
+          SELECT signer, SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao, COUNT(*) AS extrinsic_count
+          FROM extrinsics WHERE observed_at >= ${cutoff} AND signer IS NOT NULL
+            ${moduleClause}
+          GROUP BY signer ORDER BY total_fee_tao DESC, signer ASC LIMIT ${limit}`;
+          const medianRows = await sql`
+          SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
+                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY COALESCE(fee_tao, 0)) AS median_fee_tao,
+                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY COALESCE(tip_tao, 0)) AS median_tip_tao
+          FROM extrinsics WHERE observed_at >= ${cutoff}
+            ${moduleClause}
+          GROUP BY day`;
+          const freshRows = await sql`
+          SELECT MAX(observed_at) AS newest_observed
+          FROM extrinsics WHERE observed_at >= ${cutoff}`;
+          return json(
+            buildChainFees({
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              dailyRows,
+              medianRows,
+              payerRows,
             }),
           );
         }
