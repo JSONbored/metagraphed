@@ -15,6 +15,11 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-data-api",
   "main": "workers/data-api.mjs",
+  // Reached only through the main Worker's DATA_API service binding. Wrangler
+  // defaults workers.dev to enabled when a Worker has no public routes, so keep
+  // both public and preview URLs disabled for this private data tier.
+  "workers_dev": false,
+  "preview_urls": false,
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
   // Smart placement: run the Worker close to the Hyperdrive origin (self-hosted indexer

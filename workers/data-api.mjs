@@ -285,6 +285,7 @@ import {
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
 } from "../src/chain-identity-history.mjs";
 import {
   buildChainActivity,
@@ -317,14 +318,17 @@ function windowLabelFor(url, windows, defaultLabel) {
 }
 
 // A ?limit= value for the /chain/* network-wide analytics routes (#4832
-// Tier 2): by the time tryPostgresTier reaches this route, the D1-side
-// handler's own parseLimitParam has ALREADY validated it (absent ->
-// defaultLimit, present -> a clean positive integer <= its maxLimit) -- a
-// malformed limit 400s before ever reaching here, so this only needs to
-// replicate parseLimitParam's success path, not re-validate.
+// Tier 2). Most callers arrive via tryPostgresTier after the D1-side handler
+// has already validated the route-specific bounds, so this mirrors
+// parseLimitParam's success path. Direct data-worker routes that are reachable
+// before the main Worker must still call parseLimitParam themselves below.
 function chainLimit(url, defaultLimit) {
   const raw = url.searchParams.get("limit");
   return raw === null ? defaultLimit : Number(raw);
+}
+
+function queryError(error) {
+  return json({ error }, 400);
 }
 
 // Resolve a ?window= label to a YYYY-MM-DD cutoff date for a neuron_daily
@@ -367,6 +371,7 @@ import {
   DAY_PATTERN,
   clampLimit as clampRequestLimit,
   clampOffset as clampRequestOffset,
+  parseLimitParam,
 } from "./request-params.mjs";
 import {
   buildSubnetMetagraph,
@@ -4304,7 +4309,11 @@ export default {
           /^\/api\/v1\/chain\/identity-history$/,
         );
         if (chainIdentityHistory) {
-          const limit = chainLimit(url, CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT);
+          const { limit, error } = parseLimitParam(url, {
+            defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+            maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+          });
+          if (error) return queryError(error);
           const rows = await sql`
           SELECT id, netuid, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash
           FROM subnet_identity_history

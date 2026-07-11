@@ -4536,6 +4536,18 @@ test("GET /api/v1/chain/identity-history returns the network-wide feed", async (
   expect(body.changes[0].netuid).toBe(7);
 });
 
+test("GET /api/v1/chain/identity-history rejects oversized direct data-worker limits", async () => {
+  const res = await req("/api/v1/chain/identity-history?limit=1000000000");
+  expect(res.status).toBe(400);
+  expect(await res.json()).toEqual({
+    error: {
+      parameter: "limit",
+      message: "limit must be an integer between 1 and 200.",
+    },
+  });
+  expect(queryText()).not.toMatch(/FROM subnet_identity_history/);
+});
+
 test("GET /api/v1/chain/identity-history on a cold store returns a schema-stable empty feed", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/chain/identity-history");
