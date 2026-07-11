@@ -12,6 +12,7 @@ import {
   D1_STATEMENTS_PER_BATCH,
   runHealthProber,
   syncHealthChecksToPostgres,
+  syncHealthUptimeRollupToPostgres,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../src/health-prober.mjs";
@@ -2169,5 +2170,140 @@ describe("rollupDailyUptime (durable daily history)", () => {
       !order.some((o) => o.includes("DELETE FROM surface_checks")),
       "raw surface_checks must not be pruned when rollup fails",
     );
+  });
+});
+
+// #4832 gap-closure: syncHealthUptimeRollupToPostgres, exercised the same
+// way syncHealthChecksToPostgres is above -- indirectly through
+// rollupDailyUptime (private helper) -- proving the Postgres mirror attempt
+// fires (or safely no-ops) without affecting rollupDailyUptime's own
+// `rolled`/`days`/`error` result either way.
+describe("syncHealthUptimeRollupToPostgres", () => {
+  // rollupDailyUptime never calls this with an empty days array (it always
+  // computes exactly [today, yesterday]), so this guard is only reachable
+  // via a direct call, unlike the other tests below.
+  test("returns no_days for an empty or non-array days argument", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("{}") },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    assert.deepEqual(await syncHealthUptimeRollupToPostgres(env, [], 1), {
+      synced: false,
+      reason: "no_days",
+    });
+    assert.deepEqual(
+      await syncHealthUptimeRollupToPostgres(env, undefined, 1),
+      { synced: false, reason: "no_days" },
+    );
+  });
+
+  test("reports the upstream status when the DATA_API response isn't ok", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("nope", { status: 502 }) },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    assert.deepEqual(
+      await syncHealthUptimeRollupToPostgres(
+        env,
+        [{ date: "2026-06-13", start: 1, end: 2 }],
+        1,
+      ),
+      { synced: false, reason: "status_502" },
+    );
+  });
+});
+
+describe("syncHealthUptimeRollupToPostgres via rollupDailyUptime", () => {
+  test("no-ops (no DATA_API call) when DATA_API is not bound", async () => {
+    const result = await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: makeDb() },
+      { now: () => Date.UTC(2026, 5, 13, 10, 0, 0) },
+    );
+    assert.equal(result.rolled, true);
+  });
+
+  test("degrades to { rolled: false, error } when the batch throws a non-Error value", async () => {
+    // Exercises the `error?.message ?? error` fallback branch: a thrown
+    // plain string has no .message, unlike the sibling "d1 unavailable"
+    // Error test above.
+    const db = {
+      prepare: () => ({ bind: () => ({}) }),
+      async batch() {
+        throw "plain string failure";
+      },
+    };
+    const result = await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => Date.UTC(2026, 5, 13, 10, 0, 0) },
+    );
+    assert.deepEqual(result, {
+      rolled: false,
+      error: "plain string failure",
+    });
+  });
+
+  test("posts the UTC day boundaries to health-uptime-rollup-sync with the token header", async () => {
+    let request;
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      DATA_API: {
+        fetch: async (req) => {
+          request = req;
+          return new Response("{}", { status: 200 });
+        },
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const fixedNow = Date.UTC(2026, 5, 13, 10, 0, 0);
+    const result = await rollupDailyUptime(env, { now: () => fixedNow });
+    assert.equal(result.rolled, true);
+    assert.ok(request);
+    assert.equal(request.method, "POST");
+    assert.equal(
+      request.headers.get("x-health-checks-sync-token"),
+      "test-secret",
+    );
+    const body = await request.json();
+    assert.equal(body.days.length, 2);
+    assert.equal(body.days[0].date, "2026-06-13");
+    assert.equal(body.updated_at, fixedNow);
+  });
+
+  test("a DATA_API failure never affects rollupDailyUptime's own result", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await rollupDailyUptime(env, {
+      now: () => Date.UTC(2026, 5, 13, 10, 0, 0),
+    });
+    assert.equal(result.rolled, true);
+  });
+
+  test("still attempts the Postgres sync when D1's own rollup fails", async () => {
+    let called = false;
+    const db = {
+      prepare: () => ({ bind: () => ({}) }),
+      async batch() {
+        throw new Error("d1 unavailable");
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      DATA_API: {
+        fetch: async () => ((called = true), new Response("{}")),
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await rollupDailyUptime(env, {
+      now: () => Date.UTC(2026, 5, 13, 10, 0, 0),
+    });
+    assert.equal(result.rolled, false);
+    assert.equal(called, true);
   });
 });

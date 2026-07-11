@@ -1640,6 +1640,146 @@ async function handleHealthChecksSync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/health-uptime-rollup-sync (#4832 gap-closure) --
+//
+// Best-effort Postgres mirror of src/health-prober.mjs's rollupDailyUptime,
+// same shape/isolation as health-checks-sync above (reuses
+// HEALTH_CHECKS_SYNC_SECRET -- see that route's own header comment). Unlike
+// health-checks-sync, the request body carries only UTC day *boundaries*,
+// not precomputed rows -- this route computes the rollup itself from
+// surface_checks (already mirrored here by health-checks-sync), using
+// PERCENTILE_CONT for the p50/p95/p99 tail latency instead of replaying
+// D1/SQLite's rank-based CTE (src/health-sql.mjs's rankedChecksCte/
+// latencyStatColumns) column-for-column.
+const HEALTH_UPTIME_ROLLUP_SYNC_MAX_DAYS = 10;
+
+async function handleHealthUptimeRollupSync(request, env) {
+  if (!env.HEALTH_CHECKS_SYNC_SECRET) {
+    return writeJson(
+      { error: "health-checks sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(HEALTH_CHECKS_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.HEALTH_CHECKS_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${HEALTH_CHECKS_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(await request.text());
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const days = Array.isArray(parsed?.days) ? parsed.days : null;
+  const updatedAt = Number(parsed?.updated_at);
+  if (!days || !Number.isFinite(updatedAt)) {
+    return writeJson(
+      { error: "body must be {days:[{date,start,end}...], updated_at}" },
+      400,
+    );
+  }
+  if (days.length > HEALTH_UPTIME_ROLLUP_SYNC_MAX_DAYS) {
+    return writeJson(
+      {
+        error: `at most ${HEALTH_UPTIME_ROLLUP_SYNC_MAX_DAYS} days per request`,
+      },
+      413,
+    );
+  }
+  const validDays = days.filter(
+    (d) =>
+      d &&
+      typeof d.date === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(d.date) &&
+      Number.isFinite(d.start) &&
+      Number.isFinite(d.end),
+  );
+  if (!validDays.length) {
+    return writeJson({ ok: true, days_rolled: [] });
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+      for (const { date, start, end } of validDays) {
+        await sql`
+        WITH ranked AS (
+          SELECT
+            surface_id,
+            COALESCE(surface_key, surface_id) AS surface_key,
+            netuid,
+            ok,
+            latency_ms
+          FROM surface_checks
+          WHERE checked_at >= ${start} AND checked_at < ${end}
+        )
+        INSERT INTO surface_uptime_daily
+          (surface_id, surface_key, netuid, day, samples, ok_count, uptime_ratio,
+           latency_samples, avg_latency_ms, p50_latency_ms, p95_latency_ms,
+           p99_latency_ms, status, updated_at)
+        SELECT
+          MAX(surface_id) AS surface_id,
+          surface_key,
+          netuid,
+          ${date}::date AS day,
+          COUNT(*) AS samples,
+          SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count,
+          CASE
+            WHEN SUM(CASE WHEN ok THEN 1 ELSE 0 END) = COUNT(*) THEN 1.0
+            WHEN ROUND(SUM(CASE WHEN ok THEN 1 ELSE 0 END)::numeric / COUNT(*), 4) >= 1.0 THEN 0.9999
+            ELSE ROUND(SUM(CASE WHEN ok THEN 1 ELSE 0 END)::numeric / COUNT(*), 4)
+          END AS uptime_ratio,
+          COUNT(*) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS latency_samples,
+          ROUND(AVG(latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL))::int AS avg_latency_ms,
+          PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p50_latency_ms,
+          PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p95_latency_ms,
+          PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p99_latency_ms,
+          CASE
+            WHEN SUM(CASE WHEN ok THEN 1 ELSE 0 END) = COUNT(*) THEN 'ok'
+            WHEN SUM(CASE WHEN ok THEN 1 ELSE 0 END) = 0 THEN 'failed'
+            ELSE 'degraded'
+          END AS status,
+          ${updatedAt} AS updated_at
+        FROM ranked
+        GROUP BY surface_key, netuid
+        ON CONFLICT (surface_id, day) DO UPDATE SET
+          surface_key = excluded.surface_key,
+          netuid = excluded.netuid,
+          samples = excluded.samples,
+          ok_count = excluded.ok_count,
+          uptime_ratio = excluded.uptime_ratio,
+          latency_samples = excluded.latency_samples,
+          avg_latency_ms = excluded.avg_latency_ms,
+          p50_latency_ms = excluded.p50_latency_ms,
+          p95_latency_ms = excluded.p95_latency_ms,
+          p99_latency_ms = excluded.p99_latency_ms,
+          status = excluded.status,
+          updated_at = excluded.updated_at`;
+      }
+      return writeJson({
+        ok: true,
+        days_rolled: validDays.map((d) => d.date),
+      });
+    });
+  } catch (err) {
+    console.error("data-api health-uptime-rollup-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1788,6 +1928,12 @@ export default {
       url.pathname === "/api/v1/internal/health-checks-sync"
     ) {
       return handleHealthChecksSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/health-uptime-rollup-sync"
+    ) {
+      return handleHealthUptimeRollupSync(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);

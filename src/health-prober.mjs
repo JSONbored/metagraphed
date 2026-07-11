@@ -727,6 +727,46 @@ export async function syncHealthChecksToPostgres(env, probed) {
   }
 }
 
+// #4832 gap-closure: best-effort Postgres mirror of rollupDailyUptime below.
+// Reuses HEALTH_CHECKS_SYNC_SECRET (same conceptual sync boundary as
+// syncHealthChecksToPostgres, not a separate secret) since this fires from
+// the same hourly cron right alongside it. Unlike syncHealthChecksToPostgres
+// -- which ships the already-computed probed batch -- this only ships the
+// UTC day *boundaries*; Postgres computes its own rollup from its own
+// surface_checks (already populated by the sibling sync), using
+// PERCENTILE_CONT for the p50/p95/p99 tail instead of D1/SQLite's
+// rank-based CTE (see src/health-sql.mjs's rankedChecksCte/
+// latencyStatColumns, which this mirrors semantically, not textually).
+export async function syncHealthUptimeRollupToPostgres(env, days, updatedAt) {
+  if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {
+    return { synced: false, reason: "unavailable" };
+  }
+  if (!Array.isArray(days) || days.length === 0) {
+    return { synced: false, reason: "no_days" };
+  }
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/health-uptime-rollup-sync",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-health-checks-sync-token": env.HEALTH_CHECKS_SYNC_SECRET,
+          },
+          body: JSON.stringify({ days, updated_at: updatedAt }),
+        },
+      ),
+    );
+    if (!upstream.ok) {
+      return { synced: false, reason: `status_${upstream.status}` };
+    }
+    return { synced: true };
+  } catch {
+    return { synced: false, reason: "fetch_failed" };
+  }
+}
+
 // UTC day bounds for a given epoch-ms instant: { date: "YYYY-MM-DD", start, end }.
 function utcDayBounds(ms) {
   const d = new Date(ms);
@@ -801,18 +841,27 @@ export async function rollupDailyUptime(env, overrides = {}) {
      ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET${conflictColumns}
      ON CONFLICT(surface_id, day) DO UPDATE SET${conflictColumns}`,
   );
+  let result;
   try {
     await db.batch(
       days.map(({ date, start, end }) => stmt.bind(start, end, date, runAt)),
     );
-    return { rolled: true, days: days.map((d) => d.date) };
+    result = { rolled: true, days: days.map((d) => d.date) };
   } catch (error) {
     // Don't swallow silently: a failing INSERT here (e.g. a missing column from
     // un-applied schema migration) freezes the daily uptime rollup invisibly.
     // Surface the reason so the hourly cron's result is diagnosable.
     console.error("[rollupDailyUptime]", String(error?.message ?? error));
-    return { rolled: false, error: String(error?.message ?? error) };
+    result = { rolled: false, error: String(error?.message ?? error) };
   }
+  // #4832 gap-closure: best-effort Postgres mirror, independent of the D1
+  // outcome above -- Postgres computes its OWN rollup from its own
+  // surface_checks (already populated by syncHealthChecksToPostgres in
+  // runHealthProber), it doesn't need D1's rolled-up rows shipped to it. A
+  // D1 failure here doesn't block attempting the Postgres side, and vice
+  // versa; each store's rollup is independently best-effort.
+  await syncHealthUptimeRollupToPostgres(env, days, runAt);
+  return result;
 }
 
 // Hourly maintenance cron: prune time-series rows older than the retention

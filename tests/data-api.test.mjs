@@ -67,6 +67,7 @@ const subnetIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
 // sync routes, this one just bulk-inserts + upserts the same probed batch
 // D1/KV already received, so there's nothing to prime beyond the failure hook.
 const healthChecksSyncFailure = vi.hoisted(() => ({ error: null }));
+const healthUptimeRollupSyncFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -140,6 +141,12 @@ vi.mock("postgres", () => ({
         /INSERT INTO surface_checks\b/.test(text)
       ) {
         return Promise.reject(healthChecksSyncFailure.error);
+      }
+      if (
+        healthUptimeRollupSyncFailure.error &&
+        /INSERT INTO surface_uptime_daily\b/.test(text)
+      ) {
+        return Promise.reject(healthUptimeRollupSyncFailure.error);
       }
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
@@ -222,6 +229,7 @@ beforeEach(() => {
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
   healthChecksSyncFailure.error = null;
+  healthUptimeRollupSyncFailure.error = null;
   mockRows.current = [
     {
       block_number: "123",
@@ -3931,6 +3939,150 @@ test("health-checks-sync maps a DB failure to a clean 502 instead of throwing", 
   healthChecksSyncFailure.error = new Error("connection reset");
   const res = await postHealthChecks(
     { probed: [probedRow()] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+// #4832 gap-closure: health-uptime-rollup-sync -- best-effort Postgres
+// mirror of rollupDailyUptime, reusing HEALTH_CHECKS_SYNC_SECRET (same
+// conceptual sync boundary, not a separate secret). Unlike health-checks-
+// sync, the body carries only UTC day boundaries; Postgres computes its own
+// rollup from its own surface_checks via PERCENTILE_CONT.
+function dayBounds(date, start, end) {
+  return { date, start, end };
+}
+
+function postHealthUptimeRollup(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-health-checks-sync-token"] = secret;
+  return req("/api/v1/internal/health-uptime-rollup-sync", {
+    method: "POST",
+    headers,
+    body:
+      raw !== undefined
+        ? raw
+        : JSON.stringify(body ?? { days: [], updated_at: 1 }),
+  });
+}
+
+test("health-uptime-rollup-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postHealthUptimeRollup(
+    { days: [dayBounds("2026-07-11", 1, 2)], updated_at: 1 },
+    { secret: "wrong" },
+  );
+  expect(wrong.status).toBe(401);
+  const missing = await postHealthUptimeRollup({
+    days: [dayBounds("2026-07-11", 1, 2)],
+    updated_at: 1,
+  });
+  expect(missing.status).toBe(401);
+});
+
+test("health-uptime-rollup-sync is disabled (503) when HEALTH_CHECKS_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/health-uptime-rollup-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
+      },
+      body: JSON.stringify({
+        days: [dayBounds("2026-07-11", 1, 2)],
+        updated_at: 1,
+      }),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("health-uptime-rollup-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/health-uptime-rollup-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
+      },
+      body: JSON.stringify({
+        days: [dayBounds("2026-07-11", 1, 2)],
+        updated_at: 1,
+      }),
+    }),
+    { HEALTH_CHECKS_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("health-uptime-rollup-sync rejects malformed JSON (400)", async () => {
+  const res = await postHealthUptimeRollup(null, {
+    secret: HEALTH_CHECKS_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("health-uptime-rollup-sync rejects a body missing days or updated_at (400)", async () => {
+  const noDays = await postHealthUptimeRollup(
+    { updated_at: 1 },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(noDays.status).toBe(400);
+  const noUpdatedAt = await postHealthUptimeRollup(
+    { days: [dayBounds("2026-07-11", 1, 2)] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(noUpdatedAt.status).toBe(400);
+});
+
+test("health-uptime-rollup-sync rejects more than the day cap (413)", async () => {
+  const many = Array.from({ length: 11 }, (_, i) =>
+    dayBounds(`2026-07-${String(i + 1).padStart(2, "0")}`, i, i + 1),
+  );
+  const res = await postHealthUptimeRollup(
+    { days: many, updated_at: 1 },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(413);
+});
+
+test("health-uptime-rollup-sync silently skips a malformed day entry, no error", async () => {
+  const res = await postHealthUptimeRollup(
+    { days: [{ date: "not-a-date", start: 1, end: 2 }], updated_at: 1 },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, days_rolled: [] });
+});
+
+test("health-uptime-rollup-sync rolls up each valid day via PERCENTILE_CONT", async () => {
+  const res = await postHealthUptimeRollup(
+    {
+      days: [
+        dayBounds("2026-07-11", 1780000000000, 1780086400000),
+        dayBounds("2026-07-10", 1779913600000, 1780000000000),
+      ],
+      updated_at: 1780086400000,
+    },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, days_rolled: ["2026-07-11", "2026-07-10"] });
+  expect(queryText()).toMatch(/INSERT INTO surface_uptime_daily\b/);
+  expect(queryText()).toMatch(/PERCENTILE_CONT\(0\.5\)/);
+  expect(queryText()).toMatch(/ON CONFLICT \(surface_id, day\) DO UPDATE/);
+});
+
+test("health-uptime-rollup-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  healthUptimeRollupSyncFailure.error = new Error("connection reset");
+  const res = await postHealthUptimeRollup(
+    { days: [dayBounds("2026-07-11", 1, 2)], updated_at: 1 },
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(502);
