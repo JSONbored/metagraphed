@@ -215,7 +215,23 @@ import {
   buildCounterpartyRelationship,
   COUNTERPARTIES_SCAN_CAP,
 } from "../src/counterparties.mjs";
-import { ANALYTICS_WINDOWS, DEFAULT_ANALYTICS_WINDOW } from "./config.mjs";
+import {
+  ANALYTICS_WINDOWS,
+  DEFAULT_ANALYTICS_WINDOW,
+  HEALTH_TREND_WINDOWS,
+  MAX_BULK_TREND_ROWS,
+  MAX_INCIDENT_ROWS,
+  MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
+} from "./config.mjs";
+import {
+  formatBulkTrends,
+  formatTrends,
+  formatPercentiles,
+  formatIncidents,
+  formatGlobalIncidents,
+  INCIDENT_GAP_MS,
+  MIN_INCIDENT_SAMPLES,
+} from "../src/health-serving.mjs";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
@@ -3530,6 +3546,266 @@ export default {
               dailyRows,
               medianRows,
               payerRows,
+            }),
+          );
+        }
+
+        // GET /api/v1/health/trends (#4832 gap-closure): all-subnet 7d/30d
+        // daily uptime + latency matrix from the daily rollup, mirroring
+        // src/bulk-health-trends.mjs's loadBulkHealthTrends. Reads
+        // surface_uptime_daily -- populated by the health-uptime-rollup-sync
+        // write route (#4885), not surface_checks -- so this route stays
+        // cheap regardless of the raw window's size.
+        const bulkHealthTrends = url.pathname.match(
+          /^\/api\/v1\/health\/trends$/,
+        );
+        if (bulkHealthTrends) {
+          const now = Date.now();
+          const maxWindowDays = Math.max(
+            ...Object.values(HEALTH_TREND_WINDOWS),
+          );
+          const cutoffDay = new Date(now - maxWindowDays * ANALYTICS_DAY_MS)
+            .toISOString()
+            .slice(0, 10);
+          const rows = await sql`
+          SELECT netuid, day::text AS date, SUM(samples) AS total, SUM(ok_count) AS ok_count,
+                 SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END) AS latency_samples,
+                 CASE WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END) > 0
+                   THEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * COALESCE(latency_samples, samples) ELSE 0 END)::float8
+                        / SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END)
+                   ELSE NULL END AS avg_latency_ms
+          FROM surface_uptime_daily WHERE day >= ${cutoffDay}::date
+          GROUP BY netuid, day ORDER BY netuid, day LIMIT ${MAX_BULK_TREND_ROWS}`;
+          const freshRows = await sql`
+          SELECT MAX(updated_at) AS newest_observed
+          FROM surface_uptime_daily WHERE day >= ${cutoffDay}::date`;
+          const windows = {};
+          for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
+            const windowCutoff = new Date(now - days * ANALYTICS_DAY_MS)
+              .toISOString()
+              .slice(0, 10);
+            windows[label] = rows.filter(
+              (row) => String(row.date) >= windowCutoff,
+            );
+          }
+          return json(
+            formatBulkTrends({
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              windows,
+              windowDays: HEALTH_TREND_WINDOWS,
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/health/trends (#4832 gap-closure):
+        // per-subnet 7d/30d uptime + latency trends from the raw
+        // surface_checks window, mirroring src/analytics-live.mjs's
+        // loadSubnetHealthTrends. `ok` is BOOLEAN here (D1's `ok = 1`
+        // becomes a bare `ok`); the SQLite rank-based p50/p95/p99 pick
+        // (src/health-sql.mjs's latencyStatColumns) becomes PERCENTILE_CONT
+        // -- live-verified via psql (2026-07-11) at sub-millisecond cost
+        // against current production volume (~350 rows across 117 surfaces,
+        // 30 min of the 15-min cron so far).
+        const subnetHealthTrends = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/health\/trends$/,
+        );
+        if (subnetHealthTrends) {
+          const netuid = Number(subnetHealthTrends[1]);
+          const now = Date.now();
+          const windows = {};
+          for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
+            const cutoff = now - days * ANALYTICS_DAY_MS;
+            windows[label] = await sql`
+            SELECT MAX(surface_id) AS surface_id,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count,
+                   COUNT(*) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS latency_samples,
+                   AVG(latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS avg_latency_ms,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p50,
+                   PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p95,
+                   PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p99
+            FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${cutoff}
+            GROUP BY COALESCE(surface_key, surface_id)`;
+          }
+          const freshRows = await sql`
+          SELECT MAX(checked_at) AS newest_observed
+          FROM surface_checks WHERE netuid = ${netuid}`;
+          return json(
+            formatTrends({
+              netuid,
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              windows,
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/health/percentiles?window= (#4832
+        // gap-closure): p50/p95/p99 + avg/min/max latency per surface,
+        // mirroring src/analytics-live.mjs's loadSubnetPercentiles.
+        const subnetHealthPercentiles = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/health\/percentiles$/,
+        );
+        if (subnetHealthPercentiles) {
+          const netuid = Number(subnetHealthPercentiles[1]);
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const rows = await sql`
+          SELECT MAX(surface_id) AS surface_id,
+                 COUNT(*) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS latency_samples,
+                 AVG(latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS avg_latency_ms,
+                 MIN(latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS min_latency_ms,
+                 MAX(latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS max_latency_ms,
+                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p50,
+                 PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p95,
+                 PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS p99
+          FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${cutoff}
+          GROUP BY COALESCE(surface_key, surface_id)
+          HAVING COUNT(*) FILTER (WHERE ok AND latency_ms IS NOT NULL) > 0`;
+          const freshRows = await sql`
+          SELECT MAX(checked_at) AS newest_observed
+          FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${cutoff}`;
+          return json(
+            formatPercentiles({
+              netuid,
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              rows,
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/health/incidents?window= (#4832
+        // gap-closure): per-surface SLA + reconstructed downtime incidents,
+        // mirroring src/analytics-live.mjs's loadSubnetIncidents. The
+        // gap-island grouping (LAG/window functions) is syntactically
+        // near-identical between SQLite and Postgres -- live-verified via
+        // psql (2026-07-11) -- the only real adaptation is `ok` being
+        // BOOLEAN here (`ok = 1`/`ok = 0` become bare `ok`/`NOT ok`).
+        const subnetHealthIncidents = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/health\/incidents$/,
+        );
+        if (subnetHealthIncidents) {
+          const netuid = Number(subnetHealthIncidents[1]);
+          const since = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const slaRows = await sql`
+          SELECT MAX(surface_id) AS surface_id,
+                 COUNT(*) AS total,
+                 SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count
+          FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}
+          GROUP BY COALESCE(surface_key, surface_id)`;
+          const incidentRows = await sql`
+          WITH checks AS (
+            SELECT COALESCE(surface_key, surface_id) AS surface_key,
+                   surface_id, checked_at, ok,
+                   checked_at - LAG(checked_at)
+                     OVER (PARTITION BY COALESCE(surface_key, surface_id) ORDER BY checked_at) AS gap
+            FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}
+          ),
+          grouped AS (
+            SELECT surface_key, surface_id, checked_at, ok,
+                   SUM(CASE WHEN ok OR gap IS NULL OR gap > ${INCIDENT_GAP_MS} THEN 1 ELSE 0 END)
+                     OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
+            FROM checks
+          ),
+          incidents AS (
+            SELECT MAX(surface_id) AS surface_id, surface_key,
+                   MIN(checked_at) AS started_at, MAX(checked_at) AS ended_at,
+                   COUNT(*) AS failed_samples
+            FROM grouped WHERE NOT ok
+            GROUP BY surface_key, grp
+            HAVING COUNT(*) >= ${MIN_INCIDENT_SAMPLES}
+          )
+          SELECT surface_id, surface_key, started_at, ended_at, failed_samples
+          FROM (
+            SELECT surface_id, surface_key, started_at, ended_at, failed_samples,
+                   ROW_NUMBER() OVER (PARTITION BY surface_key ORDER BY started_at) AS rn
+            FROM incidents
+          ) ranked
+          WHERE rn <= ${MAX_INCIDENT_ROWS}
+          ORDER BY surface_id, started_at`;
+          const freshRows = await sql`
+          SELECT MAX(checked_at) AS newest_observed
+          FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}`;
+          return json(
+            formatIncidents({
+              netuid,
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              slaRows,
+              incidentRows,
+              maxIncidents: MAX_INCIDENT_ROWS,
+            }),
+          );
+        }
+
+        // GET /api/v1/incidents?window= (#4832 gap-closure): global,
+        // cross-subnet incident ledger -- the same gap-island grouping as
+        // the per-subnet route above but with no netuid filter, grouped by
+        // (netuid, surface_key) and capped to the newest
+        // MAX_GLOBAL_INCIDENT_SOURCE_ROWS checks, mirroring
+        // GLOBAL_INCIDENTS_SQL in workers/request-handlers/analytics.mjs.
+        const globalIncidents = url.pathname.match(/^\/api\/v1\/incidents$/);
+        if (globalIncidents) {
+          const since = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const incidentRows = await sql`
+          WITH recent_checks AS (
+            SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key,
+                   surface_id, checked_at, ok
+            FROM surface_checks WHERE checked_at >= ${since}
+            ORDER BY checked_at DESC LIMIT ${MAX_GLOBAL_INCIDENT_SOURCE_ROWS}
+          ),
+          checks AS (
+            SELECT netuid, surface_key, surface_id, checked_at, ok,
+                   checked_at - LAG(checked_at)
+                     OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS gap
+            FROM recent_checks
+          ),
+          grouped AS (
+            SELECT netuid, surface_key, surface_id, checked_at, ok,
+                   SUM(CASE WHEN ok OR gap IS NULL OR gap > ${INCIDENT_GAP_MS} THEN 1 ELSE 0 END)
+                     OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
+            FROM checks
+          )
+          SELECT netuid, MAX(surface_id) AS surface_id, surface_key,
+                 MIN(checked_at) AS started_at, MAX(checked_at) AS ended_at,
+                 COUNT(*) AS failed_samples
+          FROM grouped WHERE NOT ok
+          GROUP BY netuid, surface_key, grp
+          HAVING COUNT(*) >= ${MIN_INCIDENT_SAMPLES}
+          ORDER BY started_at DESC
+          LIMIT ${MAX_INCIDENT_ROWS}`;
+          const freshRows = await sql`
+          SELECT MAX(checked_at) AS newest_observed
+          FROM surface_checks WHERE checked_at >= ${since}`;
+          return json(
+            formatGlobalIncidents({
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              incidentRows,
+              maxIncidents: MAX_INCIDENT_ROWS,
             }),
           );
         }

@@ -477,9 +477,25 @@ export async function handleBulkHealthTrends(
 
   return withEdgeCache(request, ctx, env, "bulk-trends", async () => {
     const meta = await readHealthMetaKv(env);
-    const { data, rows } = await loadBulkHealthTrends(d1Runner(env), {
-      observedAt: meta?.last_run_at || null,
-    });
+    // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE is a NEW flag (unlike every
+    // other tier's tryPostgresTier wiring this session, which reused an
+    // already-flipped flag on an already-backfilled table) -- surface_checks/
+    // surface_uptime_daily only started accumulating from the dual-write
+    // landing (#4881/#4885), with no historical backfill. Left unset in
+    // wrangler.jsonc deliberately: an empty/short Postgres window is still a
+    // valid 200 response, so tryPostgresTier's error-only fallback can't
+    // detect "technically fine but missing D1's history" the way it detects
+    // a hard failure. Flip only once Postgres has accumulated a real 30-day
+    // window.
+    let isFallback = false;
+    let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+    if (!data) {
+      const result = await loadBulkHealthTrends(d1Runner(env), {
+        observedAt: meta?.last_run_at || null,
+      });
+      data = result.data;
+      isFallback = hasD1FallbackRows(result.rows);
+    }
     const response = await envelopeResponse(
       request,
       {
@@ -495,9 +511,7 @@ export async function handleBulkHealthTrends(
       },
       "short",
     );
-    return hasD1FallbackRows(rows)
-      ? markD1FallbackResponse(response)
-      : response;
+    return isFallback ? markD1FallbackResponse(response) : response;
   });
 }
 
@@ -513,21 +527,27 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   return withEdgeCache(request, ctx, env, "trends", async () => {
-    // Read through the shared d1All (rather than handing the loader the bare
-    // db) so a failure is still logged + marked as a D1 fallback (the
-    // dark-serve log contract) — usedFallback tracks it across the loader's
-    // parallel per-window reads since the formatted result no longer exposes
-    // the raw row arrays hasD1FallbackRows used to check.
+    // See handleBulkHealthTrends' own comment: METAGRAPH_HEALTH_SOURCE is a
+    // new, deliberately-unflipped flag pending Postgres accumulating a real
+    // history window.
     let usedFallback = false;
-    const d1 = async (sql, params) => {
-      const rows = await d1All(env, sql, params);
-      if (hasD1FallbackRows(rows)) usedFallback = true;
-      return rows;
-    };
-    const meta = await readHealthMetaKv(env);
-    const data = await loadSubnetHealthTrends(d1, netuid, {
-      observedAt: meta?.last_run_at || null,
-    });
+    let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+    if (!data) {
+      // Read through the shared d1All (rather than handing the loader the bare
+      // db) so a failure is still logged + marked as a D1 fallback (the
+      // dark-serve log contract) — usedFallback tracks it across the loader's
+      // parallel per-window reads since the formatted result no longer exposes
+      // the raw row arrays hasD1FallbackRows used to check.
+      const d1 = async (sql, params) => {
+        const rows = await d1All(env, sql, params);
+        if (hasD1FallbackRows(rows)) usedFallback = true;
+        return rows;
+      };
+      const meta = await readHealthMetaKv(env);
+      data = await loadSubnetHealthTrends(d1, netuid, {
+        observedAt: meta?.last_run_at || null,
+      });
+    }
     const response = await envelopeResponse(
       request,
       {
@@ -565,20 +585,25 @@ export async function handleHealthPercentiles(
     env,
     "percentiles",
     async () => {
-      // Wrap d1All so a failure is still logged + marked as a D1 fallback (the
-      // dark-serve contract), since the formatted result no longer exposes the
-      // raw rows hasD1FallbackRows used to check (mirrors handleHealthTrends).
+      // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
       let usedFallback = false;
-      const d1 = async (sql, params) => {
-        const rows = await d1All(env, sql, params);
-        if (hasD1FallbackRows(rows)) usedFallback = true;
-        return rows;
-      };
-      const meta = await readHealthMetaKv(env);
-      const data = await loadSubnetPercentiles(d1, netuid, {
-        window: label,
-        observedAt: meta?.last_run_at || null,
-      });
+      let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+      if (!data) {
+        // Wrap d1All so a failure is still logged + marked as a D1 fallback
+        // (the dark-serve contract), since the formatted result no longer
+        // exposes the raw rows hasD1FallbackRows used to check (mirrors
+        // handleHealthTrends).
+        const d1 = async (sql, params) => {
+          const rows = await d1All(env, sql, params);
+          if (hasD1FallbackRows(rows)) usedFallback = true;
+          return rows;
+        };
+        const meta = await readHealthMetaKv(env);
+        data = await loadSubnetPercentiles(d1, netuid, {
+          window: label,
+          observedAt: meta?.last_run_at || null,
+        });
+      }
       const response = await envelopeResponse(
         request,
         {
@@ -613,21 +638,25 @@ export async function handleHealthIncidents(
     env,
     "incidents",
     async () => {
-      // Wrap d1All so a failure in either read is still logged + marked as a D1
-      // fallback (the dark-serve contract), since the formatted result no longer
-      // exposes the raw row arrays hasD1FallbackRows used to check (mirrors
-      // handleHealthTrends / handleHealthPercentiles).
+      // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
       let usedFallback = false;
-      const d1 = async (sql, params) => {
-        const rows = await d1All(env, sql, params);
-        if (hasD1FallbackRows(rows)) usedFallback = true;
-        return rows;
-      };
-      const meta = await readHealthMetaKv(env);
-      const data = await loadSubnetIncidents(d1, netuid, {
-        window: label,
-        observedAt: meta?.last_run_at || null,
-      });
+      let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+      if (!data) {
+        // Wrap d1All so a failure in either read is still logged + marked
+        // as a D1 fallback (the dark-serve contract), since the formatted
+        // result no longer exposes the raw row arrays hasD1FallbackRows
+        // used to check (mirrors handleHealthTrends / handleHealthPercentiles).
+        const d1 = async (sql, params) => {
+          const rows = await d1All(env, sql, params);
+          if (hasD1FallbackRows(rows)) usedFallback = true;
+          return rows;
+        };
+        const meta = await readHealthMetaKv(env);
+        data = await loadSubnetIncidents(d1, netuid, {
+          window: label,
+          observedAt: meta?.last_run_at || null,
+        });
+      }
       const response = await envelopeResponse(
         request,
         {
@@ -726,10 +755,16 @@ export async function handleGlobalIncidents(request, env, url) {
   if (error) {
     return analyticsQueryError(error);
   }
-  const { data, incidentRows } = await loadGlobalIncidentsLedger(env, {
-    label,
-    days,
-  });
+  // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE. Only
+  // this REST handler is wired -- loadGlobalIncidentsLedger's other caller
+  // (a content feed, workers/api.mjs) stays D1-only, out of scope here.
+  let isFallback = false;
+  let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+  if (!data) {
+    const result = await loadGlobalIncidentsLedger(env, { label, days });
+    data = result.data;
+    isFallback = hasD1FallbackRows(result.incidentRows);
+  }
   const response = await envelopeResponse(
     request,
     {
@@ -742,9 +777,7 @@ export async function handleGlobalIncidents(request, env, url) {
     },
     "short",
   );
-  return hasD1FallbackRows(incidentRows)
-    ? markD1FallbackResponse(response)
-    : response;
+  return isFallback ? markD1FallbackResponse(response) : response;
 }
 
 // Explicit CSV column order for the chain-analytics ?format=csv exports (#2532).

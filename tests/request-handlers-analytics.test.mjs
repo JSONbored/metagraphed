@@ -1922,3 +1922,201 @@ describe("chain analytics extrinsics-derived: postgres tier wiring", () => {
     });
   }
 });
+
+// #4832 gap-closure: METAGRAPH_HEALTH_SOURCE is a NEW flag, deliberately
+// left unset in wrangler.jsonc (see handleBulkHealthTrends' own header
+// comment) -- these tests only prove the wiring, not a live flip.
+describe("health analytics: postgres tier wiring", () => {
+  test("handleBulkHealthTrends: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, windows: { "7d": {}, "30d": {} } }),
+    };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    const res = await handleBulkHealthTrends(
+      req("/api/v1/health/trends"),
+      env,
+      url("/api/v1/health/trends"),
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.schema_version, 1);
+    assert.equal(d1Called, false);
+  });
+
+  test("handleBulkHealthTrends: flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const p = "/api/v1/health/trends";
+    const res = await handleBulkHealthTrends(req(p), env, url(p), ctx);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.schema_version, 1);
+  });
+
+  test("handleHealthTrends: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, netuid: NETUID, windows: {} }),
+    };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    const p = `/api/v1/subnets/${NETUID}/health/trends`;
+    const res = await handleHealthTrends(req(p), env, NETUID, url(p), ctx);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(d1Called, false);
+  });
+
+  test("handleHealthTrends: flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const p = `/api/v1/subnets/${NETUID}/health/trends`;
+    const res = await handleHealthTrends(req(p), env, NETUID, url(p), ctx);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.schema_version, 1);
+  });
+
+  test("handleHealthPercentiles: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
+    };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    const p = `/api/v1/subnets/${NETUID}/health/percentiles?window=7d`;
+    const res = await handleHealthPercentiles(req(p), env, NETUID, url(p), ctx);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(d1Called, false);
+  });
+
+  test("handleHealthPercentiles: flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const p = `/api/v1/subnets/${NETUID}/health/percentiles?window=7d`;
+    const res = await handleHealthPercentiles(req(p), env, NETUID, url(p), ctx);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.schema_version, 1);
+  });
+
+  test("handleHealthIncidents: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
+    };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    const p = `/api/v1/subnets/${NETUID}/health/incidents?window=7d`;
+    const res = await handleHealthIncidents(req(p), env, NETUID, url(p), ctx);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(d1Called, false);
+  });
+
+  test("handleHealthIncidents: flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const p = `/api/v1/subnets/${NETUID}/health/incidents?window=7d`;
+    const res = await handleHealthIncidents(req(p), env, NETUID, url(p), ctx);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.schema_version, 1);
+  });
+
+  test("handleGlobalIncidents: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          summary: { incident_count: 0 },
+          surfaces: [],
+        }),
+    };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    const p = "/api/v1/incidents?window=7d";
+    const res = await handleGlobalIncidents(req(p), env, url(p));
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.schema_version, 1);
+    assert.equal(d1Called, false);
+  });
+
+  test("handleGlobalIncidents: flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const p = "/api/v1/incidents?window=7d";
+    const res = await handleGlobalIncidents(req(p), env, url(p));
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.schema_version, 1);
+  });
+});

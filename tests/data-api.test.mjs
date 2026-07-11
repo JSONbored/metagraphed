@@ -4746,3 +4746,169 @@ test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause ac
   expect(res.status).toBe(200);
   expect(queryText()).toContain("call_module = ");
 });
+
+// #4832 gap-closure: health-tracking read routes. All 5 read from
+// surface_checks/surface_uptime_daily -- populated by the health-checks-sync
+// / health-uptime-rollup-sync write routes -- and are gated behind the
+// deliberately-unflipped METAGRAPH_HEALTH_SOURCE flag (see
+// handleBulkHealthTrends' own header comment in
+// workers/request-handlers/analytics.mjs), so these tests only prove the
+// SQL/routing wiring, matching every other route's test style regardless.
+
+test("GET /api/v1/health/trends: aggregates surface_uptime_daily into 7d/30d windows", async () => {
+  mockQueue.current = [
+    [], // session-scoped SET statement_timeout
+    [
+      {
+        netuid: 7,
+        date: "2026-07-10",
+        total: 100,
+        ok_count: 98,
+        latency_samples: 96,
+        avg_latency_ms: 120,
+      },
+    ],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/health/trends");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.windows["7d"].subnets[0].netuid).toBe(7);
+});
+
+test("GET /api/v1/health/trends on a cold store returns a schema-stable empty matrix", async () => {
+  mockQueue.current = [[], [], []];
+  const res = await req("/api/v1/health/trends");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.windows["7d"].subnet_count).toBe(0);
+});
+
+test("GET /api/v1/subnets/:netuid/health/trends: merges the 7d+30d PERCENTILE_CONT windows", async () => {
+  mockQueue.current = [
+    [],
+    [
+      {
+        surface_id: "sn-7-api",
+        total: 10,
+        ok_count: 9,
+        latency_samples: 9,
+        avg_latency_ms: 100,
+        p50: 90,
+        p95: 150,
+        p99: 180,
+      },
+    ],
+    [
+      {
+        surface_id: "sn-7-api",
+        total: 40,
+        ok_count: 38,
+        latency_samples: 38,
+        avg_latency_ms: 105,
+        p50: 92,
+        p95: 155,
+        p99: 190,
+      },
+    ],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/subnets/7/health/trends");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.windows["7d"].surfaces[0].surface_id).toBe("sn-7-api");
+  expect(body.windows["30d"].surfaces[0].samples).toBe(40);
+});
+
+test("GET /api/v1/subnets/:netuid/health/percentiles: p50/p95/p99 via PERCENTILE_CONT", async () => {
+  mockQueue.current = [
+    [],
+    [
+      {
+        surface_id: "sn-7-api",
+        latency_samples: 20,
+        avg_latency_ms: 110,
+        min_latency_ms: 40,
+        max_latency_ms: 300,
+        p50: 100,
+        p95: 200,
+        p99: 280,
+      },
+    ],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/subnets/7/health/percentiles?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.surfaces[0].latency_ms.p99).toBe(280);
+});
+
+test("GET /api/v1/subnets/:netuid/health/percentiles on a cold store returns surfaces:[]", async () => {
+  mockQueue.current = [[], [], []];
+  const res = await req("/api/v1/subnets/7/health/percentiles");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.surfaces).toEqual([]);
+});
+
+test("GET /api/v1/subnets/:netuid/health/incidents: SLA rollup + gap-island incidents", async () => {
+  mockQueue.current = [
+    [],
+    [{ surface_id: "sn-7-api", total: 100, ok_count: 92 }],
+    [
+      {
+        surface_id: "sn-7-api",
+        surface_key: "sn-7-api",
+        started_at: "1780000000000",
+        ended_at: "1780000600000",
+        failed_samples: 3,
+      },
+    ],
+    [{ newest_observed: "1780000600000" }],
+  ];
+  const res = await req("/api/v1/subnets/7/health/incidents?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.surfaces[0].incident_count).toBe(1);
+  expect(body.surfaces[0].incidents[0].failed_samples).toBe(3);
+});
+
+test("GET /api/v1/subnets/:netuid/health/incidents on a cold store returns surfaces:[]", async () => {
+  mockQueue.current = [[], [], [], []];
+  const res = await req("/api/v1/subnets/7/health/incidents");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.surfaces).toEqual([]);
+});
+
+test("GET /api/v1/incidents: global gap-island ledger across every subnet", async () => {
+  mockQueue.current = [
+    [],
+    [
+      {
+        netuid: 7,
+        surface_id: "sn-7-api",
+        surface_key: "sn-7-api",
+        started_at: "1780000000000",
+        ended_at: "1780000600000",
+        failed_samples: 2,
+      },
+    ],
+    [{ newest_observed: "1780000600000" }],
+  ];
+  const res = await req("/api/v1/incidents?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.surfaces[0].netuid).toBe(7);
+  expect(body.summary.incident_count).toBe(1);
+});
+
+test("GET /api/v1/incidents on a cold store returns a schema-stable empty ledger", async () => {
+  mockQueue.current = [[], [], []];
+  const res = await req("/api/v1/incidents");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.summary.incident_count).toBe(0);
+  expect(body.surfaces).toEqual([]);
+});
