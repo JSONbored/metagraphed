@@ -3797,3 +3797,359 @@ test("GET /api/v1/subnets/:netuid/identity-history?limit=1 emits a next_cursor w
   const body = await res.json();
   expect(body.next_cursor).not.toBeNull();
 });
+
+// #4832 Tier 2: the 12 chain-wide account_events analytics routes
+// (mirroring src/chain-*.mjs's D1 loaders). These reuse the ALREADY-flipped
+// METAGRAPH_ACCOUNT_EVENTS_SOURCE flag (no new table/secret), so entities.mjs
+// -- err, analytics.mjs's -- own tryPostgresTier wiring is tested at the
+// handler layer (tests/chain-*.test.mjs); these exercise the actual SQL/
+// shaping in workers/data-api.mjs itself, including the cold-store guard
+// branch each "network + subnet" route shares.
+
+test("GET /api/v1/chain/weights: warm store runs both the network + subnet queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [{ weight_sets: 3, distinct_setters: 2, newest_observed: "1780000000000" }],
+    [{ netuid: 1, weight_sets: 3, distinct_setters: 2 }],
+  ];
+  const res = await req("/api/v1/chain/weights?window=7d&limit=5");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/weights: cold store skips the subnet query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [], // empty network row -- networkRows[0] ?? null falls back to null
+  ];
+  const res = await req("/api/v1/chain/weights");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
+test("GET /api/v1/chain/weights/setters: runs the leaderboard + totals queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [
+      {
+        hotkey: "5Pg",
+        uid: null,
+        weight_sets: 2,
+        first_set: "1",
+        last_set: "2",
+      },
+    ],
+    [{ weight_sets: 2, distinct_setters: 1, newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/chain/weights/setters?window=30d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.setter_count).toBe(1);
+});
+
+test("GET /api/v1/chain/weights/setters: an empty totals row falls back to null", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+    [],
+  ];
+  const res = await req("/api/v1/chain/weights/setters");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.setter_count).toBe(0);
+});
+
+test("GET /api/v1/chain/serving: warm store runs both queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [{ distinct_servers: 1, newest_observed: "1780000000000" }],
+    [{ netuid: 1, announcements: 1, distinct_servers: 1 }],
+  ];
+  const res = await req("/api/v1/chain/serving");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/serving: cold store skips the subnet query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+  ];
+  const res = await req("/api/v1/chain/serving");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
+test("GET /api/v1/chain/prometheus: warm store runs both queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [{ distinct_exporters: 1, newest_observed: "1780000000000" }],
+    [{ netuid: 1, announcements: 1, distinct_exporters: 1 }],
+  ];
+  const res = await req("/api/v1/chain/prometheus");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/prometheus: cold store skips the subnet query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+  ];
+  const res = await req("/api/v1/chain/prometheus");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
+test("GET /api/v1/chain/axon-removals: warm store runs both queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [{ distinct_removers: 1, newest_observed: "1780000000000" }],
+    [{ netuid: 1, removals: 1, distinct_removers: 1 }],
+  ];
+  const res = await req("/api/v1/chain/axon-removals");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/axon-removals: cold store skips the subnet query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+  ];
+  const res = await req("/api/v1/chain/axon-removals");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
+test("GET /api/v1/chain/registrations: warm store runs both queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [{ distinct_registrants: 1, newest_observed: "1780000000000" }],
+    [{ netuid: 1, registrations: 1, distinct_registrants: 1 }],
+  ];
+  const res = await req("/api/v1/chain/registrations");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/registrations: cold store skips the subnet query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+  ];
+  const res = await req("/api/v1/chain/registrations");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
+test("GET /api/v1/chain/deregistrations: warm store runs both queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [{ distinct_deregistered_hotkeys: 1, newest_observed: "1780000000000" }],
+    [{ netuid: 1, deregistrations: 1, distinct_deregistered_hotkeys: 1 }],
+  ];
+  const res = await req("/api/v1/chain/deregistrations");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/deregistrations: cold store skips the subnet query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+  ];
+  const res = await req("/api/v1/chain/deregistrations");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
+test("GET /api/v1/chain/stake-moves: warm store runs both queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [{ distinct_movers: 1, newest_observed: "1780000000000" }],
+    [{ netuid: 1, movements: 1, distinct_movers: 1 }],
+  ];
+  const res = await req("/api/v1/chain/stake-moves");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/stake-moves: cold store skips the subnet query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+  ];
+  const res = await req("/api/v1/chain/stake-moves");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
+test("GET /api/v1/chain/stake-transfers: warm store runs both queries", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [{ distinct_senders: 1, newest_observed: "1780000000000" }],
+    [{ netuid: 1, transfers: 1, distinct_senders: 1 }],
+  ];
+  const res = await req("/api/v1/chain/stake-transfers");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/stake-transfers: cold store skips the subnet query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+  ];
+  const res = await req("/api/v1/chain/stake-transfers");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
+test("GET /api/v1/chain/stake-flow: a single GROUP BY netuid, event_kind query", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [
+      {
+        netuid: 1,
+        event_kind: "StakeAdded",
+        total_tao: 10,
+        event_count: 2,
+        last_observed: "1780000000000",
+      },
+      {
+        netuid: 1,
+        event_kind: "StakeRemoved",
+        total_tao: 4,
+        event_count: 1,
+        last_observed: "1780000000000",
+      },
+    ],
+  ];
+  const res = await req("/api/v1/chain/stake-flow?window=30d&limit=10");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/transfers: totals + senders + receivers", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [
+      {
+        transfer_count: 3,
+        total_volume_tao: 100,
+        unique_senders: 2,
+        unique_receivers: 2,
+        newest_observed: "1780000000000",
+      },
+    ],
+    [{ address: "5Sender", volume_tao: 80, transfer_count: 2 }],
+    [{ address: "5Receiver", volume_tao: 60, transfer_count: 1 }],
+  ];
+  const res = await req("/api/v1/chain/transfers?window=7d&limit=5");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.total_volume_tao).toBe(100);
+  expect(body.top_senders[0].address).toBe("5Sender");
+});
+
+test("GET /api/v1/chain/transfers: a cold store's empty totals row falls back to null", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [],
+    [],
+    [],
+  ];
+  const res = await req("/api/v1/chain/transfers");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.total_volume_tao).toBe(0);
+});
+
+test("GET /api/v1/chain/transfer-pairs: default (volume) sort", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [
+      {
+        transfer_count: 3,
+        total_volume_tao: 100,
+        unique_pairs: 1,
+        top_pair_volume_tao: 80,
+        newest_observed: "1780000000000",
+      },
+    ],
+    // `orderBy` is itself built via a bare `sql\`...\`` fragment (not
+    // awaited on its own) before being interpolated into the pairRows
+    // query below -- the mock's sql() shifts a queue slot per call
+    // regardless, so this dummy slot stands in for that construction.
+    [],
+    [
+      {
+        from_address: "5Sa",
+        to_address: "5Rx",
+        volume_tao: 80,
+        transfer_count: 2,
+        last_block: "100",
+        last_observed_at: "1780000000000",
+      },
+    ],
+  ];
+  const res = await req("/api/v1/chain/transfer-pairs?window=7d&limit=5");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.sort).toBe("volume");
+  expect(body.pairs[0].from).toBe("5Sa");
+  expect(queryText()).toContain("volume_tao DESC, transfer_count DESC");
+});
+
+test("GET /api/v1/chain/transfer-pairs?sort=count uses the count ordering", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [
+      {
+        transfer_count: 3,
+        total_volume_tao: 100,
+        unique_pairs: 1,
+        top_pair_volume_tao: 80,
+        newest_observed: "1780000000000",
+      },
+    ],
+    [], // the `orderBy` fragment construction -- see the comment above
+    [],
+  ];
+  const res = await req("/api/v1/chain/transfer-pairs?sort=count");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.sort).toBe("count");
+  expect(queryText()).toContain("transfer_count DESC, volume_tao DESC");
+});
+
+test("GET /api/v1/chain/transfer-pairs: an empty totals row falls back to null", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [], // empty totals row -- totalsRows[0] ?? null falls back to null
+    [], // the `orderBy` fragment construction
+    [],
+  ];
+  const res = await req("/api/v1/chain/transfer-pairs");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.total_volume_tao).toBe(0);
+});

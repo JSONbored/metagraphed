@@ -42,6 +42,7 @@ import {
   publishedAt,
 } from "../responses.mjs";
 import { d1TimeoutMs, withTimeout } from "../storage.mjs";
+import { tryPostgresTier } from "../postgres-tier.mjs";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import {
   formatGlobalIncidents,
@@ -1126,12 +1127,18 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
     "chain-transfers",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const data = await loadChainTransfers(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        observedAt: meta?.last_run_at || null,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainTransfers(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          observedAt: meta?.last_run_at || null,
+          limit,
+        }));
       return envelopeResponse(
         cacheRequest,
         {
@@ -1186,13 +1193,19 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
     "chain-transfer-pairs",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const data = await loadChainTransferPairs(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        observedAt: meta?.last_run_at || null,
-        limit,
-        sort,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainTransferPairs(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          observedAt: meta?.last_run_at || null,
+          limit,
+          sort,
+        }));
       // CSV exports the row-shaped top corridors; the totals + top_pair_share
       // rollup stay JSON-only (mirrors chain-stake-flow / chain-weights).
       if (csv) {
@@ -1252,11 +1265,17 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
     env,
     "chain-stake-flow",
     async () => {
-      const data = await loadChainStakeFlow(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeFlow(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // net_flow_distribution stay JSON-only (mirrors chain-fees' top_fee_payers).
       if (csv) {
@@ -1315,11 +1334,17 @@ export async function handleChainWeights(request, env, url, ctx = {}) {
     env,
     "chain-weights",
     async () => {
-      const data = await loadChainWeights(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainWeights(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
@@ -1380,11 +1405,17 @@ export async function handleChainWeightSetters(request, env, url, ctx = {}) {
     env,
     "chain-weight-setters",
     async () => {
-      const data = await loadChainWeightSetters(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainWeightSetters(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       if (csv) {
         return csvResponse(
           data.setters,
@@ -1441,11 +1472,17 @@ export async function handleChainServing(request, env, url, ctx = {}) {
     env,
     "chain-serving",
     async () => {
-      const data = await loadChainServing(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainServing(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-weights).
       if (csv) {
@@ -1504,11 +1541,17 @@ export async function handleChainPrometheus(request, env, url, ctx = {}) {
     env,
     "chain-prometheus",
     async () => {
-      const data = await loadChainPrometheus(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainPrometheus(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1568,11 +1611,17 @@ export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
     env,
     "chain-axon-removals",
     async () => {
-      const data = await loadChainAxonRemovals(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainAxonRemovals(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1631,11 +1680,17 @@ export async function handleChainRegistrations(request, env, url, ctx = {}) {
     env,
     "chain-registrations",
     async () => {
-      const data = await loadChainRegistrations(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainRegistrations(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1695,11 +1750,17 @@ export async function handleChainDeregistrations(request, env, url, ctx = {}) {
     env,
     "chain-deregistrations",
     async () => {
-      const data = await loadChainDeregistrations(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainDeregistrations(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -1759,11 +1820,17 @@ export async function handleChainStakeMoves(request, env, url, ctx = {}) {
     env,
     "chain-stake-moves",
     async () => {
-      const data = await loadChainStakeMoves(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeMoves(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -1823,11 +1890,17 @@ export async function handleChainStakeTransfers(request, env, url, ctx = {}) {
     env,
     "chain-stake-transfers",
     async () => {
-      const data = await loadChainStakeTransfers(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeTransfers(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-moves).
       if (csv) {

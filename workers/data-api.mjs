@@ -215,6 +215,50 @@ import {
   buildCounterpartyRelationship,
   COUNTERPARTIES_SCAN_CAP,
 } from "../src/counterparties.mjs";
+import { ANALYTICS_WINDOWS, DEFAULT_ANALYTICS_WINDOW } from "./config.mjs";
+import {
+  buildChainWeights,
+  CHAIN_WEIGHTS_LIMIT_DEFAULT,
+} from "../src/chain-weights.mjs";
+import {
+  buildChainWeightSetters,
+  CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+  CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+} from "../src/chain-weight-setters.mjs";
+import {
+  buildChainServing,
+  CHAIN_SERVING_LIMIT_DEFAULT,
+} from "../src/chain-serving.mjs";
+import {
+  buildChainPrometheus,
+  CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+} from "../src/chain-prometheus.mjs";
+import {
+  buildChainAxonRemovals,
+  CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+} from "../src/chain-axon-removals.mjs";
+import {
+  buildChainRegistrations,
+  CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+} from "../src/chain-registrations.mjs";
+import {
+  buildChainDeregistrations,
+  CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+} from "../src/chain-deregistrations.mjs";
+import {
+  buildChainStakeMoves,
+  CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
+} from "../src/chain-stake-moves.mjs";
+import {
+  buildChainStakeTransfers,
+  CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+} from "../src/chain-stake-transfers.mjs";
+import {
+  buildChainStakeFlow,
+  CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+} from "../src/chain-stake-flow.mjs";
+import { buildChainTransfers } from "../src/chain-transfers.mjs";
+import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
 import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
   formatSubnetHyperparams,
@@ -259,6 +303,17 @@ function windowCutoff(url, windows, defaultLabel) {
 function windowLabelFor(url, windows, defaultLabel) {
   const label = url.searchParams.get("window") || defaultLabel;
   return Object.hasOwn(windows, label) ? label : defaultLabel;
+}
+
+// A ?limit= value for the /chain/* network-wide analytics routes (#4832
+// Tier 2): by the time tryPostgresTier reaches this route, the D1-side
+// handler's own parseLimitParam has ALREADY validated it (absent ->
+// defaultLimit, present -> a clean positive integer <= its maxLimit) -- a
+// malformed limit 400s before ever reaching here, so this only needs to
+// replicate parseLimitParam's success path, not re-validate.
+function chainLimit(url, defaultLimit) {
+  const raw = url.searchParams.get("limit");
+  return raw === null ? defaultLimit : Number(raw);
 }
 
 // Resolve a ?window= label to a YYYY-MM-DD cutoff date for a neuron_daily
@@ -2408,6 +2463,482 @@ export default {
                 SUBNET_WEIGHT_SETTERS_WINDOWS,
                 DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
               ),
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/weights (#4832 Tier 2): network-wide WeightsSet
+        // leaderboard + rollup, mirroring src/chain-weights.mjs's
+        // loadChainWeights. window/limit are resolved from the shared
+        // ANALYTICS_WINDOWS/DEFAULT_ANALYTICS_WINDOW (workers/config.mjs) --
+        // the same set every chain-* module's own WINDOWS constant
+        // duplicates -- and chainLimit (below) replicates parseLimitParam's
+        // success path since the D1-side handler has already validated a
+        // malformed limit into a 400 before tryPostgresTier is ever reached.
+        const chainWeights = url.pathname.match(/^\/api\/v1\/chain\/weights$/);
+        if (chainWeights) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const networkRows = await sql`
+          SELECT COUNT(*) AS weight_sets,
+                 COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                                      WHEN uid IS NOT NULL AND netuid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters,
+                 MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          const networkDistinct = networkRows[0] ?? null;
+          let subnetRows = [];
+          if (networkDistinct?.newest_observed != null) {
+            subnetRows = await sql`
+            SELECT netuid, COUNT(*) AS weight_sets,
+                   COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                                        WHEN uid IS NOT NULL AND netuid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters
+            FROM account_events WHERE event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid`;
+          }
+          return json(
+            buildChainWeights(subnetRows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_WEIGHTS_LIMIT_DEFAULT),
+              networkDistinct,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/weights/setters (#4832 Tier 2): network-wide
+        // weight-setter leaderboard, mirroring
+        // src/chain-weight-setters.mjs's loadChainWeightSetters. The
+        // setter-identity CASE expression here omits chain-weights' extra
+        // `AND netuid IS NOT NULL` guard -- matches SETTER_IDENTITY in
+        // chain-weight-setters.mjs exactly, not chain-weights.mjs's own.
+        const chainWeightSetters = url.pathname.match(
+          /^\/api\/v1\/chain\/weights\/setters$/,
+        );
+        if (chainWeightSetters) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const rows = await sql`
+          SELECT MAX(hotkey) AS hotkey, MAX(uid) AS uid, COUNT(*) AS weight_sets,
+                 MIN(observed_at) AS first_set, MAX(observed_at) AS last_set
+          FROM account_events WHERE event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}
+            AND (CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                      WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) IS NOT NULL
+          GROUP BY CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                        WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END
+          ORDER BY weight_sets DESC, last_set DESC LIMIT ${CHAIN_WEIGHT_SETTERS_LIMIT_MAX}`;
+          const totalsRows = await sql`
+          SELECT COUNT(*) AS weight_sets,
+                 COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                                      WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters,
+                 MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          return json(
+            buildChainWeightSetters(rows, totalsRows[0] ?? null, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT),
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/serving (#4832 Tier 2): network-wide AxonServed
+        // announcement leaderboard, mirroring src/chain-serving.mjs's
+        // loadChainServing.
+        const chainServing = url.pathname.match(/^\/api\/v1\/chain\/serving$/);
+        if (chainServing) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const networkRows = await sql`
+          SELECT COUNT(DISTINCT hotkey) AS distinct_servers, MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${SERVING_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          const networkDistinct = networkRows[0] ?? null;
+          let subnetRows = [];
+          if (networkDistinct?.newest_observed != null) {
+            subnetRows = await sql`
+            SELECT netuid, COUNT(*) AS announcements, COUNT(DISTINCT hotkey) AS distinct_servers
+            FROM account_events WHERE event_kind = ${SERVING_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
+            ORDER BY announcements DESC, netuid ASC`;
+          }
+          return json(
+            buildChainServing(subnetRows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_SERVING_LIMIT_DEFAULT),
+              networkDistinct,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/prometheus (#4832 Tier 2): network-wide
+        // PrometheusServed announcement leaderboard, mirroring
+        // src/chain-prometheus.mjs's loadChainPrometheus.
+        const chainPrometheus = url.pathname.match(
+          /^\/api\/v1\/chain\/prometheus$/,
+        );
+        if (chainPrometheus) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const networkRows = await sql`
+          SELECT COUNT(DISTINCT hotkey) AS distinct_exporters, MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${PROMETHEUS_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          const networkDistinct = networkRows[0] ?? null;
+          let subnetRows = [];
+          if (networkDistinct?.newest_observed != null) {
+            subnetRows = await sql`
+            SELECT netuid, COUNT(*) AS announcements, COUNT(DISTINCT hotkey) AS distinct_exporters
+            FROM account_events WHERE event_kind = ${PROMETHEUS_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
+            ORDER BY announcements DESC, netuid ASC`;
+          }
+          return json(
+            buildChainPrometheus(subnetRows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_PROMETHEUS_LIMIT_DEFAULT),
+              networkDistinct,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/axon-removals (#4832 Tier 2): network-wide
+        // AxonInfoRemoved leaderboard, mirroring
+        // src/chain-axon-removals.mjs's loadChainAxonRemovals.
+        const chainAxonRemovals = url.pathname.match(
+          /^\/api\/v1\/chain\/axon-removals$/,
+        );
+        if (chainAxonRemovals) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const networkRows = await sql`
+          SELECT COUNT(DISTINCT hotkey) AS distinct_removers, MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${AXON_REMOVAL_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          const networkDistinct = networkRows[0] ?? null;
+          let subnetRows = [];
+          if (networkDistinct?.newest_observed != null) {
+            subnetRows = await sql`
+            SELECT netuid, COUNT(*) AS removals, COUNT(DISTINCT hotkey) AS distinct_removers
+            FROM account_events WHERE event_kind = ${AXON_REMOVAL_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
+            ORDER BY removals DESC, netuid ASC`;
+          }
+          return json(
+            buildChainAxonRemovals(subnetRows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_AXON_REMOVALS_LIMIT_DEFAULT),
+              networkDistinct,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/registrations (#4832 Tier 2): network-wide
+        // NeuronRegistered leaderboard, mirroring
+        // src/chain-registrations.mjs's loadChainRegistrations.
+        const chainRegistrations = url.pathname.match(
+          /^\/api\/v1\/chain\/registrations$/,
+        );
+        if (chainRegistrations) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const networkRows = await sql`
+          SELECT COUNT(DISTINCT hotkey) AS distinct_registrants, MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${REGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          const networkDistinct = networkRows[0] ?? null;
+          let subnetRows = [];
+          if (networkDistinct?.newest_observed != null) {
+            subnetRows = await sql`
+            SELECT netuid, COUNT(*) AS registrations, COUNT(DISTINCT hotkey) AS distinct_registrants
+            FROM account_events WHERE event_kind = ${REGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
+            ORDER BY registrations DESC, netuid ASC`;
+          }
+          return json(
+            buildChainRegistrations(subnetRows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_REGISTRATIONS_LIMIT_DEFAULT),
+              networkDistinct,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/deregistrations (#4832 Tier 2): network-wide
+        // NeuronDeregistered leaderboard, mirroring
+        // src/chain-deregistrations.mjs's loadChainDeregistrations.
+        const chainDeregistrations = url.pathname.match(
+          /^\/api\/v1\/chain\/deregistrations$/,
+        );
+        if (chainDeregistrations) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const networkRows = await sql`
+          SELECT COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys, MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${DEREGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          const networkDistinct = networkRows[0] ?? null;
+          let subnetRows = [];
+          if (networkDistinct?.newest_observed != null) {
+            subnetRows = await sql`
+            SELECT netuid, COUNT(*) AS deregistrations, COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys
+            FROM account_events WHERE event_kind = ${DEREGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
+            ORDER BY deregistrations DESC, netuid ASC`;
+          }
+          return json(
+            buildChainDeregistrations(subnetRows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT),
+              networkDistinct,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/stake-moves (#4832 Tier 2): network-wide
+        // StakeMoved leaderboard, mirroring src/chain-stake-moves.mjs's
+        // loadChainStakeMoves. Distinct by the "coldkey" column (a stake
+        // move is initiated by the owning account, not a specific hotkey).
+        const chainStakeMoves = url.pathname.match(
+          /^\/api\/v1\/chain\/stake-moves$/,
+        );
+        if (chainStakeMoves) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const networkRows = await sql`
+          SELECT COUNT(DISTINCT "coldkey") AS distinct_movers, MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          const networkDistinct = networkRows[0] ?? null;
+          let subnetRows = [];
+          if (networkDistinct?.newest_observed != null) {
+            subnetRows = await sql`
+            SELECT netuid, COUNT(*) AS movements, COUNT(DISTINCT "coldkey") AS distinct_movers
+            FROM account_events WHERE event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
+            ORDER BY movements DESC, netuid ASC`;
+          }
+          return json(
+            buildChainStakeMoves(subnetRows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_STAKE_MOVES_LIMIT_DEFAULT),
+              networkDistinct,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/stake-transfers (#4832 Tier 2): network-wide
+        // StakeTransferred leaderboard, mirroring
+        // src/chain-stake-transfers.mjs's loadChainStakeTransfers.
+        // Distinct by the "coldkey" column -- a stake transfer moves stake
+        // between owning accounts.
+        const chainStakeTransfers = url.pathname.match(
+          /^\/api\/v1\/chain\/stake-transfers$/,
+        );
+        if (chainStakeTransfers) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const networkRows = await sql`
+          SELECT COUNT(DISTINCT "coldkey") AS distinct_senders, MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          const networkDistinct = networkRows[0] ?? null;
+          let subnetRows = [];
+          if (networkDistinct?.newest_observed != null) {
+            subnetRows = await sql`
+            SELECT netuid, COUNT(*) AS transfers, COUNT(DISTINCT "coldkey") AS distinct_senders
+            FROM account_events WHERE event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
+            ORDER BY transfers DESC, netuid ASC`;
+          }
+          return json(
+            buildChainStakeTransfers(subnetRows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT),
+              networkDistinct,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/stake-flow (#4832 Tier 2): network-wide
+        // cross-subnet capital flow (StakeAdded - StakeRemoved), mirroring
+        // src/chain-stake-flow.mjs's loadChainStakeFlow. A single
+        // GROUP BY netuid, event_kind query, no cold-store guard branch --
+        // matches the D1 loader exactly.
+        const chainStakeFlow = url.pathname.match(
+          /^\/api\/v1\/chain\/stake-flow$/,
+        );
+        if (chainStakeFlow) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const rows = await sql`
+          SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao,
+                 COUNT(*) AS event_count, MAX(observed_at) AS last_observed
+          FROM account_events
+          WHERE event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND}) AND observed_at >= ${cutoff}
+          GROUP BY netuid, event_kind`;
+          return json(
+            buildChainStakeFlow(rows, {
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              limit: chainLimit(url, CHAIN_STAKE_FLOW_LIMIT_DEFAULT),
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/transfers (#4832 Tier 2): network-wide native-TAO
+        // transfer scorecard (totals + top senders/receivers), mirroring
+        // src/chain-transfers.mjs's loadChainTransfers. "Transfer" mirrors
+        // that module's own private TRANSFER_KIND constant (not exported, so
+        // inlined here). observedAt: the D1 path sources this from a KV
+        // cron-freshness marker (readHealthMetaKv) that this Worker has no
+        // binding for -- since this route queries Postgres live, the
+        // queried rows' own MAX(observed_at) is a more accurate freshness
+        // signal for what was actually just read, so that's used instead.
+        const chainTransfers = url.pathname.match(
+          /^\/api\/v1\/chain\/transfers$/,
+        );
+        if (chainTransfers) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const limit = chainLimit(url, 25);
+          const totalsRows = await sql`
+          SELECT COUNT(*) AS transfer_count, COALESCE(SUM(amount_tao), 0) AS total_volume_tao,
+                 COUNT(DISTINCT hotkey) AS unique_senders, COUNT(DISTINCT "coldkey") AS unique_receivers,
+                 MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff}`;
+          const senders = await sql`
+          SELECT hotkey AS address, SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count
+          FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff} AND hotkey IS NOT NULL
+          GROUP BY hotkey ORDER BY volume_tao DESC, hotkey ASC LIMIT ${limit}`;
+          const receivers = await sql`
+          SELECT "coldkey" AS address, SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count
+          FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff} AND "coldkey" IS NOT NULL
+          GROUP BY "coldkey" ORDER BY volume_tao DESC, "coldkey" ASC LIMIT ${limit}`;
+          return json(
+            buildChainTransfers({
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              observedAt: latestObservedIso(totalsRows, "newest_observed"),
+              totals: totalsRows[0] ?? null,
+              senders,
+              receivers,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/transfer-pairs (#4832 Tier 2): network-wide
+        // sender->receiver corridor leaderboard, mirroring
+        // src/chain-transfer-pairs.mjs's loadChainTransferPairs -- the
+        // PAIR_FILTER predicate (event_kind/window/non-null/non-empty/
+        // non-self/non-negative-amount) is inlined below since it's a
+        // private, unexported constant there. observedAt: see chainTransfers
+        // above for why this sources from the queried rows, not KV.
+        const chainTransferPairs = url.pathname.match(
+          /^\/api\/v1\/chain\/transfer-pairs$/,
+        );
+        if (chainTransferPairs) {
+          const cutoff = windowCutoff(
+            url,
+            ANALYTICS_WINDOWS,
+            DEFAULT_ANALYTICS_WINDOW,
+          );
+          const limit = chainLimit(url, 25);
+          const sort = url.searchParams.get("sort") || "volume";
+          const totalsRows = await sql`
+          WITH pair_totals AS (
+            SELECT hotkey, coldkey, SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count,
+                   MAX(observed_at) AS last_observed
+            FROM account_events
+            WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff} AND hotkey IS NOT NULL AND "coldkey" IS NOT NULL
+              AND hotkey <> '' AND "coldkey" <> '' AND hotkey <> "coldkey" AND amount_tao IS NOT NULL AND amount_tao >= 0
+            GROUP BY hotkey, "coldkey"
+          )
+          SELECT COALESCE(SUM(transfer_count), 0) AS transfer_count,
+                 COALESCE(SUM(volume_tao), 0) AS total_volume_tao,
+                 COUNT(*) AS unique_pairs,
+                 COALESCE(MAX(volume_tao), 0) AS top_pair_volume_tao,
+                 MAX(last_observed) AS newest_observed
+          FROM pair_totals`;
+          const orderBy =
+            sort === "count"
+              ? sql`transfer_count DESC, volume_tao DESC, hotkey ASC, "coldkey" ASC`
+              : sql`volume_tao DESC, transfer_count DESC, hotkey ASC, "coldkey" ASC`;
+          const pairRows = await sql`
+          SELECT hotkey AS from_address, "coldkey" AS to_address, SUM(amount_tao) AS volume_tao,
+                 COUNT(*) AS transfer_count, MAX(block_number) AS last_block, MAX(observed_at) AS last_observed_at
+          FROM account_events
+          WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff} AND hotkey IS NOT NULL AND "coldkey" IS NOT NULL
+            AND hotkey <> '' AND "coldkey" <> '' AND hotkey <> "coldkey" AND amount_tao IS NOT NULL AND amount_tao >= 0
+          GROUP BY hotkey, "coldkey" ORDER BY ${orderBy} LIMIT ${limit}`;
+          return json(
+            buildChainTransferPairs({
+              window: windowLabelFor(
+                url,
+                ANALYTICS_WINDOWS,
+                DEFAULT_ANALYTICS_WINDOW,
+              ),
+              sort,
+              observedAt: latestObservedIso(totalsRows, "newest_observed"),
+              totals: totalsRows[0] ?? null,
+              pairs: pairRows,
             }),
           );
         }

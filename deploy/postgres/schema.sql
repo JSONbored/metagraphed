@@ -98,6 +98,12 @@ CREATE INDEX IF NOT EXISTS idx_ae_observed ON account_events (observed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ae_extrinsic ON account_events (block_number, extrinsic_index);
 -- #2079: covers the /subnets/{netuid}/events ?kind filter (unindexed post-filter today).
 CREATE INDEX IF NOT EXISTS idx_ae_netuid_kind ON account_events (netuid, event_kind, block_number DESC);
+-- #4832 Tier 2: covers the network-wide (no netuid filter) `event_kind = ? AND
+-- observed_at >= ?` scans the 12 /chain/* analytics routes in data-api.mjs run
+-- -- idx_ae_netuid_kind above only helps once a netuid filter is also present.
+-- Applied live via a plain (non-concurrent) CREATE INDEX -- TimescaleDB
+-- hypertables reject CREATE INDEX CONCURRENTLY.
+CREATE INDEX IF NOT EXISTS idx_ae_kind_observed ON account_events (event_kind, observed_at DESC);
 
 -- Generic all-events tier (audit gap: only ~8 kinds of 2 pallets decoded today).
 -- Stores EVERY decoded event; the curated account_events stays the fast path.
