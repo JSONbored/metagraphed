@@ -129,7 +129,57 @@ export function YieldLoader({ netuid }: { netuid: number }) {
 
       {/* Per-UID yield leaderboard (top yielders). */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* < md: the 7-column table needs an undiscoverable horizontal scroll to
+            reach its rightmost Yield / vs-median columns — the entire point of
+            this leaderboard — so narrow viewports get a stacked card per UID
+            that surfaces yield + vs-median prominently (mirrors the cards/table
+            split ListShell uses for paginated lists). */}
+        <div className="md:hidden divide-y divide-border/60">
+          {ranked.map((n) => (
+            <div key={n.uid} className="px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="font-mono text-[12px] tabular-nums text-ink-strong">
+                    #{n.uid}
+                  </span>
+                  {n.role === "validator" ? (
+                    <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+                      Validator
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+                      Miner
+                    </span>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span className="font-mono text-[13px] tabular-nums text-ink-strong">
+                    {fmtYield(n.yield)}
+                  </span>
+                  <VsMedian vs={n.vs_median} />
+                </div>
+              </div>
+              <div className="mt-1.5 flex items-center justify-between gap-3 font-mono text-[11px] tabular-nums text-ink-muted">
+                {n.hotkey ? (
+                  <Link
+                    to="/accounts/$ss58"
+                    params={{ ss58: n.hotkey }}
+                    className="truncate text-ink-muted hover:text-ink hover:underline"
+                    title={n.hotkey}
+                  >
+                    {shortHash(n.hotkey) ?? n.hotkey}
+                  </Link>
+                ) : (
+                  <span>—</span>
+                )}
+                <span className="shrink-0">
+                  {taoCompact(n.stake_tao)} τ · {taoCompact(n.emission_tao)} τ
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
               <tr>
