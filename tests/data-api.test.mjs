@@ -1266,6 +1266,54 @@ test("GET /api/v1/validators/:hotkey/nominators sorts by the requested column", 
   expect(queryText()).toContain("gross_staked_tao DESC, 1 ASC");
 });
 
+test("GET /api/v1/validators/:hotkey/nominators sorts by last_activity", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/validators/${SS58}/nominators?sort=last_activity`);
+  expect(queryText()).toContain("last_observed DESC, 1 ASC");
+});
+
+test("GET /api/v1/validators/:hotkey/nominators falls back to the default window for an unrecognized label", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/validators/${SS58}/nominators?window=bogus`);
+  const body = await res.json();
+  expect(body.data.window).toBe("30d");
+});
+
+test("GET /api/v1/validators/:hotkey/nominators computes generatedAt as the newest of multiple rows, ignoring a non-finite timestamp", async () => {
+  mockRows.current = [
+    {
+      coldkey: "5A",
+      staked_tao: "1",
+      unstaked_tao: "0",
+      event_count: 1,
+      last_observed: "not-a-number",
+      net_staked_tao: "1",
+      gross_staked_tao: "1",
+    },
+    {
+      coldkey: "5B",
+      staked_tao: "1",
+      unstaked_tao: "0",
+      event_count: 1,
+      last_observed: "1783600000000",
+      net_staked_tao: "1",
+      gross_staked_tao: "1",
+    },
+    {
+      coldkey: "5C",
+      staked_tao: "1",
+      unstaked_tao: "0",
+      event_count: 1,
+      last_observed: "1783700000000",
+      net_staked_tao: "1",
+      gross_staked_tao: "1",
+    },
+  ];
+  const res = await req(`/api/v1/validators/${SS58}/nominators`);
+  const body = await res.json();
+  expect(body.generatedAt).toBe(new Date(1783700000000).toISOString());
+});
+
 test("GET /api/v1/accounts/:ss58/weight-setters unions the direct-hotkey and neurons-join branches", async () => {
   mockRows.current = [
     {
@@ -1287,6 +1335,7 @@ test("GET /api/v1/accounts/:ss58/weight-setters unions the direct-hotkey and neu
 
 test("GET /api/v1/subnets/:netuid/weights/setters returns a leaderboard + totals", async () => {
   mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
     [
       {
         hotkey: SS58,
@@ -1308,7 +1357,29 @@ test("GET /api/v1/subnets/:netuid/weights/setters returns a leaderboard + totals
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.setters[0].weight_sets).toBe(5);
+  expect(body.distinct_setters).toBe(1);
   expect(body.schema_version).toBe(1);
+});
+
+test("GET /api/v1/subnets/:netuid/weights/setters falls back to a null totals row when the aggregate query returns none", async () => {
+  mockQueue.current = [
+    [], // consumed by the session-scoped `SET statement_timeout` call
+    [
+      {
+        hotkey: SS58,
+        uid: 1,
+        weight_sets: "5",
+        first_set: "1783500000000",
+        last_set: "1783600000000",
+      },
+    ],
+    [],
+  ];
+  const res = await req("/api/v1/subnets/4/weights/setters");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.setters[0].weight_sets).toBe(5);
+  expect(body.distinct_setters).toBe(0);
 });
 
 test("GET /api/v1/accounts/:ss58/stake-flow defaults to summing both directions", async () => {
@@ -1333,6 +1404,14 @@ test("GET /api/v1/accounts/:ss58/stake-flow narrows to one side via ?direction=i
   expect(text).not.toContain("event_kind IN");
 });
 
+test("GET /api/v1/accounts/:ss58/stake-flow narrows to one side via ?direction=out", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/stake-flow?direction=out`);
+  const text = queryText();
+  expect(text).toContain("AND event_kind =");
+  expect(text).not.toContain("event_kind IN");
+});
+
 test("GET /api/v1/subnets/:netuid/stake-flow shapes a per-kind rollup", async () => {
   mockRows.current = [
     {
@@ -1345,6 +1424,20 @@ test("GET /api/v1/subnets/:netuid/stake-flow shapes a per-kind rollup", async ()
   const res = await req("/api/v1/subnets/4/stake-flow?direction=out");
   expect(res.status).toBe(200);
   expect(queryText()).toContain("AND event_kind =");
+});
+
+test("GET /api/v1/subnets/:netuid/stake-flow narrows to one side via ?direction=in", async () => {
+  mockRows.current = [];
+  await req("/api/v1/subnets/4/stake-flow?direction=in");
+  const text = queryText();
+  expect(text).toContain("AND event_kind =");
+  expect(text).not.toContain("event_kind IN");
+});
+
+test("GET /api/v1/subnets/:netuid/stake-flow defaults to summing both directions", async () => {
+  mockRows.current = [];
+  await req("/api/v1/subnets/4/stake-flow");
+  expect(queryText()).toContain("event_kind IN (?, ?)");
 });
 
 test("GET /api/v1/accounts/:ss58/stake-moves groups movements per subnet", async () => {
@@ -1373,6 +1466,14 @@ test("GET /api/v1/subnets/:netuid/stake-moves returns the single-row aggregate",
   expect(body.distinct_movers).toBe(3);
 });
 
+test("GET /api/v1/subnets/:netuid/stake-moves with no aggregate row returns the zeroed card, not a throw", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/4/stake-moves");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.movements).toBe(0);
+});
+
 test("GET /api/v1/subnets/:netuid/stake-transfers returns the single-row aggregate", async () => {
   mockRows.current = [
     { transfers: "6", distinct_senders: "2", newest_observed: "1783600000000" },
@@ -1381,6 +1482,14 @@ test("GET /api/v1/subnets/:netuid/stake-transfers returns the single-row aggrega
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.transfers).toBe(6);
+});
+
+test("GET /api/v1/subnets/:netuid/stake-transfers with no aggregate row returns the zeroed card, not a throw", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/4/stake-transfers");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.transfers).toBe(0);
 });
 
 const ACCOUNT_FOOTPRINT_ROUTES = [
@@ -1453,6 +1562,37 @@ test("GET /api/v1/accounts/:ss58/transfers?direction=sent narrows to the hotkey 
   const text = queryText();
   expect(text).toContain("AND hotkey =");
   expect(text).not.toContain("OR coldkey");
+});
+
+test("GET /api/v1/accounts/:ss58/transfers?direction=received narrows to the coldkey side only", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/transfers?direction=received`);
+  const text = queryText();
+  expect(text).toContain("AND coldkey =");
+  expect(text).not.toContain("OR coldkey");
+});
+
+test("GET /api/v1/accounts/:ss58/transfers applies block_start/block_end bounds", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/transfers?block_start=1&block_end=2`);
+  const text = queryText();
+  expect(text).toContain("AND block_number >=");
+  expect(text).toContain("AND block_number <=");
+});
+
+test("GET /api/v1/accounts/:ss58/transfers uses a composite cursor seek instead of OFFSET", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/transfers?cursor=8586300.0`);
+  const text = queryText();
+  expect(text).toContain("AND (block_number, event_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/transfers returns a next_cursor when the page is full", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  const res = await req(`/api/v1/accounts/${SS58}/transfers?limit=1`);
+  const body = await res.json();
+  expect(body.next_cursor).toBe("8586300.0");
 });
 
 test("GET /api/v1/accounts/:ss58/counterparties returns a counterparty leaderboard", async () => {
