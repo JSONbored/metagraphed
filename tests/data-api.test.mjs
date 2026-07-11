@@ -4201,3 +4201,204 @@ test("GET /api/v1/chain/identity-history on a cold store returns a schema-stable
   expect(body.subnet_count).toBe(0);
   expect(body.changes).toEqual([]);
 });
+
+// #4832 gap-closure: extrinsics/blocks-derived cluster (handleChainActivity/
+// Calls/Signers/Fees), the last D1-only routes among the "network-wide chain
+// analytics" family. All 4 reuse METAGRAPH_EXTRINSICS_SOURCE (already
+// "postgres" -- see wrangler.jsonc), the same flag Tier 1a's blocks/
+// extrinsics routes already serve from. Live-verified via psql before
+// writing this SQL (2026-07-11): the plain aggregates run well under 500ms
+// at current volume (~1.2M extrinsics/7d), but COUNT(DISTINCT signer) and
+// PERCENTILE_CONT median queries cost ~2.5-2.9s -- a thin margin under the
+// 3s default -- so chain/activity and chain/fees widen their own budget via
+// SET LOCAL, mirroring chain/transfers' fix (#4869).
+
+test("GET /api/v1/chain/signers: default sort + no call_module filter", async () => {
+  mockQueue.current = [
+    [], // session-scoped SET statement_timeout
+    [], // moduleClause construction (call_module absent -> sql``)
+    [], // orderBy construction (sort=tx_count -> sql`tx_count`)
+    [{ newest_observed: "1780000000000" }],
+    [
+      {
+        signer: "5Signer",
+        tx_count: 10,
+        total_fee_tao: 1,
+        total_tip_tao: 0.1,
+        last_tx_block: 500,
+      },
+    ],
+  ];
+  const res = await req("/api/v1/chain/signers?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.sort).toBe("tx_count");
+  expect(body.signers[0].signer).toBe("5Signer");
+});
+
+test("GET /api/v1/chain/signers: sort=total_fee_tao + call_module scopes the query", async () => {
+  mockQueue.current = [
+    [],
+    [], // moduleClause (call_module present -> real fragment)
+    [], // orderBy (sort=total_fee_tao -> sql`total_fee_tao`)
+    [{ newest_observed: "1780000000000" }],
+    [
+      {
+        signer: "5Signer",
+        tx_count: 5,
+        total_fee_tao: 9,
+        total_tip_tao: 0,
+        last_tx_block: 400,
+      },
+    ],
+  ];
+  const res = await req(
+    "/api/v1/chain/signers?window=7d&sort=total_fee_tao&call_module=SubtensorModule",
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.sort).toBe("total_fee_tao");
+  expect(queryText()).toContain("call_module = ");
+});
+
+test("GET /api/v1/chain/calls: default group_by=module, no call_module", async () => {
+  mockQueue.current = [
+    [], // session SET
+    [], // moduleClause (absent)
+    [], // orderBy (module branch)
+    [{ newest_observed: "1780000000000" }],
+    [{ call_module: "SubtensorModule", count: 10 }],
+    [{ total: 12 }],
+  ];
+  const res = await req("/api/v1/chain/calls?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.group_by).toBe("module");
+  expect(body.total_extrinsics).toBe(12);
+  expect(body.calls[0].call_module).toBe("SubtensorModule");
+});
+
+test("GET /api/v1/chain/calls: group_by=module_function + call_module filter", async () => {
+  mockQueue.current = [
+    [],
+    [], // moduleClause (present)
+    [], // orderBy (module_function branch)
+    [{ newest_observed: "1780000000000" }],
+    [
+      {
+        call_module: "SubtensorModule",
+        call_function: "set_weights",
+        count: 4,
+      },
+    ],
+    [{ total: 4 }],
+  ];
+  const res = await req(
+    "/api/v1/chain/calls?window=7d&group_by=module_function&call_module=SubtensorModule",
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.group_by).toBe("module_function");
+  expect(body.calls[0].call_function).toBe("set_weights");
+});
+
+test("GET /api/v1/chain/calls: an empty totals row falls back to 0", async () => {
+  mockQueue.current = [
+    [], // session SET
+    [], // moduleClause (absent)
+    [], // orderBy (module branch)
+    [{ newest_observed: "1780000000000" }],
+    [],
+    [], // empty totalRows -- totalRows[0]?.total ?? 0 falls back to 0
+  ];
+  const res = await req("/api/v1/chain/calls?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.total_extrinsics).toBe(0);
+});
+
+test("GET /api/v1/chain/activity: merges the extrinsics + blocks day series, defaulting a signer-less day to 0", async () => {
+  mockQueue.current = [
+    [], // session SET
+    [], // SET LOCAL statement_timeout widen
+    [
+      { day: "2026-07-10", extrinsic_count: 10, successful_extrinsics: 9 },
+      { day: "2026-07-09", extrinsic_count: 5, successful_extrinsics: 5 },
+    ],
+    // Only one of the two days appears here -- proves the
+    // `signersByDay.get(r.day) ?? 0` fallback for the missing day.
+    [{ day: "2026-07-10", unique_signers: 3 }],
+    [{ day: "2026-07-10", block_count: 2, event_count: 8 }],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/chain/activity?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  const day10 = body.days.find((d) => d.day === "2026-07-10");
+  const day09 = body.days.find((d) => d.day === "2026-07-09");
+  expect(day10.unique_signers).toBe(3);
+  expect(day09.unique_signers).toBe(0);
+  expect(day10.block_count).toBe(2);
+});
+
+test("GET /api/v1/chain/fees: default window, no call_module", async () => {
+  mockQueue.current = [
+    [], // session SET
+    [], // moduleClause (absent)
+    [], // SET LOCAL statement_timeout widen
+    [
+      {
+        day: "2026-07-10",
+        extrinsic_count: 10,
+        total_fee_tao: 1,
+        total_tip_tao: 0.1,
+      },
+    ],
+    [
+      {
+        signer: "5Payer",
+        total_fee_tao: 1,
+        total_tip_tao: 0.1,
+        extrinsic_count: 10,
+      },
+    ],
+    [{ day: "2026-07-10", median_fee_tao: 0.1, median_tip_tao: 0.01 }],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req("/api/v1/chain/fees?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.daily[0].median_fee_tao).toBe(0.1);
+  expect(body.top_fee_payers[0].signer).toBe("5Payer");
+});
+
+test("GET /api/v1/chain/fees: call_module filter reuses the same moduleClause across all 3 queries", async () => {
+  mockQueue.current = [
+    [],
+    [], // moduleClause (present)
+    [],
+    [
+      {
+        day: "2026-07-10",
+        extrinsic_count: 4,
+        total_fee_tao: 2,
+        total_tip_tao: 0,
+      },
+    ],
+    [
+      {
+        signer: "5Payer",
+        total_fee_tao: 2,
+        total_tip_tao: 0,
+        extrinsic_count: 4,
+      },
+    ],
+    [{ day: "2026-07-10", median_fee_tao: 0.5, median_tip_tao: 0 }],
+    [{ newest_observed: "1780000000000" }],
+  ];
+  const res = await req(
+    "/api/v1/chain/fees?window=7d&call_module=SubtensorModule",
+  );
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("call_module = ");
+});

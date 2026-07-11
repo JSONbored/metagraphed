@@ -1778,3 +1778,147 @@ describe("chain analytics ?format=csv export", () => {
     assert.match(cache.putKeys[0], /format=csv/);
   });
 });
+
+// #4832 gap-closure: these 4 handlers were D1-only with no Postgres tier at
+// all until now. METAGRAPH_EXTRINSICS_SOURCE is reused (already "postgres"
+// in production -- see wrangler.jsonc) since these read the same
+// extrinsics/blocks tables the Tier 1a routes already serve from Postgres;
+// no new flag-flip cycle needed. tryPostgresTier's own fallback contract is
+// unit-tested in workers/postgres-tier.mjs's own tests, so these just prove
+// the wiring: a Postgres hit is served as-is with D1 never queried, and a
+// Postgres failure falls back to D1 with fallback-marking intact.
+describe("chain analytics extrinsics-derived: postgres tier wiring", () => {
+  const cases = [
+    {
+      name: "chain-activity",
+      path: "/api/v1/chain/activity",
+      handler: handleChainActivity,
+      pgBody: {
+        schema_version: 1,
+        window: "7d",
+        observed_at: null,
+        day_count: 1,
+        days: [
+          {
+            day: "2026-07-10",
+            block_count: 5,
+            extrinsic_count: 10,
+            event_count: 20,
+            successful_extrinsics: 9,
+            success_rate: 0.9,
+            unique_signers: 3,
+          },
+        ],
+      },
+    },
+    {
+      name: "chain-calls",
+      path: "/api/v1/chain/calls",
+      handler: handleChainCalls,
+      pgBody: {
+        schema_version: 1,
+        window: "7d",
+        group_by: "module",
+        observed_at: null,
+        total_extrinsics: 10,
+        call_count: 1,
+        calls: [
+          {
+            call_module: "SubtensorModule",
+            call_function: null,
+            count: 10,
+            share: 1,
+          },
+        ],
+      },
+    },
+    {
+      name: "chain-signers",
+      path: "/api/v1/chain/signers",
+      handler: handleChainSigners,
+      pgBody: {
+        schema_version: 1,
+        window: "7d",
+        sort: "tx_count",
+        observed_at: null,
+        signer_count: 1,
+        signers: [
+          {
+            signer: "5PgSigner",
+            tx_count: 10,
+            total_fee_tao: 1,
+            total_tip_tao: 0,
+            last_tx_block: 100,
+          },
+        ],
+      },
+    },
+    {
+      name: "chain-fees",
+      path: "/api/v1/chain/fees",
+      handler: handleChainFees,
+      pgBody: {
+        schema_version: 1,
+        window: "7d",
+        observed_at: null,
+        day_count: 1,
+        daily: [
+          {
+            day: "2026-07-10",
+            extrinsic_count: 10,
+            total_fee_tao: 1,
+            avg_fee_tao: 0.1,
+            median_fee_tao: 0.1,
+            total_tip_tao: 0,
+            avg_tip_tao: 0,
+            median_tip_tao: 0,
+          },
+        ],
+        top_fee_payers: [
+          {
+            signer: "5PgPayer",
+            total_fee_tao: 1,
+            total_tip_tao: 0,
+            extrinsic_count: 10,
+          },
+        ],
+      },
+    },
+  ];
+
+  for (const { name, path, handler, pgBody } of cases) {
+    test(`${name}: flag=postgres serves the DATA_API response, D1 never queried`, async () => {
+      let d1Called = false;
+      const { env } = dbWith({ rows: [] });
+      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.DATA_API = { fetch: async () => Response.json(pgBody) };
+      env.METAGRAPH_HEALTH_DB.prepare = () => {
+        d1Called = true;
+        throw new Error(
+          "D1 must not be queried when Postgres serves the request",
+        );
+      };
+      const p = `${path}?window=7d`;
+      const res = await handler(req(p), env, url(p), ctx);
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.deepEqual(body.data, pgBody);
+      assert.equal(d1Called, false);
+    });
+
+    test(`${name}: flag=postgres falls back to D1 when DATA_API fails`, async () => {
+      const { env } = dbWith({ rows: [] });
+      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      env.DATA_API = {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      };
+      const p = `${path}?window=7d`;
+      const res = await handler(req(p), env, url(p), ctx);
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.data.schema_version, 1);
+    });
+  }
+});

@@ -905,13 +905,23 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
     "chain-activity",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const { data, extrinsicRows, blockRows } = await loadNetworkActivity(
-        d1Runner(env),
-        {
+      // A Postgres hit is never a fallback (the rows never touched
+      // hasD1FallbackRows' WeakSets, which only track D1's own degraded-
+      // empty-result bookkeeping); only the D1 branch below can set this.
+      let isFallback = false;
+      let data = await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (!data) {
+        const result = await loadNetworkActivity(d1Runner(env), {
           window: label,
           observedAt: meta?.last_run_at || null,
-        },
-      );
+        });
+        data = result.data;
+        isFallback = hasD1FallbackRows(result.extrinsicRows, result.blockRows);
+      }
       if (csv) {
         const csvRes = await csvResponse(
           data.days,
@@ -920,9 +930,7 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
           request,
           CHAIN_ACTIVITY_CSV_COLUMNS,
         );
-        return hasD1FallbackRows(extrinsicRows, blockRows)
-          ? markD1FallbackResponse(csvRes)
-          : csvRes;
+        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
       const response = await envelopeResponse(
         request,
@@ -936,9 +944,7 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return hasD1FallbackRows(extrinsicRows, blockRows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return isFallback ? markD1FallbackResponse(response) : response;
     },
     // Canonicalize the cache key on the RESOLVED window so the bare path, an
     // explicit ?window=<default>, and reordered/duplicate variants all share one
@@ -983,19 +989,26 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
     "chain-calls",
     async () => {
       let usedFallback = false;
-      const d1 = async (sql, params) => {
-        const rows = await d1All(env, sql, params);
-        if (hasD1FallbackRows(rows)) usedFallback = true;
-        return rows;
-      };
       const meta = await readHealthMetaKv(env);
-      const data = await loadChainCalls(d1, {
-        window: label,
-        groupBy,
-        callModule,
-        limit,
-        observedAt: meta?.last_run_at || null,
-      });
+      let data = await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (!data) {
+        const d1 = async (sql, params) => {
+          const rows = await d1All(env, sql, params);
+          if (hasD1FallbackRows(rows)) usedFallback = true;
+          return rows;
+        };
+        data = await loadChainCalls(d1, {
+          window: label,
+          groupBy,
+          callModule,
+          limit,
+          observedAt: meta?.last_run_at || null,
+        });
+      }
       if (csv) {
         const csvRes = await csvResponse(
           data.calls,
@@ -1059,14 +1072,24 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
     "chain-signers",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const { data, rows } = await loadChainSigners(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        observedAt: meta?.last_run_at || null,
-        limit,
-        callModule,
-        sort,
-      });
+      let isFallback = false;
+      let data = await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (!data) {
+        const result = await loadChainSigners(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          observedAt: meta?.last_run_at || null,
+          limit,
+          callModule,
+          sort,
+        });
+        data = result.data;
+        isFallback = hasD1FallbackRows(result.rows);
+      }
       if (csv) {
         const csvRes = await csvResponse(
           data.signers,
@@ -1075,9 +1098,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
           request,
           CHAIN_SIGNERS_CSV_COLUMNS,
         );
-        return hasD1FallbackRows(rows)
-          ? markD1FallbackResponse(csvRes)
-          : csvRes;
+        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
       const response = await envelopeResponse(
         request,
@@ -1091,9 +1112,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return hasD1FallbackRows(rows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return isFallback ? markD1FallbackResponse(response) : response;
     },
     `${canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"])}${csv ? "&format=csv" : ""}`,
   );
@@ -1962,15 +1981,26 @@ export async function handleChainFees(request, env, url, ctx = {}) {
     "chain-fees",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const { data, dailyRows, payerRows, medianRows } = await loadChainFees(
-        d1Runner(env),
-        {
+      let isFallback = false;
+      let data = await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (!data) {
+        const result = await loadChainFees(d1Runner(env), {
           window: label,
           limit,
           callModule,
           observedAt: meta?.last_run_at || null,
-        },
-      );
+        });
+        data = result.data;
+        isFallback = hasD1FallbackRows(
+          result.dailyRows,
+          result.payerRows,
+          result.medianRows,
+        );
+      }
       if (csv) {
         const csvRes = await csvResponse(
           data.daily,
@@ -1979,9 +2009,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
           request,
           CHAIN_FEES_CSV_COLUMNS,
         );
-        return hasD1FallbackRows(dailyRows, payerRows, medianRows)
-          ? markD1FallbackResponse(csvRes)
-          : csvRes;
+        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
       const response = await envelopeResponse(
         request,
@@ -1995,9 +2023,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return hasD1FallbackRows(dailyRows, payerRows, medianRows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return isFallback ? markD1FallbackResponse(response) : response;
     },
     `${canonicalAnalyticsCacheRoute(url, ["limit", "call_module"])}${csv ? "&format=csv" : ""}`,
   );
