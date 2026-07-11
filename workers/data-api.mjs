@@ -232,9 +232,15 @@ import {
   formatIncidents,
   formatGlobalIncidents,
   formatUptime,
+  formatTrajectory,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.mjs";
+import {
+  buildEconomicsTrends,
+  parseHistoryWindow,
+} from "../src/neuron-history.mjs";
+import { ECONOMICS_TRENDS_ROW_CAP } from "../src/economics-trends.mjs";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
@@ -1799,6 +1805,160 @@ async function handleHealthUptimeRollupSync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/subnet-snapshot-sync (#4832 gap-closure) ------
+//
+// Best-effort Postgres mirror of writeSubnetSnapshot's D1 upsert
+// (src/health-prober.mjs) -- same "own hourly cron, direct
+// env.DATA_API.fetch() service-binding call" shape as subnet-identity-sync
+// above, not an external GitHub Actions workflow. Rows arrive precomputed
+// (one per active subnet, already joined against economics.json), mirroring
+// health-checks-sync's shape rather than subnet-identity-sync's own
+// diff-and-append shape. ON CONFLICT (netuid, snapshot_date) DO UPDATE
+// mirrors D1's COALESCE-on-economics-columns semantics exactly: structural
+// columns + captured_at are owned by the day's first fire, economics
+// columns can backfill across the day's later fires but a later NULL can
+// never wipe an earlier fire's good value.
+const SUBNET_SNAPSHOT_SYNC_TOKEN_HEADER = "x-subnet-snapshot-sync-token";
+// ~129 subnets/day; generous headroom, matching the other sync routes.
+const SUBNET_SNAPSHOT_SYNC_MAX_BODY_BYTES = 2_000_000;
+const SUBNET_SNAPSHOT_SYNC_MAX_ROWS = 2_000;
+
+async function handleSubnetSnapshotSync(request, env) {
+  if (!env.SUBNET_SNAPSHOT_SYNC_SECRET) {
+    return writeJson(
+      { error: "subnet-snapshot sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(SUBNET_SNAPSHOT_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.SUBNET_SNAPSHOT_SYNC_SECRET)
+  ) {
+    return writeJson(
+      { error: `provide a valid ${SUBNET_SNAPSHOT_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > SUBNET_SNAPSHOT_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${SUBNET_SNAPSHOT_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const rows = Array.isArray(parsed) ? parsed : null;
+  if (!rows) {
+    return writeJson(
+      { error: "body must be a JSON array of subnet snapshot rows" },
+      400,
+    );
+  }
+  if (rows.length > SUBNET_SNAPSHOT_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${SUBNET_SNAPSHOT_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!rows.length) {
+    return writeJson({ ok: true, rows_written: 0 });
+  }
+
+  const validRows = rows.filter(
+    (row) =>
+      row &&
+      Number.isInteger(row.netuid) &&
+      typeof row.snapshot_date === "string" &&
+      Number.isFinite(row.captured_at),
+  );
+  if (!validRows.length) {
+    return writeJson({ ok: true, rows_written: 0 });
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  const snapshotRows = validRows.map((row) => ({
+    netuid: row.netuid,
+    snapshot_date: row.snapshot_date,
+    completeness_score: Number.isFinite(row.completeness_score)
+      ? row.completeness_score
+      : null,
+    surface_count: Number.isFinite(row.surface_count)
+      ? row.surface_count
+      : null,
+    endpoint_count: Number.isFinite(row.endpoint_count)
+      ? row.endpoint_count
+      : null,
+    monitored_count: Number.isFinite(row.monitored_count)
+      ? row.monitored_count
+      : null,
+    candidate_count: Number.isFinite(row.candidate_count)
+      ? row.candidate_count
+      : null,
+    validator_count: Number.isFinite(row.validator_count)
+      ? row.validator_count
+      : null,
+    miner_count: Number.isFinite(row.miner_count) ? row.miner_count : null,
+    total_stake_tao: Number.isFinite(row.total_stake_tao)
+      ? row.total_stake_tao
+      : null,
+    alpha_price_tao: Number.isFinite(row.alpha_price_tao)
+      ? row.alpha_price_tao
+      : null,
+    emission_share: Number.isFinite(row.emission_share)
+      ? row.emission_share
+      : null,
+    captured_at: row.captured_at,
+  }));
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '10000ms'`;
+      await sql`
+        INSERT INTO subnet_snapshots ${sql(
+          snapshotRows,
+          "netuid",
+          "snapshot_date",
+          "completeness_score",
+          "surface_count",
+          "endpoint_count",
+          "monitored_count",
+          "candidate_count",
+          "validator_count",
+          "miner_count",
+          "total_stake_tao",
+          "alpha_price_tao",
+          "emission_share",
+          "captured_at",
+        )}
+        ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
+          validator_count = COALESCE(subnet_snapshots.validator_count, excluded.validator_count),
+          miner_count = COALESCE(subnet_snapshots.miner_count, excluded.miner_count),
+          total_stake_tao = COALESCE(subnet_snapshots.total_stake_tao, excluded.total_stake_tao),
+          alpha_price_tao = COALESCE(subnet_snapshots.alpha_price_tao, excluded.alpha_price_tao),
+          emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share)`;
+      return writeJson({ ok: true, rows_written: snapshotRows.length });
+    });
+  } catch (err) {
+    console.error("data-api subnet-snapshot-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1953,6 +2113,12 @@ export default {
       url.pathname === "/api/v1/internal/health-uptime-rollup-sync"
     ) {
       return handleHealthUptimeRollupSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/subnet-snapshot-sync"
+    ) {
+      return handleSubnetSnapshotSync(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
@@ -3964,6 +4130,62 @@ export default {
             netuids,
           );
           return json({ rows });
+        }
+
+        // GET /api/v1/subnets/:netuid/trajectory (#4832 gap-closure): weekly
+        // structural + economics trajectory from the daily snapshot, mirroring
+        // workers/request-handlers/analytics-routes.mjs's handleTrajectory.
+        // format=csv is handled entirely D1-side (csvResponse never reaches
+        // tryPostgresTier's own request-forward for this route -- see that
+        // handler); this route only ever needs to return JSON.
+        const subnetTrajectory = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/trajectory$/,
+        );
+        if (subnetTrajectory) {
+          const netuid = Number(subnetTrajectory[1]);
+          const rows = await sql`
+          SELECT snapshot_date::text AS snapshot_date, completeness_score,
+                 surface_count, endpoint_count, validator_count, miner_count,
+                 total_stake_tao, alpha_price_tao, emission_share
+          FROM subnet_snapshots
+          WHERE netuid = ${netuid}
+          ORDER BY snapshot_date DESC
+          LIMIT 400`;
+          return json(formatTrajectory({ netuid, rows }));
+        }
+
+        // GET /api/v1/economics/trends?window= (#4832 gap-closure):
+        // network-wide daily economics time series, mirroring
+        // workers/request-handlers/analytics-routes.mjs's handleEconomicsTrends
+        // via src/economics-trends.mjs's loadEconomicsTrends. A malformed
+        // window degrades to "all" (no cutoff) rather than erroring -- the
+        // D1-side handler already rejects it before ever reaching this route
+        // in the real request path, same convention as the uptime route's
+        // windowParam above.
+        if (url.pathname === "/api/v1/economics/trends") {
+          const windowParam = url.searchParams.get("window");
+          const parsedWindow = parseHistoryWindow(windowParam);
+          const windowDays = parsedWindow.error ? null : parsedWindow.days;
+          const windowLabel = parsedWindow.error ? "all" : parsedWindow.label;
+          const cutoff =
+            windowDays != null
+              ? new Date(Date.now() - windowDays * ANALYTICS_DAY_MS)
+                  .toISOString()
+                  .slice(0, 10)
+              : null;
+          const rows = await sql`
+          SELECT snapshot_date::text AS snapshot_date, total_stake_tao,
+                 alpha_price_tao, validator_count, miner_count, emission_share
+          FROM subnet_snapshots
+          ${cutoff ? sql`WHERE snapshot_date >= ${cutoff}::date` : sql``}
+          ORDER BY snapshot_date DESC
+          LIMIT ${ECONOMICS_TRENDS_ROW_CAP}`;
+          return json(
+            buildEconomicsTrends(rows, {
+              window: windowLabel,
+              capped: rows.length >= ECONOMICS_TRENDS_ROW_CAP,
+            }),
+          );
         }
 
         // GET /api/v1/accounts/:ss58/stake-flow

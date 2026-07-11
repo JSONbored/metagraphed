@@ -276,6 +276,60 @@ describe("handleTrajectory", () => {
     const body = await res.json();
     assert.equal(body.data.point_count, 1);
   });
+
+  // #4832 gap-closure: METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is a NEW flag,
+  // deliberately left unset in wrangler.jsonc (no historical backfill --
+  // see handleTrajectory's own header comment) -- these tests only prove
+  // the wiring, not a live flip.
+  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = d1Env();
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          netuid: NETUID,
+          points: [],
+          point_count: 0,
+        }),
+    };
+    const res = await handleTrajectory(
+      req(`/api/v1/subnets/${NETUID}/trajectory`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/trajectory`),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(d1Called, false);
+  });
+
+  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const env = d1Env();
+    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const res = await handleTrajectory(
+      req(`/api/v1/subnets/${NETUID}/trajectory`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/trajectory`),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.data.points, []);
+  });
 });
 
 describe("handleEconomicsTrends", () => {
@@ -484,6 +538,51 @@ describe("handleEconomicsTrends", () => {
     assert.match(res.headers.get("content-type"), /application\/json/);
     const body = await res.json();
     assert.equal(body.data.day_count, 1);
+  });
+
+  // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
+  // and same deliberately-unflipped rationale as handleTrajectory above.
+  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = d1Env();
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, day_count: 0, days: [] }),
+    };
+    const res = await handleEconomicsTrends(
+      req("/api/v1/economics/trends"),
+      env,
+      url("/api/v1/economics/trends"),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.day_count, 0);
+    assert.equal(d1Called, false);
+  });
+
+  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const env = d1Env();
+    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const res = await handleEconomicsTrends(
+      req("/api/v1/economics/trends"),
+      env,
+      url("/api/v1/economics/trends"),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.data.days, []);
   });
 });
 

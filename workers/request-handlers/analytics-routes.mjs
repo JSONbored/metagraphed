@@ -125,28 +125,43 @@ export async function handleTrajectory(request, env, netuid, url) {
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const rows = await d1All(
+  // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE (deliberately
+  // unflipped -- subnet_snapshots has no historical backfill, only started
+  // accumulating from writeSubnetSnapshot's dual-write landing, same
+  // rationale as METAGRAPH_HEALTH_SOURCE's own header comment). A Postgres
+  // hit never reaches d1All, so it can never be marked a fallback.
+  let isFallback = false;
+  let data = await tryPostgresTier(
     env,
-    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
-            validator_count, miner_count, total_stake_tao, alpha_price_tao,
-            emission_share
-     FROM subnet_snapshots
-     WHERE netuid = ?
-     ORDER BY snapshot_date DESC
-     LIMIT 400`,
-    [netuid],
+    request,
+    "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
   );
-  const data = formatTrajectory({ netuid, rows });
+  if (!data) {
+    const rows = await d1All(
+      env,
+      `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
+              validator_count, miner_count, total_stake_tao, alpha_price_tao,
+              emission_share
+       FROM subnet_snapshots
+       WHERE netuid = ?
+       ORDER BY snapshot_date DESC
+       LIMIT 400`,
+      [netuid],
+    );
+    data = formatTrajectory({ netuid, rows });
+    isFallback = hasD1FallbackRows(rows);
+  }
   if (csvRequested(url, request)) {
-    return csvResponse(
+    const csvRes = csvResponse(
       data.points,
       `subnet-${netuid}-trajectory`,
       "short",
       request,
       TRAJECTORY_CSV_COLUMNS,
     );
+    return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
   }
-  return envelopeWithD1Fallback(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -157,8 +172,8 @@ export async function handleTrajectory(request, env, netuid, url) {
       ),
     },
     "short",
-    [rows],
   );
+  return isFallback ? markD1FallbackResponse(response) : response;
 }
 
 // Network-wide economics time series (#1307): aggregate the per-subnet daily
@@ -176,28 +191,41 @@ export async function handleEconomicsTrends(request, env, url) {
     url.searchParams.get("window"),
   );
   if (error) return analyticsQueryError(error);
-  const { data, rows } = await loadEconomicsTrends(
-    (sql, params) => d1All(env, sql, params),
-    { windowLabel: label, windowDays: days },
+  // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
+  // and same deliberately-unflipped rationale as handleTrajectory above.
+  let isFallback = false;
+  let data = await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
   );
+  if (!data) {
+    const loaded = await loadEconomicsTrends(
+      (sql, params) => d1All(env, sql, params),
+      { windowLabel: label, windowDays: days },
+    );
+    data = loaded.data;
+    isFallback = hasD1FallbackRows(loaded.rows);
+  }
   if (csvRequested(url, request)) {
-    return csvResponse(
+    const csvRes = csvResponse(
       data.days,
       "economics-trends",
       "short",
       request,
       ECONOMICS_TRENDS_CSV_COLUMNS,
     );
+    return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
   }
-  return envelopeWithD1Fallback(
+  const response = await envelopeResponse(
     request,
     {
       data,
       meta: await analyticsMeta(env, "/metagraph/economics/trends.json", null),
     },
     "short",
-    [rows],
   );
+  return isFallback ? markD1FallbackResponse(response) : response;
 }
 
 // Long-term daily uptime history for one subnet's operational surfaces.

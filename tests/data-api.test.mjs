@@ -68,6 +68,7 @@ const subnetIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
 // D1/KV already received, so there's nothing to prime beyond the failure hook.
 const healthChecksSyncFailure = vi.hoisted(() => ({ error: null }));
 const healthUptimeRollupSyncFailure = vi.hoisted(() => ({ error: null }));
+const subnetSnapshotSyncFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -129,6 +130,12 @@ vi.mock("postgres", () => ({
         /INSERT INTO account_identity\b/.test(text)
       ) {
         return Promise.reject(accountIdentitySyncFailure.error);
+      }
+      if (
+        subnetSnapshotSyncFailure.error &&
+        /INSERT INTO subnet_snapshots\b/.test(text)
+      ) {
+        return Promise.reject(subnetSnapshotSyncFailure.error);
       }
       if (
         subnetIdentitySyncFailure.error &&
@@ -201,6 +208,7 @@ const SUBNET_HYPERPARAMS_SYNC_SECRET = "test-subnet-hyperparams-sync-secret";
 const ACCOUNT_IDENTITY_SYNC_SECRET = "test-account-identity-sync-secret";
 const SUBNET_IDENTITY_SYNC_SECRET = "test-subnet-identity-sync-secret";
 const HEALTH_CHECKS_SYNC_SECRET = "test-health-checks-sync-secret";
+const SUBNET_SNAPSHOT_SYNC_SECRET = "test-subnet-snapshot-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
@@ -209,6 +217,7 @@ const env = {
   ACCOUNT_IDENTITY_SYNC_SECRET,
   SUBNET_IDENTITY_SYNC_SECRET,
   HEALTH_CHECKS_SYNC_SECRET,
+  SUBNET_SNAPSHOT_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -229,6 +238,7 @@ beforeEach(() => {
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
   healthChecksSyncFailure.error = null;
+  subnetSnapshotSyncFailure.error = null;
   healthUptimeRollupSyncFailure.error = null;
   mockRows.current = [
     {
@@ -5021,4 +5031,215 @@ test("GET /api/v1/internal/subnet-identity-aliases: no netuids returns rows:[] w
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.rows).toEqual([]);
+});
+
+test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-06-01",
+      completeness_score: 90,
+      surface_count: 5,
+      endpoint_count: 5,
+      validator_count: 8,
+      miner_count: 60,
+      total_stake_tao: 90,
+      alpha_price_tao: 0.01,
+      emission_share: 0.02,
+    },
+  ];
+  const res = await req("/api/v1/subnets/7/trajectory");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.points[0].date).toBe("2026-06-01");
+  expect(body.points[0].completeness_score).toBe(90);
+});
+
+test("GET /api/v1/economics/trends: aggregates daily rows network-wide", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-06-01",
+      total_stake_tao: 300,
+      alpha_price_tao: 0.02,
+      validator_count: 8,
+      miner_count: 50,
+      emission_share: 0.04,
+    },
+  ];
+  const res = await req("/api/v1/economics/trends?window=30d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("30d");
+  expect(body.day_count).toBe(1);
+  expect(body.days[0].snapshot_date).toBe("2026-06-01");
+});
+
+test("GET /api/v1/economics/trends: unrecognized window degrades to all", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/economics/trends?window=bogus");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("all");
+});
+
+function snapshotRow(overrides = {}) {
+  return {
+    netuid: 7,
+    snapshot_date: "2026-06-01",
+    completeness_score: 90,
+    surface_count: 5,
+    endpoint_count: 5,
+    monitored_count: 5,
+    candidate_count: 1,
+    validator_count: 8,
+    miner_count: 60,
+    total_stake_tao: 90,
+    alpha_price_tao: 0.01,
+    emission_share: 0.02,
+    captured_at: 1780000000000,
+    ...overrides,
+  };
+}
+
+function postSubnetSnapshot(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-subnet-snapshot-sync-token"] = secret;
+  return req("/api/v1/internal/subnet-snapshot-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("subnet-snapshot-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postSubnetSnapshot([snapshotRow()], { secret: "wrong" });
+  expect(wrong.status).toBe(401);
+  const missing = await postSubnetSnapshot([snapshotRow()]);
+  expect(missing.status).toBe(401);
+});
+
+test("subnet-snapshot-sync is disabled (503) when SUBNET_SNAPSHOT_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/subnet-snapshot-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-subnet-snapshot-sync-token": SUBNET_SNAPSHOT_SYNC_SECRET,
+      },
+      body: JSON.stringify([snapshotRow()]),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("subnet-snapshot-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/subnet-snapshot-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-subnet-snapshot-sync-token": SUBNET_SNAPSHOT_SYNC_SECRET,
+      },
+      body: JSON.stringify([snapshotRow()]),
+    }),
+    { SUBNET_SNAPSHOT_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("subnet-snapshot-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postSubnetSnapshot(null, {
+    secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+    raw: "[" + "1".repeat(2_000_000) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("subnet-snapshot-sync rejects malformed JSON (400)", async () => {
+  const res = await postSubnetSnapshot(null, {
+    secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("subnet-snapshot-sync rejects a body that isn't an array (400)", async () => {
+  const res = await postSubnetSnapshot(
+    { not: "an array" },
+    { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("subnet-snapshot-sync rejects more than the row cap (413)", async () => {
+  const many = Array.from({ length: 2_001 }, (_, i) =>
+    snapshotRow({ netuid: i }),
+  );
+  const res = await postSubnetSnapshot(many, {
+    secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+  });
+  expect(res.status).toBe(413);
+});
+
+test("subnet-snapshot-sync on an empty array is a clean no-op (200)", async () => {
+  const res = await postSubnetSnapshot([], {
+    secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, rows_written: 0 });
+});
+
+test("subnet-snapshot-sync silently skips a row missing a required field, no error", async () => {
+  const res = await postSubnetSnapshot(
+    [snapshotRow({ netuid: "not-a-number" })],
+    {
+      secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+    },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, rows_written: 0 });
+});
+
+test("subnet-snapshot-sync upserts subnet_snapshots with the COALESCE-on-economics-columns SET clause", async () => {
+  const res = await postSubnetSnapshot(
+    [snapshotRow(), snapshotRow({ netuid: 8, snapshot_date: "2026-06-02" })],
+    { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, rows_written: 2 });
+  expect(queryText()).toMatch(/INSERT INTO subnet_snapshots\b/);
+  expect(queryText()).toMatch(
+    /ON CONFLICT \(netuid, snapshot_date\) DO UPDATE SET/,
+  );
+  expect(queryText()).toMatch(
+    /validator_count = COALESCE\(subnet_snapshots\.validator_count, excluded\.validator_count\)/,
+  );
+});
+
+test("subnet-snapshot-sync defaults every optional field to null when absent", async () => {
+  const minimal = {
+    netuid: 3,
+    snapshot_date: "2026-06-01",
+    captured_at: 1780000000000,
+  };
+  const res = await postSubnetSnapshot([minimal], {
+    secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, rows_written: 1 });
+});
+
+test("subnet-snapshot-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  subnetSnapshotSyncFailure.error = new Error("connection reset");
+  const res = await postSubnetSnapshot([snapshotRow()], {
+    secret: SUBNET_SNAPSHOT_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
 });

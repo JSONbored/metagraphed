@@ -8,7 +8,10 @@ import {
   loadSubnetTrajectory,
   LEADERBOARD_BOARDS,
 } from "../src/health-serving.mjs";
-import { writeSubnetSnapshot } from "../src/health-prober.mjs";
+import {
+  syncSubnetSnapshotToPostgres,
+  writeSubnetSnapshot,
+} from "../src/health-prober.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -1002,6 +1005,159 @@ describe("writeSubnetSnapshot", () => {
     for (const col of ["completeness_score", "surface_count", "captured_at"]) {
       assert.doesNotMatch(captured, new RegExp(`${col}\\s*=`));
     }
+  });
+});
+
+// #4832 gap-closure: mirrors src/subnet-identity-history.mjs's
+// syncSubnetIdentityToPostgres tests -- same shape, own dedicated secret
+// (SUBNET_SNAPSHOT_SYNC_SECRET) and own internal route.
+describe("syncSubnetSnapshotToPostgres", () => {
+  const profiles = [{ netuid: 8, completeness_score: 90 }];
+  const economicsByNetuid = new Map([[8, { validator_count: 5 }]]);
+  const opts = {
+    profiles,
+    economicsByNetuid,
+    date: "2026-06-10",
+    capturedAt: 1,
+  };
+
+  test("returns unavailable when DATA_API is not bound", async () => {
+    const result = await syncSubnetSnapshotToPostgres(
+      { SUBNET_SNAPSHOT_SYNC_SECRET: "shh" },
+      opts,
+    );
+    assert.deepEqual(result, { synced: false, reason: "unavailable" });
+  });
+
+  test("returns unavailable when the secret is not configured", async () => {
+    const result = await syncSubnetSnapshotToPostgres(
+      { DATA_API: { fetch: async () => new Response("{}", { status: 200 }) } },
+      opts,
+    );
+    assert.deepEqual(result, { synced: false, reason: "unavailable" });
+  });
+
+  test("returns no_profiles for an empty or missing profiles array", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
+    };
+    assert.deepEqual(
+      await syncSubnetSnapshotToPostgres(env, { ...opts, profiles: [] }),
+      { synced: false, reason: "no_profiles" },
+    );
+    assert.deepEqual(await syncSubnetSnapshotToPostgres(env, {}), {
+      synced: false,
+      reason: "no_profiles",
+    });
+  });
+
+  test("returns no_rows when every profile lacks an integer netuid", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetSnapshotToPostgres(env, {
+      ...opts,
+      profiles: [{ netuid: null }],
+    });
+    assert.deepEqual(result, { synced: false, reason: "no_rows" });
+  });
+
+  test("POSTs one row per profile with the token header and reports synced:true on 200", async () => {
+    let receivedToken;
+    let receivedPath;
+    let receivedBody;
+    const env = {
+      DATA_API: {
+        fetch: async (request) => {
+          receivedToken = request.headers.get("x-subnet-snapshot-sync-token");
+          receivedPath = new URL(request.url).pathname;
+          receivedBody = await request.json();
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+      },
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetSnapshotToPostgres(env, opts);
+    assert.deepEqual(result, { synced: true, rows: 1 });
+    assert.equal(receivedToken, "shh");
+    assert.equal(receivedPath, "/api/v1/internal/subnet-snapshot-sync");
+    assert.deepEqual(receivedBody, [
+      {
+        netuid: 8,
+        snapshot_date: "2026-06-10",
+        completeness_score: 90,
+        surface_count: null,
+        endpoint_count: null,
+        monitored_count: null,
+        candidate_count: null,
+        validator_count: 5,
+        miner_count: null,
+        total_stake_tao: null,
+        alpha_price_tao: null,
+        emission_share: null,
+        captured_at: 1,
+      },
+    ]);
+  });
+
+  test("reports the upstream status when the response is not ok, never throws", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("{}", { status: 502 }) },
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetSnapshotToPostgres(env, opts);
+    assert.deepEqual(result, { synced: false, reason: "status_502" });
+  });
+
+  test("reports fetch_failed and never throws when the binding call rejects", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("network down");
+        },
+      },
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetSnapshotToPostgres(env, opts);
+    assert.deepEqual(result, { synced: false, reason: "fetch_failed" });
+  });
+
+  test("defaults every optional field to null when absent, without an economics map", async () => {
+    let receivedBody;
+    const env = {
+      DATA_API: {
+        fetch: async (request) => {
+          receivedBody = await request.json();
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+      },
+      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetSnapshotToPostgres(env, {
+      profiles: [{ netuid: 9 }],
+      date: "2026-06-10",
+      capturedAt: 1,
+    });
+    assert.deepEqual(result, { synced: true, rows: 1 });
+    assert.deepEqual(receivedBody, [
+      {
+        netuid: 9,
+        snapshot_date: "2026-06-10",
+        completeness_score: null,
+        surface_count: null,
+        endpoint_count: null,
+        monitored_count: null,
+        candidate_count: null,
+        validator_count: null,
+        miner_count: null,
+        total_stake_tao: null,
+        alpha_price_tao: null,
+        emission_share: null,
+        captured_at: 1,
+      },
+    ]);
   });
 });
 

@@ -220,6 +220,39 @@ CREATE INDEX IF NOT EXISTS idx_account_position_daily_netuid_date
 CREATE INDEX IF NOT EXISTS idx_account_position_daily_date
   ON account_position_daily (snapshot_date);
 
+-- Daily structural + economics snapshot per subnet (#4832 gap-closure;
+-- mirrors D1 migrations/0002_analytics.sql + 0008_economics_history.sql).
+-- Low-volume (~129 rows/day, one per active subnet) -- plain table, not a
+-- hypertable, matching account_position_daily/subnet_hyperparams above.
+-- Written from src/health-prober.mjs's writeSubnetSnapshot, the SAME
+-- function that already calls syncSubnetIdentityToPostgres -- an in-Worker-
+-- cron direct env.DATA_API.fetch() service-binding call, not an external
+-- GitHub Actions workflow (see that function's own header comment for why).
+-- total_stake_tao/alpha_price_tao/emission_share are NUMERIC (not REAL),
+-- matching subnet_hyperparams' TAO-precision rationale above.
+CREATE TABLE IF NOT EXISTS subnet_snapshots (
+  netuid             INTEGER NOT NULL,
+  snapshot_date      DATE NOT NULL,
+  completeness_score INTEGER,
+  surface_count      INTEGER,
+  endpoint_count     INTEGER,
+  monitored_count    INTEGER,
+  candidate_count    INTEGER,
+  captured_at        BIGINT NOT NULL,
+  validator_count    INTEGER,
+  miner_count        INTEGER,
+  total_stake_tao    NUMERIC,
+  alpha_price_tao    NUMERIC,
+  emission_share     NUMERIC,
+  PRIMARY KEY (netuid, snapshot_date)
+);
+CREATE INDEX IF NOT EXISTS idx_subnet_snapshots_date
+  ON subnet_snapshots (snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_subnet_snapshots_netuid_date
+  ON subnet_snapshots (netuid, snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_subnet_snapshots_date_netuid
+  ON subnet_snapshots (snapshot_date, netuid);
+
 -- Subnet hyperparameters, latest-only (#4832 gap-closure; mirrors D1
 -- migrations/0036_subnet_hyperparams.sql). One row per netuid, upserted by
 -- the refresh-subnet-hyperparams workflow's direct POST to data-api.mjs.

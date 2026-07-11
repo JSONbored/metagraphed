@@ -893,6 +893,67 @@ export async function pruneHealthHistory(env, overrides = {}) {
   }
 }
 
+// #4832 gap-closure: mirror writeSubnetSnapshot's D1 upsert into Postgres via
+// the DATA_API service binding, called directly from writeSubnetSnapshot
+// below -- same "in-Worker hourly cron, direct env.DATA_API.fetch() service-
+// binding call, not an external GitHub Actions workflow" shape as
+// syncSubnetIdentityToPostgres (src/subnet-identity-history.mjs), which this
+// same function already calls. Best-effort: never throws, and a failure here
+// must never block the D1 write above (the primary contract).
+export async function syncSubnetSnapshotToPostgres(
+  env,
+  { profiles, economicsByNetuid, date, capturedAt } = {},
+) {
+  if (!env?.DATA_API || !env?.SUBNET_SNAPSHOT_SYNC_SECRET) {
+    return { synced: false, reason: "unavailable" };
+  }
+  if (!Array.isArray(profiles) || profiles.length === 0) {
+    return { synced: false, reason: "no_profiles" };
+  }
+  const rows = profiles
+    .filter((profile) => Number.isInteger(profile.netuid))
+    .map((profile) => {
+      const econ = economicsByNetuid?.get(profile.netuid) || {};
+      return {
+        netuid: profile.netuid,
+        snapshot_date: date,
+        completeness_score: profile.completeness_score ?? null,
+        surface_count: profile.surface_count ?? null,
+        endpoint_count: profile.endpoint_count ?? null,
+        monitored_count: profile.monitored_endpoint_count ?? null,
+        candidate_count: profile.candidate_count ?? null,
+        validator_count: econ.validator_count ?? null,
+        miner_count: econ.miner_count ?? null,
+        total_stake_tao: econ.total_stake_tao ?? null,
+        alpha_price_tao: econ.alpha_price_tao ?? null,
+        emission_share: econ.emission_share ?? null,
+        captured_at: capturedAt,
+      };
+    });
+  if (!rows.length) return { synced: false, reason: "no_rows" };
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/subnet-snapshot-sync",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-subnet-snapshot-sync-token": env.SUBNET_SNAPSHOT_SYNC_SECRET,
+          },
+          body: JSON.stringify(rows),
+        },
+      ),
+    );
+    if (!upstream.ok) {
+      return { synced: false, reason: `status_${upstream.status}` };
+    }
+    return { synced: true, rows: rows.length };
+  } catch {
+    return { synced: false, reason: "fetch_failed" };
+  }
+}
+
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
 // subnet_snapshots, keyed on (netuid, UTC date). Fired from the hourly cron;
 // ON CONFLICT DO NOTHING makes repeated fires within a day idempotent (the first
@@ -940,6 +1001,16 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   );
 
   const date = new Date(capturedAt).toISOString().slice(0, 10);
+  // #4832 gap-closure: best-effort Postgres mirror of the D1 upsert below --
+  // never awaited-and-thrown into the caller, see syncSubnetSnapshotToPostgres's
+  // own header comment for why this is a direct service-binding call rather
+  // than routing through the public proxy layer.
+  await syncSubnetSnapshotToPostgres(env, {
+    profiles,
+    economicsByNetuid,
+    date,
+    capturedAt,
+  });
   // The structural columns + captured_at are owned by the first same-day fire.
   // The economics columns can arrive late (economics.json is pure chain state
   // with no committed-asset fallback, unlike profiles.json), so DO NOTHING
