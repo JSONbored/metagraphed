@@ -10,6 +10,13 @@ interface Props {
   chart?: ReactNode;
   tone?: "default" | "accent" | "ok" | "warn" | "down";
   className?: string;
+  /**
+   * Allow the eyebrow label to wrap to a second line instead of truncating.
+   * Opt-in (#3936) for tiles whose label is too long to fit on one line in a
+   * narrow grid column (e.g. "Validators / miners"); defaults to the single-line
+   * truncate behavior every other caller relies on.
+   */
+  wrapEyebrow?: boolean;
 }
 
 /**
@@ -24,6 +31,7 @@ export function StatTile({
   chart,
   tone = "default",
   className,
+  wrapEyebrow = false,
 }: Props) {
   return (
     <div
@@ -55,7 +63,12 @@ export function StatTile({
         />
       ) : null}
       <div className="min-w-0 flex-1">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate">
+        <div
+          className={classNames(
+            "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted",
+            wrapEyebrow ? "text-balance" : "truncate",
+          )}
+        >
           {eyebrow}
         </div>
         <div className="mt-1 flex min-w-0 items-baseline gap-1.5">

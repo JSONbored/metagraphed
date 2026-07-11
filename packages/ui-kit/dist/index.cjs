@@ -3275,7 +3275,8 @@ function StatTile({
   hint,
   chart,
   tone = "default",
-  className
+  className,
+  wrapEyebrow = false
 }) {
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",
@@ -3301,7 +3302,16 @@ function StatTile({
           }
         ) : null,
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0 flex-1", children: [
-          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate", children: eyebrow }),
+          /* @__PURE__ */ jsxRuntime.jsx(
+            "div",
+            {
+              className: classNames(
+                "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted",
+                wrapEyebrow ? "text-balance" : "truncate"
+              ),
+              children: eyebrow
+            }
+          ),
           /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
             /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
             hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 font-mono text-[10px] text-ink-muted truncate", children: hint }) : null
