@@ -251,7 +251,15 @@ export async function recordSubnetIdentityChanges(
   let latestByNetuid;
   try {
     latestByNetuid = await latestIdentityHashes(database);
-  } catch {
+  } catch (error) {
+    // #4832 gap-closure follow-up: a swallowed D1 error here (prod schema
+    // drift, a locked/unavailable DB) dark-served the identity-history
+    // write for an unknown stretch before anyone noticed -- same failure
+    // class d1All was hardened against, see that fix's own comment.
+    console.error(
+      "[recordSubnetIdentityChanges]",
+      String(error?.message ?? error),
+    );
     return { recorded: false, reason: "read_failed" };
   }
   const blockNumber = await latestBlockNumber(database);
@@ -291,7 +299,11 @@ export async function recordSubnetIdentityChanges(
   try {
     await runStatementBatches(database, statements);
     return { recorded: true, rows: statements.length };
-  } catch {
+  } catch (error) {
+    console.error(
+      "[recordSubnetIdentityChanges]",
+      String(error?.message ?? error),
+    );
     return { recorded: false, reason: "write_failed" };
   }
 }

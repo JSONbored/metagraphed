@@ -681,6 +681,64 @@ describe("recordSubnetIdentityChanges", () => {
     );
   });
 
+  test("logs a non-Error read failure via the error fallback", async () => {
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return this;
+          },
+          all: async () => {
+            throw "boom";
+          },
+        };
+      },
+    };
+    assert.deepEqual(
+      await recordSubnetIdentityChanges(
+        {},
+        {
+          profiles: [{ netuid: 7, native_identity: { subnet_name: "X" } }],
+          db,
+        },
+      ),
+      { recorded: false, reason: "read_failed" },
+    );
+  });
+
+  test("logs a non-Error write failure via the error fallback", async () => {
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return this;
+          },
+          all: async () => {
+            if (/FROM blocks/.test(sql)) {
+              return { results: [{ block_number: 123 }] };
+            }
+            return { results: [] };
+          },
+        };
+      },
+      batch: async () => {
+        throw "boom";
+      },
+    };
+    assert.deepEqual(
+      await recordSubnetIdentityChanges(
+        {},
+        {
+          profiles: [
+            { netuid: 7, native_identity: { subnet_name: "Changed" } },
+          ],
+          db,
+        },
+      ),
+      { recorded: false, reason: "write_failed" },
+    );
+  });
+
   test("tolerates a missing blocks table when resolving block_number", async () => {
     const binds = [];
     const db = {
