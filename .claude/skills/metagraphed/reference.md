@@ -377,7 +377,14 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   commit the resulting `dist/index.js`/`index.cjs`/`index.css` in the same PR** — the `ui` CI job's
   "Build packages/ui-kit (drift check)" step rebuilds fresh and fails loudly (`git diff --exit-code`)
   if the committed copy doesn't match, same as the `packages/client` drift check above. The job also
-  runs a dedicated `npm run typecheck --workspace=packages/ui-kit` step ("Typecheck packages/ui-kit").
+  runs dedicated `npm run typecheck --workspace=packages/ui-kit` ("Typecheck packages/ui-kit") and
+  `npm test --workspace=packages/ui-kit` ("Test packages/ui-kit") steps. **A separate "Lint
+  packages/ui-kit (app-logic import guardrail)" step (#4865) enforces that the package stays a real,
+  standalone library** — `packages/ui-kit/eslint.config.js`'s `no-restricted-imports` rule fails on
+  any import of `@tanstack/react-router`, `@tanstack/react-query`, or anything resolving into
+  `apps/ui/**`. If a component genuinely needs routing/data, accept it as a prop from the caller
+  instead of reaching for app infrastructure — that's the exact regression this package's extraction
+  exists to prevent.
 - **`packages/contract` is a types-only npm workspace (#3067) holding the OpenAPI-derived contract
   types** — `openapi-typescript`'s output (`scripts/generate-types.mjs`/`validate-types.mjs`/
   `validate-contract-drift.mjs` all write/check `packages/contract/index.d.ts` now, no longer

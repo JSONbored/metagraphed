@@ -8,9 +8,21 @@ Why this package exists: [#4867](https://github.com/JSONbored/metagraphed/issues
 
 ## Status
 
-Scaffold only ([#4860](https://github.com/JSONbored/metagraphed/issues/4860)) — no real
-components have migrated yet. `PlaceholderCard` exists only to prove the build pipeline (JS +
-`.d.ts` + CSS extraction) works end to end; it's removed once the first real component lands.
+Design tokens, the shadcn-style `components/ui/*` primitives, the cross-cutting visual-language
+components, and the chart primitives have all migrated
+([#4861](https://github.com/JSONbored/metagraphed/issues/4861)-[#4864](https://github.com/JSONbored/metagraphed/issues/4864)).
+`apps/ui` consumes everything from `@jsonbored/ui-kit`.
+
+## Boundary rule: no app-specific imports
+
+This package must stay a real, standalone, dependency-free library — the moment a component here
+imports something app-specific, the extraction has silently regressed back into the exact problem
+this package exists to fix. `eslint.config.js`'s `no-restricted-imports` rule enforces this in CI:
+importing `@tanstack/react-router`, `@tanstack/react-query`, or anything resolving into
+`apps/ui/**` fails the build. If a component genuinely needs routing/data, accept it as a prop
+from the caller instead. If it needs a small pure helper that also lives in `apps/ui` (date
+formatting, a `cn()`-style className joiner, etc.), duplicate the specific pieces needed rather
+than importing across the package boundary — see `src/lib/format.ts` for the established pattern.
 
 ## Build
 
