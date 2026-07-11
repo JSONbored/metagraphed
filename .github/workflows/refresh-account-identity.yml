@@ -99,6 +99,24 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # #4832 gap-closure: ALSO write the same signed snapshot to the Postgres
+      # write path (workers/data-api.mjs's handleAccountIdentitySync),
+      # alongside (not replacing) the R2/D1 step above -- mirrors
+      # refresh-subnet-hyperparams.yml's sync step exactly.
+      - name: Sync account identities to the Postgres write path (#4832 gap-closure)
+        run: |
+          if [ -z "$ACCOUNT_IDENTITY_SYNC_SECRET" ]; then
+            echo "ACCOUNT_IDENTITY_SYNC_SECRET not set; skipping Postgres sync"
+            exit 0
+          fi
+          curl -fsS -X POST "https://api.metagraph.sh/api/v1/internal/account-identity-sync" \
+            -H "x-account-identity-sync-token: ${ACCOUNT_IDENTITY_SYNC_SECRET}" \
+            -H "content-type: application/json" \
+            --data-binary @dist/metagraph-account-identity.json \
+            || echo "::warning::account-identity-sync Postgres write failed; D1 path (this job's real dependency) is unaffected"
+        env:
+          ACCOUNT_IDENTITY_SYNC_SECRET: ${{ secrets.ACCOUNT_IDENTITY_SYNC_SECRET }}
+
   notify-on-failure:
     needs: [fetch, sign-and-stage]
     if: ${{ always() && (needs.fetch.result == 'failure' || needs.sign-and-stage.result == 'failure') }}

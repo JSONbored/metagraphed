@@ -3265,7 +3265,12 @@ export async function handleAccountPositionHistory(
 export async function handleAccountIdentity(request, env, ss58, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadAccountIdentity(d1Runner(env), ss58);
+  const data =
+    (await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+    )) ?? (await loadAccountIdentity(d1Runner(env), ss58));
   return envelopeResponse(
     request,
     {
@@ -3293,11 +3298,19 @@ export async function handleAccountIdentityHistory(request, env, ss58, url) {
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
-  const data = await loadAccountIdentityHistory(d1Runner(env), ss58, {
-    limit,
-    offset,
-    cursor,
-  });
+  async function fromD1() {
+    return loadAccountIdentityHistory(d1Runner(env), ss58, {
+      limit,
+      offset,
+      cursor,
+    });
+  }
+  const data =
+    (await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+    )) ?? (await fromD1());
   return envelopeResponse(
     request,
     {

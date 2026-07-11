@@ -6,6 +6,8 @@ import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
 import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
 import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";
+import { IDENTITY_FIELDS } from "../src/account-identity.mjs";
+import { identityHash } from "../src/account-identity-history.mjs";
 
 const sqlCalls = vi.hoisted(() => []);
 const mockRows = vi.hoisted(() => ({
@@ -43,6 +45,11 @@ const rollupFailure = vi.hoisted(() => ({ error: null }));
 const subnetHyperparamsSyncFailure = vi.hoisted(() => ({ error: null }));
 const subnetHyperparamsPruneRows = vi.hoisted(() => ({ current: [] }));
 const subnetHyperparamsLatestHashes = vi.hoisted(() => ({ current: [] }));
+// State for the account-identity-sync write route's tests only (#4832
+// gap-closure). No prune-rows hook -- unlike subnet_hyperparams, this table
+// has no purge step (see handleAccountIdentitySync's own header comment).
+const accountIdentitySyncFailure = vi.hoisted(() => ({ error: null }));
+const accountIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -99,11 +106,20 @@ vi.mock("postgres", () => ({
       ) {
         return Promise.reject(subnetHyperparamsSyncFailure.error);
       }
+      if (
+        accountIdentitySyncFailure.error &&
+        /INSERT INTO account_identity\b/.test(text)
+      ) {
+        return Promise.reject(accountIdentitySyncFailure.error);
+      }
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
       }
       if (/SELECT DISTINCT ON \(netuid\)/.test(text)) {
         return Promise.resolve(subnetHyperparamsLatestHashes.current);
+      }
+      if (/SELECT DISTINCT ON \(account\)/.test(text)) {
+        return Promise.resolve(accountIdentityLatestHashes.current);
       }
       if (mockQueue.current.length) {
         return Promise.resolve(mockQueue.current.shift());
@@ -143,11 +159,13 @@ const { default: worker } = await import("../workers/data-api.mjs");
 const NEURONS_SYNC_SECRET = "test-neurons-sync-secret";
 const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
 const SUBNET_HYPERPARAMS_SYNC_SECRET = "test-subnet-hyperparams-sync-secret";
+const ACCOUNT_IDENTITY_SYNC_SECRET = "test-account-identity-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
   ROLLUP_SYNC_SECRET,
   SUBNET_HYPERPARAMS_SYNC_SECRET,
+  ACCOUNT_IDENTITY_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -163,6 +181,8 @@ beforeEach(() => {
   subnetHyperparamsSyncFailure.error = null;
   subnetHyperparamsPruneRows.current = [];
   subnetHyperparamsLatestHashes.current = [];
+  accountIdentitySyncFailure.error = null;
+  accountIdentityLatestHashes.current = [];
   mockRows.current = [
     {
       block_number: "123",
@@ -3157,6 +3177,326 @@ test("GET /api/v1/subnets/:netuid/hyperparameters/history?limit=1 emits a next_c
     },
   ];
   const res = await req("/api/v1/subnets/8/hyperparameters/history?limit=1");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.next_cursor).not.toBeNull();
+});
+
+// #4832 gap-closure: POST /api/v1/internal/account-identity-sync -- the
+// write path into account_identity/account_identity_history (see
+// workers/data-api.mjs's handleAccountIdentitySync), plus its read paths,
+// GET /api/v1/accounts/:ss58/identity[-history]. Unlike subnet-hyperparams-
+// sync, this route has NO prune step (see that handler's own comment).
+const IDENTITY_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+function accountIdentitySyncRow(overrides = {}) {
+  return {
+    account: IDENTITY_SS58,
+    name: "Example Team",
+    url: "https://miao.example/",
+    github: "https://github.com/miao-team/miao-repo",
+    image: "https://miao.example/logo.png",
+    discord: "examplehandle",
+    description: "An example subnet operator.",
+    additional: null,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postAccountIdentity(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-account-identity-sync-token"] = secret;
+  return req("/api/v1/internal/account-identity-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("account-identity-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postAccountIdentity([accountIdentitySyncRow()], {
+    secret: "wrong",
+  });
+  expect(wrong.status).toBe(401);
+  const missing = await postAccountIdentity([accountIdentitySyncRow()]);
+  expect(missing.status).toBe(401);
+});
+
+test("account-identity-sync is disabled (503) when ACCOUNT_IDENTITY_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/account-identity-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-account-identity-sync-token": ACCOUNT_IDENTITY_SYNC_SECRET,
+      },
+      body: JSON.stringify([accountIdentitySyncRow()]),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("account-identity-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/account-identity-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-account-identity-sync-token": ACCOUNT_IDENTITY_SYNC_SECRET,
+      },
+      body: JSON.stringify([accountIdentitySyncRow()]),
+    }),
+    { ACCOUNT_IDENTITY_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("account-identity-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postAccountIdentity(null, {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+    raw: "[" + "1".repeat(5_000_000) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("account-identity-sync rejects malformed JSON (400)", async () => {
+  const res = await postAccountIdentity(null, {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync rejects a body that isn't an array or {rows:[...]} (400)", async () => {
+  const res = await postAccountIdentity(
+    { not: "an array" },
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync accepts the {rows:[...]} wrapped form, not just a bare array", async () => {
+  const res = await postAccountIdentity(
+    { rows: [accountIdentitySyncRow()] },
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.account_identity_written).toBe(1);
+});
+
+test("account-identity-sync rejects more than the row cap (413)", async () => {
+  // Minimal rows (account + captured_at only, no other fields) so the total
+  // body stays well under the byte cap -- otherwise a full accountIdentitySyncRow()
+  // fixture repeated 20,001x would trip the byte-cap 413 first and mask
+  // whether the row-cap check itself is reachable.
+  const many = Array.from({ length: 20_001 }, () => ({
+    account: "5X",
+    captured_at: 1_780_000_000_000,
+  }));
+  const res = await postAccountIdentity(many, {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(413);
+});
+
+test("account-identity-sync rejects a row with a missing/empty account (400)", async () => {
+  const res = await postAccountIdentity(
+    [accountIdentitySyncRow({ account: "" })],
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync rejects a non-object row (400)", async () => {
+  const res = await postAccountIdentity(["not-an-object"], {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync rejects a row carrying an unknown column (400)", async () => {
+  const res = await postAccountIdentity(
+    [accountIdentitySyncRow({ unexpected_field: "nope" })],
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync rejects a row with a numeric identity field (400)", async () => {
+  // Unlike subnet-hyperparams-sync, every column but account/captured_at is
+  // TEXT-only -- a bare number must be actively rejected here.
+  const res = await postAccountIdentity(
+    [accountIdentitySyncRow({ name: 123 })],
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync rejects a row with a string field over the byte cap (400)", async () => {
+  const res = await postAccountIdentity(
+    [accountIdentitySyncRow({ name: "x".repeat(1100) })],
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync rejects a row missing a finite captured_at (400)", async () => {
+  const res = await postAccountIdentity(
+    [accountIdentitySyncRow({ captured_at: "not-a-number" })],
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync rejects an empty array (400)", async () => {
+  const res = await postAccountIdentity([], {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("account-identity-sync upserts account_identity and reports written counts, no prune", async () => {
+  const res = await postAccountIdentity(
+    [
+      accountIdentitySyncRow({ account: "5Account1" }),
+      accountIdentitySyncRow({ account: "5Account2" }),
+    ],
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({ ok: true, account_identity_written: 2 });
+  expect(queryText()).toMatch(/INSERT INTO account_identity\b/);
+  expect(queryText()).not.toMatch(/DELETE FROM account_identity/);
+});
+
+test("account-identity-sync defaults a missing optional column (e.g. additional) to null rather than undefined", async () => {
+  const { additional: _additional, ...withoutAdditional } =
+    accountIdentitySyncRow();
+  const res = await postAccountIdentity([withoutAdditional], {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO account_identity\b/.test(c.text),
+  );
+  expect(insert.values).toContain(null);
+});
+
+test("account-identity-sync appends to account_identity_history when the hash changed (cold history)", async () => {
+  accountIdentityLatestHashes.current = [];
+  const res = await postAccountIdentity([accountIdentitySyncRow()], {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+  });
+  const body = await res.json();
+  expect(body.history_appended).toBe(1);
+  expect(queryText()).toMatch(/INSERT INTO account_identity_history/);
+});
+
+test("account-identity-sync skips the history append when the hash is unchanged", async () => {
+  const row = accountIdentitySyncRow();
+  const snapshot = {};
+  for (const field of IDENTITY_FIELDS) snapshot[field] = row[field] ?? null;
+  const hash = await identityHash(snapshot);
+  accountIdentityLatestHashes.current = [
+    { account: row.account, identity_hash: hash },
+  ];
+  const res = await postAccountIdentity([row], {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+  });
+  const body = await res.json();
+  expect(body.history_appended).toBe(0);
+  expect(queryText()).not.toMatch(/INSERT INTO account_identity_history/);
+});
+
+test("account-identity-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  accountIdentitySyncFailure.error = new Error("connection reset");
+  const res = await postAccountIdentity([accountIdentitySyncRow()], {
+    secret: ACCOUNT_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+test("GET /api/v1/accounts/:ss58/identity returns the latest row", async () => {
+  mockRows.current = [
+    {
+      account: IDENTITY_SS58,
+      name: "Example Team",
+      url: "https://miao.example/",
+      github: null,
+      image: null,
+      discord: null,
+      description: null,
+      additional: null,
+      captured_at: "1780000000000",
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${IDENTITY_SS58}/identity`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.has_identity).toBe(true);
+  expect(body.name).toBe("Example Team");
+});
+
+test("GET /api/v1/accounts/:ss58/identity on a cold store returns has_identity:false", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/accounts/${IDENTITY_SS58}/identity`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.has_identity).toBe(false);
+});
+
+test("GET /api/v1/accounts/:ss58/identity-history returns the change timeline", async () => {
+  mockRows.current = [
+    {
+      id: "10",
+      observed_at: "1780000000000",
+      name: "Example Team",
+      url: null,
+      github: null,
+      image: null,
+      discord: null,
+      description: null,
+      additional: null,
+      identity_hash: "abc123",
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${IDENTITY_SS58}/identity-history`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.entry_count).toBe(1);
+  expect(body.entries[0].identity_hash).toBe("abc123");
+  expect(body.entries[0].name).toBe("Example Team");
+});
+
+test("GET /api/v1/accounts/:ss58/identity-history uses a cursor seek instead of OFFSET", async () => {
+  mockRows.current = [];
+  const cursor = encodeCursor([1780000000000, 10]);
+  const res = await req(
+    `/api/v1/accounts/${IDENTITY_SS58}/identity-history?cursor=${cursor}`,
+  );
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("AND (observed_at, id) <");
+  expect(queryText()).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/identity-history?limit=1 emits a next_cursor when the page is full", async () => {
+  mockRows.current = [
+    {
+      id: "10",
+      observed_at: "1780000000000",
+      identity_hash: "abc123",
+    },
+  ];
+  const res = await req(
+    `/api/v1/accounts/${IDENTITY_SS58}/identity-history?limit=1`,
+  );
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.next_cursor).not.toBeNull();

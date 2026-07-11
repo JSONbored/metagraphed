@@ -311,6 +311,47 @@ CREATE INDEX IF NOT EXISTS idx_subnet_hyperparams_history_netuid_observed
 CREATE INDEX IF NOT EXISTS idx_subnet_hyperparams_history_netuid_id
   ON subnet_hyperparams_history (netuid, id DESC);
 
+-- Personal (coldkey) chain identity, latest-only (#4832 gap-closure Phase B;
+-- mirrors D1 migrations/0039_account_identity.sql). One row per account,
+-- upserted by the refresh-account-identity workflow's direct POST to
+-- data-api.mjs. Deliberately NO purge step (unlike subnet_hyperparams above):
+-- an identity is a property of the owning account, not of currently having
+-- an active neuron -- see loadStagedAccountIdentity's own header comment.
+CREATE TABLE IF NOT EXISTS account_identity (
+  account       TEXT NOT NULL,
+  name          TEXT,
+  url           TEXT,
+  github        TEXT,
+  image         TEXT,
+  discord       TEXT,
+  description   TEXT,
+  additional    TEXT,
+  captured_at   BIGINT NOT NULL,
+  PRIMARY KEY (account)
+);
+
+-- Personal chain identity history (#4832 gap-closure Phase B; mirrors D1
+-- migrations/0041_account_identity_history.sql). Append-only, diffed by
+-- identity_hash on each sync; no block_number column, matching D1 (an
+-- account carries no chain block height, only captured_at).
+CREATE TABLE IF NOT EXISTS account_identity_history (
+  id            BIGSERIAL PRIMARY KEY,
+  account       TEXT NOT NULL,
+  observed_at   BIGINT NOT NULL,
+  name          TEXT,
+  url           TEXT,
+  github        TEXT,
+  image         TEXT,
+  discord       TEXT,
+  description   TEXT,
+  additional    TEXT,
+  identity_hash TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_account_identity_history_account_observed
+  ON account_identity_history (account, observed_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_account_identity_history_account_id
+  ON account_identity_history (account, id DESC);
+
 -- Account daily rollup (#2079 / audit: removes the temp-sort on default account history).
 CREATE TABLE IF NOT EXISTS account_events_daily (
   hotkey           TEXT NOT NULL,

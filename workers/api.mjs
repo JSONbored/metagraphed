@@ -1233,6 +1233,19 @@ async function handleSubnetHyperparamsSyncProxy(request, env) {
   });
 }
 
+// Proxies POST /api/v1/internal/account-identity-sync -- the write path into
+// account_identity/account_identity_history (#4832 gap-closure). Same
+// DATA_API service binding as the other internal sync routes above.
+async function handleAccountIdentitySyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "account_identity_sync_unavailable",
+    notBoundMessage:
+      "The account-identity sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The account-identity sync tier returned an unreadable response.",
+  });
+}
+
 export async function handleRequest(request, env = {}, ctx = {}) {
   let url = new URL(request.url);
 
@@ -1360,6 +1373,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // above. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/subnet-hyperparams-sync") {
     return handleSubnetHyperparamsSyncProxy(request, env);
+  }
+  // The write path into account_identity/account_identity_history (#4832
+  // gap-closure) -- refresh-account-identity.yml's sign-and-stage job calls
+  // this the same way. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/account-identity-sync") {
+    return handleAccountIdentitySyncProxy(request, env);
   }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs

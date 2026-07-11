@@ -224,6 +224,15 @@ import {
   hyperparamsHash,
   buildSubnetHyperparamsHistory,
 } from "../src/subnet-hyperparams-history.mjs";
+import {
+  ACCOUNT_IDENTITY_INSERT_COLUMNS,
+  IDENTITY_FIELDS,
+  buildAccountIdentity,
+} from "../src/account-identity.mjs";
+import {
+  identityHash,
+  buildAccountIdentityHistory,
+} from "../src/account-identity-history.mjs";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -1020,6 +1029,188 @@ async function handleSubnetHyperparamsSync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/account-identity-sync (#4832 gap-closure) ------
+//
+// The write path into account_identity + account_identity_history, mirroring
+// handleSubnetHyperparamsSync's shape above -- same signed-envelope-direct-
+// POST rationale (see that function's own header comment). Two real
+// differences from the hyperparams path: (1) every column but account/
+// captured_at is TEXT, no boolean-flag coercion needed; (2) NO prune step --
+// an identity is a property of the owning account, not of currently having
+// an active neuron, matching loadStagedAccountIdentity's own D1 behavior
+// (workers/request-handlers/staging.mjs) -- an account missing from one
+// snapshot pass hasn't necessarily lost its identity.
+const ACCOUNT_IDENTITY_SYNC_TOKEN_HEADER = "x-account-identity-sync-token";
+// ~460 rows live-observed 2026-07-09 (~1.5% of ~30k active neurons); generous
+// headroom, matching the D1 staging path's MAX_STAGED_ACCOUNT_IDENTITY_ROWS/
+// _BYTES.
+const ACCOUNT_IDENTITY_SYNC_MAX_BODY_BYTES = 5_000_000;
+const ACCOUNT_IDENTITY_SYNC_MAX_ROWS = 20_000;
+const ACCOUNT_IDENTITY_SYNC_MAX_STRING_BYTES = 1024;
+
+// Bounds-check one incoming row against ACCOUNT_IDENTITY_INSERT_COLUMNS --
+// same trust posture as staging.mjs's validStagedAccountIdentityRow. Unlike
+// validSubnetHyperparamsSyncRow, every column but account/captured_at is
+// TEXT-only, so a bare number must be actively REJECTED here, not tolerated.
+function validAccountIdentitySyncRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (typeof row.account !== "string" || row.account.length === 0) return false;
+  if (!Number.isFinite(row.captured_at)) return false;
+  for (const [key, value] of Object.entries(row)) {
+    if (!ACCOUNT_IDENTITY_INSERT_COLUMNS.includes(key)) return false;
+    if (key === "account" || key === "captured_at") continue;
+    if (value === null) continue;
+    if (typeof value !== "string") return false;
+    if (utf8Bytes(value).length > ACCOUNT_IDENTITY_SYNC_MAX_STRING_BYTES)
+      return false;
+  }
+  return true;
+}
+
+function coerceAccountIdentitySyncRow(row) {
+  const out = {};
+  for (const col of ACCOUNT_IDENTITY_INSERT_COLUMNS) {
+    out[col] = row[col] ?? null;
+  }
+  return out;
+}
+
+async function handleAccountIdentitySync(request, env) {
+  if (!env.ACCOUNT_IDENTITY_SYNC_SECRET) {
+    return writeJson(
+      { error: "account-identity sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ACCOUNT_IDENTITY_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.ACCOUNT_IDENTITY_SYNC_SECRET)
+  ) {
+    return writeJson(
+      { error: `provide a valid ${ACCOUNT_IDENTITY_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > ACCOUNT_IDENTITY_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${ACCOUNT_IDENTITY_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of account-identity rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > ACCOUNT_IDENTITY_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${ACCOUNT_IDENTITY_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validAccountIdentitySyncRow)) {
+    return writeJson(
+      { error: "rows must match the account-identity row shape" },
+      400,
+    );
+  }
+
+  const rows = incoming.map(coerceAccountIdentitySyncRow);
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+
+      await sql`
+        INSERT INTO account_identity ${sql(rows, ...ACCOUNT_IDENTITY_INSERT_COLUMNS)}
+        ON CONFLICT (account) DO UPDATE SET
+          name = EXCLUDED.name,
+          url = EXCLUDED.url,
+          github = EXCLUDED.github,
+          image = EXCLUDED.image,
+          discord = EXCLUDED.discord,
+          description = EXCLUDED.description,
+          additional = EXCLUDED.additional,
+          captured_at = EXCLUDED.captured_at
+        WHERE account_identity.captured_at <= EXCLUDED.captured_at`;
+
+      // Diff-and-append into account_identity_history (mirrors D1's
+      // recordAccountIdentityChanges) -- hashed on the RAW incoming rows,
+      // matching identitySnapshotFromRow's own field selection.
+      const latest = await sql`
+        SELECT DISTINCT ON (account) account, identity_hash
+        FROM account_identity_history
+        ORDER BY account, id DESC`;
+      const latestByAccount = new Map(
+        latest.map((row) => [row.account, row.identity_hash]),
+      );
+      const now = Date.now();
+      const changedRows = [];
+      for (const row of incoming) {
+        const snapshot = {};
+        for (const field of IDENTITY_FIELDS)
+          snapshot[field] = row[field] ?? null;
+        const hash = await identityHash(snapshot);
+        if (latestByAccount.get(row.account) === hash) continue;
+        changedRows.push({
+          account: row.account,
+          observed_at: now,
+          ...snapshot,
+          identity_hash: hash,
+        });
+        latestByAccount.set(row.account, hash);
+      }
+      if (changedRows.length) {
+        await sql`
+          INSERT INTO account_identity_history ${sql(
+            changedRows,
+            "account",
+            "observed_at",
+            ...IDENTITY_FIELDS,
+            "identity_hash",
+          )}`;
+      }
+
+      return writeJson({
+        ok: true,
+        account_identity_written: rows.length,
+        history_appended: changedRows.length,
+      });
+    });
+  } catch (err) {
+    console.error("data-api account-identity-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1150,6 +1341,12 @@ export default {
       url.pathname === "/api/v1/internal/subnet-hyperparams-sync"
     ) {
       return handleSubnetHyperparamsSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/account-identity-sync"
+    ) {
+      return handleAccountIdentitySync(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
@@ -2760,6 +2957,60 @@ export default {
           SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
           FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
           return json(buildAccountPortfolio(rows, ss58));
+        }
+
+        // GET /api/v1/accounts/:ss58/identity (#4832 gap-closure, Phase B):
+        // latest-only, mirroring src/account-identity.mjs's
+        // loadAccountIdentity. Column list matches that file's own SELECT.
+        const acctIdentity = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/identity$/,
+        );
+        if (acctIdentity) {
+          const ss58 = decodeURIComponent(acctIdentity[1]);
+          const rows = await sql`
+          SELECT account, name, url, github, image, discord, description, additional, captured_at
+          FROM account_identity WHERE account = ${ss58}`;
+          return json(buildAccountIdentity(rows[0] ?? null, ss58));
+        }
+
+        // GET /api/v1/accounts/:ss58/identity-history?limit=&offset=&cursor=
+        // (#4832 gap-closure, Phase B): append-only change timeline,
+        // mirroring src/account-identity-history.mjs's
+        // loadAccountIdentityHistory. observed_at/id are plain BIGINT
+        // columns, no ::text cast needed.
+        const acctIdentityHistory = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/identity-history$/,
+        );
+        if (acctIdentityHistory) {
+          const ss58 = decodeURIComponent(acctIdentityHistory[1]);
+          const limit = clampRequestLimit(
+            url.searchParams.get("limit"),
+            FEED_PAGINATION,
+          );
+          const offset = clampRequestOffset(url.searchParams.get("offset"));
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const rows = await sql`
+          SELECT id, observed_at, name, url, github, image, discord, description, additional, identity_hash
+          FROM account_identity_history
+          WHERE account = ${ss58}
+            ${cursor ? sql`AND (observed_at, id) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY observed_at DESC, id DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          const last = rows.length === limit ? rows[rows.length - 1] : null;
+          const nextCursor = last
+            ? encodeCursor([
+                numberOrNull(last.observed_at),
+                numberOrNull(last.id),
+              ])
+            : null;
+          return json(
+            buildAccountIdentityHistory(rows, ss58, {
+              limit,
+              offset,
+              nextCursor,
+            }),
+          );
         }
 
         // GET /api/v1/accounts?sort=&limit= (#4832 Tier 2): the global accounts

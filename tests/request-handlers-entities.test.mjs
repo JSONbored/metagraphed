@@ -6507,6 +6507,111 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.entries[0].hyperparams_hash, "abc");
   });
 
+  // #4832 gap-closure: account_identity/account_identity_history's new
+  // Postgres tier, own dedicated flag (METAGRAPH_ACCOUNT_IDENTITY_SOURCE).
+  test("handleAccountIdentity: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      accountIdentity: [accountIdentityRow()],
+    });
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        account: SS58,
+        has_identity: true,
+        name: "Postgres Team",
+      }),
+    );
+    const path = `/api/v1/accounts/${SS58}/identity`;
+    const body = await json(
+      await handleAccountIdentity(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.name, "Postgres Team");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountIdentity: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ accountIdentity: [accountIdentityRow()] });
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/accounts/${SS58}/identity`;
+    const body = await json(
+      await handleAccountIdentity(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.name, "Example Team");
+  });
+
+  test("handleAccountIdentityHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      accountIdentityHistory: [
+        {
+          id: 10,
+          observed_at: OBSERVED_AT,
+          name: "Example Team",
+          url: null,
+          github: null,
+          image: null,
+          discord: null,
+          description: null,
+          additional: null,
+          identity_hash: "abc",
+        },
+      ],
+    });
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        account: SS58,
+        entry_count: 1,
+        limit: null,
+        offset: null,
+        next_cursor: null,
+        entries: [{ identity_hash: "pg-hash" }],
+      }),
+    );
+    const path = `/api/v1/accounts/${SS58}/identity-history`;
+    const body = await json(
+      await handleAccountIdentityHistory(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.entries[0].identity_hash, "pg-hash");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountIdentityHistory: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({
+      accountIdentityHistory: [
+        {
+          id: 10,
+          observed_at: OBSERVED_AT,
+          name: "Example Team",
+          url: null,
+          github: null,
+          image: null,
+          discord: null,
+          description: null,
+          additional: null,
+          identity_hash: "abc",
+        },
+      ],
+    });
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/accounts/${SS58}/identity-history`;
+    const body = await json(
+      await handleAccountIdentityHistory(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.entries[0].identity_hash, "abc");
+  });
+
   test("handleSubnetValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "postgres";
