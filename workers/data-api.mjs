@@ -347,12 +347,15 @@ function windowLabelFor(url, windows, defaultLabel) {
 
 // A ?limit= value for the /chain/* network-wide analytics routes (#4832
 // Tier 2). Most callers arrive via tryPostgresTier after the D1-side handler
-// has already validated the route-specific bounds, so this mirrors
-// parseLimitParam's success path. Direct data-worker routes that are reachable
-// before the main Worker must still call parseLimitParam themselves below.
+// has already validated the route-specific bounds, but the Postgres-serving
+// Worker must stay safe even if reached directly: every chain-wide analytics
+// leaderboard is capped at the public API's 1..100 range before the value is
+// bound into a SQL LIMIT clause.
 function chainLimit(url, defaultLimit) {
-  const raw = url.searchParams.get("limit");
-  return raw === null ? defaultLimit : Number(raw);
+  return clampRequestLimit(url.searchParams.get("limit"), {
+    defaultLimit,
+    maxLimit: 100,
+  });
 }
 
 function queryError(error) {

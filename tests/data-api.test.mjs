@@ -4478,6 +4478,25 @@ test("GET /api/v1/chain/transfers: totals + distinct counts + senders + receiver
   expect(body.top_senders[0].address).toBe("5Sender");
 });
 
+test("GET /api/v1/chain/transfers caps direct Data API limits at 100", async () => {
+  mockQueue.current = [
+    [],
+    [],
+    [{ transfer_count: 0, total_volume_tao: 0, newest_observed: null }],
+    [{ unique_senders: 0 }],
+    [{ unique_receivers: 0 }],
+    [],
+    [],
+  ];
+  const res = await req("/api/v1/chain/transfers?limit=1000000000");
+  expect(res.status).toBe(200);
+  expect(
+    sqlCalls
+      .filter((call) => /LIMIT \?$/.test(call.text.trim()))
+      .map((call) => call.values.at(-1)),
+  ).toEqual([100, 100]);
+});
+
 test("GET /api/v1/chain/transfers: a cold store's empty totals row falls back to null", async () => {
   mockQueue.current = [
     [], // consumed by the session-scoped `SET statement_timeout` call
@@ -4528,6 +4547,29 @@ test("GET /api/v1/chain/transfer-pairs: default (volume) sort", async () => {
   expect(body.sort).toBe("volume");
   expect(body.pairs[0].from).toBe("5Sa");
   expect(queryText()).toContain("volume_tao DESC, transfer_count DESC");
+});
+
+test("GET /api/v1/chain/transfer-pairs caps direct Data API limits at 100", async () => {
+  mockQueue.current = [
+    [],
+    [
+      {
+        transfer_count: 0,
+        total_volume_tao: 0,
+        unique_pairs: 0,
+        top_pair_volume_tao: 0,
+        newest_observed: null,
+      },
+    ],
+    [],
+    [],
+  ];
+  const res = await req("/api/v1/chain/transfer-pairs?limit=1000000000");
+  expect(res.status).toBe(200);
+  const leaderboard = sqlCalls.find((call) =>
+    /GROUP BY hotkey, "coldkey" ORDER BY/.test(call.text),
+  );
+  expect(leaderboard?.values.at(-1)).toBe(100);
 });
 
 test("GET /api/v1/chain/transfer-pairs?sort=count uses the count ordering", async () => {

@@ -27,10 +27,6 @@
   // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,
   // not at the nearest edge to the client.
   "placement": { "mode": "smart" },
-  // This Worker owns an internal write path plus uncached Postgres read routes;
-  // keep it reachable only through the main Worker's DATA_API service binding.
-  "workers_dev": false,
-  "preview_urls": false,
   // Full observability — logs AND traces (matches the main Worker).
   "observability": {
     "enabled": true,
