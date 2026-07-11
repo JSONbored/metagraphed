@@ -99,16 +99,16 @@ export function MetagraphTableLoader({
       {/* Stake distribution across the leading UIDs. */}
       {stakeBars.length > 0 ? (
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
               Stake distribution · top {stakeBars.length} UIDs
             </span>
-            <span className="ml-auto flex items-center gap-3">
+            <div className="flex flex-col items-end gap-1">
               <span className="font-mono text-[10px] text-ink-muted">
                 peak {taoCompact(stakeBars[0]?.value)} τ
               </span>
               {freshness}
-            </span>
+            </div>
           </div>
           <BarMini data={stakeBars} />
         </div>
