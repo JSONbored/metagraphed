@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
@@ -48,7 +50,23 @@ function isGlobalIncidentOngoing(s: GlobalIncidentSurface, observedAt?: string |
   return latest > 0 && observedMs - latest < ONGOING_MS;
 }
 
+// #3977: the probe-history drill-down's date + its nested table controls are
+// URL-backed so a picked date, kind/status filters, and sort survive a reload
+// and are shareable — the component is explicitly named as a `/health/history/
+// {date}` resource but previously kept all of this in local state. Empty `date`
+// falls back to the most-recent probe day in the component.
+const SURFACE_SORT_FIELDS = ["netuid", "provider", "kind", "status", "latency_ms"] as const;
+
+const statusSearchSchema = z.object({
+  date: fallback(z.string(), "").default(""),
+  kind: fallback(z.string(), "").default(""),
+  status: fallback(z.string(), "").default(""),
+  sort: fallback(z.enum(SURFACE_SORT_FIELDS), "status").default("status"),
+  order: fallback(z.enum(["asc", "desc"]), "asc").default("asc"),
+});
+
 export const Route = createFileRoute("/status")({
+  validateSearch: zodValidator(statusSearchSchema),
   head: () => ({
     meta: [
       { title: "Status — Metagraphed" },

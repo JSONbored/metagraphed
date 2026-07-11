@@ -1,6 +1,6 @@
 import { Suspense, useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   healthHistoryQuery,
   sourceHealthProvidersQuery,
@@ -46,7 +46,13 @@ export function HealthHistoryDrilldown() {
   const { data: hRes } = useSuspenseQuery(healthQuery());
   const latest = hRes.meta?.generated_at ?? hRes.data.generated_at;
   const defaultDate = (latest ?? new Date().toISOString()).slice(0, 10);
-  const [date, setDate] = useState(defaultDate);
+  // #3977: URL-backed so a picked date survives reload + is shareable. An empty
+  // `date` param means "most recent", so we omit it from the URL in that case.
+  const search = useSearch({ from: "/status" });
+  const navigate = useNavigate({ from: "/status" });
+  const date = search.date || defaultDate;
+  const setDate = (next: string) =>
+    navigate({ search: (prev) => ({ ...prev, date: next === defaultDate ? "" : next }) });
 
   return (
     <div className="space-y-3">
@@ -81,18 +87,25 @@ export function HealthHistoryDrilldown() {
 function HealthHistoryBody({ date }: { date: string }) {
   const { data: res } = useSuspenseQuery(healthHistoryQuery(date));
   const summary = res.data.summary;
-  const [kind, setKind] = useState("");
-  const [status, setStatus] = useState("");
-  const [sort, setSort] = useState<SurfaceSortField>("status");
-  const [order, setOrder] = useState<"asc" | "desc">("asc");
+  // #3977: the table's kind/status filters + sort are URL-backed alongside the
+  // date so the whole drill-down state is shareable and reload-stable.
+  const search = useSearch({ from: "/status" });
+  const navigate = useNavigate({ from: "/status" });
+  const kind = search.kind;
+  const status = search.status;
+  const sort: SurfaceSortField = search.sort;
+  const order = search.order;
+  const setKind = (next: string) => navigate({ search: (prev) => ({ ...prev, kind: next }) });
+  const setStatus = (next: string) => navigate({ search: (prev) => ({ ...prev, status: next }) });
 
   const onSort = (field: string) => {
     const f = field as SurfaceSortField;
-    if (f === sort) setOrder((o) => (o === "asc" ? "desc" : "asc"));
-    else {
-      setSort(f);
-      setOrder("asc");
-    }
+    navigate({
+      search: (prev) =>
+        f === prev.sort
+          ? { ...prev, order: prev.order === "asc" ? "desc" : "asc" }
+          : { ...prev, sort: f, order: "asc" },
+    });
   };
 
   const classData: BarMiniDatum[] = useMemo(
