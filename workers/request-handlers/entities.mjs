@@ -912,17 +912,15 @@ export async function handleValidatorNominators(request, env, hotkey, url) {
       message: `"coldkey" must be a valid SS58 address.`,
     });
   }
-  const { data, generatedAt } = await loadValidatorNominators(
-    d1Runner(env),
-    hotkey,
-    {
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadValidatorNominators(d1Runner(env), hotkey, {
       windowLabel: windowParam,
       sort: sort ?? undefined,
       limit: limit.value,
       offset: offset.value,
       coldkey: coldkeyParam ?? undefined,
-    },
-  );
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -1783,10 +1781,12 @@ export async function handleSubnetWeightSetters(request, env, netuid, url) {
       ),
     });
   }
-  const data = await loadSubnetWeightSetters(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetWeightSetters(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam],
+    }));
   // account_events-derived: the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling /weights route.
   return envelopeResponse(
@@ -1831,10 +1831,12 @@ export async function handleSubnetServing(request, env, netuid, url) {
       message: unsupportedWindowMessage(windowParam, SUBNET_SERVING_WINDOWS),
     });
   }
-  const data = await loadSubnetServing(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_SERVING_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetServing(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_SERVING_WINDOWS[windowParam],
+    }));
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed AxonServed event, mirroring the sibling stake-flow route.
   return envelopeResponse(
@@ -1880,10 +1882,12 @@ export async function handleSubnetPrometheus(request, env, netuid, url) {
       message: unsupportedWindowMessage(windowParam, SUBNET_PROMETHEUS_WINDOWS),
     });
   }
-  const data = await loadSubnetPrometheus(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_PROMETHEUS_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetPrometheus(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_PROMETHEUS_WINDOWS[windowParam],
+    }));
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed PrometheusServed event, mirroring the sibling serving route.
   return envelopeResponse(
@@ -1932,10 +1936,12 @@ export async function handleSubnetStakeMoves(request, env, netuid, url) {
       ),
     });
   }
-  const data = await loadSubnetStakeMoves(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_STAKE_MOVES_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetStakeMoves(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_STAKE_MOVES_WINDOWS[windowParam],
+    }));
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed StakeMoved event, mirroring the sibling stake-flow route.
   return envelopeResponse(
@@ -1984,10 +1990,12 @@ export async function handleSubnetStakeTransfers(request, env, netuid, url) {
       ),
     });
   }
-  const data = await loadSubnetStakeTransfers(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_STAKE_TRANSFERS_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetStakeTransfers(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_STAKE_TRANSFERS_WINDOWS[windowParam],
+    }));
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed StakeTransferred event, mirroring the sibling stake-moves route.
   return envelopeResponse(
@@ -2035,10 +2043,12 @@ export async function handleSubnetRegistrations(request, env, netuid, url) {
       ),
     });
   }
-  const data = await loadSubnetRegistrations(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_REGISTRATIONS_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetRegistrations(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_REGISTRATIONS_WINDOWS[windowParam],
+    }));
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed NeuronRegistered event, mirroring the sibling stake-flow route.
   return envelopeResponse(
@@ -2086,10 +2096,12 @@ export async function handleSubnetAxonRemovals(request, env, netuid, url) {
       ),
     });
   }
-  const data = await loadSubnetAxonRemovals(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_AXON_REMOVALS_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetAxonRemovals(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_AXON_REMOVALS_WINDOWS[windowParam],
+    }));
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed AxonInfoRemoved event, mirroring the sibling stake-flow route.
   return envelopeResponse(
@@ -2137,10 +2149,12 @@ export async function handleSubnetDeregistrations(request, env, netuid, url) {
       ),
     });
   }
-  const data = await loadSubnetDeregistrations(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_DEREGISTRATIONS_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetDeregistrations(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_DEREGISTRATIONS_WINDOWS[windowParam],
+    }));
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed NeuronDeregistered event, mirroring the sibling stake-flow route.
   return envelopeResponse(
@@ -2184,14 +2198,12 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
   }
   const normalizedDirection =
     direction === "in" || direction === "out" ? direction : undefined;
-  const { data, generatedAt } = await loadSubnetStakeFlow(
-    d1Runner(env),
-    netuid,
-    {
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetStakeFlow(d1Runner(env), netuid, {
       windowLabel: windowParam,
       direction: normalizedDirection ?? DEFAULT_STAKE_FLOW_DIRECTION,
-    },
-  );
+    }));
   // account_events-derived, so the meta reports source "chain-events" (via
   // accountMeta), not the metagraph snapshot; generated_at is the newest event in
   // the window.
@@ -2389,14 +2401,12 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
   }
   const normalizedDirection =
     direction === "in" || direction === "out" ? direction : undefined;
-  const { data, generatedAt } = await loadAccountStakeFlow(
-    d1Runner(env),
-    ss58,
-    {
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountStakeFlow(d1Runner(env), ss58, {
       windowLabel: windowParam,
       direction: normalizedDirection,
-    },
-  );
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -2429,11 +2439,11 @@ export async function handleAccountStakeMoves(request, env, ss58, url) {
       ),
     });
   }
-  const { data, generatedAt } = await loadAccountStakeMoves(
-    d1Runner(env),
-    ss58,
-    { windowLabel: windowParam },
-  );
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountStakeMoves(d1Runner(env), ss58, {
+      windowLabel: windowParam,
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -2466,11 +2476,11 @@ export async function handleAccountWeightSetters(request, env, ss58, url) {
       ),
     });
   }
-  const { data, generatedAt } = await loadAccountWeightSetters(
-    d1Runner(env),
-    ss58,
-    { windowLabel: windowParam },
-  );
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountWeightSetters(d1Runner(env), ss58, {
+      windowLabel: windowParam,
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -2500,11 +2510,11 @@ export async function handleAccountRegistrations(request, env, ss58, url) {
       message: unsupportedWindowMessage(windowParam, REGISTRATION_WINDOWS),
     });
   }
-  const { data, generatedAt } = await loadAccountRegistrations(
-    d1Runner(env),
-    ss58,
-    { windowLabel: windowParam },
-  );
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountRegistrations(d1Runner(env), ss58, {
+      windowLabel: windowParam,
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -2533,9 +2543,11 @@ export async function handleAccountServing(request, env, ss58, url) {
       message: unsupportedWindowMessage(windowParam, SERVING_WINDOWS),
     });
   }
-  const { data, generatedAt } = await loadAccountServing(d1Runner(env), ss58, {
-    windowLabel: windowParam,
-  });
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountServing(d1Runner(env), ss58, {
+      windowLabel: windowParam,
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -2565,11 +2577,11 @@ export async function handleAccountAxonRemovals(request, env, ss58, url) {
       message: unsupportedWindowMessage(windowParam, AXON_REMOVAL_WINDOWS),
     });
   }
-  const { data, generatedAt } = await loadAccountAxonRemovals(
-    d1Runner(env),
-    ss58,
-    { windowLabel: windowParam },
-  );
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountAxonRemovals(d1Runner(env), ss58, {
+      windowLabel: windowParam,
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -2599,11 +2611,11 @@ export async function handleAccountPrometheus(request, env, ss58, url) {
       message: unsupportedWindowMessage(windowParam, PROMETHEUS_WINDOWS),
     });
   }
-  const { data, generatedAt } = await loadAccountPrometheus(
-    d1Runner(env),
-    ss58,
-    { windowLabel: windowParam },
-  );
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountPrometheus(d1Runner(env), ss58, {
+      windowLabel: windowParam,
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -2633,11 +2645,11 @@ export async function handleAccountDeregistrations(request, env, ss58, url) {
       message: unsupportedWindowMessage(windowParam, DEREGISTRATION_WINDOWS),
     });
   }
-  const { data, generatedAt } = await loadAccountDeregistrations(
-    d1Runner(env),
-    ss58,
-    { windowLabel: windowParam },
-  );
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountDeregistrations(d1Runner(env), ss58, {
+      windowLabel: windowParam,
+    }));
   return accountEnvelopeResponse(
     request,
     {
@@ -2979,14 +2991,16 @@ export async function handleAccountTransfers(request, env, ss58, url) {
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
   const normalizedDirection =
     direction === "sent" || direction === "received" ? direction : undefined;
-  const data = await loadAccountTransfers(d1Runner(env), ss58, {
-    direction: normalizedDirection,
-    limit,
-    offset,
-    cursor,
-    blockStart: blockStart.value,
-    blockEnd: blockEnd.value,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountTransfers(d1Runner(env), ss58, {
+      direction: normalizedDirection,
+      limit,
+      offset,
+      cursor,
+      blockStart: blockStart.value,
+      blockEnd: blockEnd.value,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.transfers,
@@ -3038,12 +3052,15 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
         message: "counterparty must differ from ss58.",
       });
     }
-    const data = await loadCounterpartyRelationship(
-      d1Runner(env),
-      ss58,
-      counterparty,
-      { limit },
-    );
+    const data =
+      (await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) ??
+      (await loadCounterpartyRelationship(d1Runner(env), ss58, counterparty, {
+        limit,
+      }));
     return accountEnvelopeResponse(
       request,
       {
@@ -3057,7 +3074,9 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
       "short",
     );
   }
-  const data = await loadCounterparties(d1Runner(env), ss58, { limit });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadCounterparties(d1Runner(env), ss58, { limit }));
   return accountEnvelopeResponse(
     request,
     {

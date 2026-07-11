@@ -179,21 +179,6 @@ CREATE INDEX IF NOT EXISTS idx_nd_netuid_date ON neuron_daily (netuid, snapshot_
 CREATE INDEX IF NOT EXISTS idx_nd_uid_date    ON neuron_daily (netuid, uid, snapshot_date);
 CREATE INDEX IF NOT EXISTS idx_nd_hotkey_date ON neuron_daily (hotkey, snapshot_date);
 
--- ---------------------------------------------------------------------------
--- Economics tiers
--- ---------------------------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS economics_history (
-  netuid             INTEGER NOT NULL,
-  snapshot_date      DATE NOT NULL,
-  alpha_price_tao    NUMERIC,
-  emission_share     NUMERIC,
-  total_stake_tao    NUMERIC,
-  registration_cost  NUMERIC,
-  PRIMARY KEY (netuid, snapshot_date)
-);
-CREATE INDEX IF NOT EXISTS idx_econ_netuid_date ON economics_history (netuid, snapshot_date);
-
 -- Account daily rollup (#2079 / audit: removes the temp-sort on default account history).
 CREATE TABLE IF NOT EXISTS account_events_daily (
   hotkey           TEXT NOT NULL,

@@ -26,8 +26,153 @@ import { buildExtrinsic, buildExtrinsicFeed } from "../src/extrinsics.mjs";
 import {
   buildAccountEvents,
   formatAccountEvent,
+  buildAccountTransfers,
 } from "../src/account-events.mjs";
 import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
+import {
+  buildValidatorNominators,
+  NOMINATOR_WINDOWS,
+  DEFAULT_NOMINATOR_WINDOW,
+  NOMINATOR_SORTS,
+  STAKE_ADDED_KIND,
+  STAKE_REMOVED_KIND,
+} from "../src/validator-nominators.mjs";
+import {
+  buildAccountWeightSetters,
+  WEIGHTS_EVENT_KIND,
+  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+} from "../src/account-weight-setters.mjs";
+import {
+  buildSubnetWeightSetters,
+  SUBNET_WEIGHT_SETTERS_LIMIT,
+  SUBNET_WEIGHT_SETTERS_WINDOWS,
+  DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+} from "../src/subnet-weight-setters.mjs";
+import {
+  buildAccountStakeFlow,
+  STAKE_FLOW_WINDOWS,
+  DEFAULT_STAKE_FLOW_WINDOW,
+} from "../src/account-stake-flow.mjs";
+import { buildStakeFlow } from "../src/stake-flow.mjs";
+import {
+  buildAccountStakeMoves,
+  STAKE_MOVED_EVENT_KIND,
+  ACCOUNT_STAKE_MOVES_WINDOWS,
+  DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+} from "../src/account-stake-moves.mjs";
+import {
+  buildSubnetStakeMoves,
+  SUBNET_STAKE_MOVES_WINDOWS,
+  DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
+} from "../src/subnet-stake-moves.mjs";
+import {
+  buildSubnetStakeTransfers,
+  STAKE_TRANSFERRED_EVENT_KIND,
+  SUBNET_STAKE_TRANSFERS_WINDOWS,
+  DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
+} from "../src/subnet-stake-transfers.mjs";
+import {
+  buildAccountRegistrations,
+  REGISTRATION_EVENT_KIND,
+  REGISTRATION_WINDOWS,
+  DEFAULT_REGISTRATION_WINDOW,
+} from "../src/account-registrations.mjs";
+import {
+  buildSubnetRegistrations,
+  SUBNET_REGISTRATIONS_WINDOWS,
+  DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
+} from "../src/subnet-registrations.mjs";
+import {
+  buildAccountServing,
+  SERVING_EVENT_KIND,
+  SERVING_WINDOWS,
+  DEFAULT_SERVING_WINDOW,
+} from "../src/account-serving.mjs";
+import {
+  buildSubnetServing,
+  SUBNET_SERVING_WINDOWS,
+  DEFAULT_SUBNET_SERVING_WINDOW,
+} from "../src/subnet-serving.mjs";
+import {
+  buildAccountAxonRemovals,
+  AXON_REMOVAL_EVENT_KIND,
+  AXON_REMOVAL_WINDOWS,
+  DEFAULT_AXON_REMOVAL_WINDOW,
+} from "../src/account-axon-removals.mjs";
+import {
+  buildSubnetAxonRemovals,
+  SUBNET_AXON_REMOVALS_WINDOWS,
+  DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
+} from "../src/subnet-axon-removals.mjs";
+import {
+  buildAccountPrometheus,
+  PROMETHEUS_EVENT_KIND,
+  PROMETHEUS_WINDOWS,
+  DEFAULT_PROMETHEUS_WINDOW,
+} from "../src/account-prometheus.mjs";
+import {
+  buildSubnetPrometheus,
+  SUBNET_PROMETHEUS_WINDOWS,
+  DEFAULT_SUBNET_PROMETHEUS_WINDOW,
+} from "../src/subnet-prometheus.mjs";
+import {
+  buildAccountDeregistrations,
+  DEREGISTRATION_EVENT_KIND,
+  DEREGISTRATION_WINDOWS,
+  DEFAULT_DEREGISTRATION_WINDOW,
+} from "../src/account-deregistrations.mjs";
+import {
+  buildSubnetDeregistrations,
+  SUBNET_DEREGISTRATIONS_WINDOWS,
+  DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
+} from "../src/subnet-deregistrations.mjs";
+import {
+  buildCounterparties,
+  buildCounterpartyRelationship,
+  COUNTERPARTIES_SCAN_CAP,
+} from "../src/counterparties.mjs";
+const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
+
+// Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
+// `Date.now() - days*DAY_MS` exactly. An unrecognized label falls back to the
+// map's default rather than erroring -- entities.mjs's own validation already
+// rejected genuinely bad values before tryPostgresTier ever forwards the
+// request here, so this only needs to mirror the happy path.
+function windowCutoff(url, windows, defaultLabel) {
+  const label = url.searchParams.get("window") || defaultLabel;
+  const days = Object.hasOwn(windows, label)
+    ? windows[label]
+    : windows[defaultLabel];
+  return Date.now() - days * ANALYTICS_DAY_MS;
+}
+
+// The resolved window label to pass into a build* function's `{ window }` option,
+// matching what windowCutoff used to compute the cutoff (falls back to the
+// default for an unrecognized/absent label, same as windowCutoff).
+function windowLabelFor(url, windows, defaultLabel) {
+  const label = url.searchParams.get("window") || defaultLabel;
+  return Object.hasOwn(windows, label) ? label : defaultLabel;
+}
+
+// The newest `last_observed` epoch-ms across a row set, as an ISO string (or
+// null for an empty/cold result) -- matches every account-level D1 loader's
+// own `{ data, generatedAt }` contract (loadValidatorNominators,
+// loadAccountWeightSetters, loadAccountStakeFlow, loadSubnetStakeFlow,
+// loadAccountStakeMoves, and the 5 account-footprint loaders all compute this
+// identically). entities.mjs destructures `generatedAt` straight off the
+// tryPostgresTier body, so this route MUST nest under `data` too, not return
+// buildX(...)'s object flat the way the subnet-level (single-object) routes do.
+function latestObservedIso(rows, field = "last_observed") {
+  let latest = null;
+  for (const row of rows) {
+    const n = Number(row?.[field]);
+    if (Number.isFinite(n) && n > 0 && (latest == null || n > latest)) {
+      latest = n;
+    }
+  }
+  return latest == null ? null : new Date(latest).toISOString();
+}
 import { timingSafeEqual } from "../src/webhooks.mjs";
 import {
   BLOCK_PAGINATION,
@@ -751,6 +896,529 @@ export default {
           return json(
             buildAccountEvents(rows, ss58, { limit, offset, nextCursor }),
           );
+        }
+
+        // account_events-derived analytics routes (#4826): D1's account_events copy
+        // froze when the streamer that fed it stopped (ADR 0014 step 5); this
+        // Postgres account_events table is the live, current one (26.7M rows).
+        // Every route below reuses its D1 sibling's build*/`window` maps unchanged
+        // (pure, store-agnostic) -- only the query itself is ported. No INDEXED BY
+        // equivalent exists in Postgres; a flat WHERE lets the planner pick the
+        // matching index (idx_ae_hotkey / idx_ae_coldkey / idx_ae_netuid_kind, see
+        // deploy/postgres/schema.sql).
+
+        // GET /api/v1/validators/:hotkey/nominators
+        const nominators = url.pathname.match(
+          /^\/api\/v1\/validators\/([^/]+)\/nominators$/,
+        );
+        if (nominators) {
+          const hotkey = decodeURIComponent(nominators[1]);
+          const cutoff = windowCutoff(
+            url,
+            NOMINATOR_WINDOWS,
+            DEFAULT_NOMINATOR_WINDOW,
+          );
+          const sortParam = url.searchParams.get("sort");
+          const sort = NOMINATOR_SORTS.includes(sortParam)
+            ? sortParam
+            : "net_staked";
+          const limit = Math.min(
+            Math.max(
+              Number(url.searchParams.get("limit")) ||
+                GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+              1,
+            ),
+            GLOBAL_VALIDATOR_LIMIT_MAX,
+          );
+          const offset = Math.max(
+            Number(url.searchParams.get("offset")) || 0,
+            0,
+          );
+          const coldkey = url.searchParams.get("coldkey");
+          const orderBy =
+            sort === "gross_staked"
+              ? sql`gross_staked_tao DESC, coldkey ASC`
+              : sort === "last_activity"
+                ? sql`last_observed DESC, coldkey ASC`
+                : sql`net_staked_tao DESC, coldkey ASC`;
+          const rows = await sql`
+          SELECT coldkey,
+            COALESCE(SUM(CASE WHEN event_kind = ${STAKE_ADDED_KIND} THEN amount_tao ELSE 0 END), 0) AS staked_tao,
+            COALESCE(SUM(CASE WHEN event_kind = ${STAKE_REMOVED_KIND} THEN amount_tao ELSE 0 END), 0) AS unstaked_tao,
+            COUNT(*) AS event_count, MAX(observed_at) AS last_observed,
+            COALESCE(SUM(CASE WHEN event_kind = ${STAKE_ADDED_KIND} THEN amount_tao ELSE -amount_tao END), 0) AS net_staked_tao,
+            COALESCE(SUM(amount_tao), 0) AS gross_staked_tao
+          FROM account_events
+          WHERE hotkey = ${hotkey} AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND}) AND observed_at >= ${cutoff}
+            ${coldkey ? sql`AND coldkey = ${coldkey}` : sql``}
+          GROUP BY coldkey ORDER BY ${orderBy}
+          LIMIT ${limit} OFFSET ${offset}`;
+          return json({
+            data: buildValidatorNominators(rows, hotkey, {
+              window: windowLabelFor(
+                url,
+                NOMINATOR_WINDOWS,
+                DEFAULT_NOMINATOR_WINDOW,
+              ),
+              sort,
+              limit,
+              offset,
+              totalCount: rows.length,
+            }),
+            generatedAt: latestObservedIso(rows),
+          });
+        }
+
+        // GET /api/v1/accounts/:ss58/weight-setters
+        const acctWeightSetters = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/weight-setters$/,
+        );
+        if (acctWeightSetters) {
+          const address = decodeURIComponent(acctWeightSetters[1]);
+          const cutoff = windowCutoff(
+            url,
+            ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+            DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+          );
+          const rows = await sql`
+          SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed,
+                 MAX(observed_at) AS last_observed
+          FROM (
+            SELECT netuid, observed_at FROM account_events
+            WHERE hotkey = ${address} AND event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}
+            UNION ALL
+            SELECT e.netuid, e.observed_at
+            FROM neurons n
+            JOIN account_events e ON e.netuid = n.netuid AND e.uid = n.uid
+            WHERE n.hotkey = ${address} AND e.event_kind = ${WEIGHTS_EVENT_KIND} AND e.observed_at >= ${cutoff}
+              AND (e.hotkey IS NULL OR e.hotkey = '')
+          ) sub
+          GROUP BY netuid`;
+          return json({
+            data: buildAccountWeightSetters(rows, address, {
+              window: windowLabelFor(
+                url,
+                ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+                DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+              ),
+            }),
+            generatedAt: latestObservedIso(rows),
+          });
+        }
+
+        // GET /api/v1/subnets/:netuid/weights/setters
+        const subnetWeightSetters = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/weights\/setters$/,
+        );
+        if (subnetWeightSetters) {
+          const netuid = Number(subnetWeightSetters[1]);
+          const cutoff = windowCutoff(
+            url,
+            SUBNET_WEIGHT_SETTERS_WINDOWS,
+            DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+          );
+          const rows = await sql`
+          SELECT MAX(hotkey) AS hotkey, MAX(uid) AS uid, COUNT(*) AS weight_sets,
+                 MIN(observed_at) AS first_set, MAX(observed_at) AS last_set
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}
+            AND (CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                      WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) IS NOT NULL
+          GROUP BY CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                        WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END
+          ORDER BY weight_sets DESC, last_set DESC LIMIT ${SUBNET_WEIGHT_SETTERS_LIMIT}`;
+          const totalsRows = await sql`
+          SELECT COUNT(*) AS weight_sets,
+                 COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                                      WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters,
+                 MAX(observed_at) AS newest_observed
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          return json(
+            buildSubnetWeightSetters(rows, totalsRows[0] ?? null, netuid, {
+              window: windowLabelFor(
+                url,
+                SUBNET_WEIGHT_SETTERS_WINDOWS,
+                DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+              ),
+            }),
+          );
+        }
+
+        // GET /api/v1/accounts/:ss58/stake-flow
+        const acctStakeFlow = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/stake-flow$/,
+        );
+        if (acctStakeFlow) {
+          const address = decodeURIComponent(acctStakeFlow[1]);
+          const cutoff = windowCutoff(
+            url,
+            STAKE_FLOW_WINDOWS,
+            DEFAULT_STAKE_FLOW_WINDOW,
+          );
+          const directionParam = url.searchParams.get("direction");
+          // Scalar binds only (never a bound JS array) -- Hyperdrive's
+          // fetch_types:false breaks postgres.js's ANY($1)/array serialization,
+          // see the neurons-sync prune query's comment above for the confirmed
+          // live repro. Explicit IN (...)/= branches per direction instead.
+          const rows = await sql`
+          SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao,
+            COUNT(*) AS event_count, MAX(observed_at) AS last_observed
+          FROM account_events
+          WHERE coldkey = ${address}
+            ${directionParam === "in" ? sql`AND event_kind = ${STAKE_ADDED_KIND}` : directionParam === "out" ? sql`AND event_kind = ${STAKE_REMOVED_KIND}` : sql`AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND})`}
+            AND observed_at >= ${cutoff}
+          GROUP BY netuid, event_kind`;
+          return json({
+            data: buildAccountStakeFlow(rows, address, {
+              window: windowLabelFor(
+                url,
+                STAKE_FLOW_WINDOWS,
+                DEFAULT_STAKE_FLOW_WINDOW,
+              ),
+            }),
+            generatedAt: latestObservedIso(rows),
+          });
+        }
+
+        // GET /api/v1/subnets/:netuid/stake-flow
+        const subnetStakeFlow = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/stake-flow$/,
+        );
+        if (subnetStakeFlow) {
+          const netuid = Number(subnetStakeFlow[1]);
+          const cutoff = windowCutoff(
+            url,
+            STAKE_FLOW_WINDOWS,
+            DEFAULT_STAKE_FLOW_WINDOW,
+          );
+          const directionParam = url.searchParams.get("direction");
+          // Scalar binds only -- see the account-level stake-flow route above
+          // for why a bound JS array (ANY($1)) is unsafe here.
+          const rows = await sql`
+          SELECT event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, COUNT(*) AS event_count,
+                 MAX(observed_at) AS last_observed
+          FROM account_events
+          WHERE netuid = ${netuid}
+            ${directionParam === "in" ? sql`AND event_kind = ${STAKE_ADDED_KIND}` : directionParam === "out" ? sql`AND event_kind = ${STAKE_REMOVED_KIND}` : sql`AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND})`}
+            AND observed_at >= ${cutoff}
+          GROUP BY event_kind`;
+          return json({
+            data: buildStakeFlow(rows, netuid, {
+              window: windowLabelFor(
+                url,
+                STAKE_FLOW_WINDOWS,
+                DEFAULT_STAKE_FLOW_WINDOW,
+              ),
+            }),
+            generatedAt: latestObservedIso(rows),
+          });
+        }
+
+        // GET /api/v1/accounts/:ss58/stake-moves
+        const acctStakeMoves = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/stake-moves$/,
+        );
+        if (acctStakeMoves) {
+          const address = decodeURIComponent(acctStakeMoves[1]);
+          const cutoff = windowCutoff(
+            url,
+            ACCOUNT_STAKE_MOVES_WINDOWS,
+            DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+          );
+          const rows = await sql`
+          SELECT netuid, COUNT(*) AS movements, MIN(observed_at) AS first_observed,
+                 MAX(observed_at) AS last_observed
+          FROM account_events
+          WHERE coldkey = ${address} AND event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}
+          GROUP BY netuid`;
+          return json({
+            data: buildAccountStakeMoves(rows, address, {
+              window: windowLabelFor(
+                url,
+                ACCOUNT_STAKE_MOVES_WINDOWS,
+                DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+              ),
+            }),
+            generatedAt: latestObservedIso(rows),
+          });
+        }
+
+        // GET /api/v1/subnets/:netuid/stake-moves
+        const subnetStakeMoves = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/stake-moves$/,
+        );
+        if (subnetStakeMoves) {
+          const netuid = Number(subnetStakeMoves[1]);
+          const cutoff = windowCutoff(
+            url,
+            SUBNET_STAKE_MOVES_WINDOWS,
+            DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
+          );
+          const rows = await sql`
+          SELECT COUNT(*) AS movements, COUNT(DISTINCT coldkey) AS distinct_movers,
+                 MAX(observed_at) AS newest_observed
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          return json(
+            buildSubnetStakeMoves(rows[0] ?? null, netuid, {
+              window: windowLabelFor(
+                url,
+                SUBNET_STAKE_MOVES_WINDOWS,
+                DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
+              ),
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/stake-transfers
+        const subnetStakeTransfers = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/stake-transfers$/,
+        );
+        if (subnetStakeTransfers) {
+          const netuid = Number(subnetStakeTransfers[1]);
+          const cutoff = windowCutoff(
+            url,
+            SUBNET_STAKE_TRANSFERS_WINDOWS,
+            DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
+          );
+          const rows = await sql`
+          SELECT COUNT(*) AS transfers, COUNT(DISTINCT coldkey) AS distinct_senders,
+                 MAX(observed_at) AS newest_observed
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          return json(
+            buildSubnetStakeTransfers(rows[0] ?? null, netuid, {
+              window: windowLabelFor(
+                url,
+                SUBNET_STAKE_TRANSFERS_WINDOWS,
+                DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
+              ),
+            }),
+          );
+        }
+
+        // The 5 account-level "count one event_kind per subnet" footprints
+        // (registrations/serving/axon-removals/prometheus/deregistrations) share
+        // an identical shape -- only the event_kind + output field name differ.
+        const ACCOUNT_FOOTPRINTS = [
+          {
+            re: /^\/api\/v1\/accounts\/([^/]+)\/registrations$/,
+            kind: REGISTRATION_EVENT_KIND,
+            metric: "registrations",
+            build: buildAccountRegistrations,
+            windows: REGISTRATION_WINDOWS,
+            def: DEFAULT_REGISTRATION_WINDOW,
+          },
+          {
+            re: /^\/api\/v1\/accounts\/([^/]+)\/serving$/,
+            kind: SERVING_EVENT_KIND,
+            metric: "announcements",
+            build: buildAccountServing,
+            windows: SERVING_WINDOWS,
+            def: DEFAULT_SERVING_WINDOW,
+          },
+          {
+            re: /^\/api\/v1\/accounts\/([^/]+)\/axon-removals$/,
+            kind: AXON_REMOVAL_EVENT_KIND,
+            metric: "removals",
+            build: buildAccountAxonRemovals,
+            windows: AXON_REMOVAL_WINDOWS,
+            def: DEFAULT_AXON_REMOVAL_WINDOW,
+          },
+          {
+            re: /^\/api\/v1\/accounts\/([^/]+)\/prometheus$/,
+            kind: PROMETHEUS_EVENT_KIND,
+            metric: "announcements",
+            build: buildAccountPrometheus,
+            windows: PROMETHEUS_WINDOWS,
+            def: DEFAULT_PROMETHEUS_WINDOW,
+          },
+          {
+            re: /^\/api\/v1\/accounts\/([^/]+)\/deregistrations$/,
+            kind: DEREGISTRATION_EVENT_KIND,
+            metric: "deregistrations",
+            build: buildAccountDeregistrations,
+            windows: DEREGISTRATION_WINDOWS,
+            def: DEFAULT_DEREGISTRATION_WINDOW,
+          },
+        ];
+        for (const fp of ACCOUNT_FOOTPRINTS) {
+          const m = url.pathname.match(fp.re);
+          if (!m) continue;
+          const address = decodeURIComponent(m[1]);
+          const cutoff = windowCutoff(url, fp.windows, fp.def);
+          const rows = await sql`
+          SELECT netuid, COUNT(*) AS metric, MIN(observed_at) AS first_observed, MAX(observed_at) AS last_observed
+          FROM account_events
+          WHERE hotkey = ${address} AND event_kind = ${fp.kind} AND observed_at >= ${cutoff}
+          GROUP BY netuid`;
+          const renamed = rows.map((row) => ({
+            ...row,
+            [fp.metric]: row.metric,
+          }));
+          return json({
+            data: fp.build(renamed, address, {
+              window: windowLabelFor(url, fp.windows, fp.def),
+            }),
+            generatedAt: latestObservedIso(rows),
+          });
+        }
+
+        // The 5 subnet-level siblings (single-row aggregate, no GROUP BY).
+        const SUBNET_FOOTPRINTS = [
+          {
+            re: /^\/api\/v1\/subnets\/(\d+)\/registrations$/,
+            kind: REGISTRATION_EVENT_KIND,
+            metric: "registrations",
+            distinct: "distinct_registrants",
+            build: buildSubnetRegistrations,
+            windows: SUBNET_REGISTRATIONS_WINDOWS,
+            def: DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
+          },
+          {
+            re: /^\/api\/v1\/subnets\/(\d+)\/serving$/,
+            kind: SERVING_EVENT_KIND,
+            metric: "announcements",
+            distinct: "distinct_servers",
+            build: buildSubnetServing,
+            windows: SUBNET_SERVING_WINDOWS,
+            def: DEFAULT_SUBNET_SERVING_WINDOW,
+          },
+          {
+            re: /^\/api\/v1\/subnets\/(\d+)\/axon-removals$/,
+            kind: AXON_REMOVAL_EVENT_KIND,
+            metric: "removals",
+            distinct: "distinct_removers",
+            build: buildSubnetAxonRemovals,
+            windows: SUBNET_AXON_REMOVALS_WINDOWS,
+            def: DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
+          },
+          {
+            re: /^\/api\/v1\/subnets\/(\d+)\/prometheus$/,
+            kind: PROMETHEUS_EVENT_KIND,
+            metric: "announcements",
+            distinct: "distinct_exporters",
+            build: buildSubnetPrometheus,
+            windows: SUBNET_PROMETHEUS_WINDOWS,
+            def: DEFAULT_SUBNET_PROMETHEUS_WINDOW,
+          },
+          {
+            re: /^\/api\/v1\/subnets\/(\d+)\/deregistrations$/,
+            kind: DEREGISTRATION_EVENT_KIND,
+            metric: "deregistrations",
+            distinct: "distinct_deregistered_hotkeys",
+            build: buildSubnetDeregistrations,
+            windows: SUBNET_DEREGISTRATIONS_WINDOWS,
+            def: DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
+          },
+        ];
+        for (const fp of SUBNET_FOOTPRINTS) {
+          const m = url.pathname.match(fp.re);
+          if (!m) continue;
+          const netuid = Number(m[1]);
+          const cutoff = windowCutoff(url, fp.windows, fp.def);
+          const rows = await sql`
+          SELECT COUNT(*) AS metric, COUNT(DISTINCT hotkey) AS distinctx, MAX(observed_at) AS newest_observed
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind = ${fp.kind} AND observed_at >= ${cutoff}`;
+          const row = rows[0]
+            ? {
+                [fp.metric]: rows[0].metric,
+                [fp.distinct]: rows[0].distinctx,
+                newest_observed: rows[0].newest_observed,
+              }
+            : null;
+          return json(
+            fp.build(row, netuid, {
+              window: windowLabelFor(url, fp.windows, fp.def),
+            }),
+          );
+        }
+
+        // GET /api/v1/accounts/:ss58/transfers
+        const acctTransfers = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/transfers$/,
+        );
+        if (acctTransfers) {
+          const ss58 = decodeURIComponent(acctTransfers[1]);
+          const limit = clampLimit(url.searchParams.get("limit"));
+          const offset = clampOffset(url.searchParams.get("offset"));
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const direction = url.searchParams.get("direction");
+          const blockStart = nonNegativeIntegerParam(
+            url.searchParams,
+            "block_start",
+          );
+          const blockEnd = nonNegativeIntegerParam(
+            url.searchParams,
+            "block_end",
+          );
+          const rows = await sql`
+          SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+          FROM account_events
+          WHERE event_kind = 'Transfer'
+            ${direction === "sent" ? sql`AND hotkey = ${ss58}` : direction === "received" ? sql`AND coldkey = ${ss58}` : sql`AND (hotkey = ${ss58} OR coldkey = ${ss58})`}
+            ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+            ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+            ${cursor ? sql`AND (block_number, event_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY block_number DESC, event_index DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          const last = rows.length === limit ? rows[rows.length - 1] : null;
+          const nextCursor = last
+            ? encodeCursor([
+                numberOrNull(last.block_number),
+                numberOrNull(last.event_index),
+              ])
+            : null;
+          return json(
+            buildAccountTransfers(rows, ss58, {
+              limit,
+              offset,
+              nextCursor,
+              direction:
+                direction === "sent" || direction === "received"
+                  ? direction
+                  : undefined,
+            }),
+          );
+        }
+
+        // GET /api/v1/accounts/:ss58/counterparties[?counterparty=]
+        const acctCounterparties = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/counterparties$/,
+        );
+        if (acctCounterparties) {
+          const ss58 = decodeURIComponent(acctCounterparties[1]);
+          const counterparty = url.searchParams.get("counterparty");
+          const limit = Math.min(
+            Math.max(
+              Number(url.searchParams.get("limit")) ||
+                (counterparty == null ? 20 : 50),
+              1,
+            ),
+            100,
+          );
+          if (counterparty) {
+            const rows = await sql`
+            SELECT hotkey, coldkey, amount_tao, block_number, event_index
+            FROM account_events
+            WHERE event_kind = 'Transfer'
+              AND ((hotkey = ${ss58} AND coldkey = ${counterparty}) OR (hotkey = ${counterparty} AND coldkey = ${ss58}))
+            ORDER BY block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
+            return json(
+              buildCounterpartyRelationship(rows, ss58, counterparty, {
+                limit,
+              }),
+            );
+          }
+          const rows = await sql`
+          SELECT hotkey, coldkey, amount_tao, block_number, event_index
+          FROM account_events
+          WHERE event_kind = 'Transfer' AND (hotkey = ${ss58} OR coldkey = ${ss58})
+          ORDER BY block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
+          return json(buildCounterparties(rows, ss58, { limit }));
         }
 
         // GET /api/v1/blocks/:n/chain-events — EVERY event in a block (the all-events

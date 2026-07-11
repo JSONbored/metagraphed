@@ -1227,3 +1227,265 @@ test("missing Hyperdrive binding is 503", async () => {
   );
   expect(res.status).toBe(503);
 });
+
+// account_events-derived analytics routes (#4826): D1's account_events copy is
+// frozen since the streamer stopped; these port each D1-only analytics route to
+// this already-live Postgres account_events table. Every build*/window map is
+// reused unchanged from its D1 sibling module (pure, store-agnostic) -- only the
+// query + response-shape wiring is new here.
+
+test("GET /api/v1/validators/:hotkey/nominators returns a nominators card shaped like the D1 route", async () => {
+  mockRows.current = [
+    {
+      coldkey: "5Cold",
+      staked_tao: "10",
+      unstaked_tao: "2",
+      event_count: 3,
+      last_observed: "1783600000000",
+      net_staked_tao: "8",
+      gross_staked_tao: "12",
+    },
+  ];
+  const res = await req(`/api/v1/validators/${SS58}/nominators?window=30d`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.nominator_count).toBe(1);
+  expect(body.data.nominators[0].coldkey).toBe("5Cold");
+  expect(body.data.nominators[0].net_staked_tao).toBeCloseTo(8);
+});
+
+test("GET /api/v1/validators/:hotkey/nominators applies an optional coldkey filter", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/validators/${SS58}/nominators?coldkey=5Cold`);
+  expect(queryText()).toContain("AND coldkey =");
+});
+
+test("GET /api/v1/validators/:hotkey/nominators sorts by the requested column", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/validators/${SS58}/nominators?sort=gross_staked`);
+  expect(queryText()).toContain("gross_staked_tao DESC, coldkey ASC");
+});
+
+test("GET /api/v1/accounts/:ss58/weight-setters unions the direct-hotkey and neurons-join branches", async () => {
+  mockRows.current = [
+    {
+      netuid: 4,
+      weight_sets: "3",
+      first_observed: "1783500000000",
+      last_observed: "1783600000000",
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/weight-setters?window=7d`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.subnets[0].netuid).toBe(4);
+  expect(body.data.dominant_netuid).toBe(4);
+  const text = queryText();
+  expect(text).toContain("UNION ALL");
+  expect(text).toContain("JOIN account_events e ON e.netuid = n.netuid");
+});
+
+test("GET /api/v1/subnets/:netuid/weights/setters returns a leaderboard + totals", async () => {
+  mockQueue.current = [
+    [
+      {
+        hotkey: SS58,
+        uid: 1,
+        weight_sets: "5",
+        first_set: "1783500000000",
+        last_set: "1783600000000",
+      },
+    ],
+    [
+      {
+        weight_sets: "5",
+        distinct_setters: "1",
+        newest_observed: "1783600000000",
+      },
+    ],
+  ];
+  const res = await req("/api/v1/subnets/4/weights/setters");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.setters[0].weight_sets).toBe(5);
+  expect(body.schema_version).toBe(1);
+});
+
+test("GET /api/v1/accounts/:ss58/stake-flow defaults to summing both directions", async () => {
+  mockRows.current = [
+    {
+      netuid: 4,
+      event_kind: "StakeAdded",
+      total_tao: "10",
+      event_count: 2,
+      last_observed: "1783600000000",
+    },
+  ];
+  await req(`/api/v1/accounts/${SS58}/stake-flow`);
+  expect(queryText()).toContain("event_kind IN (?, ?)");
+});
+
+test("GET /api/v1/accounts/:ss58/stake-flow narrows to one side via ?direction=in", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/stake-flow?direction=in`);
+  const text = queryText();
+  expect(text).toContain("AND event_kind =");
+  expect(text).not.toContain("event_kind IN");
+});
+
+test("GET /api/v1/subnets/:netuid/stake-flow shapes a per-kind rollup", async () => {
+  mockRows.current = [
+    {
+      event_kind: "StakeAdded",
+      total_tao: "10",
+      event_count: 2,
+      last_observed: "1783600000000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/4/stake-flow?direction=out");
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("AND event_kind =");
+});
+
+test("GET /api/v1/accounts/:ss58/stake-moves groups movements per subnet", async () => {
+  mockRows.current = [
+    {
+      netuid: 4,
+      movements: "2",
+      first_observed: "1783500000000",
+      last_observed: "1783600000000",
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/stake-moves`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.subnets[0].movements).toBe(2);
+});
+
+test("GET /api/v1/subnets/:netuid/stake-moves returns the single-row aggregate", async () => {
+  mockRows.current = [
+    { movements: "4", distinct_movers: "3", newest_observed: "1783600000000" },
+  ];
+  const res = await req("/api/v1/subnets/4/stake-moves");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.movements).toBe(4);
+  expect(body.distinct_movers).toBe(3);
+});
+
+test("GET /api/v1/subnets/:netuid/stake-transfers returns the single-row aggregate", async () => {
+  mockRows.current = [
+    { transfers: "6", distinct_senders: "2", newest_observed: "1783600000000" },
+  ];
+  const res = await req("/api/v1/subnets/4/stake-transfers");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.transfers).toBe(6);
+});
+
+const ACCOUNT_FOOTPRINT_ROUTES = [
+  ["registrations", "registrations"],
+  ["serving", "announcements"],
+  ["axon-removals", "removals"],
+  ["prometheus", "announcements"],
+  ["deregistrations", "deregistrations"],
+];
+
+for (const [path, metric] of ACCOUNT_FOOTPRINT_ROUTES) {
+  test(`GET /api/v1/accounts/:ss58/${path} groups the account_events footprint per subnet`, async () => {
+    mockRows.current = [
+      {
+        netuid: 4,
+        metric: "3",
+        first_observed: "1783500000000",
+        last_observed: "1783600000000",
+      },
+    ];
+    const res = await req(`/api/v1/accounts/${SS58}/${path}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.subnets[0][metric]).toBe(3);
+    expect(body.data.subnets[0].netuid).toBe(4);
+  });
+}
+
+const SUBNET_FOOTPRINT_ROUTES = [
+  ["registrations", "registrations", "distinct_registrants"],
+  ["serving", "announcements", "distinct_servers"],
+  ["axon-removals", "removals", "distinct_removers"],
+  ["prometheus", "announcements", "distinct_exporters"],
+  ["deregistrations", "deregistrations", "distinct_deregistered_hotkeys"],
+];
+
+for (const [path, metric, distinct] of SUBNET_FOOTPRINT_ROUTES) {
+  test(`GET /api/v1/subnets/:netuid/${path} returns the single-row subnet aggregate`, async () => {
+    mockRows.current = [
+      { metric: "7", distinctx: "5", newest_observed: "1783600000000" },
+    ];
+    const res = await req(`/api/v1/subnets/4/${path}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body[metric]).toBe(7);
+    expect(body[distinct]).toBe(5);
+  });
+
+  test(`GET /api/v1/subnets/:netuid/${path} with no rows returns the zeroed card, not a throw`, async () => {
+    mockRows.current = [];
+    const res = await req(`/api/v1/subnets/4/${path}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body[metric]).toBe(0);
+  });
+}
+
+test("GET /api/v1/accounts/:ss58/transfers reuses buildAccountTransfers unchanged", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  const res = await req(`/api/v1/accounts/${SS58}/transfers`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.transfers[0].amount_tao).toBe(1.5);
+  expect(queryText()).toContain("event_kind = 'Transfer'");
+});
+
+test("GET /api/v1/accounts/:ss58/transfers?direction=sent narrows to the hotkey side only", async () => {
+  mockRows.current = [];
+  await req(`/api/v1/accounts/${SS58}/transfers?direction=sent`);
+  const text = queryText();
+  expect(text).toContain("AND hotkey =");
+  expect(text).not.toContain("OR coldkey");
+});
+
+test("GET /api/v1/accounts/:ss58/counterparties returns a counterparty leaderboard", async () => {
+  mockRows.current = [
+    {
+      hotkey: SS58,
+      coldkey: "5Cold",
+      amount_tao: "2",
+      block_number: 100,
+      event_index: 0,
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/counterparties`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.counterparties[0].address).toBe("5Cold");
+});
+
+test("GET /api/v1/accounts/:ss58/counterparties?counterparty= returns the relationship drilldown", async () => {
+  mockRows.current = [
+    {
+      hotkey: SS58,
+      coldkey: "5Cold",
+      amount_tao: "2",
+      block_number: 100,
+      event_index: 0,
+    },
+  ];
+  const res = await req(
+    `/api/v1/accounts/${SS58}/counterparties?counterparty=5Cold`,
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.counterparty).toBe("5Cold");
+  expect(queryText()).toContain("(hotkey = ");
+});
