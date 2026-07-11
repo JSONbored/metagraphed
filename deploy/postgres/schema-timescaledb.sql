@@ -27,10 +27,10 @@ SELECT create_hypertable('extrinsics',     'observed_at', chunk_time_interval =>
 SELECT create_hypertable('account_events', 'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
 SELECT create_hypertable('chain_events',   'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
 SELECT create_hypertable('neuron_daily',   'snapshot_date', chunk_time_interval => INTERVAL '30 days', migrate_data => true, if_not_exists => true);
--- Highest write frequency of any table here (every 2 minutes, ~150-200
--- surfaces/run) but the shortest retention -- D1 keeps only a 30-day hot
--- window before pruning, so a 1-day chunk interval keeps individual chunks
--- small without accumulating chunks indefinitely.
+-- Written every 15 minutes (~150-200 surfaces/run, wrangler.jsonc
+-- "*/15 * * * *") with the shortest retention of anything here -- D1 keeps
+-- only a 30-day hot window before pruning, so a 1-day chunk interval keeps
+-- individual chunks small without accumulating chunks indefinitely.
 SELECT create_hypertable('surface_checks', 'checked_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
 
 -- INTEGER-time hypertables (observed_at is BIGINT epoch-ms, not a native

@@ -411,9 +411,10 @@ CREATE INDEX IF NOT EXISTS idx_account_events_daily_hotkey_day
 -- Health tracking (#4832 gap-closure; mirrors D1 migrations/0001_health.sql +
 -- 0003_uptime_history.sql + 0005_surface_key.sql + 0006_surface_key_rekey.sql
 -- + 0012_latency_percentiles.sql, in their final post-migration column shape
--- rather than replayed incrementally). Written every 2 minutes by the
--- Cloudflare cron prober (src/health-prober.mjs, runHealthProber) -- the
--- highest write frequency of any table in this schema.
+-- rather than replayed incrementally). Written every 15 minutes by the
+-- Cloudflare cron prober (src/health-prober.mjs, runHealthProber; wrangler.jsonc
+-- "*/15 * * * *" -- 0001_health.sql's own "every 2 minutes" comment is stale,
+-- left over from before the cron interval was widened).
 -- ---------------------------------------------------------------------------
 
 -- Append-only raw probe time-series (powers /health/trends; a 30-day hot
