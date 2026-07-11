@@ -222,6 +222,8 @@ import {
   MAX_BULK_TREND_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
+  UPTIME_WINDOWS,
+  MAX_UPTIME_ROWS,
 } from "./config.mjs";
 import {
   formatBulkTrends,
@@ -229,6 +231,7 @@ import {
   formatPercentiles,
   formatIncidents,
   formatGlobalIncidents,
+  formatUptime,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.mjs";
@@ -3806,6 +3809,74 @@ export default {
               observedAt: latestObservedIso(freshRows, "newest_observed"),
               incidentRows,
               maxIncidents: MAX_INCIDENT_ROWS,
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/uptime?window=&min_samples= (#4832
+        // gap-closure follow-up): durable 90d/1y availability history from
+        // the daily rollup, mirroring workers/request-handlers/
+        // analytics-routes.mjs's handleUptime. Reuses METAGRAPH_HEALTH_SOURCE
+        // (same table already covered by the bulk-trends route above), a
+        // simple GROUP BY + optional HAVING with no window functions.
+        const subnetUptime = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/uptime$/,
+        );
+        if (subnetUptime) {
+          const netuid = Number(subnetUptime[1]);
+          const windowParam = url.searchParams.get("window") || "90d";
+          const days = Object.hasOwn(UPTIME_WINDOWS, windowParam)
+            ? UPTIME_WINDOWS[windowParam]
+            : UPTIME_WINDOWS["90d"];
+          const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
+            .toISOString()
+            .slice(0, 10);
+          const minSamplesRaw = url.searchParams.get("min_samples");
+          const minSamples =
+            minSamplesRaw === null ? null : Number(minSamplesRaw);
+          const havingClause =
+            minSamples !== null
+              ? sql`HAVING SUM(samples) >= ${minSamples}`
+              : sql``;
+          const rows = await sql`
+          SELECT MAX(surface_id) AS surface_id,
+                 COALESCE(surface_key, surface_id) AS surface_key,
+                 day::text AS day,
+                 SUM(samples) AS samples,
+                 SUM(ok_count) AS ok_count,
+                 CASE WHEN SUM(samples) > 0 THEN ROUND(SUM(ok_count)::numeric / SUM(samples), 4) ELSE NULL END AS uptime_ratio,
+                 SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END) AS latency_samples,
+                 CASE WHEN SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END) > 0
+                   THEN ROUND(SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * COALESCE(latency_samples, samples) ELSE 0 END)::numeric
+                        / SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END))::int
+                   ELSE NULL END AS avg_latency_ms,
+                 MAX(p50_latency_ms) AS p50,
+                 MAX(p95_latency_ms) AS p95,
+                 MAX(p99_latency_ms) AS p99,
+                 CASE
+                   WHEN SUM(samples) = 0 THEN 'unknown'
+                   WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
+                   WHEN SUM(ok_count) = 0 THEN 'failed'
+                   ELSE 'degraded'
+                 END AS status
+          FROM surface_uptime_daily
+          WHERE netuid = ${netuid} AND day >= ${cutoff}::date
+          GROUP BY COALESCE(surface_key, surface_id), day
+          ${havingClause}
+          ORDER BY day DESC
+          LIMIT ${MAX_UPTIME_ROWS}`;
+          const freshRows = await sql`
+          SELECT MAX(updated_at) AS newest_observed
+          FROM surface_uptime_daily WHERE netuid = ${netuid} AND day >= ${cutoff}::date`;
+          return json(
+            formatUptime({
+              netuid,
+              window: Object.hasOwn(UPTIME_WINDOWS, windowParam)
+                ? windowParam
+                : "90d",
+              observedAt: latestObservedIso(freshRows, "newest_observed"),
+              rows,
+              now: new Date().toISOString(),
             }),
           );
         }

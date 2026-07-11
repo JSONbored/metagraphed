@@ -4912,3 +4912,62 @@ test("GET /api/v1/incidents on a cold store returns a schema-stable empty ledger
   expect(body.summary.incident_count).toBe(0);
   expect(body.surfaces).toEqual([]);
 });
+
+test("GET /api/v1/subnets/:netuid/uptime: aggregates surface_uptime_daily by day", async () => {
+  mockQueue.current = [
+    [], // session-scoped SET statement_timeout
+    [], // havingClause construction (min_samples absent -> sql``)
+    [
+      {
+        surface_id: "sn-7-api",
+        surface_key: "sn-7-api",
+        day: "2026-06-01",
+        samples: 10,
+        ok_count: 9,
+        uptime_ratio: 0.9,
+        latency_samples: 10,
+        avg_latency_ms: 120,
+        p50: 100,
+        p95: 200,
+        p99: 250,
+        status: "degraded",
+      },
+    ],
+    [{ newest_observed: "1780000600000" }],
+  ];
+  const res = await req("/api/v1/subnets/7/uptime?window=1y");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("1y");
+  expect(body.surfaces[0].surface_id).toBe("sn-7-api");
+  expect(body.surfaces[0].days[0].uptime_ratio).toBe(0.9);
+});
+
+test("GET /api/v1/subnets/:netuid/uptime: min_samples adds a HAVING clause", async () => {
+  mockQueue.current = [
+    [],
+    [], // havingClause construction (min_samples present -> real fragment)
+    [],
+    [{ newest_observed: null }],
+  ];
+  const res = await req("/api/v1/subnets/7/uptime?min_samples=5");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.surfaces).toEqual([]);
+});
+
+test("GET /api/v1/subnets/:netuid/uptime on a cold store returns surfaces:[]", async () => {
+  mockQueue.current = [[], [], [], []];
+  const res = await req("/api/v1/subnets/7/uptime");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.surfaces).toEqual([]);
+});
+
+test("GET /api/v1/subnets/:netuid/uptime: unrecognized window falls back to 90d", async () => {
+  mockQueue.current = [[], [], [], []];
+  const res = await req("/api/v1/subnets/7/uptime?window=bogus");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("90d");
+});

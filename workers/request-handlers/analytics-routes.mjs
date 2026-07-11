@@ -9,6 +9,7 @@
 // injected once at module-init so this file never imports api.mjs back.
 
 import { DAY_MS, MAX_UPTIME_ROWS, UPTIME_WINDOWS } from "../config.mjs";
+import { tryPostgresTier } from "../postgres-tier.mjs";
 import { csvRequested, csvResponse } from "../csv.mjs";
 import { errorResponse } from "../http.mjs";
 import { readArtifact } from "../storage.mjs";
@@ -222,45 +223,54 @@ export async function handleUptime(request, env, netuid, url) {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
-  const rows = await d1All(
-    env,
-    `SELECT MAX(surface_id) AS surface_id,
-            COALESCE(surface_key, surface_id) AS surface_key,
-            day,
-            SUM(samples) AS samples,
-            SUM(ok_count) AS ok_count,
-            CASE
-              WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
-              ELSE NULL
-            END AS uptime_ratio,
-            ${dailyLatencyColumns({ roundedAvg: true })},
-            MAX(p50_latency_ms) AS p50,
-            MAX(p95_latency_ms) AS p95,
-            MAX(p99_latency_ms) AS p99,
-            CASE
-              WHEN SUM(samples) = 0 THEN 'unknown'
-              WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
-              WHEN SUM(ok_count) = 0 THEN 'failed'
-              ELSE 'degraded'
-            END AS status
-     FROM surface_uptime_daily
-     WHERE netuid = ? AND day >= ?
-     GROUP BY COALESCE(surface_key, surface_id), day
-     ${minSamples.value !== null ? "HAVING SUM(samples) >= ?\n     " : ""}ORDER BY day DESC
-     LIMIT ?`,
-    minSamples.value !== null
-      ? [netuid, cutoff, minSamples.value, MAX_UPTIME_ROWS]
-      : [netuid, cutoff, MAX_UPTIME_ROWS],
-  );
-  const healthMeta = await readHealthMetaKv(env);
-  const data = formatUptime({
-    netuid,
-    window: windowParam,
-    observedAt: healthMeta?.last_run_at || null,
-    rows,
-    now: new Date().toISOString(),
-  });
-  return envelopeWithD1Fallback(
+  // #4832 gap-closure follow-up: reuses METAGRAPH_HEALTH_SOURCE (same table
+  // as the bulk-trends/trends/percentiles/incidents routes in analytics.mjs,
+  // deliberately unflipped pending Postgres accumulating a real history
+  // window -- see handleBulkHealthTrends' own header comment there).
+  let isFallback = false;
+  let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+  if (!data) {
+    const rows = await d1All(
+      env,
+      `SELECT MAX(surface_id) AS surface_id,
+              COALESCE(surface_key, surface_id) AS surface_key,
+              day,
+              SUM(samples) AS samples,
+              SUM(ok_count) AS ok_count,
+              CASE
+                WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
+                ELSE NULL
+              END AS uptime_ratio,
+              ${dailyLatencyColumns({ roundedAvg: true })},
+              MAX(p50_latency_ms) AS p50,
+              MAX(p95_latency_ms) AS p95,
+              MAX(p99_latency_ms) AS p99,
+              CASE
+                WHEN SUM(samples) = 0 THEN 'unknown'
+                WHEN SUM(ok_count) = SUM(samples) THEN 'ok'
+                WHEN SUM(ok_count) = 0 THEN 'failed'
+                ELSE 'degraded'
+              END AS status
+       FROM surface_uptime_daily
+       WHERE netuid = ? AND day >= ?
+       GROUP BY COALESCE(surface_key, surface_id), day
+       ${minSamples.value !== null ? "HAVING SUM(samples) >= ?\n       " : ""}ORDER BY day DESC
+       LIMIT ?`,
+      minSamples.value !== null
+        ? [netuid, cutoff, minSamples.value, MAX_UPTIME_ROWS]
+        : [netuid, cutoff, MAX_UPTIME_ROWS],
+    );
+    const healthMeta = await readHealthMetaKv(env);
+    data = formatUptime({
+      netuid,
+      window: windowParam,
+      observedAt: healthMeta?.last_run_at || null,
+      rows,
+      now: new Date().toISOString(),
+    });
+    isFallback = hasD1FallbackRows(rows);
+  }
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -271,8 +281,8 @@ export async function handleUptime(request, env, netuid, url) {
       ),
     },
     "short",
-    [rows],
   );
+  return isFallback ? markD1FallbackResponse(response) : response;
 }
 
 // Normalises the uptime URL so that a bare ?-free request and an explicit
