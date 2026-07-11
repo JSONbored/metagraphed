@@ -428,7 +428,7 @@ skips this entirely — it isn't rendering anything different.
 **Animated evidence (#4825) — for effects no static screenshot can show.** Required whenever the
 changed behavior is only visible in motion: a hover-triggered popover, a scroll-linked effect, a CSS
 transition/animation, a drag interaction, or anything else where "before" and "after" aren't just two
-different static layouts. This is *additional* to the static table above, not a replacement for it — a
+different static layouts. This is _additional_ to the static table above, not a replacement for it — a
 real PR (#4814) shipped both: the static viewport × theme matrix for the at-rest layout, plus a
 before/after GIF table for the hover behavior itself, because a still image genuinely cannot show what
 happens on hover.
@@ -455,8 +455,8 @@ happens on hover.
 
    Static images can't show the pointer-driven [behavior] — here's the actual interaction.
 
-   | Target | Before | After |
-   | --- | --- | --- |
+   | Target                                                          | Before                                                   | After                                                  |
+   | --------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------ |
    | <describe the interactive element, e.g. "Blocks · author cell"> | [<img src="BEFORE_GIF_URL" width="380">](BEFORE_GIF_URL) | [<img src="AFTER_GIF_URL" width="380">](AFTER_GIF_URL) |
    ```
    One row per distinct interactive element the PR changes.
