@@ -3,6 +3,7 @@
 // Hyperdrive→Railway path is validated separately.
 import { beforeEach, test, expect, vi } from "vitest";
 import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.mjs";
+import { encodeCursor } from "../src/cursor.mjs";
 
 const sqlCalls = vi.hoisted(() => []);
 const mockRows = vi.hoisted(() => ({
@@ -30,6 +31,8 @@ const mockQueue = vi.hoisted(() => ({ current: [] }));
 // every GET-route test above.
 const neuronsSyncFailure = vi.hoisted(() => ({ error: null }));
 const neuronsSyncPruneRows = vi.hoisted(() => ({ current: [] }));
+// State for the account-events-daily rollup write route's tests only (#4832).
+const rollupFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -74,6 +77,12 @@ vi.mock("postgres", () => ({
       if (neuronsSyncFailure.error && /INSERT INTO neurons\b/.test(text)) {
         return Promise.reject(neuronsSyncFailure.error);
       }
+      if (
+        rollupFailure.error &&
+        /INSERT INTO account_events_daily/.test(text)
+      ) {
+        return Promise.reject(rollupFailure.error);
+      }
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
       }
@@ -110,9 +119,11 @@ vi.mock("postgres", () => ({
 
 const { default: worker } = await import("../workers/data-api.mjs");
 const NEURONS_SYNC_SECRET = "test-neurons-sync-secret";
+const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
+  ROLLUP_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -124,6 +135,7 @@ beforeEach(() => {
   mockQueue.current = [];
   neuronsSyncFailure.error = null;
   neuronsSyncPruneRows.current = [];
+  rollupFailure.error = null;
   mockRows.current = [
     {
       block_number: "123",
@@ -2605,4 +2617,139 @@ test("GET /api/v1/accounts/:ss58/counterparties?counterparty= returns the relati
   const body = await res.json();
   expect(body.counterparty).toBe("5Cold");
   expect(queryText()).toContain("(hotkey = ");
+});
+
+// #4832 gap-closure: POST /api/v1/internal/rollup-account-events-daily -- the
+// account_events_daily write path account_events itself lacked (indexer-rs
+// writes account_events continuously, but nothing rolled it into the daily
+// summary table in Postgres), plus its read path,
+// GET /api/v1/accounts/:ss58/history.
+function postRollup({ secret } = {}) {
+  const headers = {};
+  if (secret !== undefined) headers["x-rollup-sync-token"] = secret;
+  return req("/api/v1/internal/rollup-account-events-daily", {
+    method: "POST",
+    headers,
+  });
+}
+
+test("rollup-account-events-daily rejects a missing or wrong token (401)", async () => {
+  const wrong = await postRollup({ secret: "wrong" });
+  expect(wrong.status).toBe(401);
+  const missing = await postRollup();
+  expect(missing.status).toBe(401);
+});
+
+test("rollup-account-events-daily is disabled (503) when ROLLUP_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/rollup-account-events-daily", {
+      method: "POST",
+      headers: { "x-rollup-sync-token": ROLLUP_SYNC_SECRET },
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rollup-account-events-daily returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/rollup-account-events-daily", {
+      method: "POST",
+      headers: { "x-rollup-sync-token": ROLLUP_SYNC_SECRET },
+    }),
+    { ROLLUP_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rollup-account-events-daily rolls up the two active UTC days and reports them", async () => {
+  const res = await postRollup({ secret: ROLLUP_SYNC_SECRET });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ok).toBe(true);
+  expect(body.rolled).toHaveLength(2);
+  expect(queryText()).toMatch(/INSERT INTO account_events_daily/);
+  expect(queryText()).toMatch(/FROM account_events/);
+  expect(queryText()).toMatch(/string_agg\(DISTINCT event_kind/);
+});
+
+test("rollup-account-events-daily maps a DB failure to a clean 502 instead of throwing", async () => {
+  rollupFailure.error = new Error("connection reset");
+  const res = await postRollup({ secret: ROLLUP_SYNC_SECRET });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("rollup failed");
+});
+
+test("GET /api/v1/accounts/:ss58/history shapes the durable per-day activity series", async () => {
+  mockRows.current = [
+    {
+      day: "2026-07-01",
+      netuid: 7,
+      event_count: "3",
+      event_kinds: "StakeAdded,WeightsSet",
+      first_block: "100",
+      last_block: "200",
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/history`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ss58).toBe(SS58);
+  expect(body.days[0].day).toBe("2026-07-01");
+  expect(queryText()).toContain("FROM account_events_daily");
+  expect(queryText()).toContain("WHERE hotkey =");
+});
+
+test("GET /api/v1/accounts/:ss58/history?netuid= filters to one subnet", async () => {
+  mockRows.current = [
+    {
+      day: "2026-07-01",
+      netuid: 7,
+      event_count: "1",
+      event_kinds: "StakeAdded",
+      first_block: "100",
+      last_block: "100",
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/history?netuid=7`);
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("AND netuid =");
+});
+
+test("GET /api/v1/accounts/:ss58/history?from=&to= filters the day range", async () => {
+  mockRows.current = [];
+  const res = await req(
+    `/api/v1/accounts/${SS58}/history?from=2026-06-01&to=2026-06-30`,
+  );
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("AND day >=");
+  expect(queryText()).toContain("AND day <=");
+});
+
+test("GET /api/v1/accounts/:ss58/history?cursor= seeks past the encoded (day, netuid) pair", async () => {
+  mockRows.current = [];
+  const cursor = encodeCursor([20260701, 7]);
+  const res = await req(`/api/v1/accounts/${SS58}/history?cursor=${cursor}`);
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("AND (day, netuid) <");
+  expect(queryText()).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/accounts/:ss58/history?limit=1 emits a next_cursor when the page is full", async () => {
+  mockRows.current = [
+    {
+      day: "2026-07-01",
+      netuid: 7,
+      event_count: "1",
+      event_kinds: "StakeAdded",
+      first_block: "100",
+      last_block: "100",
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/history?limit=1`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.next_cursor).not.toBeNull();
 });

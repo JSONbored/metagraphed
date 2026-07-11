@@ -8539,6 +8539,48 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.marker, undefined);
     assert.ok(captures.sql.length > 0);
   });
+
+  // #4832 gap-closure: handleAccountHistory (account_events_daily, now
+  // populated by a dedicated hourly Postgres-side rollup route).
+
+  test("handleAccountHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", days: [] }),
+    };
+    const body = await json(
+      await handleAccountHistory(
+        req(`/api/v1/accounts/${SS58}/history`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountHistory: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccountHistory(
+        req(`/api/v1/accounts/${SS58}/history`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/history`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
 });
 
 // ---- Cross-handler contract smoke tests -------------------------------------

@@ -2916,13 +2916,18 @@ export async function handleAccountHistory(request, env, ss58, url) {
     sql += " OFFSET ?";
     params.push(offset);
   }
-  const rows = await d1All(env, sql, params);
-  const last = rows.length === limit ? rows[rows.length - 1] : null;
-  const nextCursor =
-    last && typeof last.day === "string" && DAY_PATTERN.test(last.day)
-      ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
-      : null;
-  const data = buildAccountHistory(rows, ss58, { limit, offset, nextCursor });
+  async function fromD1() {
+    const rows = await d1All(env, sql, params);
+    const last = rows.length === limit ? rows[rows.length - 1] : null;
+    const nextCursor =
+      last && typeof last.day === "string" && DAY_PATTERN.test(last.day)
+        ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
+        : null;
+    return buildAccountHistory(rows, ss58, { limit, offset, nextCursor });
+  }
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await fromD1());
   return accountEnvelopeResponse(
     request,
     {
