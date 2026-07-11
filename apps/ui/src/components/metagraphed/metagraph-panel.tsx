@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Boxes, Layers, ShieldCheck } from "lucide-react";
 import { subnetMetagraphQuery } from "@/lib/metagraphed/queries";
@@ -63,12 +63,7 @@ export function MetagraphTableLoader({
     );
   }
 
-  const freshness = (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-      Daily rollup
-      <FreshnessIndicator at={meta?.generated_at} />
-    </span>
-  );
+  const freshnessBadge = <DailyRollupFreshness at={meta?.generated_at} />;
 
   return (
     <div className="space-y-4">
@@ -99,25 +94,21 @@ export function MetagraphTableLoader({
       {/* Stake distribution across the leading UIDs. */}
       {stakeBars.length > 0 ? (
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              Stake distribution · top {stakeBars.length} UIDs
-            </span>
-            <span className="ml-auto flex items-center gap-3">
-              <span className="font-mono text-[10px] text-ink-muted">
-                peak {taoCompact(stakeBars[0]?.value)} τ
-              </span>
-              {freshness}
-            </span>
-          </div>
+          <StakeDistributionHeader
+            count={stakeBars.length}
+            peakValue={stakeBars[0]?.value}
+            freshness={freshnessBadge}
+          />
           <BarMini data={stakeBars} />
         </div>
       ) : (
-        <div className="flex items-center justify-end">{freshness}</div>
+        <div className="flex justify-end rounded-xl border border-border bg-card px-4 py-3">
+          {freshnessBadge}
+        </div>
       )}
 
       {/* Permit filter + sortable neuron table. */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           {filtered.length} of {neurons.length} neurons
         </span>
@@ -145,6 +136,49 @@ export function MetagraphTableLoader({
         selectedUid={selectedUid}
       />
     </div>
+  );
+}
+
+function DailyRollupFreshness({ at }: { at?: string | null }) {
+  return (
+    <div className="flex items-center gap-2 self-start shrink-0">
+      <span className="inline-flex items-center rounded-full border border-border bg-surface/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-muted">
+        Daily rollup
+      </span>
+      <FreshnessIndicator at={at} />
+    </div>
+  );
+}
+
+function StakeDistributionHeader({
+  count,
+  peakValue,
+  freshness,
+}: {
+  count: number;
+  peakValue?: number;
+  freshness: ReactNode;
+}) {
+  return (
+    <header className="mb-3 space-y-2 border-b border-border/60 pb-3 sm:space-y-0">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <p className="mg-label">Stake distribution</p>
+          <p className="mt-1 font-mono text-[11px] leading-snug text-ink-subtle">
+            Top {count} UIDs
+            {peakValue != null ? (
+              <>
+                <span aria-hidden className="mx-1.5 text-ink-subtle/40">
+                  ·
+                </span>
+                Peak <span className="text-ink-muted">{taoCompact(peakValue)} τ</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+        {freshness}
+      </div>
+    </header>
   );
 }
 
