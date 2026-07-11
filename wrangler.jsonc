@@ -230,6 +230,23 @@
     // tryPostgresTier still falls back to D1 on any failure, so this remains
     // a single-flag revert.
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "postgres",
+    // subnet_identity_history (#4832 gap-closure, final table): FLIPPED to
+    // "postgres" 2026-07-11, after a live parity pass with an unexpected
+    // finding -- D1's own write path (recordSubnetIdentityChanges) had never
+    // successfully appended a single row to production D1's
+    // subnet_identity_history table (confirmed empty via direct `wrangler d1
+    // execute`, both before and after a live cron tick), despite running
+    // every hour as part of writeSubnetSnapshot. In that SAME cron tick, the
+    // new Postgres mirror (syncSubnetIdentityToPostgres, called with the
+    // identical `profiles` array right after the D1 write) successfully
+    // appended 124 real rows across 124 distinct subnets, using the exact
+    // same identitySnapshotFromProfile/identityHash pure functions -- proving
+    // the new pipeline works end-to-end where the D1 path had a pre-existing,
+    // silent bug (filed as a follow-up, unrelated to this migration itself).
+    // tryPostgresTier still falls back to D1 on any failure, so this remains
+    // a single-flag revert -- though note D1's fallback is currently a no-op
+    // for reads (empty) until that bug is fixed.
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
