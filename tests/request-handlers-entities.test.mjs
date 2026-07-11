@@ -66,6 +66,7 @@ import {
   handleAccountStakeFlow,
   handleAccountStakeMoves,
   handleAccountSubnets,
+  handleAccountPositionHistory,
   handleSubnetEventSummary,
   handleSubnetEvents,
   handleAccountBalance,
@@ -8489,6 +8490,50 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         req("/api/v1/subnets/movers"),
         env,
         url("/api/v1/subnets/movers"),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  // #4832 gap-closure: handleAccountPositionHistory (account_position_daily,
+  // rolled from the same neurons snapshot as neuron_daily).
+
+  test("handleAccountPositionHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+    };
+    const body = await json(
+      await handleAccountPositionHistory(
+        req(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+        env,
+        SS58,
+        NETUID,
+        url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPositionHistory: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccountPositionHistory(
+        req(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+        env,
+        SS58,
+        NETUID,
+        url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
       ),
     );
     assert.equal(body.data.marker, undefined);

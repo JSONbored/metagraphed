@@ -288,6 +288,7 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.mjs";
+import { buildAccountPositionHistory } from "../src/account-position-history.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -554,6 +555,58 @@ async function handleNeuronsSync(request, env) {
           WHERE neuron_daily.captured_at <= EXCLUDED.captured_at`;
       }
 
+      // Per-account daily position rollup (#4832 gap-closure, mirrors D1's
+      // rollupAccountPositionDaily / src/account-position-history.mjs): the SAME
+      // snapshot as neuron_daily above, re-keyed by (account, netuid,
+      // snapshot_date) with account = hotkey. `hotkey IS NOT NULL` mirrors the D1
+      // rollup's own filter -- account is NOT NULL and part of the primary key,
+      // but a neuron row's hotkey can itself be null.
+      const positionRows = dailyRows
+        .filter((row) => row.hotkey != null)
+        .map((row) => ({
+          account: row.hotkey,
+          netuid: row.netuid,
+          snapshot_date: row.snapshot_date,
+          uid: row.uid,
+          coldkey: row.coldkey,
+          active: row.active,
+          validator_permit: row.validator_permit,
+          rank: row.rank,
+          trust: row.trust,
+          incentive: row.incentive,
+          dividends: row.dividends,
+          stake_tao: row.stake_tao,
+          emission_tao: row.emission_tao,
+          captured_at: row.captured_at,
+          updated_at: row.updated_at,
+        }));
+      for (
+        let i = 0;
+        i < positionRows.length;
+        i += NEURONS_SYNC_ROWS_PER_STATEMENT
+      ) {
+        const chunk = positionRows.slice(
+          i,
+          i + NEURONS_SYNC_ROWS_PER_STATEMENT,
+        );
+        await sql`
+          INSERT INTO account_position_daily ${sql(chunk, "account", "netuid", "snapshot_date", "uid", "coldkey", "active", "validator_permit", "rank", "trust", "incentive", "dividends", "stake_tao", "emission_tao", "captured_at", "updated_at")}
+          ON CONFLICT (account, netuid, snapshot_date) DO UPDATE SET
+            uid = EXCLUDED.uid,
+            coldkey = EXCLUDED.coldkey,
+            active = EXCLUDED.active,
+            validator_permit = EXCLUDED.validator_permit,
+            rank = EXCLUDED.rank,
+            trust = EXCLUDED.trust,
+            incentive = EXCLUDED.incentive,
+            dividends = EXCLUDED.dividends,
+            stake_tao = EXCLUDED.stake_tao,
+            emission_tao = EXCLUDED.emission_tao,
+            captured_at = EXCLUDED.captured_at,
+            updated_at = EXCLUDED.updated_at
+          WHERE account_position_daily.captured_at <= EXCLUDED.captured_at`;
+      }
+
       // Prune UIDs that no longer appear in the snapshot for a netuid this
       // batch actually covers (deregistered/replaced UIDs) -- scoped to ONLY
       // the netuids present in this payload, so a partial-coverage batch can
@@ -595,6 +648,7 @@ async function handleNeuronsSync(request, env) {
         ok: true,
         neurons_written: rows.length,
         neuron_daily_written: dailyRows.length,
+        account_position_daily_written: positionRows.length,
         netuids_covered: netuids.length,
         deregistered_pruned: pruned.length,
       });
@@ -2642,6 +2696,42 @@ export default {
               endDate,
               sort: sortParam,
               limit,
+            }),
+          );
+        }
+
+        // GET /api/v1/accounts/:ss58/subnets/:netuid/history?window= (#4832
+        // gap-closure): one wallet's position on one subnet over time,
+        // mirroring src/account-position-history.mjs's buildAccountPositionHistory.
+        const positionHistoryMatch = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/subnets\/(\d+)\/history$/,
+        );
+        if (positionHistoryMatch) {
+          const ss58 = decodeURIComponent(positionHistoryMatch[1]);
+          const netuid = Number(positionHistoryMatch[2]);
+          const cutoff = windowCutoffDate(
+            url,
+            HISTORY_WINDOWS,
+            DEFAULT_HISTORY_WINDOW,
+          );
+          const rows = cutoff
+            ? await sql`
+            SELECT snapshot_date::text AS snapshot_date, captured_at, uid, coldkey, active, validator_permit, rank, trust, incentive, dividends, stake_tao, emission_tao
+            FROM account_position_daily
+            WHERE account = ${ss58} AND netuid = ${netuid} AND snapshot_date >= ${cutoff}
+            ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+            : await sql`
+            SELECT snapshot_date::text AS snapshot_date, captured_at, uid, coldkey, active, validator_permit, rank, trust, incentive, dividends, stake_tao, emission_tao
+            FROM account_position_daily
+            WHERE account = ${ss58} AND netuid = ${netuid}
+            ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+          return json(
+            buildAccountPositionHistory(rows, ss58, netuid, {
+              window: windowLabelFor(
+                url,
+                HISTORY_WINDOWS,
+                DEFAULT_HISTORY_WINDOW,
+              ),
             }),
           );
         }

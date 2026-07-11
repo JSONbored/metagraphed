@@ -1660,6 +1660,62 @@ test("GET /api/v1/subnets/movers reports subnet_count:0 on a cold store (no boun
   expect(body.subnet_count).toBe(0);
 });
 
+// #4832 gap-closure: GET /api/v1/accounts/:ss58/subnets/:netuid/history, the
+// read path for the account_position_daily rollup added to handleNeuronsSync.
+
+test("GET /api/v1/accounts/:ss58/subnets/:netuid/history shapes one wallet's per-subnet position trend", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-07-01",
+      captured_at: "1780000000000",
+      uid: 3,
+      coldkey: "5Cold",
+      active: true,
+      validator_permit: true,
+      rank: "0.5",
+      trust: "0.9",
+      incentive: "0.6",
+      dividends: "0.4",
+      stake_tao: "10",
+      emission_tao: "1",
+    },
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/subnets/7/history`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ss58).toBe(SS58);
+  expect(body.netuid).toBe(7);
+  expect(body.points[0].snapshot_date).toBe("2026-07-01");
+  expect(queryText()).toContain("FROM account_position_daily");
+  expect(queryText()).toContain("WHERE account =");
+});
+
+test("GET /api/v1/accounts/:ss58/subnets/:netuid/history?window=all skips the snapshot_date cutoff", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-01-01",
+      captured_at: "1780000000000",
+      uid: 3,
+      coldkey: "5Cold",
+      active: true,
+      validator_permit: true,
+      rank: "0.5",
+      trust: "0.9",
+      incentive: "0.6",
+      dividends: "0.4",
+      stake_tao: "10",
+      emission_tao: "1",
+    },
+  ];
+  const res = await req(
+    `/api/v1/accounts/${SS58}/subnets/7/history?window=all`,
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("all");
+  expect(queryText()).not.toContain("snapshot_date >=");
+});
+
 // #4771: POST /api/v1/internal/neurons-sync -- the one write route in this
 // otherwise-read-only Worker (see workers/data-api.mjs's handleNeuronsSync).
 function neuronSyncRow(overrides = {}) {
@@ -1841,7 +1897,7 @@ test("neurons-sync rejects an empty array (400)", async () => {
   expect(res.status).toBe(400);
 });
 
-test("neurons-sync upserts neurons + neuron_daily and reports written counts", async () => {
+test("neurons-sync upserts neurons + neuron_daily + account_position_daily and reports written counts", async () => {
   const res = await postNeurons(
     [neuronSyncRow(), neuronSyncRow({ uid: 4, netuid: 9 })],
     { secret: NEURONS_SYNC_SECRET },
@@ -1852,11 +1908,24 @@ test("neurons-sync upserts neurons + neuron_daily and reports written counts", a
     ok: true,
     neurons_written: 2,
     neuron_daily_written: 2,
+    account_position_daily_written: 2,
     netuids_covered: 2,
   });
   expect(queryText()).toMatch(/INSERT INTO neurons\b/);
   expect(queryText()).toMatch(/INSERT INTO neuron_daily/);
+  expect(queryText()).toMatch(/INSERT INTO account_position_daily/);
   expect(queryText()).toMatch(/DELETE FROM neurons/);
+});
+
+test("neurons-sync skips account_position_daily for a row with a null hotkey", async () => {
+  const { hotkey: _hotkey, ...rest } = neuronSyncRow();
+  const res = await postNeurons([{ ...rest, hotkey: null }], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.account_position_daily_written).toBe(0);
+  expect(queryText()).not.toMatch(/INSERT INTO account_position_daily/);
 });
 
 test("neurons-sync computes one max captured_at per netuid across its many UID rows (the realistic multi-UID-per-subnet case)", async () => {

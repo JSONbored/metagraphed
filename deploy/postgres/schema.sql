@@ -179,6 +179,34 @@ CREATE INDEX IF NOT EXISTS idx_nd_netuid_date ON neuron_daily (netuid, snapshot_
 CREATE INDEX IF NOT EXISTS idx_nd_uid_date    ON neuron_daily (netuid, uid, snapshot_date);
 CREATE INDEX IF NOT EXISTS idx_nd_hotkey_date ON neuron_daily (hotkey, snapshot_date);
 
+-- Per-account daily position HISTORY (#4832 gap-closure; mirrors D1
+-- migrations/0038_account_position_daily.sql). Rolled from the SAME `neurons`
+-- snapshot as neuron_daily, in the SAME handleNeuronsSync write (#4771) --
+-- account = hotkey ss58, matching loadAccountPortfolio's "WHERE hotkey = ?"
+-- framing (src/account-portfolio.mjs).
+CREATE TABLE IF NOT EXISTS account_position_daily (
+  account          TEXT NOT NULL,
+  netuid           INTEGER NOT NULL,
+  snapshot_date    DATE NOT NULL,
+  uid              INTEGER,
+  coldkey          TEXT,
+  active           BOOLEAN,
+  validator_permit BOOLEAN,
+  rank             NUMERIC,
+  trust            NUMERIC,
+  incentive        NUMERIC,
+  dividends        NUMERIC,
+  stake_tao        NUMERIC,
+  emission_tao     NUMERIC,
+  captured_at      BIGINT NOT NULL,
+  updated_at       BIGINT NOT NULL,
+  PRIMARY KEY (account, netuid, snapshot_date)
+);
+CREATE INDEX IF NOT EXISTS idx_account_position_daily_netuid_date
+  ON account_position_daily (netuid, snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_account_position_daily_date
+  ON account_position_daily (snapshot_date);
+
 -- Account daily rollup (#2079 / audit: removes the temp-sort on default account history).
 CREATE TABLE IF NOT EXISTS account_events_daily (
   hotkey           TEXT NOT NULL,

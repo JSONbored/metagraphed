@@ -3218,10 +3218,11 @@ export async function handleAccountPositionHistory(
   }
   sql += " ORDER BY snapshot_date DESC LIMIT ?";
   params.push(MAX_HISTORY_POINTS);
-  const rows = await d1All(env, sql, params);
-  const data = buildAccountPositionHistory(rows, ss58, netuid, {
-    window: label,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildAccountPositionHistory(await d1All(env, sql, params), ss58, netuid, {
+      window: label,
+    });
   return envelopeResponse(
     request,
     {
