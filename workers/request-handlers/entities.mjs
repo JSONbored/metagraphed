@@ -1252,7 +1252,9 @@ export async function handleChainIdentityHistory(request, env, url) {
     maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   });
   if (limitError) return analyticsQueryError(limitError);
-  const data = await loadChainIdentityHistory(d1Runner(env), { limit });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_SUBNET_IDENTITY_SOURCE")) ??
+    (await loadChainIdentityHistory(d1Runner(env), { limit }));
   return envelopeResponse(
     request,
     {

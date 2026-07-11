@@ -4163,3 +4163,41 @@ test("GET /api/v1/chain/transfer-pairs: an empty totals row falls back to null",
   const body = await res.json();
   expect(body.total_volume_tao).toBe(0);
 });
+
+// #4832 gap-closure: chain-wide identity-change feed, mirroring
+// src/chain-identity-history.mjs's loadChainIdentityHistory -- no netuid
+// filter, single query, reusing METAGRAPH_SUBNET_IDENTITY_SOURCE (same
+// table as the per-subnet identity-history route already tested above).
+test("GET /api/v1/chain/identity-history returns the network-wide feed", async () => {
+  mockRows.current = [
+    {
+      id: "10",
+      netuid: 7,
+      block_number: "100",
+      observed_at: "1780000000000",
+      subnet_name: "Alpha",
+      symbol: "α",
+      description: "old",
+      github_repo: null,
+      subnet_url: null,
+      discord: null,
+      logo_url: null,
+      identity_hash: "abc",
+    },
+  ];
+  const res = await req("/api/v1/chain/identity-history?limit=10");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.count).toBe(1);
+  expect(body.changes[0].netuid).toBe(7);
+});
+
+test("GET /api/v1/chain/identity-history on a cold store returns a schema-stable empty feed", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/chain/identity-history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.count).toBe(0);
+  expect(body.subnet_count).toBe(0);
+  expect(body.changes).toEqual([]);
+});

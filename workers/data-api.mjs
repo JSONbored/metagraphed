@@ -282,6 +282,10 @@ import {
   identityHash as subnetIdentityHash,
   buildSubnetIdentityHistory,
 } from "../src/subnet-identity-history.mjs";
+import {
+  buildChainIdentityHistory,
+  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+} from "../src/chain-identity-history.mjs";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -3725,6 +3729,23 @@ export default {
               nextCursor,
             }),
           );
+        }
+
+        // GET /api/v1/chain/identity-history?limit= (#4832 gap-closure):
+        // network-wide identity-change feed across EVERY subnet, mirroring
+        // src/chain-identity-history.mjs's loadChainIdentityHistory -- no
+        // netuid filter, unlike the per-subnet route above.
+        const chainIdentityHistory = url.pathname.match(
+          /^\/api\/v1\/chain\/identity-history$/,
+        );
+        if (chainIdentityHistory) {
+          const limit = chainLimit(url, CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT);
+          const rows = await sql`
+          SELECT id, netuid, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash
+          FROM subnet_identity_history
+          ORDER BY block_number DESC, netuid ASC, id DESC
+          LIMIT ${limit}`;
+          return json(buildChainIdentityHistory(rows, { limit }));
         }
 
         // GET /api/v1/accounts/:ss58/portfolio (#4832 Tier 2): one wallet's

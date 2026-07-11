@@ -104,6 +104,13 @@ CREATE INDEX IF NOT EXISTS idx_ae_netuid_kind ON account_events (netuid, event_k
 -- Applied live via a plain (non-concurrent) CREATE INDEX -- TimescaleDB
 -- hypertables reject CREATE INDEX CONCURRENTLY.
 CREATE INDEX IF NOT EXISTS idx_ae_kind_observed ON account_events (event_kind, observed_at DESC);
+-- #4869: fast-follow on #4832 Tier 2 -- /chain/transfers is the one route among
+-- the 12 that hits the highest-volume event_kind ('Transfer', ~10M rows/7d);
+-- these cover its per-hotkey/per-coldkey GROUP BY + COUNT(DISTINCT ...) scans
+-- (idx_ae_kind_observed above only covers the network-wide totals scan).
+-- INCLUDE (amount_tao) makes the GROUP BY ... SUM(amount_tao) queries index-only.
+CREATE INDEX IF NOT EXISTS idx_ae_kind_hotkey_observed ON account_events (event_kind, hotkey, observed_at DESC) INCLUDE (amount_tao);
+CREATE INDEX IF NOT EXISTS idx_ae_kind_coldkey_observed ON account_events (event_kind, coldkey, observed_at DESC) INCLUDE (amount_tao);
 
 -- Generic all-events tier (audit gap: only ~8 kinds of 2 pallets decoded today).
 -- Stores EVERY decoded event; the curated account_events stays the fast path.
