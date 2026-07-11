@@ -33,6 +33,7 @@ import { PageHero } from "@/components/metagraphed/page-hero";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { SelectFilter } from "@/components/metagraphed/table-controls";
+import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
@@ -61,6 +62,7 @@ import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { accountFeedSectionPhase } from "@/lib/metagraphed/account-feed-section";
 import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import type {
@@ -336,6 +338,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
 
       <AccountExtrinsicsSection
+        ss58={ss58}
         rows={signedExtrinsics}
         isPending={extrinsicsResult.isPending}
         isError={extrinsicsResult.isError}
@@ -453,12 +456,14 @@ function AccountFeedSectionSkeleton({
 }
 
 function AccountExtrinsicsSection({
+  ss58,
   rows,
   isPending,
   isError,
   error,
   onRetry,
 }: {
+  ss58: string;
   rows: Extrinsic[];
   isPending?: boolean;
   isError?: boolean;
@@ -498,13 +503,19 @@ function AccountExtrinsicsSection({
     );
   }
   if (phase === "empty") return null;
+  const extrinsicsCsvUrl = buildUrl(`/api/v1/accounts/${ss58PathSegment(ss58)}/extrinsics`);
   return (
     <SectionAnchor
       id="extrinsics"
       title="Signed extrinsics"
       subtitle="The newest transactions this account signed, from the chain-direct extrinsics tier."
       tone="accent"
-      right={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
+      right={
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
+          <DownloadCsvButton url={extrinsicsCsvUrl} />
+        </div>
+      }
     >
       <DataPanel>
         <table className="w-full text-left text-sm">
@@ -620,13 +631,19 @@ function AccountTransfersSection({
     );
   }
   if (phase === "empty") return null;
+  const transfersCsvUrl = buildUrl(`/api/v1/accounts/${ss58PathSegment(ss58)}/transfers`);
   return (
     <SectionAnchor
       id="transfers"
       title="Transfers"
       subtitle="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
       tone="accent"
-      right={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
+      right={
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
+          <DownloadCsvButton url={transfersCsvUrl} />
+        </div>
+      }
     >
       <DataPanel>
         <table className="w-full text-left text-sm">
@@ -1949,6 +1966,11 @@ function AccountEventsSection({
   const params: { limit: number; offset: number; kind?: string } = { limit, offset };
   if (search.ev_kind) params.kind = search.ev_kind;
 
+  // Export the full filtered feed (kind only) — not the current page window.
+  const eventsCsvUrl = buildUrl(`/api/v1/accounts/${ss58PathSegment(ss58)}/events`, {
+    kind: search.ev_kind,
+  });
+
   const result = useQuery(accountEventsQuery(ss58, params));
   const page = result.data?.data;
   const events = page?.events ?? [];
@@ -2003,14 +2025,17 @@ function AccountEventsSection({
       subtitle="Full first-party event feed for this account, newest first — filter by kind, page through history."
       tone="accent"
       right={
-        kindOptions.length > 0 ? (
-          <SelectFilter
-            label="Kind"
-            value={search.ev_kind ?? ""}
-            onChange={(v) => setSearch({ ev_kind: v || undefined, ev_offset: undefined })}
-            options={kindOptions.map((k) => ({ value: k.kind, label: k.kind }))}
-          />
-        ) : undefined
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          {kindOptions.length > 0 ? (
+            <SelectFilter
+              label="Kind"
+              value={search.ev_kind ?? ""}
+              onChange={(v) => setSearch({ ev_kind: v || undefined, ev_offset: undefined })}
+              options={kindOptions.map((k) => ({ value: k.kind, label: k.kind }))}
+            />
+          ) : null}
+          <DownloadCsvButton url={eventsCsvUrl} />
+        </div>
       }
     >
       {events.length > 0 ? (
