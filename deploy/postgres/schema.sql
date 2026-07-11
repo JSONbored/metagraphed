@@ -214,6 +214,15 @@ CREATE INDEX IF NOT EXISTS idx_account_position_daily_date
 -- D1 pure builders' round(value, 9) precision; the nine D1 0/1 flag columns
 -- become BOOLEAN here (see the SUM(boolean) landmine noted elsewhere in this
 -- file); bonds_moving_avg_raw is a raw on-chain integer, not a ratio.
+-- weights_rate_limit is NUMERIC, not INTEGER/BIGINT: confirmed live
+-- 2026-07-11 that netuid 0 (root) carries the chain's u64::MAX "unlimited"
+-- sentinel (18446744073709551615) for this field -- larger than even
+-- Postgres BIGINT's signed 64-bit range, which SQLite's flexible INTEGER
+-- storage class silently tolerates (falls back to a REAL) but Postgres'
+-- strict typing rejects outright. formatSubnetHyperparams' nonNegativeInt
+-- already nulls any non-safe-integer value on read, so NUMERIC here only
+-- needs to hold the value long enough to round-trip without erroring the
+-- whole upsert -- it never needs its own precision/display logic.
 CREATE TABLE IF NOT EXISTS subnet_hyperparams (
   netuid                       INTEGER NOT NULL,
   kappa_ratio                  NUMERIC,
@@ -222,7 +231,7 @@ CREATE TABLE IF NOT EXISTS subnet_hyperparams (
   max_weight_limit_ratio        NUMERIC,
   tempo                        INTEGER,
   weights_version               INTEGER,
-  weights_rate_limit            INTEGER,
+  weights_rate_limit            NUMERIC,
   activity_cutoff               INTEGER,
   activity_cutoff_factor        INTEGER,
   registration_allowed          BOOLEAN,
@@ -268,7 +277,7 @@ CREATE TABLE IF NOT EXISTS subnet_hyperparams_history (
   max_weight_limit_ratio         NUMERIC,
   tempo                         INTEGER,
   weights_version                INTEGER,
-  weights_rate_limit             INTEGER,
+  weights_rate_limit             NUMERIC,
   activity_cutoff                INTEGER,
   activity_cutoff_factor         INTEGER,
   registration_allowed           BOOLEAN,
