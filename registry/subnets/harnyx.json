@@ -46,6 +46,25 @@
         "https://github.com/harnyx/harnyx/blob/41771ae6b74fc8b2f14b365745c1292782ed9d3a/packages/commons/src/harnyx_commons/miner_task_benchmark/webwalkerqa/data/versions/2026-05-14-webwalkerqa-test-single-source-easy__correctness-v1/test.json"
       ],
       "url": "https://raw.githubusercontent.com/harnyx/harnyx/41771ae6b74fc8b2f14b365745c1292782ed9d3a/packages/commons/src/harnyx_commons/miner_task_benchmark/webwalkerqa/data/versions/2026-05-14-webwalkerqa-test-single-source-easy__correctness-v1/test.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-67-harnyx-benchmark-dashboard",
+      "kind": "dashboard",
+      "name": "Harnyx live benchmark dashboard",
+      "notes": "Public benchmark dashboard for SN67 Harnyx showing benchmark history and sampled run detail for the subnet's champion/challenger agent evaluations. Declared as the subnet's public benchmark surface in the official harnyx/harnyx repository: the root README links 'Live benchmark: dashboard.harnyx.ai/benchmark' and docs/api/README.md documents it as 'the public surface for inspecting benchmark history and sampled run detail'. Publicly readable, no auth.",
+      "provider": "harnyx",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "pedramhatef"
+      },
+      "source_urls": [
+        "https://github.com/harnyx/harnyx/blob/main/README.md",
+        "https://github.com/harnyx/harnyx/blob/main/docs/api/README.md"
+      ],
+      "url": "https://dashboard.harnyx.ai/benchmark"
     }
   ],
   "source_repo": "https://github.com/harnyx/harnyx",
