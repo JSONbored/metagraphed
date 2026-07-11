@@ -7,6 +7,7 @@ import {
   subnetEndpointsQuery,
   subnetProfileQuery,
 } from "@/lib/metagraphed/queries";
+import { formatNumber } from "@/lib/metagraphed/format";
 import {
   Tooltip,
   TooltipContent,
@@ -16,9 +17,9 @@ import {
   CurationChip,
   TimeAgo,
   InfoTooltip,
+  Donut,
+  DonutLegend,
 } from "@jsonbored/ui-kit";
-import { formatNumber } from "@/lib/metagraphed/format";
-import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import type { Endpoint } from "@/lib/metagraphed/types";
 
 interface Field {

@@ -5,10 +5,13 @@ import {
   subnetStakeTransfersQuery,
   subnetTrajectoryQuery,
 } from "@/lib/metagraphed/queries";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
-import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { Sparkline, type SparklinePoint } from "@/components/metagraphed/charts/sparkline";
+import {
+  StatTile,
+  MiniStack,
+  SparkLegend,
+  Sparkline,
+  type SparklinePoint,
+} from "@jsonbored/ui-kit";
 import { stakeMovesTileModel } from "@/lib/metagraphed/stake-moves-tile";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { stakeTransfersTileModel } from "@/lib/metagraphed/stake-transfers-tile";

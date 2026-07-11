@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { synthesizeDonutAriaLabel } from "@/lib/metagraphed/chart-aria";
+import { synthesizeDonutAriaLabel } from "./chart-aria";
 
 export interface DonutSegment {
   label: string;
@@ -45,7 +45,12 @@ export function Donut({
       className={className}
       style={{ width: size, height: size, position: "relative", flexShrink: 0 }}
     >
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden
+      >
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -121,7 +126,9 @@ export function DonutLegend({ segments }: { segments: DonutSegment[] }) {
             style={{ background: s.color }}
           />
           <span className="text-ink">{s.label}</span>
-          <span className="ml-auto tabular-nums text-ink-strong">{s.value}</span>
+          <span className="ml-auto tabular-nums text-ink-strong">
+            {s.value}
+          </span>
         </li>
       ))}
     </ul>

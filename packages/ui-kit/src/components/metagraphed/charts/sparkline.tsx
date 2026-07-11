@@ -1,4 +1,8 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 export interface SparklinePoint {
   /** Timestamp label, e.g. "12:40 UTC" */
@@ -145,7 +149,12 @@ export function Sparkline({
               strokeOpacity={0.35}
               strokeWidth={1}
             />
-            <circle cx={hoverPoint[0]} cy={hoverPoint[1]} r={2.5} fill={color} />
+            <circle
+              cx={hoverPoint[0]}
+              cy={hoverPoint[1]}
+              r={2.5}
+              fill={color}
+            />
           </>
         ) : null}
       </svg>

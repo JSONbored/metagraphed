@@ -1,4 +1,4 @@
-import { classNames } from "@/lib/metagraphed/format";
+import { classNames } from "@/lib/format";
 
 export interface TreemapMiniDatum {
   label: string;
@@ -54,7 +54,11 @@ function squarify(data: TreemapMiniDatum[]): LaidOutTile[] {
 
   // Areas normalized so they sum to the box area (100 × 100 = 10_000).
   const items = positive
-    .map((d) => ({ datum: d, area: (d.value / total) * 10_000, share: d.value / total }))
+    .map((d) => ({
+      datum: d,
+      area: (d.value / total) * 10_000,
+      share: d.value / total,
+    }))
     .sort((a, b) => b.area - a.area);
 
   const tiles: LaidOutTile[] = [];
@@ -90,7 +94,10 @@ function squarify(data: TreemapMiniDatum[]): LaidOutTile[] {
     const side = Math.min(rect.w, rect.h);
     const current = row.map((i) => i.area);
     const withItem = [...current, item.area];
-    if (row.length === 0 || worstRatio(withItem, side) <= worstRatio(current, side)) {
+    if (
+      row.length === 0 ||
+      worstRatio(withItem, side) <= worstRatio(current, side)
+    ) {
       row.push(item);
     } else {
       rect = layoutRow(row, rect);
@@ -116,7 +123,12 @@ interface Props {
  * its value — a dominance/concentration view that complements a ranked bar list
  * (e.g. validator stake share within a subnet).
  */
-export function TreemapMini({ data, className, formatValue = String, ariaLabel }: Props) {
+export function TreemapMini({
+  data,
+  className,
+  formatValue = String,
+  ariaLabel,
+}: Props) {
   const tiles = squarify(data);
   if (tiles.length === 0) return null;
 
@@ -129,7 +141,10 @@ export function TreemapMini({ data, className, formatValue = String, ariaLabel }
     <div
       role="img"
       aria-label={label}
-      className={classNames("relative aspect-[16/9] w-full overflow-hidden rounded-md", className)}
+      className={classNames(
+        "relative aspect-[16/9] w-full overflow-hidden rounded-md",
+        className,
+      )}
     >
       {tiles.map((t) => (
         <div

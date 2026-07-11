@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   Minus,
 } from "lucide-react";
+import { formatNumber } from "@/lib/metagraphed/format";
 import {
   Tooltip,
   TooltipContent,
@@ -20,16 +21,13 @@ import {
   CurationChip,
   HealthPill,
   FreshnessIndicator,
-} from "@jsonbored/ui-kit";
-import { formatNumber } from "@/lib/metagraphed/format";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
-import {
   StatWithSpark,
   MiniStack,
   MiniRadial,
   DotRow,
   NoDataSpark,
-} from "@/components/metagraphed/charts/stat-with-spark";
+  Sparkline,
+} from "@jsonbored/ui-kit";
 import {
   subnetEndpointsQuery,
   subnetDeregistrationsQuery,

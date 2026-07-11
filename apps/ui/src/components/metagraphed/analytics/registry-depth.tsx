@@ -3,8 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { registrySummaryQuery, coverageDepthQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { InfoTooltip, TableState } from "@jsonbored/ui-kit";
-import { BarMini, type BarMiniDatum } from "@/components/metagraphed/charts/bar-mini";
+import { InfoTooltip, TableState, BarMini, type BarMiniDatum } from "@jsonbored/ui-kit";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
 import type { CoverageDepthQueueRow } from "@/lib/metagraphed/types";
 

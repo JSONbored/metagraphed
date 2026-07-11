@@ -23,7 +23,9 @@ describe("synthesizeBarMiniAriaLabel", () => {
   });
 
   it("summarizes non-empty data", () => {
-    expect(synthesizeBarMiniAriaLabel([{ label: "high", value: 2 }])).toBe("high 2");
+    expect(synthesizeBarMiniAriaLabel([{ label: "high", value: 2 }])).toBe(
+      "high 2",
+    );
   });
 });
 

@@ -14,6 +14,9 @@ import {
   MethodologyCallout,
   BrandIcon,
   CurationChip,
+  StatWithSpark,
+  MiniStack,
+  MiniRadial,
 } from "@jsonbored/ui-kit";
 import { Skeleton } from "@/components/metagraphed/states";
 import { X, Search } from "lucide-react";
@@ -23,11 +26,6 @@ import {
   CoverageMatrix,
   CompletenessHistogram,
 } from "@/components/metagraphed/analytics/coverage-matrix";
-import {
-  StatWithSpark,
-  MiniStack,
-  MiniRadial,
-} from "@/components/metagraphed/charts/stat-with-spark";
 import {
   gapsQuery,
   reviewProfileCompletenessQuery,

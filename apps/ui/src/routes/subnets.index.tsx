@@ -4,6 +4,8 @@ import { Suspense, useEffect, useMemo } from "react";
 import { z } from "zod";
 import { Network, Radio, Layers, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import {
   BrandIcon,
   prefetchBrandIcon,
@@ -17,14 +19,12 @@ import {
   DownloadCsvButton,
   ListShell,
   LoadMore,
+  StatTile,
+  SparkLegend,
+  MiniStack,
   type Density,
   type ViewMode,
 } from "@jsonbored/ui-kit";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";

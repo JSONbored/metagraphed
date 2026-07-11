@@ -1,7 +1,14 @@
 import type { ReactNode } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
-import { classNames } from "@/lib/metagraphed/format";
-import { formatFreshness, formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  classNames,
+  formatFreshness,
+  formatFreshnessAbsolute,
+} from "@/lib/format";
 
 /**
  * Dense stat tile with optional visualization slot (sparkline / mini-bar /
@@ -74,7 +81,9 @@ export function StatWithSpark({
           </div>
           {viz ? <div className="mt-0.5 min-h-[18px]">{viz}</div> : null}
           {hint ? (
-            <div className="font-mono text-[9.5px] text-ink-muted/80 truncate">{hint}</div>
+            <div className="font-mono text-[9.5px] text-ink-muted/80 truncate">
+              {hint}
+            </div>
           ) : null}
           {freshLine ? (
             <div className="font-mono text-[9px] tracking-wide text-ink-muted/70 truncate">
@@ -83,7 +92,10 @@ export function StatWithSpark({
           ) : null}
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-xs text-[11px] leading-relaxed">
+      <TooltipContent
+        side="bottom"
+        className="max-w-xs text-[11px] leading-relaxed"
+      >
         <div>{full ?? hint ?? label}</div>
         {freshAbs || windowLabel ? (
           <div className="mt-1 font-mono text-[10px] text-primary-foreground/70">
@@ -107,7 +119,13 @@ export function MiniStack({
 }) {
   const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
   if (total <= 0) {
-    return <div className="w-full rounded-full bg-border/40" style={{ height }} aria-hidden />;
+    return (
+      <div
+        className="w-full rounded-full bg-border/40"
+        style={{ height }}
+        aria-hidden
+      />
+    );
   }
   return (
     <div
@@ -148,7 +166,13 @@ export function MiniRadial({
   const c = 2 * Math.PI * r;
   const pct = Math.max(0, Math.min(1, value));
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block" aria-hidden>
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="block"
+      aria-hidden
+    >
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -174,14 +198,25 @@ export function MiniRadial({
 }
 
 /** Row of small dots — one per source kind present. */
-export function DotRow({ dots }: { dots: Array<{ label: string; on: boolean }> }) {
+export function DotRow({
+  dots,
+}: {
+  dots: Array<{ label: string; on: boolean }>;
+}) {
   return (
-    <div className="flex items-center gap-1" role="img" aria-label="Source coverage">
+    <div
+      className="flex items-center gap-1"
+      role="img"
+      aria-label="Source coverage"
+    >
       {dots.map((d) => (
         <Tooltip key={d.label} delayDuration={150}>
           <TooltipTrigger asChild>
             <span
-              className={classNames("size-1.5 rounded-full", d.on ? "bg-accent" : "bg-border")}
+              className={classNames(
+                "size-1.5 rounded-full",
+                d.on ? "bg-accent" : "bg-border",
+              )}
             />
           </TooltipTrigger>
           <TooltipContent side="top" className="font-mono text-[10px]">
@@ -221,13 +256,19 @@ export function NoDataSpark({
           className="flex w-full items-center gap-1.5 rounded-sm border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           style={{ height }}
         >
-          <span aria-hidden className="inline-block size-1 rounded-full bg-ink-muted/60" />
+          <span
+            aria-hidden
+            className="inline-block size-1 rounded-full bg-ink-muted/60"
+          />
           <span className="truncate font-mono text-[9px] uppercase tracking-widest text-ink-muted/80">
             {freshLine ?? reason}
           </span>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed">
+      <TooltipContent
+        side="top"
+        className="max-w-xs text-[11px] leading-relaxed"
+      >
         {reason}.{" "}
         {freshAbs
           ? `Last checked ${freshAbs}${windowLabel ? ` · ${windowLabel} window` : ""}.`

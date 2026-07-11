@@ -6,15 +6,6 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
-import {
-  TimeAgo,
-  PageHero,
-  ListShell,
-  ShareButton,
-  CopyableCode,
-  CopyButton,
-  DownloadCsvButton,
-} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import {
@@ -25,7 +16,16 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountCell } from "@/components/metagraphed/account-cell";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import {
+  TimeAgo,
+  PageHero,
+  ListShell,
+  ShareButton,
+  CopyableCode,
+  CopyButton,
+  DownloadCsvButton,
+  Sparkline,
+} from "@jsonbored/ui-kit";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";

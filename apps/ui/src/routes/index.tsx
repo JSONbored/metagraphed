@@ -3,6 +3,9 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { ArrowUpRight, FileCode2 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
+import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
+import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   AccentBand,
   BrandIcon,
@@ -14,11 +17,9 @@ import {
   InfoTooltip,
   safeExternalUrl,
   ScrollReveal,
+  Sparkline,
+  type SparklinePoint,
 } from "@jsonbored/ui-kit";
-import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
-import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { Sparkline, type SparklinePoint } from "@/components/metagraphed/charts/sparkline";
 import { SubnetPulseGrid } from "@/components/metagraphed/charts/subnet-pulse-grid";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";

@@ -3,11 +3,15 @@ import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Percent, Activity, Users, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { subnetYieldQuery, subnetYieldHistoryQuery } from "@/lib/metagraphed/queries";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { BarMini } from "@/components/metagraphed/charts/bar-mini";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import {
+  TableState,
+  YieldPercentileStrip,
+  fmtYield,
+  StatTile,
+  BarMini,
+  Sparkline,
+} from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
-import { TableState, YieldPercentileStrip, fmtYield } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";

@@ -6,12 +6,18 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChevronLeft, ChevronRight, Timer, Activity, Users } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
-import { TimeAgo, PageHero, ListShell, ShareButton, DownloadCsvButton } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { AccountCell } from "@/components/metagraphed/account-cell";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import {
+  TimeAgo,
+  PageHero,
+  ListShell,
+  ShareButton,
+  DownloadCsvButton,
+  StatTile,
+  Sparkline,
+} from "@jsonbored/ui-kit";
 import {
   PageSizeSelect,
   ResetFiltersButton,

@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
-import { formatFreshness, formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatFreshness, formatFreshnessAbsolute } from "@/lib/format";
 
 /**
  * Consistent tooltip legend for every sparkline / mini-stack / density bar

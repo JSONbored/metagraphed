@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { classNames } from "@/lib/metagraphed/format";
+import { classNames } from "@/lib/format";
 
 interface Props {
   icon?: LucideIcon;
@@ -63,7 +63,9 @@ export function StatTile({
             {value}
           </span>
           {hint ? (
-            <span className="min-w-0 font-mono text-[10px] text-ink-muted truncate">{hint}</span>
+            <span className="min-w-0 font-mono text-[10px] text-ink-muted truncate">
+              {hint}
+            </span>
           ) : null}
         </div>
       </div>

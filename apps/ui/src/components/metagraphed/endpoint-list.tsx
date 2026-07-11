@@ -12,8 +12,8 @@ import {
   BrandIcon,
   safeExternalUrl,
   CopyIconToggle,
+  Sparkline,
 } from "@jsonbored/ui-kit";
-import { Sparkline } from "./charts/sparkline";
 import { useCopy } from "@/hooks/use-copy";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames } from "@/lib/metagraphed/format";

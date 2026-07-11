@@ -4,18 +4,6 @@ import { Suspense, type ReactNode } from "react";
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Waves, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
-  CandidateChip,
-  CurationChip,
-  ReviewChip,
-  ExternalLink,
-  TimeAgo,
-  SectionAnchor,
-  TableState,
-  HealthPill,
-  CopyableCode,
-  MethodologyCallout,
-} from "@jsonbored/ui-kit";
-import {
   EmptyState,
   PageHeading,
   Skeleton,
@@ -26,7 +14,19 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import {
+  CandidateChip,
+  CurationChip,
+  ReviewChip,
+  ExternalLink,
+  TimeAgo,
+  SectionAnchor,
+  TableState,
+  HealthPill,
+  CopyableCode,
+  MethodologyCallout,
+  StatTile,
+} from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";

@@ -3,6 +3,9 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
   CopyableCode,
   CopyButton,
@@ -10,11 +13,8 @@ import {
   PageHero,
   ShareButton,
   SectionAnchor,
+  StatTile,
 } from "@jsonbored/ui-kit";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
-import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   blockChainEventsQuery,

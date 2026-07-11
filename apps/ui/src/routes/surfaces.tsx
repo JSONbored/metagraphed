@@ -2,6 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { Skeleton } from "@/components/metagraphed/states";
+import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
+import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
   TimeAgo,
   CurationChip,
@@ -15,13 +20,8 @@ import {
   ViewModeToggle,
   ListShell,
   LoadMore,
+  SparkLegend,
 } from "@jsonbored/ui-kit";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { Skeleton } from "@/components/metagraphed/states";
-import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
-import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
 import {
   TimeRangeProvider,
   useTimeRange,

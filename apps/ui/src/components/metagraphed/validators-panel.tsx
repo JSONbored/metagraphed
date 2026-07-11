@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
-import { BarMini } from "@/components/metagraphed/charts/bar-mini";
-import { TreemapMini, type TreemapMiniDatum } from "@/components/metagraphed/charts/treemap-mini";
-import { TableState, DailyRollupFreshness } from "@jsonbored/ui-kit";
+import {
+  TableState,
+  DailyRollupFreshness,
+  BarMini,
+  TreemapMini,
+  type TreemapMiniDatum,
+} from "@jsonbored/ui-kit";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
 
 const TOP_N = 10;

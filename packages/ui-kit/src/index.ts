@@ -160,3 +160,29 @@ export {
   ProfileHero,
 } from "@/components/metagraphed/profile-hero";
 export { MethodologyCallout } from "@/components/metagraphed/methodology-callout";
+export {
+  type BarMiniDatum,
+  BarMini,
+} from "@/components/metagraphed/charts/bar-mini";
+export {
+  type DonutSegment,
+  Donut,
+  DonutLegend,
+} from "@/components/metagraphed/charts/donut";
+export { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
+export {
+  type SparklinePoint,
+  Sparkline,
+} from "@/components/metagraphed/charts/sparkline";
+export { StatTile } from "@/components/metagraphed/charts/stat-tile";
+export {
+  StatWithSpark,
+  MiniStack,
+  MiniRadial,
+  DotRow,
+  NoDataSpark,
+} from "@/components/metagraphed/charts/stat-with-spark";
+export {
+  type TreemapMiniDatum,
+  TreemapMini,
+} from "@/components/metagraphed/charts/treemap-mini";

@@ -24,6 +24,10 @@ import {
   Users,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { SelectFilter } from "@/components/metagraphed/table-controls";
+import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
   CopyableCode,
   TimeAgo,
@@ -31,13 +35,9 @@ import {
   PageHero,
   ShareButton,
   SectionAnchor,
+  StatTile,
+  BarMini,
 } from "@jsonbored/ui-kit";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
-import { SelectFilter } from "@/components/metagraphed/table-controls";
-import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";

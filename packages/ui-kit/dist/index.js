@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as React3 from 'react';
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, useId } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { ChevronDown, X, Search, ArrowUp, Check, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Lock, AlertTriangle } from 'lucide-react';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
@@ -2873,4 +2873,746 @@ function MethodologyCallout({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, AnimatedNumber, BackToTop, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, DownloadCsvButton, EligibilityChip, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProfileHero, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, timeAgoAbsoluteTitle, visibleTools };
+// src/components/metagraphed/charts/chart-aria.ts
+function chartSegmentsAriaLabel(segments) {
+  return segments.map((s) => `${s.label} ${s.value}`).join(", ");
+}
+function synthesizeBarMiniAriaLabel(data) {
+  if (data.length === 0) return "Bar chart with no data";
+  return chartSegmentsAriaLabel(data);
+}
+function synthesizeDonutAriaLabel(segments) {
+  if (segments.length === 0) return "Donut chart with no data";
+  const total = segments.reduce((sum2, s) => sum2 + Math.max(0, s.value), 0);
+  if (total <= 0) return "Donut chart with no data";
+  return chartSegmentsAriaLabel(segments);
+}
+function BarMini({
+  data,
+  max,
+  className,
+  showValue = true,
+  formatValue,
+  ariaLabel
+}) {
+  const cap = max ?? Math.max(1, ...data.map((d) => d.value));
+  const label = ariaLabel ?? synthesizeBarMiniAriaLabel(data);
+  return /* @__PURE__ */ jsx(
+    "ul",
+    {
+      role: "img",
+      "aria-label": label,
+      className: classNames("space-y-1.5", className),
+      children: data.map((d) => {
+        const pct = cap > 0 ? Math.max(2, Math.round(d.value / cap * 100)) : 0;
+        return /* @__PURE__ */ jsxs(
+          "li",
+          {
+            className: "grid grid-cols-[5.5rem_1fr_auto] items-center gap-2",
+            children: [
+              /* @__PURE__ */ jsx("span", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-muted truncate", children: d.label }),
+              /* @__PURE__ */ jsx("span", { className: "relative h-1.5 rounded-full bg-surface overflow-hidden", children: /* @__PURE__ */ jsx(
+                "span",
+                {
+                  className: "absolute inset-y-0 left-0 rounded-full",
+                  style: {
+                    width: `${pct}%`,
+                    background: d.color ?? "var(--accent)"
+                  }
+                }
+              ) }),
+              showValue ? /* @__PURE__ */ jsx("span", { className: "font-mono text-[10px] tabular-nums text-ink-strong", children: formatValue ? formatValue(d.value) : d.value }) : null
+            ]
+          },
+          d.label
+        );
+      })
+    }
+  );
+}
+function Donut({
+  segments,
+  size = 96,
+  strokeWidth = 12,
+  centerLabel,
+  centerSub,
+  className,
+  ariaLabel
+}) {
+  const id = useId();
+  const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  const label = ariaLabel ?? synthesizeDonutAriaLabel(segments);
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      role: "img",
+      "aria-label": label,
+      className,
+      style: { width: size, height: size, position: "relative", flexShrink: 0 },
+      children: [
+        /* @__PURE__ */ jsxs(
+          "svg",
+          {
+            width: size,
+            height: size,
+            viewBox: `0 0 ${size} ${size}`,
+            "aria-hidden": true,
+            children: [
+              /* @__PURE__ */ jsx(
+                "circle",
+                {
+                  cx: size / 2,
+                  cy: size / 2,
+                  r: radius,
+                  fill: "none",
+                  stroke: "var(--border)",
+                  strokeWidth,
+                  opacity: 0.4
+                }
+              ),
+              total > 0 ? segments.map((s, i) => {
+                const len = Math.max(0, s.value) / total * circumference;
+                const dasharray = `${len} ${circumference - len}`;
+                const dashoffset = -offset;
+                offset += len;
+                return /* @__PURE__ */ jsx(
+                  "circle",
+                  {
+                    cx: size / 2,
+                    cy: size / 2,
+                    r: radius,
+                    fill: "none",
+                    stroke: s.color,
+                    strokeWidth,
+                    strokeDasharray: dasharray,
+                    strokeDashoffset: dashoffset,
+                    strokeLinecap: "butt",
+                    transform: `rotate(-90 ${size / 2} ${size / 2})`
+                  },
+                  `${id}-${i}`
+                );
+              }) : null
+            ]
+          }
+        ),
+        centerLabel || centerSub ? /* @__PURE__ */ jsxs(
+          "div",
+          {
+            style: {
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none"
+            },
+            children: [
+              centerLabel ? /* @__PURE__ */ jsx("span", { className: "font-display text-base font-semibold tabular-nums text-ink-strong leading-none", children: centerLabel }) : null,
+              centerSub ? /* @__PURE__ */ jsx("span", { className: "font-mono text-[9px] uppercase tracking-widest text-ink-muted mt-0.5", children: centerSub }) : null
+            ]
+          }
+        ) : null
+      ]
+    }
+  );
+}
+function DonutLegend({ segments }) {
+  return /* @__PURE__ */ jsx("ul", { className: "space-y-1", children: segments.map((s) => /* @__PURE__ */ jsxs(
+    "li",
+    {
+      className: "flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted",
+      children: [
+        /* @__PURE__ */ jsx(
+          "span",
+          {
+            "aria-hidden": true,
+            className: "inline-block size-2 rounded-sm",
+            style: { background: s.color }
+          }
+        ),
+        /* @__PURE__ */ jsx("span", { className: "text-ink", children: s.label }),
+        /* @__PURE__ */ jsx("span", { className: "ml-auto tabular-nums text-ink-strong", children: s.value })
+      ]
+    },
+    s.label
+  )) });
+}
+function SparkLegend({
+  children,
+  metric,
+  source,
+  windowLabel,
+  updatedAt,
+  staleness,
+  side = "top"
+}) {
+  const fresh = formatFreshness(updatedAt, windowLabel);
+  const freshAbs = formatFreshnessAbsolute(updatedAt);
+  return /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 200, children: [
+    /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
+      "span",
+      {
+        tabIndex: 0,
+        className: "inline-flex max-w-full items-center focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded",
+        children
+      }
+    ) }),
+    /* @__PURE__ */ jsxs(
+      TooltipContent,
+      {
+        side,
+        sideOffset: 6,
+        collisionPadding: 8,
+        avoidCollisions: true,
+        className: "max-w-xs text-[11px] leading-relaxed",
+        children: [
+          /* @__PURE__ */ jsxs("div", { className: "font-mono text-[10px] uppercase tracking-widest mb-1", children: [
+            metric,
+            windowLabel ? ` \xB7 ${windowLabel}` : ""
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
+            /* @__PURE__ */ jsxs("span", { className: "font-mono text-[9.5px] uppercase tracking-widest opacity-70", children: [
+              "source \xB7",
+              " "
+            ] }),
+            source
+          ] }),
+          staleness ? /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
+            /* @__PURE__ */ jsxs("span", { className: "font-mono text-[9.5px] uppercase tracking-widest opacity-70", children: [
+              "staleness \xB7",
+              " "
+            ] }),
+            staleness
+          ] }) : null,
+          fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] opacity-80", children: [
+            fresh ?? "",
+            freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""
+          ] }) : null
+        ]
+      }
+    )
+  ] });
+}
+function Sparkline({
+  values,
+  points,
+  width = 120,
+  height = 28,
+  color = "var(--accent, #00c899)",
+  fill = true,
+  className,
+  ariaLabel,
+  formatValue,
+  interactive = true
+}) {
+  const wrapRef = useRef(null);
+  const [hover, setHover] = useState(null);
+  const pts = values.slice(-500).filter((v) => typeof v === "number" && Number.isFinite(v));
+  if (pts.length === 0) {
+    return /* @__PURE__ */ jsx(
+      "svg",
+      {
+        width: "100%",
+        height,
+        viewBox: `0 0 ${width} ${height}`,
+        preserveAspectRatio: "none",
+        className: `block max-w-full ${className ?? ""}`,
+        style: { maxWidth: width },
+        "aria-label": ariaLabel,
+        children: /* @__PURE__ */ jsx(
+          "line",
+          {
+            x1: 0,
+            y1: height / 2,
+            x2: width,
+            y2: height / 2,
+            stroke: "var(--border)",
+            strokeDasharray: "2 3"
+          }
+        )
+      }
+    );
+  }
+  let min = pts[0];
+  let max = pts[0];
+  for (const value of pts) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  const span = max - min || 1;
+  const step = pts.length > 1 ? width / (pts.length - 1) : 0;
+  const coords = pts.map((v, i) => {
+    const x = pts.length === 1 ? width / 2 : i * step;
+    const y = height - 2 - (v - min) / span * (height - 4);
+    return [x, y];
+  });
+  const line = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const area = `${line} L${coords[coords.length - 1][0].toFixed(1)},${height} L0,${height} Z`;
+  const canTooltip = interactive && pts.length > 1;
+  function onMove(e) {
+    if (!canTooltip) return;
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const idx = Math.round(x / rect.width * (pts.length - 1));
+    setHover(idx);
+  }
+  const hoverPoint = hover != null ? coords[hover] : null;
+  const hoverValue = hover != null ? pts[hover] : null;
+  const hoverLabel = hover != null ? points?.[hover]?.t : void 0;
+  const tooltipText = hoverValue != null ? `${hoverLabel ? `${hoverLabel} \xB7 ` : ""}${formatValue ? formatValue(hoverValue) : hoverValue}` : "";
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      ref: wrapRef,
+      className: `relative block w-full ${className ?? ""}`,
+      style: { width: "100%", maxWidth: width, height },
+      onPointerMove: onMove,
+      onPointerLeave: () => setHover(null),
+      children: [
+        /* @__PURE__ */ jsxs(
+          "svg",
+          {
+            width: "100%",
+            height,
+            viewBox: `0 0 ${width} ${height}`,
+            preserveAspectRatio: "none",
+            role: "img",
+            "aria-label": ariaLabel,
+            className: "block w-full",
+            children: [
+              fill ? /* @__PURE__ */ jsx("path", { d: area, fill: color, opacity: 0.12 }) : null,
+              /* @__PURE__ */ jsx(
+                "path",
+                {
+                  d: line,
+                  fill: "none",
+                  stroke: color,
+                  strokeWidth: 1.5,
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round"
+                }
+              ),
+              hoverPoint ? /* @__PURE__ */ jsxs(Fragment, { children: [
+                /* @__PURE__ */ jsx(
+                  "line",
+                  {
+                    x1: hoverPoint[0],
+                    x2: hoverPoint[0],
+                    y1: 0,
+                    y2: height,
+                    stroke: "var(--ink-muted)",
+                    strokeOpacity: 0.35,
+                    strokeWidth: 1
+                  }
+                ),
+                /* @__PURE__ */ jsx(
+                  "circle",
+                  {
+                    cx: hoverPoint[0],
+                    cy: hoverPoint[1],
+                    r: 2.5,
+                    fill: color
+                  }
+                )
+              ] }) : null
+            ]
+          }
+        ),
+        hoverPoint && tooltipText ? /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: "pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            style: {
+              left: Math.max(24, Math.min(width - 24, hoverPoint[0])),
+              top: hoverPoint[1] - 4
+            },
+            role: "tooltip",
+            children: tooltipText
+          }
+        ) : null
+      ]
+    }
+  );
+}
+function StatTile({
+  icon: Icon,
+  eyebrow,
+  value,
+  hint,
+  chart,
+  tone = "default",
+  className
+}) {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: classNames(
+        "rounded-lg border bg-card p-4 flex items-center gap-4",
+        tone === "accent" && "border-accent/40",
+        tone === "ok" && "border-health-ok/40",
+        tone === "warn" && "border-health-warn/40",
+        tone === "down" && "border-health-down/40",
+        tone === "default" && "border-border",
+        className
+      ),
+      children: [
+        Icon ? /* @__PURE__ */ jsx(
+          Icon,
+          {
+            "aria-hidden": true,
+            className: classNames(
+              "size-4 shrink-0",
+              tone === "accent" ? "text-accent" : tone === "ok" ? "text-health-ok" : tone === "warn" ? "text-health-warn" : tone === "down" ? "text-health-down" : "text-ink-muted"
+            )
+          }
+        ) : null,
+        /* @__PURE__ */ jsxs("div", { className: "min-w-0 flex-1", children: [
+          /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate", children: eyebrow }),
+          /* @__PURE__ */ jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
+            /* @__PURE__ */ jsx("span", { className: "min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
+            hint ? /* @__PURE__ */ jsx("span", { className: "min-w-0 font-mono text-[10px] text-ink-muted truncate", children: hint }) : null
+          ] })
+        ] }),
+        chart ? /* @__PURE__ */ jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
+      ]
+    }
+  );
+}
+function StatWithSpark({
+  label,
+  value,
+  hint,
+  full,
+  unit,
+  tone = "default",
+  viz,
+  delta,
+  className,
+  updatedAt,
+  windowLabel
+}) {
+  const freshLine = formatFreshness(updatedAt, windowLabel);
+  const freshAbs = formatFreshnessAbsolute(updatedAt);
+  return /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 200, children: [
+    /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+      "div",
+      {
+        tabIndex: 0,
+        className: classNames(
+          "group flex flex-col gap-1 px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40 transition-colors",
+          className
+        ),
+        children: [
+          /* @__PURE__ */ jsx("div", { className: "font-mono text-[9.5px] uppercase tracking-widest text-ink-muted truncate", children: label }),
+          /* @__PURE__ */ jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
+            /* @__PURE__ */ jsx(
+              "span",
+              {
+                className: classNames(
+                  "font-display text-lg font-semibold tabular-nums leading-none truncate",
+                  tone === "ok" && "text-health-ok",
+                  tone === "warn" && "text-health-warn",
+                  tone === "down" && "text-health-down",
+                  tone === "default" && "text-ink-strong"
+                ),
+                children: value
+              }
+            ),
+            unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 font-mono text-[9px] uppercase tracking-widest text-ink-muted", children: unit }) : null,
+            delta
+          ] }),
+          viz ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
+          hint ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[9.5px] text-ink-muted/80 truncate", children: hint }) : null,
+          freshLine ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[9px] tracking-wide text-ink-muted/70 truncate", children: freshLine }) : null
+        ]
+      }
+    ) }),
+    /* @__PURE__ */ jsxs(
+      TooltipContent,
+      {
+        side: "bottom",
+        className: "max-w-xs text-[11px] leading-relaxed",
+        children: [
+          /* @__PURE__ */ jsx("div", { children: full ?? hint ?? label }),
+          freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] text-primary-foreground/70", children: [
+            freshAbs ? `Last checked ${freshAbs}` : null,
+            freshAbs && windowLabel ? " \xB7 " : "",
+            windowLabel ? `${windowLabel} window` : null
+          ] }) : null
+        ]
+      }
+    )
+  ] });
+}
+function MiniStack({
+  segments,
+  height = 8
+}) {
+  const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0);
+  if (total <= 0) {
+    return /* @__PURE__ */ jsx(
+      "div",
+      {
+        className: "w-full rounded-full bg-border/40",
+        style: { height },
+        "aria-hidden": true
+      }
+    );
+  }
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: "flex w-full overflow-hidden rounded-full bg-border/40",
+      style: { height },
+      role: "img",
+      "aria-label": segments.map((s) => `${s.label} ${s.value}`).join(", "),
+      children: segments.map(
+        (s) => s.value > 0 ? /* @__PURE__ */ jsx(
+          "span",
+          {
+            style: {
+              width: `${s.value / total * 100}%`,
+              background: s.color
+            },
+            title: `${s.label} \xB7 ${s.value}`
+          },
+          s.label
+        ) : null
+      )
+    }
+  );
+}
+function MiniRadial({
+  value,
+  size = 28,
+  stroke = 4,
+  color = "var(--ink-strong)"
+}) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(1, value));
+  return /* @__PURE__ */ jsxs(
+    "svg",
+    {
+      width: size,
+      height: size,
+      viewBox: `0 0 ${size} ${size}`,
+      className: "block",
+      "aria-hidden": true,
+      children: [
+        /* @__PURE__ */ jsx(
+          "circle",
+          {
+            cx: size / 2,
+            cy: size / 2,
+            r,
+            fill: "none",
+            stroke: "var(--border)",
+            strokeWidth: stroke,
+            opacity: 0.5
+          }
+        ),
+        /* @__PURE__ */ jsx(
+          "circle",
+          {
+            cx: size / 2,
+            cy: size / 2,
+            r,
+            fill: "none",
+            stroke: color,
+            strokeWidth: stroke,
+            strokeDasharray: `${c * pct} ${c}`,
+            strokeLinecap: "round",
+            transform: `rotate(-90 ${size / 2} ${size / 2})`
+          }
+        )
+      ]
+    }
+  );
+}
+function DotRow({
+  dots
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: "flex items-center gap-1",
+      role: "img",
+      "aria-label": "Source coverage",
+      children: dots.map((d) => /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 150, children: [
+        /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsx(
+          "span",
+          {
+            className: classNames(
+              "size-1.5 rounded-full",
+              d.on ? "bg-accent" : "bg-border"
+            )
+          }
+        ) }),
+        /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "font-mono text-[10px]", children: [
+          d.label,
+          " ",
+          d.on ? "\u2713" : "\u2014"
+        ] })
+      ] }, d.label))
+    }
+  );
+}
+function NoDataSpark({
+  updatedAt,
+  windowLabel,
+  reason = "not enough data yet",
+  height = 18
+}) {
+  const freshAbs = formatFreshnessAbsolute(updatedAt);
+  const freshLine = formatFreshness(updatedAt, windowLabel);
+  return /* @__PURE__ */ jsxs(Tooltip, { delayDuration: 150, children: [
+    /* @__PURE__ */ jsx(TooltipTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+      "div",
+      {
+        tabIndex: 0,
+        role: "img",
+        "aria-label": `${reason}${freshAbs ? `, last checked ${freshAbs}` : ""}`,
+        className: "flex w-full items-center gap-1.5 rounded-sm border border-dashed border-border/70 bg-paper/40 px-1.5 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        style: { height },
+        children: [
+          /* @__PURE__ */ jsx(
+            "span",
+            {
+              "aria-hidden": true,
+              className: "inline-block size-1 rounded-full bg-ink-muted/60"
+            }
+          ),
+          /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[9px] uppercase tracking-widest text-ink-muted/80", children: freshLine ?? reason })
+        ]
+      }
+    ) }),
+    /* @__PURE__ */ jsxs(
+      TooltipContent,
+      {
+        side: "top",
+        className: "max-w-xs text-[11px] leading-relaxed",
+        children: [
+          reason,
+          ".",
+          " ",
+          freshAbs ? `Last checked ${freshAbs}${windowLabel ? ` \xB7 ${windowLabel} window` : ""}.` : "No probe samples recorded yet."
+        ]
+      }
+    )
+  ] });
+}
+var sum = (ns) => ns.reduce((a, b) => a + b, 0);
+var MIN_TILE_W_FOR_VALUE = 12;
+var MIN_TILE_H_FOR_VALUE = 14;
+function worstRatio(areas, side) {
+  if (areas.length === 0 || side <= 0) return Infinity;
+  const s = sum(areas);
+  if (s <= 0) return Infinity;
+  const max = Math.max(...areas);
+  const min = Math.min(...areas);
+  const s2 = s * s;
+  const side2 = side * side;
+  return Math.max(side2 * max / s2, s2 / (side2 * min));
+}
+function squarify(data) {
+  const positive = data.filter((d) => d.value > 0);
+  const total = sum(positive.map((d) => d.value));
+  if (total <= 0) return [];
+  const items = positive.map((d) => ({
+    datum: d,
+    area: d.value / total * 1e4,
+    share: d.value / total
+  })).sort((a, b) => b.area - a.area);
+  const tiles = [];
+  let rect = { x: 0, y: 0, w: 100, h: 100 };
+  let row = [];
+  const layoutRow = (rowItems, r) => {
+    const rowArea = sum(rowItems.map((i) => i.area));
+    if (rowArea <= 0) return r;
+    if (r.w >= r.h) {
+      const dw = rowArea / r.h;
+      let y = r.y;
+      for (const it of rowItems) {
+        const h = it.area / dw;
+        tiles.push({ ...it.datum, share: it.share, x: r.x, y, w: dw, h });
+        y += h;
+      }
+      return { x: r.x + dw, y: r.y, w: r.w - dw, h: r.h };
+    }
+    const dh = rowArea / r.w;
+    let x = r.x;
+    for (const it of rowItems) {
+      const w = it.area / dh;
+      tiles.push({ ...it.datum, share: it.share, x, y: r.y, w, h: dh });
+      x += w;
+    }
+    return { x: r.x, y: r.y + dh, w: r.w, h: r.h - dh };
+  };
+  for (const item of items) {
+    const side = Math.min(rect.w, rect.h);
+    const current = row.map((i) => i.area);
+    const withItem = [...current, item.area];
+    if (row.length === 0 || worstRatio(withItem, side) <= worstRatio(current, side)) {
+      row.push(item);
+    } else {
+      rect = layoutRow(row, rect);
+      row = [item];
+    }
+  }
+  if (row.length > 0) layoutRow(row, rect);
+  return tiles;
+}
+function TreemapMini({
+  data,
+  className,
+  formatValue = String,
+  ariaLabel
+}) {
+  const tiles = squarify(data);
+  if (tiles.length === 0) return null;
+  const label = ariaLabel ?? `Treemap of ${tiles.length} items sized by share: ` + tiles.map((t) => `${t.label} ${(t.share * 100).toFixed(1)}%`).join(", ");
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      role: "img",
+      "aria-label": label,
+      className: classNames(
+        "relative aspect-[16/9] w-full overflow-hidden rounded-md",
+        className
+      ),
+      children: tiles.map((t) => /* @__PURE__ */ jsx(
+        "div",
+        {
+          title: `${t.label} \xB7 ${formatValue(t.value)} \xB7 ${(t.share * 100).toFixed(1)}%`,
+          className: "absolute overflow-hidden p-1",
+          style: {
+            left: `${t.x}%`,
+            top: `${t.y}%`,
+            width: `${t.w}%`,
+            height: `${t.h}%`
+          },
+          children: /* @__PURE__ */ jsxs(
+            "div",
+            {
+              className: "flex h-full w-full flex-col justify-between rounded-sm border border-background/40 p-1.5",
+              style: { background: t.color ?? "var(--accent)" },
+              children: [
+                /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[10px] font-medium leading-none text-accent-foreground", children: t.label }),
+                t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[9px] leading-none text-accent-foreground/80", children: formatValue(t.value) }) : null
+              ]
+            }
+          )
+        },
+        t.label
+      ))
+    }
+  );
+}
+
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProfileHero, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, timeAgoAbsoluteTitle, visibleTools };

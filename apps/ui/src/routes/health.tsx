@@ -8,6 +8,9 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { IncidentCard } from "@/components/metagraphed/incident-card";
 import {
   HealthPill,
   TableState,
@@ -15,12 +18,10 @@ import {
   PageSection,
   TimeAgo,
   AnimatedNumber,
+  Donut,
+  DonutLegend,
+  Sparkline,
 } from "@jsonbored/ui-kit";
-import { Skeleton, StaleBanner } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { IncidentCard } from "@/components/metagraphed/incident-card";
-import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { SubnetHealthMatrix } from "@/components/metagraphed/subnet-health-matrix";
 import { StatusMosaic } from "@/components/metagraphed/analytics/status-mosaic";
 import { NetworkPulseBand } from "@/components/metagraphed/analytics/network-pulse-band";

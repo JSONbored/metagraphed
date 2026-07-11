@@ -6,6 +6,9 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Search, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
 import {
   TimeAgo,
   HealthPill,
@@ -17,12 +20,9 @@ import {
   ExternalLink,
   ViewModeToggle,
   DownloadCsvButton,
+  SparkLegend,
+  StatTile,
 } from "@jsonbored/ui-kit";
-import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
-import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
-import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { LatencyHeatmap } from "@/components/metagraphed/charts/latency-heatmap";

@@ -4,9 +4,6 @@ import { BarChart3, Maximize2 } from "lucide-react";
 import { economicsQuery, subnetUptimeQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { Skeleton } from "@/components/metagraphed/states";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
-import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
-import type { SurfaceUptime } from "@/lib/metagraphed/types";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  Sparkline,
+  Donut,
+  DonutLegend,
 } from "@jsonbored/ui-kit";
+import type { SurfaceUptime } from "@/lib/metagraphed/types";
 
 interface Props {
   netuid: number;

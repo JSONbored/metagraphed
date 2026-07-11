@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetNeuronHistoryQuery } from "@/lib/metagraphed/queries";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { Sparkline } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetNeuronHistoryPoint } from "@/lib/metagraphed/types";

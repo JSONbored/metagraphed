@@ -5,13 +5,6 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import {
-  BrandIcon,
-  prefetchBrandIcon,
-  PageHero,
-  ViewModeToggle,
-  ShareButton,
-} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -30,8 +23,16 @@ import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
 import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
-import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import {
+  BrandIcon,
+  prefetchBrandIcon,
+  PageHero,
+  ViewModeToggle,
+  ShareButton,
+  Donut,
+  DonutLegend,
+  Sparkline,
+} from "@jsonbored/ui-kit";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import type { Provider } from "@/lib/metagraphed/types";
 
