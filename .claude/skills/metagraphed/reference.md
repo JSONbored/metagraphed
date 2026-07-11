@@ -108,12 +108,15 @@ discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). N
   `npm run test:e2e:update-baseline --workspace=apps/ui` after a real fix or an accepted new layout),
   build, and bundle-size-budget for `apps/ui` (the TanStack Start/Vite frontend, folded into this
   repo as an npm workspace — #3062), plus a `packages/client/dist` drift check (rebuild fresh,
-  `git diff --exit-code` against the committed runtime bundle — #3066/#3294). Gated on
-  `run_ui_validation` (`^apps/ui/` **or** `^packages/client/` in the diff — the latter is required,
-  not optional: it's the only place that verifies committed `packages/client/dist/index.js`/`index.cjs`
-  still match a fresh build, so a `packages/client`-only PR must also trip this job or
-  stale/tampered committed runtime code could merge unverified) via the same per-step guard pattern
-  `checks` uses for its docs fast lane — never a job-level skip. Entirely independent of the
+  `git diff --exit-code` against the committed runtime bundle — #3066/#3294) and, the same way, a
+  `packages/ui-kit/dist` drift check plus its own `npm run typecheck --workspace=packages/ui-kit`
+  step (`packages/ui-kit` is the design-system component library extracted from `apps/ui` — issue
+  #4867's epic). Gated on `run_ui_validation` (`^apps/ui/` **or** `^packages/client/` **or**
+  `^packages/ui-kit/` in the diff — `packages/client` and `packages/ui-kit` are both required, not
+  optional: each is the only place that verifies its own committed `dist/index.js`/`index.cjs` still
+  matches a fresh build, so a `packages/client`- or `packages/ui-kit`-only PR must also trip this
+  job or stale/tampered committed runtime code could merge unverified) via the same per-step guard
+  pattern `checks` uses for its docs fast lane — never a job-level skip. Entirely independent of the
   backend's own lint/test/build; a backend-only PR touching neither directory doesn't build or
   install `apps/ui`'s tree at all, and vice versa. Not part of the Gittensory contributor gate —
   both `apps/ui/**` and `packages/**` are `blockedPaths` entries in `.gittensory.yml`, maintainer-only.
@@ -364,6 +367,17 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   Deliberately NOT a package.json "prepare" script even for the drift-check purpose: that would
   auto-run on every `npm install`/`ci` repo-wide, which a security scan already flagged once as
   unnecessary install-time code execution (#3066 review).
+- **`packages/ui-kit` is an internal design-system component library extracted from `apps/ui`
+  (issue #4867's epic), following the identical committed-dist pattern as `packages/client` above:**
+  `dist/index.js`, `dist/index.cjs`, and `dist/index.css` are committed — the same `.gitignore`
+  exception, same reasoning (`apps/ui` consumes it as a live workspace link, and Cloudflare Workers
+  Builds must never depend on rebuilding a sibling workspace package) — while
+  `dist/index.d.ts`/`dist/index.d.cts` stay gitignored, built fresh by CI/local dev only. **After
+  editing `packages/ui-kit/src/*`, you must run `npm run build --workspace=packages/ui-kit` and
+  commit the resulting `dist/index.js`/`index.cjs`/`index.css` in the same PR** — the `ui` CI job's
+  "Build packages/ui-kit (drift check)" step rebuilds fresh and fails loudly (`git diff --exit-code`)
+  if the committed copy doesn't match, same as the `packages/client` drift check above. The job also
+  runs a dedicated `npm run typecheck --workspace=packages/ui-kit` step ("Typecheck packages/ui-kit").
 - **`packages/contract` is a types-only npm workspace (#3067) holding the OpenAPI-derived contract
   types** — `openapi-typescript`'s output (`scripts/generate-types.mjs`/`validate-types.mjs`/
   `validate-contract-drift.mjs` all write/check `packages/contract/index.d.ts` now, no longer

@@ -170,7 +170,7 @@ jobs:
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^apps/ui/|^packages/client/|^packages/contract/' changed-files.txt; then
+          if grep -qE '^apps/ui/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
@@ -700,6 +700,24 @@ jobs:
             echo "::error::packages/client/dist is stale -- run 'npm run build --workspace=packages/client' and commit the result."
             exit 1
           fi
+
+      # Same drift-check shape as packages/client above, same reason:
+      # packages/ui-kit/dist/{index.js,index.cjs,index.css} are committed
+      # (see packages/ui-kit/.gitignore) so apps/ui's Cloudflare Workers
+      # Builds deploy never depends on rebuilding a sibling workspace
+      # package first (#4860).
+      - name: Build packages/ui-kit (drift check)
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: |
+          npm run build --workspace=packages/ui-kit
+          if ! git diff --exit-code -- packages/ui-kit/dist; then
+            echo "::error::packages/ui-kit/dist is stale -- run 'npm run build --workspace=packages/ui-kit' and commit the result."
+            exit 1
+          fi
+
+      - name: Typecheck packages/ui-kit
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm run typecheck --workspace=packages/ui-kit
 
       - name: Lint (ESLint + Prettier)
         if: env.RUN_UI_VALIDATION == 'true'

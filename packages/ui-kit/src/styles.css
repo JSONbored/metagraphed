@@ -1,0 +1,6 @@
+/* Placeholder -- proves tsup extracts a real dist/styles.css from an
+   imported stylesheet. Replaced with the real extracted design tokens
+   in #4861. */
+.ui-kit-placeholder-card {
+  display: block;
+}

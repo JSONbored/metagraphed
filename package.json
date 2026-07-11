@@ -16,7 +16,8 @@
   "workspaces": [
     "apps/ui",
     "packages/client",
-    "packages/contract"
+    "packages/contract",
+    "packages/ui-kit"
   ],
   "scripts": {
     "validate": "node scripts/validate.mjs",

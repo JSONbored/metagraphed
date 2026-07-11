@@ -1,0 +1,19 @@
+node_modules
+
+# dist/index.js + dist/index.cjs + dist/index.css (the RUNTIME bundle only,
+# exported publicly as "./styles.css" -- see package.json's "exports") ARE
+# committed here -- same exception as packages/client/.gitignore, same
+# reason: once apps/ui depends on this package (starting with the migration
+# issues, #4862+), it consumes it as a live workspace link, and Cloudflare
+# Workers Builds' production deploy of apps/ui must never depend on
+# rebuilding a sibling workspace package first. The .d.ts/.d.cts type
+# declarations stay gitignored -- built fresh by CI/local dev only, not
+# needed at runtime (vite build transpiles via esbuild, which strips types
+# without resolving them), and they're the part of this package's output
+# that grows with every new component added.
+!dist
+!dist/index.js
+!dist/index.cjs
+!dist/index.css
+dist/index.d.ts
+dist/index.d.cts

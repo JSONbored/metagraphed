@@ -447,9 +447,11 @@ your PR adds a new API call on one of the checked routes (`/`, `/subnets/1`,
 CI also gzip-measures the initial client JS for a cold `/` visit against a budget (currently ~300 KB,
 `.github/workflows/validate.yml`'s "Bundle size budget" step) — keep new dependencies/imports lean; if
 a real feature legitimately grows it, raise the budget deliberately in the same PR. If your PR also
-touches `packages/client`, CI rebuilds it fresh and diffs against the committed
-`packages/client/dist` — run `npm run build --workspace=packages/client` and commit the result if you
-changed `packages/client/src`.
+touches `packages/client` or `packages/ui-kit`, CI rebuilds each fresh and diffs against its committed
+`dist` (`packages/client/dist` / `packages/ui-kit/dist`) — run `npm run build --workspace=packages/client`
+(or `--workspace=packages/ui-kit`) and commit the result if you changed `packages/client/src` (or
+`packages/ui-kit/src`). `packages/ui-kit` also gets its own `npm run typecheck --workspace=packages/ui-kit`
+step in the `ui` CI job.
 
 ### Phase C4 — Commit + PR
 
@@ -505,7 +507,8 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
       missing/malformed table is an automatic close.
 - [ ] `lint` + `format:check` + `typecheck` + `test` + `test:e2e` + `build` all green
       (`--workspace=apps/ui`); bundle size still under budget.
-- [ ] If `packages/client/src` changed: rebuilt and committed `packages/client/dist`.
+- [ ] If `packages/client/src` or `packages/ui-kit/src` changed: rebuilt and committed the respective
+      `dist` (`packages/client/dist` / `packages/ui-kit/dist`).
 - [ ] Conventional Commit (no AI attribution); `Closes #<issue>` — required, referencing an issue that's still open.
 
 If every box is checked, the PR has the best chance of a one-shot approve-and-merge. If any box can't
