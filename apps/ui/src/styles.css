@@ -2,6 +2,76 @@
 @source "../src";
 @import "tw-animate-css";
 
+/*
+ * Brand fonts, self-hosted. Weights are the exact set the app uses — verified
+ * by grepping every font-weight utility class in src/ (font-normal/-medium/
+ * -semibold only; font-bold never appears). Without these, --font-display/
+ * --font-sans/--font-mono below fall back to system fonts.
+ */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Space-Grotesk-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/Space-Grotesk-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/Space-Grotesk-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/DM-Sans-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/DM-Sans-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/DM-Sans-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/JetBrains-Mono-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/JetBrains-Mono-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/JetBrains-Mono-600-normal.woff2") format("woff2");
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /*
