@@ -457,7 +457,7 @@ happens on hover.
 
    | Target | Before | After |
    | --- | --- | --- |
-   | [<img src="BEFORE_GIF_URL" width="380">](BEFORE_GIF_URL) | [<img src="AFTER_GIF_URL" width="380">](AFTER_GIF_URL) |
+   | <describe the interactive element, e.g. "Blocks · author cell"> | [<img src="BEFORE_GIF_URL" width="380">](BEFORE_GIF_URL) | [<img src="AFTER_GIF_URL" width="380">](AFTER_GIF_URL) |
    ```
    One row per distinct interactive element the PR changes.
 5. A PURELY interaction-only change (identical at-rest state, only the triggered behavior changed) can
