@@ -2856,10 +2856,28 @@ export default {
             DEFAULT_ANALYTICS_WINDOW,
           );
           const limit = chainLimit(url, 25);
+          // event_kind = 'Transfer' is by far the highest-volume kind in
+          // account_events (~10M rows/7d, vs the low hundred-thousands for
+          // every other kind these 12 routes cover) -- a single query
+          // computing COUNT(*)/SUM/MAX *and* two COUNT(DISTINCT ...) in one
+          // pass measured 15s+ against production data (confirmed live,
+          // 2026-07-11), well past the router's 3s statement_timeout, and
+          // was intermittently surfacing stale/zeroed totals rather than a
+          // clean fallback. Splitting the two DISTINCT counts into their own
+          // statements cut that to ~3s each (still the slowest queries here
+          // even with idx_ae_kind_hotkey_observed/idx_ae_kind_coldkey_observed),
+          // so this route alone widens its budget rather than raising the
+          // global 3s default for every other (much lighter) route.
+          await sql`SET LOCAL statement_timeout = '10000ms'`;
           const totalsRows = await sql`
           SELECT COUNT(*) AS transfer_count, COALESCE(SUM(amount_tao), 0) AS total_volume_tao,
-                 COUNT(DISTINCT hotkey) AS unique_senders, COUNT(DISTINCT "coldkey") AS unique_receivers,
                  MAX(observed_at) AS newest_observed
+          FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff}`;
+          const distinctSenders = await sql`
+          SELECT COUNT(DISTINCT hotkey) AS unique_senders
+          FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff}`;
+          const distinctReceivers = await sql`
+          SELECT COUNT(DISTINCT "coldkey") AS unique_receivers
           FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff}`;
           const senders = await sql`
           SELECT hotkey AS address, SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count
@@ -2877,7 +2895,11 @@ export default {
                 DEFAULT_ANALYTICS_WINDOW,
               ),
               observedAt: latestObservedIso(totalsRows, "newest_observed"),
-              totals: totalsRows[0] ?? null,
+              totals: {
+                ...(totalsRows[0] ?? null),
+                unique_senders: distinctSenders[0]?.unique_senders ?? 0,
+                unique_receivers: distinctReceivers[0]?.unique_receivers ?? 0,
+              },
               senders,
               receivers,
             }),

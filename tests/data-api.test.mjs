@@ -4048,18 +4048,23 @@ test("GET /api/v1/chain/stake-flow: a single GROUP BY netuid, event_kind query",
   expect(body.subnet_count).toBe(1);
 });
 
-test("GET /api/v1/chain/transfers: totals + senders + receivers", async () => {
+test("GET /api/v1/chain/transfers: totals + distinct counts + senders + receivers", async () => {
   mockQueue.current = [
     [], // consumed by the session-scoped `SET statement_timeout` call
+    // `SET LOCAL statement_timeout` widening this route's own budget (the
+    // dual COUNT(DISTINCT) statements below are the slowest queries in this
+    // file against the real, high-volume 'Transfer' event_kind -- confirmed
+    // live 2026-07-11) -- also consumes a queue slot.
+    [],
     [
       {
         transfer_count: 3,
         total_volume_tao: 100,
-        unique_senders: 2,
-        unique_receivers: 2,
         newest_observed: "1780000000000",
       },
     ],
+    [{ unique_senders: 2 }],
+    [{ unique_receivers: 2 }],
     [{ address: "5Sender", volume_tao: 80, transfer_count: 2 }],
     [{ address: "5Receiver", volume_tao: 60, transfer_count: 1 }],
   ];
@@ -4067,12 +4072,17 @@ test("GET /api/v1/chain/transfers: totals + senders + receivers", async () => {
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.total_volume_tao).toBe(100);
+  expect(body.unique_senders).toBe(2);
+  expect(body.unique_receivers).toBe(2);
   expect(body.top_senders[0].address).toBe("5Sender");
 });
 
 test("GET /api/v1/chain/transfers: a cold store's empty totals row falls back to null", async () => {
   mockQueue.current = [
     [], // consumed by the session-scoped `SET statement_timeout` call
+    [], // `SET LOCAL statement_timeout`
+    [],
+    [],
     [],
     [],
     [],
