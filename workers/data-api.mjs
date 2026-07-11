@@ -37,6 +37,7 @@ import {
   buildSubnetEventSummary,
   buildAccountSummary,
   buildAccountSubnets,
+  buildAccountHistory,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   SUBNET_EVENT_SUMMARY_WINDOWS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
@@ -273,6 +274,8 @@ function latestObservedIso(rows, field = "last_observed") {
 import { timingSafeEqual } from "../src/webhooks.mjs";
 import {
   BLOCK_PAGINATION,
+  FEED_PAGINATION,
+  DAY_PATTERN,
   clampLimit as clampRequestLimit,
   clampOffset as clampRequestOffset,
 } from "./request-params.mjs";
@@ -661,6 +664,95 @@ async function handleNeuronsSync(request, env) {
   // the request/invocation ends (Cloudflare's documented pattern).
 }
 
+// --- POST /api/v1/internal/rollup-account-events-daily (#4832 gap-closure) -
+//
+// account_events is written continuously by indexer-rs directly into this
+// same Postgres instance (not through any Worker route), so unlike
+// neurons-sync above there is no existing write request to piggyback the
+// rollup onto -- a dedicated hourly GitHub Actions workflow
+// (rollup-account-events-daily.yml) calls this instead, proxied through the
+// main Worker the same way (workers/api.mjs's
+// handleRollupAccountEventsDailyProxy). Mirrors D1's rollupAccountEventsDaily
+// (src/account-events.mjs) exactly: re-roll the two active UTC days each
+// run (past days are already finalized), upsert idempotently. No request
+// body -- this is a trigger-only POST, not a data-carrying sync.
+const ROLLUP_TOKEN_HEADER = "x-rollup-sync-token";
+
+function utcDayBounds(ms) {
+  const d = new Date(ms);
+  const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return {
+    date: new Date(start).toISOString().slice(0, 10),
+    start,
+    end: start + 24 * 60 * 60 * 1000,
+  };
+}
+
+async function handleRollupAccountEventsDaily(request, env) {
+  if (!env.ROLLUP_SYNC_SECRET) {
+    return writeJson(
+      {
+        error:
+          "account-events-daily rollup is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided = request.headers.get(ROLLUP_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.ROLLUP_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${ROLLUP_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const runAt = Date.now();
+  const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+      const rolled = [];
+      for (const { date, start, end } of days) {
+        await sql`
+          INSERT INTO account_events_daily (hotkey, netuid, day, event_count, event_kinds, first_block, last_block, updated_at)
+          SELECT
+            hotkey,
+            netuid,
+            ${date}::date AS day,
+            COUNT(*) AS event_count,
+            string_agg(DISTINCT event_kind, ',') AS event_kinds,
+            MIN(block_number) AS first_block,
+            MAX(block_number) AS last_block,
+            ${runAt} AS updated_at
+          FROM account_events
+          WHERE hotkey IS NOT NULL AND netuid IS NOT NULL
+            AND observed_at >= ${start} AND observed_at < ${end}
+          GROUP BY hotkey, netuid
+          ON CONFLICT (hotkey, netuid, day) DO UPDATE SET
+            event_count = EXCLUDED.event_count,
+            event_kinds = EXCLUDED.event_kinds,
+            first_block = EXCLUDED.first_block,
+            last_block = EXCLUDED.last_block,
+            updated_at = EXCLUDED.updated_at`;
+        rolled.push(date);
+      }
+      return writeJson({ ok: true, rolled });
+    });
+  } catch (err) {
+    console.error("data-api account-events-daily rollup failed:", err);
+    return writeJson({ error: "rollup failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -771,14 +863,20 @@ function coerceEvent(row) {
 export default {
   async fetch(request, env, _ctx) {
     const url = new URL(request.url);
-    // The one write route (#4771) -- checked before the GET-only gate below,
-    // same as how the main Worker's own POST-accepting routes (webhooks, MCP,
-    // ingest) run ahead of its read-only method gate.
+    // The write routes (#4771, #4832) -- checked before the GET-only gate
+    // below, same as how the main Worker's own POST-accepting routes
+    // (webhooks, MCP, ingest) run ahead of its read-only method gate.
     if (
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/neurons-sync"
     ) {
       return handleNeuronsSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/rollup-account-events-daily"
+    ) {
+      return handleRollupAccountEventsDaily(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
@@ -2733,6 +2831,55 @@ export default {
                 DEFAULT_HISTORY_WINDOW,
               ),
             }),
+          );
+        }
+
+        // GET /api/v1/accounts/:ss58/history?netuid=&from=&to=&limit=&offset=&cursor=
+        // (#4832 gap-closure): the durable per-day activity series for an
+        // account, mirroring src/account-events.mjs's buildAccountHistory /
+        // ACCOUNT_DAY_COLUMNS. day is cast to ::text for the same reason
+        // snapshot_date is elsewhere in this file (postgres.js parses DATE
+        // columns to JS Date objects by default, which would break the
+        // string-keyset cursor comparison below).
+        const accountHistoryMatch = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/history$/,
+        );
+        if (accountHistoryMatch) {
+          const ss58 = decodeURIComponent(accountHistoryMatch[1]);
+          const limit = clampRequestLimit(
+            url.searchParams.get("limit"),
+            FEED_PAGINATION,
+          );
+          const offset = clampRequestOffset(url.searchParams.get("offset"));
+          const netuid = nonNegativeIntegerParam(url.searchParams, "netuid");
+          const from = url.searchParams.get("from") || null;
+          const to = url.searchParams.get("to") || null;
+          const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+          const cursorDay = cur
+            ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
+            : null;
+          const useCursor = Boolean(cursorDay && DAY_PATTERN.test(cursorDay));
+          const rows = await sql`
+          SELECT day::text AS day, netuid, event_count, event_kinds, first_block, last_block
+          FROM account_events_daily
+          WHERE hotkey = ${ss58}
+            ${netuid != null ? sql`AND netuid = ${netuid}` : sql``}
+            ${from ? sql`AND day >= ${from}` : sql``}
+            ${to ? sql`AND day <= ${to}` : sql``}
+            ${useCursor ? sql`AND (day, netuid) < (${cursorDay}::date, ${cur[1]})` : sql``}
+          ORDER BY day DESC, netuid DESC
+          LIMIT ${limit}
+          ${!useCursor ? sql`OFFSET ${offset}` : sql``}`;
+          const last = rows.length === limit ? rows[rows.length - 1] : null;
+          const nextCursor =
+            last && typeof last.day === "string" && DAY_PATTERN.test(last.day)
+              ? encodeCursor([
+                  Number(last.day.replaceAll("-", "")),
+                  last.netuid,
+                ])
+              : null;
+          return json(
+            buildAccountHistory(rows, ss58, { limit, offset, nextCursor }),
           );
         }
 

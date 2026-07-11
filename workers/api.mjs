@@ -1161,42 +1161,62 @@ async function handleRegistrySyncProxy(request, env) {
   });
 }
 
-// Proxies POST /api/v1/internal/neurons-sync to the SAME DATA_API service
-// binding the chain_events proxy above uses (#4771) -- the write path into
-// the chain-indexer Postgres's neurons/neuron_daily tables lives inside
-// workers/data-api.mjs itself, not a separate Worker: it's the identical
-// Postgres instance/Hyperdrive origin data-api.mjs already reads from, so
-// splitting read and write into two Workers (the way registry-sync-api.mjs
-// is split, for a genuinely SEPARATE database) would only add a redundant
-// deploy pipeline for zero bundle-budget benefit. Mirrors
-// handleRegistrySyncProxy's shape otherwise: forwards the request as-is
-// (including the x-neurons-sync-token header), the shared-secret check
-// happens once, downstream in workers/data-api.mjs's handleNeuronsSync.
-async function handleNeuronsSyncProxy(request, env) {
+// Generic forwarder to the DATA_API service binding for the internal
+// write/rollup routes that live inside workers/data-api.mjs itself rather
+// than a dedicated Worker (#4771's neurons-sync pattern) -- splitting read
+// and write into two Workers for the IDENTICAL Postgres instance/Hyperdrive
+// origin data-api.mjs already reads from (the way registry-sync-api.mjs is
+// split, for a genuinely SEPARATE database) would only add a redundant
+// deploy pipeline for zero bundle-budget benefit. Forwards the request as-is
+// (including any shared-secret header) -- the auth check happens once,
+// downstream in data-api.mjs.
+async function proxyToDataApi(
+  request,
+  env,
+  { code, notBoundMessage, unreadableMessage },
+) {
   if (request.method !== "POST") {
     return errorResponse("method_not_allowed", "Only POST is supported.", 405);
   }
   if (!env.DATA_API) {
-    return errorResponse(
-      "neurons_sync_unavailable",
-      "The neurons-sync tier is not bound to this deployment.",
-      503,
-    );
+    return errorResponse(code, notBoundMessage, 503);
   }
   const upstream = await env.DATA_API.fetch(request);
   let body;
   try {
     body = await upstream.json();
   } catch {
-    return errorResponse(
-      "neurons_sync_unavailable",
-      "The neurons-sync tier returned an unreadable response.",
-      502,
-    );
+    return errorResponse(code, unreadableMessage, 502);
   }
   return new Response(JSON.stringify(body), {
     status: upstream.status,
     headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+// Proxies POST /api/v1/internal/neurons-sync -- the write path into the
+// chain-indexer Postgres's neurons/neuron_daily tables (#4771). Mirrors
+// handleRegistrySyncProxy's shape otherwise (forwards the request as-is,
+// including the x-neurons-sync-token header).
+async function handleNeuronsSyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "neurons_sync_unavailable",
+    notBoundMessage: "The neurons-sync tier is not bound to this deployment.",
+    unreadableMessage: "The neurons-sync tier returned an unreadable response.",
+  });
+}
+
+// Proxies POST /api/v1/internal/rollup-account-events-daily -- the write
+// path into the chain-indexer Postgres's account_events_daily rollup
+// (#4832 gap-closure). Same DATA_API service binding as neurons-sync above;
+// see proxyToDataApi's comment for why this isn't a dedicated Worker.
+async function handleRollupAccountEventsDailyProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "rollup_account_events_daily_unavailable",
+    notBoundMessage:
+      "The account-events-daily rollup tier is not bound to this deployment.",
+    unreadableMessage:
+      "The account-events-daily rollup tier returned an unreadable response.",
   });
 }
 
@@ -1313,6 +1333,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // handleNeuronsSyncProxy's comment for why).
   if (url.pathname === "/api/v1/internal/neurons-sync") {
     return handleNeuronsSyncProxy(request, env);
+  }
+  // The write path into the chain-indexer Postgres's account_events_daily
+  // rollup (#4832 gap-closure) -- a dedicated hourly GitHub Actions workflow
+  // calls this (there is no daily snapshot job to piggyback on, unlike
+  // neurons-sync above). Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/rollup-account-events-daily") {
+    return handleRollupAccountEventsDailyProxy(request, env);
   }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs

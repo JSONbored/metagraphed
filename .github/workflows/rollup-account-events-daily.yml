@@ -1,0 +1,38 @@
+name: Rollup account_events_daily (Postgres)
+
+# Triggers the Postgres-side account_events_daily rollup (#4832 gap-closure):
+# indexer-rs writes account_events continuously and directly into Postgres
+# (not through any Worker route), so unlike refresh-metagraph.yml's
+# neurons-sync step there is no existing write request to piggyback this on
+# -- a bare hourly trigger is the whole job. Mirrors D1's own
+# rollupAccountEventsDaily cadence (src/account-events.mjs, called from the
+# HEALTH_PRUNE_CRON hourly tick) so the two tiers stay on the same schedule.
+# See workers/data-api.mjs's handleRollupAccountEventsDaily for the actual
+# rollup SQL.
+on:
+  schedule:
+    - cron: "17 * * * *" # hourly, offset from the top of the hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rollup-account-events-daily
+  cancel-in-progress: false
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger the Postgres rollup
+        run: |
+          if [ -z "$ROLLUP_SYNC_SECRET" ]; then
+            echo "ROLLUP_SYNC_SECRET not set; skipping"
+            exit 0
+          fi
+          curl -fsS -X POST "https://api.metagraph.sh/api/v1/internal/rollup-account-events-daily" \
+            -H "x-rollup-sync-token: ${ROLLUP_SYNC_SECRET}"
+        env:
+          ROLLUP_SYNC_SECRET: ${{ secrets.ROLLUP_SYNC_SECRET }}
