@@ -18,9 +18,10 @@
 - **Relates to:** #4746 (D1 write-path reliability, the incident that
   triggered this rewrite), #4686 (Postgres-tier subrequest cancellation),
   #4695 (extrinsics parity harness), #4669 (call_args shape reconciliation
-  roadmap), #4698 (a D1 coverage gap traced to this same mechanism), the
-  private `metagraphed-indexer-rs` repo, and JSO-2054/#2518 (archive-node
-  hardware decision).
+  roadmap), #4698 (a D1 coverage gap traced to this same mechanism), #4771
+  (neurons/neuron_daily Postgres write path), #4772 (D1 write/prune/ingest
+  code retirement, PR #4908), the private `metagraphed-indexer-rs` repo, and
+  JSO-2054/#2518 (archive-node hardware decision).
 
 ## Context — verified directly against running infrastructure, not inherited from prior docs
 
@@ -239,10 +240,23 @@ silently drift from each other.
    the #4687 gap once the archive node reaches chain tip; do not attempt this
    against the temporary OnFinality source — that source exists for exactly
    this reason. This is the one item that actually needs the archive.
-8. 🔲 **Delete D1's tables and prune logic once they're empty.** The streamer
-   stopping means this is now just a matter of time (item 5), not a blocking
-   migration — revisit once D1's row counts hit zero and remove the dead
-   code/schema rather than leaving it as inert legacy weight indefinitely.
+8. ✅ **D1's write/prune/ingest code retired (#4772, PR #4908, 2026-07-11);
+   the tables themselves are dropped once the PR is deployed.** Removed the
+   realtime streamer scripts, the internal ingest handlers
+   (`handleEventIngest`/`handleBlockIngest`/`handleNeuronBackfill`), the R2
+   staged-batch loaders, and every prune/rollup/archive cron for `blocks`,
+   `extrinsics`, `account_events`, `neurons`, and `neuron_daily` — restructuring
+   `EVENTS_LOAD_CRON`, `HEALTH_PRUNE_CRON`, and `NEURON_HISTORY_ROLLUP_CRON` to
+   drop only what they retired (`subnet_hyperparams`/`account_identity`
+   staging and `account_position_daily`'s rollup/prune are untouched, and stay
+   D1-only pending their own Postgres migration). Every read route already
+   falls back through `tryPostgresTier(...) ?? d1Fallback()`, and `d1All`
+   degrades a missing-table error to an empty result, so dropping the D1
+   tables after this code deploys is provably safe — sequenced as
+   code-first-then-`DROP TABLE`, not simultaneous. `account_position_daily`,
+   `account_events_daily`'s independent Postgres-side rollup, and the ~40 dead
+   D1-fallback branches in `workers/request-handlers/entities.mjs` are
+   explicitly out of scope, tracked as follow-up.
 9. 🔲 **The extrinsics parity harness (#4695)** remains valuable to actually
    quantify what step 4's accepted gap covers, now that it's no longer a
    precondition for the flip — do this to inform step 7's backfill scope,
@@ -270,6 +284,17 @@ silently drift from each other.
     which compared a row present in BOTH stores and couldn't distinguish
     genuine Postgres serving from a silently masked D1 fallback (#4686) —
     here Postgres had no prior data at all, so a correct row is unambiguous.
+11. ✅ **`indexer-rs` backfill conflict-resolution bug found + fixed
+    (2026-07-11).** Auditing the eventual archive-gated backfill (item 7) for
+    correctness surfaced that `flush()` only used `ON CONFLICT ... DO UPDATE`
+    for `blocks`; `extrinsics`/`account_events`/`chain_events` used `DO
+NOTHING`, so a backfill re-run would have silently preserved
+    already-existing-but-wrong rows (e.g. pre-2026-07-10 extrinsics still
+    carrying the old, type-erased `call_args` shape) instead of correcting
+    them. Fixed in the private `metagraphed-indexer-rs` repo to match
+    `blocks`' existing column-level `DO UPDATE SET` pattern on all four
+    tables — a precondition for item 7 to actually be "flawless," not just
+    "runs without erroring."
 
 ## Links/resources
 
@@ -277,19 +302,24 @@ silently drift from each other.
   Postgres serving/write Workers (connection-affinity fix, 2026-07-10)
 - `workers/postgres-tier.mjs` (`tryPostgresTier`) — the per-tier fallback
   contract shared by REST and MCP callers
-- `src/blocks.mjs`, `src/extrinsics.mjs`, `src/account-events.mjs` —
-  `BLOCK_RETENTION_MS` / `EXTRINSIC_RETENTION_MS` / `EVENT_RETENTION_MS` and
-  their prune functions
-- `scripts/stream-events.py`, `docs/realtime-streamer.md` — the realtime
-  streamer and its "no automatic backstop" reasoning, now under review (#4746)
-- `.github/workflows/backfill-events.yml` — the manual-only D1 gap-recovery path
+- `src/extrinsics.mjs`'s `EXTRINSIC_RETENTION_MS` — the one D1 retention
+  constant that survives #4772: no longer a prune-cron window (that cron is
+  retired), now only `loadExtrinsics`' query-floor short-circuit. The
+  `blocks`/`account_events` equivalents (`BLOCK_RETENTION_MS`,
+  `EVENT_RETENTION_MS`) had no surviving reader and were deleted outright.
+- `scripts/stream-events.py`, `docs/realtime-streamer.md`,
+  `.github/workflows/backfill-events.yml` — the realtime streamer, its "no
+  automatic backstop" reasoning (#4746), and the manual D1 gap-recovery path;
+  all deleted 2026-07-11 (#4772, PR #4908) once D1 stopped being a live
+  serving tier
 - `wrangler.jsonc` — `METAGRAPH_BLOCKS_SOURCE` / `METAGRAPH_EXTRINSICS_SOURCE`
   / `METAGRAPH_ACCOUNT_EVENTS_SOURCE` / `METAGRAPH_NEURONS_SOURCE`
 - `workers/data-api.mjs`'s `handleNeuronsSync` (#4771) — the neurons/
   neuron_daily write route, deliberately kept in this same Worker rather
   than a new one (same Postgres instance as its read routes)
-- #4746, #4686, #4695, #4669, #4698, #4684, #4654, #4771 — the issues this
-  ADR consolidates evidence from
+- #4746, #4686, #4695, #4669, #4698, #4684, #4654, #4771, #4772 — the issues
+  this ADR consolidates evidence from
 - Private `JSONbored/metagraphed-indexer-rs` repo — the Rust continuous
-  indexer + backfill implementation
+  indexer + backfill implementation, including the `DO NOTHING` → `DO UPDATE`
+  conflict-resolution fix (item 11)
 - JSO-2054/#2518 — the archive-node hardware decision
