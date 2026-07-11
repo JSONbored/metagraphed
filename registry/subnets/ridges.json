@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "id": "sn-62-taomarketcap-data-artifact",
+      "name": "Ridges subnet-state snapshot (via TaoMarketCap)",
+      "kind": "data-artifact",
+      "url": "https://api.taomarketcap.com/public/v1/subnets/62",
+      "provider": "taomarketcap",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/ridgesai/ridges"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "notes": "Public no-auth GET https://api.taomarketcap.com/public/v1/subnets/62 from the TaoMarketCap developer API — a machine-readable JSON snapshot of SN62's on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields (verified live: HTTP 200, netuid 62). A standing third-party subnet-state data artifact for Ridges; the same universal TaoMarketCap subnet feed already registered for other subnets."
     }
   ],
   "contact": "hello@ridges.ai"
