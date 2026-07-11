@@ -781,12 +781,13 @@ describe("handleScheduled dispatch", () => {
   test("non-fast-load crons never drain the staged R2 files (audit #9)", async () => {
     // INVARIANT: only the EVENTS_LOAD_CRON tick owns the unlocked staged
     // read-modify-write drain. Every other cron (prune/embedding/prober) must NOT
-    // call loadStagedNeurons / loadStagedEvents — running them on concurrent ticks
-    // let one invocation clobber a freshly-staged file via the delete path. We prove
-    // it by tracking R2 .get keys and asserting the two staged keys are never read.
+    // call loadStagedSubnetHyperparams / loadStagedAccountIdentity — running them
+    // on concurrent ticks let one invocation clobber a freshly-staged file via the
+    // delete path. We prove it by tracking R2 .get keys and asserting the two
+    // staged keys are never read.
     const STAGED_KEYS = [
-      "metagraph/neurons-pending.json",
-      "events/account-events-pending.json",
+      "metagraph/subnet-hyperparams-pending.json",
+      "metagraph/account-identity-pending.json",
     ];
     for (const cron of [
       HEALTH_PRUNE_CRON,
@@ -820,11 +821,14 @@ describe("handleScheduled dispatch", () => {
     }
   });
 
-  test("fast-load cron drains ALL FOUR staged files then returns the marker (audit #9)", async () => {
-    // REGRESSION: the EVENTS_LOAD_CRON tick must still run all four loaders (one R2
+  test("fast-load cron drains BOTH staged files then returns the marker (audit #9)", async () => {
+    // REGRESSION: the EVENTS_LOAD_CRON tick must still run both loaders (one R2
     // .get per staged key) AND early-return the fast-load marker without falling
-    // through to the prober/prune. The loaders run concurrently (#2092) but the
-    // observable contract is unchanged: every staged key is read on this tick.
+    // through to the prober/prune. #4772 D1 chain-data retirement removed the
+    // neurons/events/blocks/extrinsics loaders — subnet_hyperparams and
+    // account_identity remain registry-side tables, out of scope. The loaders
+    // run concurrently (#2092) but the observable contract is unchanged: every
+    // staged key is read on this tick.
     const getKeys = [];
     const env = {
       METAGRAPH_HEALTH_DB: makeDb(),
@@ -839,10 +843,8 @@ describe("handleScheduled dispatch", () => {
     const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
     assert.deepEqual(result, { ok: true, fast_load: true });
     for (const stagedKey of [
-      "metagraph/neurons-pending.json", // loadStagedNeurons (#1303)
-      "events/account-events-pending.json", // loadStagedEvents (#1346)
-      "events/blocks-pending.json", // loadStagedBlocks (#1345)
-      "events/extrinsics-pending.json", // loadStagedExtrinsics (#1345)
+      "metagraph/subnet-hyperparams-pending.json", // loadStagedSubnetHyperparams (#4303/1.3)
+      "metagraph/account-identity-pending.json", // loadStagedAccountIdentity (#4324/5.1)
     ]) {
       assert.ok(
         getKeys.includes(stagedKey),
@@ -853,16 +855,17 @@ describe("handleScheduled dispatch", () => {
 
   test("fast-load cron isolates a single staged-loader failure (#2092)", async () => {
     // The concurrent drain uses Promise.allSettled, so one loader rejecting (here
-    // the blocks loader's R2 .get throws) must NOT stop the other three or change
-    // the fast-load marker — the same isolation the serial `.catch(() => {})` gave.
+    // the subnet-hyperparams loader's R2 .get throws) must NOT stop the other or
+    // change the fast-load marker — the same isolation the serial
+    // `.catch(() => {})` gave.
     const getKeys = [];
     const env = {
       METAGRAPH_HEALTH_DB: makeDb(),
       METAGRAPH_ARCHIVE: {
         async get(key) {
           getKeys.push(key);
-          if (key === "events/blocks-pending.json") {
-            throw new Error("R2 unavailable for blocks");
+          if (key === "metagraph/subnet-hyperparams-pending.json") {
+            throw new Error("R2 unavailable for subnet hyperparams");
           }
           return null;
         },
@@ -872,17 +875,11 @@ describe("handleScheduled dispatch", () => {
     const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
     // Marker unchanged despite the rejection.
     assert.deepEqual(result, { ok: true, fast_load: true });
-    // The three healthy loaders still read their staged keys.
-    for (const stagedKey of [
-      "metagraph/neurons-pending.json",
-      "events/account-events-pending.json",
-      "events/extrinsics-pending.json",
-    ]) {
-      assert.ok(
-        getKeys.includes(stagedKey),
-        `loader for ${stagedKey} still ran despite the blocks-loader failure`,
-      );
-    }
+    // The healthy loader still reads its staged key.
+    assert.ok(
+      getKeys.includes("metagraph/account-identity-pending.json"),
+      "loader for metagraph/account-identity-pending.json still ran despite the subnet-hyperparams-loader failure",
+    );
   });
 });
 

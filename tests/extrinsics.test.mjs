@@ -3,121 +3,20 @@ import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 import { handleExtrinsic } from "../workers/request-handlers/entities.mjs";
 import {
-  EXTRINSIC_INSERT_COLUMNS,
   EXTRINSIC_READ_COLUMNS,
   EXTRINSIC_RETENTION_MS,
   buildExtrinsic,
   buildExtrinsicFeed,
   EXTRINSICS_CSV_COLUMNS,
-  extrinsicInsertStatements,
   extrinsicsToCsvRows,
   formatExtrinsic,
   loadExtrinsic,
   loadExtrinsics,
-  pruneExtrinsics,
-  validExtrinsicRows,
 } from "../src/extrinsics.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
 import { DAY_MS } from "../workers/config.mjs";
 
 // ---- Pure module (#1345) ---------------------------------------------------
-
-test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345/#1855)", () => {
-  assert.deepEqual(EXTRINSIC_INSERT_COLUMNS, [
-    "block_number",
-    "extrinsic_index",
-    "extrinsic_hash",
-    "signer",
-    "call_module",
-    "call_function",
-    "call_args",
-    "success",
-    "fee_tao",
-    "tip_tao",
-    "observed_at",
-  ]);
-  // 11 cols x ROWS_PER_STMT(9) = 99 bound params — under D1's 100 ceiling.
-  assert.equal(EXTRINSIC_INSERT_COLUMNS.length, 11);
-});
-
-test("validExtrinsicRows enforces the strict row shape (#1345)", () => {
-  assert.deepEqual(validExtrinsicRows("not-an-array"), []);
-  assert.deepEqual(validExtrinsicRows(null), []);
-  const good = { block_number: 1, extrinsic_index: 0, observed_at: 5 };
-  assert.equal(validExtrinsicRows([good]).length, 1);
-  // missing extrinsic_index
-  assert.equal(
-    validExtrinsicRows([{ block_number: 1, observed_at: 5 }]).length,
-    0,
-  );
-  // non-integer block_number
-  assert.equal(validExtrinsicRows([{ ...good, block_number: 1.5 }]).length, 0);
-  // negative block_number
-  assert.equal(validExtrinsicRows([{ ...good, block_number: -1 }]).length, 0);
-  // non-integer extrinsic_index
-  assert.equal(
-    validExtrinsicRows([{ ...good, extrinsic_index: 1.5 }]).length,
-    0,
-  );
-  // negative extrinsic_index
-  assert.equal(
-    validExtrinsicRows([{ ...good, extrinsic_index: -1 }]).length,
-    0,
-  );
-  // observed_at must be an integer
-  assert.equal(validExtrinsicRows([{ ...good, observed_at: "x" }]).length, 0);
-});
-
-test("extrinsicInsertStatements builds chunked parameterized INSERT OR IGNORE", () => {
-  const prepared = [];
-  const db = {
-    prepare(sql) {
-      prepared.push(sql);
-      return { bind: (...v) => ({ sql, v }) };
-    },
-  };
-  const rows = Array.from({ length: 30 }, (_, i) => ({
-    block_number: 1,
-    extrinsic_index: i,
-    observed_at: 1,
-  }));
-  const stmts = extrinsicInsertStatements(db, rows);
-  // 30 rows / 9 per statement = 4 statements (9, 9, 9, 3)
-  assert.equal(stmts.length, 4);
-  assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO extrinsics ("));
-  assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (11 cols x 9 rows = 99 params on a full chunk, <=100).
-  assert.equal(stmts[0].v.length, 11 * 9);
-  // All eleven columns appear in the column list.
-  for (const col of EXTRINSIC_INSERT_COLUMNS) {
-    assert.ok(prepared[0].includes(col), `missing ${col}`);
-  }
-});
-
-test("extrinsicInsertStatements binds missing fields as null (never interpolates)", () => {
-  const db = {
-    prepare(sql) {
-      return { bind: (...v) => ({ sql, v }) };
-    },
-  };
-  const [stmt] = extrinsicInsertStatements(db, [
-    { block_number: 7, extrinsic_index: 2, observed_at: 9 },
-  ]);
-  // hash, signer, call_module, call_function, call_args, success, fee_tao, tip_tao default to null.
-  assert.deepEqual(stmt.v, [
-    7,
-    2,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    9,
-  ]);
-});
 
 test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)", () => {
   const out = formatExtrinsic({
@@ -606,48 +505,6 @@ test("EXTRINSIC_READ_COLUMNS lists the served extrinsic columns", () => {
   ]) {
     assert.ok(EXTRINSIC_READ_COLUMNS.includes(c), `missing ${c}`);
   }
-});
-
-test("pruneExtrinsics deletes below the retention cutoff", async () => {
-  let boundCutoff;
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return {
-          bind: (c) => {
-            boundCutoff = c;
-            return { run: async () => ({ meta: { changes: 9 } }) };
-          },
-        };
-      },
-    },
-  };
-  const now = 1_800_000_000_000;
-  const r = await pruneExtrinsics(env, { now: () => now });
-  assert.equal(r.pruned, true);
-  assert.equal(r.changes, 9);
-  assert.equal(boundCutoff, now - EXTRINSIC_RETENTION_MS);
-});
-
-test("pruneExtrinsics no-ops without D1", async () => {
-  assert.equal((await pruneExtrinsics({})).pruned, false);
-});
-
-test("pruneExtrinsics returns pruned:false when D1 throws", async () => {
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return {
-          bind: () => ({
-            run: async () => {
-              throw new Error("d1 down");
-            },
-          }),
-        };
-      },
-    },
-  };
-  assert.equal((await pruneExtrinsics(env, { now: () => 0 })).pruned, false);
 });
 
 // ---- Route/integration (#1345) ---------------------------------------------

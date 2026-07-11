@@ -2,11 +2,16 @@ name: Refresh Metagraph (per-UID neurons)
 
 # Fetches the per-UID metagraph for every subnet FIRST-PARTY via the Bittensor SDK
 # (#1348 — chain-direct, no Taostats, no API key) and loads it into the
-# metagraphed-health D1 `neurons` table (#1303). Powers
+# chain-indexer Postgres's `neurons`/`neuron_daily` tables (#4771). Powers
 # /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, /validators, and the account
-# entity API (#1347). Daily + manual. The snapshot is signed (sign-staged-neurons)
-# before staging to R2; the Worker authenticates + bounds it before loading into D1
-# via its binding (loadStagedNeurons) — no API-token D1 permission required.
+# entity API (#1347). Daily + manual. The snapshot is signed
+# (sign-staged-neurons, kept for its HMAC signing utility) then POSTed straight
+# to the Postgres write path (workers/data-api.mjs's handleNeuronsSync) —
+# no D1 involved. D1's `neurons`/`neuron_daily` tables, their R2-stage-to-D1
+# loader (loadStagedNeurons), and the D1-side daily rollup/archive/prune cron
+# are retired (#4772 D1 chain-data retirement); this workflow's Postgres sync
+# step (previously a best-effort "#4771 verification window" mirror) is now
+# this job's sole, required write path.
 on:
   schedule:
     - cron: "23 5 * * *" # daily 05:23 UTC
@@ -85,37 +90,16 @@ jobs:
         env:
           METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
 
-      # Stage the signed snapshot to R2 (the token's existing R2 permission); the
-      # Worker authenticates + bounds it before loading into D1 via its binding.
-      - name: Stage neurons to R2 for the Worker to load into D1
-        run: npx wrangler r2 object put metagraphed-artifacts/metagraph/neurons-pending.json --file=dist/metagraph-neurons.json --remote
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      # #4771 verification window: ALSO write the same unsigned snapshot to the
-      # new Postgres write path (workers/data-api.mjs's handleNeuronsSync),
-      # alongside (not replacing) the R2/D1 step above. METAGRAPH_NEURONS_SOURCE
-      # stays "d1" until a live parity pass confirms Postgres agrees with D1 --
-      # this step only populates that comparison, it does not change what's
-      # served. A failure here must never fail the D1 path this workflow's
-      # whole job (and #1345's daily rollup cron) depends on -- NOT
-      # `continue-on-error:` (banned repo-wide by validate-workflows.mjs as
-      # failure-masking); instead the script itself always exits 0, logging a
-      # failure loudly (::warning::) rather than swallowing it silently, and
-      # skips cleanly until NEURONS_SYNC_SECRET is provisioned (same
-      # not-yet-configured convention as notify-on-failure's webhook guard below).
-      - name: Sync neurons to the Postgres write path (#4771, verification window)
+      # #4772 D1 chain-data retirement: the sole write path now (previously a
+      # best-effort "#4771 verification window" mirror alongside the R2/D1
+      # stage step, which is removed). A failure here fails this job --
+      # correct now that Postgres, not D1, is what's actually served.
+      - name: Sync neurons to the Postgres write path
         run: |
-          if [ -z "$NEURONS_SYNC_SECRET" ]; then
-            echo "NEURONS_SYNC_SECRET not set; skipping Postgres sync"
-            exit 0
-          fi
           curl -fsS -X POST "https://api.metagraph.sh/api/v1/internal/neurons-sync" \
             -H "x-neurons-sync-token: ${NEURONS_SYNC_SECRET}" \
             -H "content-type: application/json" \
-            --data-binary @dist/metagraph-neurons.json \
-            || echo "::warning::neurons-sync Postgres write failed; D1 path (this job's real dependency) is unaffected"
+            --data-binary @dist/metagraph-neurons.json
         env:
           NEURONS_SYNC_SECRET: ${{ secrets.NEURONS_SYNC_SECRET }}
 
@@ -134,4 +118,4 @@ jobs:
           fi
           curl -fsS -X POST "$METAGRAPH_ALERT_WEBHOOK_URL" \
             -H 'content-type: application/json' \
-            -d '{"content":"🔴 metagraphed refresh-metagraph FAILED — the per-UID neurons D1 tier may go stale."}'
+            -d '{"content":"🔴 metagraphed refresh-metagraph FAILED — the per-UID neurons/neuron_daily Postgres tier may go stale."}'

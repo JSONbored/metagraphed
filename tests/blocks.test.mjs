@@ -7,91 +7,17 @@ import {
   handleBlockExtrinsics,
 } from "../workers/request-handlers/entities.mjs";
 import {
-  BLOCK_INSERT_COLUMNS,
   BLOCK_READ_COLUMNS,
-  BLOCK_RETENTION_MS,
-  blockInsertStatements,
   buildBlock,
   buildBlockFeed,
   formatBlock,
   loadBlock,
   loadBlocks,
   MAX_BLOCK_COUNT_FILTER,
-  pruneBlocks,
-  validBlockRows,
 } from "../src/blocks.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
 
 // ---- Pure module (#1345) ---------------------------------------------------
-
-test("BLOCK_INSERT_COLUMNS is the stable load contract (#1345)", () => {
-  assert.deepEqual(BLOCK_INSERT_COLUMNS, [
-    "block_number",
-    "block_hash",
-    "parent_hash",
-    "author",
-    "extrinsic_count",
-    "event_count",
-    "spec_version",
-    "observed_at",
-  ]);
-});
-
-test("validBlockRows enforces the strict row shape (#1345)", () => {
-  assert.deepEqual(validBlockRows("not-an-array"), []);
-  assert.deepEqual(validBlockRows(null), []);
-  const good = { block_number: 1, block_hash: "0xabc", observed_at: 5 };
-  assert.equal(validBlockRows([good]).length, 1);
-  // missing hash
-  assert.equal(validBlockRows([{ block_number: 1, observed_at: 5 }]).length, 0);
-  // empty hash
-  assert.equal(validBlockRows([{ ...good, block_hash: "" }]).length, 0);
-  // non-integer block_number
-  assert.equal(validBlockRows([{ ...good, block_number: 1.5 }]).length, 0);
-  // negative block_number
-  assert.equal(validBlockRows([{ ...good, block_number: -1 }]).length, 0);
-  // observed_at must be an integer
-  assert.equal(validBlockRows([{ ...good, observed_at: "x" }]).length, 0);
-});
-
-test("blockInsertStatements builds chunked parameterized INSERT OR IGNORE", () => {
-  const prepared = [];
-  const db = {
-    prepare(sql) {
-      prepared.push(sql);
-      return { bind: (...v) => ({ sql, v }) };
-    },
-  };
-  const rows = Array.from({ length: 30 }, (_, i) => ({
-    block_number: i,
-    block_hash: `0x${i}`,
-    observed_at: 1,
-  }));
-  const stmts = blockInsertStatements(db, rows);
-  // 30 rows / 12 per statement = 3 statements (12, 12, 6)
-  assert.equal(stmts.length, 3);
-  assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO blocks ("));
-  assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (8 cols x 12 rows = 96 params on a full chunk, <=100).
-  assert.equal(stmts[0].v.length, 8 * 12);
-  // All eight columns appear in the column list.
-  for (const col of BLOCK_INSERT_COLUMNS) {
-    assert.ok(prepared[0].includes(col), `missing ${col}`);
-  }
-});
-
-test("blockInsertStatements binds missing fields as null (never interpolates)", () => {
-  const db = {
-    prepare(sql) {
-      return { bind: (...v) => ({ sql, v }) };
-    },
-  };
-  const [stmt] = blockInsertStatements(db, [
-    { block_number: 7, block_hash: "0x7", observed_at: 9 },
-  ]);
-  // parent_hash, author, extrinsic_count, event_count, spec_version default to null.
-  assert.deepEqual(stmt.v, [7, "0x7", null, null, null, null, null, 9]);
-});
 
 test("formatBlock maps a D1 row to an API block (ISO time)", () => {
   const out = formatBlock({
@@ -357,21 +283,6 @@ test("buildBlock nulls invalid neighbor cells instead of leaking strings", () =>
   assert.equal(out.next_block_number, null);
 });
 
-test("pruneBlocks reports changes:null when D1 omits the meta block", async () => {
-  // A delete that returns no `.meta.changes` (some D1 shapes) must surface
-  // changes:null, never crash on the `?? null` fallback.
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return { bind: () => ({ run: async () => ({}) }) };
-      },
-    },
-  };
-  const r = await pruneBlocks(env, { now: () => 1_800_000_000_000 });
-  assert.equal(r.pruned, true);
-  assert.equal(r.changes, null);
-});
-
 test("buildBlock wraps a row + is schema-stable when absent (#1345)", () => {
   const out = buildBlock(
     { block_number: 5, block_hash: "0x5", observed_at: 1750000000000 },
@@ -418,48 +329,6 @@ test("BLOCK_READ_COLUMNS lists the served block columns", () => {
   ]) {
     assert.ok(BLOCK_READ_COLUMNS.includes(c), `missing ${c}`);
   }
-});
-
-test("pruneBlocks deletes below the retention cutoff", async () => {
-  let boundCutoff;
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return {
-          bind: (c) => {
-            boundCutoff = c;
-            return { run: async () => ({ meta: { changes: 9 } }) };
-          },
-        };
-      },
-    },
-  };
-  const now = 1_800_000_000_000;
-  const r = await pruneBlocks(env, { now: () => now });
-  assert.equal(r.pruned, true);
-  assert.equal(r.changes, 9);
-  assert.equal(boundCutoff, now - BLOCK_RETENTION_MS);
-});
-
-test("pruneBlocks no-ops without D1", async () => {
-  assert.equal((await pruneBlocks({})).pruned, false);
-});
-
-test("pruneBlocks returns pruned:false when D1 throws", async () => {
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return {
-          bind: () => ({
-            run: async () => {
-              throw new Error("d1 down");
-            },
-          }),
-        };
-      },
-    },
-  };
-  assert.equal((await pruneBlocks(env, { now: () => 0 })).pruned, false);
 });
 
 // ---- Route/integration (#1345) ---------------------------------------------

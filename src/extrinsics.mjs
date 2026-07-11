@@ -20,42 +20,14 @@ import {
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.mjs";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 
-// D1 safety-valve, ORIGINALLY 365 days ("prevents unbounded growth before the
-// Postgres cold tier (#1519) ships") -- but #1519 never shipped, and like
-// account_events before its own emergency cut (see EVENT_RETENTION_MS in
-// account-events.mjs), 365 days of retention never actually got old enough to
-// prune: the table is younger than that, so the "safety valve" never engaged
-// and extrinsics grew unbounded. Measured 2026-07-10: ~101k rows/day, ~900
-// bytes/row of call_args alone, and the shared D1 database was already at
-// ~9.0GB of its hard, unraisable 10GB-per-database cap with this table still
-// growing -- a full 365 days at this rate would be ~45GB, many times over the
-// cap on its own. 5 days is what the measured ingestion rate can sustainably
-// fit with real headroom under 10GB across all tables sharing this database --
-// this is an emergency-driven number, not an arbitrary product decision; raise
-// it only once the raw/long-history chain data lives in Postgres (self-hosted,
-// no cap) instead of D1, per ADR 0013's own "demote/retire D1" end state.
-// pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
+// Was the D1 prune-cron's retention window (a 2026-07-10 capacity emergency:
+// ~101k rows/day, ~9.0GB of D1's hard 10GB-per-database cap already used).
+// D1's write path + prune cron are retired (#4772 D1 chain-data retirement) --
+// this constant now only bounds loadExtrinsics' query-floor short-circuit
+// below (an impossible ?to= before this floor is a guaranteed empty page,
+// answered without a query), kept at the same 5-day value rather than widened,
+// since Postgres (self-hosted, no capacity cap) is the actual serving tier now.
 export const EXTRINSIC_RETENTION_MS = 5 * 24 * 60 * 60 * 1000;
-
-// Columns written to extrinsics — THE load contract. scripts/fetch-events.py
-// emits rows with exactly these keys; loadStagedExtrinsics binds them in this
-// order. Values are always bound, never interpolated into SQL.
-export const EXTRINSIC_INSERT_COLUMNS = [
-  "block_number",
-  "extrinsic_index",
-  "extrinsic_hash",
-  "signer",
-  "call_module",
-  "call_function",
-  "call_args",
-  "success",
-  "fee_tao",
-  // The priority tip (TransactionFeePaid 3rd field), in TAO (#1855). Separate
-  // from fee_tao; most extrinsics tip 0. Nullable. 11 cols now → ROWS_PER_STMT
-  // drops to 9 (11 x 9 = 99 bound params, under D1's 100 ceiling).
-  "tip_tao",
-  "observed_at",
-];
 
 function toIso(ms) {
   // D1 can return the INTEGER observed_at as a numeric string; a bare
@@ -100,69 +72,6 @@ function toTaoOrNull(value) {
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
-}
-
-// Keep only well-formed extrinsics rows (a valid (block_number, extrinsic_index)
-// primary key + an integer timestamp). Shared by the staged-batch loader so
-// garbage is rejected before it touches D1.
-export function validExtrinsicRows(rows) {
-  return Array.isArray(rows)
-    ? rows.filter(
-        (r) =>
-          Number.isInteger(r?.block_number) &&
-          r.block_number >= 0 &&
-          Number.isInteger(r?.extrinsic_index) &&
-          r.extrinsic_index >= 0 &&
-          Number.isInteger(r?.observed_at),
-      )
-    : [];
-}
-
-// Build parameterized INSERT OR IGNORE statements for extrinsics rows, chunked
-// under D1's 100-bound-param limit (11 cols x 9 = 99). Idempotent on
-// (block_number, extrinsic_index) (the primary key). Values are ALWAYS bound,
-// never interpolated — a tampered payload can only fail, never inject. Mirrors
-// blockInsertStatements (#1345).
-export function extrinsicInsertStatements(db, rows) {
-  const cols = EXTRINSIC_INSERT_COLUMNS;
-  const colList = cols.join(",");
-  const ROWS_PER_STMT = 9;
-  const statements = [];
-  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
-    const chunk = rows.slice(i, i + ROWS_PER_STMT);
-    const tuples = chunk
-      .map(() => `(${cols.map(() => "?").join(",")})`)
-      .join(",");
-    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
-    statements.push(
-      db
-        .prepare(
-          `INSERT OR IGNORE INTO extrinsics (${colList}) VALUES ${tuples}`,
-        )
-        .bind(...values),
-    );
-  }
-  return statements;
-}
-
-// Hourly maintenance: prune raw extrinsics older than the retention window so the
-// hot table stays lean. Mirrors pruneBlocks (#1345) — no-ops on a cold/absent
-// store, returns pruned:false (never throws) so a failure here cannot break the
-// shared maintenance cron.
-export async function pruneExtrinsics(env, overrides = {}) {
-  const now = overrides.now || (() => Date.now());
-  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return { pruned: false };
-  const cutoff = now() - (overrides.retentionMs || EXTRINSIC_RETENTION_MS);
-  try {
-    const result = await db
-      .prepare(`DELETE FROM extrinsics WHERE observed_at < ?`)
-      .bind(cutoff)
-      .run();
-    return { pruned: true, cutoff, changes: result?.meta?.changes ?? null };
-  } catch {
-    return { pruned: false };
-  }
 }
 
 // ---- Extrinsic API builders ------------------------------------------------
