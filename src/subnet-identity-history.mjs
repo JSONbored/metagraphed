@@ -195,6 +195,48 @@ async function latestBlockNumber(db) {
 }
 
 /**
+ * #4832 gap-closure: mirror recordSubnetIdentityChanges' D1 write into
+ * Postgres via the DATA_API service binding, called directly from
+ * writeSubnetSnapshot (src/health-prober.mjs) rather than through
+ * workers/api.mjs's public proxy layer -- this runs from WITHIN the main
+ * Worker's own hourly cron tick, a pure internal RPC hop, not a public-
+ * internet crossing (unlike the other three #4832 sync routes, which are
+ * driven by external GitHub Actions workflows and therefore cross the
+ * public internet through the proxy). Best-effort: never throws, and a
+ * failure here must never block the D1 write above (the primary contract)
+ * or the rest of writeSubnetSnapshot's own work.
+ */
+export async function syncSubnetIdentityToPostgres(env, { profiles } = {}) {
+  if (!env?.DATA_API || !env?.SUBNET_IDENTITY_SYNC_SECRET) {
+    return { synced: false, reason: "unavailable" };
+  }
+  if (!Array.isArray(profiles) || profiles.length === 0) {
+    return { synced: false, reason: "no_profiles" };
+  }
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/subnet-identity-sync",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-subnet-identity-sync-token": env.SUBNET_IDENTITY_SYNC_SECRET,
+          },
+          body: JSON.stringify(profiles),
+        },
+      ),
+    );
+    if (!upstream.ok) {
+      return { synced: false, reason: `status_${upstream.status}` };
+    }
+    return { synced: true };
+  } catch {
+    return { synced: false, reason: "fetch_failed" };
+  }
+}
+
+/**
  * Diff profiles.json native_identity against the last stored hash per netuid;
  * append a row when any tracked field changes. Idempotent when unchanged.
  */

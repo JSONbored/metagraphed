@@ -233,6 +233,11 @@ import {
   identityHash,
   buildAccountIdentityHistory,
 } from "../src/account-identity-history.mjs";
+import {
+  identitySnapshotFromProfile,
+  identityHash as subnetIdentityHash,
+  buildSubnetIdentityHistory,
+} from "../src/subnet-identity-history.mjs";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -1237,6 +1242,158 @@ async function handleAccountIdentitySync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/subnet-identity-sync (#4832 gap-closure) -------
+//
+// The write path into subnet_identity_history -- architecturally different
+// from the three internal sync routes above: this one is triggered from
+// WITHIN the main Worker's own hourly cron (writeSubnetSnapshot,
+// src/health-prober.mjs), not an external GitHub Actions workflow, so it's
+// called via a direct env.DATA_API.fetch() service-binding call rather than
+// crossing the public internet through workers/api.mjs's proxy layer (see
+// that function's own comment). No latest-only sibling table exists here
+// (mirrors D1's own shape -- the current identity lives in the profiles.json
+// artifact itself): only diff-and-append against the last recorded hash per
+// netuid, reusing identitySnapshotFromProfile/identityHash UNCHANGED from
+// src/subnet-identity-history.mjs so the hash stays domain-identical to the
+// D1 path. No dedicated per-field row validator (unlike the other three
+// sync routes): profiles.json is the SAME trust boundary D1's own
+// recordSubnetIdentityChanges reads from directly with no staging-style
+// validation either -- identitySnapshotFromProfile's own null-guard already
+// skips a malformed individual profile without erroring the batch.
+const SUBNET_IDENTITY_SYNC_TOKEN_HEADER = "x-subnet-identity-sync-token";
+// ~129 subnets today; generous headroom, matching the other sync routes'
+// convention.
+const SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES = 5_000_000;
+const SUBNET_IDENTITY_SYNC_MAX_ROWS = 2_000;
+
+async function handleSubnetIdentitySync(request, env) {
+  if (!env.SUBNET_IDENTITY_SYNC_SECRET) {
+    return writeJson(
+      { error: "subnet-identity sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(SUBNET_IDENTITY_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.SUBNET_IDENTITY_SYNC_SECRET)
+  ) {
+    return writeJson(
+      { error: `provide a valid ${SUBNET_IDENTITY_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const profiles = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.profiles)
+      ? parsed.profiles
+      : null;
+  if (!profiles) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of subnet profiles (or {profiles:[...]})",
+      },
+      400,
+    );
+  }
+  if (profiles.length > SUBNET_IDENTITY_SYNC_MAX_ROWS) {
+    return writeJson(
+      {
+        error: `at most ${SUBNET_IDENTITY_SYNC_MAX_ROWS} profiles per request`,
+      },
+      413,
+    );
+  }
+  if (!profiles.length) {
+    return writeJson({ error: "profiles must be a non-empty array" }, 400);
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+
+      const latest = await sql`
+        SELECT DISTINCT ON (netuid) netuid, identity_hash
+        FROM subnet_identity_history
+        ORDER BY netuid, id DESC`;
+      const latestByNetuid = new Map(
+        latest.map((row) => [Number(row.netuid), row.identity_hash]),
+      );
+      const [blockRow] = await sql`
+        SELECT MAX(block_number) AS block_number FROM blocks`;
+      const blockNumber =
+        blockRow?.block_number == null ? null : Number(blockRow.block_number);
+
+      const now = Date.now();
+      const changedRows = [];
+      for (const profile of profiles) {
+        if (!Number.isInteger(profile?.netuid)) continue;
+        const snapshot = identitySnapshotFromProfile(profile);
+        if (!snapshot) continue;
+        const hash = await subnetIdentityHash(snapshot);
+        if (latestByNetuid.get(profile.netuid) === hash) continue;
+        changedRows.push({
+          netuid: profile.netuid,
+          block_number: blockNumber,
+          observed_at: now,
+          ...snapshot,
+          identity_hash: hash,
+        });
+        latestByNetuid.set(profile.netuid, hash);
+      }
+      if (changedRows.length) {
+        await sql`
+          INSERT INTO subnet_identity_history ${sql(
+            changedRows,
+            "netuid",
+            "block_number",
+            "observed_at",
+            "subnet_name",
+            "symbol",
+            "description",
+            "github_repo",
+            "subnet_url",
+            "discord",
+            "logo_url",
+            "identity_hash",
+          )}`;
+      }
+
+      return writeJson({
+        ok: true,
+        history_appended: changedRows.length,
+      });
+    });
+  } catch (err) {
+    console.error("data-api subnet-identity-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1373,6 +1530,12 @@ export default {
       url.pathname === "/api/v1/internal/account-identity-sync"
     ) {
       return handleAccountIdentitySync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/subnet-identity-sync"
+    ) {
+      return handleSubnetIdentitySync(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
@@ -2964,6 +3127,46 @@ export default {
             : null;
           return json(
             buildSubnetHyperparamsHistory(rows, netuid, {
+              limit,
+              offset,
+              nextCursor,
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/identity-history?limit=&offset=&cursor=
+        // (#4832 gap-closure, Phase B): append-only on-chain identity
+        // timeline, mirroring src/subnet-identity-history.mjs's
+        // loadSubnetIdentityHistory. observed_at/id are plain BIGINT
+        // columns, no ::text cast needed.
+        const subnetIdentityHistory = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/identity-history$/,
+        );
+        if (subnetIdentityHistory) {
+          const netuid = Number(subnetIdentityHistory[1]);
+          const limit = clampRequestLimit(
+            url.searchParams.get("limit"),
+            FEED_PAGINATION,
+          );
+          const offset = clampRequestOffset(url.searchParams.get("offset"));
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const rows = await sql`
+          SELECT id, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash
+          FROM subnet_identity_history
+          WHERE netuid = ${netuid}
+            ${cursor ? sql`AND (observed_at, id) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY observed_at DESC, id DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          const last = rows.length === limit ? rows[rows.length - 1] : null;
+          const nextCursor = last
+            ? encodeCursor([
+                numberOrNull(last.observed_at),
+                numberOrNull(last.id),
+              ])
+            : null;
+          return json(
+            buildSubnetIdentityHistory(rows, netuid, {
               limit,
               offset,
               nextCursor,

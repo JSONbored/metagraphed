@@ -352,6 +352,31 @@ CREATE INDEX IF NOT EXISTS idx_account_identity_history_account_observed
 CREATE INDEX IF NOT EXISTS idx_account_identity_history_account_id
   ON account_identity_history (account, id DESC);
 
+-- On-chain subnet identity history (#4832 gap-closure Phase B; mirrors D1
+-- migrations/0031_subnet_identity_history.sql). Append-only, diffed by
+-- identity_hash on each sync; no latest-only sibling table -- the current
+-- identity lives in the profiles.json artifact itself, not a dedicated
+-- table. Written from the main Worker's own hourly cron (writeSubnetSnapshot,
+-- src/health-prober.mjs), not an external GitHub Actions workflow.
+CREATE TABLE IF NOT EXISTS subnet_identity_history (
+  id            BIGSERIAL PRIMARY KEY,
+  netuid        INTEGER NOT NULL,
+  block_number  BIGINT,
+  observed_at   BIGINT NOT NULL,
+  subnet_name   TEXT,
+  symbol        TEXT,
+  description   TEXT,
+  github_repo   TEXT,
+  subnet_url    TEXT,
+  discord       TEXT,
+  logo_url      TEXT,
+  identity_hash TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_subnet_identity_history_netuid_observed
+  ON subnet_identity_history (netuid, observed_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_subnet_identity_history_netuid_id
+  ON subnet_identity_history (netuid, id DESC);
+
 -- Account daily rollup (#2079 / audit: removes the temp-sort on default account history).
 CREATE TABLE IF NOT EXISTS account_events_daily (
   hotkey           TEXT NOT NULL,

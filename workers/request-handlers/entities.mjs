@@ -1095,11 +1095,16 @@ export async function handleSubnetIdentityHistory(request, env, netuid, url) {
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
-  const data = await loadSubnetIdentityHistory(d1Runner(env), netuid, {
-    limit,
-    offset,
-    cursor,
-  });
+  async function fromD1() {
+    return loadSubnetIdentityHistory(d1Runner(env), netuid, {
+      limit,
+      offset,
+      cursor,
+    });
+  }
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_SUBNET_IDENTITY_SOURCE")) ??
+    (await fromD1());
   return envelopeResponse(
     request,
     {

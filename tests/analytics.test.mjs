@@ -859,6 +859,48 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.date, "2026-06-10");
     assert.equal(db.calls.batched[0].length, 2);
   });
+  // #4832 gap-closure: syncSubnetIdentityToPostgres is called best-effort
+  // right after the D1 write, via env.DATA_API -- an absent/failing binding
+  // must never affect writeSubnetSnapshot's own D1-derived result.
+  test("mirrors the same profiles into Postgres via DATA_API, without affecting the D1 result", async () => {
+    const db = fakeBatchDb();
+    let receivedBody;
+    const env = {
+      DATA_API: {
+        fetch: async (request) => {
+          receivedBody = await request.json();
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+      },
+      SUBNET_IDENTITY_SYNC_SECRET: "shh",
+    };
+    const r = await writeSubnetSnapshot(env, {
+      db,
+      readArtifact: reader(profiles),
+      now: () => Date.UTC(2026, 5, 10),
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.rows, 2);
+    assert.deepEqual(receivedBody, profiles.data.profiles);
+  });
+  test("still returns the D1 result when the Postgres mirror fails", async () => {
+    const db = fakeBatchDb();
+    const env = {
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("network down");
+        },
+      },
+      SUBNET_IDENTITY_SYNC_SECRET: "shh",
+    };
+    const r = await writeSubnetSnapshot(env, {
+      db,
+      readArtifact: reader(profiles),
+      now: () => Date.UTC(2026, 5, 10),
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.rows, 2);
+  });
   test("chunks large subnet snapshot writes into bounded D1 batches", async () => {
     const db = fakeBatchDb();
     const manyProfiles = {

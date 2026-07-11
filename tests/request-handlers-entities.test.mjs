@@ -6612,6 +6612,51 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.entries[0].identity_hash, "abc");
   });
 
+  // #4832 gap-closure: subnet_identity_history's new Postgres tier, own
+  // dedicated flag (METAGRAPH_SUBNET_IDENTITY_SOURCE). Written from the main
+  // Worker's own hourly cron (writeSubnetSnapshot), not an external GitHub
+  // Actions workflow -- but served the same way as every other tier here.
+  test("handleSubnetIdentityHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      subnetIdentityHistory: [identityHistoryRow()],
+    });
+    env.METAGRAPH_SUBNET_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        entry_count: 1,
+        limit: null,
+        offset: null,
+        next_cursor: null,
+        entries: [{ identity_hash: "pg-hash" }],
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/identity-history`;
+    const body = await json(
+      await handleSubnetIdentityHistory(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.entries[0].identity_hash, "pg-hash");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetIdentityHistory: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({
+      subnetIdentityHistory: [identityHistoryRow()],
+    });
+    env.METAGRAPH_SUBNET_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/identity-history`;
+    const body = await json(
+      await handleSubnetIdentityHistory(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.entries[0].identity_hash, "abc");
+  });
+
   test("handleSubnetValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ neurons: [neuronRow()] });
     env.METAGRAPH_NEURONS_SOURCE = "postgres";

@@ -24,7 +24,10 @@ import {
 } from "./health-probe-core.mjs";
 import { latencyStatColumns, rankedChecksCte } from "./health-sql.mjs";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
-import { recordSubnetIdentityChanges } from "./subnet-identity-history.mjs";
+import {
+  recordSubnetIdentityChanges,
+  syncSubnetIdentityToPostgres,
+} from "./subnet-identity-history.mjs";
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -828,6 +831,11 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
     now: capturedAt,
     db,
   });
+  // #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
+  // never awaited-and-thrown into the caller, see syncSubnetIdentityToPostgres's
+  // own header comment for why this is a direct service-binding call rather
+  // than routing through the public proxy layer.
+  await syncSubnetIdentityToPostgres(env, { profiles });
 
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory

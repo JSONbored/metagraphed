@@ -8,6 +8,10 @@ import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
 import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";
 import { IDENTITY_FIELDS } from "../src/account-identity.mjs";
 import { identityHash } from "../src/account-identity-history.mjs";
+import {
+  identityHash as subnetIdentityHash,
+  identitySnapshotFromProfile,
+} from "../src/subnet-identity-history.mjs";
 
 const sqlCalls = vi.hoisted(() => []);
 const mockRows = vi.hoisted(() => ({
@@ -50,6 +54,14 @@ const subnetHyperparamsLatestHashes = vi.hoisted(() => ({ current: [] }));
 // has no purge step (see handleAccountIdentitySync's own header comment).
 const accountIdentitySyncFailure = vi.hoisted(() => ({ error: null }));
 const accountIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
+// State for the subnet-identity-sync write route's tests only (#4832
+// gap-closure). No prune-rows hook -- like account_identity, this table has
+// no purge step. Its "latest hash per netuid" query shares subnet_hyperparams'
+// `SELECT DISTINCT ON (netuid)` shape, so the mock below disambiguates on the
+// hash column name (hyperparams_hash vs identity_hash) rather than the netuid
+// grouping alone.
+const subnetIdentitySyncFailure = vi.hoisted(() => ({ error: null }));
+const subnetIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -112,11 +124,20 @@ vi.mock("postgres", () => ({
       ) {
         return Promise.reject(accountIdentitySyncFailure.error);
       }
+      if (
+        subnetIdentitySyncFailure.error &&
+        /INSERT INTO subnet_identity_history\b/.test(text)
+      ) {
+        return Promise.reject(subnetIdentitySyncFailure.error);
+      }
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
       }
-      if (/SELECT DISTINCT ON \(netuid\)/.test(text)) {
+      if (/SELECT DISTINCT ON \(netuid\) netuid, hyperparams_hash/.test(text)) {
         return Promise.resolve(subnetHyperparamsLatestHashes.current);
+      }
+      if (/SELECT DISTINCT ON \(netuid\) netuid, identity_hash/.test(text)) {
+        return Promise.resolve(subnetIdentityLatestHashes.current);
       }
       if (/SELECT DISTINCT ON \(account\)/.test(text)) {
         return Promise.resolve(accountIdentityLatestHashes.current);
@@ -160,12 +181,14 @@ const NEURONS_SYNC_SECRET = "test-neurons-sync-secret";
 const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
 const SUBNET_HYPERPARAMS_SYNC_SECRET = "test-subnet-hyperparams-sync-secret";
 const ACCOUNT_IDENTITY_SYNC_SECRET = "test-account-identity-sync-secret";
+const SUBNET_IDENTITY_SYNC_SECRET = "test-subnet-identity-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
   ROLLUP_SYNC_SECRET,
   SUBNET_HYPERPARAMS_SYNC_SECRET,
   ACCOUNT_IDENTITY_SYNC_SECRET,
+  SUBNET_IDENTITY_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -183,6 +206,8 @@ beforeEach(() => {
   subnetHyperparamsLatestHashes.current = [];
   accountIdentitySyncFailure.error = null;
   accountIdentityLatestHashes.current = [];
+  subnetIdentitySyncFailure.error = null;
+  subnetIdentityLatestHashes.current = [];
   mockRows.current = [
     {
       block_number: "123",
@@ -3523,6 +3548,250 @@ test("GET /api/v1/accounts/:ss58/identity-history?limit=1 emits a next_cursor wh
   ];
   const res = await req(
     `/api/v1/accounts/${IDENTITY_SS58}/identity-history?limit=1`,
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.next_cursor).not.toBeNull();
+});
+
+const SUBNET_IDENTITY_NETUID = 8;
+
+function subnetIdentityProfile(overrides = {}) {
+  return {
+    netuid: SUBNET_IDENTITY_NETUID,
+    symbol: "MIAO",
+    native_identity: {
+      subnet_name: "Miao Subnet",
+      description: "An example subnet operator.",
+      github_url: "https://github.com/miao-team/miao-repo",
+      website_url: "https://miao.example/",
+      discord: "examplehandle",
+      logo_url: "https://miao.example/logo.png",
+    },
+    ...overrides,
+  };
+}
+
+function postSubnetIdentity(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-subnet-identity-sync-token"] = secret;
+  return req("/api/v1/internal/subnet-identity-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("subnet-identity-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postSubnetIdentity([subnetIdentityProfile()], {
+    secret: "wrong",
+  });
+  expect(wrong.status).toBe(401);
+  const missing = await postSubnetIdentity([subnetIdentityProfile()]);
+  expect(missing.status).toBe(401);
+});
+
+test("subnet-identity-sync is disabled (503) when SUBNET_IDENTITY_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/subnet-identity-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-subnet-identity-sync-token": SUBNET_IDENTITY_SYNC_SECRET,
+      },
+      body: JSON.stringify([subnetIdentityProfile()]),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("subnet-identity-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/subnet-identity-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-subnet-identity-sync-token": SUBNET_IDENTITY_SYNC_SECRET,
+      },
+      body: JSON.stringify([subnetIdentityProfile()]),
+    }),
+    { SUBNET_IDENTITY_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("subnet-identity-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postSubnetIdentity(null, {
+    secret: SUBNET_IDENTITY_SYNC_SECRET,
+    raw: "[" + "1".repeat(5_000_000) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("subnet-identity-sync rejects malformed JSON (400)", async () => {
+  const res = await postSubnetIdentity(null, {
+    secret: SUBNET_IDENTITY_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("subnet-identity-sync rejects a body that isn't an array or {profiles:[...]} (400)", async () => {
+  const res = await postSubnetIdentity(
+    { not: "an array" },
+    { secret: SUBNET_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("subnet-identity-sync accepts the {profiles:[...]} wrapped form, not just a bare array", async () => {
+  const res = await postSubnetIdentity(
+    { profiles: [subnetIdentityProfile()] },
+    { secret: SUBNET_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.history_appended).toBe(1);
+});
+
+test("subnet-identity-sync rejects more than the row cap (413)", async () => {
+  const many = Array.from({ length: 2_001 }, (_, i) => ({ netuid: i }));
+  const res = await postSubnetIdentity(many, {
+    secret: SUBNET_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(413);
+});
+
+test("subnet-identity-sync rejects an empty array (400)", async () => {
+  const res = await postSubnetIdentity([], {
+    secret: SUBNET_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("subnet-identity-sync silently skips a profile with a non-integer netuid, no error", async () => {
+  const res = await postSubnetIdentity(
+    [subnetIdentityProfile({ netuid: "not-a-number" })],
+    { secret: SUBNET_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.history_appended).toBe(0);
+});
+
+test("subnet-identity-sync silently skips a profile with no native_identity, no error", async () => {
+  // No dedicated per-field row validator here (unlike subnet-hyperparams-sync
+  // and account-identity-sync) -- profiles.json is the same trust boundary
+  // D1's own recordSubnetIdentityChanges reads directly, and
+  // identitySnapshotFromProfile's own null-guard already skips a malformed
+  // profile without erroring the batch.
+  const res = await postSubnetIdentity(
+    [subnetIdentityProfile({ native_identity: undefined })],
+    { secret: SUBNET_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.history_appended).toBe(0);
+});
+
+test("subnet-identity-sync appends to subnet_identity_history when the hash changed (cold history)", async () => {
+  subnetIdentityLatestHashes.current = [];
+  const res = await postSubnetIdentity([subnetIdentityProfile()], {
+    secret: SUBNET_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({ ok: true, history_appended: 1 });
+  expect(queryText()).toMatch(/INSERT INTO subnet_identity_history\b/);
+});
+
+test("subnet-identity-sync skips the history append when the hash is unchanged", async () => {
+  const profile = subnetIdentityProfile();
+  const snapshot = identitySnapshotFromProfile(profile);
+  const hash = await subnetIdentityHash(snapshot);
+  subnetIdentityLatestHashes.current = [
+    { netuid: profile.netuid, identity_hash: hash },
+  ];
+  const res = await postSubnetIdentity([profile], {
+    secret: SUBNET_IDENTITY_SYNC_SECRET,
+  });
+  const body = await res.json();
+  expect(body.history_appended).toBe(0);
+  expect(queryText()).not.toMatch(/INSERT INTO subnet_identity_history\b/);
+});
+
+test("subnet-identity-sync resolves block_number from MAX(block_number), null when blocks is empty", async () => {
+  subnetIdentityLatestHashes.current = [];
+  mockRows.current = [];
+  const res = await postSubnetIdentity([subnetIdentityProfile()], {
+    secret: SUBNET_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO subnet_identity_history\b/.test(c.text),
+  );
+  expect(insert.values).toContain(null);
+});
+
+test("subnet-identity-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  subnetIdentitySyncFailure.error = new Error("connection reset");
+  const res = await postSubnetIdentity([subnetIdentityProfile()], {
+    secret: SUBNET_IDENTITY_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+test("GET /api/v1/subnets/:netuid/identity-history returns the change timeline", async () => {
+  mockRows.current = [
+    {
+      id: "10",
+      block_number: "100",
+      observed_at: "1780000000000",
+      subnet_name: "Miao Subnet",
+      symbol: "MIAO",
+      description: "old",
+      github_repo: null,
+      subnet_url: null,
+      discord: null,
+      logo_url: null,
+      identity_hash: "abc123",
+    },
+  ];
+  const res = await req(
+    `/api/v1/subnets/${SUBNET_IDENTITY_NETUID}/identity-history`,
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.entry_count).toBe(1);
+  expect(body.entries[0].identity_hash).toBe("abc123");
+  expect(body.entries[0].subnet_name).toBe("Miao Subnet");
+});
+
+test("GET /api/v1/subnets/:netuid/identity-history uses a cursor seek instead of OFFSET", async () => {
+  mockRows.current = [];
+  const cursor = encodeCursor([1780000000000, 10]);
+  const res = await req(
+    `/api/v1/subnets/${SUBNET_IDENTITY_NETUID}/identity-history?cursor=${cursor}`,
+  );
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("AND (observed_at, id) <");
+  expect(queryText()).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/subnets/:netuid/identity-history?limit=1 emits a next_cursor when the page is full", async () => {
+  mockRows.current = [
+    {
+      id: "10",
+      observed_at: "1780000000000",
+      identity_hash: "abc123",
+    },
+  ];
+  const res = await req(
+    `/api/v1/subnets/${SUBNET_IDENTITY_NETUID}/identity-history?limit=1`,
   );
   expect(res.status).toBe(200);
   const body = await res.json();
