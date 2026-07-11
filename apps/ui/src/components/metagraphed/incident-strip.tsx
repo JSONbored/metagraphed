@@ -75,6 +75,7 @@ export function IncidentStrip() {
           )}
         />
         <span className="font-mono text-[10px] uppercase tracking-widest shrink-0">
+          <span className="text-ink-muted">Network · </span>
           {isDown ? "Incident" : "Degraded"}
         </span>
         <span className="min-w-0 flex-1 truncate">
