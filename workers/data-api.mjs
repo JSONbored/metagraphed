@@ -1067,6 +1067,26 @@ function validAccountIdentitySyncRow(row) {
   return true;
 }
 
+// Postgres' TEXT type rejects any embedded NUL byte outright ("invalid byte
+// sequence for encoding UTF8: 0x00") -- confirmed live 2026-07-11 against a
+// real staged row whose discord/additional fields were a literal U+0000
+// placeholder. SQLite's byte-oriented TEXT storage tolerates this silently
+// (the D1 path never needed to guard against it), so this is a Postgres-only
+// concern: strip rather than reject, matching the "sanitize a chain-data
+// value the sink genuinely can't represent" precedent set by
+// weights_rate_limit's u64::MAX widening in subnet-hyperparams-sync.
+function stripNullBytes(value) {
+  return typeof value === "string" ? value.replaceAll("\u0000", "") : value;
+}
+
+function sanitizeAccountIdentitySyncRow(row) {
+  const out = {};
+  for (const [key, value] of Object.entries(row)) {
+    out[key] = stripNullBytes(value);
+  }
+  return out;
+}
+
 function coerceAccountIdentitySyncRow(row) {
   const out = {};
   for (const col of ACCOUNT_IDENTITY_INSERT_COLUMNS) {
@@ -1137,7 +1157,12 @@ async function handleAccountIdentitySync(request, env) {
     );
   }
 
-  const rows = incoming.map(coerceAccountIdentitySyncRow);
+  // Sanitize BEFORE both the upsert and the history hash so the two stay
+  // consistent with each other -- a raw NUL byte would otherwise reach the
+  // history INSERT below via the untouched `incoming` rows even after the
+  // latest-only table's own values were cleaned.
+  const sanitized = incoming.map(sanitizeAccountIdentitySyncRow);
+  const rows = sanitized.map(coerceAccountIdentitySyncRow);
 
   const sql = postgres(env.HYPERDRIVE.connectionString, {
     max: 5,
@@ -1163,8 +1188,9 @@ async function handleAccountIdentitySync(request, env) {
         WHERE account_identity.captured_at <= EXCLUDED.captured_at`;
 
       // Diff-and-append into account_identity_history (mirrors D1's
-      // recordAccountIdentityChanges) -- hashed on the RAW incoming rows,
-      // matching identitySnapshotFromRow's own field selection.
+      // recordAccountIdentityChanges) -- hashed on the sanitized rows (NUL
+      // bytes already stripped above), matching identitySnapshotFromRow's
+      // own field selection.
       const latest = await sql`
         SELECT DISTINCT ON (account) account, identity_hash
         FROM account_identity_history
@@ -1174,7 +1200,7 @@ async function handleAccountIdentitySync(request, env) {
       );
       const now = Date.now();
       const changedRows = [];
-      for (const row of incoming) {
+      for (const row of sanitized) {
         const snapshot = {};
         for (const field of IDENTITY_FIELDS)
           snapshot[field] = row[field] ?? null;

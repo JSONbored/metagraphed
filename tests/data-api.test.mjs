@@ -3388,6 +3388,33 @@ test("account-identity-sync defaults a missing optional column (e.g. additional)
   expect(insert.values).toContain(null);
 });
 
+// REGRESSION (live-verified 2026-07-11): a real staged row's discord/
+// additional fields were a literal U+0000 placeholder. SQLite tolerates an
+// embedded NUL byte in TEXT storage (the D1 path never needed to guard
+// against it), but Postgres rejects it outright ("invalid byte sequence for
+// encoding UTF8: 0x00"), 502-ing the entire upsert -- confirmed by POSTing
+// the real 455-row production envelope directly.
+test("account-identity-sync strips embedded NUL bytes from string fields (Postgres TEXT can't store them)", async () => {
+  const res = await postAccountIdentity(
+    [
+      accountIdentitySyncRow({
+        discord: "\u0000",
+        additional: "before\u0000after",
+      }),
+    ],
+    { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO account_identity\b/.test(c.text),
+  );
+  expect(
+    insert.values.some((v) => typeof v === "string" && v.includes("\u0000")),
+  ).toBe(false);
+  expect(insert.values).toContain("");
+  expect(insert.values).toContain("beforeafter");
+});
+
 test("account-identity-sync appends to account_identity_history when the hash changed (cold history)", async () => {
   accountIdentityLatestHashes.current = [];
   const res = await postAccountIdentity([accountIdentitySyncRow()], {
