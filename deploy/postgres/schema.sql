@@ -408,6 +408,97 @@ CREATE INDEX IF NOT EXISTS idx_account_events_daily_hotkey_day
   ON account_events_daily (hotkey, day);
 
 -- ---------------------------------------------------------------------------
+-- Health tracking (#4832 gap-closure; mirrors D1 migrations/0001_health.sql +
+-- 0003_uptime_history.sql + 0005_surface_key.sql + 0006_surface_key_rekey.sql
+-- + 0012_latency_percentiles.sql, in their final post-migration column shape
+-- rather than replayed incrementally). Written every 2 minutes by the
+-- Cloudflare cron prober (src/health-prober.mjs, runHealthProber) -- the
+-- highest write frequency of any table in this schema.
+-- ---------------------------------------------------------------------------
+
+-- Append-only raw probe time-series (powers /health/trends; a 30-day hot
+-- window in D1, pruned by the hourly cron). One row per (surface, run) --
+-- every surface probed in a single prober run shares that run's exact
+-- checked_at, so (surface_id, checked_at) is a natural idempotency key for a
+-- retried write, same role observed_at plays in blocks/extrinsics above.
+CREATE TABLE IF NOT EXISTS surface_checks (
+  surface_id     TEXT NOT NULL,
+  surface_key    TEXT,
+  netuid         INTEGER NOT NULL,
+  kind           TEXT NOT NULL,
+  status         TEXT NOT NULL,
+  classification TEXT,
+  latency_ms     INTEGER,
+  status_code    INTEGER,
+  ok             BOOLEAN NOT NULL DEFAULT false,
+  checked_at     BIGINT NOT NULL,
+  PRIMARY KEY (surface_id, checked_at)
+);
+CREATE INDEX IF NOT EXISTS idx_surface_checks_key_time
+  ON surface_checks (surface_key, checked_at);
+CREATE INDEX IF NOT EXISTS idx_surface_checks_netuid_time
+  ON surface_checks (netuid, checked_at);
+CREATE INDEX IF NOT EXISTS idx_surface_checks_time
+  ON surface_checks (checked_at);
+
+-- Upserted latest-row-per-surface (powers live serving + the cross-isolate
+-- circuit-breaker counter). One row per surface -- small, not a time-series,
+-- no hypertable needed. surface_key is the rename-stable upsert target
+-- (#1005); surface_id is the display/back-compat alias.
+CREATE TABLE IF NOT EXISTS surface_status (
+  surface_id           TEXT PRIMARY KEY,
+  surface_key          TEXT,
+  netuid               INTEGER NOT NULL,
+  kind                 TEXT NOT NULL,
+  url                  TEXT,
+  provider             TEXT,
+  status               TEXT NOT NULL,
+  classification       TEXT,
+  latency_ms           INTEGER,
+  status_code          INTEGER,
+  last_checked         BIGINT,
+  last_ok              BIGINT,
+  consecutive_failures INTEGER NOT NULL DEFAULT 0,
+  updated_at           BIGINT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_surface_status_key_unique
+  ON surface_status (surface_key) WHERE surface_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_surface_status_netuid
+  ON surface_status (netuid);
+
+-- Durable daily uptime rollup, retained indefinitely (the raw surface_checks
+-- window above is pruned after 30 days). One row per (surface, day) -- small
+-- (~150-200 surfaces/day), no hypertable needed, unlike neuron_daily's much
+-- higher per-day cardinality. latency_samples/p50/p95/p99 hold that day's
+-- exact tail latency, computed once at rollup time since it can't be
+-- reconstructed from a stored mean after the raw window prunes.
+CREATE TABLE IF NOT EXISTS surface_uptime_daily (
+  surface_id      TEXT NOT NULL,
+  surface_key     TEXT,
+  netuid          INTEGER NOT NULL,
+  day             DATE NOT NULL,
+  samples         INTEGER NOT NULL,
+  ok_count        INTEGER NOT NULL,
+  uptime_ratio    NUMERIC,
+  avg_latency_ms  INTEGER,
+  status          TEXT,
+  latency_samples INTEGER,
+  p50_latency_ms  INTEGER,
+  p95_latency_ms  INTEGER,
+  p99_latency_ms  INTEGER,
+  updated_at      BIGINT NOT NULL,
+  PRIMARY KEY (surface_id, day)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_surface_uptime_daily_key_day_unique
+  ON surface_uptime_daily (surface_key, day) WHERE surface_key IS NOT NULL;
+-- handleBulkHealthTrends: `... WHERE day >= ? GROUP BY netuid, day` --
+-- (day, netuid) matches a `day >=` range scan across all subnets (mirrors
+-- the same reasoning as idx_surface_uptime_daily_day_netuid in D1's
+-- migrations/0010_perf_indexes.sql).
+CREATE INDEX IF NOT EXISTS idx_surface_uptime_daily_day_netuid
+  ON surface_uptime_daily (day, netuid);
+
+-- ---------------------------------------------------------------------------
 -- Indexer coordination
 -- ---------------------------------------------------------------------------
 
