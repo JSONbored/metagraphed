@@ -3890,6 +3890,46 @@ export default {
           );
         }
 
+        // GET /api/v1/internal/compare-health?netuids=1,7,19 (#4832 gap-closure
+        // follow-up): the health-dimension slice handleCompare embeds inline
+        // (workers/request-handlers/analytics-routes.mjs) rather than a
+        // standalone D1 route, so there's no client request to forward
+        // unchanged -- handleCompare synthesizes this request itself once its
+        // own netuids/dimensions validation has already run, same "internal"
+        // trust boundary as the write-side sync routes above, minus the
+        // secret header since a read has no mutation to gate. Reuses
+        // METAGRAPH_HEALTH_SOURCE (surface_status, same table the compare
+        // dimension reads from D1). netuids is a plain scalar list (never a
+        // bound JS array) via sql.unsafe -- see the neurons-sync prune
+        // query's comment above for why an ANY($1)/array bind breaks under
+        // this Worker's Hyperdrive fetch_types:false setting.
+        if (url.pathname === "/api/v1/internal/compare-health") {
+          const netuidsRaw = url.searchParams.get("netuids");
+          // "".split(",") is [""] and Number("") is 0, so an empty/missing
+          // param must short-circuit before split -- not fall through to a
+          // spurious IN (0).
+          const netuids = netuidsRaw
+            ? netuidsRaw.split(",").map(Number).filter(Number.isInteger)
+            : [];
+          if (netuids.length === 0) {
+            return json({ rows: [] });
+          }
+          const placeholders = netuids
+            .map((_, i) => `$${i + 1}::int`)
+            .join(", ");
+          const rows = await sql.unsafe(
+            `SELECT netuid,
+                    COUNT(*) AS surface_count,
+                    SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+                    ROUND(AVG(CASE WHEN status = 'ok' AND latency_ms IS NOT NULL THEN latency_ms END)) AS avg_latency_ms
+             FROM surface_status
+             WHERE netuid IN (${placeholders})
+             GROUP BY netuid`,
+            netuids,
+          );
+          return json({ rows });
+        }
+
         // GET /api/v1/accounts/:ss58/stake-flow
         const acctStakeFlow = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/stake-flow$/,

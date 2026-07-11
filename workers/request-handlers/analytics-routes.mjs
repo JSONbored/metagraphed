@@ -682,10 +682,26 @@ export async function handleCompare(request, env, url) {
   }
 
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
-  const [economicsRows, healthRows] = await Promise.all([
-    dimensions.includes("economics") ? resolveEconomicsRows(env) : null,
-    dimensions.includes("health")
-      ? d1All(
+  // The health dimension is the only one of the three backed by a table with
+  // a Postgres mirror (surface_status, #4832 gap-closure) -- structure/
+  // economics stay D1-only. handleCompare has no clean 1:1 D1 route to
+  // forward, so it synthesizes its own internal request the same way a
+  // syncXToPostgres write helper builds one, rather than forwarding the
+  // caller's netuids=/dimensions= request unchanged (tryPostgresTier's usual
+  // contract).
+  let healthIsFallback = false;
+  const healthPromise = dimensions.includes("health")
+    ? (async () => {
+        const pgUrl = new URL(request.url);
+        pgUrl.pathname = "/api/v1/internal/compare-health";
+        pgUrl.search = `?netuids=${requestedNetuids.join(",")}`;
+        const pgData = await tryPostgresTier(
+          env,
+          new Request(pgUrl),
+          "METAGRAPH_HEALTH_SOURCE",
+        );
+        if (pgData) return pgData.rows;
+        const rows = await d1All(
           env,
           `SELECT netuid,
                 COUNT(*) AS surface_count,
@@ -695,8 +711,14 @@ export async function handleCompare(request, env, url) {
          WHERE netuid IN (${requestedNetuids.map(() => "?").join(", ")})
          GROUP BY netuid`,
           requestedNetuids,
-        )
-      : null,
+        );
+        healthIsFallback = hasD1FallbackRows(rows);
+        return rows;
+      })()
+    : null;
+  const [economicsRows, healthRows] = await Promise.all([
+    dimensions.includes("economics") ? resolveEconomicsRows(env) : null,
+    healthPromise,
   ]);
 
   const meta = await readHealthMetaKv(env);
@@ -709,7 +731,7 @@ export async function handleCompare(request, env, url) {
     healthRows,
     observedAt: meta?.last_run_at ?? null,
   });
-  return envelopeWithD1Fallback(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -722,6 +744,6 @@ export async function handleCompare(request, env, url) {
       },
     },
     "standard",
-    [healthRows],
   );
+  return healthIsFallback ? markD1FallbackResponse(response) : response;
 }

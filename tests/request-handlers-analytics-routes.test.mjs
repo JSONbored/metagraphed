@@ -790,6 +790,74 @@ describe("handleCompare", () => {
     );
     assert.deepEqual(body.data.requested_netuids, [1, 7]);
   });
+
+  // #4832 gap-closure: handleCompare has no single D1 route to forward, so
+  // its health dimension synthesizes its own /api/v1/internal/compare-health
+  // request rather than reusing tryPostgresTier's usual "forward the caller's
+  // request unchanged" contract -- these tests prove that wiring in
+  // isolation (D1 called or not), same reused METAGRAPH_HEALTH_SOURCE flag
+  // as handleUptime above.
+  test("health dimension: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = createLocalArtifactEnv();
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          rows: [
+            { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 120 },
+          ],
+        }),
+    };
+    env.METAGRAPH_HEALTH_DB = {
+      prepare() {
+        d1Called = true;
+        throw new Error(
+          "D1 must not be queried when Postgres serves the request",
+        );
+      },
+    };
+    const body = await json(
+      await handleCompare(
+        req("/api/v1/compare"),
+        env,
+        url("/api/v1/compare?netuids=7&dimensions=health"),
+      ),
+    );
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(d1Called, false);
+  });
+
+  test("health dimension: flag=postgres falls back to D1 when DATA_API fails", async () => {
+    let d1Called = false;
+    const env = createLocalArtifactEnv();
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const baseEnv = d1Env({
+      "FROM surface_status": [
+        { netuid: 7, surface_count: 5, ok_count: 4, avg_latency_ms: 90 },
+      ],
+    });
+    env.METAGRAPH_HEALTH_DB = {
+      prepare(sqlText) {
+        d1Called = true;
+        return baseEnv.METAGRAPH_HEALTH_DB.prepare(sqlText);
+      },
+    };
+    const body = await json(
+      await handleCompare(
+        req("/api/v1/compare"),
+        env,
+        url("/api/v1/compare?netuids=7&dimensions=health"),
+      ),
+    );
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(d1Called, true);
+  });
 });
 
 describe("composeCompareData", () => {

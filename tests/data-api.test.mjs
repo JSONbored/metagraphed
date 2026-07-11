@@ -4986,3 +4986,20 @@ test("GET /api/v1/subnets/:netuid/uptime: unrecognized window falls back to 90d"
   const body = await res.json();
   expect(body.window).toBe("90d");
 });
+
+test("GET /api/v1/internal/compare-health: aggregates surface_status by netuid", async () => {
+  mockRows.current = [
+    { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 120 },
+  ];
+  const res = await req("/api/v1/internal/compare-health?netuids=7,64");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.rows).toEqual(mockRows.current);
+});
+
+test("GET /api/v1/internal/compare-health: no netuids returns rows:[] without querying", async () => {
+  const res = await req("/api/v1/internal/compare-health");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.rows).toEqual([]);
+});
