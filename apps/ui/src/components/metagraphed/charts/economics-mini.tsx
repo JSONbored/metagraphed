@@ -116,19 +116,19 @@ export function EconomicsMini({ netuid }: Props) {
                 centerSub="in"
               />
               <div className="grid flex-1 grid-cols-2 gap-3">
-                <div>
+                <div className="min-w-0">
                   <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
                     Alpha in pool
                   </div>
-                  <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong">
+                  <div className="mt-1 break-words font-display text-lg font-semibold tabular-nums text-ink-strong">
                     {formatNumber(inP)}
                   </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
                     Alpha out pool
                   </div>
-                  <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong">
+                  <div className="mt-1 break-words font-display text-lg font-semibold tabular-nums text-ink-strong">
                     {formatNumber(outP)}
                   </div>
                 </div>

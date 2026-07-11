@@ -65,7 +65,7 @@ export function NeuronDetailCard({
             </span>
           ) : null}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             Daily rollup
             <FreshnessIndicator at={meta?.generated_at} />

@@ -29,20 +29,25 @@ export function MethodologyCallout({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="flex w-full items-start gap-2 px-3 py-2 text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <Info className="size-3.5 text-accent" />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          Data freshness &amp; methodology
-        </span>
-        {freshLine ? (
-          <span className="font-mono text-[10px] text-ink-muted/80" title={freshAbs ?? undefined}>
-            · {freshLine}
+        <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            Data freshness &amp; methodology
           </span>
-        ) : null}
+          {freshLine ? (
+            <span
+              className="mt-0.5 block font-mono text-[10px] text-ink-muted/80"
+              title={freshAbs ?? undefined}
+            >
+              {freshLine}
+            </span>
+          ) : null}
+        </span>
         <ChevronDown
           className={classNames(
-            "ml-auto size-3.5 text-ink-muted transition-transform",
+            "mt-0.5 size-3.5 shrink-0 text-ink-muted transition-transform",
             open && "rotate-180",
           )}
         />
