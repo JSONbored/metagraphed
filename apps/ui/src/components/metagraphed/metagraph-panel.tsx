@@ -6,6 +6,7 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { TableState } from "@/components/metagraphed/table-state";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
+import { FreshnessBadge } from "@/components/metagraphed/freshness-badge";
 import { classNames } from "@/lib/metagraphed/format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
@@ -64,6 +65,13 @@ export function MetagraphTableLoader({
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          Metagraph snapshot
+        </span>
+        <FreshnessBadge at={meta?.generated_at} tier="daily" />
+      </div>
+
       {/* KPI strip — neuron + validator counts and the dominant-UID stake share. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatTile

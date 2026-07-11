@@ -5,7 +5,7 @@ import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { TreemapMini, type TreemapMiniDatum } from "@/components/metagraphed/charts/treemap-mini";
 import { TableState } from "@/components/metagraphed/table-state";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
-import { FreshnessIndicator } from "@/components/metagraphed/freshness";
+import { FreshnessBadge } from "@/components/metagraphed/freshness-badge";
 
 const TOP_N = 10;
 
@@ -60,12 +60,7 @@ export function ValidatorsTableLoader({
     );
   }
 
-  const freshness = (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-      Daily rollup
-      <FreshnessIndicator at={meta?.generated_at} />
-    </span>
-  );
+  const freshness = <FreshnessBadge at={meta?.generated_at} tier="daily" />;
 
   return (
     <div className="space-y-4">

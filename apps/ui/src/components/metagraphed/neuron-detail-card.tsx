@@ -5,6 +5,7 @@ import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { TableState } from "@/components/metagraphed/table-state";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { FreshnessBadge } from "@/components/metagraphed/freshness-badge";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
 
@@ -64,16 +65,19 @@ export function NeuronDetailCard({
             </span>
           ) : null}
         </div>
-        {onClose ? (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close neuron detail"
-            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-ink-muted hover:text-ink-strong"
-          >
-            <X className="size-3" aria-hidden /> Close
-          </button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <FreshnessBadge at={meta?.generated_at} tier="daily" />
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close neuron detail"
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-ink-muted hover:text-ink-strong"
+            >
+              <X className="size-3" aria-hidden /> Close
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
