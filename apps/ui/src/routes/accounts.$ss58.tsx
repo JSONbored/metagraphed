@@ -197,8 +197,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
               Cross-subnet registrations, first-party chain events, and daily activity rollups for
               one Bittensor account.
             </p>
-            <div className="max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
-              <CopyableCode value={ss58} truncate={false} />
+            <div className="max-w-full sm:max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
+              <CopyableCode value={ss58} truncate={false} className="max-w-full" />
             </div>
           </div>
         }
