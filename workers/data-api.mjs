@@ -35,6 +35,9 @@ import {
   buildBlockEvents,
   buildSubnetEvents,
   buildSubnetEventSummary,
+  buildAccountSummary,
+  buildAccountSubnets,
+  ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   SUBNET_EVENT_SUMMARY_WINDOWS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
@@ -1011,6 +1014,90 @@ export default {
             events = eventRows.map(formatAccountEvent).filter(Boolean);
           }
           return json(buildExtrinsic(resolved, ref, events));
+        }
+
+        // GET /api/v1/accounts/:ss58 (#4832 Tier 1c): cross-subnet account
+        // summary -- event aggregates, per-kind counts, 10 newest events,
+        // current registrations, and bounded signing activity from the
+        // extrinsics tier, mirroring src/account-events.mjs's
+        // loadAccountSummary. Postgres has no INDEXED BY equivalent and
+        // evaluates (hotkey = $1 OR coldkey = $1) as one plan, so the D1
+        // path's two-branch UNION-of-seeks (each capped, then re-merged and
+        // re-capped) collapses to a single bounded ORDER BY/LIMIT scan here --
+        // the aggregate/kind/recent-events fields below all derive from that
+        // one CAP+1-row window, computed once client-side, rather than
+        // separate SQL aggregates per field.
+        const acctSummary = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)$/,
+        );
+        if (acctSummary) {
+          const ss58 = decodeURIComponent(acctSummary[1]);
+          const scanRows = await sql`
+          SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
+          FROM account_events WHERE (hotkey = ${ss58} OR coldkey = ${ss58})
+          ORDER BY block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
+          const regRows = await sql`
+          SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
+          WHERE hotkey = ${ss58} ORDER BY stake_tao DESC, netuid ASC`;
+          const activityRows = await sql`
+          SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao
+          FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ${ss58} ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1000) sub`;
+          const moduleRows = await sql`
+          SELECT call_module, COUNT(*) AS count FROM (
+            SELECT call_module FROM extrinsics WHERE signer = ${ss58}
+            ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1000
+          ) sub GROUP BY call_module ORDER BY count DESC, call_module ASC LIMIT 10`;
+          const scanned = scanRows.length;
+          const capped = scanRows.slice(0, ACCOUNT_EVENT_SUMMARY_SCAN_CAP);
+          const netuids = new Set();
+          let fb = null;
+          let lb = null;
+          let fo = null;
+          let lo = null;
+          const kindCounts = new Map();
+          for (const row of capped) {
+            netuids.add(row.netuid);
+            const bn = numberOrNull(row.block_number);
+            if (bn != null && (fb == null || bn < fb)) fb = bn;
+            if (bn != null && (lb == null || bn > lb)) lb = bn;
+            const obs = numberOrNull(row.observed_at);
+            if (obs != null && (fo == null || obs < fo)) fo = obs;
+            if (obs != null && (lo == null || obs > lo)) lo = obs;
+            kindCounts.set(
+              row.event_kind,
+              (kindCounts.get(row.event_kind) ?? 0) + 1,
+            );
+          }
+          const kinds = [...kindCounts.entries()].map(([kind, count]) => ({
+            kind,
+            count,
+          }));
+          return json(
+            buildAccountSummary(ss58, {
+              agg: { c: capped.length, sc: netuids.size, fb, lb, fo, lo },
+              kinds,
+              scanned,
+              registrations: regRows,
+              recent: capped.slice(0, 10),
+              activity: activityRows[0],
+              modules: moduleRows,
+            }),
+          );
+        }
+
+        // GET /api/v1/accounts/:ss58/subnets (#4832 Tier 1c): the subnets where
+        // this account's hotkey is currently registered, mirroring
+        // src/account-events.mjs's loadAccountSubnets -- neurons-derived (the
+        // live registration snapshot), not account_events.
+        const acctSubnets = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/subnets$/,
+        );
+        if (acctSubnets) {
+          const ss58 = decodeURIComponent(acctSubnets[1]);
+          const rows = await sql`
+          SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
+          WHERE hotkey = ${ss58} ORDER BY netuid`;
+          return json(buildAccountSubnets(rows, ss58));
         }
 
         // GET /api/v1/accounts/:ss58/events — the per-account signed-event feed

@@ -799,6 +799,58 @@ test("GET /api/v1/extrinsics/:ref skips the embedded-events query on an unresolv
   expect(sqlCalls.length).toBe(2); // SET + the main lookup, no events query
 });
 
+test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from one bounded event window", async () => {
+  mockQueue.current = [
+    [], // SET
+    [ACCOUNT_EVENT_ROW, { ...ACCOUNT_EVENT_ROW, netuid: 5 }], // scanRows
+    [{ netuid: 4, uid: 1, stake_tao: "10", validator_permit: 1, active: 1 }], // regRows
+    [
+      {
+        tx_count: "3",
+        last_tx_block: 8586300,
+        last_tx_at: "1783600000000",
+        total_fee_tao: "0.03",
+      },
+    ], // activityRows
+    [{ call_module: "SubtensorModule", count: "3" }], // moduleRows
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.event_count).toBe(2);
+  expect(body.subnet_count).toBe(2);
+  expect(body.event_kinds[0].kind).toBe("StakeAdded");
+  expect(body.event_kinds[0].count).toBe(2);
+  expect(body.registrations[0].netuid).toBe(4);
+  expect(body.recent_events.length).toBe(2);
+  expect(body.activity.tx_count).toBe(3);
+  expect(body.activity.modules_called[0].call_module).toBe("SubtensorModule");
+  expect(queryText()).toContain("WHERE (hotkey =");
+  expect(queryText()).toContain("OR coldkey =");
+});
+
+test("GET /api/v1/accounts/:ss58 with no matching rows returns a schema-stable empty summary", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/accounts/${SS58}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.event_count).toBe(0);
+  expect(body.registrations).toEqual([]);
+  expect(body.recent_events).toEqual([]);
+});
+
+test("GET /api/v1/accounts/:ss58/subnets returns the current registrations from neurons", async () => {
+  mockRows.current = [
+    { netuid: 4, uid: 1, stake_tao: "10", validator_permit: 1, active: 1 },
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/subnets`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnets[0].netuid).toBe(4);
+  expect(body.subnet_count).toBe(1);
+  expect(queryText()).toContain("FROM neurons");
+});
+
 test("GET /api/v1/accounts/:ss58/events returns a feed shaped like the D1 route", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/events?limit=1`);

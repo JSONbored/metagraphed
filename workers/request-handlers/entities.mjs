@@ -2668,7 +2668,9 @@ export async function handleAccountDeregistrations(request, env, ss58, url) {
 // (account_events, matched by hotkey OR coldkey) joined to current registrations
 // (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
 export async function handleAccount(request, env, ss58) {
-  const data = await loadAccountSummary(d1Runner(env), ss58);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadAccountSummary(d1Runner(env), ss58));
   return accountEnvelopeResponse(
     request,
     {
@@ -3096,7 +3098,9 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
 // GET /api/v1/accounts/{ss58}/subnets: the subnets where this hotkey is currently
 // registered (the cross-subnet footprint), from the neurons tier.
 export async function handleAccountSubnets(request, env, ss58) {
-  const data = await loadAccountSubnets(d1Runner(env), ss58);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadAccountSubnets(d1Runner(env), ss58));
   return accountEnvelopeResponse(
     request,
     {

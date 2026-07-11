@@ -7764,6 +7764,75 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.marker, undefined);
     assert.ok(captures.sql.length > 0);
   });
+
+  // #4832 Tier 1c: handleAccount (multi-table: account_events + neurons +
+  // extrinsics) and handleAccountSubnets (neurons-derived).
+
+  test("handleAccount: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", event_count: 0 }),
+    };
+    const body = await json(
+      await handleAccount(req(`/api/v1/accounts/${SS58}`), env, SS58),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccount: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccount(req(`/api/v1/accounts/${SS58}`), env, SS58),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleAccountSubnets: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", subnets: [] }),
+    };
+    const body = await json(
+      await handleAccountSubnets(
+        req(`/api/v1/accounts/${SS58}/subnets`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountSubnets: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccountSubnets(
+        req(`/api/v1/accounts/${SS58}/subnets`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
 });
 
 // ---- Cross-handler contract smoke tests -------------------------------------
