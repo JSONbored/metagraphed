@@ -18,11 +18,9 @@ import type {
 } from "@/lib/metagraphed/types";
 import { UptimeTimeline } from "@/components/metagraphed/analytics/uptime-timeline";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { Tooltip, TooltipContent, TooltipTrigger, TimeAgo, InfoTooltip } from "@jsonbored/ui-kit";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { ErrorState } from "@/components/metagraphed/states";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";
 import { useSubnetFilter, type Severity } from "@/components/metagraphed/subnet-filter-context";

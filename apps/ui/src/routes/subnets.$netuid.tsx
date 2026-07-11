@@ -3,8 +3,18 @@ import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
 import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Waves, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CandidateChip, CurationChip, ReviewChip } from "@/components/metagraphed/chips";
-import { ExternalLink } from "@/components/metagraphed/external-link";
+import {
+  CandidateChip,
+  CurationChip,
+  ReviewChip,
+  ExternalLink,
+  TimeAgo,
+  SectionAnchor,
+  TableState,
+  HealthPill,
+  CopyableCode,
+  MethodologyCallout,
+} from "@jsonbored/ui-kit";
 import {
   EmptyState,
   PageHeading,
@@ -14,10 +24,8 @@ import {
 } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
-import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
@@ -62,7 +70,6 @@ import {
   eventKindLabel,
   type EventKindCategory,
 } from "@/lib/metagraphed/event-kinds";
-import { TableState } from "@/components/metagraphed/table-state";
 import type {
   AccountEvent,
   Endpoint,
@@ -74,8 +81,6 @@ import type {
   AgentCatalogBlocker,
   SubnetHyperparameters,
 } from "@/lib/metagraphed/types";
-import { HealthPill } from "@/components/metagraphed/chips";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { IncidentTimeline } from "@/components/metagraphed/incident-timeline";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { SubnetMasthead } from "@/components/metagraphed/subnet-masthead";
@@ -84,7 +89,6 @@ import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
 import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-panel";
 import { SubnetPulseStrip } from "@/components/metagraphed/subnet-pulse-strip";
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
-import { MethodologyCallout } from "@/components/metagraphed/methodology-callout";
 import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-drawer";
 
 type SearchParams = {

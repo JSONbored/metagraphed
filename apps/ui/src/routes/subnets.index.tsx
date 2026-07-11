@@ -4,21 +4,29 @@ import { Suspense, useEffect, useMemo } from "react";
 import { z } from "zod";
 import { Network, Radio, Layers, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import {
+  BrandIcon,
+  prefetchBrandIcon,
+  TimeAgo,
+  CurationChip,
+  HealthPill,
+  PageHero,
+  DensityToggle,
+  ViewModeToggle,
+  ShareButton,
+  DownloadCsvButton,
+  ListShell,
+  LoadMore,
+  type Density,
+  type ViewMode,
+} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { PageHero } from "@/components/metagraphed/page-hero";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
 import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
-import { DensityToggle, type Density } from "@/components/metagraphed/density-toggle";
-import { ViewModeToggle, type ViewMode } from "@/components/metagraphed/view-mode-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { ShareButton } from "@/components/metagraphed/share-button";
-import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
   ariaSort,
@@ -28,7 +36,6 @@ import {
   SelectFilter,
   SortHeader,
 } from "@/components/metagraphed/table-controls";
-import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { SubnetsSavedViews } from "@/components/metagraphed/subnets-saved-views";
 import {
   SubnetsCompareDrawer,

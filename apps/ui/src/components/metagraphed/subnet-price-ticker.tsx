@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSuspenseQuery, useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Coins } from "lucide-react";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
+import { BrandIcon } from "@jsonbored/ui-kit";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { economicsQuery, subnetsQuery, subnetTrajectoryQuery } from "@/lib/metagraphed/queries";
 import { healthColorVar } from "@/lib/health-tokens";

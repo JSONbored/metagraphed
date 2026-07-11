@@ -8,12 +8,17 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { TimeAgo, safeExternalUrl } from "@jsonbored/ui-kit";
 import { ApiError } from "@/lib/metagraphed/client";
 import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { NativeOnlyNotice } from "./native-only-notice";
-import { safeExternalUrl } from "./external-link";
+
+// Re-exported so existing `import { Skeleton, ... } from "@/components/metagraphed/states"`
+// call sites keep working -- Skeleton's canonical home is now packages/ui-kit (needed by
+// the already-extracted ListShell), this file just isn't the place to update ~40 unrelated
+// call sites as a side effect of that.
+export { Skeleton } from "@jsonbored/ui-kit";
 
 // Scheme barrier for an EmptyState action link (CodeQL js/xss-through-dom): external
 // actions go through safeExternalUrl (http(s) only, no creds/private hosts); internal
@@ -221,13 +226,6 @@ export function StaleBanner({
       ) : null}
     </div>
   );
-}
-
-export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
-  // #3993: bg-surface-2 (a step lifted from bg-surface) keeps the pulse visible
-  // against the similarly-dark page background in dark mode, where plain
-  // bg-surface blended into invisibility.
-  return <div className={`animate-pulse rounded bg-surface-2 ${className}`} />;
 }
 
 /**

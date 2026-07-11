@@ -9,9 +9,7 @@ import {
 import { classNames, durationLabel, formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
+import { Tooltip, TooltipContent, TooltipTrigger, InfoTooltip, TimeAgo } from "@jsonbored/ui-kit";
 import { useTimeRange, RANGE_LABEL } from "./time-range-context";
 import type { FlatSurfaceIncident, HealthTrendSurface } from "@/lib/metagraphed/types";
 

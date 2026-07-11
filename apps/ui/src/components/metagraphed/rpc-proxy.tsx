@@ -4,8 +4,7 @@ import { Zap, GitBranch, Database, ShieldCheck, Gauge, ArrowUpDown } from "lucid
 import { API_BASE } from "@/lib/metagraphed/config";
 import { useNetwork } from "@/hooks/use-api-base";
 import { rpcUsageQuery } from "@/lib/metagraphed/queries";
-import { CopyButton } from "./copy-button";
-import { TimeAgo } from "./time-ago";
+import { CopyButton, TimeAgo } from "@jsonbored/ui-kit";
 import { EmptyState, StaleBanner } from "./states";
 import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import type { RpcUsage } from "@/lib/metagraphed/types";

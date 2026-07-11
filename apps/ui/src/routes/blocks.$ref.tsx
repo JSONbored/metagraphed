@@ -3,14 +3,16 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useEffect, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { CopyButton } from "@/components/metagraphed/copy-button";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import {
+  CopyableCode,
+  CopyButton,
+  TimeAgo,
+  PageHero,
+  ShareButton,
+  SectionAnchor,
+} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
-import { PageHero } from "@/components/metagraphed/page-hero";
-import { ShareButton } from "@/components/metagraphed/share-button";
-import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";

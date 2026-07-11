@@ -8,13 +8,16 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Pause, Play, ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { HealthPill } from "@/components/metagraphed/chips";
+import {
+  HealthPill,
+  TableState,
+  PageHero,
+  PageSection,
+  TimeAgo,
+  AnimatedNumber,
+} from "@jsonbored/ui-kit";
 import { Skeleton, StaleBanner } from "@/components/metagraphed/states";
-import { TableState } from "@/components/metagraphed/table-state";
-import { PageHero } from "@/components/metagraphed/page-hero";
-import { PageSection } from "@/components/metagraphed/page-section";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
@@ -30,7 +33,6 @@ import {
   endpointIncidentsQuery,
 } from "@/lib/metagraphed/queries";
 import { humaniseSeconds, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
-import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import type { EndpointIncident, HealthState } from "@/lib/metagraphed/types";
 
 const INTERVAL_OPTIONS: Array<{ label: string; value: number }> = [

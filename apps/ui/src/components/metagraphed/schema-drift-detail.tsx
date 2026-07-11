@@ -7,9 +7,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ExternalLink,
+  InfoTooltip,
 } from "@jsonbored/ui-kit";
-import { ExternalLink } from "@/components/metagraphed/external-link";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-summary";
 import { useCopy } from "@/hooks/use-copy";
 import { formatFreshness, formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";

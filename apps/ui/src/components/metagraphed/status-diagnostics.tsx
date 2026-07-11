@@ -7,11 +7,9 @@ import {
   healthQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { HealthPill } from "@/components/metagraphed/chips";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { HealthPill, TimeAgo, TableState } from "@jsonbored/ui-kit";
 import { BarMini, type BarMiniDatum } from "@/components/metagraphed/charts/bar-mini";
 import { SortHeader, ariaSort, SelectFilter } from "@/components/metagraphed/table-controls";
-import { TableState } from "@/components/metagraphed/table-state";
 import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import type { HealthHistorySurface, SourceHealthProvider } from "@/lib/metagraphed/types";

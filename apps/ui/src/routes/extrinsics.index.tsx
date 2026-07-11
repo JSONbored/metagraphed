@@ -6,11 +6,17 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import {
+  TimeAgo,
+  PageHero,
+  ListShell,
+  ShareButton,
+  CopyableCode,
+  CopyButton,
+  DownloadCsvButton,
+} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { PageHero } from "@/components/metagraphed/page-hero";
-import { ListShell } from "@/components/metagraphed/list-shell";
 import {
   PageSizeSelect,
   ResetFiltersButton,
@@ -18,11 +24,7 @@ import {
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { ShareButton } from "@/components/metagraphed/share-button";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { AccountCell } from "@/components/metagraphed/account-cell";
-import { CopyButton } from "@/components/metagraphed/copy-button";
-import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";

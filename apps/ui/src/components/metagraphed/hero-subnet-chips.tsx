@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
+import { BrandIcon } from "@jsonbored/ui-kit";
 import { subnetsQuery, healthQuery } from "@/lib/metagraphed/queries";
 import type { Subnet } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";

@@ -2,21 +2,26 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import {
+  TimeAgo,
+  CurationChip,
+  ReviewChip,
+  ExternalLink,
+  PageHero,
+  SectionHeading,
+  BrandIcon,
+  ShareButton,
+  DownloadCsvButton,
+  ViewModeToggle,
+  ListShell,
+  LoadMore,
+} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CurationChip, ReviewChip } from "@/components/metagraphed/chips";
-import { ExternalLink } from "@/components/metagraphed/external-link";
 import { Skeleton } from "@/components/metagraphed/states";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
-import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { ShareButton } from "@/components/metagraphed/share-button";
-import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
 import {
   TimeRangeProvider,
   useTimeRange,
@@ -31,7 +36,6 @@ import {
   SelectFilter,
   SortHeader,
 } from "@/components/metagraphed/table-controls";
-import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { surfacesInfiniteQuery, providersQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";

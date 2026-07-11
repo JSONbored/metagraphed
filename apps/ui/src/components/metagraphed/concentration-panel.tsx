@@ -10,7 +10,7 @@ import {
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
-import { TableState } from "@/components/metagraphed/table-state";
+import { TableState } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";

@@ -1,9 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@jsonbored/ui-kit";
-import { BrandIcon } from "./brand-icon";
-import { CurationChip, HealthPill } from "./chips";
-import { TimeAgo } from "./time-ago";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  BrandIcon,
+  CurationChip,
+  HealthPill,
+  TimeAgo,
+} from "@jsonbored/ui-kit";
 import { subnetQuery, providerQuery, accountQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 

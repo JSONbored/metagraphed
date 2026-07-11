@@ -5,13 +5,11 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Scale, UserMinus } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero } from "@/components/metagraphed/page-hero";
+import { PageHero, BrandIcon, TimeAgo } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import {
   chainDeregistrationsQuery,
   chainWeightsQuery,

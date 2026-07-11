@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ApiError } from "@/lib/metagraphed/client";
 import { askQuestion } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { ExternalLink } from "@/components/metagraphed/external-link";
+import { ExternalLink } from "@jsonbored/ui-kit";
 import type { AskAnswerData, AskCitation } from "@/lib/metagraphed/types";
 
 /** Distinguishes a 429 (rate-limited) and 503 (AI disabled/unavailable) ask rejection from a generic failure. */

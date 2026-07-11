@@ -5,19 +5,16 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero } from "@/components/metagraphed/page-hero";
+import { PageHero, ShareButton, ListShell, LoadMore, TimeAgo } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
-import { ShareButton } from "@/components/metagraphed/share-button";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
-import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { SearchInput } from "@/components/metagraphed/table-controls";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import {
   chainActivityQuery,
   chainCallsQuery,

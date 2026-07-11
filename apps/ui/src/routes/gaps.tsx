@@ -5,20 +5,24 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { ExternalLink } from "@/components/metagraphed/external-link";
+import {
+  ExternalLink,
+  TableState,
+  PageHero,
+  PageSection,
+  SectionHeading,
+  MethodologyCallout,
+  BrandIcon,
+  CurationChip,
+} from "@jsonbored/ui-kit";
 import { Skeleton } from "@/components/metagraphed/states";
-import { TableState } from "@/components/metagraphed/table-state";
-import { PageHero } from "@/components/metagraphed/page-hero";
-import { PageSection } from "@/components/metagraphed/page-section";
 import { X, Search } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
 import {
   CoverageMatrix,
   CompletenessHistogram,
 } from "@/components/metagraphed/analytics/coverage-matrix";
-import { MethodologyCallout } from "@/components/metagraphed/methodology-callout";
 import {
   StatWithSpark,
   MiniStack,
@@ -36,8 +40,6 @@ import {
 } from "@/lib/metagraphed/queries";
 import { GITHUB_REPO } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { CurationChip } from "@/components/metagraphed/chips";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
 import type { CurationLevel, Gap, Subnet } from "@/lib/metagraphed/types";
 

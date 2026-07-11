@@ -6,7 +6,7 @@ import { useCompareSelection } from "@/lib/metagraphed/compare-selection";
 import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
-import { HealthPill, CurationChip } from "./chips";
+import { HealthPill, CurationChip } from "@jsonbored/ui-kit";
 
 /**
  * Floating bottom dock + expandable side-by-side compare drawer for selected

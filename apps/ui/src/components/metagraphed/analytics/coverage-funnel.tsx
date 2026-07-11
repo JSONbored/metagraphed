@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { coverageQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import { InfoTooltip } from "@jsonbored/ui-kit";
 import type { Coverage } from "@/lib/metagraphed/types";
 
 interface Step {

@@ -5,14 +5,11 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Boxes, Coins, Gauge, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero } from "@/components/metagraphed/page-hero";
+import { PageHero, ShareButton, SectionAnchor, CopyableCode } from "@jsonbored/ui-kit";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
-import { ShareButton } from "@/components/metagraphed/share-button";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { SectionAnchor } from "@/components/metagraphed/section-anchor";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
 import {

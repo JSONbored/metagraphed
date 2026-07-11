@@ -1,5 +1,4 @@
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import { TimeAgo, InfoTooltip } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 

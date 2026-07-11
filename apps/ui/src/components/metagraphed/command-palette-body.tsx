@@ -32,6 +32,10 @@ import {
   Wifi,
   Workflow,
 } from "lucide-react";
+import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
+import { classNames } from "@/lib/metagraphed/format";
+import { isValidSs58 } from "@/lib/metagraphed/accounts";
+import { shortHash } from "@/lib/metagraphed/blocks";
 import {
   CommandDialog,
   CommandEmpty,
@@ -41,12 +45,11 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
+  SCOPES,
+  Kbd,
+  safeExternalUrl,
+  type SearchScope,
 } from "@jsonbored/ui-kit";
-import { searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
-import { classNames } from "@/lib/metagraphed/format";
-import { isValidSs58 } from "@/lib/metagraphed/accounts";
-import { shortHash } from "@/lib/metagraphed/blocks";
-import { SCOPES, type SearchScope } from "./search-scope";
 import {
   loadRecent,
   pushRecent,
@@ -62,8 +65,6 @@ import {
   trackSelection,
   trackAction,
 } from "@/lib/metagraphed/palette-analytics";
-import { Kbd } from "./kbd";
-import { safeExternalUrl } from "./external-link";
 
 const ROUTE_INDEX: Array<{
   label: string;

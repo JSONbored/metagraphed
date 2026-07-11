@@ -9,10 +9,8 @@ import {
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { CopyButton } from "./copy-button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
+import { Tooltip, TooltipContent, TooltipTrigger, CopyButton, TimeAgo } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
-import { TimeAgo } from "./time-ago";
 
 interface Stat {
   label: string;

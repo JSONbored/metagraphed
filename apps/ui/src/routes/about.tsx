@@ -10,9 +10,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { ExternalLink } from "@/components/metagraphed/external-link";
-import { PageHero } from "@/components/metagraphed/page-hero";
+import { CopyableCode, ExternalLink, PageHero } from "@jsonbored/ui-kit";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";

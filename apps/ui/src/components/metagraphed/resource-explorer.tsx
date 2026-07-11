@@ -10,11 +10,6 @@ import {
 } from "@/lib/metagraphed/queries";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { HealthDot, CurationChip, ReviewChip } from "@/components/metagraphed/chips";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { safeExternalUrl } from "@/components/metagraphed/external-link";
-import { PanelShell } from "@/components/metagraphed/panel-shell";
-import { useCopy } from "@/hooks/use-copy";
 import {
   Tooltip,
   TooltipContent,
@@ -24,7 +19,14 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  HealthDot,
+  CurationChip,
+  ReviewChip,
+  TimeAgo,
+  safeExternalUrl,
 } from "@jsonbored/ui-kit";
+import { PanelShell } from "@/components/metagraphed/panel-shell";
+import { useCopy } from "@/hooks/use-copy";
 import { classNames } from "@/lib/metagraphed/format";
 import {
   useSubnetFilter,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { safeExternalUrl } from "@/components/metagraphed/external-link";
+import { safeExternalUrl } from "@jsonbored/ui-kit";
 
 describe("safeExternalUrl", () => {
   it("returns undefined for missing or blank input", () => {

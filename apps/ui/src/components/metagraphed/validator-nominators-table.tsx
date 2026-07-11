@@ -1,15 +1,13 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/components/metagraphed/states";
-import { ListShell } from "@/components/metagraphed/list-shell";
+import { ListShell, CopyableCode, TimeAgo } from "@jsonbored/ui-kit";
 import {
   PageSizeSelect,
   ResetFiltersButton,
   SearchInput,
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { validatorNominatorsQuery } from "@/lib/metagraphed/queries";

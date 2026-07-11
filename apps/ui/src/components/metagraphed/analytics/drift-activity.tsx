@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowUpRight, ChevronRight } from "lucide-react";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { TimeAgo } from "@jsonbored/ui-kit";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
 
 interface Props {

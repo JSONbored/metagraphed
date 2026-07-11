@@ -719,6 +719,10 @@ jobs:
         if: env.RUN_UI_VALIDATION == 'true'
         run: npm run typecheck --workspace=packages/ui-kit
 
+      - name: Test packages/ui-kit
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm test --workspace=packages/ui-kit
+
       - name: Lint (ESLint + Prettier)
         if: env.RUN_UI_VALIDATION == 'true'
         run: npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui

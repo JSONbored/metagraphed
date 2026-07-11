@@ -4,9 +4,8 @@ import { FileCode, GitCompare } from "lucide-react";
 import { subnetSchemasQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { TimeAgo, CopyableCode } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
 
 function driftTone(status?: string): string {
   switch (status) {

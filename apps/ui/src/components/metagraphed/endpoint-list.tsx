@@ -1,14 +1,19 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLink as ExternalLinkIcon } from "lucide-react";
 import { useMemo } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
-import { HealthDot } from "./chips";
-import { EligibilityChip } from "./eligibility-chip";
-import { TimeAgo } from "./time-ago";
-import { BrandIcon } from "./brand-icon";
-import { safeExternalUrl } from "./external-link";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+  HealthDot,
+  EligibilityChip,
+  TimeAgo,
+  BrandIcon,
+  safeExternalUrl,
+  CopyIconToggle,
+} from "@jsonbored/ui-kit";
 import { Sparkline } from "./charts/sparkline";
-import { CopyIconToggle } from "./copy-icon-toggle";
 import { useCopy } from "@/hooks/use-copy";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames } from "@/lib/metagraphed/format";

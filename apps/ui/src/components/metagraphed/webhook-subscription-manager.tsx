@@ -2,8 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
+import { CopyableCode, SectionHeading } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import type {
   WebhookDeliveryStatus,

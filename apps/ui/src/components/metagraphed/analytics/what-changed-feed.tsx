@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { AlertTriangle, GitBranch, Radio, Sparkles } from "lucide-react";
 import { changelogQuery, endpointIncidentsQuery } from "@/lib/metagraphed/queries";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { TimeAgo } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
 import { useTimeRange, RANGE_HOURS, RANGE_LABEL } from "./time-range-context";

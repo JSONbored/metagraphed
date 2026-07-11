@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { CopyableCode } from "@jsonbored/ui-kit";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
 

@@ -6,16 +6,22 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Search, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import {
+  TimeAgo,
+  HealthPill,
+  HealthDot,
+  CopyButton,
+  BrandIcon,
+  SectionHeading,
+  PageHero,
+  ExternalLink,
+  ViewModeToggle,
+  DownloadCsvButton,
+} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { HealthPill, HealthDot } from "@/components/metagraphed/chips";
-import { CopyButton } from "@/components/metagraphed/copy-button";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
-import { PageHero } from "@/components/metagraphed/page-hero";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -27,10 +33,7 @@ import {
   RANGE_LABEL,
 } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
-import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EndpointKindTabs } from "@/components/metagraphed/endpoint-kind-tabs";
-import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
-import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { rpcEndpointsSummaryLine } from "@/lib/metagraphed/rpc-endpoints-summary";

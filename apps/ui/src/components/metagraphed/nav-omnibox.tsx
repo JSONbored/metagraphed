@@ -16,8 +16,7 @@ import {
 } from "lucide-react";
 import { searchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { Kbd } from "./kbd";
-import { safeExternalUrl } from "./external-link";
+import { Kbd, safeExternalUrl } from "@jsonbored/ui-kit";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";

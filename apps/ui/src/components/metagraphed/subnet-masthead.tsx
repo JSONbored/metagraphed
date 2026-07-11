@@ -11,11 +11,16 @@ import {
   ArrowUpRight,
   Minus,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { safeExternalUrl } from "@/components/metagraphed/external-link";
-import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
-import { FreshnessIndicator } from "@/components/metagraphed/freshness";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  BrandIcon,
+  safeExternalUrl,
+  CurationChip,
+  HealthPill,
+  FreshnessIndicator,
+} from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import {

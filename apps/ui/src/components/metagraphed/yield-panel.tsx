@@ -7,11 +7,10 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { Sparkline } from "@/components/metagraphed/charts/sparkline";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
-import { TableState } from "@/components/metagraphed/table-state";
+import { TableState, YieldPercentileStrip, fmtYield } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
-import { YieldPercentileStrip } from "@/components/metagraphed/yield-percentile-strip";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import type { SubnetYieldNeuron, YieldHistoryPoint } from "@/lib/metagraphed/types";
 
@@ -19,7 +18,6 @@ type Win = "7d" | "30d" | "90d";
 const WINDOWS: Win[] = ["7d", "30d", "90d"];
 const TOP_N = 15;
 
-import { fmtYield } from "@/components/metagraphed/yield-format";
 function VsMedian({ vs }: { vs: SubnetYieldNeuron["vs_median"] }) {
   if (vs === "above")
     return (

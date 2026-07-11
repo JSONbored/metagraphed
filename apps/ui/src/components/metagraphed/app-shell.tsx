@@ -13,14 +13,20 @@ import {
 import { useApiBase } from "@/hooks/use-api-base";
 import { useEndpointHealth, type EndpointHealth } from "@/hooks/use-endpoint-health";
 import { NetworkSwitcher } from "./network-switcher";
-import { CopyableCode } from "./copyable-code";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+  CopyableCode,
+  safeExternalUrl,
+  DiscordIcon,
+  TimeAgo,
+  Wordmark,
+  BackToTop,
+} from "@jsonbored/ui-kit";
 import { SettingsPopover } from "./settings-popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
-import { safeExternalUrl } from "./external-link";
-import { DiscordIcon } from "./discord-icon";
-import { TimeAgo } from "./time-ago";
-import { Wordmark } from "./wordmark";
 import { freshnessQuery, buildQuery } from "@/lib/metagraphed/queries";
 import { NavMegaMenu, MobileMegaMenu } from "./nav-mega-menu";
 import { RegistryTicker } from "./registry-ticker";
@@ -31,7 +37,6 @@ import { ApiDrawer, ApiDrawerTrigger } from "./api-drawer";
 import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
 import { IncidentStrip } from "./incident-strip";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
-import { BackToTop } from "./back-to-top";
 
 // Brand links resolve from build-time env constants, but still run them through
 // the external-URL guard (with a known-good fallback) so a misconfigured

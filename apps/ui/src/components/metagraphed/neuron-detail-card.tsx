@@ -3,9 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { Coins, Flame, Award, Server, X } from "lucide-react";
 import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { TableState } from "@/components/metagraphed/table-state";
+import { TableState, DailyRollupFreshness } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
-import { DailyRollupFreshness } from "@/components/metagraphed/freshness";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
 

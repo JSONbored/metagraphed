@@ -8,8 +8,8 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  Kbd,
 } from "@jsonbored/ui-kit";
-import { Kbd } from "./kbd";
 import { classNames } from "@/lib/metagraphed/format";
 
 const GOTO: Array<{ keys: string; to: string; label: string }> = [

@@ -8,14 +8,16 @@ import { Suspense, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { ExternalLink } from "@/components/metagraphed/external-link";
+import {
+  CopyableCode,
+  ExternalLink,
+  SectionHeading,
+  TimeAgo,
+  AnimatedNumber,
+} from "@jsonbored/ui-kit";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
-import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import { healthQuery, globalIncidentsQuery, incidentsFeedQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";

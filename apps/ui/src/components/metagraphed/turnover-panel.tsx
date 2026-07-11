@@ -2,7 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { UserPlus, UserMinus, RefreshCw, Users, ShieldCheck } from "lucide-react";
 import { subnetTurnoverQuery } from "@/lib/metagraphed/queries";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { TableState } from "@/components/metagraphed/table-state";
+import { TableState } from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 function pctStr(v?: number | null): string {

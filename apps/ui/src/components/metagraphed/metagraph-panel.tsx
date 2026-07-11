@@ -4,9 +4,8 @@ import { Boxes, Layers, ShieldCheck } from "lucide-react";
 import { subnetMetagraphQuery } from "@/lib/metagraphed/queries";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { BarMini } from "@/components/metagraphed/charts/bar-mini";
-import { TableState } from "@/components/metagraphed/table-state";
+import { TableState, DailyRollupFreshness } from "@jsonbored/ui-kit";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
-import { DailyRollupFreshness } from "@/components/metagraphed/freshness";
 import { classNames } from "@/lib/metagraphed/format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 

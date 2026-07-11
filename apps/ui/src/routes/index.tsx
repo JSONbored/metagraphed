@@ -3,24 +3,27 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { ArrowUpRight, FileCode2 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AccentBand } from "@/components/metagraphed/accent-band";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
+import {
+  AccentBand,
+  BrandIcon,
+  TimeAgo,
+  CurationChip,
+  HealthPill,
+  AnimatedNumber,
+  CopyableCode,
+  InfoTooltip,
+  safeExternalUrl,
+  ScrollReveal,
+} from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { Sparkline, type SparklinePoint } from "@/components/metagraphed/charts/sparkline";
 import { SubnetPulseGrid } from "@/components/metagraphed/charts/subnet-pulse-grid";
-import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
-import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
 import { MoversBand } from "@/components/metagraphed/movers-band";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
-import { ScrollReveal } from "@/components/metagraphed/scroll-reveal";
 import { CoverageFunnel } from "@/components/metagraphed/analytics/coverage-funnel";
 import { NetworkPulseBand } from "@/components/metagraphed/analytics/network-pulse-band";
 import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";

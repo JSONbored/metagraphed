@@ -6,8 +6,7 @@ import {
   flattenSurfaceIncidents,
 } from "@/lib/metagraphed/queries";
 import { Skeleton } from "@/components/metagraphed/states";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@jsonbored/ui-kit";
+import { Tooltip, TooltipContent, TooltipTrigger, InfoTooltip } from "@jsonbored/ui-kit";
 
 interface Props {
   netuid: number;

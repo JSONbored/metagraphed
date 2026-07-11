@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Code2, ExternalLink as ExternalLinkIcon, Loader2, X } from "lucide-react";
+import { useApiSourceCtx, type ApiSource } from "@/lib/metagraphed/api-source-context";
+import { apiFetch } from "@/lib/metagraphed/client";
+import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
+import { API_BASE } from "@/lib/metagraphed/config";
 import {
   Sheet,
   SheetContent,
@@ -9,15 +13,11 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  CopyableCode,
+  Kbd,
+  safeExternalUrl,
 } from "@jsonbored/ui-kit";
-import { useApiSourceCtx, type ApiSource } from "@/lib/metagraphed/api-source-context";
-import { apiFetch } from "@/lib/metagraphed/client";
-import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
-import { API_BASE } from "@/lib/metagraphed/config";
-import { CopyableCode } from "./copyable-code";
-import { Kbd } from "./kbd";
 import { classNames } from "@/lib/metagraphed/format";
-import { safeExternalUrl } from "./external-link";
 
 /** Header trigger button. Hidden when no page has registered an API source. */
 export function ApiDrawerTrigger() {
