@@ -49,6 +49,20 @@ import {
   BLOCKS_SUMMARY_SCAN_CAP,
 } from "../src/blocks-summary.mjs";
 import { buildRuntimeVersionHistory } from "../src/runtime-versions.mjs";
+import {
+  buildConcentration,
+  buildChainConcentration,
+} from "../src/concentration.mjs";
+import { buildSubnetPerformance } from "../src/subnet-performance.mjs";
+import { buildChainPerformance } from "../src/chain-performance.mjs";
+import { buildChainYield } from "../src/chain-yield.mjs";
+import { buildSubnetYield } from "../src/subnet-yield.mjs";
+import { buildAccountPortfolio } from "../src/account-portfolio.mjs";
+import {
+  buildAccountsList,
+  DEFAULT_ACCOUNTS_LIST_SORT,
+  ACCOUNTS_LIST_LIMIT_DEFAULT,
+} from "../src/accounts-list.mjs";
 import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
 import {
   buildValidatorNominators,
@@ -2122,6 +2136,116 @@ export default {
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`;
           return json(buildValidatorDetail(rows, hotkey));
+        }
+
+        // GET /api/v1/subnets/:netuid/concentration (#4832 Tier 2): stake &
+        // emission decentralization for one subnet, mirroring
+        // src/concentration.mjs's the handler's own inline query (no shared
+        // loader -- this is one of the live-`neurons` routes, distinct from
+        // the neuron_daily-derived /concentration/history below).
+        const subnetConcentration = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/concentration$/,
+        );
+        if (subnetConcentration) {
+          const netuid = Number(subnetConcentration[1]);
+          const rows = await sql`
+          SELECT stake_tao, emission_tao, coldkey, validator_permit, captured_at
+          FROM neurons WHERE netuid = ${netuid}`;
+          return json(buildConcentration(rows, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/performance (#4832 Tier 2): reward-flow &
+        // trust-spread for one subnet, mirroring the handler's own inline query.
+        const subnetPerformance = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/performance$/,
+        );
+        if (subnetPerformance) {
+          const netuid = Number(subnetPerformance[1]);
+          const rows = await sql`
+          SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, captured_at
+          FROM neurons WHERE netuid = ${netuid}`;
+          return json(buildSubnetPerformance(rows, netuid));
+        }
+
+        // GET /api/v1/chain/concentration (#4832 Tier 2): network-wide stake &
+        // emission decentralization across every subnet's neurons, mirroring
+        // src/concentration.mjs's loadChainConcentration.
+        if (url.pathname === "/api/v1/chain/concentration") {
+          const rows = await sql`
+          SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
+          FROM neurons`;
+          return json(buildChainConcentration(rows));
+        }
+
+        // GET /api/v1/chain/performance (#4832 Tier 2): network-wide reward-flow
+        // & trust-spread, mirroring src/chain-performance.mjs's loadChainPerformance.
+        if (url.pathname === "/api/v1/chain/performance") {
+          const rows = await sql`
+          SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, netuid, captured_at
+          FROM neurons`;
+          return json(buildChainPerformance(rows));
+        }
+
+        // GET /api/v1/chain/yield (#4832 Tier 2): network-wide emission-yield
+        // distribution, mirroring src/chain-yield.mjs's loadChainYield.
+        if (url.pathname === "/api/v1/chain/yield") {
+          const rows = await sql`
+          SELECT validator_permit, stake_tao, emission_tao, netuid, captured_at
+          FROM neurons`;
+          return json(buildChainYield(rows));
+        }
+
+        // GET /api/v1/subnets/:netuid/yield (#4832 Tier 2): one subnet's
+        // emission-yield distribution, mirroring src/subnet-yield.mjs's
+        // loadSubnetYield.
+        const subnetYield = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/yield$/,
+        );
+        if (subnetYield) {
+          const netuid = Number(subnetYield[1]);
+          const rows = await sql`
+          SELECT uid, hotkey, validator_permit, stake_tao, emission_tao, captured_at, block_number
+          FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
+          return json(buildSubnetYield(rows, netuid));
+        }
+
+        // GET /api/v1/accounts/:ss58/portfolio (#4832 Tier 2): one wallet's
+        // cross-subnet neuron portfolio, mirroring
+        // src/account-portfolio.mjs's loadAccountPortfolio.
+        const acctPortfolio = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/portfolio$/,
+        );
+        if (acctPortfolio) {
+          const ss58 = decodeURIComponent(acctPortfolio[1]);
+          const rows = await sql`
+          SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
+          FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
+          return json(buildAccountPortfolio(rows, ss58));
+        }
+
+        // GET /api/v1/accounts?sort=&limit= (#4832 Tier 2): the global accounts
+        // leaderboard, mirroring src/accounts-list.mjs's loadAccountsList.
+        if (url.pathname === "/api/v1/accounts") {
+          const sortParam = url.searchParams.get("sort") || undefined;
+          // Number(null) is 0 (finite), not NaN -- an absent ?limit= must not
+          // silently clamp to a zero-row page. Only a genuinely PRESENT value
+          // reaches Number(); an absent/blank one falls back to the default,
+          // matching parseBoundedIntParam's contract (entities.mjs's D1 path).
+          const limitRaw = url.searchParams.get("limit");
+          const limit =
+            limitRaw == null || limitRaw === ""
+              ? ACCOUNTS_LIST_LIMIT_DEFAULT
+              : Number(limitRaw);
+          const rows = await sql`
+          SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
+          FROM neurons WHERE hotkey IS NOT NULL
+          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`;
+          return json(
+            buildAccountsList(rows, {
+              sort: sortParam ?? DEFAULT_ACCOUNTS_LIST_SORT,
+              limit,
+            }),
+          );
         }
 
         return json({ error: "not found" }, 404);

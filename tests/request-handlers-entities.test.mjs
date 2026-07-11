@@ -35,6 +35,11 @@ import {
   handleSubnetHyperparamsHistory,
   handleSubnetConcentration,
   handleSubnetPerformance,
+  handleChainConcentration,
+  handleChainPerformance,
+  handleChainYield,
+  handleAccountPortfolio,
+  handleAccountsList,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
   handleSubnetYieldHistory,
@@ -7828,6 +7833,308 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         req(`/api/v1/accounts/${SS58}/subnets`),
         env,
         SS58,
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  // #4832 Tier 2a: the 8 flat-`neurons` handlers (concentration, performance,
+  // yield, portfolio, accounts list) across the subnet/chain/account scopes.
+
+  test("handleSubnetConcentration: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", netuid: NETUID }),
+    };
+    const body = await json(
+      await handleSubnetConcentration(
+        req(`/api/v1/subnets/${NETUID}/concentration`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetConcentration: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleSubnetConcentration(
+        req(`/api/v1/subnets/${NETUID}/concentration`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleSubnetPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", netuid: NETUID }),
+    };
+    const body = await json(
+      await handleSubnetPerformance(
+        req(`/api/v1/subnets/${NETUID}/performance`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/performance`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetPerformance: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleSubnetPerformance(
+        req(`/api/v1/subnets/${NETUID}/performance`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/performance`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleSubnetYield: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", neurons: [] }),
+    };
+    const body = await json(
+      await handleSubnetYield(
+        req(`/api/v1/subnets/${NETUID}/yield`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/yield`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetYield: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleSubnetYield(
+        req(`/api/v1/subnets/${NETUID}/yield`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/yield`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleChainConcentration: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleChainConcentration(
+        req("/api/v1/chain/concentration"),
+        env,
+        url("/api/v1/chain/concentration"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainConcentration: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleChainConcentration(
+        req("/api/v1/chain/concentration"),
+        env,
+        url("/api/v1/chain/concentration"),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleChainPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleChainPerformance(
+        req("/api/v1/chain/performance"),
+        env,
+        url("/api/v1/chain/performance"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainPerformance: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleChainPerformance(
+        req("/api/v1/chain/performance"),
+        env,
+        url("/api/v1/chain/performance"),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleChainYield: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleChainYield(
+        req("/api/v1/chain/yield"),
+        env,
+        url("/api/v1/chain/yield"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainYield: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleChainYield(
+        req("/api/v1/chain/yield"),
+        env,
+        url("/api/v1/chain/yield"),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleAccountPortfolio: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", positions: [] }),
+    };
+    const body = await json(
+      await handleAccountPortfolio(
+        req(`/api/v1/accounts/${SS58}/portfolio`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPortfolio: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccountPortfolio(
+        req(`/api/v1/accounts/${SS58}/portfolio`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleAccountsList: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", accounts: [] }),
+    };
+    const body = await json(
+      await handleAccountsList(
+        req("/api/v1/accounts"),
+        env,
+        url("/api/v1/accounts"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountsList: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccountsList(
+        req("/api/v1/accounts"),
+        env,
+        url("/api/v1/accounts"),
       ),
     );
     assert.equal(body.data.marker, undefined);

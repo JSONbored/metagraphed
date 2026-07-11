@@ -546,7 +546,9 @@ export async function handleSubnetMetagraph(request, env, netuid, url) {
 export async function handleSubnetYield(request, env, netuid, url) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadSubnetYield(d1Runner(env), netuid);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadSubnetYield(d1Runner(env), netuid));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.neurons,
@@ -810,10 +812,12 @@ export function canonicalAccountsListCachePath(url, request = null) {
 export async function handleAccountsList(request, env, url) {
   const parsed = parseAccountsListQuery(url);
   if (parsed.error) return analyticsQueryError(parsed.error);
-  const data = await loadAccountsList(d1Runner(env), {
-    sort: parsed.sort,
-    limit: parsed.limit,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadAccountsList(d1Runner(env), {
+      sort: parsed.sort,
+      limit: parsed.limit,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.accounts,
@@ -1098,12 +1102,16 @@ export async function handleSubnetIdentityHistory(request, env, netuid, url) {
 export async function handleSubnetConcentration(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const rows = await d1All(
-    env,
-    `SELECT ${CONCENTRATION_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
-    [netuid],
-  );
-  const data = buildConcentration(rows, netuid);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildConcentration(
+      await d1All(
+        env,
+        `SELECT ${CONCENTRATION_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
+        [netuid],
+      ),
+      netuid,
+    );
   return envelopeResponse(
     request,
     {
@@ -1128,12 +1136,16 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
 export async function handleSubnetPerformance(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const rows = await d1All(
-    env,
-    `SELECT ${PERFORMANCE_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
-    [netuid],
-  );
-  const data = buildSubnetPerformance(rows, netuid);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildSubnetPerformance(
+      await d1All(
+        env,
+        `SELECT ${PERFORMANCE_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
+        [netuid],
+      ),
+      netuid,
+    );
   return envelopeResponse(
     request,
     {
@@ -1156,7 +1168,9 @@ export async function handleSubnetPerformance(request, env, netuid, url) {
 export async function handleChainConcentration(request, env, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadChainConcentration(d1Runner(env));
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadChainConcentration(d1Runner(env)));
   return envelopeResponse(
     request,
     {
@@ -1180,7 +1194,9 @@ export async function handleChainConcentration(request, env, url) {
 export async function handleChainPerformance(request, env, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadChainPerformance(d1Runner(env));
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadChainPerformance(d1Runner(env)));
   return envelopeResponse(
     request,
     {
@@ -1235,7 +1251,9 @@ export async function handleChainIdentityHistory(request, env, url) {
 export async function handleChainYield(request, env, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadChainYield(d1Runner(env));
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadChainYield(d1Runner(env)));
   return envelopeResponse(
     request,
     {
@@ -3120,7 +3138,9 @@ export async function handleAccountSubnets(request, env, ss58) {
 // (totals, counts, overall return, stake concentration), from the neurons D1
 // tier. Richer than /subnets (registration footprint only). Cold/absent → empty.
 export async function handleAccountPortfolio(request, env, ss58) {
-  const data = await loadAccountPortfolio(d1Runner(env), ss58);
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadAccountPortfolio(d1Runner(env), ss58));
   return accountEnvelopeResponse(
     request,
     {

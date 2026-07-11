@@ -1173,6 +1173,92 @@ test("GET /api/v1/validators/:hotkey resolves cross-subnet validator detail", as
   expect(queryText()).toMatch(/validator_permit = TRUE/);
 });
 
+// #4832 Tier 2: the live-`neurons` routes with no shared D1 loader (the
+// handler builds its own inline SELECT) or a loader this Worker mirrors
+// directly, matching the established metagraph/validators pattern above.
+
+test("GET /api/v1/subnets/:netuid/concentration shapes the live stake/emission distribution", async () => {
+  mockRows.current = [NEURON_ROW];
+  const res = await req("/api/v1/subnets/4/concentration");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(4);
+  expect(body.stake).not.toBeNull();
+  expect(queryText()).toContain("FROM neurons WHERE netuid =");
+});
+
+test("GET /api/v1/subnets/:netuid/performance shapes the live reward-flow distribution", async () => {
+  mockRows.current = [NEURON_ROW];
+  const res = await req("/api/v1/subnets/4/performance");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(4);
+  expect(queryText()).toContain("FROM neurons WHERE netuid =");
+});
+
+test("GET /api/v1/chain/concentration shapes the network-wide distribution across every subnet", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
+  const res = await req("/api/v1/chain/concentration");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+  expect(queryText()).toContain("FROM neurons");
+  expect(queryText()).not.toContain("WHERE netuid");
+});
+
+test("GET /api/v1/chain/performance shapes the network-wide reward-flow distribution", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
+  const res = await req("/api/v1/chain/performance");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/chain/yield shapes the network-wide emission-yield distribution", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
+  const res = await req("/api/v1/chain/yield");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+});
+
+test("GET /api/v1/subnets/:netuid/yield shapes one subnet's emission-yield distribution", async () => {
+  mockRows.current = [NEURON_ROW];
+  const res = await req("/api/v1/subnets/4/yield");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(4);
+  expect(body.neurons[0].hotkey).toBe("5Hot");
+  expect(queryText()).toContain("FROM neurons WHERE netuid =");
+});
+
+test("GET /api/v1/accounts/:ss58/portfolio shapes one wallet's cross-subnet neuron portfolio", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
+  const res = await req(`/api/v1/accounts/${SS58}/portfolio`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ss58).toBe(SS58);
+  expect(body.positions[0].netuid).toBe(4);
+  expect(queryText()).toContain("FROM neurons WHERE hotkey =");
+});
+
+test("GET /api/v1/accounts returns the global accounts leaderboard", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
+  const res = await req("/api/v1/accounts");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.accounts[0].hotkey).toBe("5Hot");
+  expect(queryText()).toContain("WHERE hotkey IS NOT NULL");
+});
+
+test("GET /api/v1/accounts respects an explicit sort/limit", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/accounts?sort=total_stake&limit=5");
+  const body = await res.json();
+  expect(body.sort).toBe("total_stake");
+  expect(body.limit).toBe(5);
+});
+
 // #4771: POST /api/v1/internal/neurons-sync -- the one write route in this
 // otherwise-read-only Worker (see workers/data-api.mjs's handleNeuronsSync).
 function neuronSyncRow(overrides = {}) {
