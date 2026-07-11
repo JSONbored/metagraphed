@@ -4,7 +4,7 @@ import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 
 interface Props {
   at?: string | null;
-  /** Stale threshold in ms (default 5 min). */
+  /** Stale threshold in ms (default 12h — see isStaleFreshness). */
   thresholdMs?: number;
   className?: string;
   /** Show the dot only, no relative text. */
