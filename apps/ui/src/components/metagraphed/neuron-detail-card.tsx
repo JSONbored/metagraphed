@@ -5,7 +5,7 @@ import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { TableState } from "@/components/metagraphed/table-state";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
-import { FreshnessIndicator } from "@/components/metagraphed/freshness";
+import { DailyRollupFreshness } from "@/components/metagraphed/freshness";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
 
@@ -65,11 +65,8 @@ export function NeuronDetailCard({
             </span>
           ) : null}
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Daily rollup
-            <FreshnessIndicator at={meta?.generated_at} />
-          </span>
+        <div className="ml-auto flex items-center gap-2">
+          <DailyRollupFreshness at={meta?.generated_at} />
           {onClose ? (
             <button
               type="button"

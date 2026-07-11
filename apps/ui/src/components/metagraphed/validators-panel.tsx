@@ -5,7 +5,7 @@ import { BarMini } from "@/components/metagraphed/charts/bar-mini";
 import { TreemapMini, type TreemapMiniDatum } from "@/components/metagraphed/charts/treemap-mini";
 import { TableState } from "@/components/metagraphed/table-state";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
-import { FreshnessIndicator } from "@/components/metagraphed/freshness";
+import { DailyRollupFreshness } from "@/components/metagraphed/freshness";
 
 const TOP_N = 10;
 
@@ -60,27 +60,22 @@ export function ValidatorsTableLoader({
     );
   }
 
-  const freshness = (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-      Daily rollup
-      <FreshnessIndicator at={meta?.generated_at} />
-    </span>
-  );
+  const freshness = <DailyRollupFreshness at={meta?.generated_at} />;
 
   return (
     <div className="space-y-4">
       {stakeBars.length > 0 ? (
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
               Validator stake · top {stakeBars.length}
             </span>
-            <div className="flex flex-col items-end gap-1">
+            <span className="ml-auto flex items-center gap-2">
               <span className="font-mono text-[10px] text-ink-muted">
                 peak {taoCompact(stakeBars[0]?.value)} τ
               </span>
               {freshness}
-            </div>
+            </span>
           </div>
           <BarMini data={stakeBars} />
           {stakeTiles.length > 1 ? (

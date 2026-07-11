@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { classNames, formatRelative, isStaleFreshness } from "@/lib/metagraphed/format";
+import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 
 interface Props {
   at?: string | null;
@@ -41,6 +42,29 @@ export function FreshnessIndicator({ at, thresholdMs, className, dotOnly }: Prop
           {rel}
         </span>
       ) : null}
+    </span>
+  );
+}
+
+/**
+ * Minimal daily-rollup freshness signal — a staleness dot plus an info icon
+ * whose tooltip carries the tier + relative time, instead of always-visible
+ * text. Keeps section headers short on narrow viewports; the full context
+ * ("Daily rollup snapshot — updated 2h ago") is one hover/tap away.
+ */
+export function DailyRollupFreshness({
+  at,
+  className,
+}: {
+  at?: string | null;
+  className?: string;
+}) {
+  const label =
+    at == null ? "No freshness data" : `Daily rollup snapshot — updated ${formatRelative(at)}`;
+  return (
+    <span className={classNames("inline-flex items-center gap-1", className)}>
+      <FreshnessIndicator at={at} dotOnly />
+      <InfoTooltip label={label} />
     </span>
   );
 }
