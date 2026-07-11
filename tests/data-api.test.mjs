@@ -1259,6 +1259,407 @@ test("GET /api/v1/accounts respects an explicit sort/limit", async () => {
   expect(body.limit).toBe(5);
 });
 
+// #4832 Tier 2b: the neuron_daily-history routes -- structural history,
+// concentration/performance/yield history, and chain/subnet turnover + movers
+// (the boundary-snapshot routes translate SQLite's date(MAX(snapshot_date),
+// '-N days') to Postgres's native `MAX(snapshot_date) - N::int`).
+
+test("GET /api/v1/validators/:hotkey/history shapes the validator's cross-subnet daily trend", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-07-01",
+      subnet_count: "2",
+      total_stake_tao: "10",
+      total_emission_tao: "1",
+    },
+  ];
+  const res = await req(`/api/v1/validators/${SS58}/history`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.hotkey).toBe(SS58);
+  expect(body.points[0].snapshot_date).toBe("2026-07-01");
+  expect(queryText()).toContain("FROM neuron_daily");
+  expect(queryText()).toContain("validator_permit = TRUE");
+});
+
+test("GET /api/v1/subnets/:netuid/neurons/:uid/history shapes the per-UID daily snapshot trend", async () => {
+  mockRows.current = [{ ...NEURON_ROW, snapshot_date: "2026-07-01" }];
+  const res = await req("/api/v1/subnets/7/neurons/3/history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.uid).toBe(3);
+  expect(body.points[0].snapshot_date).toBe("2026-07-01");
+  expect(queryText()).toContain("FROM neuron_daily");
+  expect(queryText()).toContain("WHERE netuid =");
+});
+
+test("GET /api/v1/subnets/:netuid/history shapes the daily neuron/validator/stake trend", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-07-01",
+      neuron_count: "5",
+      validator_count: "2",
+      total_stake_tao: "10",
+      total_emission_tao: "1",
+    },
+  ];
+  const res = await req("/api/v1/subnets/7/history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.points[0].neuron_count).toBe(5);
+  expect(queryText()).toContain("SUM(validator_permit::int)");
+});
+
+test("GET /api/v1/subnets/:netuid/concentration/history shapes the per-day concentration trend", async () => {
+  mockRows.current = [
+    { snapshot_date: "2026-07-01", stake_tao: "10", emission_tao: "1" },
+  ];
+  const res = await req("/api/v1/subnets/7/concentration/history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.points[0].snapshot_date).toBe("2026-07-01");
+  expect(queryText()).toContain("FROM neuron_daily");
+});
+
+test("GET /api/v1/subnets/:netuid/performance/history shapes the per-day reward-flow trend", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-07-01",
+      incentive: "0.5",
+      dividends: "0.3",
+      trust: "0.9",
+      consensus: "0.8",
+      validator_permit: true,
+      active: true,
+    },
+  ];
+  const res = await req("/api/v1/subnets/7/performance/history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.points[0].snapshot_date).toBe("2026-07-01");
+});
+
+test("GET /api/v1/subnets/:netuid/yield/history shapes the per-day yield trend", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-07-01",
+      validator_permit: true,
+      stake_tao: "10",
+      emission_tao: "1",
+    },
+  ];
+  const res = await req("/api/v1/subnets/7/yield/history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.points[0].snapshot_date).toBe("2026-07-01");
+});
+
+test("GET /api/v1/chain/turnover shapes network-wide validator-set churn between boundary snapshots", async () => {
+  // Queue slot 0 is the unconditional `SET statement_timeout` call, slot 1 the
+  // MIN/MAX boundary-date bounds query, slot 2 the two boundary snapshots' rows.
+  mockQueue.current = [
+    [],
+    [{ start_date: "2026-06-01", end_date: "2026-07-01" }],
+    [
+      {
+        snapshot_date: "2026-06-01",
+        netuid: 7,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+      {
+        snapshot_date: "2026-07-01",
+        netuid: 7,
+        hotkey: "5Hot2",
+        validator_permit: true,
+      },
+    ],
+  ];
+  const res = await req("/api/v1/chain/turnover");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.comparable).toBe(true);
+  expect(body.start_date).toBe("2026-06-01");
+  expect(body.end_date).toBe("2026-07-01");
+  expect(queryText()).toContain("MAX(snapshot_date)");
+});
+
+test("GET /api/v1/subnets/:netuid/turnover shapes one subnet's validator-set churn", async () => {
+  mockQueue.current = [
+    [],
+    [{ start_date: "2026-06-01", end_date: "2026-07-01" }],
+    [
+      {
+        snapshot_date: "2026-06-01",
+        uid: 3,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+      {
+        snapshot_date: "2026-07-01",
+        uid: 3,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+    ],
+  ];
+  const res = await req("/api/v1/subnets/7/turnover");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(7);
+  expect(body.comparable).toBe(true);
+});
+
+test("GET /api/v1/subnets/:netuid/turnover?changes=true includes the entered/exited detail", async () => {
+  mockQueue.current = [
+    [],
+    [{ start_date: "2026-06-01", end_date: "2026-07-01" }],
+    [
+      {
+        snapshot_date: "2026-06-01",
+        uid: 3,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+      {
+        snapshot_date: "2026-07-01",
+        uid: 4,
+        hotkey: "5Hot2",
+        validator_permit: true,
+      },
+    ],
+  ];
+  const res = await req("/api/v1/subnets/7/turnover?changes=true");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.changes).toBeDefined();
+  expect(Array.isArray(body.changes.validators_entered)).toBe(true);
+});
+
+test("GET /api/v1/subnets/movers shapes every subnet ranked by its stake/emission/validator change", async () => {
+  mockQueue.current = [
+    [],
+    [{ start_date: "2026-06-01", end_date: "2026-07-01" }],
+    [
+      {
+        netuid: 7,
+        snapshot_date: "2026-06-01",
+        neuron_count: "5",
+        validator_count: "2",
+        total_stake_tao: "10",
+        total_emission_tao: "1",
+      },
+      {
+        netuid: 7,
+        snapshot_date: "2026-07-01",
+        neuron_count: "6",
+        validator_count: "3",
+        total_stake_tao: "20",
+        total_emission_tao: "2",
+      },
+    ],
+  ];
+  const res = await req("/api/v1/subnets/movers");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(1);
+  expect(body.movers[0].netuid).toBe(7);
+  expect(queryText()).toContain("SUM(validator_permit::int)");
+});
+
+test("GET /api/v1/validators/:hotkey/history falls back to the default window on an unrecognized value", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-07-01",
+      subnet_count: "1",
+      total_stake_tao: "5",
+      total_emission_tao: "0.5",
+    },
+  ];
+  const res = await req(`/api/v1/validators/${SS58}/history?window=bogus`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("30d");
+  expect(queryText()).toContain("snapshot_date >=");
+});
+
+test("GET /api/v1/validators/:hotkey/history?window=all skips the snapshot_date cutoff", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-01-01",
+      subnet_count: "1",
+      total_stake_tao: "5",
+      total_emission_tao: "0.5",
+    },
+  ];
+  const res = await req(`/api/v1/validators/${SS58}/history?window=all`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("all");
+  expect(queryText()).not.toContain("snapshot_date >=");
+});
+
+test("GET /api/v1/subnets/:netuid/neurons/:uid/history?window=all skips the snapshot_date cutoff", async () => {
+  mockRows.current = [{ ...NEURON_ROW, snapshot_date: "2026-01-01" }];
+  const res = await req("/api/v1/subnets/7/neurons/3/history?window=all");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("all");
+  expect(queryText()).not.toContain("snapshot_date >=");
+});
+
+test("GET /api/v1/subnets/:netuid/history?window=all skips the snapshot_date cutoff", async () => {
+  mockRows.current = [
+    {
+      snapshot_date: "2026-01-01",
+      neuron_count: "5",
+      validator_count: "2",
+      total_stake_tao: "10",
+      total_emission_tao: "1",
+    },
+  ];
+  const res = await req("/api/v1/subnets/7/history?window=all");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("all");
+  expect(queryText()).not.toContain("snapshot_date >=");
+});
+
+test("GET /api/v1/chain/turnover falls back on an unrecognized window and respects an explicit limit", async () => {
+  mockQueue.current = [
+    [],
+    [{ start_date: "2026-06-01", end_date: "2026-07-01" }],
+    [
+      {
+        snapshot_date: "2026-06-01",
+        netuid: 7,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+      {
+        snapshot_date: "2026-07-01",
+        netuid: 7,
+        hotkey: "5Hot2",
+        validator_permit: true,
+      },
+    ],
+  ];
+  const res = await req("/api/v1/chain/turnover?window=bogus&limit=5");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("30d");
+});
+
+test("GET /api/v1/chain/turnover reports comparable:false on a cold store (no boundary snapshots)", async () => {
+  mockQueue.current = [[], []];
+  const res = await req("/api/v1/chain/turnover");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.comparable).toBe(false);
+  expect(body.start_date).toBeNull();
+});
+
+test("GET /api/v1/subnets/:netuid/turnover falls back on an unrecognized window", async () => {
+  mockQueue.current = [
+    [],
+    [{ start_date: "2026-06-01", end_date: "2026-07-01" }],
+    [
+      {
+        snapshot_date: "2026-06-01",
+        uid: 3,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+      {
+        snapshot_date: "2026-07-01",
+        uid: 3,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+    ],
+  ];
+  const res = await req("/api/v1/subnets/7/turnover?window=bogus");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("30d");
+});
+
+test("GET /api/v1/subnets/:netuid/turnover?window=all skips the newest-snapshot anchor", async () => {
+  mockQueue.current = [
+    [],
+    [{ start_date: "2026-01-01", end_date: "2026-07-01" }],
+    [
+      {
+        snapshot_date: "2026-01-01",
+        uid: 3,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+      {
+        snapshot_date: "2026-07-01",
+        uid: 3,
+        hotkey: "5Hot",
+        validator_permit: true,
+      },
+    ],
+  ];
+  const res = await req("/api/v1/subnets/7/turnover?window=all");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("all");
+  expect(queryText()).not.toContain("MAX(snapshot_date) -");
+});
+
+test("GET /api/v1/subnets/:netuid/turnover reports comparable:false on a cold store (no boundary snapshots)", async () => {
+  mockQueue.current = [[], []];
+  const res = await req("/api/v1/subnets/7/turnover");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.comparable).toBe(false);
+});
+
+test("GET /api/v1/subnets/movers falls back on an unrecognized window and respects an explicit limit", async () => {
+  mockQueue.current = [
+    [],
+    [{ start_date: "2026-06-01", end_date: "2026-07-01" }],
+    [
+      {
+        netuid: 7,
+        snapshot_date: "2026-06-01",
+        neuron_count: "5",
+        validator_count: "2",
+        total_stake_tao: "10",
+        total_emission_tao: "1",
+      },
+      {
+        netuid: 7,
+        snapshot_date: "2026-07-01",
+        neuron_count: "6",
+        validator_count: "3",
+        total_stake_tao: "20",
+        total_emission_tao: "2",
+      },
+    ],
+  ];
+  const res = await req("/api/v1/subnets/movers?window=bogus&limit=5");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("30d");
+});
+
+test("GET /api/v1/subnets/movers reports subnet_count:0 on a cold store (no boundary snapshots)", async () => {
+  mockQueue.current = [[], []];
+  const res = await req("/api/v1/subnets/movers");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_count).toBe(0);
+});
+
 // #4771: POST /api/v1/internal/neurons-sync -- the one write route in this
 // otherwise-read-only Worker (see workers/data-api.mjs's handleNeuronsSync).
 function neuronSyncRow(overrides = {}) {

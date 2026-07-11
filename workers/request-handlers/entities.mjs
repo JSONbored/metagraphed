@@ -965,8 +965,11 @@ export async function handleValidatorHistory(request, env, hotkey, url) {
   }
   sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
   params.push(MAX_HISTORY_POINTS);
-  const rows = await d1All(env, sql, params);
-  const data = buildValidatorHistory(rows, hotkey, { window: label });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildValidatorHistory(await d1All(env, sql, params), hotkey, {
+      window: label,
+    });
   return envelopeResponse(
     request,
     {
@@ -1006,8 +1009,11 @@ export async function handleNeuronHistory(request, env, netuid, uid, url) {
   }
   sql += " ORDER BY snapshot_date DESC LIMIT ?";
   params.push(MAX_HISTORY_POINTS);
-  const rows = await d1All(env, sql, params);
-  const data = buildNeuronHistory(rows, netuid, uid, { window: label });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildNeuronHistory(await d1All(env, sql, params), netuid, uid, {
+      window: label,
+    });
   return envelopeResponse(
     request,
     {
@@ -1047,8 +1053,11 @@ export async function handleSubnetHistory(request, env, netuid, url) {
   }
   sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
   params.push(MAX_HISTORY_POINTS);
-  const rows = await d1All(env, sql, params);
-  const data = buildSubnetHistory(rows, netuid, { window: label });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    buildSubnetHistory(await d1All(env, sql, params), netuid, {
+      window: label,
+    });
   return envelopeResponse(
     request,
     {
@@ -1464,10 +1473,12 @@ export async function handleChainTurnover(request, env, url) {
     max: CHAIN_TURNOVER_LIMIT_MAX,
   });
   if (limit.error) return analyticsQueryError(limit.error);
-  const data = await loadChainTurnover(d1Runner(env), {
-    windowLabel: windowParam,
-    limit: limit.value,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadChainTurnover(d1Runner(env), {
+      windowLabel: windowParam,
+      limit: limit.value,
+    }));
   // CSV exports the row-shaped per-subnet churn leaderboard; the network rollup +
   // stability distribution stay JSON-only (mirrors the chain-analytics exports).
   if (csvRequested(url, request)) {
@@ -1548,15 +1559,20 @@ export async function handleSubnetConcentrationHistory(
   const cutoff = new Date(Date.now() - days * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const rows = await d1All(
-    env,
-    "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
-    [netuid, cutoff, CONCENTRATION_HISTORY_ROW_CAP],
-  );
-  const data = buildConcentrationHistory(rows, netuid, {
-    window: label,
-    capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
-  });
+  async function fromD1() {
+    const rows = await d1All(
+      env,
+      "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
+      [netuid, cutoff, CONCENTRATION_HISTORY_ROW_CAP],
+    );
+    return buildConcentrationHistory(rows, netuid, {
+      window: label,
+      capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+    });
+  }
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await fromD1());
   if (csvRequested(url, request)) {
     const points = [...data.points].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
@@ -1605,15 +1621,20 @@ export async function handleSubnetPerformanceHistory(
   const cutoff = new Date(Date.now() - days * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const rows = await d1All(
-    env,
-    `SELECT ${PERFORMANCE_HISTORY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?`,
-    [netuid, cutoff, PERFORMANCE_HISTORY_ROW_CAP],
-  );
-  const data = buildSubnetPerformanceHistory(rows, netuid, {
-    window: label,
-    capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
-  });
+  async function fromD1() {
+    const rows = await d1All(
+      env,
+      `SELECT ${PERFORMANCE_HISTORY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?`,
+      [netuid, cutoff, PERFORMANCE_HISTORY_ROW_CAP],
+    );
+    return buildSubnetPerformanceHistory(rows, netuid, {
+      window: label,
+      capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
+    });
+  }
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await fromD1());
   return envelopeResponse(
     request,
     {
@@ -1647,15 +1668,20 @@ export async function handleSubnetYieldHistory(request, env, netuid, url) {
   const cutoff = new Date(Date.now() - days * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const rows = await d1All(
-    env,
-    `SELECT ${YIELD_HISTORY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?`,
-    [netuid, cutoff, YIELD_HISTORY_ROW_CAP],
-  );
-  const data = buildSubnetYieldHistory(rows, netuid, {
-    window: label,
-    capped: rows.length >= YIELD_HISTORY_ROW_CAP,
-  });
+  async function fromD1() {
+    const rows = await d1All(
+      env,
+      `SELECT ${YIELD_HISTORY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?`,
+      [netuid, cutoff, YIELD_HISTORY_ROW_CAP],
+    );
+    return buildSubnetYieldHistory(rows, netuid, {
+      window: label,
+      capped: rows.length >= YIELD_HISTORY_ROW_CAP,
+    });
+  }
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await fromD1());
   if (csvRequested(url, request)) {
     const points = [...data.points].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
@@ -1701,11 +1727,13 @@ export async function handleSubnetTurnover(request, env, netuid, url) {
       message: `"${changes}" is not a valid changes flag. Supported: true.`,
     });
   }
-  const data = await loadSubnetTurnover(d1Runner(env), netuid, {
-    windowLabel: label,
-    windowDays: days,
-    includeChanges: changes === "true",
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadSubnetTurnover(d1Runner(env), netuid, {
+      windowLabel: label,
+      windowDays: days,
+      includeChanges: changes === "true",
+    }));
   return envelopeResponse(
     request,
     {
@@ -2336,11 +2364,13 @@ export async function handleSubnetMovers(request, env, url) {
     max: MOVERS_LIMIT_MAX,
   });
   if (limit.error) return analyticsQueryError(limit.error);
-  const data = await loadSubnetMovers(d1Runner(env), {
-    windowLabel: windowParam,
-    sort: sortParam,
-    limit: limit.value,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    (await loadSubnetMovers(d1Runner(env), {
+      windowLabel: windowParam,
+      sort: sortParam,
+      limit: limit.value,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.movers,

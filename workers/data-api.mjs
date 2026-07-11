@@ -52,12 +52,54 @@ import { buildRuntimeVersionHistory } from "../src/runtime-versions.mjs";
 import {
   buildConcentration,
   buildChainConcentration,
+  buildConcentrationHistory,
+  CONCENTRATION_HISTORY_ROW_CAP,
+  CONCENTRATION_HISTORY_WINDOWS,
+  DEFAULT_CONCENTRATION_HISTORY_WINDOW,
 } from "../src/concentration.mjs";
-import { buildSubnetPerformance } from "../src/subnet-performance.mjs";
+import {
+  buildSubnetPerformance,
+  buildSubnetPerformanceHistory,
+  PERFORMANCE_HISTORY_ROW_CAP,
+  PERFORMANCE_HISTORY_WINDOWS,
+  DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+} from "../src/subnet-performance.mjs";
 import { buildChainPerformance } from "../src/chain-performance.mjs";
 import { buildChainYield } from "../src/chain-yield.mjs";
-import { buildSubnetYield } from "../src/subnet-yield.mjs";
+import {
+  buildSubnetYield,
+  buildSubnetYieldHistory,
+  YIELD_HISTORY_ROW_CAP,
+  YIELD_HISTORY_WINDOWS,
+  DEFAULT_YIELD_HISTORY_WINDOW,
+} from "../src/subnet-yield.mjs";
 import { buildAccountPortfolio } from "../src/account-portfolio.mjs";
+import {
+  buildNeuronHistory,
+  buildSubnetHistory,
+  HISTORY_WINDOWS,
+  DEFAULT_HISTORY_WINDOW,
+  MAX_HISTORY_POINTS,
+} from "../src/neuron-history.mjs";
+import { buildValidatorHistory } from "../src/validator-history.mjs";
+import {
+  buildTurnover,
+  buildTurnoverChanges,
+  turnoverChangeDetail,
+} from "../src/turnover.mjs";
+import {
+  buildChainTurnover,
+  CHAIN_TURNOVER_WINDOWS,
+  DEFAULT_CHAIN_TURNOVER_WINDOW,
+  CHAIN_TURNOVER_LIMIT_DEFAULT,
+} from "../src/chain-turnover.mjs";
+import {
+  buildMovers,
+  MOVERS_WINDOWS,
+  DEFAULT_MOVERS_WINDOW,
+  DEFAULT_MOVERS_SORT,
+  MOVERS_LIMIT_DEFAULT,
+} from "../src/movers.mjs";
 import {
   buildAccountsList,
   DEFAULT_ACCOUNTS_LIST_SORT,
@@ -193,6 +235,21 @@ function windowCutoff(url, windows, defaultLabel) {
 function windowLabelFor(url, windows, defaultLabel) {
   const label = url.searchParams.get("window") || defaultLabel;
   return Object.hasOwn(windows, label) ? label : defaultLabel;
+}
+
+// Resolve a ?window= label to a YYYY-MM-DD cutoff date for a neuron_daily
+// `snapshot_date` (a native DATE column, not an epoch-ms timestamp), matching
+// the D1 loaders' `new Date(Date.now() - days*DAY_MS).toISOString().slice(0,10)`
+// exactly. A `null` day value (e.g. HISTORY_WINDOWS.all) means no lower bound.
+function windowCutoffDate(url, windows, defaultLabel) {
+  const label = url.searchParams.get("window") || defaultLabel;
+  const days = Object.hasOwn(windows, label)
+    ? windows[label]
+    : windows[defaultLabel];
+  if (days == null) return null;
+  return new Date(Date.now() - days * ANALYTICS_DAY_MS)
+    .toISOString()
+    .slice(0, 10);
 }
 
 // The newest `last_observed` epoch-ms across a row set, as an ISO string (or
@@ -2243,6 +2300,347 @@ export default {
           return json(
             buildAccountsList(rows, {
               sort: sortParam ?? DEFAULT_ACCOUNTS_LIST_SORT,
+              limit,
+            }),
+          );
+        }
+
+        // GET /api/v1/validators/:hotkey/history?window= (#4832 Tier 2b): one
+        // validator's staked-subnet-count + stake/emission totals over time,
+        // mirroring src/validator-history.mjs's buildValidatorHistory.
+        const validatorHistoryMatch = url.pathname.match(
+          /^\/api\/v1\/validators\/([^/]+)\/history$/,
+        );
+        if (validatorHistoryMatch) {
+          const hotkey = decodeURIComponent(validatorHistoryMatch[1]);
+          const cutoff = windowCutoffDate(
+            url,
+            HISTORY_WINDOWS,
+            DEFAULT_HISTORY_WINDOW,
+          );
+          const rows = cutoff
+            ? await sql`
+            SELECT snapshot_date::text AS snapshot_date, COUNT(DISTINCT netuid) AS subnet_count,
+              SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
+            FROM neuron_daily
+            WHERE hotkey = ${hotkey} AND validator_permit = TRUE AND snapshot_date >= ${cutoff}
+            GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+            : await sql`
+            SELECT snapshot_date::text AS snapshot_date, COUNT(DISTINCT netuid) AS subnet_count,
+              SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
+            FROM neuron_daily
+            WHERE hotkey = ${hotkey} AND validator_permit = TRUE
+            GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+          return json(
+            buildValidatorHistory(rows, hotkey, {
+              window: windowLabelFor(
+                url,
+                HISTORY_WINDOWS,
+                DEFAULT_HISTORY_WINDOW,
+              ),
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/neurons/:uid/history?window= (#4832
+        // Tier 2b): one UID's daily metagraph snapshot over time, mirroring
+        // src/neuron-history.mjs's buildNeuronHistory.
+        const neuronHistoryMatch = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/,
+        );
+        if (neuronHistoryMatch) {
+          const netuid = Number(neuronHistoryMatch[1]);
+          const uid = Number(neuronHistoryMatch[2]);
+          const cutoff = windowCutoffDate(
+            url,
+            HISTORY_WINDOWS,
+            DEFAULT_HISTORY_WINDOW,
+          );
+          const rows = cutoff
+            ? await sql`
+            SELECT snapshot_date::text AS snapshot_date, uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+            FROM neuron_daily
+            WHERE netuid = ${netuid} AND uid = ${uid} AND snapshot_date >= ${cutoff}
+            ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+            : await sql`
+            SELECT snapshot_date::text AS snapshot_date, uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+            FROM neuron_daily
+            WHERE netuid = ${netuid} AND uid = ${uid}
+            ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+          return json(
+            buildNeuronHistory(rows, netuid, uid, {
+              window: windowLabelFor(
+                url,
+                HISTORY_WINDOWS,
+                DEFAULT_HISTORY_WINDOW,
+              ),
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/history?window= (#4832 Tier 2b): daily
+        // neuron/validator counts + stake/emission totals for one subnet,
+        // mirroring src/neuron-history.mjs's buildSubnetHistory.
+        const subnetHistoryMatch = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/history$/,
+        );
+        if (subnetHistoryMatch) {
+          const netuid = Number(subnetHistoryMatch[1]);
+          const cutoff = windowCutoffDate(
+            url,
+            HISTORY_WINDOWS,
+            DEFAULT_HISTORY_WINDOW,
+          );
+          // validator_permit is BOOLEAN in Postgres (INTEGER 0/1 in D1/SQLite) --
+          // SUM() over a boolean is a Postgres type error, so cast to int first.
+          const rows = cutoff
+            ? await sql`
+            SELECT snapshot_date::text AS snapshot_date, COUNT(*) AS neuron_count,
+              SUM(validator_permit::int) AS validator_count,
+              SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
+            FROM neuron_daily
+            WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+            GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+            : await sql`
+            SELECT snapshot_date::text AS snapshot_date, COUNT(*) AS neuron_count,
+              SUM(validator_permit::int) AS validator_count,
+              SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
+            FROM neuron_daily
+            WHERE netuid = ${netuid}
+            GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+          return json(
+            buildSubnetHistory(rows, netuid, {
+              window: windowLabelFor(
+                url,
+                HISTORY_WINDOWS,
+                DEFAULT_HISTORY_WINDOW,
+              ),
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/concentration/history?window= (#4832
+        // Tier 2b): per-day stake & emission concentration trend, mirroring
+        // src/concentration.mjs's buildConcentrationHistory.
+        const concentrationHistoryMatch = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/,
+        );
+        if (concentrationHistoryMatch) {
+          const netuid = Number(concentrationHistoryMatch[1]);
+          const cutoff = windowCutoffDate(
+            url,
+            CONCENTRATION_HISTORY_WINDOWS,
+            DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+          );
+          const rows = await sql`
+          SELECT snapshot_date::text AS snapshot_date, stake_tao, emission_tao
+          FROM neuron_daily
+          WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+          ORDER BY snapshot_date DESC LIMIT ${CONCENTRATION_HISTORY_ROW_CAP}`;
+          return json(
+            buildConcentrationHistory(rows, netuid, {
+              window: windowLabelFor(
+                url,
+                CONCENTRATION_HISTORY_WINDOWS,
+                DEFAULT_CONCENTRATION_HISTORY_WINDOW,
+              ),
+              capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/performance/history?window= (#4832
+        // Tier 2b): per-day reward-flow & trust trend, mirroring
+        // src/subnet-performance.mjs's buildSubnetPerformanceHistory.
+        const performanceHistoryMatch = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/performance\/history$/,
+        );
+        if (performanceHistoryMatch) {
+          const netuid = Number(performanceHistoryMatch[1]);
+          const cutoff = windowCutoffDate(
+            url,
+            PERFORMANCE_HISTORY_WINDOWS,
+            DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+          );
+          const rows = await sql`
+          SELECT snapshot_date::text AS snapshot_date, incentive, dividends, trust, consensus, validator_permit, active
+          FROM neuron_daily
+          WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+          ORDER BY snapshot_date DESC LIMIT ${PERFORMANCE_HISTORY_ROW_CAP}`;
+          return json(
+            buildSubnetPerformanceHistory(rows, netuid, {
+              window: windowLabelFor(
+                url,
+                PERFORMANCE_HISTORY_WINDOWS,
+                DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+              ),
+              capped: rows.length >= PERFORMANCE_HISTORY_ROW_CAP,
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/yield/history?window= (#4832 Tier 2b):
+        // per-day emission-yield distribution trend, mirroring
+        // src/subnet-yield.mjs's buildSubnetYieldHistory.
+        const yieldHistoryMatch = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/yield\/history$/,
+        );
+        if (yieldHistoryMatch) {
+          const netuid = Number(yieldHistoryMatch[1]);
+          const cutoff = windowCutoffDate(
+            url,
+            YIELD_HISTORY_WINDOWS,
+            DEFAULT_YIELD_HISTORY_WINDOW,
+          );
+          const rows = await sql`
+          SELECT snapshot_date::text AS snapshot_date, validator_permit, stake_tao, emission_tao
+          FROM neuron_daily
+          WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
+          ORDER BY snapshot_date DESC LIMIT ${YIELD_HISTORY_ROW_CAP}`;
+          return json(
+            buildSubnetYieldHistory(rows, netuid, {
+              window: windowLabelFor(
+                url,
+                YIELD_HISTORY_WINDOWS,
+                DEFAULT_YIELD_HISTORY_WINDOW,
+              ),
+              capped: rows.length >= YIELD_HISTORY_ROW_CAP,
+            }),
+          );
+        }
+
+        // GET /api/v1/chain/turnover?window=&limit= (#4832 Tier 2b):
+        // network-wide validator-set turnover across every subnet between the
+        // window's boundary snapshots, mirroring
+        // src/chain-turnover.mjs's loadChainTurnover.
+        if (url.pathname === "/api/v1/chain/turnover") {
+          const windowParam =
+            url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
+          const windowLabel = Object.hasOwn(CHAIN_TURNOVER_WINDOWS, windowParam)
+            ? windowParam
+            : DEFAULT_CHAIN_TURNOVER_WINDOW;
+          const days = CHAIN_TURNOVER_WINDOWS[windowLabel];
+          const limitRaw = url.searchParams.get("limit");
+          const limit =
+            limitRaw == null || limitRaw === ""
+              ? CHAIN_TURNOVER_LIMIT_DEFAULT
+              : Number(limitRaw);
+          // Anchor the window to the newest STORED snapshot (not the Worker's
+          // wall clock) -- native DATE minus an integer day count is Postgres's
+          // direct equivalent of SQLite's date(MAX(snapshot_date), '-N days').
+          const bounds = await sql`
+          SELECT MIN(snapshot_date)::text AS start_date, MAX(snapshot_date)::text AS end_date
+          FROM neuron_daily
+          WHERE snapshot_date >= (SELECT MAX(snapshot_date) - ${days}::int FROM neuron_daily)`;
+          const startDate = bounds[0]?.start_date ?? null;
+          const endDate = bounds[0]?.end_date ?? null;
+          let rows = [];
+          if (startDate != null && endDate != null && startDate !== endDate) {
+            rows = await sql`
+            SELECT snapshot_date::text AS snapshot_date, netuid, hotkey, validator_permit
+            FROM neuron_daily
+            WHERE validator_permit = TRUE AND snapshot_date IN (${startDate}, ${endDate})`;
+          }
+          return json(
+            buildChainTurnover(rows, {
+              window: windowLabel,
+              startDate,
+              endDate,
+              limit,
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/turnover?window=&changes= (#4832 Tier
+        // 2b): validator-set & registration churn between one subnet's window
+        // boundary snapshots, mirroring src/turnover.mjs's loadSubnetTurnover.
+        const turnoverMatch = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/turnover$/,
+        );
+        if (turnoverMatch) {
+          const netuid = Number(turnoverMatch[1]);
+          const windowParam =
+            url.searchParams.get("window") || DEFAULT_HISTORY_WINDOW;
+          const windowLabel = Object.hasOwn(HISTORY_WINDOWS, windowParam)
+            ? windowParam
+            : DEFAULT_HISTORY_WINDOW;
+          const windowDays = HISTORY_WINDOWS[windowLabel];
+          const includeChanges = url.searchParams.get("changes") === "true";
+          const bounds =
+            windowDays == null
+              ? await sql`
+              SELECT MIN(snapshot_date)::text AS start_date, MAX(snapshot_date)::text AS end_date
+              FROM neuron_daily WHERE netuid = ${netuid}`
+              : await sql`
+              SELECT MIN(snapshot_date)::text AS start_date, MAX(snapshot_date)::text AS end_date
+              FROM neuron_daily
+              WHERE netuid = ${netuid}
+                AND snapshot_date >= (SELECT MAX(snapshot_date) - ${windowDays}::int FROM neuron_daily WHERE netuid = ${netuid})`;
+          const startDate = bounds[0]?.start_date ?? null;
+          const endDate = bounds[0]?.end_date ?? null;
+          const rows =
+            startDate == null || endDate == null
+              ? []
+              : await sql`
+              SELECT snapshot_date::text AS snapshot_date, uid, hotkey, validator_permit
+              FROM neuron_daily
+              WHERE netuid = ${netuid} AND snapshot_date IN (${startDate}, ${endDate})
+              ORDER BY snapshot_date ASC, uid ASC`;
+          const turnoverOptions = { window: windowLabel, startDate, endDate };
+          const data = buildTurnover(rows, netuid, turnoverOptions);
+          return json(
+            includeChanges
+              ? {
+                  ...data,
+                  changes: turnoverChangeDetail(
+                    buildTurnoverChanges(rows, netuid, turnoverOptions),
+                  ),
+                }
+              : data,
+          );
+        }
+
+        // GET /api/v1/subnets/movers?window=&sort=&limit= (#4832 Tier 2b):
+        // every subnet ranked by its stake/emission/validator change over the
+        // window, mirroring src/movers.mjs's loadSubnetMovers.
+        if (url.pathname === "/api/v1/subnets/movers") {
+          const windowParam =
+            url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
+          const windowLabel = Object.hasOwn(MOVERS_WINDOWS, windowParam)
+            ? windowParam
+            : DEFAULT_MOVERS_WINDOW;
+          const days = MOVERS_WINDOWS[windowLabel];
+          const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
+          const limitRaw = url.searchParams.get("limit");
+          const limit =
+            limitRaw == null || limitRaw === ""
+              ? MOVERS_LIMIT_DEFAULT
+              : Number(limitRaw);
+          const bounds = await sql`
+          SELECT MIN(snapshot_date)::text AS start_date, MAX(snapshot_date)::text AS end_date
+          FROM neuron_daily
+          WHERE snapshot_date >= (SELECT MAX(snapshot_date) - ${days}::int FROM neuron_daily)`;
+          const startDate = bounds[0]?.start_date ?? null;
+          const endDate = bounds[0]?.end_date ?? null;
+          let startRows = [];
+          let endRows = [];
+          if (startDate != null && endDate != null && startDate !== endDate) {
+            const rows = await sql`
+            SELECT netuid, snapshot_date::text AS snapshot_date, COUNT(*) AS neuron_count,
+              SUM(validator_permit::int) AS validator_count,
+              SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
+            FROM neuron_daily
+            WHERE snapshot_date IN (${startDate}, ${endDate})
+            GROUP BY netuid, snapshot_date`;
+            startRows = rows.filter((row) => row.snapshot_date === startDate);
+            endRows = rows.filter((row) => row.snapshot_date === endDate);
+          }
+          return json(
+            buildMovers(startRows, endRows, {
+              window: windowLabel,
+              startDate,
+              endDate,
+              sort: sortParam,
               limit,
             }),
           );
