@@ -11,6 +11,7 @@ import {
   runD1StatementBatches,
   D1_STATEMENTS_PER_BATCH,
   runHealthProber,
+  syncHealthChecksToPostgres,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../src/health-prober.mjs";
@@ -1442,6 +1443,155 @@ describe("persistToD1 via runHealthProber", () => {
     assert.equal(db.calls.batches.length, 2);
     assert.equal(db.calls.batches[0].length, D1_STATEMENTS_PER_BATCH);
     assert.equal(db.calls.batches[1].length, 10);
+  });
+});
+
+// #4832 gap-closure: syncHealthChecksToPostgres is a private helper (unlike
+// syncSubnetIdentityToPostgres, which lives in its own module and is tested
+// directly in tests/subnet-identity-history.test.mjs) -- exercised the same
+// way persistToD1/persistToKv above are, indirectly through runHealthProber.
+// D1+KV remain the authoritative write target throughout; these tests only
+// prove the Postgres mirror attempt fires (or safely no-ops) without ever
+// affecting runHealthProber's own `ok`/`d1_persisted` result.
+describe("syncHealthChecksToPostgres", () => {
+  // runHealthProber never calls this with an empty array (it short-circuits
+  // on zero operational surfaces before ever reaching persist/sync), so this
+  // guard is only reachable via a direct call, unlike the other tests below.
+  test("returns no_rows for an empty or non-array probed batch", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("{}") },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    assert.deepEqual(await syncHealthChecksToPostgres(env, []), {
+      synced: false,
+      reason: "no_rows",
+    });
+    assert.deepEqual(await syncHealthChecksToPostgres(env, undefined), {
+      synced: false,
+      reason: "no_rows",
+    });
+  });
+});
+
+describe("syncHealthChecksToPostgres via runHealthProber", () => {
+  test("no-ops (no DATA_API call) when DATA_API is not bound", async () => {
+    let called = false;
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(called, false);
+  });
+
+  test("no-ops (no DATA_API call) when HEALTH_CHECKS_SYNC_SECRET is not configured", async () => {
+    let called = false;
+    const result = await runHealthProber(
+      {
+        DATA_API: { fetch: async () => ((called = true), new Response("{}")) },
+      },
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(called, false);
+  });
+
+  test("posts the probed batch to health-checks-sync with the token header", async () => {
+    let request;
+    const env = {
+      DATA_API: {
+        fetch: async (req) => {
+          request = req;
+          return new Response("{}", { status: 200 });
+        },
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.ok(request);
+    assert.equal(request.method, "POST");
+    assert.equal(
+      request.headers.get("x-health-checks-sync-token"),
+      "test-secret",
+    );
+    const body = await request.json();
+    assert.ok(Array.isArray(body.probed));
+    assert.equal(body.probed.length, SURFACES.length);
+  });
+
+  test("a DATA_API failure never affects runHealthProber's own result", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.d1_persisted, true);
+  });
+
+  test("a non-2xx DATA_API response never affects runHealthProber's own result", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => new Response("nope", { status: 502 }),
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
   });
 });
 

@@ -508,6 +508,7 @@ export async function runHealthProber(env, ctx, overrides = {}) {
 
   const d1Persist = await persistToD1(db, probed, runAt);
   await persistToKv(kv, probed, runAt);
+  await syncHealthChecksToPostgres(env, probed);
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of probed) counts[normalizeProbeStatus(row.status)] += 1;
@@ -688,6 +689,42 @@ async function persistToKv(kv, probed, runAt) {
     kv.put(KV_HEALTH_RPC_POOL, JSON.stringify(rpcPool)),
     kv.put(KV_HEALTH_META, JSON.stringify(meta)),
   ]);
+}
+
+// #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
+// never awaited-and-thrown into the caller, mirroring
+// syncSubnetIdentityToPostgres's own header comment (subnet-identity-history.mjs)
+// for why this is a direct service-binding call rather than routing through
+// the public proxy layer. D1+KV remain the sole authoritative write target;
+// a Postgres failure here never affects live serving.
+export async function syncHealthChecksToPostgres(env, probed) {
+  if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {
+    return { synced: false, reason: "unavailable" };
+  }
+  if (!Array.isArray(probed) || probed.length === 0) {
+    return { synced: false, reason: "no_rows" };
+  }
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/health-checks-sync",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-health-checks-sync-token": env.HEALTH_CHECKS_SYNC_SECRET,
+          },
+          body: JSON.stringify({ probed }),
+        },
+      ),
+    );
+    if (!upstream.ok) {
+      return { synced: false, reason: `status_${upstream.status}` };
+    }
+    return { synced: true };
+  } catch {
+    return { synced: false, reason: "fetch_failed" };
+  }
 }
 
 // UTC day bounds for a given epoch-ms instant: { date: "YYYY-MM-DD", start, end }.

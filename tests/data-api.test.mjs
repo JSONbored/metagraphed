@@ -62,6 +62,11 @@ const accountIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
 // grouping alone.
 const subnetIdentitySyncFailure = vi.hoisted(() => ({ error: null }));
 const subnetIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
+// State for the health-checks-sync write route's tests only (#4832
+// gap-closure). No hash-diff / latest-lookup query -- unlike the identity
+// sync routes, this one just bulk-inserts + upserts the same probed batch
+// D1/KV already received, so there's nothing to prime beyond the failure hook.
+const healthChecksSyncFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -130,6 +135,12 @@ vi.mock("postgres", () => ({
       ) {
         return Promise.reject(subnetIdentitySyncFailure.error);
       }
+      if (
+        healthChecksSyncFailure.error &&
+        /INSERT INTO surface_checks\b/.test(text)
+      ) {
+        return Promise.reject(healthChecksSyncFailure.error);
+      }
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
       }
@@ -182,6 +193,7 @@ const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
 const SUBNET_HYPERPARAMS_SYNC_SECRET = "test-subnet-hyperparams-sync-secret";
 const ACCOUNT_IDENTITY_SYNC_SECRET = "test-account-identity-sync-secret";
 const SUBNET_IDENTITY_SYNC_SECRET = "test-subnet-identity-sync-secret";
+const HEALTH_CHECKS_SYNC_SECRET = "test-health-checks-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
@@ -189,6 +201,7 @@ const env = {
   SUBNET_HYPERPARAMS_SYNC_SECRET,
   ACCOUNT_IDENTITY_SYNC_SECRET,
   SUBNET_IDENTITY_SYNC_SECRET,
+  HEALTH_CHECKS_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -208,6 +221,7 @@ beforeEach(() => {
   accountIdentityLatestHashes.current = [];
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
+  healthChecksSyncFailure.error = null;
   mockRows.current = [
     {
       block_number: "123",
@@ -3741,6 +3755,184 @@ test("subnet-identity-sync maps a DB failure to a clean 502 instead of throwing"
   const res = await postSubnetIdentity([subnetIdentityProfile()], {
     secret: SUBNET_IDENTITY_SYNC_SECRET,
   });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+// #4832 gap-closure: health-checks-sync -- best-effort Postgres mirror of
+// src/health-prober.mjs's D1+KV write, called from the main Worker's own
+// 15-minute cron (syncHealthChecksToPostgres), not an external workflow.
+function probedRow(overrides = {}) {
+  return {
+    surface_id: "sn-1-example-api",
+    surface_key: "srf-abc123",
+    netuid: 1,
+    kind: "subnet-api",
+    provider: "example",
+    url: "https://example.com/api",
+    status: "ok",
+    classification: "healthy",
+    latency_ms: 120,
+    status_code: 200,
+    checked_at_ms: 1780000000000,
+    last_ok_ms: 1780000000000,
+    consecutive_failures: 0,
+    ...overrides,
+  };
+}
+
+function postHealthChecks(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-health-checks-sync-token"] = secret;
+  return req("/api/v1/internal/health-checks-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? { probed: [] }),
+  });
+}
+
+test("health-checks-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postHealthChecks(
+    { probed: [probedRow()] },
+    { secret: "wrong" },
+  );
+  expect(wrong.status).toBe(401);
+  const missing = await postHealthChecks({ probed: [probedRow()] });
+  expect(missing.status).toBe(401);
+});
+
+test("health-checks-sync is disabled (503) when HEALTH_CHECKS_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/health-checks-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
+      },
+      body: JSON.stringify({ probed: [probedRow()] }),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("health-checks-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/health-checks-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
+      },
+      body: JSON.stringify({ probed: [probedRow()] }),
+    }),
+    { HEALTH_CHECKS_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("health-checks-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postHealthChecks(null, {
+    secret: HEALTH_CHECKS_SYNC_SECRET,
+    raw: '{"probed":[' + "1".repeat(2_000_000) + "]}",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("health-checks-sync rejects malformed JSON (400)", async () => {
+  const res = await postHealthChecks(null, {
+    secret: HEALTH_CHECKS_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("health-checks-sync rejects a body without a probed array (400)", async () => {
+  const res = await postHealthChecks(
+    { not: "the right shape" },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("health-checks-sync rejects more than the row cap (413)", async () => {
+  const many = Array.from({ length: 2_001 }, () => probedRow());
+  const res = await postHealthChecks(
+    { probed: many },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(413);
+});
+
+test("health-checks-sync on an empty probed array is a clean no-op (200)", async () => {
+  const res = await postHealthChecks(
+    { probed: [] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, checks_written: 0, status_written: 0 });
+});
+
+test("health-checks-sync silently skips a row missing a required field, no error", async () => {
+  const res = await postHealthChecks(
+    { probed: [probedRow({ netuid: "not-a-number" })] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, checks_written: 0, status_written: 0 });
+});
+
+test("health-checks-sync bulk-inserts surface_checks and upserts surface_status", async () => {
+  const res = await postHealthChecks(
+    { probed: [probedRow(), probedRow({ surface_id: "sn-2-other-api" })] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({
+    ok: true,
+    checks_written: 2,
+    status_written: 2,
+  });
+  expect(queryText()).toMatch(/INSERT INTO surface_checks\b/);
+  expect(queryText()).toMatch(
+    /INSERT INTO surface_status\b[\s\S]*ON CONFLICT \(surface_id\) DO UPDATE/,
+  );
+});
+
+test("health-checks-sync defaults every optional field to null/0 when absent", async () => {
+  const minimal = {
+    surface_id: "sn-3-minimal",
+    netuid: 3,
+    kind: "subnet-api",
+    status: "failed",
+    checked_at_ms: 1780000000000,
+    // surface_key, classification, latency_ms, status_code, url, provider,
+    // last_ok_ms, consecutive_failures all intentionally absent.
+  };
+  const res = await postHealthChecks(
+    { probed: [minimal] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, checks_written: 1, status_written: 1 });
+  const statusInsert = sqlCalls.find((c) =>
+    /INSERT INTO surface_status\b/.test(c.text),
+  );
+  expect(statusInsert.values).toContain(0); // consecutive_failures default
+});
+
+test("health-checks-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  healthChecksSyncFailure.error = new Error("connection reset");
+  const res = await postHealthChecks(
+    { probed: [probedRow()] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
   expect(res.status).toBe(502);
   expect((await res.json()).error).toBe("write failed");
 });

@@ -1460,6 +1460,186 @@ async function handleSubnetIdentitySync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/health-checks-sync (#4832 gap-closure) --------
+//
+// Best-effort Postgres mirror of the D1+KV probe write in
+// src/health-prober.mjs's runHealthProber -- same "own hourly/15-min cron,
+// direct env.DATA_API.fetch() service-binding call" shape as
+// subnet-identity-sync above, not an external GitHub Actions workflow. D1+KV
+// stay the sole authoritative write target (live serving reads them
+// unchanged); this route only mirrors the SAME probed batch into
+// surface_checks/surface_status so the Postgres tier can eventually take
+// over the read side. surface_status uses ON CONFLICT (surface_id) only
+// (not D1's dual surface_key/surface_id conflict targets -- Postgres allows
+// one conflict target per INSERT): a surface rename mid-migration can
+// briefly fail this route's UPSERT on the surface_key unique index rather
+// than silently duplicate a row, which is an acceptable degrade for a
+// mirror that isn't yet the read source of truth.
+const HEALTH_CHECKS_SYNC_TOKEN_HEADER = "x-health-checks-sync-token";
+// One probe run today is ~150-200 surfaces; generous headroom.
+const HEALTH_CHECKS_SYNC_MAX_BODY_BYTES = 2_000_000;
+const HEALTH_CHECKS_SYNC_MAX_ROWS = 2_000;
+
+async function handleHealthChecksSync(request, env) {
+  if (!env.HEALTH_CHECKS_SYNC_SECRET) {
+    return writeJson(
+      { error: "health-checks sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(HEALTH_CHECKS_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.HEALTH_CHECKS_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${HEALTH_CHECKS_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > HEALTH_CHECKS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${HEALTH_CHECKS_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const probed = Array.isArray(parsed?.probed) ? parsed.probed : null;
+  if (!probed) {
+    return writeJson({ error: "body must be {probed:[...]}" }, 400);
+  }
+  if (probed.length > HEALTH_CHECKS_SYNC_MAX_ROWS) {
+    return writeJson(
+      {
+        error: `at most ${HEALTH_CHECKS_SYNC_MAX_ROWS} probed rows per request`,
+      },
+      413,
+    );
+  }
+  if (!probed.length) {
+    return writeJson({ ok: true, checks_written: 0, status_written: 0 });
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  const validRows = probed.filter(
+    (row) =>
+      row &&
+      typeof row.surface_id === "string" &&
+      row.surface_id.length > 0 &&
+      Number.isInteger(row.netuid) &&
+      typeof row.kind === "string" &&
+      typeof row.status === "string" &&
+      Number.isFinite(row.checked_at_ms),
+  );
+  if (!validRows.length) {
+    return writeJson({ ok: true, checks_written: 0, status_written: 0 });
+  }
+
+  const checkRows = validRows.map((row) => ({
+    surface_id: row.surface_id,
+    surface_key: row.surface_key ?? null,
+    netuid: row.netuid,
+    kind: row.kind,
+    status: row.status,
+    classification: row.classification ?? null,
+    latency_ms: Number.isFinite(row.latency_ms) ? row.latency_ms : null,
+    status_code: Number.isInteger(row.status_code) ? row.status_code : null,
+    ok: row.status === "ok",
+    checked_at: row.checked_at_ms,
+  }));
+  const statusRows = validRows.map((row) => ({
+    surface_id: row.surface_id,
+    surface_key: row.surface_key ?? null,
+    netuid: row.netuid,
+    kind: row.kind,
+    url: row.url ?? null,
+    provider: row.provider ?? null,
+    status: row.status,
+    classification: row.classification ?? null,
+    latency_ms: Number.isFinite(row.latency_ms) ? row.latency_ms : null,
+    status_code: Number.isInteger(row.status_code) ? row.status_code : null,
+    last_checked: row.checked_at_ms,
+    last_ok: Number.isFinite(row.last_ok_ms) ? row.last_ok_ms : null,
+    consecutive_failures: Number.isInteger(row.consecutive_failures)
+      ? row.consecutive_failures
+      : 0,
+    updated_at: row.checked_at_ms,
+  }));
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '10000ms'`;
+      await sql`
+        INSERT INTO surface_checks ${sql(
+          checkRows,
+          "surface_id",
+          "surface_key",
+          "netuid",
+          "kind",
+          "status",
+          "classification",
+          "latency_ms",
+          "status_code",
+          "ok",
+          "checked_at",
+        )}
+        ON CONFLICT (surface_id, checked_at) DO NOTHING`;
+      await sql`
+        INSERT INTO surface_status ${sql(
+          statusRows,
+          "surface_id",
+          "surface_key",
+          "netuid",
+          "kind",
+          "url",
+          "provider",
+          "status",
+          "classification",
+          "latency_ms",
+          "status_code",
+          "last_checked",
+          "last_ok",
+          "consecutive_failures",
+          "updated_at",
+        )}
+        ON CONFLICT (surface_id) DO UPDATE SET
+          surface_key = excluded.surface_key,
+          netuid = excluded.netuid,
+          kind = excluded.kind,
+          url = excluded.url,
+          provider = excluded.provider,
+          status = excluded.status,
+          classification = excluded.classification,
+          latency_ms = excluded.latency_ms,
+          status_code = excluded.status_code,
+          last_checked = excluded.last_checked,
+          last_ok = excluded.last_ok,
+          consecutive_failures = excluded.consecutive_failures,
+          updated_at = excluded.updated_at`;
+      return writeJson({
+        ok: true,
+        checks_written: checkRows.length,
+        status_written: statusRows.length,
+      });
+    });
+  } catch (err) {
+    console.error("data-api health-checks-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1602,6 +1782,12 @@ export default {
       url.pathname === "/api/v1/internal/subnet-identity-sync"
     ) {
       return handleSubnetIdentitySync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/health-checks-sync"
+    ) {
+      return handleHealthChecksSync(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
