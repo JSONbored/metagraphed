@@ -204,6 +204,19 @@
     // handleNeuronsSync) actually works end-to-end. tryPostgresTier still
     // falls back to D1 on any failure, so this remains a single-flag revert.
     "METAGRAPH_NEURONS_SOURCE": "postgres",
+    // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
+    // after a live parity pass. refresh-subnet-hyperparams.yml's real
+    // workflow_dispatch run synced all 129 subnets (Postgres started
+    // completely empty) into workers/data-api.mjs's
+    // handleSubnetHyperparamsSync; a sampled row (netuid=8) matched the D1-
+    // served API response field-for-field (kappa_ratio, tempo,
+    // weights_rate_limit, registration_allowed, captured_at) captured moments
+    // before this flip. Also caught and fixed a real bug during this pass:
+    // netuid 0 (root)'s weights_rate_limit carries the chain's u64::MAX
+    // "unlimited" sentinel, wider than Postgres BIGINT's signed range --
+    // widened to NUMERIC (#4843) before this flip. tryPostgresTier still
+    // falls back to D1 on any failure, so this remains a single-flag revert.
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
