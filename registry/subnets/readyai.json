@@ -216,6 +216,24 @@
         "submitted_by": "carlh7777"
       },
       "notes": "Public no-auth PUT /api/v1/priorityqueue/request on api.readyai.ai for users to request a domain for priority Common Crawl processing (upserts requested_domains). Documented in the subnet OpenAPI spec with no security requirement on PUT; GET on the same path is admin-authenticated, so recurring read probes are intentionally disabled."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-33-readyai-validator-wandb",
+      "kind": "dashboard",
+      "name": "ReadyAI validator-runs W&B dashboard",
+      "notes": "Public Weights & Biases project for SN33 ReadyAI validator runs (entity afterparty, project conversationgenome; 12,600+ logged runs). The official afterpartyai/bittensor-conversation-genome-project repo pins this destination in conversationgenome/analytics/WandbLib.py (PROJECT_NAME = 'conversationgenome', ENTITY = 'afterparty'). Validators log per-task scoring telemetry to this project (adjusted_score.<uid>, hotkey.<uid>, task_id.<uid> per run), making it the subnet's public scoring-transparency surface. Publicly readable, no auth.",
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "pedramhatef"
+      },
+      "source_urls": [
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/conversationgenome/analytics/WandbLib.py"
+      ],
+      "url": "https://wandb.ai/afterparty/conversationgenome"
     }
   ],
   "website_url": "https://readyai.ai/"
