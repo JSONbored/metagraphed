@@ -1218,9 +1218,17 @@ async fn flush(
         copy_send(sink, buf).await?;
     }
 
-    // blocks: DO UPDATE so a re-pass backfills author/parent_hash onto rows written
-    // by an earlier author-less run (values are identical to the live indexer's).
-    // extrinsics/events: DO NOTHING — their data is complete on first write.
+    // ALL FOUR tables: DO UPDATE. Originally extrinsics/account_events/chain_events
+    // were DO NOTHING on the assumption "their data is complete on first write" --
+    // proven false by metagraphed#4687/#4724: pre-2026-07-10 rows were written by
+    // an OLDER decoder (wrong/type-erased call_args shape, and an early run of this
+    // very backfill against ad-hoc local RPC sources left sparse, partial coverage
+    // -- see metagraphed's D1-retirement audit, 2026-07-11). A DO NOTHING backfill
+    // re-pass over those existing rows would silently PRESERVE the stale/wrong data
+    // forever instead of correcting it -- exactly the bug this fixes. Once the
+    // archive node is ready and the real production backfill (entrypoint.sh's
+    // sharded launcher) runs, every table must converge on the CURRENT decoder's
+    // output regardless of what (if anything wrong) is already in Postgres.
     //
     // Conflict targets include observed_at (2026-07-03 fix) to match
     // deploy/postgres/schema.sql's composite PKs — required because a
@@ -1233,9 +1241,18 @@ async fn flush(
             block_hash = EXCLUDED.block_hash, parent_hash = EXCLUDED.parent_hash,
             author = EXCLUDED.author, extrinsic_count = EXCLUDED.extrinsic_count,
             event_count = EXCLUDED.event_count, spec_version = EXCLUDED.spec_version;
-         INSERT INTO extrinsics SELECT * FROM s_extrinsics ON CONFLICT (block_number, extrinsic_index, observed_at) DO NOTHING;
-         INSERT INTO account_events SELECT * FROM s_events ON CONFLICT (block_number, event_index, observed_at) DO NOTHING;
-         INSERT INTO chain_events SELECT * FROM s_chain_events ON CONFLICT (block_number, event_index, observed_at) DO NOTHING;",
+         INSERT INTO extrinsics SELECT * FROM s_extrinsics ON CONFLICT (block_number, extrinsic_index, observed_at) DO UPDATE SET
+            extrinsic_hash = EXCLUDED.extrinsic_hash, signer = EXCLUDED.signer,
+            call_module = EXCLUDED.call_module, call_function = EXCLUDED.call_function,
+            success = EXCLUDED.success, fee_tao = EXCLUDED.fee_tao, tip_tao = EXCLUDED.tip_tao,
+            call_args = EXCLUDED.call_args;
+         INSERT INTO account_events SELECT * FROM s_events ON CONFLICT (block_number, event_index, observed_at) DO UPDATE SET
+            extrinsic_index = EXCLUDED.extrinsic_index, event_kind = EXCLUDED.event_kind,
+            hotkey = EXCLUDED.hotkey, coldkey = EXCLUDED.coldkey, netuid = EXCLUDED.netuid,
+            uid = EXCLUDED.uid, amount_tao = EXCLUDED.amount_tao, alpha_amount = EXCLUDED.alpha_amount;
+         INSERT INTO chain_events SELECT * FROM s_chain_events ON CONFLICT (block_number, event_index, observed_at) DO UPDATE SET
+            pallet = EXCLUDED.pallet, method = EXCLUDED.method, args = EXCLUDED.args,
+            phase = EXCLUDED.phase, extrinsic_index = EXCLUDED.extrinsic_index;",
     )
     .await?;
     tx.commit().await?;
