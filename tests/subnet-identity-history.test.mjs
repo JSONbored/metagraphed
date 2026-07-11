@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildSubnetIdentityHistory,
+  deriveNetuidGroupedAliases,
   derivePreviouslyKnownAs,
   formatIdentityHistoryEntry,
   identityHash,
@@ -1012,6 +1013,35 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
       [{ netuid: 86, name: "Current" }],
     );
     assert.deepEqual(map.get(86), ["System   [scrubbed] ."]);
+  });
+});
+
+// #4832 gap-closure: deriveNetuidGroupedAliases is the row-grouping half
+// extracted out of loadPreviouslyKnownAsForNetuids so workers/api.mjs's
+// Postgres-tier wrapper can reuse it directly on rows it fetched itself.
+describe("deriveNetuidGroupedAliases", () => {
+  test("returns an empty map when entries are null", () => {
+    const map = deriveNetuidGroupedAliases(
+      [{ netuid: 7, subnet_name: "Old7", observed_at: 1 }],
+      null,
+    );
+    // No current-name context, so the alias is kept unfiltered.
+    assert.deepEqual(map.get(7), ["Old7"]);
+  });
+
+  test("groups rows by netuid, matching loadPreviouslyKnownAsForNetuids", () => {
+    const map = deriveNetuidGroupedAliases(
+      [
+        { netuid: 86, subnet_name: "MIAO", observed_at: 2 },
+        { netuid: 7, subnet_name: "Old7", observed_at: 1 },
+      ],
+      [
+        { netuid: 86, name: "⚒" },
+        { netuid: 7, name: "Current" },
+      ],
+    );
+    assert.deepEqual(map.get(86), ["MIAO"]);
+    assert.deepEqual(map.get(7), ["Old7"]);
   });
 });
 

@@ -5003,3 +5003,22 @@ test("GET /api/v1/internal/compare-health: no netuids returns rows:[] without qu
   const body = await res.json();
   expect(body.rows).toEqual([]);
 });
+
+test("GET /api/v1/internal/subnet-identity-aliases: aggregates subnet_name by netuid", async () => {
+  mockRows.current = [
+    { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
+  ];
+  const res = await req(
+    "/api/v1/internal/subnet-identity-aliases?netuids=7,64",
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.rows).toEqual(mockRows.current);
+});
+
+test("GET /api/v1/internal/subnet-identity-aliases: no netuids returns rows:[] without querying", async () => {
+  const res = await req("/api/v1/internal/subnet-identity-aliases");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.rows).toEqual([]);
+});

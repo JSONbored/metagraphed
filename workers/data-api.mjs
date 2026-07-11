@@ -3930,6 +3930,42 @@ export default {
           return json({ rows });
         }
 
+        // GET /api/v1/internal/subnet-identity-aliases?netuids=1,7,19 (#4832
+        // gap-closure follow-up): src/subnet-identity-history.mjs's
+        // loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids are D1-fetch
+        // helpers embedded in 3 workers/api.mjs call sites (overlay logic,
+        // not standalone routes), so -- same rationale as
+        // /api/v1/internal/compare-health -- there is no single client
+        // request to forward; api.mjs synthesizes this request itself.
+        // Reuses METAGRAPH_SUBNET_IDENTITY_SOURCE (same table already
+        // covered by /identity-history, and already flipped to postgres).
+        // Returns raw grouped rows; derivePreviouslyKnownAs/
+        // deriveNetuidGroupedAliases run identically over D1 or Postgres
+        // rows, so the current-name exclusion logic lives in exactly one
+        // place regardless of which tier served the query.
+        if (url.pathname === "/api/v1/internal/subnet-identity-aliases") {
+          const netuidsRaw = url.searchParams.get("netuids");
+          const netuids = netuidsRaw
+            ? netuidsRaw.split(",").map(Number).filter(Number.isInteger)
+            : [];
+          if (netuids.length === 0) {
+            return json({ rows: [] });
+          }
+          const placeholders = netuids
+            .map((_, i) => `$${i + 1}::int`)
+            .join(", ");
+          const rows = await sql.unsafe(
+            `SELECT netuid, subnet_name, MAX(observed_at) AS observed_at
+             FROM subnet_identity_history
+             WHERE netuid IN (${placeholders})
+               AND subnet_name IS NOT NULL AND TRIM(subnet_name) != ''
+             GROUP BY netuid, subnet_name
+             ORDER BY netuid, observed_at DESC`,
+            netuids,
+          );
+          return json({ rows });
+        }
+
         // GET /api/v1/accounts/:ss58/stake-flow
         const acctStakeFlow = url.pathname.match(
           /^\/api\/v1\/accounts\/([^/]+)\/stake-flow$/,

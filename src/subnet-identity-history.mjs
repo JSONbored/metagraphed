@@ -342,24 +342,14 @@ export async function loadPreviouslyKnownAs(d1, netuid, currentName) {
   return derivePreviouslyKnownAs(rows, currentName);
 }
 
-export async function loadPreviouslyKnownAsForNetuids(d1, entries) {
-  const items = entries || [];
-  const netuids = items
-    .map((entry) => entry?.netuid)
-    .filter((netuid) => Number.isInteger(netuid));
-  if (!netuids.length) return new Map();
-  const placeholders = netuids.map(() => "?").join(", ");
-  const rows = await d1(
-    `SELECT netuid, subnet_name, MAX(observed_at) AS observed_at
-     FROM subnet_identity_history
-     WHERE netuid IN (${placeholders})
-       AND subnet_name IS NOT NULL AND TRIM(subnet_name) != ''
-     GROUP BY netuid, subnet_name
-     ORDER BY netuid, observed_at DESC`,
-    netuids,
-  );
+// Groups already-fetched (netuid, subnet_name, observed_at) rows by netuid and
+// derives each subnet's alias list — split out of loadPreviouslyKnownAsForNetuids
+// so a Postgres-tier caller (workers/api.mjs) can reuse the exact same grouping
+// instead of duplicating it, the same way the single-netuid derivePreviouslyKnownAs
+// above is shared by both storage tiers.
+export function deriveNetuidGroupedAliases(rows, entries) {
   const currentByNetuid = new Map(
-    items
+    (entries || [])
       .filter((entry) => Number.isInteger(entry?.netuid))
       .map((entry) => [entry.netuid, entry.native_name ?? entry.name ?? null]),
   );
@@ -380,4 +370,23 @@ export async function loadPreviouslyKnownAsForNetuids(d1, entries) {
     if (names.length) out.set(netuid, names);
   }
   return out;
+}
+
+export async function loadPreviouslyKnownAsForNetuids(d1, entries) {
+  const items = entries || [];
+  const netuids = items
+    .map((entry) => entry?.netuid)
+    .filter((netuid) => Number.isInteger(netuid));
+  if (!netuids.length) return new Map();
+  const placeholders = netuids.map(() => "?").join(", ");
+  const rows = await d1(
+    `SELECT netuid, subnet_name, MAX(observed_at) AS observed_at
+     FROM subnet_identity_history
+     WHERE netuid IN (${placeholders})
+       AND subnet_name IS NOT NULL AND TRIM(subnet_name) != ''
+     GROUP BY netuid, subnet_name
+     ORDER BY netuid, observed_at DESC`,
+    netuids,
+  );
+  return deriveNetuidGroupedAliases(rows, items);
 }

@@ -252,10 +252,13 @@ import {
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
 import {
+  deriveNetuidGroupedAliases,
+  derivePreviouslyKnownAs,
   loadPreviouslyKnownAs,
   loadPreviouslyKnownAsForNetuids,
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.mjs";
+import { tryPostgresTier } from "./postgres-tier.mjs";
 import {
   rollupNeuronDaily,
   archiveNeuronDaily,
@@ -3372,6 +3375,46 @@ async function lookupSubnetNetuid(
   return Number.isInteger(netuid) ? netuid : null;
 }
 
+// loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids (src/subnet-identity-
+// history.mjs) are D1-fetch helpers embedded in 3 overlay call sites below
+// rather than standalone routes, so there is no single client request for
+// tryPostgresTier to forward unchanged -- these two wrappers synthesize their
+// own internal /api/v1/internal/subnet-identity-aliases request instead,
+// mirroring composeCompareData's health-dimension wiring (#4832 gap-closure).
+// Reuses METAGRAPH_SUBNET_IDENTITY_SOURCE, already flipped to postgres for
+// /identity-history. derivePreviouslyKnownAs/deriveNetuidGroupedAliases run
+// identically over rows regardless of which tier served them.
+async function loadPreviouslyKnownAsTiered(env, netuid, currentName) {
+  const pgUrl = new URL(
+    "https://data-api.internal/api/v1/internal/subnet-identity-aliases",
+  );
+  pgUrl.searchParams.set("netuids", String(netuid));
+  const pgData = await tryPostgresTier(
+    env,
+    new Request(pgUrl),
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+  );
+  if (pgData) return derivePreviouslyKnownAs(pgData.rows, currentName);
+  return loadPreviouslyKnownAs(d1Runner(env), netuid, currentName);
+}
+
+async function loadPreviouslyKnownAsForNetuidsTiered(env, entries) {
+  const netuids = entries
+    .map((entry) => entry?.netuid)
+    .filter((netuid) => Number.isInteger(netuid));
+  const pgUrl = new URL(
+    "https://data-api.internal/api/v1/internal/subnet-identity-aliases",
+  );
+  pgUrl.searchParams.set("netuids", netuids.join(","));
+  const pgData = await tryPostgresTier(
+    env,
+    new Request(pgUrl),
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+  );
+  if (pgData) return deriveNetuidGroupedAliases(pgData.rows, entries);
+  return loadPreviouslyKnownAsForNetuids(d1Runner(env), entries);
+}
+
 async function handleApiRequest(
   request,
   env,
@@ -3546,8 +3589,8 @@ async function handleApiRequest(
       baseData.subnet && typeof baseData.subnet === "object"
         ? baseData.subnet
         : baseData;
-    const aliasNames = await loadPreviouslyKnownAs(
-      d1Runner(env),
+    const aliasNames = await loadPreviouslyKnownAsTiered(
+      env,
       Number(matched.params.netuid),
       aliasTarget.native_name ?? aliasTarget.name,
     );
@@ -3568,8 +3611,8 @@ async function handleApiRequest(
     baseData &&
     typeof baseData === "object"
   ) {
-    const aliasNames = await loadPreviouslyKnownAs(
-      d1Runner(env),
+    const aliasNames = await loadPreviouslyKnownAsTiered(
+      env,
       Number(matched.params.netuid),
       baseData.name,
     );
@@ -3580,8 +3623,8 @@ async function handleApiRequest(
     matched.id === "agent-catalog" &&
     baseData?.subnets?.length
   ) {
-    const aliasMap = await loadPreviouslyKnownAsForNetuids(
-      d1Runner(env),
+    const aliasMap = await loadPreviouslyKnownAsForNetuidsTiered(
+      env,
       baseData.subnets,
     );
     baseData = {
