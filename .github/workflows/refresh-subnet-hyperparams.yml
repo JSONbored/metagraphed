@@ -98,6 +98,27 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # #4832 gap-closure: ALSO write the same signed snapshot to the Postgres
+      # write path (workers/data-api.mjs's handleSubnetHyperparamsSync),
+      # alongside (not replacing) the R2/D1 step above -- mirrors
+      # refresh-metagraph.yml's neurons-sync step exactly, including the
+      # always-exit-0-and-::warning:: shape (a failure here must never fail
+      # the D1 path this job's real dependents rely on) and the skip-until-
+      # provisioned convention.
+      - name: Sync subnet hyperparameters to the Postgres write path (#4832 gap-closure)
+        run: |
+          if [ -z "$SUBNET_HYPERPARAMS_SYNC_SECRET" ]; then
+            echo "SUBNET_HYPERPARAMS_SYNC_SECRET not set; skipping Postgres sync"
+            exit 0
+          fi
+          curl -fsS -X POST "https://api.metagraph.sh/api/v1/internal/subnet-hyperparams-sync" \
+            -H "x-subnet-hyperparams-sync-token: ${SUBNET_HYPERPARAMS_SYNC_SECRET}" \
+            -H "content-type: application/json" \
+            --data-binary @dist/metagraph-subnet-hyperparams.json \
+            || echo "::warning::subnet-hyperparams-sync Postgres write failed; D1 path (this job's real dependency) is unaffected"
+        env:
+          SUBNET_HYPERPARAMS_SYNC_SECRET: ${{ secrets.SUBNET_HYPERPARAMS_SYNC_SECRET }}
+
   notify-on-failure:
     needs: [fetch, sign-and-stage]
     if: ${{ always() && (needs.fetch.result == 'failure' || needs.sign-and-stage.result == 'failure') }}

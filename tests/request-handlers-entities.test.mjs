@@ -33,6 +33,7 @@ import {
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetIdentityHistory,
+  handleSubnetHyperparams,
   handleSubnetHyperparamsHistory,
   handleSubnetConcentration,
   handleSubnetPerformance,
@@ -266,6 +267,47 @@ function identityHistoryRow(overrides = {}) {
   };
 }
 
+function hyperparamsRow(overrides = {}) {
+  return {
+    block_number: 100,
+    captured_at: OBSERVED_AT,
+    kappa_ratio: 0.5,
+    immunity_period: 7200,
+    min_allowed_weights: 8,
+    max_weight_limit_ratio: 1,
+    tempo: 360,
+    weights_version: 1,
+    weights_rate_limit: 100,
+    activity_cutoff: 5000,
+    activity_cutoff_factor: 1,
+    registration_allowed: 1,
+    target_regs_per_interval: 1,
+    min_burn_tao: 0.001,
+    max_burn_tao: 100,
+    burn_half_life: 100_000,
+    burn_increase_mult: 1,
+    bonds_moving_avg_raw: 900_000,
+    max_regs_per_block: 1,
+    serving_rate_limit: 50,
+    max_validators: 64,
+    commit_reveal_period: 1,
+    commit_reveal_enabled: 0,
+    alpha_high_ratio: 0.9,
+    alpha_low_ratio: 0.1,
+    liquid_alpha_enabled: 0,
+    alpha_sigmoid_steepness: 10,
+    yuma_version: 3,
+    subnet_is_active: 1,
+    transfers_enabled: 1,
+    bonds_reset_enabled: 0,
+    user_liquidity_enabled: 0,
+    owner_cut_enabled: 1,
+    owner_cut_auto_lock_enabled: 1,
+    min_childkey_take_ratio: 0,
+    ...overrides,
+  };
+}
+
 function hyperparamsHistoryRow(overrides = {}) {
   return {
     id: 10,
@@ -327,6 +369,7 @@ function dbWith({
   accountEvents,
   accountEventsDaily,
   subnetIdentityHistory,
+  subnetHyperparams,
   subnetHyperparamsHistory,
   accountIdentity,
   accountIdentityHistory,
@@ -463,6 +506,10 @@ function dbWith({
                   // Historical hyperparameter change tracking (#4309).
                   if (/FROM subnet_hyperparams_history/.test(sql)) {
                     return { results: subnetHyperparamsHistory || [] };
+                  }
+                  // Subnet hyperparameters, latest-only (#4307/1.4).
+                  if (/FROM subnet_hyperparams WHERE netuid = \?/.test(sql)) {
+                    return { results: subnetHyperparams || [] };
                   }
                   // Personal chain identity, latest-only (epic #4301/5.4) —
                   // checked before the history branch below (both match
@@ -1205,6 +1252,48 @@ describe("handleSubnetIdentityHistory", () => {
     assert.equal(body.data.entry_count, 1);
     assert.equal(body.data.entries[0].subnet_name, "MIAO");
     assert.equal(body.data.limit, 20);
+  });
+});
+
+describe("handleSubnetHyperparams", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetHyperparams(
+      req(`/api/v1/subnets/${NETUID}/hyperparameters`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/hyperparameters?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable hyperparameters:null on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetHyperparams,
+      req(`/api/v1/subnets/${NETUID}/hyperparameters`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/hyperparameters`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.hyperparameters, null);
+    assert.equal(body.data.captured_at, null);
+  });
+
+  test("happy path returns the latest hyperparameters row", async () => {
+    const { env } = dbWith({
+      subnetHyperparams: [hyperparamsRow()],
+    });
+    const body = await json(
+      await handleSubnetHyperparams(
+        req(`/api/v1/subnets/${NETUID}/hyperparameters`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/hyperparameters`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.hyperparameters.tempo, 360);
+    assert.equal(body.data.block_number, 100);
   });
 });
 
@@ -6337,6 +6426,85 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       ),
     );
     assert.equal(body.data.neuron.hotkey, SS58);
+  });
+
+  // #4832 gap-closure: subnet_hyperparams/subnet_hyperparams_history's new
+  // Postgres tier, own dedicated flag (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE)
+  // since it has an independent write path from neurons/neuron_daily above.
+  test("handleSubnetHyperparams: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ subnetHyperparams: [hyperparamsRow()] });
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        captured_at: null,
+        block_number: null,
+        hyperparameters: { tempo: 999 },
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/hyperparameters`;
+    const body = await json(
+      await handleSubnetHyperparams(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.hyperparameters.tempo, 999);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetHyperparams: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ subnetHyperparams: [hyperparamsRow()] });
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/hyperparameters`;
+    const body = await json(
+      await handleSubnetHyperparams(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.hyperparameters.tempo, 360);
+  });
+
+  test("handleSubnetHyperparamsHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      subnetHyperparamsHistory: [hyperparamsHistoryRow()],
+    });
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        entry_count: 1,
+        limit: null,
+        offset: null,
+        next_cursor: null,
+        entries: [{ hyperparams_hash: "pg-hash" }],
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/hyperparameters/history`;
+    const body = await json(
+      await handleSubnetHyperparamsHistory(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.entries[0].hyperparams_hash, "pg-hash");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetHyperparamsHistory: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({
+      subnetHyperparamsHistory: [hyperparamsHistoryRow()],
+    });
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/hyperparameters/history`;
+    const body = await json(
+      await handleSubnetHyperparamsHistory(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.entries[0].hyperparams_hash, "abc");
   });
 
   test("handleSubnetValidators: flag=postgres uses Postgres data, D1 never queried", async () => {

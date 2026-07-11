@@ -4,6 +4,8 @@
 import { beforeEach, test, expect, vi } from "vitest";
 import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
+import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
+import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";
 
 const sqlCalls = vi.hoisted(() => []);
 const mockRows = vi.hoisted(() => ({
@@ -33,6 +35,14 @@ const neuronsSyncFailure = vi.hoisted(() => ({ error: null }));
 const neuronsSyncPruneRows = vi.hoisted(() => ({ current: [] }));
 // State for the account-events-daily rollup write route's tests only (#4832).
 const rollupFailure = vi.hoisted(() => ({ error: null }));
+// State for the subnet-hyperparams-sync write route's tests only (#4832
+// gap-closure): a failure hook mirroring neuronsSyncFailure/rollupFailure, a
+// prune-rows hook mirroring neuronsSyncPruneRows, and the "latest hash per
+// netuid" SELECT DISTINCT ON result the history diff reads before deciding
+// which rows changed.
+const subnetHyperparamsSyncFailure = vi.hoisted(() => ({ error: null }));
+const subnetHyperparamsPruneRows = vi.hoisted(() => ({ current: [] }));
+const subnetHyperparamsLatestHashes = vi.hoisted(() => ({ current: [] }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -83,8 +93,17 @@ vi.mock("postgres", () => ({
       ) {
         return Promise.reject(rollupFailure.error);
       }
+      if (
+        subnetHyperparamsSyncFailure.error &&
+        /INSERT INTO subnet_hyperparams\b/.test(text)
+      ) {
+        return Promise.reject(subnetHyperparamsSyncFailure.error);
+      }
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
+      }
+      if (/SELECT DISTINCT ON \(netuid\)/.test(text)) {
+        return Promise.resolve(subnetHyperparamsLatestHashes.current);
       }
       if (mockQueue.current.length) {
         return Promise.resolve(mockQueue.current.shift());
@@ -103,6 +122,9 @@ vi.mock("postgres", () => ({
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
       }
+      if (/DELETE FROM subnet_hyperparams\b/.test(text)) {
+        return Promise.resolve(subnetHyperparamsPruneRows.current);
+      }
       return Promise.resolve(mockRows.current);
     };
     // sql.begin(["read only",] cb) reserves a connection for cb in real
@@ -120,10 +142,12 @@ vi.mock("postgres", () => ({
 const { default: worker } = await import("../workers/data-api.mjs");
 const NEURONS_SYNC_SECRET = "test-neurons-sync-secret";
 const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
+const SUBNET_HYPERPARAMS_SYNC_SECRET = "test-subnet-hyperparams-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
   ROLLUP_SYNC_SECRET,
+  SUBNET_HYPERPARAMS_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -136,6 +160,9 @@ beforeEach(() => {
   neuronsSyncFailure.error = null;
   neuronsSyncPruneRows.current = [];
   rollupFailure.error = null;
+  subnetHyperparamsSyncFailure.error = null;
+  subnetHyperparamsPruneRows.current = [];
+  subnetHyperparamsLatestHashes.current = [];
   mockRows.current = [
     {
       block_number: "123",
@@ -2749,6 +2776,387 @@ test("GET /api/v1/accounts/:ss58/history?limit=1 emits a next_cursor when the pa
     },
   ];
   const res = await req(`/api/v1/accounts/${SS58}/history?limit=1`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.next_cursor).not.toBeNull();
+});
+
+// #4832 gap-closure: POST /api/v1/internal/subnet-hyperparams-sync -- the
+// write path into subnet_hyperparams/subnet_hyperparams_history (see
+// workers/data-api.mjs's handleSubnetHyperparamsSync), plus its read paths,
+// GET /api/v1/subnets/:netuid/hyperparameters[/history].
+function hyperparamsSyncRow(overrides = {}) {
+  return {
+    netuid: 8,
+    kappa_ratio: 0.5,
+    immunity_period: 7200,
+    min_allowed_weights: 8,
+    max_weight_limit_ratio: 1,
+    tempo: 360,
+    weights_version: 1,
+    weights_rate_limit: 100,
+    activity_cutoff: 5000,
+    activity_cutoff_factor: 1,
+    registration_allowed: 1,
+    target_regs_per_interval: 1,
+    min_burn_tao: 0.001,
+    max_burn_tao: 100,
+    burn_half_life: 100_000,
+    burn_increase_mult: 1,
+    bonds_moving_avg_raw: 900_000,
+    max_regs_per_block: 1,
+    serving_rate_limit: 50,
+    max_validators: 64,
+    commit_reveal_period: 1,
+    commit_reveal_enabled: 0,
+    alpha_high_ratio: 0.9,
+    alpha_low_ratio: 0.1,
+    liquid_alpha_enabled: 0,
+    alpha_sigmoid_steepness: 10,
+    yuma_version: 3,
+    subnet_is_active: 1,
+    transfers_enabled: 1,
+    bonds_reset_enabled: 0,
+    user_liquidity_enabled: 0,
+    owner_cut_enabled: 1,
+    owner_cut_auto_lock_enabled: 1,
+    min_childkey_take_ratio: 0,
+    block_number: 5_000_000,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postSubnetHyperparams(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-subnet-hyperparams-sync-token"] = secret;
+  return req("/api/v1/internal/subnet-hyperparams-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("subnet-hyperparams-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postSubnetHyperparams([hyperparamsSyncRow()], {
+    secret: "wrong",
+  });
+  expect(wrong.status).toBe(401);
+  const missing = await postSubnetHyperparams([hyperparamsSyncRow()]);
+  expect(missing.status).toBe(401);
+});
+
+test("subnet-hyperparams-sync is disabled (503) when SUBNET_HYPERPARAMS_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/subnet-hyperparams-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-subnet-hyperparams-sync-token": SUBNET_HYPERPARAMS_SYNC_SECRET,
+      },
+      body: JSON.stringify([hyperparamsSyncRow()]),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("subnet-hyperparams-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/subnet-hyperparams-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-subnet-hyperparams-sync-token": SUBNET_HYPERPARAMS_SYNC_SECRET,
+      },
+      body: JSON.stringify([hyperparamsSyncRow()]),
+    }),
+    { SUBNET_HYPERPARAMS_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("subnet-hyperparams-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postSubnetHyperparams(null, {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+    raw: "[" + "1".repeat(2_000_000) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("subnet-hyperparams-sync rejects malformed JSON (400)", async () => {
+  const res = await postSubnetHyperparams(null, {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync rejects a body that isn't an array or {rows:[...]} (400)", async () => {
+  const res = await postSubnetHyperparams(
+    { not: "an array" },
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync accepts the {rows:[...]} wrapped form, not just a bare array", async () => {
+  const res = await postSubnetHyperparams(
+    { rows: [hyperparamsSyncRow()] },
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.subnet_hyperparams_written).toBe(1);
+});
+
+test("subnet-hyperparams-sync rejects more than the row cap (413)", async () => {
+  const many = Array.from({ length: 2001 }, (_, i) =>
+    hyperparamsSyncRow({ netuid: i % 65_536 }),
+  );
+  const res = await postSubnetHyperparams(many, {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(413);
+});
+
+test("subnet-hyperparams-sync rejects a row with an out-of-range netuid (400)", async () => {
+  const res = await postSubnetHyperparams(
+    [hyperparamsSyncRow({ netuid: 70_000 })],
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync rejects a non-object row (400)", async () => {
+  const res = await postSubnetHyperparams(["not-an-object"], {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync rejects a row carrying an unknown column (400)", async () => {
+  const res = await postSubnetHyperparams(
+    [hyperparamsSyncRow({ unexpected_field: 1 })],
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync rejects a row with a non-numeric, non-null field (400)", async () => {
+  const res = await postSubnetHyperparams(
+    [hyperparamsSyncRow({ tempo: "360" })],
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync rejects a row with a numeric field that overflows to Infinity (400)", async () => {
+  const { tempo: _tempo, ...rest } = hyperparamsSyncRow();
+  const raw = JSON.stringify([rest]).replace(/}\]$/, `,"tempo":1e400}]`);
+  const res = await postSubnetHyperparams(null, {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+    raw,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync rejects a row missing a valid captured_at (400)", async () => {
+  const res = await postSubnetHyperparams(
+    [hyperparamsSyncRow({ captured_at: 0 })],
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync rejects an empty array (400)", async () => {
+  const res = await postSubnetHyperparams([], {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("subnet-hyperparams-sync upserts subnet_hyperparams and reports written/pruned counts", async () => {
+  const res = await postSubnetHyperparams(
+    [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({ ok: true, subnet_hyperparams_written: 2 });
+  expect(queryText()).toMatch(/INSERT INTO subnet_hyperparams\b/);
+  expect(queryText()).toMatch(/DELETE FROM subnet_hyperparams\b/);
+});
+
+test("subnet-hyperparams-sync prunes with scalar positional binds, not a bound array", async () => {
+  await postSubnetHyperparams(
+    [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  const pruneCall = sqlCalls.find((c) =>
+    /DELETE FROM subnet_hyperparams\b/.test(c.text),
+  );
+  expect(pruneCall.values).toEqual([8, 9]);
+  expect(pruneCall.text).toMatch(/\$1::int, \$2::int/);
+});
+
+test("subnet-hyperparams-sync coerces 0/1 boolean-flag columns to real booleans", async () => {
+  await postSubnetHyperparams(
+    [
+      hyperparamsSyncRow({
+        registration_allowed: 1,
+        commit_reveal_enabled: 0,
+      }),
+    ],
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO subnet_hyperparams\b/.test(c.text),
+  );
+  expect(insert.values).toContain(true);
+  expect(insert.values).toContain(false);
+});
+
+test("subnet-hyperparams-sync defaults a missing optional column to null rather than undefined", async () => {
+  const { block_number: _blockNumber, ...withoutBlockNumber } =
+    hyperparamsSyncRow();
+  const res = await postSubnetHyperparams([withoutBlockNumber], {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO subnet_hyperparams\b/.test(c.text),
+  );
+  expect(insert.values).toContain(null);
+});
+
+test("subnet-hyperparams-sync reports deregistered_pruned from the DELETE's returned row count", async () => {
+  subnetHyperparamsPruneRows.current = [{ netuid: 99 }];
+  const res = await postSubnetHyperparams([hyperparamsSyncRow()], {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  const body = await res.json();
+  expect(body.deregistered_pruned).toBe(1);
+});
+
+test("subnet-hyperparams-sync appends to subnet_hyperparams_history when the hash changed (cold history)", async () => {
+  subnetHyperparamsLatestHashes.current = [];
+  const res = await postSubnetHyperparams([hyperparamsSyncRow()], {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  const body = await res.json();
+  expect(body.history_appended).toBe(1);
+  expect(queryText()).toMatch(/INSERT INTO subnet_hyperparams_history/);
+});
+
+test("subnet-hyperparams-sync skips the history append when the hash is unchanged", async () => {
+  const row = hyperparamsSyncRow();
+  const hash = await hyperparamsHash(formatSubnetHyperparams(row));
+  subnetHyperparamsLatestHashes.current = [
+    { netuid: row.netuid, hyperparams_hash: hash },
+  ];
+  const res = await postSubnetHyperparams([row], {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  const body = await res.json();
+  expect(body.history_appended).toBe(0);
+  expect(queryText()).not.toMatch(/INSERT INTO subnet_hyperparams_history/);
+});
+
+test("subnet-hyperparams-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  subnetHyperparamsSyncFailure.error = new Error("connection reset");
+  const res = await postSubnetHyperparams([hyperparamsSyncRow()], {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+test("GET /api/v1/subnets/:netuid/hyperparameters returns the latest row", async () => {
+  mockRows.current = [
+    {
+      kappa_ratio: 0.5,
+      tempo: 360,
+      registration_allowed: true,
+      commit_reveal_enabled: false,
+      liquid_alpha_enabled: false,
+      subnet_is_active: true,
+      transfers_enabled: true,
+      bonds_reset_enabled: false,
+      user_liquidity_enabled: false,
+      owner_cut_enabled: true,
+      owner_cut_auto_lock_enabled: true,
+      block_number: "5000000",
+      captured_at: "1780000000000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/8/hyperparameters");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.netuid).toBe(8);
+  expect(body.hyperparameters.tempo).toBe(360);
+  expect(body.hyperparameters.registration_allowed).toBe(true);
+});
+
+test("GET /api/v1/subnets/:netuid/hyperparameters on a cold store returns hyperparameters:null", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/8/hyperparameters");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.hyperparameters).toBeNull();
+});
+
+test("GET /api/v1/subnets/:netuid/hyperparameters/history returns the change timeline", async () => {
+  mockRows.current = [
+    {
+      id: "10",
+      block_number: "100",
+      observed_at: "1780000000000",
+      kappa_ratio: 0.5,
+      tempo: 360,
+      registration_allowed: true,
+      commit_reveal_enabled: false,
+      liquid_alpha_enabled: false,
+      subnet_is_active: true,
+      transfers_enabled: true,
+      bonds_reset_enabled: false,
+      user_liquidity_enabled: false,
+      owner_cut_enabled: true,
+      owner_cut_auto_lock_enabled: true,
+      hyperparams_hash: "abc123",
+    },
+  ];
+  const res = await req("/api/v1/subnets/8/hyperparameters/history");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.entry_count).toBe(1);
+  expect(body.entries[0].hyperparams_hash).toBe("abc123");
+  expect(body.entries[0].hyperparameters.tempo).toBe(360);
+});
+
+test("GET /api/v1/subnets/:netuid/hyperparameters/history uses a cursor seek instead of OFFSET", async () => {
+  mockRows.current = [];
+  const cursor = encodeCursor([1780000000000, 10]);
+  const res = await req(
+    `/api/v1/subnets/8/hyperparameters/history?cursor=${cursor}`,
+  );
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("AND (observed_at, id) <");
+  expect(queryText()).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/subnets/:netuid/hyperparameters/history?limit=1 emits a next_cursor when the page is full", async () => {
+  mockRows.current = [
+    {
+      id: "10",
+      block_number: "100",
+      observed_at: "1780000000000",
+      hyperparams_hash: "abc123",
+    },
+  ];
+  const res = await req("/api/v1/subnets/8/hyperparameters/history?limit=1");
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.next_cursor).not.toBeNull();

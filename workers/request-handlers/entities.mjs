@@ -599,7 +599,12 @@ export async function handleNeuron(request, env, netuid, uid) {
 export async function handleSubnetHyperparams(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadSubnetHyperparams(d1Runner(env), netuid);
+  const data =
+    (await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+    )) ?? (await loadSubnetHyperparams(d1Runner(env), netuid));
   return envelopeResponse(
     request,
     {
@@ -632,11 +637,19 @@ export async function handleSubnetHyperparamsHistory(
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
-  const data = await loadSubnetHyperparamsHistory(d1Runner(env), netuid, {
-    limit,
-    offset,
-    cursor,
-  });
+  async function fromD1() {
+    return loadSubnetHyperparamsHistory(d1Runner(env), netuid, {
+      limit,
+      offset,
+      cursor,
+    });
+  }
+  const data =
+    (await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+    )) ?? (await fromD1());
   return envelopeResponse(
     request,
     {

@@ -1220,6 +1220,19 @@ async function handleRollupAccountEventsDailyProxy(request, env) {
   });
 }
 
+// Proxies POST /api/v1/internal/subnet-hyperparams-sync -- the write path
+// into subnet_hyperparams/subnet_hyperparams_history (#4832 gap-closure).
+// Same DATA_API service binding as neurons-sync/rollup above.
+async function handleSubnetHyperparamsSyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "subnet_hyperparams_sync_unavailable",
+    notBoundMessage:
+      "The subnet-hyperparams sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The subnet-hyperparams sync tier returned an unreadable response.",
+  });
+}
+
 export async function handleRequest(request, env = {}, ctx = {}) {
   let url = new URL(request.url);
 
@@ -1340,6 +1353,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // neurons-sync above). Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/rollup-account-events-daily") {
     return handleRollupAccountEventsDailyProxy(request, env);
+  }
+  // The write path into subnet_hyperparams/subnet_hyperparams_history
+  // (#4832 gap-closure) -- refresh-subnet-hyperparams.yml's sign-and-stage
+  // job calls this the same way refresh-metagraph.yml calls neurons-sync
+  // above. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/subnet-hyperparams-sync") {
+    return handleSubnetHyperparamsSyncProxy(request, env);
   }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs

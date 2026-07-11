@@ -215,6 +215,15 @@ import {
   buildCounterpartyRelationship,
   COUNTERPARTIES_SCAN_CAP,
 } from "../src/counterparties.mjs";
+import {
+  SUBNET_HYPERPARAMS_INSERT_COLUMNS,
+  formatSubnetHyperparams,
+  buildSubnetHyperparams,
+} from "../src/subnet-hyperparams.mjs";
+import {
+  hyperparamsHash,
+  buildSubnetHyperparamsHistory,
+} from "../src/subnet-hyperparams-history.mjs";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -753,6 +762,264 @@ async function handleRollupAccountEventsDaily(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/subnet-hyperparams-sync (#4832 gap-closure) -----
+//
+// The write path into subnet_hyperparams + subnet_hyperparams_history,
+// reached only via workers/api.mjs's handleSubnetHyperparamsSyncProxy (the
+// same proxyToDataApi shape as neurons-sync/rollup-account-events-daily
+// above). .github/workflows/refresh-subnet-hyperparams.yml's sign-and-stage
+// job POSTs the SAME signed envelope it already produces for the D1 R2-stage
+// path (scripts/sign-staged-neurons.mjs's {schema_version, hmac_sha256,
+// rows} shape) directly here -- the hmac_sha256 field is ignored (unlike
+// workers/request-handlers/staging.mjs's loadStagedSubnetHyperparams, which
+// verifies it): that verification exists to authenticate an R2 object drop
+// across an untrusted intermediate step, and is unnecessary to replicate
+// here since the POST itself is independently authenticated by the token
+// header below, matching handleNeuronsSync's own request/{rows:[...]} shape.
+//
+// Every successful upstream fetch covers ALL active subnets in one run (no
+// partial-coverage concept -- see loadStagedSubnetHyperparams's own header
+// comment), so the prune below is a plain NOT IN against this batch's
+// netuids, unlike neurons-sync's per-netuid captured_at-scoped prune.
+const SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER = "x-subnet-hyperparams-sync-token";
+// ~129 rows today (one per active subnet); generous headroom, matching the
+// D1 staging path's MAX_STAGED_SUBNET_HYPERPARAMS_ROWS/_BYTES.
+const SUBNET_HYPERPARAMS_SYNC_MAX_BODY_BYTES = 2_000_000;
+const SUBNET_HYPERPARAMS_SYNC_MAX_ROWS = 2_000;
+const SUBNET_HYPERPARAMS_SYNC_MAX_NETUID = 65_535;
+const SUBNET_HYPERPARAMS_BOOLEAN_COLUMNS = new Set([
+  "registration_allowed",
+  "commit_reveal_enabled",
+  "liquid_alpha_enabled",
+  "subnet_is_active",
+  "transfers_enabled",
+  "bonds_reset_enabled",
+  "user_liquidity_enabled",
+  "owner_cut_enabled",
+  "owner_cut_auto_lock_enabled",
+]);
+// The 33 hyperparameter field names, same derivation as
+// src/subnet-hyperparams-history.mjs's own (unexported) HYPERPARAM_FIELDS --
+// strips netuid (front) and block_number/captured_at (back).
+const SUBNET_HYPERPARAMS_HISTORY_FIELDS =
+  SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1, -2);
+
+// Bounds-check one incoming row against SUBNET_HYPERPARAMS_INSERT_COLUMNS --
+// same trust posture as staging.mjs's validStagedSubnetHyperparamsRow (every
+// field but netuid is null-or-finite-number; the fetch script emits 0/1 for
+// the boolean-flag columns, not JSON booleans).
+function validSubnetHyperparamsSyncRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (
+    !Number.isInteger(row.netuid) ||
+    row.netuid < 0 ||
+    row.netuid > SUBNET_HYPERPARAMS_SYNC_MAX_NETUID
+  )
+    return false;
+  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  for (const [key, value] of Object.entries(row)) {
+    if (!SUBNET_HYPERPARAMS_INSERT_COLUMNS.includes(key)) return false;
+    if (typeof value === "number" && !Number.isFinite(value)) return false;
+    if (value !== null && typeof value !== "number") return false;
+  }
+  return true;
+}
+
+// 0/1 -> boolean for the BOOLEAN columns (see NEURONS_SYNC_BOOLEAN_COLUMNS'
+// identical reasoning above); everything else passes through unchanged.
+function coerceSubnetHyperparamsSyncRow(row) {
+  const out = {};
+  for (const col of SUBNET_HYPERPARAMS_INSERT_COLUMNS) {
+    const value = row[col] ?? null;
+    out[col] = SUBNET_HYPERPARAMS_BOOLEAN_COLUMNS.has(col)
+      ? Boolean(Number(value))
+      : value;
+  }
+  return out;
+}
+
+async function handleSubnetHyperparamsSync(request, env) {
+  if (!env.SUBNET_HYPERPARAMS_SYNC_SECRET) {
+    return writeJson(
+      {
+        error: "subnet-hyperparams sync is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.SUBNET_HYPERPARAMS_SYNC_SECRET)
+  ) {
+    return writeJson(
+      {
+        error: `provide a valid ${SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > SUBNET_HYPERPARAMS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${SUBNET_HYPERPARAMS_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of subnet-hyperparams rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > SUBNET_HYPERPARAMS_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${SUBNET_HYPERPARAMS_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validSubnetHyperparamsSyncRow)) {
+    return writeJson(
+      { error: "rows must match the subnet-hyperparams row shape" },
+      400,
+    );
+  }
+
+  const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
+  const netuids = incoming.map((row) => row.netuid);
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+
+      await sql`
+        INSERT INTO subnet_hyperparams ${sql(rows, ...SUBNET_HYPERPARAMS_INSERT_COLUMNS)}
+        ON CONFLICT (netuid) DO UPDATE SET
+          kappa_ratio = EXCLUDED.kappa_ratio,
+          immunity_period = EXCLUDED.immunity_period,
+          min_allowed_weights = EXCLUDED.min_allowed_weights,
+          max_weight_limit_ratio = EXCLUDED.max_weight_limit_ratio,
+          tempo = EXCLUDED.tempo,
+          weights_version = EXCLUDED.weights_version,
+          weights_rate_limit = EXCLUDED.weights_rate_limit,
+          activity_cutoff = EXCLUDED.activity_cutoff,
+          activity_cutoff_factor = EXCLUDED.activity_cutoff_factor,
+          registration_allowed = EXCLUDED.registration_allowed,
+          target_regs_per_interval = EXCLUDED.target_regs_per_interval,
+          min_burn_tao = EXCLUDED.min_burn_tao,
+          max_burn_tao = EXCLUDED.max_burn_tao,
+          burn_half_life = EXCLUDED.burn_half_life,
+          burn_increase_mult = EXCLUDED.burn_increase_mult,
+          bonds_moving_avg_raw = EXCLUDED.bonds_moving_avg_raw,
+          max_regs_per_block = EXCLUDED.max_regs_per_block,
+          serving_rate_limit = EXCLUDED.serving_rate_limit,
+          max_validators = EXCLUDED.max_validators,
+          commit_reveal_period = EXCLUDED.commit_reveal_period,
+          commit_reveal_enabled = EXCLUDED.commit_reveal_enabled,
+          alpha_high_ratio = EXCLUDED.alpha_high_ratio,
+          alpha_low_ratio = EXCLUDED.alpha_low_ratio,
+          liquid_alpha_enabled = EXCLUDED.liquid_alpha_enabled,
+          alpha_sigmoid_steepness = EXCLUDED.alpha_sigmoid_steepness,
+          yuma_version = EXCLUDED.yuma_version,
+          subnet_is_active = EXCLUDED.subnet_is_active,
+          transfers_enabled = EXCLUDED.transfers_enabled,
+          bonds_reset_enabled = EXCLUDED.bonds_reset_enabled,
+          user_liquidity_enabled = EXCLUDED.user_liquidity_enabled,
+          owner_cut_enabled = EXCLUDED.owner_cut_enabled,
+          owner_cut_auto_lock_enabled = EXCLUDED.owner_cut_auto_lock_enabled,
+          min_childkey_take_ratio = EXCLUDED.min_childkey_take_ratio,
+          block_number = EXCLUDED.block_number,
+          captured_at = EXCLUDED.captured_at
+        WHERE subnet_hyperparams.captured_at <= EXCLUDED.captured_at`;
+
+      // Prune subnets no longer in the snapshot (deregistered/removed) --
+      // scalar positional binds via sql.unsafe, not a bound array, avoiding
+      // the same fetch_types:false ANY()/array-bind landmine documented on
+      // handleNeuronsSync's own prune above. `netuids` is never empty here
+      // -- the earlier `!incoming.length` check guarantees at least one row.
+      const placeholders = netuids.map((_, i) => `$${i + 1}::int`).join(", ");
+      const pruned = await sql.unsafe(
+        `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${placeholders}) RETURNING netuid`,
+        netuids,
+      );
+
+      // Diff-and-append into subnet_hyperparams_history (mirrors D1's
+      // recordSubnetHyperparamsChanges) -- hashed on the RAW incoming rows
+      // (pre-coercion): formatSubnetHyperparams' toD1Flag(value) already
+      // tolerates either a 0/1 number or a real boolean, so the hash stays
+      // domain-identical to the D1 path regardless of which shape reaches it.
+      const latest = await sql`
+        SELECT DISTINCT ON (netuid) netuid, hyperparams_hash
+        FROM subnet_hyperparams_history
+        ORDER BY netuid, id DESC`;
+      const latestByNetuid = new Map(
+        latest.map((row) => [Number(row.netuid), row.hyperparams_hash]),
+      );
+      const now = Date.now();
+      const changedRows = [];
+      for (const row of incoming) {
+        const hyperparameters = formatSubnetHyperparams(row);
+        const hash = await hyperparamsHash(hyperparameters);
+        if (latestByNetuid.get(row.netuid) === hash) continue;
+        changedRows.push({
+          netuid: row.netuid,
+          block_number: row.block_number ?? null,
+          observed_at: now,
+          ...hyperparameters,
+          hyperparams_hash: hash,
+        });
+        latestByNetuid.set(row.netuid, hash);
+      }
+      if (changedRows.length) {
+        await sql`
+          INSERT INTO subnet_hyperparams_history ${sql(
+            changedRows,
+            "netuid",
+            "block_number",
+            "observed_at",
+            ...SUBNET_HYPERPARAMS_HISTORY_FIELDS,
+            "hyperparams_hash",
+          )}`;
+      }
+
+      return writeJson({
+        ok: true,
+        subnet_hyperparams_written: rows.length,
+        deregistered_pruned: pruned.length,
+        history_appended: changedRows.length,
+      });
+    });
+  } catch (err) {
+    console.error("data-api subnet-hyperparams-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -877,6 +1144,12 @@ export default {
       url.pathname === "/api/v1/internal/rollup-account-events-daily"
     ) {
       return handleRollupAccountEventsDaily(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/subnet-hyperparams-sync"
+    ) {
+      return handleSubnetHyperparamsSync(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
@@ -2416,6 +2689,63 @@ export default {
           SELECT uid, hotkey, validator_permit, stake_tao, emission_tao, captured_at, block_number
           FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
           return json(buildSubnetYield(rows, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/hyperparameters (#4832 gap-closure,
+        // Phase B): latest-only, mirroring src/subnet-hyperparams.mjs's
+        // loadSubnetHyperparams. Column list matches that file's own
+        // SUBNET_HYPERPARAMS_COLUMNS (every INSERT column except netuid,
+        // itself already known from the WHERE clause).
+        const subnetHyperparams = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/hyperparameters$/,
+        );
+        if (subnetHyperparams) {
+          const netuid = Number(subnetHyperparams[1]);
+          const rows = await sql`
+          SELECT kappa_ratio, immunity_period, min_allowed_weights, max_weight_limit_ratio, tempo, weights_version, weights_rate_limit, activity_cutoff, activity_cutoff_factor, registration_allowed, target_regs_per_interval, min_burn_tao, max_burn_tao, burn_half_life, burn_increase_mult, bonds_moving_avg_raw, max_regs_per_block, serving_rate_limit, max_validators, commit_reveal_period, commit_reveal_enabled, alpha_high_ratio, alpha_low_ratio, liquid_alpha_enabled, alpha_sigmoid_steepness, yuma_version, subnet_is_active, transfers_enabled, bonds_reset_enabled, user_liquidity_enabled, owner_cut_enabled, owner_cut_auto_lock_enabled, min_childkey_take_ratio, block_number, captured_at
+          FROM subnet_hyperparams WHERE netuid = ${netuid} LIMIT 1`;
+          return json(buildSubnetHyperparams(rows[0] ?? null, netuid));
+        }
+
+        // GET /api/v1/subnets/:netuid/hyperparameters/history?limit=&offset=
+        // &cursor= (#4832 gap-closure, Phase B): append-only change timeline,
+        // mirroring src/subnet-hyperparams-history.mjs's
+        // loadSubnetHyperparamsHistory. observed_at/id are plain BIGINT
+        // columns (not DATE), so no ::text cast is needed for the cursor
+        // comparison the way snapshot_date/day require elsewhere in this file.
+        const subnetHyperparamsHistory = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/hyperparameters\/history$/,
+        );
+        if (subnetHyperparamsHistory) {
+          const netuid = Number(subnetHyperparamsHistory[1]);
+          const limit = clampRequestLimit(
+            url.searchParams.get("limit"),
+            FEED_PAGINATION,
+          );
+          const offset = clampRequestOffset(url.searchParams.get("offset"));
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const rows = await sql`
+          SELECT id, block_number, observed_at, kappa_ratio, immunity_period, min_allowed_weights, max_weight_limit_ratio, tempo, weights_version, weights_rate_limit, activity_cutoff, activity_cutoff_factor, registration_allowed, target_regs_per_interval, min_burn_tao, max_burn_tao, burn_half_life, burn_increase_mult, bonds_moving_avg_raw, max_regs_per_block, serving_rate_limit, max_validators, commit_reveal_period, commit_reveal_enabled, alpha_high_ratio, alpha_low_ratio, liquid_alpha_enabled, alpha_sigmoid_steepness, yuma_version, subnet_is_active, transfers_enabled, bonds_reset_enabled, user_liquidity_enabled, owner_cut_enabled, owner_cut_auto_lock_enabled, min_childkey_take_ratio, hyperparams_hash
+          FROM subnet_hyperparams_history
+          WHERE netuid = ${netuid}
+            ${cursor ? sql`AND (observed_at, id) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY observed_at DESC, id DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          const last = rows.length === limit ? rows[rows.length - 1] : null;
+          const nextCursor = last
+            ? encodeCursor([
+                numberOrNull(last.observed_at),
+                numberOrNull(last.id),
+              ])
+            : null;
+          return json(
+            buildSubnetHyperparamsHistory(rows, netuid, {
+              limit,
+              offset,
+              nextCursor,
+            }),
+          );
         }
 
         // GET /api/v1/accounts/:ss58/portfolio (#4832 Tier 2): one wallet's

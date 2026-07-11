@@ -207,6 +207,101 @@ CREATE INDEX IF NOT EXISTS idx_account_position_daily_netuid_date
 CREATE INDEX IF NOT EXISTS idx_account_position_daily_date
   ON account_position_daily (snapshot_date);
 
+-- Subnet hyperparameters, latest-only (#4832 gap-closure; mirrors D1
+-- migrations/0036_subnet_hyperparams.sql). One row per netuid, upserted by
+-- the refresh-subnet-hyperparams workflow's direct POST to data-api.mjs.
+-- *_ratio columns and TAO-exact fields stay NUMERIC (not REAL) to match the
+-- D1 pure builders' round(value, 9) precision; the nine D1 0/1 flag columns
+-- become BOOLEAN here (see the SUM(boolean) landmine noted elsewhere in this
+-- file); bonds_moving_avg_raw is a raw on-chain integer, not a ratio.
+CREATE TABLE IF NOT EXISTS subnet_hyperparams (
+  netuid                       INTEGER NOT NULL,
+  kappa_ratio                  NUMERIC,
+  immunity_period               INTEGER,
+  min_allowed_weights           INTEGER,
+  max_weight_limit_ratio        NUMERIC,
+  tempo                        INTEGER,
+  weights_version               INTEGER,
+  weights_rate_limit            INTEGER,
+  activity_cutoff               INTEGER,
+  activity_cutoff_factor        INTEGER,
+  registration_allowed          BOOLEAN,
+  target_regs_per_interval      INTEGER,
+  min_burn_tao                 NUMERIC,
+  max_burn_tao                 NUMERIC,
+  burn_half_life                INTEGER,
+  burn_increase_mult            NUMERIC,
+  bonds_moving_avg_raw           BIGINT,
+  max_regs_per_block            INTEGER,
+  serving_rate_limit            INTEGER,
+  max_validators                INTEGER,
+  commit_reveal_period          INTEGER,
+  commit_reveal_enabled         BOOLEAN,
+  alpha_high_ratio              NUMERIC,
+  alpha_low_ratio               NUMERIC,
+  liquid_alpha_enabled          BOOLEAN,
+  alpha_sigmoid_steepness       NUMERIC,
+  yuma_version                  INTEGER,
+  subnet_is_active              BOOLEAN,
+  transfers_enabled             BOOLEAN,
+  bonds_reset_enabled           BOOLEAN,
+  user_liquidity_enabled        BOOLEAN,
+  owner_cut_enabled             BOOLEAN,
+  owner_cut_auto_lock_enabled   BOOLEAN,
+  min_childkey_take_ratio       NUMERIC,
+  block_number                 BIGINT,
+  captured_at                  BIGINT NOT NULL,
+  PRIMARY KEY (netuid)
+);
+
+-- Historical hyperparameter change tracking (#4832 gap-closure; mirrors D1
+-- migrations/0037_subnet_hyperparams_history.sql). Append-only, diffed by
+-- hyperparams_hash on each sync; live-forward only, same as the D1 table.
+CREATE TABLE IF NOT EXISTS subnet_hyperparams_history (
+  id                            BIGSERIAL PRIMARY KEY,
+  netuid                        INTEGER NOT NULL,
+  block_number                  BIGINT,
+  observed_at                   BIGINT NOT NULL,
+  kappa_ratio                   NUMERIC,
+  immunity_period                INTEGER,
+  min_allowed_weights            INTEGER,
+  max_weight_limit_ratio         NUMERIC,
+  tempo                         INTEGER,
+  weights_version                INTEGER,
+  weights_rate_limit             INTEGER,
+  activity_cutoff                INTEGER,
+  activity_cutoff_factor         INTEGER,
+  registration_allowed           BOOLEAN,
+  target_regs_per_interval       INTEGER,
+  min_burn_tao                  NUMERIC,
+  max_burn_tao                  NUMERIC,
+  burn_half_life                 INTEGER,
+  burn_increase_mult             NUMERIC,
+  bonds_moving_avg_raw            BIGINT,
+  max_regs_per_block             INTEGER,
+  serving_rate_limit             INTEGER,
+  max_validators                 INTEGER,
+  commit_reveal_period           INTEGER,
+  commit_reveal_enabled          BOOLEAN,
+  alpha_high_ratio                NUMERIC,
+  alpha_low_ratio                NUMERIC,
+  liquid_alpha_enabled           BOOLEAN,
+  alpha_sigmoid_steepness        NUMERIC,
+  yuma_version                   INTEGER,
+  subnet_is_active               BOOLEAN,
+  transfers_enabled              BOOLEAN,
+  bonds_reset_enabled            BOOLEAN,
+  user_liquidity_enabled         BOOLEAN,
+  owner_cut_enabled              BOOLEAN,
+  owner_cut_auto_lock_enabled    BOOLEAN,
+  min_childkey_take_ratio        NUMERIC,
+  hyperparams_hash               TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_subnet_hyperparams_history_netuid_observed
+  ON subnet_hyperparams_history (netuid, observed_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_subnet_hyperparams_history_netuid_id
+  ON subnet_hyperparams_history (netuid, id DESC);
+
 -- Account daily rollup (#2079 / audit: removes the temp-sort on default account history).
 CREATE TABLE IF NOT EXISTS account_events_daily (
   hotkey           TEXT NOT NULL,
