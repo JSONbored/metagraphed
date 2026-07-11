@@ -191,8 +191,8 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Call mix
         </h2>
@@ -279,8 +279,8 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
   const cap = Math.max(1, ...rows.map((r) => r.count));
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Pallet event mix
         </h2>
@@ -361,8 +361,8 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
   const cap = Math.max(1, ...inflows.map((s) => s.net_flow_tao));
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Stake flow
         </h2>
@@ -463,8 +463,8 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
   const cap = Math.max(1, ...busiest.map((s) => s.movements));
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Stake moves
         </h2>
@@ -557,8 +557,8 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
   const net = board.network;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Axon serving
         </h3>
@@ -628,8 +628,8 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
   const net = board.network;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Prometheus telemetry
         </h3>
@@ -703,8 +703,8 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
  */
 function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <div>
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Axon churn leaderboard
@@ -768,8 +768,8 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
   const net = registrations.network;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Network registrations
         </h2>
@@ -805,42 +805,44 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
       </div>
 
       {registrations.subnets.length > 0 ? (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr>
-              <th className={TH}>Subnet</th>
-              <th className={`${TH} text-right`}>Registrations</th>
-              <th className={`${TH} text-right`}>Distinct registrants</th>
-              <th className={`${TH} text-right`}>Per registrant</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {registrations.subnets.map((s) => (
-              <tr key={s.netuid} className="hover:bg-surface/40">
-                <td className="px-4 py-2 font-mono text-[11px]">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: s.netuid }}
-                    className="text-ink-strong hover:text-accent hover:underline"
-                  >
-                    SN{s.netuid}
-                  </Link>
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                  {formatNumber(s.registrations)}
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                  {formatNumber(s.distinct_registrants)}
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                  {s.registrations_per_registrant != null
-                    ? s.registrations_per_registrant.toFixed(2)
-                    : "—"}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Registrations</th>
+                <th className={`${TH} text-right`}>Distinct registrants</th>
+                <th className={`${TH} text-right`}>Per registrant</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {registrations.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.registrations)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.distinct_registrants)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {s.registrations_per_registrant != null
+                      ? s.registrations_per_registrant.toFixed(2)
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <EmptyState title="No registrations in this window yet." />
       )}
@@ -863,8 +865,8 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
     .slice(0, 12);
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Validator turnover
         </h2>
@@ -954,8 +956,8 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
 function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
   const chrono = [...trends.days].reverse();
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Network economics trend
         </h2>
@@ -1022,8 +1024,8 @@ function weightSetterKey(setter: { hotkey: string | null; uid: number | null }):
  */
 function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Transfers leaderboard
         </h2>
@@ -1048,37 +1050,39 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
             Top senders
           </div>
           {transfers.top_senders.length > 0 ? (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr>
-                  <th className={TH}>Account</th>
-                  <th className={`${TH} text-right`}>Volume</th>
-                  <th className={`${TH} text-right`}>Transfers</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {transfers.top_senders.map((s) => (
-                  <tr key={s.address} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: s.address }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={s.address}
-                      >
-                        {shortHash(s.address) ?? s.address}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatTao(s.volume_tao)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatNumber(s.transfer_count)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={TH}>Account</th>
+                    <th className={`${TH} text-right`}>Volume</th>
+                    <th className={`${TH} text-right`}>Transfers</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {transfers.top_senders.map((s) => (
+                    <tr key={s.address} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: s.address }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                          title={s.address}
+                        >
+                          {shortHash(s.address) ?? s.address}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {formatTao(s.volume_tao)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatNumber(s.transfer_count)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="font-mono text-[12px] text-ink-muted">No senders in this window yet.</p>
           )}
@@ -1089,37 +1093,39 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
             Top receivers
           </div>
           {transfers.top_receivers.length > 0 ? (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr>
-                  <th className={TH}>Account</th>
-                  <th className={`${TH} text-right`}>Volume</th>
-                  <th className={`${TH} text-right`}>Transfers</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {transfers.top_receivers.map((r) => (
-                  <tr key={r.address} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: r.address }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={r.address}
-                      >
-                        {shortHash(r.address) ?? r.address}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatTao(r.volume_tao)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatNumber(r.transfer_count)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={TH}>Account</th>
+                    <th className={`${TH} text-right`}>Volume</th>
+                    <th className={`${TH} text-right`}>Transfers</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {transfers.top_receivers.map((r) => (
+                    <tr key={r.address} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: r.address }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                          title={r.address}
+                        >
+                          {shortHash(r.address) ?? r.address}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {formatTao(r.volume_tao)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatNumber(r.transfer_count)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="font-mono text-[12px] text-ink-muted">No receivers in this window yet.</p>
           )}
@@ -1267,8 +1273,8 @@ function ExplorerDashboard() {
       </div>
 
       {/* daily activity series */}
-      <section className="rounded-lg border border-border bg-card p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Daily activity
           </h2>
@@ -1319,8 +1325,8 @@ function ExplorerDashboard() {
 
       {/* fees: daily series + tip series + top payers */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Daily fees &amp; tips
             </h2>
@@ -1362,8 +1368,8 @@ function ExplorerDashboard() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Top fee payers
             </h2>
@@ -1426,8 +1432,8 @@ function ExplorerDashboard() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5 lg:col-span-2">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Network weight-setters
             </h2>
@@ -1436,50 +1442,52 @@ function ExplorerDashboard() {
             </span>
           </div>
           {weightSetters.setters.length > 0 ? (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr>
-                  <th className={TH}>Validator</th>
-                  <th className={`${TH} text-right`}>WeightsSet</th>
-                  <th className={`${TH} text-right`}>Share</th>
-                  <th className={`${TH} text-right`}>Last set</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {weightSetters.setters.map((setter) => (
-                  <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      {setter.hotkey ? (
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: setter.hotkey }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={setter.hotkey}
-                        >
-                          {shortHash(setter.hotkey) ?? setter.hotkey}
-                        </Link>
-                      ) : (
-                        <span
-                          className="text-ink-muted"
-                          title="Uid-only setter (no network-wide hotkey)"
-                        >
-                          uid {setter.uid ?? "—"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatNumber(setter.weight_sets)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {fmtShare(setter.share)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={TH}>Validator</th>
+                    <th className={`${TH} text-right`}>WeightsSet</th>
+                    <th className={`${TH} text-right`}>Share</th>
+                    <th className={`${TH} text-right`}>Last set</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {weightSetters.setters.map((setter) => (
+                    <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        {setter.hotkey ? (
+                          <Link
+                            to="/accounts/$ss58"
+                            params={{ ss58: setter.hotkey }}
+                            className="text-ink-strong hover:text-accent hover:underline"
+                            title={setter.hotkey}
+                          >
+                            {shortHash(setter.hotkey) ?? setter.hotkey}
+                          </Link>
+                        ) : (
+                          <span
+                            className="text-ink-muted"
+                            title="Uid-only setter (no network-wide hotkey)"
+                          >
+                            uid {setter.uid ?? "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {formatNumber(setter.weight_sets)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {fmtShare(setter.share)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <EmptyState title="No weight-setters in this window yet." />
           )}
@@ -1498,7 +1506,7 @@ function ExplorerDashboard() {
         <CallMixSection calls={calls} />
 
         {/* top signers */}
-        <section className="rounded-lg border border-border bg-card p-5">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
           <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Most active accounts
           </h2>
@@ -1571,8 +1579,8 @@ function ExplorerDashboard() {
       <NetworkRegistrationsSection registrations={registrations} />
 
       {/* stake-transfer leaderboard */}
-      <section className="rounded-lg border border-border bg-card p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
           <div>
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Stake-transfer leaderboard
@@ -1676,8 +1684,8 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
   const rows = pairs?.pairs ?? [];
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div>
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Transfer pairs
