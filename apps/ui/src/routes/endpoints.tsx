@@ -80,6 +80,9 @@ const endpointsSearchSchema = z.object({
   page: fallback(z.number().int().min(1), 1).default(1),
   pageSize: fallback(z.number().int().min(10).max(200), 25).default(25),
   view: fallback(z.enum(["table", "grid"]), "table").default("table"),
+  // #3976: the ProxyUsagePanel 7d/30d window, URL-backed so it survives reload
+  // and is shareable — matching how /explorer already persists its window.
+  window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
 });
 
 type EndpointsSearch = z.infer<typeof endpointsSearchSchema>;

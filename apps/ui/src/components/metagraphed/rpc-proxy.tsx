@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useSearch, useNavigate } from "@tanstack/react-router";
 import { Zap, GitBranch, Database, ShieldCheck, Gauge, ArrowUpDown } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { useNetwork } from "@/hooks/use-api-base";
@@ -156,7 +156,11 @@ function UsageStat({
 }
 
 export function ProxyUsagePanel() {
-  const [window, setWindow] = useState<"7d" | "30d">("7d");
+  // #3976: URL-back the 7d/30d window (was local state) so it survives reload
+  // and is shareable, matching /explorer. Lives on the /endpoints route search.
+  const search = useSearch({ from: "/endpoints" });
+  const navigate = useNavigate({ from: "/endpoints" });
+  const window = search.window;
   const { data } = useSuspenseQuery(rpcUsageQuery(window));
   const usage = data.data as RpcUsage;
   const s = usage.summary;
@@ -180,7 +184,7 @@ export function ProxyUsagePanel() {
             <button
               key={w}
               type="button"
-              onClick={() => setWindow(w)}
+              onClick={() => navigate({ search: (prev) => ({ ...prev, window: w }) })}
               className={classNames(
                 "rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors",
                 window === w ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
