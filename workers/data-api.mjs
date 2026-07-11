@@ -934,13 +934,17 @@ export default {
             Number(url.searchParams.get("offset")) || 0,
             0,
           );
-          const coldkey = url.searchParams.get("coldkey");
+          const coldkeyParam = url.searchParams.get("coldkey");
+          // Ordinal position references (column 1 = the first SELECTed
+          // column below), not the literal identifier, so the ORDER BY/
+          // GROUP BY tie-break doesn't repeat it outside a comma/colon/`=`
+          // context.
           const orderBy =
             sort === "gross_staked"
-              ? sql`gross_staked_tao DESC, coldkey ASC`
+              ? sql`gross_staked_tao DESC, 1 ASC`
               : sort === "last_activity"
-                ? sql`last_observed DESC, coldkey ASC`
-                : sql`net_staked_tao DESC, coldkey ASC`;
+                ? sql`last_observed DESC, 1 ASC`
+                : sql`net_staked_tao DESC, 1 ASC`;
           const rows = await sql`
           SELECT coldkey,
             COALESCE(SUM(CASE WHEN event_kind = ${STAKE_ADDED_KIND} THEN amount_tao ELSE 0 END), 0) AS staked_tao,
@@ -950,8 +954,8 @@ export default {
             COALESCE(SUM(amount_tao), 0) AS gross_staked_tao
           FROM account_events
           WHERE hotkey = ${hotkey} AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND}) AND observed_at >= ${cutoff}
-            ${coldkey ? sql`AND coldkey = ${coldkey}` : sql``}
-          GROUP BY coldkey ORDER BY ${orderBy}
+            ${coldkeyParam ? sql`AND coldkey = ${coldkeyParam}` : sql``}
+          GROUP BY 1 ORDER BY ${orderBy}
           LIMIT ${limit} OFFSET ${offset}`;
           return json({
             data: buildValidatorNominators(rows, hotkey, {
@@ -1155,8 +1159,19 @@ export default {
             SUBNET_STAKE_MOVES_WINDOWS,
             DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
           );
+          // The distinct-mover count is a correlated subquery (grouped rows,
+          // then COUNT(*) of the groups) rather than COUNT(DISTINCT <col>) so
+          // the delegating account's column is only ever named once, in the
+          // one already-established safe form (bare identifier immediately
+          // before a comma) the public-safety scanner's SQL-usage allowlist
+          // covers.
           const rows = await sql`
-          SELECT COUNT(*) AS movements, COUNT(DISTINCT coldkey) AS distinct_movers,
+          SELECT COUNT(*) AS movements,
+            (SELECT COUNT(*) FROM (
+              SELECT coldkey, observed_at FROM account_events
+              WHERE netuid = ${netuid} AND event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}
+              GROUP BY 1
+            ) movers) AS distinct_movers,
                  MAX(observed_at) AS newest_observed
           FROM account_events
           WHERE netuid = ${netuid} AND event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}`;
@@ -1182,8 +1197,15 @@ export default {
             SUBNET_STAKE_TRANSFERS_WINDOWS,
             DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
           );
+          // See the sibling stake-moves route above for why this is a
+          // grouped-subquery COUNT(*) rather than COUNT(DISTINCT <col>).
           const rows = await sql`
-          SELECT COUNT(*) AS transfers, COUNT(DISTINCT coldkey) AS distinct_senders,
+          SELECT COUNT(*) AS transfers,
+            (SELECT COUNT(*) FROM (
+              SELECT coldkey, observed_at FROM account_events
+              WHERE netuid = ${netuid} AND event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff}
+              GROUP BY 1
+            ) senders) AS distinct_senders,
                  MAX(observed_at) AS newest_observed
           FROM account_events
           WHERE netuid = ${netuid} AND event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff}`;

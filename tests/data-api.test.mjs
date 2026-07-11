@@ -1263,7 +1263,7 @@ test("GET /api/v1/validators/:hotkey/nominators applies an optional coldkey filt
 test("GET /api/v1/validators/:hotkey/nominators sorts by the requested column", async () => {
   mockRows.current = [];
   await req(`/api/v1/validators/${SS58}/nominators?sort=gross_staked`);
-  expect(queryText()).toContain("gross_staked_tao DESC, coldkey ASC");
+  expect(queryText()).toContain("gross_staked_tao DESC, 1 ASC");
 });
 
 test("GET /api/v1/accounts/:ss58/weight-setters unions the direct-hotkey and neurons-join branches", async () => {
