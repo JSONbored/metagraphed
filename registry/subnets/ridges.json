@@ -1,25 +1,12 @@
 {
-  "schema_version": 1,
-  "netuid": 62,
-  "name": "Ridges",
-  "slug": "sn-62",
-  "status": "active",
   "categories": [
     "agents",
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo"
   ],
-  "source_repo": "https://github.com/ridgesai/ridges",
-  "dashboard_url": "https://taomarketcap.com/subnets/62",
-  "website_url": "https://www.ridges.ai/",
-  "notes": "Reviewed overlay for SN62 using the official Ridges source repository and public website identity. The website and common API/docs paths currently rate-limit simple probes, so they are not promoted as monitored operational surfaces.",
+  "contact": "hello@ridges.ai",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
-    "verified_at": "2026-06-08T09:25:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "Website exists but currently rate-limits simple probes.",
       "No verified docs site yet.",
@@ -27,49 +14,62 @@
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T09:25:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/62",
+  "name": "Ridges",
+  "netuid": 62,
+  "notes": "Reviewed overlay for SN62 using the official Ridges source repository and public website identity. The website and common API/docs paths currently rate-limit simple probes, so they are not promoted as monitored operational surfaces.",
+  "schema_version": 1,
+  "slug": "sn-62",
+  "source_repo": "https://github.com/ridgesai/ridges",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-62-ridges-source",
-      "name": "Ridges source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/ridgesai/ridges",
-      "provider": "ridges",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/ridgesai/ridges"],
+      "id": "sn-62-ridges-source",
+      "kind": "source-repo",
+      "name": "Ridges source repository",
+      "notes": "Official Ridges source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Ridges source repository."
+      "provider": "ridges",
+      "public_safe": true,
+      "source_urls": ["https://github.com/ridgesai/ridges"],
+      "url": "https://github.com/ridgesai/ridges"
     },
     {
-      "id": "sn-62-ridges-subnet-api",
-      "name": "Ridges API — top agents leaderboard (retrieval)",
-      "kind": "subnet-api",
-      "url": "https://agent-upload.ridges.ai/retrieval/top-agents",
-      "provider": "ridges",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-62-ridges-subnet-api",
+      "kind": "subnet-api",
+      "name": "Ridges API — top agents leaderboard (retrieval)",
+      "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json.",
+      "provider": "ridges",
       "public_safe": true,
-      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dexterity104"
+      },
       "schema_status": "machine-readable",
+      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
       "source_urls": [
         "https://github.com/ridgesai/ridges/blob/main/miners/cli/commands/upload.py",
         "https://raw.githubusercontent.com/ridgesai/ridges/main/miners/cli/commands/upload.py",
         "https://github.com/ridgesai/ridges/blob/main/api/endpoints/retrieval.py",
         "https://raw.githubusercontent.com/ridgesai/ridges/main/api/endpoints/retrieval.py"
       ],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "dexterity104"
-      },
-      "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json."
+      "url": "https://agent-upload.ridges.ai/retrieval/top-agents"
     },
     {
       "auth_required": false,
@@ -91,7 +91,26 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-taomarketcap-data-artifact",
+      "kind": "data-artifact",
+      "name": "Ridges subnet-state snapshot (via TaoMarketCap)",
+      "notes": "Public no-auth GET https://api.taomarketcap.com/public/v1/subnets/62 from the TaoMarketCap developer API — a machine-readable JSON snapshot of SN62's on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields (verified live: HTTP 200, netuid 62). A standing third-party subnet-state data artifact for Ridges; the same universal TaoMarketCap subnet feed already registered for other subnets.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation",
+        "https://github.com/ridgesai/ridges"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/62"
     }
   ],
-  "contact": "hello@ridges.ai"
+  "website_url": "https://www.ridges.ai/"
 }
