@@ -4956,6 +4956,21 @@ test("GET /api/v1/subnets/:netuid/uptime: min_samples adds a HAVING clause", asy
   expect(body.surfaces).toEqual([]);
 });
 
+test("GET /api/v1/subnets/:netuid/uptime: malformed min_samples degrades to no filter instead of NaN", async () => {
+  mockQueue.current = [
+    [],
+    [], // havingClause construction (min_samples unparseable -> sql``, same as absent)
+    [],
+    [{ newest_observed: null }],
+  ];
+  const res = await req("/api/v1/subnets/7/uptime?min_samples=abc");
+  expect(res.status).toBe(200);
+  const boundValues = sqlCalls.flatMap((call) => call.values);
+  expect(
+    boundValues.some((v) => typeof v === "number" && Number.isNaN(v)),
+  ).toBe(false);
+});
+
 test("GET /api/v1/subnets/:netuid/uptime on a cold store returns surfaces:[]", async () => {
   mockQueue.current = [[], [], [], []];
   const res = await req("/api/v1/subnets/7/uptime");

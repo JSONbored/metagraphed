@@ -3831,9 +3831,18 @@ export default {
           const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
             .toISOString()
             .slice(0, 10);
+          // A malformed min_samples ("abc", "-1", "1.5") degrades to "no
+          // filter" rather than sending NaN/an invalid value to Postgres --
+          // same graceful-fallback treatment as windowParam above, not a
+          // hard validation error (the D1-side handleUptime already rejects
+          // it before ever reaching this route in the real request path).
           const minSamplesRaw = url.searchParams.get("min_samples");
-          const minSamples =
+          const minSamplesParsed =
             minSamplesRaw === null ? null : Number(minSamplesRaw);
+          const minSamples =
+            Number.isInteger(minSamplesParsed) && minSamplesParsed >= 0
+              ? minSamplesParsed
+              : null;
           const havingClause =
             minSamples !== null
               ? sql`HAVING SUM(samples) >= ${minSamples}`
