@@ -1730,10 +1730,12 @@ export async function handleSubnetWeights(request, env, netuid, url) {
       message: unsupportedWindowMessage(windowParam, SUBNET_WEIGHTS_WINDOWS),
     });
   }
-  const data = await loadSubnetWeights(d1Runner(env), netuid, {
-    windowLabel: windowParam,
-    windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam],
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetWeights(d1Runner(env), netuid, {
+      windowLabel: windowParam,
+      windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam],
+    }));
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling stake-flow route.
   return envelopeResponse(
@@ -2261,13 +2263,11 @@ export async function handleSubnetAlphaVolume(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const marketCapTao = await resolveSubnetMarketCapTao(env, netuid);
-  const { data, generatedAt } = await loadSubnetAlphaVolume(
-    d1Runner(env),
-    netuid,
-    {
+  const { data, generatedAt } =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetAlphaVolume(d1Runner(env), netuid, {
       marketCapTao,
-    },
-  );
+    }));
   return envelopeResponse(
     request,
     {
@@ -3279,14 +3279,16 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
-  const data = await loadSubnetEvents(d1Runner(env), netuid, {
-    limit: url.searchParams.get("limit"),
-    offset: url.searchParams.get("offset"),
-    kind: url.searchParams.get("kind"),
-    cursor: url.searchParams.get("cursor"),
-    blockStart: blockStart.value,
-    blockEnd: blockEnd.value,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetEvents(d1Runner(env), netuid, {
+      limit: url.searchParams.get("limit"),
+      offset: url.searchParams.get("offset"),
+      kind: url.searchParams.get("kind"),
+      cursor: url.searchParams.get("cursor"),
+      blockStart: blockStart.value,
+      blockEnd: blockEnd.value,
+    }));
   if (csvRequested(url, request)) {
     return csvResponse(
       data.events,
@@ -3334,10 +3336,12 @@ export async function handleSubnetEventSummary(request, env, netuid, url) {
     maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   });
   if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
-  const data = await loadSubnetEventSummary(d1Runner(env), netuid, {
-    windowLabel,
-    limit: parsedLimit.limit,
-  });
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    (await loadSubnetEventSummary(d1Runner(env), netuid, {
+      windowLabel,
+      limit: parsedLimit.limit,
+    }));
   return envelopeResponse(
     request,
     {

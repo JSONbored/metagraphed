@@ -41,6 +41,7 @@ import {
   handleSubnetTurnover,
   handleSubnetStakeFlow,
   handleSubnetWeights,
+  handleSubnetAlphaVolume,
   handleSubnetServing,
   handleSubnetPrometheus,
   handleSubnetStakeMoves,
@@ -7591,6 +7592,174 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     };
     const body = await json(
       await handleRuntime(req("/api/v1/runtime"), env, url("/api/v1/runtime")),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  // #4832 Tier 1b: the remaining account_events-derived handlers with no
+  // Postgres tier at all -- same pattern as Tier 1a above.
+
+  test("handleSubnetWeights: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", weight_sets: 0 }),
+    };
+    const body = await json(
+      await handleSubnetWeights(
+        req(`/api/v1/subnets/${NETUID}/weights`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/weights`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetWeights: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleSubnetWeights(
+        req(`/api/v1/subnets/${NETUID}/weights`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/weights`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleSubnetAlphaVolume: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleSubnetAlphaVolume(
+        req(`/api/v1/subnets/${NETUID}/volume`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/volume`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetAlphaVolume: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleSubnetAlphaVolume(
+        req(`/api/v1/subnets/${NETUID}/volume`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/volume`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleSubnetEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ subnetEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", events: [] }),
+    };
+    const body = await json(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/events`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetEvents: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({ subnetEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/events`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
+  });
+
+  test("handleSubnetEventSummary: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      subnetEventSummaryKinds: [],
+      subnetEventSummaryRecent: [],
+    });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", event_kinds: [] }),
+    };
+    const body = await json(
+      await handleSubnetEventSummary(
+        req(`/api/v1/subnets/${NETUID}/event-summary`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/event-summary`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetEventSummary: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({
+      subnetEventSummaryKinds: [],
+      subnetEventSummaryRecent: [],
+    });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleSubnetEventSummary(
+        req(`/api/v1/subnets/${NETUID}/event-summary`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/event-summary`),
+      ),
     );
     assert.equal(body.data.marker, undefined);
     assert.ok(captures.sql.length > 0);

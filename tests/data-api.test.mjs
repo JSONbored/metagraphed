@@ -1561,6 +1561,147 @@ test("GET /api/v1/accounts/:ss58/weight-setters unions the direct-hotkey and neu
   expect(text).toContain("JOIN account_events e ON e.netuid = n.netuid");
 });
 
+test("GET /api/v1/subnets/:netuid/weights returns the aggregate WeightsSet card", async () => {
+  mockRows.current = [
+    {
+      weight_sets: "5",
+      distinct_setters: "3",
+      newest_observed: "1783600000000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/4/weights?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.weight_sets).toBe(5);
+  expect(body.distinct_setters).toBe(3);
+  expect(queryText()).toContain("event_kind = ");
+});
+
+test("GET /api/v1/subnets/:netuid/weights with no rows returns the zeroed card, not a throw", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/4/weights");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.weight_sets).toBe(0);
+});
+
+test("GET /api/v1/subnets/:netuid/volume shapes a buy/sell alpha rollup", async () => {
+  mockRows.current = [
+    {
+      event_kind: "StakeAdded",
+      alpha_volume: "10",
+      tao_volume: "20",
+      event_count: 2,
+      last_observed: "1783600000000",
+    },
+    {
+      event_kind: "StakeRemoved",
+      alpha_volume: "4",
+      tao_volume: "8",
+      event_count: 1,
+      last_observed: "1783600000000",
+    },
+  ];
+  const res = await req("/api/v1/subnets/4/volume");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.data.buy_volume_alpha).toBe(10);
+  expect(body.data.sell_volume_alpha).toBe(4);
+  expect(body.data.vol_mcap_ratio).toBeNull(); // no KV/R2 access from this Worker
+  expect(queryText()).toContain("event_kind IN (");
+});
+
+test("GET /api/v1/subnets/:netuid/events returns the per-subnet feed and applies filters", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  const res = await req(
+    "/api/v1/subnets/4/events?kind=StakeAdded&block_start=1&block_end=2",
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.events[0].event_kind).toBe("StakeAdded");
+  const text = queryText();
+  expect(text).toContain("WHERE netuid =");
+  expect(text).toContain("AND event_kind =");
+  expect(text).toContain("AND block_number >=");
+  expect(text).toContain("AND block_number <=");
+});
+
+test("GET /api/v1/subnets/:netuid/events uses a composite cursor seek instead of OFFSET", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  await req("/api/v1/subnets/4/events?cursor=8586300.0");
+  const text = queryText();
+  expect(text).toContain("AND (block_number, event_index) <");
+  expect(text).not.toContain("OFFSET");
+});
+
+test("GET /api/v1/subnets/:netuid/events returns a next_cursor when the page is full", async () => {
+  mockRows.current = [ACCOUNT_EVENT_ROW];
+  const res = await req("/api/v1/subnets/4/events?limit=1");
+  const body = await res.json();
+  expect(body.next_cursor).toBe("8586300.0");
+});
+
+test("GET /api/v1/subnets/:netuid/event-summary shapes kind/category aggregates + recent evidence", async () => {
+  mockQueue.current = [
+    [], // SET
+    [
+      {
+        event_kind: "StakeAdded",
+        event_count: "3",
+        hotkey_count: "2",
+        amount_tao: "5",
+        alpha_amount: "1",
+        first_block: 100,
+        last_block: 200,
+        first_observed_at: "1783500000000",
+        last_observed_at: "1783600000000",
+      },
+      {
+        // No matching coldkeyRows entry below -- exercises the Map-miss ?? 0
+        // fallback, distinct from the StakeAdded row's real lookup hit.
+        event_kind: "StakeRemoved",
+        event_count: "1",
+        hotkey_count: "1",
+        amount_tao: "1",
+        alpha_amount: "0",
+        first_block: 100,
+        last_block: 100,
+        first_observed_at: "1783500000000",
+        last_observed_at: "1783500000000",
+      },
+    ],
+    [{ event_kind: "StakeAdded", coldkey_count: "2" }],
+    [ACCOUNT_EVENT_ROW],
+  ];
+  const res = await req("/api/v1/subnets/4/event-summary?window=7d");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.event_kinds[0].event_kind).toBe("StakeAdded");
+  expect(body.event_kinds[0].coldkey_count).toBe(2);
+  const removed = body.event_kinds.find((k) => k.event_kind === "StakeRemoved");
+  expect(removed.coldkey_count).toBe(0);
+  expect(body.recent_events[0].event_kind).toBe("StakeAdded");
+  expect(queryText()).toContain(
+    "GROUP BY event_kind ORDER BY event_count DESC",
+  );
+});
+
+test("GET /api/v1/subnets/:netuid/event-summary defaults the window when absent", async () => {
+  mockQueue.current = [[], [], [], []];
+  const res = await req("/api/v1/subnets/4/event-summary");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("30d");
+});
+
+test("GET /api/v1/subnets/:netuid/event-summary falls back to the default window for an unrecognized label", async () => {
+  mockQueue.current = [[], [], [], []];
+  const res = await req("/api/v1/subnets/4/event-summary?window=bogus");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window).toBe("30d");
+});
+
 test("GET /api/v1/subnets/:netuid/weights/setters returns a leaderboard + totals", async () => {
   mockQueue.current = [
     [], // consumed by the session-scoped `SET statement_timeout` call

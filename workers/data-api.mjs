@@ -33,7 +33,14 @@ import {
   formatAccountEvent,
   buildAccountTransfers,
   buildBlockEvents,
+  buildSubnetEvents,
+  buildSubnetEventSummary,
+  SUBNET_EVENT_SUMMARY_WINDOWS,
+  DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
 } from "../src/account-events.mjs";
+import { buildAlphaVolume } from "../src/alpha-volume.mjs";
 import {
   buildBlocksSummary,
   BLOCKS_SUMMARY_SCAN_CAP,
@@ -60,6 +67,11 @@ import {
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
 } from "../src/subnet-weight-setters.mjs";
+import {
+  buildSubnetWeights,
+  SUBNET_WEIGHTS_WINDOWS,
+  DEFAULT_SUBNET_WEIGHTS_WINDOW,
+} from "../src/subnet-weights.mjs";
 import {
   buildAccountStakeFlow,
   STAKE_FLOW_WINDOWS,
@@ -1059,6 +1071,124 @@ export default {
           );
         }
 
+        // GET /api/v1/subnets/:netuid/events (#4832 Tier 1b): the per-subnet
+        // signed-event feed, mirroring src/account-events.mjs's loadSubnetEvents
+        // filter set (kind, block_start/block_end, cursor). Same account_events
+        // table/columns as the account feed above, filtered by netuid instead of
+        // hotkey/coldkey -- a single indexed WHERE, no UNION needed.
+        const subnetEventsRoute = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/events$/,
+        );
+        if (subnetEventsRoute) {
+          const netuid = Number(subnetEventsRoute[1]);
+          const limit = clampLimit(url.searchParams.get("limit"));
+          const offset = clampOffset(url.searchParams.get("offset"));
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const kind = url.searchParams.get("kind") || null;
+          const blockStart = nonNegativeIntegerParam(
+            url.searchParams,
+            "block_start",
+          );
+          const blockEnd = nonNegativeIntegerParam(
+            url.searchParams,
+            "block_end",
+          );
+          const rows = await sql`
+          SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+          FROM account_events
+          WHERE netuid = ${netuid}
+            ${kind ? sql`AND event_kind = ${kind}` : sql``}
+            ${blockStart != null ? sql`AND block_number >= ${blockStart}` : sql``}
+            ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
+            ${cursor ? sql`AND (block_number, event_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
+          ORDER BY block_number DESC, event_index DESC
+          LIMIT ${limit}
+          ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
+          const last = rows.length === limit ? rows[rows.length - 1] : null;
+          const nextCursor = last
+            ? encodeCursor([
+                numberOrNull(last.block_number),
+                numberOrNull(last.event_index),
+              ])
+            : null;
+          return json(
+            buildSubnetEvents(rows, netuid, { limit, offset, nextCursor }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/event-summary (#4832 Tier 1b): windowed
+        // account_events aggregates by kind/category plus a recent evidence
+        // slice, mirroring src/account-events.mjs's loadSubnetEventSummary. The
+        // distinct-actor count uses the same hotkey-or-(netuid,uid) identity as
+        // the weight-setters routes (WeightsSet ingestion can omit hotkey).
+        const subnetEventSummaryRoute = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/event-summary$/,
+        );
+        if (subnetEventSummaryRoute) {
+          const netuid = Number(subnetEventSummaryRoute[1]);
+          const windowParam =
+            url.searchParams.get("window") ??
+            DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
+          const windowLabel = Object.hasOwn(
+            SUBNET_EVENT_SUMMARY_WINDOWS,
+            windowParam,
+          )
+            ? windowParam
+            : DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
+          const cutoff =
+            Date.now() -
+            SUBNET_EVENT_SUMMARY_WINDOWS[windowLabel] * ANALYTICS_DAY_MS;
+          const limit = Math.min(
+            Math.max(
+              Number(url.searchParams.get("limit")) ||
+                SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+              1,
+            ),
+            SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+          );
+          const kindRows = await sql`
+          SELECT event_kind, COUNT(*) AS event_count,
+            COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                                 WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS hotkey_count,
+            COALESCE(SUM(amount_tao), 0) AS amount_tao, COALESCE(SUM(alpha_amount), 0) AS alpha_amount,
+            MIN(block_number) AS first_block, MAX(block_number) AS last_block,
+            MIN(observed_at) AS first_observed_at, MAX(observed_at) AS last_observed_at
+          FROM account_events WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
+          GROUP BY event_kind ORDER BY event_count DESC, event_kind ASC`;
+          // Distinct-per-kind actor count via a grouped subquery (the delegating
+          // account's column named once, comma-adjacent) rather than
+          // COUNT(DISTINCT <col>) in the aggregate above -- same pattern as the
+          // subnet stake-moves/stake-transfers routes' distinct-mover count.
+          const coldkeyRows = await sql`
+          SELECT event_kind, COUNT(*) AS coldkey_count FROM (
+            SELECT coldkey, event_kind FROM account_events
+            WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
+            GROUP BY 1, 2
+          ) grouped GROUP BY event_kind`;
+          const coldkeyCountByKind = new Map(
+            coldkeyRows.map((row) => [row.event_kind, row.coldkey_count]),
+          );
+          const kindRowsWithColdkeyCount = kindRows.map((row) => ({
+            ...row,
+            coldkey_count: coldkeyCountByKind.get(row.event_kind) ?? 0,
+          }));
+          const recentRows = await sql`
+          SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
+          FROM account_events WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
+          ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`;
+          return json(
+            buildSubnetEventSummary(
+              kindRowsWithColdkeyCount,
+              recentRows,
+              netuid,
+              {
+                window: windowLabel,
+                limit,
+              },
+            ),
+          );
+        }
+
         // GET /api/v1/accounts/:ss58/extrinsics — extrinsics SIGNED by this account
         // (the `signer` column only, not a hotkey/coldkey union -- `extrinsics` has
         // no hotkey/coldkey columns), mirroring src/account-events.mjs's
@@ -1213,6 +1343,64 @@ export default {
               ),
             }),
             generatedAt: latestObservedIso(rows),
+          });
+        }
+
+        // GET /api/v1/subnets/:netuid/weights (#4832 Tier 1b): the aggregate
+        // WeightsSet activity for this subnet, mirroring src/subnet-weights.mjs's
+        // loadSubnetWeights. Distinct from /weights/setters below (the per-setter
+        // leaderboard) -- this is the single-row summary.
+        const subnetWeights = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/weights$/,
+        );
+        if (subnetWeights) {
+          const netuid = Number(subnetWeights[1]);
+          const cutoff = windowCutoff(
+            url,
+            SUBNET_WEIGHTS_WINDOWS,
+            DEFAULT_SUBNET_WEIGHTS_WINDOW,
+          );
+          const rows = await sql`
+          SELECT COUNT(*) AS weight_sets,
+                 COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
+                                      WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters,
+                 MAX(observed_at) AS newest_observed
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}`;
+          return json(
+            buildSubnetWeights(rows[0] ?? null, netuid, {
+              window: windowLabelFor(
+                url,
+                SUBNET_WEIGHTS_WINDOWS,
+                DEFAULT_SUBNET_WEIGHTS_WINDOW,
+              ),
+            }),
+          );
+        }
+
+        // GET /api/v1/subnets/:netuid/volume (#4832 Tier 1b): rolling 24h buy/sell
+        // alpha volume, mirroring src/alpha-volume.mjs's loadSubnetAlphaVolume.
+        // marketCapTao is deliberately null here (not the D1 path's degradation --
+        // vol_mcap_ratio's own "externally-loaded marketCapTao" null semantics,
+        // documented on buildAlphaVolume): this Worker has no KV/R2 binding to
+        // resolve the live economics artifact the way entities.mjs's
+        // resolveSubnetMarketCapTao does, only the Hyperdrive Postgres connection.
+        const subnetVolume = url.pathname.match(
+          /^\/api\/v1\/subnets\/(\d+)\/volume$/,
+        );
+        if (subnetVolume) {
+          const netuid = Number(subnetVolume[1]);
+          const cutoff = Date.now() - ANALYTICS_DAY_MS;
+          const rows = await sql`
+          SELECT event_kind, COALESCE(SUM(alpha_amount), 0) AS alpha_volume,
+                 COALESCE(SUM(amount_tao), 0) AS tao_volume, COUNT(*) AS event_count,
+                 MAX(observed_at) AS last_observed
+          FROM account_events
+          WHERE netuid = ${netuid} AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND}) AND observed_at >= ${cutoff}
+          GROUP BY event_kind`;
+          return json({
+            data: buildAlphaVolume(rows, netuid, { marketCapTao: null }),
+            generatedAt: latestObservedIso(rows, "last_observed"),
           });
         }
 
