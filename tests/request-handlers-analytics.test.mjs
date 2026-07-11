@@ -1886,6 +1886,41 @@ describe("chain analytics extrinsics-derived: postgres tier wiring", () => {
     },
   ];
 
+  test("chain-fees charges the data-tier limiter before Postgres", async () => {
+    let limiterCalls = 0;
+    let dataApiCalls = 0;
+    const { env } = dbWith({ rows: [] });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_RATE_LIMITER = {
+      limit: async ({ key }) => {
+        limiterCalls += 1;
+        assert.equal(key, "data:203.0.113.10");
+        return { success: false };
+      },
+    };
+    env.DATA_API = {
+      fetch: async () => {
+        dataApiCalls += 1;
+        return Response.json({});
+      },
+    };
+
+    const res = await handleChainFees(
+      req("/api/v1/chain/fees?window=7d&call_module=Balances", {
+        headers: { "cf-connecting-ip": "203.0.113.10" },
+      }),
+      env,
+      url("/api/v1/chain/fees?window=7d&call_module=Balances"),
+      ctx,
+    );
+
+    const body = await errorJson(res, 429);
+    assert.equal(body.error.code, "data_rate_limited");
+    assert.equal(res.headers.get("retry-after"), "60");
+    assert.equal(limiterCalls, 1);
+    assert.equal(dataApiCalls, 0);
+  });
+
   for (const { name, path, handler, pgBody } of cases) {
     test(`${name}: flag=postgres serves the DATA_API response, D1 never queried`, async () => {
       let d1Called = false;

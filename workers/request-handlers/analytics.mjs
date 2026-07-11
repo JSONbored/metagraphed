@@ -32,6 +32,7 @@ import {
   DAY_MS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
+  resolveClientIp,
 } from "../config.mjs";
 import { parseLimitParam } from "../request-params.mjs";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.mjs";
@@ -199,6 +200,26 @@ export function canonicalHealthWindowCachePath(url) {
   const { label, error } = analyticsWindow(url);
   if (error) return `${url.pathname}${url.search}`;
   return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
+async function dataRateLimitResponse(request, env) {
+  if (!env.DATA_RATE_LIMITER?.limit) return null;
+  const { success } = await env.DATA_RATE_LIMITER.limit({
+    key: `data:${resolveClientIp(request)}`,
+  });
+  if (success) return null;
+  return errorResponse(
+    "data_rate_limited",
+    "Too many data API requests from this client; slow down.",
+    429,
+    {},
+    {
+      "retry-after": "60",
+      "x-ratelimit-limit": "60",
+      "x-ratelimit-policy": "60;w=60",
+      "x-ratelimit-remaining": "0",
+    },
+  );
 }
 
 function analyticsQueryError(error) {
@@ -1982,11 +2003,16 @@ export async function handleChainFees(request, env, url, ctx = {}) {
     async () => {
       const meta = await readHealthMetaKv(env);
       let isFallback = false;
-      let data = await tryPostgresTier(
-        env,
-        request,
-        "METAGRAPH_EXTRINSICS_SOURCE",
-      );
+      let data = null;
+      if (env.METAGRAPH_EXTRINSICS_SOURCE === "postgres" && env.DATA_API) {
+        const limited = await dataRateLimitResponse(request, env);
+        if (limited) return limited;
+        data = await tryPostgresTier(
+          env,
+          request,
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        );
+      }
       if (!data) {
         const result = await loadChainFees(d1Runner(env), {
           window: label,
