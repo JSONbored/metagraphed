@@ -573,9 +573,13 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     provider: response.headers.get("x-metagraph-rpc-provider"),
     ok: Boolean(servedEndpointId),
     status: response.status,
+    // The exhausted-pool path (proxyWithFailover's final errorResponse) never
+    // sets x-metagraph-rpc-attempts, so this falls through to the uncapped
+    // candidate count unless clamped to the same limit proxyWithFailover
+    // itself attempts against (Math.min(orderedEndpoints.length, maxAttempts)).
     attempts:
       Number(response.headers.get("x-metagraph-rpc-attempts")) ||
-      candidates.length,
+      Math.min(candidates.length, RPC_MAX_ATTEMPTS),
     latency_ms: Date.now() - startedAt,
     cache: cacheKey ? "miss" : "bypass",
   });

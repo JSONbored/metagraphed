@@ -243,7 +243,8 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
 
   test("records a null endpoint_id telemetry event when all upstreams fail", async () => {
     // Drives the served-event recordRpcUsage with a 502 bare response: the
-    // attempts header is absent so `Number(null) || candidates.length`
+    // attempts header is absent (proxyWithFailover's exhausted-pool path never
+    // sets it) so `Number(null) || Math.min(candidates.length, RPC_MAX_ATTEMPTS)`
     // supplies the attempt count, and endpoint_id falls back through `?? null`.
     const db = captureDb();
     const ctx = { waitUntil: () => {} };
@@ -270,7 +271,54 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
       // The served telemetry event was bound: endpoint_id null, attempts = 2.
       const served = db.events.at(-1);
       assert.equal(served[2], null); // endpoint_id ?? null
-      assert.equal(served[6], 2); // attempts || candidates.length
+      assert.equal(served[6], 2); // attempts || Math.min(candidates.length, RPC_MAX_ATTEMPTS)
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("caps the fallback attempts count at RPC_MAX_ATTEMPTS when the pool has more eligible endpoints than the failover cap", async () => {
+    // A 4-endpoint pool exceeds RPC_MAX_ATTEMPTS (3): proxyWithFailover only
+    // ever tries `Math.min(orderedEndpoints.length, RPC_MAX_ATTEMPTS)` of them,
+    // so the fallback attempt count reported when its attempts header is absent
+    // must match that cap, not the full (uncapped) candidate count — otherwise
+    // rpc_usage_events.attempts is inflated whenever the eligible pool > 3.
+    const db = captureDb();
+    const ctx = { waitUntil: () => {} };
+    const original = globalThis.fetch;
+    const fetchFn = scriptedFetch(
+      () => {
+        throw new Error("net");
+      },
+      () => {
+        throw new Error("net");
+      },
+      () => {
+        throw new Error("net");
+      },
+    );
+    globalThis.fetch = fetchFn;
+    try {
+      const res = await handleRpcProxyRequest(
+        rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
+        rpcEnv(
+          poolWith(
+            ep("a", SAFE_A),
+            ep("b", SAFE_B),
+            ep("c", "https://entrypoint-finney.opentensor.ai"),
+            ep("d", "https://lite.chain.opentensor.ai"),
+          ),
+          { METAGRAPH_HEALTH_DB: db },
+        ),
+        url("/rpc/v1/finney"),
+        ctx,
+      );
+      const body = await errorJson(res, 502);
+      assert.equal(body.error.code, "rpc_upstream_unavailable");
+      // Only 3 upstream calls were actually made (the failover cap), not 4.
+      assert.equal(fetchFn.calls.length, 3);
+      const served = db.events.at(-1);
+      assert.equal(served[6], 3); // capped, not the uncapped 4-candidate count
     } finally {
       globalThis.fetch = original;
     }
