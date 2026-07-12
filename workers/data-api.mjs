@@ -2437,7 +2437,7 @@ export default {
         // cover the same access patterns D1's INDEXED BY hints targeted) --
         // Postgres has no INDEXED BY equivalent.
         if (url.pathname === "/api/v1/extrinsics") {
-          const limit = clampLimit(url.searchParams.get("limit"));
+          const limit = clampBlockLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
           const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
           const block = nonNegativeIntegerParam(url.searchParams, "block");

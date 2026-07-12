@@ -873,6 +873,17 @@ test("GET /api/v1/extrinsics uses a composite cursor seek instead of OFFSET", as
   expect(text).not.toContain("OFFSET");
 });
 
+test("GET /api/v1/extrinsics clamps page size and offset before querying Postgres", async () => {
+  mockRows.current = [EXTRINSIC_ROW];
+  await req("/api/v1/extrinsics?limit=999999&offset=999999999");
+
+  const queryValues = sqlCalls.flatMap((call) => call.values);
+  expect(queryValues).toContain(BLOCK_PAGINATION.maxLimit);
+  expect(queryValues).toContain(MAX_OFFSET);
+  expect(queryValues).not.toContain(999999);
+  expect(queryValues).not.toContain(999999999);
+});
+
 test("GET /api/v1/extrinsics/:ref resolves a hash ref with embedded account_events", async () => {
   const eventRow = {
     block_number: "8586300",
