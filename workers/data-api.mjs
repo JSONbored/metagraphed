@@ -20,6 +20,7 @@
 // per-request client and response headers (a write ack must never carry the
 // read routes' `cache-control: public, max-age=10`).
 import postgres from "postgres";
+import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.mjs";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
 import {
@@ -2229,11 +2230,30 @@ export default {
     // `prepare: false` + `fetch_types: false` are the Hyperdrive-recommended settings:
     // they avoid per-connection type-introspection round-trips and prepared-statement
     // state that don't survive the pooler. max:5 keeps us within the origin limit.
+    //
+    // `types` overrides postgres.js's default json/jsonb parser (OIDs 114/3802,
+    // a bare `JSON.parse`) with one that preserves u64/u128-range integer
+    // literals as exact strings instead of silently rounding them to the
+    // nearest float64 -- confirmed live 2026-07-12: chain_events.args carries
+    // real u64 values (SubtensorModule.DifficultySet/SetChildren/
+    // SetChildrenScheduled) beyond Number.MAX_SAFE_INTEGER. See
+    // src/postgres-json-parse.mjs's own header for why this must happen at
+    // the client boundary, not in decodeChainEventArgs/decodePostgresCallArgs
+    // -- by the time either of those run, a lossy default parse has already
+    // destroyed the original value with no way to recover it downstream.
     const sql = postgres(env.HYPERDRIVE.connectionString, {
       max: 5,
       prepare: false,
       fetch_types: false,
       idle_timeout: 10,
+      types: {
+        bigIntSafeJson: {
+          to: 114,
+          from: [114, 3802],
+          serialize: (x) => JSON.stringify(x),
+          parse: (x) => parseJsonPreservingBigIntegers(x),
+        },
+      },
     });
 
     try {
