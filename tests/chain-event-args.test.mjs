@@ -145,4 +145,106 @@ describe("decodeChainEventArgs", () => {
       maybe_note: null,
     });
   });
+
+  test("hex-encodes 20-byte H160 fields to/from (real Ethereum.Executed, block 8602940/418, fixed 2026-07-12)", () => {
+    // Found live 2026-07-11 alongside the enum-tag bug above:
+    // Ethereum.Executed's to/from rendered as raw 20-byte arrays instead of
+    // hex H160 addresses -- decodeChainEventArgs's account/hash decode was
+    // scoped to exactly 32 bytes (AccountId32), with no 20-byte (H160) case
+    // at all.
+    const args = {
+      to: [
+        [
+          143, 106, 34, 194, 22, 130, 183, 168, 135, 112, 85, 219, 92, 193, 49,
+          205, 140, 165, 81, 159,
+        ],
+      ],
+      from: [
+        [
+          133, 92, 161, 0, 143, 62, 255, 142, 6, 54, 70, 251, 181, 205, 213,
+          120, 9, 182, 19, 77,
+        ],
+      ],
+      extra_data: [71, 111, 116, 116, 97, 32, 71, 111, 32, 70, 97, 115, 116],
+      transaction_hash:
+        "0x62ae62f39383da65709133bd09033de7dd97bdc761f3f4b9247aacb1a17beeec",
+    };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "Ethereum", method: "Executed" }),
+      {
+        to: "0x8f6a22c21682b7a8877055db5cc131cd8ca5519f",
+        from: "0x855ca1008f3eff8e063646fbb5cdd57809b6134d",
+        extra_data: "Gotta Go Fast",
+        transaction_hash:
+          "0x62ae62f39383da65709133bd09033de7dd97bdc761f3f4b9247aacb1a17beeec",
+      },
+    );
+  });
+
+  test("hex-encodes a nested 20-byte H160 field regardless of key depth (real EVM.Log.log.address, block 8602940/418)", () => {
+    const args = {
+      log: {
+        data: "0x000000000000000000000000000000000000000000000000000000000000000c",
+        address: [
+          [
+            218, 113, 193, 120, 106, 128, 89, 109, 32, 202, 31, 37, 41, 213, 16,
+            64, 235, 145, 235, 28,
+          ],
+        ],
+      },
+    };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "EVM", method: "Log" }),
+      {
+        log: {
+          data: "0x000000000000000000000000000000000000000000000000000000000000000c",
+          address: "0xda71c1786a80596d20ca1f2529d51040eb91eb1c",
+        },
+      },
+    );
+  });
+
+  test("keeps a single-element Vec<H256> as an array, not collapsed to a bare string (real EVM.Log.log.topics, fixed 2026-07-12)", () => {
+    // Found live 2026-07-12 while fixing the H160 gap above: a single-topic
+    // EVM.Log collapsed `topics` from `["0x...hash"]` down to a bare
+    // `"0x...hash"` -- normalizePostgresValue's newtype-scalar rule fired
+    // because, by the time it ran, the account/hash decode had already
+    // turned the sole topic into a plain hex STRING (a scalar), making the
+    // outer single-element array indistinguishable from a genuine
+    // newtype-scalar wrap. Fixed by running normalizePostgresValue BEFORE
+    // the byte-array decode instead of after (see decodeChainEventArgs'
+    // own header for why this reordering is safe).
+    const hash = new Array(32).fill(3);
+    const args = { log: { topics: [[hash]] } };
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "EVM",
+      method: "Log",
+    });
+    assert.deepEqual(decoded.log.topics, ["0x" + "03".repeat(32)]);
+  });
+
+  test("is idempotent on already-decoded H160/textual data (safe no-op if run twice)", () => {
+    const decoded = decodeChainEventArgs(
+      {
+        to: [new Array(20).fill(1)],
+        extra_data: [72, 105], // "Hi"
+      },
+      { pallet: "Ethereum", method: "Executed" },
+    );
+    assert.deepEqual(
+      decodeChainEventArgs(decoded, { pallet: "Ethereum", method: "Executed" }),
+      decoded,
+    );
+  });
+
+  test("leaves a variable-length byte field as a raw array when its pallet.method.field isn't in the textual allowlist", () => {
+    const args = { extra_data: [1, 2, 3] };
+    assert.deepEqual(
+      decodeChainEventArgs(args, {
+        pallet: "SomeOtherPallet",
+        method: "SomeEvent",
+      }),
+      { extra_data: [1, 2, 3] },
+    );
+  });
 });

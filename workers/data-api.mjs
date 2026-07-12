@@ -2152,7 +2152,10 @@ function coerceEvent(row) {
     ...(row.block_number !== undefined
       ? { block_number: numberOrNull(row.block_number) }
       : {}),
-    args: decodeChainEventArgs(row.args),
+    args: decodeChainEventArgs(row.args, {
+      pallet: row.pallet,
+      method: row.method,
+    }),
     observed_at: numberOrNull(row.observed_at),
   };
 }
