@@ -84,6 +84,7 @@ const endpointsSearchSchema = z.object({
   page: fallback(z.number().int().min(1), 1).default(1),
   pageSize: fallback(z.number().int().min(10).max(200), 25).default(25),
   view: fallback(z.enum(["table", "grid"]), "table").default("table"),
+  proxy_window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
 });
 
 type EndpointsSearch = z.infer<typeof endpointsSearchSchema>;

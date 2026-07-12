@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -66,6 +66,7 @@ const statusSearchSchema = z.object({
   status: fallback(z.string(), "").default(""),
   sort: fallback(z.enum(SURFACE_SORT_FIELDS), "status").default("status"),
   order: fallback(z.enum(["asc", "desc"]), "asc").default("asc"),
+  window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
 });
 
 export const Route = createFileRoute("/status")({
@@ -324,7 +325,8 @@ function Kpi({
 
 /** Global, cross-subnet incident ledger from /api/v1/incidents (7d / 30d window). */
 function RecentIncidents() {
-  const [window, setWindow] = useState<IncidentWindow>("7d");
+  const { window } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const [showAll, setShowAll] = useState(false);
   const refetchInterval = useRefetchInterval(60_000);
   const { data } = useSuspenseQuery({
@@ -380,7 +382,7 @@ function RecentIncidents() {
               key={w}
               type="button"
               onClick={() => {
-                setWindow(w);
+                navigate({ search: (prev) => ({ ...prev, window: w }) });
                 setShowAll(false);
               }}
               className={classNames(

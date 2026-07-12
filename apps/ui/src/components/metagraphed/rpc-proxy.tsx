@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Zap, GitBranch, Database, ShieldCheck, Gauge, ArrowUpDown } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { useNetwork } from "@/hooks/use-api-base";
@@ -155,7 +155,8 @@ function UsageStat({
 }
 
 export function ProxyUsagePanel() {
-  const [window, setWindow] = useState<"7d" | "30d">("7d");
+  const { proxy_window: window } = useSearch({ from: "/endpoints" });
+  const navigate = useNavigate({ from: "/endpoints" });
   const { data } = useSuspenseQuery(rpcUsageQuery(window));
   const usage = data.data as RpcUsage;
   const s = usage.summary;
@@ -179,7 +180,7 @@ export function ProxyUsagePanel() {
             <button
               key={w}
               type="button"
-              onClick={() => setWindow(w)}
+              onClick={() => navigate({ search: (prev) => ({ ...prev, proxy_window: w }) })}
               className={classNames(
                 "rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors",
                 window === w ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
