@@ -2255,8 +2255,8 @@ export default {
         bigIntSafeJson: {
           to: 114,
           from: [114, 3802],
-          serialize: (x) => JSON.stringify(x),
-          parse: (x) => parseJsonPreservingBigIntegers(x),
+          serialize: JSON.stringify,
+          parse: parseJsonPreservingBigIntegers,
         },
       },
     });
