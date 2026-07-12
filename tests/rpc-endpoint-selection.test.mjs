@@ -244,4 +244,23 @@ describe("isPrivateOrLocalHostname — CGNAT parity (#2312/#2313)", () => {
     const hostname = new URL("https://[64:ff9b::7f00:1]/").hostname;
     assert.equal(isPrivateOrLocalHostname(hostname), true);
   });
+
+  test("rejects special-use IPv4 ranges the webhook/probe guards already block (#1538)", () => {
+    assert.equal(isPrivateOrLocalHostname("192.0.0.1"), true);
+    assert.equal(isPrivateOrLocalHostname("198.18.0.1"), true);
+    assert.equal(isPrivateOrLocalHostname("224.0.0.1"), true);
+    assert.equal(isPrivateOrLocalHostname("240.0.0.1"), true);
+    assert.equal(isPrivateOrLocalHostname("223.255.255.255"), false);
+  });
+
+  test("rejects IPv6 site-local, multicast, discard-only, and NAT64 local-use literals", () => {
+    assert.equal(isPrivateOrLocalHostname("fec0::1"), true);
+    assert.equal(isPrivateOrLocalHostname("ff02::1"), true);
+    assert.equal(isPrivateOrLocalHostname("100::1"), true);
+    // Unlike the well-known 64:ff9b::/96 prefix, 64:ff9b:1::/48 tunnels a v4
+    // the embedded-v4 check cannot decode — e.g. cloud metadata 169.254.169.254.
+    assert.equal(isPrivateOrLocalHostname("64:ff9b:1::a9fe:a9fe"), true);
+    // Well-known NAT64 of a public v4 (8.8.8.8) stays reachable.
+    assert.equal(isPrivateOrLocalHostname("64:ff9b::808:808"), false);
+  });
 });

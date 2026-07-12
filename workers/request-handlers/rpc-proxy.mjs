@@ -1150,8 +1150,9 @@ function isSafeRpcEndpointUrl(value) {
 
 // Shared IPv4 private/CGNAT-range predicate — applied both to a bare IPv4
 // hostname and to the v4 address embedded in an IPv4-mapped/compatible/6to4/
-// NAT64 IPv6 literal (see below). [first, second] are the leading two octets.
-function isPrivateIpv4Octets([first, second]) {
+// NAT64 IPv6 literal (see below).
+function isPrivateIpv4Octets(octets) {
+  const [first, second, third] = octets;
   return (
     first === 0 ||
     first === 10 ||
@@ -1159,6 +1160,9 @@ function isPrivateIpv4Octets([first, second]) {
     (first === 169 && second === 254) ||
     (first === 172 && second >= 16 && second <= 31) ||
     (first === 192 && second === 168) ||
+    (first === 192 && second === 0 && third === 0) || // 192.0.0.0/24 IETF protocol assignments
+    (first === 198 && second >= 18 && second <= 19) || // 198.18.0.0/15 benchmarking (RFC 2544)
+    first >= 224 || // 224.0.0.0/3 multicast + reserved (incl. 255/8 broadcast)
     // 100.64.0.0/10 CGNAT — the webhook, build, and health-probe SSRF guards
     // already block this range (#2312/#2313); keep this guard at parity.
     (first === 100 && second >= 64 && second <= 127)
@@ -1184,9 +1188,12 @@ export function isPrivateOrLocalHostname(hostname) {
   if (
     host === "::" ||
     host === "::1" ||
+    host.startsWith("100:") || // 0100::/8 discard-only (RFC 6666)
+    host.startsWith("64:ff9b:1:") || // NAT64 local-use 64:ff9b:1::/48 (RFC 8215)
     host.startsWith("fc") ||
     host.startsWith("fd") ||
-    host.startsWith("fe80")
+    host.startsWith("fe") || // fe00::/8 reserved (link-local + deprecated site-local)
+    host.startsWith("ff") // ff00::/8 multicast — not global unicast (#1538)
   ) {
     return true;
   }
