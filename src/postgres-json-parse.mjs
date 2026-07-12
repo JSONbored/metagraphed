@@ -5,11 +5,17 @@
 // cjs/src/types.js, OIDs 114/3802) is a bare `JSON.parse(x)`, which silently
 // rounds any integer literal beyond Number.MAX_SAFE_INTEGER (2^53-1) to the
 // nearest representable float64 -- "18446744073709551615" becomes the JS
-// number 18446744073709552000, a DIFFERENT value, before any application
-// code (src/chain-event-args.mjs, src/postgres-call-args.mjs, ...) ever sees
-// it. Confirmed live 2026-07-12 in three chain_events.args fields
+// number 18446744073709552000, a DIFFERENT value, before src/chain-event-
+// args.mjs (or anything else reading a jsonb column through this client)
+// ever sees it. Confirmed live 2026-07-12 in three chain_events.args fields
 // (SubtensorModule.DifficultySet/SetChildren/SetChildrenScheduled) carrying
-// u64 sentinel/fixed-point values in this range.
+// u64 sentinel/fixed-point values in this range. Does NOT apply to
+// extrinsics.call_args -- that column is queried with an explicit `::text`
+// cast (workers/data-api.mjs) specifically so src/extrinsics.mjs's own,
+// separately-gated big-int handling (src/big-int-safe-json.mjs, scoped only
+// to Ethereum/EVM call types) runs instead; after the cast the wire type is
+// `text`, not `json`/`jsonb`, so this module's parser is never invoked for
+// it.
 //
 // Fix: pre-process the raw JSON text before handing it to JSON.parse,
 // quoting any bare (unquoted) integer literal that exceeds the safe-integer
@@ -43,8 +49,8 @@ function quoteUnsafeIntegers(text) {
  * integer literals beyond Number.MAX_SAFE_INTEGER by returning them as
  * strings instead of numbers -- everything else parses identically to the
  * native JSON.parse. Intended for the `postgres` client's json/jsonb type
- * parser (OIDs 114/3802) so every reader downstream (decodeChainEventArgs,
- * decodePostgresCallArgs, ...) already sees the exact value with no
+ * parser (OIDs 114/3802) so every reader of a genuine json/jsonb column
+ * (decodeChainEventArgs, ...) already sees the exact value with no
  * additional per-call-site handling required. */
 export function parseJsonPreservingBigIntegers(text) {
   return JSON.parse(quoteUnsafeIntegers(text));

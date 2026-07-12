@@ -2238,9 +2238,14 @@ export default {
     // real u64 values (SubtensorModule.DifficultySet/SetChildren/
     // SetChildrenScheduled) beyond Number.MAX_SAFE_INTEGER. See
     // src/postgres-json-parse.mjs's own header for why this must happen at
-    // the client boundary, not in decodeChainEventArgs/decodePostgresCallArgs
-    // -- by the time either of those run, a lossy default parse has already
-    // destroyed the original value with no way to recover it downstream.
+    // the client boundary, not in decodeChainEventArgs -- by the time that
+    // runs, a lossy default parse has already destroyed the original value
+    // with no way to recover it downstream. Does NOT touch extrinsics'
+    // call_args -- that column is queried with an explicit `::text` cast
+    // (see the "extrinsics' call_args is cast to text" comment below) so its
+    // own, separately-gated big-int handling in src/extrinsics.mjs runs
+    // instead; after the cast the wire type is `text` (OID 25), which this
+    // override never sees.
     const sql = postgres(env.HYPERDRIVE.connectionString, {
       max: 5,
       prepare: false,
