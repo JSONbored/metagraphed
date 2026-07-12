@@ -803,6 +803,157 @@ describe("decodePostgresCallArgs", () => {
     });
   });
 
+  describe("Multisig.approve_as_multi/as_multi other_signatories (fixed 2026-07-12: Vec<AccountId32> stayed raw byte arrays)", () => {
+    test("decodes each entry of other_signatories to SS58 (real production fixture, block 4632809/7)", () => {
+      const raw = [
+        { name: "threshold", type: "u16", value: 2 },
+        {
+          name: "other_signatories",
+          type: "Vec<AccountId32>",
+          value: [
+            [
+              [
+                52, 255, 249, 238, 218, 121, 67, 90, 186, 146, 46, 183, 175, 6,
+                146, 64, 101, 217, 169, 111, 81, 96, 147, 188, 104, 1, 0, 156,
+                67, 23, 174, 86,
+              ],
+            ],
+            [
+              [
+                162, 215, 243, 37, 1, 85, 128, 30, 191, 174, 156, 92, 192, 213,
+                34, 164, 121, 217, 17, 4, 153, 99, 4, 9, 190, 0, 74, 91, 83,
+                131, 140, 52,
+              ],
+            ],
+          ],
+        },
+        {
+          name: "maybe_timepoint",
+          type: "Option<Timepoint<u32>>",
+          value: { name: "Some", values: [{ index: 7, height: 4632808 }] },
+        },
+        {
+          name: "call_hash",
+          type: "[u8; 32]",
+          value: [
+            6, 171, 78, 162, 128, 230, 11, 75, 28, 70, 147, 177, 247, 165, 165,
+            113, 145, 156, 233, 147, 172, 84, 72, 55, 227, 80, 81, 46, 4, 157,
+            139, 63,
+          ],
+        },
+        {
+          name: "max_weight",
+          type: "Weight",
+          value: { ref_time: 0, proof_size: 0 },
+        },
+      ];
+      const out = decodePostgresCallArgs(raw, {
+        call_module: "Multisig",
+        call_function: "approve_as_multi",
+      });
+      const field = out.find((f) => f.name === "other_signatories");
+      assert.deepEqual(field.value, [
+        "5DGCPTWzKXExX2HTNsZpQNzmgWxbTZtBxqwP9ezpk882g98d",
+        "5FkDmKc49rqCgCf4xsfuAcWE1qUui4vhTibMSC6LouFCi8US",
+      ]);
+      // call_hash is a hash, not an account -- must stay hex.
+      const hashField = out.find((f) => f.name === "call_hash");
+      assert.equal(
+        normalizePostgresValue(hashField).value,
+        "0x06ab4ea280e60b4b1c4693b1f7a5a571919ce993ac544837e350512e049d8b3f",
+      );
+    });
+  });
+
+  describe("SubtensorModule.set_children children tuple-nested AccountId32 (fixed 2026-07-12: the child's own account stayed a raw byte array)", () => {
+    test("decodes each child tuple's AccountId32 slot to SS58 (real production fixture, block 8605286/512)", () => {
+      const raw = [
+        {
+          name: "hotkey",
+          type: "AccountId32",
+          value: [
+            [
+              56, 190, 186, 205, 170, 242, 100, 142, 182, 91, 198, 146, 215,
+              237, 72, 58, 84, 32, 140, 109, 76, 95, 243, 46, 207, 113, 61, 19,
+              59, 170, 128, 17,
+            ],
+          ],
+        },
+        { name: "netuid", type: "u16", value: 80 },
+        {
+          name: "children",
+          type: "Vec<(u64, AccountId32)>",
+          value: [
+            [
+              // Number(...) rather than a raw literal: 18446744073709551615
+              // (u64::MAX) already exceeds Number.MAX_SAFE_INTEGER, so a
+              // literal of this exact value trips eslint's
+              // no-loss-of-precision rule even though the rounding itself is
+              // the deliberately-accepted, already-tested behavior below.
+              Number("18446744073709551615"),
+              [
+                [
+                  238, 231, 18, 242, 2, 200, 120, 232, 18, 157, 79, 64, 75, 233,
+                  32, 237, 213, 155, 154, 95, 243, 100, 213, 231, 94, 249, 193,
+                  31, 21, 125, 234, 98,
+                ],
+              ],
+            ],
+          ],
+        },
+      ];
+      const out = decodePostgresCallArgs(raw, {
+        call_module: "SubtensorModule",
+        call_function: "set_children",
+      });
+      const field = out.find((f) => f.name === "children");
+      assert.equal(field.value.length, 1);
+      // proportion (tuple[0]) is untouched -- a separately accepted
+      // float64-rounding precision invariant (#4693), not this fix's
+      // concern (the raw u64::MAX literal itself already rounds on arrival,
+      // matching tests/extrinsics.test.mjs:306's identical assertion).
+      assert.equal(field.value[0][0], 18446744073709552000);
+      assert.equal(
+        field.value[0][1],
+        "5HTwtytUfeUhK4p8NRCGppjUZrhJ5ckoRHeVWEQafg2N1Zo6",
+      );
+    });
+
+    test("leaves a different call's Vec<(u64, AccountId32)>-shaped field untouched (narrow allowlist, not a generic tuple rule)", () => {
+      const raw = [
+        {
+          name: "children",
+          type: "Vec<(u64, AccountId32)>",
+          value: [[1, [[9, 9, 9]]]],
+        },
+      ];
+      const out = decodePostgresCallArgs(raw, {
+        call_module: "SomeOtherModule",
+        call_function: "some_other_function",
+      });
+      assert.deepEqual(out[0].value, [[1, [[9, 9, 9]]]]);
+    });
+
+    test("tolerates malformed/short tuple entries in children without throwing (defensive)", () => {
+      const raw = [
+        {
+          name: "children",
+          type: "Vec<(u64, AccountId32)>",
+          value: [
+            [1], // too short -- no account slot at all
+            "not-a-tuple", // not even an array
+            [2, [[9, 9, 9]]], // an array, but not a real 32-byte account
+          ],
+        },
+      ];
+      const out = decodePostgresCallArgs(raw, {
+        call_module: "SubtensorModule",
+        call_function: "set_children",
+      });
+      assert.deepEqual(out[0].value, [[1], "not-a-tuple", [2, [[9, 9, 9]]]]);
+    });
+  });
+
   describe("RawN identity-data variant family (fixed 2026-07-12: Commitments.set_commitment's info.fields[].RawN never decoded, nestedCall-gated heuristic never fires for a non-call struct field)", () => {
     test("UTF-8-decodes a Raw20 payload (real production fixture, block 8604175/9)", () => {
       const raw = [

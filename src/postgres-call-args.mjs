@@ -151,6 +151,33 @@ function isStructVariantEnum(value) {
   );
 }
 
+// Narrow allowlist for Vec<(_, AccountId32)>-shaped typed-descriptor fields
+// whose account slot is nested inside each tuple element, keyed by
+// "call_module.call_function.field_name" -> the account's 0-based tuple
+// index. A raw tuple element carries no field name of its own (unlike a
+// named struct field), so neither isAccountId32Type (needs the OUTER
+// descriptor's own `type` string, which describes the whole Vec<(...)>, not
+// each tuple slot) nor the ACCOUNT_KEYS name-guess (the only keyHint
+// available this deep is the OUTER field's own name -- "children" here --
+// which isn't itself account-shaped, unlike other_signatories above) can
+// catch this. Confirmed live 2026-07-12: SubtensorModule.set_children's
+// `children` (Vec<(u64, AccountId32)>, the child's own proportion + account)
+// left its per-child AccountId32 (tuple index 1) as a raw byte array.
+const TUPLE_ACCOUNT_FIELDS = new Map([
+  ["SubtensorModule.set_children.children", 1],
+]);
+
+function decodeTupleAccountField(items, accountIndex) {
+  return items.map((tuple) => {
+    if (!Array.isArray(tuple) || accountIndex >= tuple.length) return tuple;
+    const decoded = normalizeAccountId32Field(tuple[accountIndex]);
+    if (decoded == null) return tuple;
+    const out = tuple.slice();
+    out[accountIndex] = decoded;
+    return out;
+  });
+}
+
 function decodeRootClaimTypeValue(value) {
   if (!isStructVariantEnum(value)) return value;
   const out = { name: value.name, values: { ...value.values } };
@@ -204,6 +231,19 @@ const ACCOUNT_KEYS = new Set([
   "real",
   "signer",
   "fee_recipient",
+  // Added 2026-07-12 from a full 150-item ground-truth audit against live
+  // served output. Multisig.approve_as_multi/as_multi's other_signatories
+  // (type "Vec<AccountId32>") isn't an AccountId32/MultiAddress type itself
+  // (isAccountId32Type doesn't match a collection type), so it falls through
+  // to the generic recursive walk with keyHint="other_signatories" -- that
+  // whole-array keyHint fails normalizeAccountId32Field once (it's an array
+  // of accounts, not one), but the SAME keyHint then propagates unchanged
+  // into the per-element recursion, where each individual (newtype-wrapped)
+  // account now matches this name and decodes correctly. "signatories"
+  // added defensively for the same field under an alternate name, unseen
+  // live so far but equally plausible for a future runtime/pallet version.
+  "other_signatories",
+  "signatories",
 ]);
 
 function isAccountField(keyHint) {
@@ -374,7 +414,34 @@ function walk(value, keyHint, nestedCall, topCall) {
         value: decodeRootClaimTypeValue(value.value),
       };
     }
-    if (!isCollectionType(value.type)) {
+    if (isCollectionType(value.type)) {
+      const tupleCtx = nestedCall ?? topCall;
+      const tupleKey = `${tupleCtx?.call_module ?? ""}.${tupleCtx?.call_function ?? ""}.${value.name}`;
+      const accountIndex = TUPLE_ACCOUNT_FIELDS.get(tupleKey);
+      if (accountIndex != null && Array.isArray(value.value)) {
+        return {
+          name: value.name,
+          type: value.type,
+          value: decodeTupleAccountField(value.value, accountIndex),
+        };
+      }
+    }
+    // U256 excluded from the generic byte-blob-unwrap attempt below: its
+    // 4-limb little-endian u64 array ([[limb0..limb3]]) is shape-identical
+    // to a genuine 1-4-byte blob whenever every limb happens to be small
+    // (0-255) -- the same #4693/#4915 collection-vs-blob ambiguity class,
+    // just for U256 instead of a BTreeSet. Confirmed live 2026-07-12:
+    // DynamicFee.note_min_gas_price_target's `target` (real value 1, raw
+    // limbs [1,0,0,0]) was silently misinterpreted as 4 raw bytes and
+    // hex-encoded to "0x01000000" (16,777,216) -- actively WRONG, not just
+    // undecoded -- before decodeEthereumEvmCallArgs (indexer-rs-ethereum-
+    // decode.mjs, which runs AFTER this module and knows the real 4-limb
+    // encoding) ever got a chance to correctly decode it via decodeU256Limbs.
+    // Every OTHER U256 field (Ethereum.transact's nonce/value/gas_limit/...)
+    // already survived this unscathed only because those arrive nested
+    // inside the `transaction` descriptor's untyped struct body, never
+    // themselves a separate top-level typed descriptor the way `target` is.
+    if (!isCollectionType(value.type) && value.type !== "U256") {
       const bytes = unwrapByteArray(value.value);
       if (bytes && bytes.length > 0) {
         const ctx = nestedCall ?? topCall;

@@ -376,7 +376,16 @@ describe("decodeChainEventArgs", () => {
     );
   });
 
-  test("unwraps MultiAddress::Signed(AccountId32) to the bare decoded account (real Contracts.Called.caller, block 8604327/354)", () => {
+  test("unwraps MultiAddress::Signed(AccountId32) to an SS58 address, not raw hex (real Contracts.Called.caller, block 8605283/615, fixed 2026-07-12)", () => {
+    // Found live 2026-07-12 during a 150-item ground-truth audit: caller
+    // rendered as raw hex instead of SS58 despite the ENUM_PAYLOAD_FIELDS
+    // "unwrap" entry existing for exactly this field -- decode() built the
+    // enum wrapper's `out` object generically first (recursing into `values`
+    // with keyHint="values", not the outer "caller"), so by the time
+    // out.values[0] was unwrapped its account bytes had already been
+    // hex-encoded under the wrong hint. Fixed by checking ENUM_PAYLOAD_FIELDS
+    // against the RAW node before generic recursion, so the unwrap can
+    // re-decode the payload under the OUTER field's own keyHint.
     const args = {
       caller: {
         name: "Signed",
@@ -399,7 +408,75 @@ describe("decodeChainEventArgs", () => {
     });
     assert.equal(
       decoded.caller,
-      "0x0ca198fb49b4d7b66203f3aede3386e5f46ec65fdc59e5b6ed602bfc5940a770",
+      "5CMGSFvP5A2UAunRzjaZHx5BDBYmYBm8nQNdW25uZNqX5sEi",
+    );
+  });
+
+  test("decodes multisig/approving to SS58 (real Multisig.MultisigApproval, block 4632809/18, fixed 2026-07-12)", () => {
+    // Found live 2026-07-12: both fields rendered as raw hex -- missing from
+    // ACCOUNT_KEYS entirely (call_hash correctly staying hex, since it's a
+    // hash, not an account).
+    const args = {
+      multisig: [
+        [
+          186, 213, 47, 1, 241, 147, 62, 158, 248, 121, 160, 10, 7, 238, 71, 27,
+          165, 167, 203, 221, 13, 96, 69, 222, 78, 252, 141, 157, 111, 214, 82,
+          36,
+        ],
+      ],
+      approving: [
+        [
+          208, 169, 201, 121, 190, 117, 20, 237, 200, 43, 143, 65, 208, 150, 33,
+          47, 141, 90, 42, 172, 206, 45, 223, 232, 122, 127, 142, 209, 217, 224,
+          110, 85,
+        ],
+      ],
+      call_hash: [
+        6, 171, 78, 162, 128, 230, 11, 75, 28, 70, 147, 177, 247, 165, 165, 113,
+        145, 156, 233, 147, 172, 84, 72, 55, 227, 80, 81, 46, 4, 157, 139, 63,
+      ],
+      timepoint: { index: 7, height: 4632808 },
+    };
+    assert.deepEqual(
+      decodeChainEventArgs(args, {
+        pallet: "Multisig",
+        method: "MultisigApproval",
+      }),
+      {
+        multisig: "5GHg6KMXajvZPAbLEK2eKDrWz8r15d7ymShTW8hMfZLiPHgs",
+        approving: "5GnJFiFL1X6nGUHQ2Sd3eVNRYeYwbkBDNRYdvgSeEJB5g6xV",
+        call_hash:
+          "0x06ab4ea280e60b4b1c4693b1f7a5a571919ce993ac544837e350512e049d8b3f",
+        timepoint: { index: 7, height: 4632808 },
+      },
+    );
+  });
+
+  test("decodes sender to SS58, hash stays hex (real System.Remarked, block 8605284/559, fixed 2026-07-12)", () => {
+    // Found live 2026-07-12: sender rendered as raw hex -- missing from
+    // ACCOUNT_KEYS (hash correctly stayed hex, it's a hash, not an account).
+    const args = {
+      hash: [
+        [
+          191, 202, 247, 136, 103, 241, 66, 244, 111, 216, 15, 11, 170, 32, 109,
+          126, 227, 240, 204, 114, 93, 72, 26, 39, 98, 154, 215, 132, 194, 90,
+          117, 155,
+        ],
+      ],
+      sender: [
+        [
+          196, 86, 57, 143, 56, 117, 132, 48, 77, 60, 250, 101, 214, 119, 121,
+          140, 120, 53, 162, 127, 186, 101, 145, 121, 101, 95, 105, 169, 164, 6,
+          148, 48,
+        ],
+      ],
+    };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "System", method: "Remarked" }),
+      {
+        hash: "0xbfcaf78867f142f46fd80f0baa206d7ee3f0cc725d481a27629ad784c25a759b",
+        sender: "5GW8reAHZEeVReXHq6QaDTQA82seeTME5BPKMEvRckmk4fgQ",
+      },
     );
   });
 

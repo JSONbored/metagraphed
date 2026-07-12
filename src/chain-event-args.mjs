@@ -61,6 +61,19 @@ const ACCOUNT_KEYS = new Set([
   "delegator",
   "new_hotkey",
   "old_hotkey",
+  // Added 2026-07-12 from a full 150-item ground-truth audit against live
+  // served output (all 82 chain_events + 68 extrinsics pallet.method/
+  // module.function combinations): multisig/approving (Multisig.NewMultisig/
+  // MultisigApproval/MultisigExecuted) and sender (System.Remarked) are all
+  // confirmed-live 32-byte AccountId32 fields missed by the prior sweep.
+  // "caller" (Contracts.Called) is the account payload of a
+  // MultiAddress::Signed(AccountId32) unwrapped via ENUM_PAYLOAD_FIELDS below
+  // -- must be here too, since the unwrapped payload is decoded with THIS
+  // key's own hint, not a synthetic one.
+  "multisig",
+  "approving",
+  "sender",
+  "caller",
 ]);
 
 function isByteArray(v, len) {
@@ -206,34 +219,40 @@ function decode(value, keyHint, ctx) {
     return value.map((item) => decode(item, keyHint, ctx));
   }
   if (value && typeof value === "object") {
-    const out = {};
-    for (const [k, val] of Object.entries(value)) out[k] = decode(val, k, ctx);
     // Field-specific enum-tag collapse (see ENUM_PAYLOAD_FIELDS above) --
-    // only after `out` has been fully decoded, so "unit-or-passthrough" sees
-    // the REAL payload shape (an untouched empty array for a unit `()`, or
-    // whatever a genuine Err(DispatchError) decoded to).
+    // checked against the RAW (not-yet-decoded) shape and BEFORE the generic
+    // recursion below, so the unwrapped payload can be decoded with the
+    // OUTER field's own keyHint (e.g. "caller") instead of the enum
+    // wrapper's own "values" key. Decoding generically first and unwrapping
+    // `out.values[0]` afterwards (the previous approach) silently lost the
+    // outer keyHint across the unwrap -- confirmed live 2026-07-12:
+    // Contracts.Called.caller (MultiAddress::Signed(AccountId32)) rendered
+    // as raw hex instead of SS58 because by the time its account bytes were
+    // reached, decode() had already recursed with keyHint="values", not
+    // "caller", so the ACCOUNT_KEYS check never fired.
     if (
       keyHint &&
       ctx &&
-      Object.keys(out).length === 2 &&
-      typeof out.name === "string" &&
-      Array.isArray(out.values) &&
-      out.values.length === 1
+      typeof value.name === "string" &&
+      Array.isArray(value.values) &&
+      value.values.length === 1
     ) {
       const strategy = ENUM_PAYLOAD_FIELDS.get(
         `${ctx.pallet ?? ""}.${ctx.method ?? ""}.${keyHint}`,
       );
       if (strategy === "unwrap") {
-        return out.values[0];
+        return decode(value.values[0], keyHint, ctx);
       }
-      if (
-        strategy === "unit-or-passthrough" &&
-        Array.isArray(out.values[0]) &&
-        out.values[0].length === 0
-      ) {
-        return out.name;
+      if (strategy === "unit-or-passthrough") {
+        const decodedPayload = decode(value.values[0], keyHint, ctx);
+        if (Array.isArray(decodedPayload) && decodedPayload.length === 0) {
+          return value.name;
+        }
+        return { name: value.name, values: [decodedPayload] };
       }
     }
+    const out = {};
+    for (const [k, val] of Object.entries(value)) out[k] = decode(val, k, ctx);
     return out;
   }
   return value;

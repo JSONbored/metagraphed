@@ -544,6 +544,144 @@ describe("decodeSignatureFieldArgs", () => {
     const raw = { signature: { name: "Sr25519", values: [{ not: "bytes" }] } };
     assert.deepEqual(decodeSignatureFieldArgs(raw), raw);
   });
+
+  test("decodes the TOP-LEVEL signature against the real descriptor-array call_args shape (fixed 2026-07-12, real production fixture, block 8605291/5)", () => {
+    // Found live 2026-07-12: unlike the flat-object fixture above, real
+    // call_args is a descriptor ARRAY -- the top-level `signature` field
+    // arrives as {name:"signature", type:"Option<MultiSignature>",
+    // value:{...}}, not a literal object key named "signature". The generic
+    // key-matching loop in walkForSignatureFields never recognized this
+    // descriptor as representing the signature field, so it stayed
+    // completely raw despite the identical-looking flat-object test above
+    // passing the whole time.
+    const raw = [
+      {
+        name: "pulses_payload",
+        type: "PulsesPayload<MultiSigner, u32>",
+        value: {
+          public: {
+            name: "Sr25519",
+            values: [
+              [
+                214, 13, 49, 183, 157, 175, 40, 221, 225, 104, 187, 249, 129,
+                82, 106, 18, 60, 124, 104, 159, 226, 111, 192, 13, 146, 73, 7,
+                64, 62, 212, 0, 35,
+              ],
+            ],
+          },
+          pulses: [
+            {
+              round: 30351957,
+              signature: [
+                [
+                  164, 69, 3, 150, 91, 10, 102, 28, 75, 20, 154, 78, 140, 231,
+                  52, 248, 186, 241, 43, 219, 170, 160, 94, 167, 131, 145, 168,
+                  8, 60, 53, 199, 90, 102, 43, 128, 110, 128, 171, 178, 230,
+                  161, 207, 175, 47, 85, 234, 50, 49,
+                ],
+              ],
+              randomness: [
+                [
+                  65, 86, 219, 252, 253, 21, 250, 126, 87, 222, 32, 237, 220,
+                  176, 74, 199, 12, 172, 25, 41, 209, 180, 142, 181, 250, 118,
+                  118, 124, 117, 98, 212, 59,
+                ],
+              ],
+            },
+          ],
+          block_number: 8605290,
+        },
+      },
+      {
+        name: "signature",
+        type: "Option<MultiSignature>",
+        value: {
+          name: "Some",
+          values: [
+            {
+              name: "Sr25519",
+              values: [
+                [
+                  70, 3, 96, 108, 107, 125, 0, 151, 142, 139, 67, 132, 42, 212,
+                  154, 58, 9, 217, 244, 135, 155, 223, 51, 110, 122, 166, 243,
+                  18, 60, 210, 229, 116, 68, 26, 55, 64, 190, 27, 217, 154, 208,
+                  79, 92, 189, 16, 68, 17, 139, 197, 43, 236, 81, 7, 123, 245,
+                  223, 24, 14, 84, 54, 33, 240, 46, 135,
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    ];
+    const out = decode("Drand", "write_pulse", raw);
+    const signatureField = out.find((f) => f.name === "signature");
+    assert.deepEqual(signatureField.value, {
+      Sr25519:
+        "0x4603606c6b7d00978e8b43842ad49a3a09d9f4879bdf336e7aa6f3123cd2e574441a3740be1bd99ad04f5cbd1044118bc52bec51077bf5df180e543621f02e87",
+    });
+    // pulses[0].signature is a 48-byte BLS12-381 G1 point (NOT 32 bytes like
+    // its randomness sibling) -- decodeHash32Bytes' hardcoded length===32
+    // check silently left it raw before this fix, while randomness (32
+    // bytes) coincidentally already worked.
+    const pulsesField = out.find((f) => f.name === "pulses_payload");
+    const pulse = pulsesField.value.pulses[0];
+    assert.equal(
+      pulse.signature,
+      "0xa44503965b0a661c4b149a4e8ce734f8baf12bdbaaa05ea78391a8083c35c75a662b806e80abb2e6a1cfaf2f55ea3231",
+    );
+    assert.equal(
+      pulse.randomness,
+      "0x4156dbfcfd15fa7e57de20eddcb04ac70cac1929d1b48eb5fa76767c7562d43b",
+    );
+    assert.deepEqual(pulsesField.value.public, {
+      Sr25519:
+        "0xd60d31b79daf28dde168bbf981526a123c7c689fe26fc00d924907403ed40023",
+    });
+  });
+
+  test("decodes a top-level typed-descriptor field literally named 'public' the same way (defensive -- not confirmed live at the top level, but the same descriptor-recognition branch as signature/randomness)", () => {
+    const raw = [
+      {
+        name: "public",
+        type: "MultiSigner",
+        value: { name: "Sr25519", values: [[1, 2, 3, 4]] },
+      },
+    ];
+    const out = decode("Drand", "write_pulse", raw);
+    assert.deepEqual(out.find((f) => f.name === "public").value, {
+      Sr25519: "0x01020304",
+    });
+  });
+});
+
+describe("decodeDynamicFeeArgs (fixed 2026-07-12: DynamicFee.note_min_gas_price_target wasn't in DECODERS at all)", () => {
+  test("decodes target (U256) to an exact decimal string, not raw hex (real production fixture, block 4633999/1)", () => {
+    // Found live 2026-07-12: `target` (real value 1, raw 4-limb array
+    // [1,0,0,0]) was actively WRONG in served output -- "0x01000000"
+    // (16,777,216) -- because this call type was missing from DECODERS
+    // entirely, AND (a deeper bug in the shared pipeline) postgres-call-
+    // args.mjs's typed-descriptor branch eagerly byte-blob-hex-encoded any
+    // top-level U256-typed field before this module ever got a chance to
+    // run, whenever every limb happened to look like a valid byte (0-255).
+    const raw = [{ name: "target", type: "U256", value: [[1, 0, 0, 0]] }];
+    const out = decode("DynamicFee", "note_min_gas_price_target", raw);
+    assert.equal(out.find((f) => f.name === "target").value, "1");
+  });
+
+  test("decodes a target whose limb exceeds 255 correctly too (would have stayed completely raw, not just wrong, under the old byte-blob path)", () => {
+    const raw = [
+      { name: "target", type: "U256", value: [[20000000000, 0, 0, 0]] },
+    ];
+    const out = decode("DynamicFee", "note_min_gas_price_target", raw);
+    assert.equal(out.find((f) => f.name === "target").value, "20000000000");
+  });
+
+  test("is a no-op when target isn't found (defensive)", () => {
+    const raw = [{ name: "unrelated", type: "u32", value: 1 }];
+    const out = decode("DynamicFee", "note_min_gas_price_target", raw);
+    assert.deepEqual(out, raw);
+  });
 });
 
 describe("decodeEthereumEvmCallArgs dispatch", () => {

@@ -243,6 +243,23 @@ export function decodeEvmWithdrawArgs(callArgs) {
   return withCallArg(callArgs, "address", decodeH160Bytes(address));
 }
 
+/** DynamicFee.note_min_gas_price_target's call_args: decodes `target` (U256,
+ * the same 4-limb little-endian encoding as Ethereum.transact's nonce/value/
+ * gas_limit) to an exact decimal string. Returns callArgs unchanged when the
+ * field isn't found. Found live 2026-07-12: this call type wasn't in
+ * DECODERS at all, so `target` fell into the generic non-collection
+ * byte-blob branch elsewhere in the pipeline (postgres-call-args.mjs),
+ * which misinterprets the 4 raw u64 limbs as individual bytes and
+ * hex-encodes them directly -- silently WRONG (not just undecoded) whenever
+ * a limb is small enough to look like a valid byte value, e.g. limbs
+ * [1,0,0,0] (the real target value 1) rendered as hex "0x01000000"
+ * (16,777,216) instead of decimal "1". */
+export function decodeDynamicFeeArgs(callArgs) {
+  const target = findCallArg(callArgs, "target");
+  if (target === undefined) return callArgs;
+  return withCallArg(callArgs, "target", decodeU256Limbs(target));
+}
+
 // {name:"Sr25519", values:[bytes]} -> {Sr25519: "0x..."}. Gated on the
 // variant name specifically (not "any tuple-variant enum found under a key
 // named signature") since MultiSignature has other variants (Ed25519,
@@ -275,7 +292,19 @@ function decodeSr25519SignatureValue(value) {
 // match, rather than leaving a bare hash-like field raw.
 function decodeSignatureLikeField(value) {
   const enumDecoded = decodeSr25519SignatureValue(value);
-  return enumDecoded === value ? decodeHash32Bytes(value) : enumDecoded;
+  if (enumDecoded !== value) return enumDecoded;
+  // Fallback for a bare (non-enum-wrapped) hash-like byte array. Length-
+  // agnostic, unlike decodeHash32Bytes's other uses in this file (EIP1559's
+  // signature.r/s, always exactly 32 bytes for ECDSA) -- confirmed live
+  // 2026-07-12: Drand.write_pulse's per-pulse `signature` is a 48-byte
+  // BLS12-381 G1 point (its `randomness` sibling happens to be 32 bytes, so
+  // it coincidentally passed decodeHash32Bytes's strict length check while
+  // `signature` silently stayed raw). This function is only ever reached for
+  // a field literally named "signature"/"randomness" within the narrow
+  // Drand/LimitOrders call types this module dispatches to, so any byte-blob
+  // shape here is safe to hex-encode regardless of exact length.
+  const bytes = unwrapByteArray(value);
+  return bytes && bytes.length > 0 ? bytesToHex(bytes) : value;
 }
 
 // Recursively finds every key literally named "signature"/"randomness"
@@ -290,9 +319,46 @@ function decodeSignatureLikeField(value) {
 // execute_batched_orders has `signature` nested inside each entry of its
 // (Vec-wrapped) `orders` array -- all confirmed against real production
 // data.
+// True for D1/indexer-rs's typed call_args field descriptor {name,type,value}
+// (duplicated 3-line shape check, matching this codebase's own established
+// pattern of not cross-importing such a check between sibling decode modules
+// -- see postgres-call-args.mjs's identical isTypedFieldDescriptor and its
+// header comment for the rationale).
+function isTypedFieldDescriptor(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 3 &&
+    typeof value.name === "string" &&
+    typeof value.type === "string" &&
+    "value" in value
+  );
+}
+
 function walkForSignatureFields(value) {
   if (Array.isArray(value)) return value.map(walkForSignatureFields);
   if (value && typeof value === "object") {
+    // A typed-descriptor node carries its field name as the VALUE of its own
+    // "name" property, not as a literal object key the generic loop below
+    // can match against "signature"/"randomness"/"public" -- confirmed live
+    // 2026-07-12: Drand.write_pulse's TOP-LEVEL `signature`
+    // (Option<MultiSignature>, arrives as {name:"signature",
+    // type:"Option<MultiSignature>", value:{...}}) stayed completely raw
+    // because this function only ever recursed generically into `.value`,
+    // never recognizing the descriptor itself as the signature field (unlike
+    // the per-pulse `signature`/`randomness`/`public` fields nested deeper,
+    // which arrive as genuine struct fields with real object keys and
+    // already matched correctly).
+    if (isTypedFieldDescriptor(value)) {
+      if (value.name === "signature" || value.name === "randomness") {
+        return { ...value, value: decodeSignatureLikeField(value.value) };
+      }
+      if (value.name === "public") {
+        return { ...value, value: decodeSr25519SignatureValue(value.value) };
+      }
+      return { ...value, value: walkForSignatureFields(value.value) };
+    }
     const out = {};
     for (const [key, val] of Object.entries(value)) {
       if (key === "signature" || key === "randomness") {
@@ -322,6 +388,7 @@ const DECODERS = {
   "EVM.withdraw": decodeEvmWithdrawArgs,
   "LimitOrders.execute_batched_orders": decodeSignatureFieldArgs,
   "Drand.write_pulse": decodeSignatureFieldArgs,
+  "DynamicFee.note_min_gas_price_target": decodeDynamicFeeArgs,
 };
 
 /** Dispatches to the right decoder for (callModule, callFunction), or
