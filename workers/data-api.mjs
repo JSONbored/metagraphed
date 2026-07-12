@@ -1025,6 +1025,10 @@ async function handleSubnetHyperparamsSync(request, env) {
 
   const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
   const netuids = incoming.map((row) => row.netuid);
+  const expectedNetuidCount =
+    parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed.expected_netuid_count
+      : undefined;
 
   const sql = postgres(env.HYPERDRIVE.connectionString, {
     max: 5,
@@ -1076,16 +1080,35 @@ async function handleSubnetHyperparamsSync(request, env) {
           captured_at = EXCLUDED.captured_at
         WHERE subnet_hyperparams.captured_at <= EXCLUDED.captured_at`;
 
-      // Prune subnets no longer in the snapshot (deregistered/removed) --
-      // scalar positional binds via sql.unsafe, not a bound array, avoiding
-      // the same fetch_types:false ANY()/array-bind landmine documented on
-      // handleNeuronsSync's own prune above. `netuids` is never empty here
-      // -- the earlier `!incoming.length` check guarantees at least one row.
+      // Prune subnets no longer in the snapshot (deregistered/removed) only when
+      // the completeness contract is satisfied — mirror loadStagedSubnetHyperparams
+      // and refuse to mass-delete on a partial snapshot.
+      const hasCompletenessContract = Number.isInteger(expectedNetuidCount);
+      let canPrune = true;
+      if (hasCompletenessContract) {
+        if (expectedNetuidCount <= 0 || rows.length !== expectedNetuidCount) {
+          canPrune = false;
+          console.warn(
+            `subnet-hyperparams-sync: incomplete snapshot (${rows.length}/${expectedNetuidCount}); skipping prune`,
+          );
+        }
+      } else {
+        const [{ c: priorCount }] =
+          await sql`SELECT COUNT(*)::int AS c FROM subnet_hyperparams`;
+        if (priorCount > 0 && rows.length < priorCount / 2) {
+          canPrune = false;
+          console.warn(
+            `subnet-hyperparams-sync: legacy snapshot row count collapsed (${rows.length}/${priorCount}); skipping prune`,
+          );
+        }
+      }
       const placeholders = netuids.map((_, i) => `$${i + 1}::int`).join(", ");
-      const pruned = await sql.unsafe(
-        `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${placeholders}) RETURNING netuid`,
-        netuids,
-      );
+      const pruned = canPrune
+        ? await sql.unsafe(
+            `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${placeholders}) RETURNING netuid`,
+            netuids,
+          )
+        : [];
 
       // Diff-and-append into subnet_hyperparams_history (mirrors D1's
       // recordSubnetHyperparamsChanges) -- hashed on the RAW incoming rows
@@ -1131,6 +1154,7 @@ async function handleSubnetHyperparamsSync(request, env) {
         subnet_hyperparams_written: rows.length,
         deregistered_pruned: pruned.length,
         history_appended: changedRows.length,
+        ...(canPrune ? {} : { prune_skipped: true }),
       });
     });
   } catch (err) {

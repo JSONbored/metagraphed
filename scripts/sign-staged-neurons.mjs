@@ -14,6 +14,7 @@ const parsed = JSON.parse(readFileSync(inputPath, "utf8"));
 let rows;
 let refreshed_netuids;
 let captured_at;
+let expected_netuid_count;
 let payload;
 if (Array.isArray(parsed)) {
   rows = parsed;
@@ -22,10 +23,16 @@ if (Array.isArray(parsed)) {
   rows = parsed.rows;
   refreshed_netuids = parsed.refreshed_netuids;
   captured_at = parsed.captured_at;
+  expected_netuid_count = parsed.expected_netuid_count;
   if (!Array.isArray(rows)) {
     throw new Error("staged payload rows must be a JSON array");
   }
-  payload = JSON.stringify({ rows, refreshed_netuids, captured_at });
+  payload = JSON.stringify({
+    rows,
+    refreshed_netuids,
+    captured_at,
+    expected_netuid_count,
+  });
 } else {
   throw new Error("staged payload must be a JSON array or staging object");
 }
@@ -35,4 +42,6 @@ const envelope = { schema_version: 1, hmac_sha256, rows };
 if (refreshed_netuids !== undefined)
   envelope.refreshed_netuids = refreshed_netuids;
 if (captured_at !== undefined) envelope.captured_at = captured_at;
+if (expected_netuid_count !== undefined)
+  envelope.expected_netuid_count = expected_netuid_count;
 writeFileSync(outputPath, `${JSON.stringify(envelope)}\n`);

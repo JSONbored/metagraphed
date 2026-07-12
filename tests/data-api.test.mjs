@@ -49,6 +49,7 @@ const rollupFailure = vi.hoisted(() => ({ error: null }));
 const subnetHyperparamsSyncFailure = vi.hoisted(() => ({ error: null }));
 const subnetHyperparamsPruneRows = vi.hoisted(() => ({ current: [] }));
 const subnetHyperparamsLatestHashes = vi.hoisted(() => ({ current: [] }));
+const subnetHyperparamsPriorCount = vi.hoisted(() => ({ current: 0 }));
 // State for the account-identity-sync write route's tests only (#4832
 // gap-closure). No prune-rows hook -- unlike subnet_hyperparams, this table
 // has no purge step (see handleAccountIdentitySync's own header comment).
@@ -168,6 +169,9 @@ vi.mock("postgres", () => ({
       if (/SELECT DISTINCT ON \(netuid\) netuid, hyperparams_hash/.test(text)) {
         return Promise.resolve(subnetHyperparamsLatestHashes.current);
       }
+      if (/SELECT COUNT\(\*\).*FROM subnet_hyperparams/.test(text)) {
+        return Promise.resolve([{ c: subnetHyperparamsPriorCount.current }]);
+      }
       if (/SELECT DISTINCT ON \(netuid\) netuid, identity_hash/.test(text)) {
         return Promise.resolve(subnetIdentityLatestHashes.current);
       }
@@ -242,6 +246,7 @@ beforeEach(() => {
   subnetHyperparamsSyncFailure.error = null;
   subnetHyperparamsPruneRows.current = [];
   subnetHyperparamsLatestHashes.current = [];
+  subnetHyperparamsPriorCount.current = 0;
   accountIdentitySyncFailure.error = null;
   accountIdentityLatestHashes.current = [];
   subnetIdentitySyncFailure.error = null;
@@ -3104,7 +3109,10 @@ test("subnet-hyperparams-sync rejects an empty array (400)", async () => {
 
 test("subnet-hyperparams-sync upserts subnet_hyperparams and reports written/pruned counts", async () => {
   const res = await postSubnetHyperparams(
-    [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+    {
+      rows: [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+      expected_netuid_count: 2,
+    },
     { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
@@ -3114,9 +3122,48 @@ test("subnet-hyperparams-sync upserts subnet_hyperparams and reports written/pru
   expect(queryText()).toMatch(/DELETE FROM subnet_hyperparams\b/);
 });
 
+test("subnet-hyperparams-sync skips prune when expected_netuid_count is unmet", async () => {
+  const res = await postSubnetHyperparams(
+    {
+      rows: [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+      expected_netuid_count: 129,
+    },
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({
+    ok: true,
+    subnet_hyperparams_written: 2,
+    deregistered_pruned: 0,
+    prune_skipped: true,
+  });
+  expect(queryText()).toMatch(/INSERT INTO subnet_hyperparams\b/);
+  expect(queryText()).not.toMatch(/DELETE FROM subnet_hyperparams\b/);
+});
+
+test("subnet-hyperparams-sync skips legacy prune when row count collapsed vs Postgres", async () => {
+  subnetHyperparamsPriorCount.current = 4;
+  const res = await postSubnetHyperparams([hyperparamsSyncRow({ netuid: 8 })], {
+    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({
+    ok: true,
+    subnet_hyperparams_written: 1,
+    deregistered_pruned: 0,
+    prune_skipped: true,
+  });
+  expect(queryText()).not.toMatch(/DELETE FROM subnet_hyperparams\b/);
+});
+
 test("subnet-hyperparams-sync prunes with scalar positional binds, not a bound array", async () => {
   await postSubnetHyperparams(
-    [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+    {
+      rows: [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+      expected_netuid_count: 2,
+    },
     { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
   );
   const pruneCall = sqlCalls.find((c) =>
@@ -3158,9 +3205,13 @@ test("subnet-hyperparams-sync defaults a missing optional column to null rather 
 
 test("subnet-hyperparams-sync reports deregistered_pruned from the DELETE's returned row count", async () => {
   subnetHyperparamsPruneRows.current = [{ netuid: 99 }];
-  const res = await postSubnetHyperparams([hyperparamsSyncRow()], {
-    secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
-  });
+  const res = await postSubnetHyperparams(
+    {
+      rows: [hyperparamsSyncRow()],
+      expected_netuid_count: 1,
+    },
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
   const body = await res.json();
   expect(body.deregistered_pruned).toBe(1);
 });

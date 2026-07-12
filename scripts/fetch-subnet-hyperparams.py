@@ -94,6 +94,11 @@ def to_flag(value):
     return 1 if value else 0
 
 
+def coverage_snapshot_complete(rows_count, netuids_count, errors):
+    """True only when every active netuid produced a hyperparameter row."""
+    return not errors and rows_count == netuids_count
+
+
 def main():
     import bittensor as bt  # lazy: keeps this module loadable (e.g. for unit
     # tests) without the heavy SDK installed, matching fetch-events.py's/
@@ -227,16 +232,29 @@ def main():
         )
 
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
-    with open(OUT, "w") as fh:
-        json.dump(rows, fh)
-    sys.stderr.write(
-        f"wrote {len(rows)} subnet hyperparameter row(s) "
-        f"({len(errors)} error(s)) -> {OUT}\n"
-    )
-    for err in errors:
-        sys.stderr.write(f"  {err}\n")
-    if errors or len(rows) != len(netuids):
+    if not coverage_snapshot_complete(len(rows), len(netuids), errors):
+        if errors:
+            sys.stderr.write(
+                "subnet-hyperparams fetch incomplete; refusing to stage partial snapshot\n"
+            )
+        else:
+            sys.stderr.write(
+                f"subnet-hyperparams fetch row count mismatch "
+                f"({len(rows)}/{len(netuids)}); refusing to stage partial snapshot\n"
+            )
+        for err in errors:
+            sys.stderr.write(f"  {err}\n")
         sys.exit(1)
+    payload = {
+        "rows": rows,
+        "expected_netuid_count": len(netuids),
+        "captured_at": captured_at,
+    }
+    with open(OUT, "w") as fh:
+        json.dump(payload, fh)
+    sys.stderr.write(
+        f"wrote {len(rows)} subnet hyperparameter row(s) -> {OUT}\n"
+    )
 
 
 if __name__ == "__main__":

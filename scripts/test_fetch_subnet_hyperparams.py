@@ -33,6 +33,7 @@ u16_ratio = _fsh.u16_ratio
 rao_to_tao_exact = _fsh.rao_to_tao_exact
 to_flag = _fsh.to_flag
 to_float = _fsh.to_float
+coverage_snapshot_complete = _fsh.coverage_snapshot_complete
 
 
 class _Info:
@@ -79,24 +80,62 @@ class FetchCompletenessTest(unittest.TestCase):
                     with mock.patch.object(sys, "argv", ["fetch-subnet-hyperparams.py"]):
                         with self.assertRaises(SystemExit) as cm:
                             _fsh.main()
+            if not os.path.exists(out):
+                return cm.exception.code, []
             with open(out) as fh:
-                rows = json.load(fh)
+                data = json.load(fh)
+            rows = data["rows"] if isinstance(data, dict) else data
             return cm.exception.code, rows
 
     def test_per_netuid_exception_fails_instead_of_signing_partial_snapshot(self):
         code, rows = self.run_main({1: _Hp(), 2: RuntimeError("rpc failed")})
         self.assertEqual(code, 1)
-        self.assertEqual([row["netuid"] for row in rows], [1])
+        self.assertEqual(rows, [])
 
     def test_empty_hyperparameters_response_fails_instead_of_signing_partial_snapshot(self):
         code, rows = self.run_main({1: _Hp(), 2: None})
         self.assertEqual(code, 1)
-        self.assertEqual([row["netuid"] for row in rows], [1])
+        self.assertEqual(rows, [])
 
     def test_empty_active_netuid_discovery_fails_instead_of_signing_empty_snapshot(self):
         code, rows = self.run_main({}, infos=[])
         self.assertEqual(code, 1)
         self.assertEqual(rows, [])
+
+    def test_successful_fetch_emits_completeness_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "hyperparams.json")
+
+            class _SubtensorApi:
+                def __init__(self, network):
+                    self.metagraphs = types.SimpleNamespace(
+                        get_all_metagraphs_info=lambda all_mechanisms: [_Info(1), _Info(2)]
+                    )
+                    self.subnets = types.SimpleNamespace(
+                        get_subnet_hyperparameters=lambda netuid: _Hp()
+                    )
+
+            fake_bt = types.SimpleNamespace(SubtensorApi=_SubtensorApi)
+            with mock.patch.object(_fsh, "OUT", out):
+                with mock.patch.dict(sys.modules, {"bittensor": fake_bt}):
+                    with mock.patch.object(sys, "argv", ["fetch-subnet-hyperparams.py"]):
+                        _fsh.main()
+            with open(out) as fh:
+                payload = json.load(fh)
+            self.assertEqual(payload["expected_netuid_count"], 2)
+            self.assertEqual(len(payload["rows"]), 2)
+            self.assertIn("captured_at", payload)
+
+
+class CoverageSnapshotCompleteTest(unittest.TestCase):
+    def test_complete_when_all_netuids_succeeded(self):
+        self.assertTrue(coverage_snapshot_complete(129, 129, []))
+
+    def test_incomplete_when_any_fetch_failed(self):
+        self.assertFalse(coverage_snapshot_complete(128, 129, ["netuid=8: timeout"]))
+
+    def test_incomplete_when_row_count_short(self):
+        self.assertFalse(coverage_snapshot_complete(128, 129, []))
 
 
 class U16RatioTest(unittest.TestCase):
