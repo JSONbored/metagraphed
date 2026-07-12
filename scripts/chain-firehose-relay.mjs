@@ -198,6 +198,9 @@ async function main() {
   );
 
   const shutdown = async () => {
+    // Doesn't wait for an in-flight forwardWithRetry to finish -- a
+    // notification mid-retry at shutdown is dropped, same as any other
+    // best-effort drop this relay makes (see this file's header comment).
     shuttingDown = true;
     await sql.end({ timeout: 5 });
     process.exit(0);

@@ -15,7 +15,8 @@
 #
 # Local:  docker build -f deploy/chain-firehose-relay.Dockerfile -t metagraphed-chain-firehose-relay .
 FROM node:22.23.1-alpine
-RUN adduser --disabled-password --uid 10001 relay
+# BusyBox adduser (Alpine's) -- -D skips setting a password, -u pins the uid.
+RUN adduser -D -u 10001 relay
 WORKDIR /app
 
 # Single pinned dependency (matches the root package.json's own postgres.js
