@@ -626,4 +626,297 @@ describe("decodePostgresCallArgs", () => {
       });
     });
   });
+
+  describe("BTREESET_FIELDS exclusion (fixed 2026-07-12: a nested claim_root's subnets was being corrupted into an opaque hex string)", () => {
+    test("leaves a nested SubtensorModule.claim_root's subnets untouched -- NOT hex-encoded by the generic byte-blob heuristic (real production fixture, block 8604111/11, Utility.batch)", () => {
+      // Real raw shape confirmed via direct Postgres query: the pallet/
+      // function enum-tree BEFORE reconstruction, one level down from
+      // Utility.batch's own `calls` field.
+      const raw = {
+        call: {
+          name: "SubtensorModule",
+          values: [
+            { name: "claim_root", values: { subnets: [[1, 2, 3, 4, 5]] } },
+          ],
+        },
+      };
+      const out = decodePostgresCallArgs(raw);
+      // Without the exclusion, unwrapByteArray/decodeBytesField would have
+      // hex-encoded this into "0x0102030405" -- the array must survive
+      // intact so decodeBTreeSetFields (postgres-collection-normalize.mjs)
+      // can still correctly unwrap it afterward.
+      assert.deepEqual(out.call.call_args.subnets, [[1, 2, 3, 4, 5]]);
+    });
+
+    test("still hex-encodes a genuine byte-blob field with a different name inside the SAME nested call (the exclusion is scoped to the exact allowlisted field, not the whole call)", () => {
+      const raw = {
+        call: {
+          name: "SubtensorModule",
+          values: [
+            {
+              name: "claim_root",
+              values: {
+                subnets: [[1, 2, 3, 4, 5]],
+                some_other_blob: [6, 7, 8],
+              },
+            },
+          ],
+        },
+      };
+      const out = decodePostgresCallArgs(raw);
+      assert.deepEqual(out.call.call_args.subnets, [[1, 2, 3, 4, 5]]);
+      assert.equal(out.call.call_args.some_other_blob, "0x060708");
+    });
+
+    test("still hex-encodes a same-named field on a DIFFERENT nested call type -- scoped to (call_module, call_function, field), not field name alone", () => {
+      const raw = {
+        call: {
+          name: "SomeOtherModule",
+          values: [{ name: "some_function", values: { subnets: [1, 2, 3] } }],
+        },
+      };
+      const out = decodePostgresCallArgs(raw);
+      assert.equal(out.call.call_args.subnets, "0x010203");
+    });
+  });
+
+  describe("Vec<u8>/BoundedVec<u8> byte-blob-typed collections (fixed 2026-07-12: MevShield's ciphertext/enc_key were never hex-decoded, miscategorized as a generic collection)", () => {
+    test("hex-encodes a bare BoundedVec<u8,_> field (real MevShield.submit_encrypted.ciphertext, block 8543969/7)", () => {
+      const raw = [
+        {
+          name: "ciphertext",
+          type: "BoundedVec<u8, _>",
+          value: [[88, 203, 173, 120, 143]],
+        },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.equal(out[0].value, "0x58cbad788f");
+    });
+
+    test("hex-encodes an Option<BoundedVec<u8,_>>::Some field (real MevShield.announce_next_key.enc_key, block 8543971/1)", () => {
+      const raw = [
+        {
+          name: "enc_key",
+          type: "Option<BoundedVec<u8, _>>",
+          value: { name: "Some", values: [[[32, 103, 199, 46, 69]]] },
+        },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.equal(out[0].value, "0x2067c72e45");
+    });
+
+    test("decodes an Option<BoundedVec<u8,_>>::None field to null", () => {
+      const raw = [
+        {
+          name: "enc_key",
+          type: "Option<BoundedVec<u8, _>>",
+          value: { name: "None", values: [] },
+        },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.equal(out[0].value, null);
+    });
+
+    test("leaves a genuine (non-u8) collection type untouched, still deferred to the generic array-recurse below", () => {
+      const raw = [
+        { name: "signers", type: "Vec<AccountId32>", value: [1, 2, 3] },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.deepEqual(out[0].value, [1, 2, 3]);
+    });
+
+    test("is a no-op when the value matches neither the bare-array nor the Option-wrapped shape (malformed/defensive case)", () => {
+      const raw = [
+        { name: "ciphertext", type: "BoundedVec<u8, _>", value: 42 },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.equal(out[0].value, 42);
+    });
+
+    test("is a no-op on a Some-wrapped value whose payload isn't a byte array (malformed/defensive case)", () => {
+      const raw = [
+        {
+          name: "enc_key",
+          type: "Option<BoundedVec<u8, _>>",
+          value: { name: "Some", values: [{ not: "bytes" }] },
+        },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.deepEqual(out[0].value, {
+        name: "Some",
+        values: [{ not: "bytes" }],
+      });
+    });
+
+    test("is a no-op on a malformed Some variant carrying more than one value (defensive case)", () => {
+      const raw = [
+        {
+          name: "enc_key",
+          type: "Option<BoundedVec<u8, _>>",
+          value: {
+            name: "Some",
+            values: [
+              [1, 2],
+              [3, 4],
+            ],
+          },
+        },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.deepEqual(out[0].value, {
+        name: "Some",
+        values: [
+          [1, 2],
+          [3, 4],
+        ],
+      });
+    });
+  });
+
+  describe("LimitOrders signer/fee_recipient (fixed 2026-07-12: ACCOUNT_KEYS was missing these two)", () => {
+    test("decodes signer and fee_recipient to SS58 inside a nested order struct (real production fixture, block 8587347/16)", () => {
+      const signerBytes = new Array(32).fill(3);
+      const raw = {
+        orders: [
+          [
+            {
+              order: {
+                name: "V1",
+                values: [
+                  {
+                    signer: [signerBytes],
+                    fee_recipient: [signerBytes],
+                    hotkey: [new Array(32).fill(4)],
+                  },
+                ],
+              },
+            },
+          ],
+        ],
+      };
+      const out = decodePostgresCallArgs(raw);
+      const decoded = out.orders[0][0].order.values[0];
+      assert.equal(typeof decoded.signer, "string");
+      assert.ok(decoded.signer.startsWith("5"));
+      assert.equal(decoded.signer, decoded.fee_recipient);
+      assert.notEqual(decoded.signer, decoded.hotkey);
+    });
+  });
+
+  describe("RawN identity-data variant family (fixed 2026-07-12: Commitments.set_commitment's info.fields[].RawN never decoded, nestedCall-gated heuristic never fires for a non-call struct field)", () => {
+    test("UTF-8-decodes a Raw20 payload (real production fixture, block 8604175/9)", () => {
+      const raw = [
+        { name: "netuid", type: "u16", value: 89 },
+        {
+          name: "info",
+          type: "CommitmentInfo<_>",
+          value: {
+            fields: [
+              [
+                {
+                  name: "Raw20",
+                  values: [
+                    [
+                      50, 59, 98, 59, 66, 84, 67, 44, 49, 46, 48, 49, 61, 48,
+                      46, 49, 48, 52, 58, 49,
+                    ],
+                  ],
+                },
+              ],
+            ],
+          },
+        },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.deepEqual(out[1].value.fields[0][0], {
+        Raw20: "2;b;BTC,1.01=0.104:1",
+      });
+    });
+
+    test("falls back to hex for malformed UTF-8 in a RawN payload", () => {
+      const raw = { name: "Raw2", values: [[0xff, 0xfe]] };
+      const out = decodePostgresCallArgs(raw);
+      assert.deepEqual(out, { Raw2: "0xfffe" });
+    });
+
+    test("is a no-op for a RawN-shaped node whose payload isn't a byte array", () => {
+      const raw = { name: "Raw2", values: [{ not: "bytes" }] };
+      const out = decodePostgresCallArgs(raw);
+      assert.deepEqual(out, raw);
+    });
+
+    test("does not misfire on an unrelated 2-key {name,values} node whose name doesn't match RawN", () => {
+      const raw = { name: "NotRaw", values: [[1, 2]] };
+      const out = decodePostgresCallArgs(raw);
+      // NotRaw isn't RawN, so this falls through to the generic recursive
+      // walk instead -- the byte array is untouched since there's no
+      // nestedCall/typed-descriptor context here to trigger a byte-decode.
+      assert.deepEqual(out, { name: "NotRaw", values: [[1, 2]] });
+    });
+  });
+
+  describe("SubtensorModule.set_root_claim_type's struct-variant enum (fixed 2026-07-12: subnets kept an extra BTreeSet newtype-wrap layer)", () => {
+    test("unwraps the extra layer on RootClaimTypeEnum::KeepSubnets.subnets (real production fixture)", () => {
+      const raw = [
+        {
+          name: "new_root_claim_type",
+          type: "RootClaimTypeEnum",
+          value: { name: "KeepSubnets", values: { subnets: [[82, 97]] } },
+        },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.deepEqual(out[0].value, {
+        name: "KeepSubnets",
+        values: { subnets: [82, 97] },
+      });
+    });
+
+    test("leaves a sibling field on the same struct-variant untouched", () => {
+      const raw = [
+        {
+          name: "new_root_claim_type",
+          type: "RootClaimTypeEnum",
+          value: {
+            name: "KeepSubnets",
+            values: { subnets: [[82, 97]], note: "unrelated" },
+          },
+        },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.equal(out[0].value.values.note, "unrelated");
+    });
+
+    test("is a no-op when subnets is already unwrapped or absent", () => {
+      const alreadyUnwrapped = [
+        {
+          name: "new_root_claim_type",
+          type: "RootClaimTypeEnum",
+          value: { name: "KeepSubnets", values: { subnets: [82, 97] } },
+        },
+      ];
+      assert.deepEqual(
+        decodePostgresCallArgs(alreadyUnwrapped)[0].value.values.subnets,
+        [82, 97],
+      );
+      const noSubnets = [
+        {
+          name: "new_root_claim_type",
+          type: "RootClaimTypeEnum",
+          value: { name: "Unrestricted", values: {} },
+        },
+      ];
+      assert.deepEqual(decodePostgresCallArgs(noSubnets)[0].value, {
+        name: "Unrestricted",
+        values: {},
+      });
+    });
+
+    test("is a no-op on a non-struct-variant value for this type (defensive)", () => {
+      const raw = [
+        { name: "new_root_claim_type", type: "RootClaimTypeEnum", value: 42 },
+      ];
+      const out = decodePostgresCallArgs(raw);
+      assert.equal(out[0].value, 42);
+    });
+  });
 });

@@ -24,7 +24,8 @@
 // order this depends on.
 import { isEnumTreeNode } from "./scale-normalize.mjs";
 import { normalizeAccountId32Field } from "./ss58.mjs";
-import { unwrapByteArray, decodeBytesField } from "./bytes.mjs";
+import { unwrapByteArray, decodeBytesField, bytesToHex } from "./bytes.mjs";
+import { BTREESET_FIELDS } from "./postgres-collection-normalize.mjs";
 
 // True when `value` is D1/indexer-rs's typed call_args field descriptor
 // `{name, type, value}` -- duplicated from scale-normalize.mjs's identical
@@ -70,6 +71,100 @@ function isCollectionType(type) {
   return COLLECTION_TYPE_RE.test(type);
 }
 
+// A collection type specifically parameterized over `u8` (Vec<u8>,
+// BoundedVec<u8,_>, WeakBoundedVec<u8,_>, optionally Option<...>-wrapped) is
+// semantically a byte blob, not a "collection of typed things" -- unlike
+// every OTHER collection type isCollectionType exists to protect (e.g.
+// Vec<AccountId32>, BTreeSet<NetUid>), individually walking each element of
+// a byte blob is meaningless; it needs the same hex/text treatment as any
+// other opaque byte field. Confirmed live 2026-07-12:
+// MevShield.submit_encrypted's `ciphertext` ("BoundedVec<u8, _>") and
+// announce_next_key's `enc_key` ("Option<BoundedVec<u8, _>>") both stayed
+// raw, undecoded byte arrays -- isCollectionType's (correct, for every
+// OTHER case) broad match excluded them from the byte-blob branch below,
+// with nothing narrower to catch this specific case instead.
+const BYTE_BLOB_COLLECTION_RE =
+  /(?:Vec|BoundedVec|WeakBoundedVec)<\s*u8\s*[,>]/;
+function isByteBlobCollectionType(type) {
+  return BYTE_BLOB_COLLECTION_RE.test(type);
+}
+
+// Decodes a byte-blob-typed descriptor's value, which may either be a bare
+// (possibly newtype-wrapped) byte array (BoundedVec<u8,_>) or an Option-
+// wrapped one (Option<BoundedVec<u8,_>> -- confirmed live: announce_next_key's
+// enc_key arrives as {name:"Some"/"None", values:[...]} at this point in the
+// pipeline, since decodePostgresCallArgs runs BEFORE normalizePostgresValue's
+// Option<T> unwrap). Returns `value` unchanged if neither shape matches
+// (defensive; not expected for a real byte-blob-typed field).
+function decodeByteBlobTypedValue(value, ctx, fieldName) {
+  const bytes = unwrapByteArray(value);
+  if (bytes && bytes.length > 0) {
+    return decodeBytesField(
+      ctx?.call_module,
+      ctx?.call_function,
+      fieldName,
+      bytes,
+    );
+  }
+  if (isEnumTreeNode(value)) {
+    if (value.name === "None" && value.values.length === 0) return null;
+    if (value.name === "Some" && value.values.length === 1) {
+      const inner = unwrapByteArray(value.values[0]);
+      if (inner && inner.length > 0) {
+        return decodeBytesField(
+          ctx?.call_module,
+          ctx?.call_function,
+          fieldName,
+          inner,
+        );
+      }
+    }
+  }
+  return value;
+}
+
+// SubtensorModule.set_root_claim_type's `new_root_claim_type` is a
+// STRUCT-variant enum (RootClaimTypeEnum::KeepSubnets{subnets:
+// BTreeSet<NetUid>}), unlike every OTHER enum shape this file/
+// scale-normalize.mjs handles (all TUPLE-variant, `values` an ARRAY) --
+// confirmed live 2026-07-12: its raw shape is {name:"KeepSubnets",
+// values:{subnets:[[u16,...]]}}, `values` a plain OBJECT. isEnumTreeNode's
+// own Array.isArray(values) check correctly does NOT recognize this as an
+// enum-tree node at all, so neither this file's own enum handling nor
+// normalizePostgresValue's ever touches the struct-variant's OWN inner
+// fields -- `subnets` keeps its extra BTreeSet newtype-wrap layer
+// ([[82,97]] instead of [82,97]) with nothing to unwrap it, the same
+// #4693 ambiguity BTREESET_FIELDS resolves for claim_root's OWN top-level
+// `subnets`, just one struct-field layer deeper. Only one struct-variant
+// enum type is confirmed live so far; scoped narrowly to it (by its
+// declared `type` string) rather than a generic "any struct-variant enum"
+// rule, matching this file's established narrow-allowlist discipline.
+function isStructVariantEnum(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof value.name === "string" &&
+    value.values &&
+    typeof value.values === "object" &&
+    !Array.isArray(value.values)
+  );
+}
+
+function decodeRootClaimTypeValue(value) {
+  if (!isStructVariantEnum(value)) return value;
+  const out = { name: value.name, values: { ...value.values } };
+  const { subnets } = out.values;
+  if (
+    Array.isArray(subnets) &&
+    subnets.length === 1 &&
+    Array.isArray(subnets[0])
+  ) {
+    out.values.subnets = subnets[0];
+  }
+  return out;
+}
+
 // Fallback name-guessing for an account field with NO type info of its own
 // (a reconstructed nested call's args, which lose their per-field `type`
 // string once repackaged, or a struct field nested inside an untyped
@@ -96,6 +191,10 @@ const ACCOUNT_KEYS = new Set([
   "dest",
   "destination",
   "source",
+  // Added 2026-07-12 from a live sweep of call_args -- LimitOrders.
+  // execute_batched_orders' per-order signer/fee_recipient are confirmed
+  // 32-byte AccountId32 fields (same length/shape as the sibling `hotkey`
+  // field in the same order struct, which was already correctly decoded).
   "delegate",
   "nominator",
   "owner",
@@ -103,6 +202,8 @@ const ACCOUNT_KEYS = new Set([
   "validator",
   "address",
   "real",
+  "signer",
+  "fee_recipient",
 ]);
 
 function isAccountField(keyHint) {
@@ -155,6 +256,52 @@ function tryReconstructNestedCall(value) {
   };
 }
 
+// Substrate's identity-pallet-style Data::RawN(BoundedVec<u8,N>) variant
+// family (RawN for N=0..128) -- confirmed live 2026-07-12:
+// Commitments.set_commitment's info.fields[].RawN payload is genuinely
+// human-readable free text (a URL, in the confirmed fixture), matching the
+// pallet's own purpose for this enum family (short user-supplied metadata
+// -- "Raw" here is Substrate's own name for exactly this: raw text data),
+// unlike the narrow byte-blob-vs-text ambiguity TEXTUAL_FIELDS/
+// isByteBlobCollectionType exist to resolve elsewhere in this file. This
+// deeply-nested struct field is never reached by the nestedCall-gated
+// generic byte-blob heuristic below (Commitments.set_commitment is the
+// OUTER call, not itself nested inside a reconstructed RuntimeCall) or by
+// isTypedFieldDescriptor (a RawN node has no `type` string -- it's a bare
+// enum-tree node, one level below "info"'s own typed descriptor, which
+// isCollectionType correctly leaves generically recursed since
+// "CommitmentInfo<_>" is neither AccountId32/MultiAddress nor a
+// Vec/BoundedVec/etc collection). Checked unconditionally (not gated by
+// keyHint or nestedCall) since the RawN tag name itself is unambiguous --
+// unlike a bare byte array, no OTHER shape in this codebase's confirmed
+// data legitimately produces a 2-key {name,values} node named "RawN".
+const RAW_DATA_VARIANT_RE = /^Raw\d+$/;
+
+function isRawDataVariant(value) {
+  return (
+    isEnumTreeNode(value) &&
+    RAW_DATA_VARIANT_RE.test(value.name) &&
+    value.values.length === 1
+  );
+}
+
+function decodeRawDataValue(value) {
+  const bytes = unwrapByteArray(value.values[0]);
+  if (!bytes) return value;
+  try {
+    return {
+      [value.name]: new TextDecoder("utf-8", { fatal: true }).decode(
+        Uint8Array.from(bytes),
+      ),
+    };
+  } catch {
+    // Malformed UTF-8 for a field expected to be textual -- fall back to
+    // hex rather than producing mojibake, mirroring decodeBytesField's
+    // identical fallback (src/bytes.mjs).
+    return { [value.name]: bytesToHex(bytes) };
+  }
+}
+
 // Recursive walk: reconstructs nested calls at any depth, and decodes
 // AccountId32/MultiAddress fields to SS58 and byte-blob fields to hex/text
 // EVERYWHERE -- both at the top level of an extrinsic's own call_args and
@@ -201,12 +348,30 @@ function walk(value, keyHint, nestedCall, topCall) {
       call_args: walk(nested.call_args, undefined, nextCall, topCall),
     };
   }
+  if (isRawDataVariant(value)) {
+    return decodeRawDataValue(value);
+  }
   if (isTypedFieldDescriptor(value)) {
     if (isAccountId32Type(value.type)) {
       return {
         name: value.name,
         type: value.type,
         value: normalizeAccountId32Field(value.value) ?? value.value,
+      };
+    }
+    if (isByteBlobCollectionType(value.type)) {
+      const ctx = nestedCall ?? topCall;
+      return {
+        name: value.name,
+        type: value.type,
+        value: decodeByteBlobTypedValue(value.value, ctx, value.name),
+      };
+    }
+    if (value.type === "RootClaimTypeEnum") {
+      return {
+        name: value.name,
+        type: value.type,
+        value: decodeRootClaimTypeValue(value.value),
       };
     }
     if (!isCollectionType(value.type)) {
@@ -235,7 +400,23 @@ function walk(value, keyHint, nestedCall, topCall) {
     const ss58 = normalizeAccountId32Field(value);
     if (ss58) return ss58;
   }
-  if (nestedCall) {
+  // BTREESET_FIELDS-allowlisted fields (postgres-collection-normalize.mjs)
+  // are excluded from the generic byte-blob heuristic below -- confirmed
+  // live 2026-07-12: a nested SubtensorModule.claim_root's `subnets` (inside
+  // Utility.batch) is shape-identical to a genuine byte blob (a handful of
+  // small integers), and without this exclusion unwrapByteArray/
+  // decodeBytesField would hex-encode it into an opaque, actively WRONG
+  // string (`[1,2,3,4,5]` -> "0x0102030405") before decodeBTreeSetFields
+  // ever gets a chance to correctly unwrap the genuine collection -- this
+  // module runs first in formatExtrinsic's pipeline, so leaving the field
+  // untouched here is the only way that later pass can still see the real
+  // array.
+  const isNestedBTreeSetField =
+    nestedCall &&
+    BTREESET_FIELDS.has(
+      `${nestedCall.call_module}.${nestedCall.call_function}.${keyHint ?? ""}`,
+    );
+  if (nestedCall && !isNestedBTreeSetField) {
     const bytes = unwrapByteArray(value);
     if (bytes && bytes.length > 0) {
       return decodeBytesField(

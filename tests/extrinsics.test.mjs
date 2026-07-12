@@ -239,6 +239,39 @@ test("formatExtrinsic unwraps a single-element BTreeSet (real SubtensorModule.cl
   assert.deepEqual(out.call_args.subnets, [104]);
 });
 
+test("formatExtrinsic correctly unwraps a BTreeSet nested inside Utility.batch, through the FULL real pipeline (real production fixture, block 8604111/11, fixed 2026-07-12)", () => {
+  // Before this fix, a nested claim_root's `subnets` was corrupted into an
+  // opaque hex string ("0x0102030405") by postgres-call-args.mjs's generic
+  // nested-call byte-blob heuristic, running before decodeBTreeSetFields
+  // ever got a chance to see the real array -- confirmed live via direct
+  // Postgres query for this exact block/extrinsic.
+  const callArgsText = JSON.stringify([
+    {
+      name: "calls",
+      type: "Vec<RuntimeCall>",
+      value: [
+        {
+          name: "SubtensorModule",
+          values: [
+            { name: "claim_root", values: { subnets: [[1, 2, 3, 4, 5]] } },
+          ],
+        },
+      ],
+    },
+  ]);
+  const out = formatExtrinsic({
+    block_number: 8604111,
+    extrinsic_index: 11,
+    call_module: "Utility",
+    call_function: "batch",
+    call_args: callArgsText,
+  });
+  const nestedCall = out.call_args[0].value[0];
+  assert.equal(nestedCall.call_module, "SubtensorModule");
+  assert.equal(nestedCall.call_function, "claim_root");
+  assert.deepEqual(nestedCall.call_args.subnets, [1, 2, 3, 4, 5]);
+});
+
 test("formatExtrinsic pins SubtensorModule.register's PoW nonce precision as an accepted, tested invariant (real block 8556317/20, #4693) -- Postgres's exact literal converges on the same value D1 already serves, not a regression to fix here", () => {
   // nonce is a BARE u64 scalar in the real Postgres row (confirmed via
   // direct query -- not newtype-wrapped like most other fields), and
