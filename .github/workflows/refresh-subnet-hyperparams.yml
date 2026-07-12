@@ -46,7 +46,7 @@ jobs:
       # get_subnet_hyperparameters(netuid) call per subnet (no bulk variant exists
       # for this call — see scripts/fetch-subnet-hyperparams.py's docstring).
       - name: Fetch subnet hyperparameters (Bittensor SDK)
-        run: uvx --from bittensor==10.4.0 python scripts/fetch-subnet-hyperparams.py
+        run: uvx --from bittensor==10.5.0 python scripts/fetch-subnet-hyperparams.py
         env:
           # Same hidden chain-RPC secret as the metagraph/events fetches (ADR 0012).
           # Unset → the script defaults to "finney"; set it to the private node URL
