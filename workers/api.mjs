@@ -254,10 +254,6 @@ import {
 } from "../src/subnet-identity-history.mjs";
 import { tryPostgresTier } from "./postgres-tier.mjs";
 import {
-  rollupAccountPositionDaily,
-  pruneAccountPositionDaily,
-} from "../src/account-position-history.mjs";
-import {
   economicsSnapshotUpsertStatements,
   validEconomicsBackfillRows,
 } from "../src/economics-backfill.mjs";
@@ -646,24 +642,26 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     // cap forcing an archive-then-prune dance, so this cron no longer needs
     // either step.
     //
-    // account_position_daily (#4329/6.1) is untouched — same `neurons` source
-    // and cron tick as the old neuron_daily rollup, but it has no Postgres
-    // serving route yet (still read straight from D1 in entities.mjs), so it is
-    // explicitly out of scope for this retirement.
-    const now = Date.now();
-    // pruneAccountPositionDaily already self-catches its own D1 errors (unlike
-    // rollupAccountPositionDaily, which has no internal try/catch), so it needs
-    // no wrapper .catch() here.
-    const accountPositionRolled = await rollupAccountPositionDaily(env).catch(
-      () => ({ rolled: false }),
-    );
-    const accountPositionPruned = await pruneAccountPositionDaily(env, {
-      now,
-    });
-    return {
-      accountPositionRolled,
-      accountPositionPruned,
-    };
+    // account_position_daily's own rollupAccountPositionDaily/
+    // pruneAccountPositionDaily (src/account-position-history.mjs), previously
+    // called from here, are retired too: #4908 dropped D1's `neurons` table
+    // entirely (confirmed live: `SELECT ... FROM neurons` now errors "no such
+    // table: neurons"), so rollupAccountPositionDaily's `FROM neurons` query
+    // has been throwing -- silently swallowed by its own .catch() -- every
+    // tick since #4908 merged (2026-07-11); D1's account_position_daily table
+    // has been frozen at that same date ever since (confirmed via `wrangler
+    // d1 execute`). #4839 already gave this table its own independent
+    // Postgres write path (handleNeuronsSync, the same transaction as
+    // neurons/neuron_daily) and read route (tryPostgresTier +
+    // METAGRAPH_NEURONS_SOURCE, live in production per wrangler.jsonc), so
+    // nothing depends on the D1 side continuing to run. #4910, which asked
+    // for a Postgres read route believing none existed, was stale -- #4839
+    // already shipped it.
+    //
+    // This cron trigger (47 5 * * *, wrangler.jsonc) has no remaining work;
+    // left wired but inert rather than also retiring the schedule trigger
+    // itself, which is a separate deploy-config decision.
+    return { ok: true, retired: true };
   }
   return runHealthProber(env, ctx);
 }

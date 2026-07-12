@@ -249,7 +249,8 @@ silently drift from each other.
    `EVENTS_LOAD_CRON`, `HEALTH_PRUNE_CRON`, and `NEURON_HISTORY_ROLLUP_CRON` to
    drop only what they retired (`subnet_hyperparams`/`account_identity`
    staging and `account_position_daily`'s rollup/prune are untouched, and stay
-   D1-only pending their own Postgres migration). Every read route already
+   D1-only pending their own Postgres migration — see item 12, which found
+   this premise stale). Every read route already
    falls back through `tryPostgresTier(...) ?? d1Fallback()`, and `d1All`
    degrades a missing-table error to an empty result, so dropping the D1
    tables after this code deploys is provably safe — sequenced as
@@ -295,6 +296,28 @@ NOTHING`, so a backfill re-run would have silently preserved
     `blocks`' existing column-level `DO UPDATE SET` pattern on all four
     tables — a precondition for item 7 to actually be "flawless," not just
     "runs without erroring."
+12. ✅ **`account_position_daily`'s D1 rollup/prune retired + its dead D1
+    read-route fallback removed (2026-07-12).** Item 8 left this tier's D1
+    rollup (`rollupAccountPositionDaily`/`pruneAccountPositionDaily`,
+    formerly `src/account-position-history.mjs`, wired from
+    `NEURON_HISTORY_ROLLUP_CRON`) untouched because it had "no Postgres
+    migration yet" — that premise, and #4910 (filed on the same belief), were
+    both stale: #4839 had already shipped this tier's Postgres write path
+    (`handleNeuronsSync`, same transaction as neurons/neuron_daily) and read
+    route (`tryPostgresTier` + `METAGRAPH_NEURONS_SOURCE`), live-verified in
+    production. Item 8's own D1 write-path retirement had an unannounced side
+    effect on this tier specifically: dropping D1's `neurons` table broke
+    `rollupAccountPositionDaily`'s `FROM neurons` query outright (confirmed
+    live: `wrangler d1 execute` now returns `no such table: neurons`),
+    silently swallowed by its cron `.catch()` every tick since #4908 merged
+    (2026-07-11); D1's `account_position_daily` table has been frozen at that
+    same date ever since. Retired the dead cron wiring (deleted
+    `rollupAccountPositionDaily`/`pruneAccountPositionDaily` outright, same
+    treatment item 8 gave the sibling `rollupNeuronDaily`/`pruneNeuronDaily`)
+    and the read route's `?? d1Fallback()` branch — the one branch of item
+    8's ~40 that's addressed now rather than deferred to #4909, specifically
+    because its D1 source data had gone from merely unwritten to actively
+    erroring, unlike the other ~40 (still tracked, not urgent).
 
 ## Links/resources
 

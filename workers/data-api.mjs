@@ -679,12 +679,13 @@ async function handleNeuronsSync(request, env) {
           WHERE neuron_daily.captured_at <= EXCLUDED.captured_at`;
       }
 
-      // Per-account daily position rollup (#4832 gap-closure, mirrors D1's
-      // rollupAccountPositionDaily / src/account-position-history.mjs): the SAME
-      // snapshot as neuron_daily above, re-keyed by (account, netuid,
-      // snapshot_date) with account = hotkey. `hotkey IS NOT NULL` mirrors the D1
-      // rollup's own filter -- account is NOT NULL and part of the primary key,
-      // but a neuron row's hotkey can itself be null.
+      // Per-account daily position rollup (#4832 gap-closure; #4839 gave this
+      // its own Postgres write path in this same transaction, replacing D1's
+      // now-retired rollupAccountPositionDaily / src/account-position-history.mjs):
+      // the SAME snapshot as neuron_daily above, re-keyed by (account, netuid,
+      // snapshot_date) with account = hotkey. `hotkey IS NOT NULL` mirrors that
+      // retired D1 rollup's own filter -- account is NOT NULL and part of the
+      // primary key, but a neuron row's hotkey can itself be null.
       const positionRows = dailyRows
         .filter((row) => row.hotkey != null)
         .map((row) => ({

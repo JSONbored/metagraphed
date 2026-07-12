@@ -8837,7 +8837,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountPositionHistory: flag=postgres falls back to D1 on failure", async () => {
+  // No D1 fallback here (unlike the ~40 branches #4909 tracks separately):
+  // D1's own account_position_daily rollup has been permanently broken since
+  // #4908 dropped D1's `neurons` table, so a Postgres failure degrades to the
+  // same schema-stable empty series a cold store returns, never a D1 read.
+  test("handleAccountPositionHistory: flag=postgres degrades to an empty schema-stable series on failure, D1 never queried", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "postgres";
     env.DATA_API = {
@@ -8855,7 +8859,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       ),
     );
     assert.equal(body.data.marker, undefined);
-    assert.ok(captures.sql.length > 0);
+    assert.deepEqual(body.data.points, []);
+    assert.equal(body.data.point_count, 0);
+    assert.deepEqual(captures.sql, []);
   });
 
   // #4832 gap-closure: handleAccountHistory (account_events_daily, now
