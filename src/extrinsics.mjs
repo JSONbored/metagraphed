@@ -138,7 +138,10 @@ export function formatExtrinsic(row) {
           row.call_module,
           row.call_function,
           normalizePostgresValue(
-            decodePostgresCallArgs(parseCallArgs(row.call_args)),
+            decodePostgresCallArgs(parseCallArgs(row.call_args), {
+              call_module: row.call_module,
+              call_function: row.call_function,
+            }),
           ),
         ),
       );

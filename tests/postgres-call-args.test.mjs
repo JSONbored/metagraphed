@@ -72,7 +72,7 @@ describe("decodePostgresCallArgs", () => {
       assert.equal(decode(raw).call.call_args.commit, "0x0102ff00");
     });
 
-    test("Proxy.proxy's own top-level fields (real, force_proxy_type) are NOT decoded -- out of #4691's scope, only fields WITHIN a reconstructed call are", () => {
+    test("Proxy.proxy's own top-level fields (real, force_proxy_type) are BOTH decoded -- real via the ACCOUNT_KEYS name heuristic, fixed 2026-07-12 alongside the top-level AccountId32/MultiAddress typed-descriptor fix", () => {
       const raw = {
         call: {
           name: "SubtensorModule",
@@ -96,21 +96,17 @@ describe("decodePostgresCallArgs", () => {
       // force_proxy_type IS unwrapped -- that's normalizePostgresValue's
       // Option<T> rule (#4690), unaffected by #4691's narrower scope.
       assert.equal(out.force_proxy_type, null);
-      // real stays the raw MultiAddress::Id shape -- neither pass touches a
-      // top-level field of this type today (documented gap, tracked on
-      // #4669 as the next piece after this issue).
-      assert.deepEqual(out.real, {
-        name: "Id",
-        values: [
-          [
-            [
-              88, 174, 247, 177, 239, 180, 72, 6, 254, 20, 198, 197, 141, 12,
-              30, 182, 52, 165, 159, 210, 81, 63, 12, 237, 111, 45, 16, 224, 86,
-              154, 244, 13,
-            ],
-          ],
-        ],
-      });
+      // real: a MultiAddress::Id-wrapped AccountId32, previously left raw
+      // because the ACCOUNT_KEYS name heuristic was gated behind an
+      // enclosing reconstructed call -- a top-level field never had one.
+      // Now decoded regardless of nesting (2026-07-12): the untyped
+      // enum-tree shape carries no `type` string to consult, so this relies
+      // on "real" being an unambiguous account-field name, same as any
+      // other ACCOUNT_KEYS entry.
+      assert.equal(
+        out.real,
+        "5E4z3h9yVhmQyCFWNbY9BPpwhx4xFiPwq3eeqmBgVF6KULde",
+      );
     });
 
     test("Utility.batch wrapping 8 SubtensorModule.transfer_stake calls, each independently reconstructed and decoded (block 8587171/21)", () => {
@@ -307,6 +303,126 @@ describe("decodePostgresCallArgs", () => {
     });
   });
 
+  describe("top-level typed-descriptor AccountId32/MultiAddress fields (fixed 2026-07-12)", () => {
+    // Found live 2026-07-11 during a full data-pipeline audit: an extrinsic's
+    // OWN top-level call_args (the {name,type,value} descriptor array
+    // indexer-rs's #4724 typed JSON produces) never ran through ANY
+    // AccountId32/MultiAddress decode -- only fields inside a reconstructed
+    // NESTED call did (#4691's scope). Confirmed against real production
+    // API responses before this fix: GET /api/v1/extrinsics?call_module=
+    // SubtensorModule&call_function=add_stake served block 8602480/21's
+    // `hotkey` field as a raw [[b0..b31]] array instead of an SS58 string,
+    // and GET /api/v1/extrinsics/0xf4a09042...c86be (Balances.
+    // transfer_keep_alive, block 8602605/18) served `dest`
+    // (MultiAddress<AccountId32, ()>) the same way. This affected almost
+    // every SubtensorModule/Balances extrinsic, since a top-level account
+    // field is the common case, not the exception.
+    test("SubtensorModule.add_stake's top-level hotkey (real, block 8602480/21)", () => {
+      const out = decode([
+        {
+          name: "hotkey",
+          type: "AccountId32",
+          value: [
+            [
+              82, 234, 56, 192, 220, 185, 225, 113, 153, 236, 163, 61, 27, 214,
+              91, 165, 227, 249, 82, 146, 53, 250, 51, 138, 121, 207, 28, 250,
+              180, 216, 123, 127,
+            ],
+          ],
+        },
+        { name: "netuid", type: "u16", value: 117 },
+        { name: "amount_staked", type: "u64", value: 741700000 },
+      ]);
+      assert.equal(
+        out[0].value,
+        "5DwRMxJG2KxxMXF9qqfc1NowJWKnY46QJHNf5R4CG9RozmGE",
+      );
+      // Sibling non-account typed fields are untouched by this fix.
+      assert.equal(out[1].value, 117);
+      assert.equal(out[2].value, 741700000);
+    });
+
+    test("Balances.transfer_keep_alive's top-level dest, a MultiAddress<AccountId32, ()> (real, block 8602605/18)", () => {
+      const out = decode([
+        {
+          name: "dest",
+          type: "MultiAddress<AccountId32, ()>",
+          value: {
+            name: "Id",
+            values: [
+              [
+                [
+                  180, 56, 69, 59, 155, 20, 102, 39, 96, 253, 195, 62, 155, 114,
+                  113, 244, 236, 219, 6, 167, 180, 153, 46, 209, 55, 105, 249,
+                  113, 25, 165, 243, 113,
+                ],
+              ],
+            ],
+          },
+        },
+        { name: "value", type: "Compact<u64>", value: 30000000 },
+      ]);
+      assert.equal(
+        out[0].value,
+        "5G91C6t2GywqvaBJmWRrmtmyFauai8pSDtyg6qA9X3Gw1uGF",
+      );
+    });
+
+    test("a typed collection field (BTreeSet<NetUid>) is never mistaken for a byte blob at the top level", () => {
+      // Guards the #4693 ambiguity this fix must not reopen: a
+      // collection-typed descriptor's value stays an array at ANY element
+      // count, even though a single netuid is shape-identical to a 1-byte
+      // blob (isCollectionType's job, mirroring scale-normalize.mjs's
+      // COLLECTION_TYPE_RE, applied before any byte-blob decode attempt).
+      const out = decode([
+        { name: "subnets", type: "BTreeSet<NetUid>", value: [104] },
+      ]);
+      assert.deepEqual(out[0].value, [104]);
+    });
+
+    test("SubtensorModule.commit_weights' top-level commit_hash, an H256 (real, block 8602444/9)", () => {
+      // A non-account, non-collection typed byte-blob field: `type` rules
+      // out both AccountId32/MultiAddress (isAccountId32Type) and a
+      // collection generic (isCollectionType), so the byte-blob decode is
+      // unambiguously safe regardless of nesting -- exercises the
+      // topCall-only (no enclosing reconstructed call) branch of the
+      // typed-descriptor byte-blob path.
+      const out = decode([
+        { name: "netuid", type: "u16", value: 10 },
+        {
+          name: "commit_hash",
+          type: "H256",
+          value: [
+            [
+              213, 57, 183, 176, 61, 250, 160, 19, 224, 152, 214, 79, 109, 80,
+              105, 202, 162, 172, 175, 227, 217, 16, 133, 137, 40, 249, 62, 29,
+              84, 71, 29, 149,
+            ],
+          ],
+        },
+      ]);
+      assert.equal(
+        out[1].value,
+        "0xd539b7b03dfaa013e098d64f6d5069caa2acafe3d910858928f93e1d54471d95",
+      );
+    });
+
+    test("a typed AccountId32 descriptor whose value isn't a decodable shape falls through unchanged, not to null", () => {
+      // normalizeAccountId32Field returns null for a malformed value (here, a
+      // 3-byte array -- neither a flat 32-byte AccountId32 nor a newtype/
+      // MultiAddress wrap around one); the `?? value.value` fallback must
+      // preserve the original raw value rather than silently nulling out a
+      // field the caller can still inspect.
+      const malformed = {
+        name: "hotkey",
+        type: "AccountId32",
+        value: [1, 2, 3],
+      };
+      const out = decodePostgresCallArgs([malformed]);
+      assert.deepEqual(out[0].value, [1, 2, 3]);
+    });
+  });
+
   describe("Sudo.sudo_unchecked_weight (synthetic -- 0 confirmed occurrences in the retention window; code path still exercised)", () => {
     test("reconstructs like any other single-nested call", () => {
       const raw = {
@@ -500,13 +616,13 @@ describe("decodePostgresCallArgs", () => {
       assert.deepEqual(decodePostgresCallArgs({}), {});
     });
 
-    test("a bare 32-byte AccountId32 array outside any reconstructed call is left untouched (top-level scope boundary)", () => {
+    test("a bare 32-byte AccountId32 array outside any reconstructed call now decodes via the ACCOUNT_KEYS name heuristic (fixed 2026-07-12; the old top-level scope boundary)", () => {
       const bytes = [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
         21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
       ];
       assert.deepEqual(decodePostgresCallArgs({ who: [bytes] }), {
-        who: [bytes],
+        who: "5C62W7ELLAAfjCQeBU3me9ykaYomD8XTg2B9Hk6ki6Cm3v58",
       });
     });
   });
