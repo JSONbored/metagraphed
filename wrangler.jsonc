@@ -247,6 +247,22 @@
     // a single-flag revert -- though note D1's fallback is currently a no-op
     // for reads (empty) until that bug is fixed.
     "METAGRAPH_SUBNET_IDENTITY_SOURCE": "postgres",
+    // rpc_proxy_events (#4832 gap-closure follow-up): FLIPPED to "postgres"
+    // 2026-07-12, after a one-time historical backfill closed the only gap --
+    // D1 had 70 rows (wrangler d1 execute, confirmed the same day), Postgres
+    // had 1 (the newest, already mirrored live by
+    // workers/request-handlers/rpc-proxy.mjs's syncRpcUsageEventToPostgres,
+    // matched via an exact observed_at tie); the other 69 were inserted
+    // directly into Postgres and verified row-for-row against D1 afterward
+    // (count, min/max observed_at, and a 5-row spot-check including the
+    // null-endpoint/cache-hit and 503-failure shapes). No historical-window
+    // regression risk here (unlike subnet_snapshots): handleRpcUsage's own
+    // ANALYTICS_WINDOWS caps every query at 7d/30d, and both D1 (via the
+    // hourly pruneHealthHistory) and Postgres only ever hold this same
+    // rolling 30-day slice, so there is no long-tail history to lose by
+    // switching the read tier. tryPostgresTier still falls back to D1 on any
+    // failure, so this remains a single-flag revert.
+    "METAGRAPH_RPC_USAGE_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the

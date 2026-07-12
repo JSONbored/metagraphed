@@ -198,10 +198,10 @@ describe("handleRpcUsage", () => {
     assert.equal(body.data.buckets.length, 1);
   });
 
-  // #4832 gap-closure: METAGRAPH_RPC_USAGE_SOURCE is a NEW flag, deliberately
-  // left unset in wrangler.jsonc (no historical backfill -- see
-  // handleRpcUsage's own header comment) -- these tests only prove the
-  // wiring, not a live flip.
+  // #4832 gap-closure: METAGRAPH_RPC_USAGE_SOURCE is flipped to "postgres" in
+  // wrangler.jsonc (after a one-time historical backfill -- see its inline
+  // comment) -- these tests prove the wiring, independent of that live flag
+  // value.
   test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const env = {

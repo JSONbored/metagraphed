@@ -177,9 +177,13 @@ export async function handleRpcUsage(request, env, url) {
   const meta = await readHealthMetaKv(env);
   // #4832 gap-closure: reuses tryPostgresTier's usual "forward the caller's
   // request unchanged" contract (a clean 1:1 route, unlike handleCompare's
-  // embedded-helper shape). METAGRAPH_RPC_USAGE_SOURCE is deliberately
-  // unflipped in wrangler.jsonc -- no historical backfill exists, same
-  // rationale as METAGRAPH_HEALTH_SOURCE/METAGRAPH_SUBNET_SNAPSHOTS_SOURCE.
+  // embedded-helper shape). METAGRAPH_RPC_USAGE_SOURCE flipped to "postgres"
+  // in wrangler.jsonc 2026-07-12 after a one-time historical backfill closed
+  // the gap (see wrangler.jsonc's inline comment for the verification
+  // details) -- unlike METAGRAPH_HEALTH_SOURCE/METAGRAPH_SUBNET_SNAPSHOTS_SOURCE,
+  // this table's reads are always window-bounded (7d/30d) and both stores
+  // only ever hold that same rolling slice, so there was no long-tail
+  // history a backfill could leave behind.
   const data =
     (await tryPostgresTier(env, request, "METAGRAPH_RPC_USAGE_SOURCE")) ??
     (await loadRpcUsage(d1Runner(env), {
