@@ -2744,7 +2744,17 @@ test("GET /api/v1/accounts/:ss58/counterparties?counterparty= returns the relati
   );
   expect(res.status).toBe(200);
   const body = await res.json();
-  expect(body.counterparty).toBe("5Cold");
+  expect(body.counterparty_count).toBe(1);
+  expect(body.counterparties[0]).toMatchObject({
+    address: "5Cold",
+    sent_tao: 2,
+    received_tao: 0,
+    net_tao: -2,
+    transfer_count: 1,
+    last_block: 100,
+  });
+  expect(body.relationship.counterparty).toBe("5Cold");
+  expect(body.relationship.transfer_count).toBe(1);
   expect(queryText()).toContain("(hotkey = ");
 });
 

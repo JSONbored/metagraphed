@@ -4827,11 +4827,36 @@ export default {
             WHERE event_kind = 'Transfer'
               AND ((hotkey = ${ss58} AND coldkey = ${counterparty}) OR (hotkey = ${counterparty} AND coldkey = ${ss58}))
             ORDER BY block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
-            return json(
-              buildCounterpartyRelationship(rows, ss58, counterparty, {
-                limit,
-              }),
+            const relationship = buildCounterpartyRelationship(
+              rows,
+              ss58,
+              counterparty,
+              { limit },
             );
+            const counterparties =
+              relationship.transfer_count === 0
+                ? []
+                : [
+                    {
+                      address: counterparty,
+                      sent_tao: relationship.total_sent_tao,
+                      received_tao: relationship.total_received_tao,
+                      net_tao: relationship.net_tao,
+                      transfer_count: relationship.transfer_count,
+                      last_block: relationship.last_block,
+                    },
+                  ];
+            return json({
+              schema_version: 1,
+              ss58,
+              counterparty_count: counterparties.length,
+              transfers_scanned: relationship.transfers_scanned,
+              scan_capped: relationship.scan_capped,
+              total_sent_tao: relationship.total_sent_tao,
+              total_received_tao: relationship.total_received_tao,
+              counterparties,
+              relationship,
+            });
           }
           const rows = await sql`
           SELECT hotkey, coldkey, amount_tao, block_number, event_index

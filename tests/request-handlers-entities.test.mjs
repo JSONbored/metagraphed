@@ -7544,6 +7544,61 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
+  test("handleAccountCounterparties: flag=postgres accepts relationship drilldown envelope", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          counterparty_count: 1,
+          transfers_scanned: 1,
+          scan_capped: false,
+          total_sent_tao: 4.2,
+          total_received_tao: 0,
+          counterparties: [
+            {
+              address: COUNTERPARTY,
+              sent_tao: 4.2,
+              received_tao: 0,
+              net_tao: -4.2,
+              transfer_count: 1,
+              last_block: BLOCK_NUM,
+            },
+          ],
+          relationship: {
+            schema_version: 1,
+            ss58: SS58,
+            counterparty: COUNTERPARTY,
+            transfer_count: 1,
+            transfers_scanned: 1,
+            scan_capped: false,
+            total_sent_tao: 4.2,
+            total_received_tao: 0,
+            net_tao: -4.2,
+            first_seen_at: new Date(OBSERVED_AT).toISOString(),
+            last_seen_at: new Date(OBSERVED_AT).toISOString(),
+            first_block: BLOCK_NUM,
+            last_block: BLOCK_NUM,
+            transfers: [],
+          },
+        }),
+    };
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
+      ),
+    );
+    assert.equal(body.data.relationship.counterparty, COUNTERPARTY);
+    assert.deepEqual(captures.sql, []);
+  });
+
   test("handleAccountCounterparties: flag=postgres falls back to D1 on failure", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
