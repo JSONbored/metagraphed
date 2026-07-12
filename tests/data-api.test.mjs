@@ -3110,7 +3110,10 @@ test("subnet-hyperparams-sync rejects an empty array (400)", async () => {
 test("subnet-hyperparams-sync upserts subnet_hyperparams and reports written/pruned counts", async () => {
   const res = await postSubnetHyperparams(
     {
-      rows: [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+      rows: [
+        hyperparamsSyncRow({ netuid: 8 }),
+        hyperparamsSyncRow({ netuid: 9 }),
+      ],
       expected_netuid_count: 2,
     },
     { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
@@ -3125,7 +3128,10 @@ test("subnet-hyperparams-sync upserts subnet_hyperparams and reports written/pru
 test("subnet-hyperparams-sync skips prune when expected_netuid_count is unmet", async () => {
   const res = await postSubnetHyperparams(
     {
-      rows: [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+      rows: [
+        hyperparamsSyncRow({ netuid: 8 }),
+        hyperparamsSyncRow({ netuid: 9 }),
+      ],
       expected_netuid_count: 129,
     },
     { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
@@ -3161,7 +3167,10 @@ test("subnet-hyperparams-sync skips legacy prune when row count collapsed vs Pos
 test("subnet-hyperparams-sync prunes with scalar positional binds, not a bound array", async () => {
   await postSubnetHyperparams(
     {
-      rows: [hyperparamsSyncRow({ netuid: 8 }), hyperparamsSyncRow({ netuid: 9 })],
+      rows: [
+        hyperparamsSyncRow({ netuid: 8 }),
+        hyperparamsSyncRow({ netuid: 9 }),
+      ],
       expected_netuid_count: 2,
     },
     { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
