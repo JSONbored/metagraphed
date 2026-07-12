@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
-# Shard launcher. subxt deadlocks when >1 concurrent at_block() races the same
-# uncached historical metadata over ONE client (verified: conc=1 commits, conc>=4
-# hangs). So instead of in-client concurrency, run BACKFILL_SHARDS SEPARATE
-# processes — each its own subxt client + WS connection + metadata cache, each at
-# conc=1 (deadlock-free) over a disjoint slice of [FROM,TO). K shards => K x ~3.3
-# blk/s. Each shard has its own durable progress file on /data and a supervisor
-# loop that resumes it on crash. Progress survives restarts/redeploys (volume).
+# Shard launcher. Historically hardcoded every shard's in-client concurrency to 1:
+# subxt's default (chainHead-based) backend deadlocked when >1 concurrent at_block()
+# raced the same chainHead_v1_follow subscription's uncached historical metadata
+# over ONE client (verified: conc=1 commits, conc>=4 hangs). connect_chain() now
+# builds the client via LegacyBackend instead (stateless one-shot RPC calls, no
+# subscription to race) -- see the KNOWN ISSUE comment in main.rs -- which removes
+# that specific deadlock mechanism. Live-verified (2026-07-12) against our own
+# archive node while it was mid-sync: in-client concurrency scales ~linearly up to
+# at least 32 (2.4 -> 7.4 -> 15.0 -> 28.2 -> 55+ blk/s at conc 1/4/8/16/32) with no
+# measurable impact on the archive node's own sync rate or CPU. BACKFILL_SHARD_CONCURRENCY
+# controls this now instead of a hardcoded 1; still shard across SEPARATE processes
+# (not one giant in-client concurrency number) so a stuck/reconnecting shard's WS
+# drop only affects its own slice, and each shard keeps its own durable progress file.
 set -u
 FROM="${BACKFILL_FROM:-1}"
 TO="${BACKFILL_TO:-8498000}"
 SHARDS="${BACKFILL_SHARDS:-8}"
 CHUNK="${BACKFILL_CHUNK:-1000}"
+SHARD_CONCURRENCY="${BACKFILL_SHARD_CONCURRENCY:-1}"
 BIN=/app/backfill-rs
 DATA=/data
 
@@ -23,14 +30,14 @@ fi
 
 total=$((TO - FROM))
 per=$(((total + SHARDS - 1) / SHARDS))
-echo "launcher: [$FROM,$TO) -> $SHARDS shards (~$per blocks/shard), conc=1/shard, chunk=$CHUNK"
+echo "launcher: [$FROM,$TO) -> $SHARDS shards (~$per blocks/shard), conc=$SHARD_CONCURRENCY/shard, chunk=$CHUNK"
 
 run_shard() {
   local i="$1" sfrom="$2" sto="$3"
   while true; do
     echo "[launcher] shard $i starting: [$sfrom,$sto)"
     BACKFILL_FROM="$sfrom" BACKFILL_TO="$sto" BACKFILL_CHUNK="$CHUNK" \
-      BACKFILL_CONCURRENCY=1 BACKFILL_PROGRESS="$DATA/progress.shard-$i.json" \
+      BACKFILL_CONCURRENCY="$SHARD_CONCURRENCY" BACKFILL_PROGRESS="$DATA/progress.shard-$i.json" \
       "$BIN"
     echo "[launcher] shard $i exited ($?) — resume in 10s"
     sleep 10
