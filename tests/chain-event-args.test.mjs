@@ -247,4 +247,23 @@ describe("decodeChainEventArgs", () => {
       { extra_data: [1, 2, 3] },
     );
   });
+
+  test("falls back to hex for a textual-allowlisted field with malformed UTF-8 bytes", () => {
+    // 0xff is never valid UTF-8 (not even as a continuation byte), so this
+    // exercises decodeTextualField's catch fallback rather than producing
+    // mojibake.
+    const args = { extra_data: [0xff, 0xfe] };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "Ethereum", method: "Executed" }),
+      { extra_data: "0xfffe" },
+    );
+  });
+
+  test("tolerates a ctx object missing pallet/method when checking the textual allowlist", () => {
+    // ctx is truthy (so the allowlist check runs) but pallet/method are both
+    // absent -- the key's `??` fallbacks must produce "..extra_data" rather
+    // than throwing, and that key correctly isn't in TEXTUAL_FIELDS.
+    const args = { extra_data: [1, 2, 3] };
+    assert.deepEqual(decodeChainEventArgs(args, {}), { extra_data: [1, 2, 3] });
+  });
 });
