@@ -13892,6 +13892,10 @@
               "null"
             ]
           },
+          "auth_required": {
+            "description": "Structural pool-eligibility input: whether the endpoint requires auth (#4979).",
+            "type": "boolean"
+          },
           "health_source": {
             "enum": [
               "probe-derived",
@@ -13948,6 +13952,10 @@
           },
           "provider": {
             "type": "string"
+          },
+          "public_safe": {
+            "description": "Structural pool-eligibility input: whether the endpoint is safe for public proxying (#4979).",
+            "type": "boolean"
           },
           "score": {
             "type": "integer"

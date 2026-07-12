@@ -5957,6 +5957,8 @@ export interface components {
         };
         RpcPoolEndpoint: {
             archive_support?: boolean | null;
+            /** @description Structural pool-eligibility input: whether the endpoint requires auth (#4979). */
+            auth_required?: boolean;
             /** @enum {unknown} */
             health_source: "probe-derived" | "missing-probe" | "not-monitored";
             health_stale: boolean;
@@ -5970,6 +5972,8 @@ export interface components {
             pool_eligibility_reasons?: string[];
             pool_eligible: boolean;
             provider: string;
+            /** @description Structural pool-eligibility input: whether the endpoint is safe for public proxying (#4979). */
+            public_safe?: boolean;
             score: number;
             score_reasons?: components["schemas"]["EndpointScoreReason"][];
             status: components["schemas"]["HealthStatus"];
