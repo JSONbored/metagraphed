@@ -1332,6 +1332,15 @@ const SUBNET_IDENTITY_SYNC_TOKEN_HEADER = "x-subnet-identity-sync-token";
 const SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES = 5_000_000;
 const SUBNET_IDENTITY_SYNC_MAX_ROWS = 2_000;
 
+function sanitizeSubnetIdentitySyncSnapshot(snapshot) {
+  if (!snapshot) return snapshot;
+  const out = {};
+  for (const [key, value] of Object.entries(snapshot)) {
+    out[key] = stripNullBytes(value);
+  }
+  return out;
+}
+
 async function handleSubnetIdentitySync(request, env) {
   if (!env.SUBNET_IDENTITY_SYNC_SECRET) {
     return writeJson(
@@ -1418,7 +1427,9 @@ async function handleSubnetIdentitySync(request, env) {
       const changedRows = [];
       for (const profile of profiles) {
         if (!Number.isInteger(profile?.netuid)) continue;
-        const snapshot = identitySnapshotFromProfile(profile);
+        const snapshot = sanitizeSubnetIdentitySyncSnapshot(
+          identitySnapshotFromProfile(profile),
+        );
         if (!snapshot) continue;
         const hash = await subnetIdentityHash(snapshot);
         if (latestByNetuid.get(profile.netuid) === hash) continue;

@@ -3722,6 +3722,32 @@ test("subnet-identity-sync appends to subnet_identity_history when the hash chan
   expect(queryText()).toMatch(/INSERT INTO subnet_identity_history\b/);
 });
 
+test("subnet-identity-sync strips embedded NUL bytes before inserting Postgres TEXT", async () => {
+  const res = await postSubnetIdentity(
+    [
+      subnetIdentityProfile({
+        symbol: "MI\u0000AO",
+        native_identity: {
+          ...subnetIdentityProfile().native_identity,
+          subnet_name: "Miao\u0000 Subnet",
+          description: "An example\u0000 subnet operator.",
+        },
+      }),
+    ],
+    { secret: SUBNET_IDENTITY_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const insert = sqlCalls.find((c) =>
+    /INSERT INTO subnet_identity_history\b/.test(c.text),
+  );
+  expect(
+    insert.values.some((v) => typeof v === "string" && v.includes("\u0000")),
+  ).toBe(false);
+  expect(insert.values).toContain("MIAO");
+  expect(insert.values).toContain("Miao Subnet");
+  expect(insert.values).toContain("An example subnet operator.");
+});
+
 test("subnet-identity-sync skips the history append when the hash is unchanged", async () => {
   const profile = subnetIdentityProfile();
   const snapshot = identitySnapshotFromProfile(profile);
