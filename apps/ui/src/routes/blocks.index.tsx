@@ -105,7 +105,7 @@ function BlocksPage() {
         </Suspense>
       </QueryErrorBoundary>
       <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-28 w-full mb-8" />}>
+        <Suspense fallback={<Skeleton className="h-28 w-full mb-6" />}>
           <BlockProductionHeader />
         </Suspense>
       </QueryErrorBoundary>
@@ -165,7 +165,7 @@ function BlockProductionHeader() {
   const nakamoto = summary.author_concentration?.nakamoto_coefficient;
   const nakamotoStatTone = nakamotoTone(nakamoto);
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
       <StatTile
         icon={Timer}
         eyebrow="Inter-block time"
@@ -270,6 +270,7 @@ function BlocksTable() {
         inputMode="numeric"
         className="min-w-[120px] max-w-[140px] flex-none"
       />
+      <span className="ml-auto font-mono text-[11px] text-ink-muted">Newest first</span>
       <PageSizeSelect
         value={search.limit}
         onChange={(n) => setSearch({ limit: n, offset: 0 })}
