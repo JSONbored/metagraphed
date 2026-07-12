@@ -199,8 +199,12 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
               Cross-subnet registrations, first-party chain events, and daily activity rollups for
               one Bittensor account.
             </p>
-            <div className="max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
-              <CopyableCode value={ss58} truncate={false} />
+            {/* #3944: keep the box shrink-to-content on wide viewports but cap it
+                at the parent width so the long ss58 can't push its trailing copy
+                icon past the right edge at mobile — the address truncates inside
+                the capped box while the icon stays fully visible/tappable. */}
+            <div className="w-fit max-w-full rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
+              <CopyableCode value={ss58} truncate={false} className="max-w-full" />
             </div>
           </div>
         }
