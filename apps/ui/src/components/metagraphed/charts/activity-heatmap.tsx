@@ -116,7 +116,7 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
         <div
           className="grid gap-[3px]"
           style={{ gridTemplateColumns: `repeat(${weeks}, minmax(0, 1fr))` }}
-          role="img"
+          role="group"
           aria-label={`Registry activity heatmap for the last ${weeks} weeks`}
         >
           {columns.map((col, ci) => (
@@ -124,8 +124,9 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
               {col.map((c) => (
                 <Tooltip key={c.key} delayDuration={120}>
                   <TooltipTrigger asChild>
-                    <div
-                      className="aspect-square rounded-[2px] border border-border/40"
+                    <button
+                      type="button"
+                      className="aspect-square rounded-[2px] border border-border/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       style={{ background: tone(c.score, maxScore) }}
                       aria-label={`${c.key}: ${c.probes} probes, ${c.incidents} incidents`}
                     />
