@@ -57,6 +57,19 @@ export function IncidentStrip() {
   const more = active.length - 1;
   const isDown = (top.state ?? "").toLowerCase() === "down";
 
+  // The strip surfaces the network's single top active incident, which often
+  // concerns a different subnet than the one currently being viewed. When its
+  // subject differs from the current /subnets/<n> page, label the scope
+  // explicitly so the banner isn't misread as this subnet's own status (#3951).
+  const currentSubnet = pathname.match(/^\/subnets\/(\d+)(?:\/|$)/)?.[1] ?? null;
+  const concernsOtherEntity =
+    currentSubnet != null && (top.netuid == null || String(top.netuid) !== currentSubnet);
+  const scopeLabel = concernsOtherEntity
+    ? top.netuid != null
+      ? "Other subnet"
+      : "Network-wide"
+    : null;
+
   return (
     <div
       role="alert"
@@ -77,6 +90,11 @@ export function IncidentStrip() {
         <span className="font-mono text-[10px] uppercase tracking-widest shrink-0">
           {isDown ? "Incident" : "Degraded"}
         </span>
+        {scopeLabel ? (
+          <span className="shrink-0 rounded-sm border border-ink/20 bg-ink/5 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-ink-muted">
+            {scopeLabel}
+          </span>
+        ) : null}
         <span className="min-w-0 flex-1 truncate">
           {top.message ?? `Endpoint ${top.endpoint_id ?? top.id} reported ${top.state ?? "issue"}.`}
           {top.netuid != null ? (
