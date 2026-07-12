@@ -174,20 +174,15 @@ export function NeuronTable({
                   key={n.uid}
                   className={classNames(
                     "mg-row-hover border-t border-border/60",
-                    onSelect && "cursor-pointer",
                     active && "bg-accent-surface",
                   )}
-                  onClick={onSelect ? () => onSelect(n.uid) : undefined}
                 >
                   <td className="px-3 py-2.5 font-mono text-[12px] tabular-nums text-ink-strong">
                     {onSelect ? (
                       <button
                         type="button"
-                        className="hover:text-accent hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelect(n.uid);
-                        }}
+                        className="underline decoration-border underline-offset-2 hover:text-accent hover:decoration-accent"
+                        onClick={() => onSelect(n.uid)}
                       >
                         {n.uid}
                       </button>
@@ -202,7 +197,6 @@ export function NeuronTable({
                           to="/validators/$hotkey"
                           params={{ hotkey: n.hotkey }}
                           className="text-ink-muted hover:text-ink hover:underline"
-                          onClick={(e) => e.stopPropagation()}
                           title={n.hotkey}
                         >
                           {shortHash(n.hotkey) ?? n.hotkey}
@@ -212,7 +206,6 @@ export function NeuronTable({
                           to="/accounts/$ss58"
                           params={{ ss58: n.hotkey }}
                           className="text-ink-muted hover:text-ink hover:underline"
-                          onClick={(e) => e.stopPropagation()}
                           title={n.hotkey}
                         >
                           {shortHash(n.hotkey) ?? n.hotkey}
