@@ -5,13 +5,19 @@
 # progress.archive.json. The supervisor loop relaunches on any crash/exit; the
 # client's request_timeout prevents silent hangs. caffeinate blocks idle sleep
 # (NOT lid-close — keep the lid open / on AC for a long run).
+#
+# BACKFILL_CONCURRENCY=1: this single process has no sharding, and subxt
+# deadlocks a single client's per-block metadata fetch above conc=1 (verified
+# in entrypoint.sh; independently reconfirmed in metagraphed-infra's
+# indexer-rust role, which found even conc=4 against a real archive RPC stalls
+# every shard). This script ran at conc=12, squarely in the deadlock range.
 cd "$(dirname "$0")"
 export DATABASE_URL="$(cat .pgurl)"
 export EVENTS_RPC_URL="wss://archive.chain.opentensor.ai:443"
 export BACKFILL_FROM=0
 export BACKFILL_TO=7000000
 export BACKFILL_CHUNK=1000
-export BACKFILL_CONCURRENCY=12
+export BACKFILL_CONCURRENCY=1
 export BACKFILL_PROGRESS=progress.archive.json
 exec caffeinate -i bash -c '
 while true; do

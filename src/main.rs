@@ -859,9 +859,22 @@ async fn decode_block(api: &Api, height: u64, head: u64) -> Result<DecodedBlock>
             subxt::events::Phase::Finalization => ("Finalization".to_string(), None),
             subxt::events::Phase::Initialization => ("Initialization".to_string(), None),
         };
-        let fields: Value<()> = ev
-            .decode_fields_unchecked_as::<Value<()>>()
-            .unwrap_or_else(|_| Value::unnamed_composite(Vec::<Value<()>>::new()));
+        let fields: Value<()> = ev.decode_fields_unchecked_as::<Value<()>>().unwrap_or_else(|e| {
+            // A genuinely undecodable event (metadata/type-resolution mismatch,
+            // not the ordinary zero-field case -- Utility.ItemCompleted and
+            // friends decode fine to an empty composite via the Ok path above,
+            // never hitting this branch). Still write the chain_events row
+            // (correct pallet/method/phase/index) rather than dropping it, but
+            // log so a real gap in args is DISCOVERABLE instead of silently
+            // indistinguishable from a legitimately unit-payload event.
+            eprintln!(
+                "decode_block #{height}: event #{} {}.{} fields decode failed ({e:#}) -- args will be empty",
+                ev.index(),
+                ev.pallet_name(),
+                ev.event_name(),
+            );
+            Value::unnamed_composite(Vec::<Value<()>>::new())
+        });
         decoded_events.push(DecEvent {
             index: ev.index(),
             pallet: ev.pallet_name().to_string(),
@@ -923,8 +936,24 @@ async fn decode_block(api: &Api, height: u64, head: u64) -> Result<DecodedBlock>
         let call_args_fields: Vec<(String, u32, Value<()>)> = ext
             .iter_call_data_fields()
             .filter_map(|f| {
-                let v: Value<()> = f.decode_as().ok()?;
-                Some((f.name().to_string(), f.type_id(), v))
+                let name = f.name().to_string();
+                let type_id = f.type_id();
+                match f.decode_as::<Value<()>>() {
+                    Ok(v) => Some((name, type_id, v)),
+                    Err(e) => {
+                        // A single field silently missing from call_args is
+                        // otherwise indistinguishable from a call whose type
+                        // genuinely has fewer fields -- log so it's
+                        // discoverable which extrinsic/field actually failed,
+                        // rather than dropping it with zero trace (the other
+                        // fields, and the row itself, are still written).
+                        eprintln!(
+                            "decode_block #{height}: extrinsic #{index} {module}.{function} field \
+                             {name:?} decode failed ({e:#}) -- omitted from call_args"
+                        );
+                        None
+                    }
+                }
             })
             .collect();
         if module == "Timestamp" && function == "set" {
