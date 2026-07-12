@@ -1266,7 +1266,11 @@ describe("handleSubnetHyperparams", () => {
     await errorJson(res);
   });
 
-  test("returns schema-stable hyperparameters:null on cold D1", async () => {
+  // D1 retirement: subnet_hyperparams's D1 write/read path is retired
+  // (workers/request-handlers/entities.mjs's handleSubnetHyperparams no
+  // longer queries D1 at all), so this is now "Postgres unconfigured" rather
+  // than "D1 queried but cold" -- same schema-stable null contract either way.
+  test("returns schema-stable hyperparameters:null when Postgres is unconfigured", async () => {
     const body = await assertColdSchema(
       handleSubnetHyperparams,
       req(`/api/v1/subnets/${NETUID}/hyperparameters`),
@@ -1277,23 +1281,6 @@ describe("handleSubnetHyperparams", () => {
     assert.equal(body.data.netuid, NETUID);
     assert.equal(body.data.hyperparameters, null);
     assert.equal(body.data.captured_at, null);
-  });
-
-  test("happy path returns the latest hyperparameters row", async () => {
-    const { env } = dbWith({
-      subnetHyperparams: [hyperparamsRow()],
-    });
-    const body = await json(
-      await handleSubnetHyperparams(
-        req(`/api/v1/subnets/${NETUID}/hyperparameters`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/hyperparameters`),
-      ),
-    );
-    assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.hyperparameters.tempo, 360);
-    assert.equal(body.data.block_number, 100);
   });
 });
 
@@ -1308,7 +1295,9 @@ describe("handleSubnetHyperparamsHistory", () => {
     await errorJson(res);
   });
 
-  test("returns schema-stable empty entries on cold D1", async () => {
+  // D1 retirement: same as handleSubnetHyperparams above -- no D1 fallback
+  // left to query, so this is "Postgres unconfigured" rather than "D1 cold".
+  test("returns schema-stable empty entries when Postgres is unconfigured", async () => {
     const body = await assertColdSchema(
       handleSubnetHyperparamsHistory,
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
@@ -1319,24 +1308,6 @@ describe("handleSubnetHyperparamsHistory", () => {
     assert.equal(body.data.netuid, NETUID);
     assert.equal(body.data.entry_count, 0);
     assert.deepEqual(body.data.entries, []);
-  });
-
-  test("happy path returns hyperparameter change timeline rows", async () => {
-    const { env } = dbWith({
-      subnetHyperparamsHistory: [hyperparamsHistoryRow()],
-    });
-    const body = await json(
-      await handleSubnetHyperparamsHistory(
-        req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/hyperparameters/history?limit=20`),
-      ),
-    );
-    assert.equal(body.data.entry_count, 1);
-    assert.equal(body.data.entries[0].hyperparameters.tempo, 360);
-    assert.equal(body.data.entries[0].hyperparams_hash, "abc");
-    assert.equal(body.data.limit, 20);
   });
 });
 
@@ -6428,9 +6399,14 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.neuron.hotkey, SS58);
   });
 
-  // #4832 gap-closure: subnet_hyperparams/subnet_hyperparams_history's new
+  // #4832 gap-closure: subnet_hyperparams/subnet_hyperparams_history's own
   // Postgres tier, own dedicated flag (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE)
   // since it has an independent write path from neurons/neuron_daily above.
+  // D1 retirement: subnet_hyperparams's D1 write/read path is fully retired
+  // now (no code path ever prepares D1 SQL for these two routes), so
+  // `dbWith({subnetHyperparams: ...})` below only proves the D1 mock's rows
+  // are never touched -- a Postgres failure falls back to the same
+  // schema-stable null/empty shape a cold store returns, not to D1 data.
   test("handleSubnetHyperparams: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ subnetHyperparams: [hyperparamsRow()] });
     env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
@@ -6451,8 +6427,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetHyperparams: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({ subnetHyperparams: [hyperparamsRow()] });
+  test("handleSubnetHyperparams: flag=postgres falls back to schema-stable null on failure (D1 retired)", async () => {
+    const env = {};
     env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
     env.DATA_API = {
       fetch: async () => {
@@ -6463,7 +6439,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetHyperparams(req(path), env, NETUID, url(path)),
     );
-    assert.equal(body.data.hyperparameters.tempo, 360);
+    assert.equal(body.data.hyperparameters, null);
+    assert.equal(body.data.captured_at, null);
   });
 
   test("handleSubnetHyperparamsHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -6490,10 +6467,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetHyperparamsHistory: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({
-      subnetHyperparamsHistory: [hyperparamsHistoryRow()],
-    });
+  test("handleSubnetHyperparamsHistory: flag=postgres falls back to schema-stable empty on failure (D1 retired)", async () => {
+    const env = {};
     env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
     env.DATA_API = {
       fetch: async () => {
@@ -6504,7 +6479,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetHyperparamsHistory(req(path), env, NETUID, url(path)),
     );
-    assert.equal(body.data.entries[0].hyperparams_hash, "abc");
+    assert.equal(body.data.entry_count, 0);
+    assert.deepEqual(body.data.entries, []);
   });
 
   // #4832 gap-closure: account_identity/account_identity_history's new

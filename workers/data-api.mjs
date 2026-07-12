@@ -881,23 +881,26 @@ async function handleRollupAccountEventsDaily(request, env) {
 // The write path into subnet_hyperparams + subnet_hyperparams_history,
 // reached only via workers/api.mjs's handleSubnetHyperparamsSyncProxy (the
 // same proxyToDataApi shape as neurons-sync/rollup-account-events-daily
-// above). .github/workflows/refresh-subnet-hyperparams.yml's sign-and-stage
-// job POSTs the SAME signed envelope it already produces for the D1 R2-stage
-// path (scripts/sign-staged-neurons.mjs's {schema_version, hmac_sha256,
-// rows} shape) directly here -- the hmac_sha256 field is ignored (unlike
-// workers/request-handlers/staging.mjs's loadStagedSubnetHyperparams, which
-// verifies it): that verification exists to authenticate an R2 object drop
-// across an untrusted intermediate step, and is unnecessary to replicate
-// here since the POST itself is independently authenticated by the token
-// header below, matching handleNeuronsSync's own request/{rows:[...]} shape.
+// above) -- now this workflow's SOLE write path, D1's own R2-stage-to-D1
+// loader (loadStagedSubnetHyperparams) having been retired alongside D1's
+// copy of these two tables. .github/workflows/refresh-subnet-hyperparams.yml's
+// sign-and-stage job POSTs the signed envelope produced by
+// scripts/sign-staged-neurons.mjs (its {schema_version, hmac_sha256, rows}
+// shape, kept for the HMAC utility even with no D1 R2-stage step left to
+// authenticate) directly here -- the hmac_sha256 field itself is ignored: it
+// exists to authenticate an R2 object drop across an untrusted intermediate
+// step, and is unnecessary to replicate here since the POST itself is
+// independently authenticated by the token header below, matching
+// handleNeuronsSync's own request/{rows:[...]} shape.
 //
-// Every successful upstream fetch covers ALL active subnets in one run (no
-// partial-coverage concept -- see loadStagedSubnetHyperparams's own header
-// comment), so the prune below is a plain NOT IN against this batch's
-// netuids, unlike neurons-sync's per-netuid captured_at-scoped prune.
+// Every successful upstream fetch covers ALL active subnets in one run (the
+// fetch script loops every netuid every time and exits nonzero on any
+// missing netuid -- get_subnet_hyperparameters has no bulk variant -- so
+// there's no partial-coverage concept to track here), so the prune below is
+// a plain NOT IN against this batch's netuids, unlike neurons-sync's
+// per-netuid captured_at-scoped prune.
 const SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER = "x-subnet-hyperparams-sync-token";
-// ~129 rows today (one per active subnet); generous headroom, matching the
-// D1 staging path's MAX_STAGED_SUBNET_HYPERPARAMS_ROWS/_BYTES.
+// ~129 rows today (one per active subnet); generous headroom.
 const SUBNET_HYPERPARAMS_SYNC_MAX_BODY_BYTES = 2_000_000;
 const SUBNET_HYPERPARAMS_SYNC_MAX_ROWS = 2_000;
 const SUBNET_HYPERPARAMS_SYNC_MAX_NETUID = 65_535;
@@ -912,16 +915,15 @@ const SUBNET_HYPERPARAMS_BOOLEAN_COLUMNS = new Set([
   "owner_cut_enabled",
   "owner_cut_auto_lock_enabled",
 ]);
-// The 33 hyperparameter field names, same derivation as
-// src/subnet-hyperparams-history.mjs's own (unexported) HYPERPARAM_FIELDS --
-// strips netuid (front) and block_number/captured_at (back).
+// The 33 hyperparameter field names -- strips netuid (front) and
+// block_number/captured_at (back), which subnet_hyperparams_history carries
+// as its own separately-typed netuid/block_number/observed_at columns instead.
 const SUBNET_HYPERPARAMS_HISTORY_FIELDS =
   SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1, -2);
 
 // Bounds-check one incoming row against SUBNET_HYPERPARAMS_INSERT_COLUMNS --
-// same trust posture as staging.mjs's validStagedSubnetHyperparamsRow (every
-// field but netuid is null-or-finite-number; the fetch script emits 0/1 for
-// the boolean-flag columns, not JSON booleans).
+// every field but netuid is null-or-finite-number; the fetch script emits 0/1
+// for the boolean-flag columns, not JSON booleans.
 function validSubnetHyperparamsSyncRow(row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (
@@ -5075,10 +5077,11 @@ export default {
         }
 
         // GET /api/v1/subnets/:netuid/hyperparameters (#4832 gap-closure,
-        // Phase B): latest-only, mirroring src/subnet-hyperparams.mjs's
-        // loadSubnetHyperparams. Column list matches that file's own
-        // SUBNET_HYPERPARAMS_COLUMNS (every INSERT column except netuid,
-        // itself already known from the WHERE clause).
+        // Phase B): latest-only. Column list matches
+        // SUBNET_HYPERPARAMS_INSERT_COLUMNS in src/subnet-hyperparams.mjs
+        // (every INSERT column except netuid, itself already known from the
+        // WHERE clause) -- D1's own equivalent read (loadSubnetHyperparams)
+        // is retired alongside D1's subnet_hyperparams write path.
         const subnetHyperparams = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/hyperparameters$/,
         );
@@ -5091,11 +5094,12 @@ export default {
         }
 
         // GET /api/v1/subnets/:netuid/hyperparameters/history?limit=&offset=
-        // &cursor= (#4832 gap-closure, Phase B): append-only change timeline,
-        // mirroring src/subnet-hyperparams-history.mjs's
-        // loadSubnetHyperparamsHistory. observed_at/id are plain BIGINT
-        // columns (not DATE), so no ::text cast is needed for the cursor
-        // comparison the way snapshot_date/day require elsewhere in this file.
+        // &cursor= (#4832 gap-closure, Phase B): append-only change timeline
+        // -- D1's own equivalent read (loadSubnetHyperparamsHistory) is
+        // retired alongside D1's subnet_hyperparams write path. observed_at/id
+        // are plain BIGINT columns (not DATE), so no ::text cast is needed for
+        // the cursor comparison the way snapshot_date/day require elsewhere in
+        // this file.
         const subnetHyperparamsHistory = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/hyperparameters\/history$/,
         );

@@ -73,10 +73,7 @@ import {
   readIdentityHistoryCacheStamp,
   readNeuronDailyCacheStamp,
 } from "./request-handlers/analytics.mjs";
-import {
-  loadStagedSubnetHyperparams,
-  loadStagedAccountIdentity,
-} from "./request-handlers/staging.mjs";
+import { loadStagedAccountIdentity } from "./request-handlers/staging.mjs";
 import {
   handleSubnetMetagraph,
   handleNeuron,
@@ -431,10 +428,12 @@ export default {
 };
 
 // The staged-artifact loaders now live in request-handlers/staging.mjs (#1763).
-// Re-export them so the scheduled cron drain (handleScheduled) and the staging
-// tests keep importing them from this module. loadStagedNeurons/Events/Blocks/
-// Extrinsics removed alongside their D1 tables (#4772 D1 chain-data retirement).
-export { loadStagedSubnetHyperparams, loadStagedAccountIdentity };
+// Re-export it so the scheduled cron drain (handleScheduled) and the staging
+// tests keep importing it from this module. loadStagedNeurons/Events/Blocks/
+// Extrinsics removed alongside their D1 tables (#4772 D1 chain-data
+// retirement); loadStagedSubnetHyperparams removed the same way now that
+// subnet_hyperparams/subnet_hyperparams_history are fully Postgres-served.
+export { loadStagedAccountIdentity };
 
 // The RPC-proxy subsystem now lives in request-handlers/rpc-proxy.mjs (#1763).
 // The router dispatches the handlers directly via the imports above; these
@@ -560,36 +559,27 @@ export async function handleEconomicsBackfill(request, env) {
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
   // Fast-load cron (#1346 Option A): its whole job is to drain the R2-staged
-  // batches into D1 quickly, then return without running the heavier probe/prune so
-  // it can tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  // batch into D1 quickly, then return without running the heavier probe/prune so
+  // it can tick every ~3 min cheaply and keep the drain's own latency low.
   //
   // The drain is gated to THIS cron alone (audit #9). The four cron triggers fire as
   // separate concurrent invocations whose minutes coincide (e.g. 0/15/30/45), and
-  // each staged load is an unlocked R2 read-modify-write (read → load → delete /
-  // rewrite). Running the loaders on every tick let a concurrent invocation clobber a
-  // freshly-staged file via the delete path; owning the drain on a single cron removes
-  // the cross-cron concurrency entirely. Each loader stays isolated (`.catch`) so a
-  // load failure never affects the early-return below.
+  // the staged load is an unlocked R2 read-modify-write (read → load → delete /
+  // rewrite). Running the loader on every tick would let a concurrent invocation
+  // clobber a freshly-staged file via the delete path; owning the drain on a
+  // single cron removes the cross-cron concurrency entirely.
   if (cron === EVENTS_LOAD_CRON) {
-    // Drain the R2-staged batches concurrently (#2092). Each loader is
-    // independent and I/O-bound (R2 GET + chunked db.batch() + delete/put) over a
-    // distinct R2 key + D1 table with no shared mutable state, so overlapping
-    // their I/O cuts the */3 tick's wall-clock from the sum to the slowest single
-    // loader. allSettled preserves the per-loader isolation the serial
-    // `.catch(() => {})` gave: one rejection never stops the others or changes
-    // the marker. The cross-cron clobber rationale above is unaffected — the
-    // drain stays gated to THIS single owning cron, so there is still exactly
-    // one writer per staged key.
-    //
-    // #4772 D1 chain-data retirement: loadStagedNeurons/Events/Blocks/Extrinsics
-    // (neurons/account_events/blocks/extrinsics' D1 R2-drain) removed alongside
-    // their D1 tables -- these two remain registry-side tables, out of scope.
-    //   - loadStagedSubnetHyperparams: token-free subnet hyperparams load (#4303/1.3)
-    //   - loadStagedAccountIdentity: token-free personal identity load (#4324/5.1)
-    await Promise.allSettled([
-      loadStagedSubnetHyperparams(env),
-      loadStagedAccountIdentity(env),
-    ]);
+    // #4772 D1 chain-data retirement removed loadStagedNeurons/Events/Blocks/
+    // Extrinsics (neurons/account_events/blocks/extrinsics' D1 R2-drain)
+    // alongside their D1 tables. loadStagedSubnetHyperparams (subnet
+    // hyperparameters' own D1 R2-drain, #4303/1.3) is retired the same way now
+    // that subnet_hyperparams/subnet_hyperparams_history are fully served from
+    // Postgres (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE, #4832 gap-closure) --
+    // leaving loadStagedAccountIdentity (#4324/5.1) as the one registry-side
+    // table still written via this path. `.catch` isolates a load failure so
+    // it never affects the early-return below (the prior Promise.allSettled
+    // gave the same isolation across what used to be several loaders here).
+    await loadStagedAccountIdentity(env).catch(() => {});
     return { ok: true, fast_load: true };
   }
   if (cron === HEALTH_PRUNE_CRON) {

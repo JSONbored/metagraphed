@@ -60,8 +60,8 @@ import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "../../src/accounts-list.mjs";
-import { loadSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
-import { loadSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.mjs";
+import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
+import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.mjs";
 import {
   loadSubnetYield,
   YIELD_HISTORY_READ_COLUMNS,
@@ -590,9 +590,17 @@ export async function handleNeuron(request, env, netuid, uid) {
 }
 
 // GET /api/v1/subnets/{netuid}/hyperparameters (#4307/1.4): one netuid's live
-// consensus/economic/governance settings from the subnet_hyperparams D1 tier
-// (refreshed daily by refresh-subnet-hyperparams.yml, #4306/1.3) — no static
-// file, no query params (a single-row lookup, nothing to filter or paginate).
+// consensus/economic/governance settings, served from Postgres
+// (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE, refreshed daily by
+// refresh-subnet-hyperparams.yml, #4306/1.3) — no static file, no query
+// params (a single-row lookup, nothing to filter or paginate).
+//
+// D1 retirement: subnet_hyperparams's D1 write path (loadStagedSubnetHyperparams
+// in workers/request-handlers/staging.mjs) is retired, so D1's copy is frozen,
+// not actively wrong — but falling back to it here would silently serve an
+// ever-staler snapshot instead of the same schema-stable-null cold shape every
+// other cold/absent tier already returns. buildSubnetHyperparams(null, netuid)
+// reproduces that cold shape directly, without querying D1 at all.
 export async function handleSubnetHyperparams(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
@@ -601,7 +609,7 @@ export async function handleSubnetHyperparams(request, env, netuid, url) {
       env,
       request,
       "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-    )) ?? (await loadSubnetHyperparams(d1Runner(env), netuid));
+    )) ?? buildSubnetHyperparams(null, netuid);
   return envelopeResponse(
     request,
     {
@@ -617,10 +625,16 @@ export async function handleSubnetHyperparams(request, env, netuid, url) {
 }
 
 // GET /api/v1/subnets/{netuid}/hyperparameters/history (#4309/1.6): append-only
-// hyperparameter-change timeline for one subnet, newest first. Forward-only —
-// rows only exist from when the diff-on-change loader started running (see
-// recordSubnetHyperparamsChanges in src/subnet-hyperparams-history.mjs).
+// hyperparameter-change timeline for one subnet, newest first, served from
+// Postgres (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE). Forward-only — rows only
+// exist from when the diff-on-change write started running (see
+// handleSubnetHyperparamsSync's diff-and-append in workers/data-api.mjs).
 // Cold/absent store -> schema-stable zero, never 404.
+//
+// D1 retirement: see handleSubnetHyperparams above — the D1 fallback
+// (loadSubnetHyperparamsHistory) is retired alongside subnet_hyperparams's D1
+// write path; buildSubnetHyperparamsHistory([], ...) reproduces the same
+// schema-stable empty-page shape a cold store returned, without querying D1.
 export async function handleSubnetHyperparamsHistory(
   request,
   env,
@@ -633,20 +647,18 @@ export async function handleSubnetHyperparamsHistory(
     "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
-  async function fromD1() {
-    return loadSubnetHyperparamsHistory(d1Runner(env), netuid, {
-      limit,
-      offset,
-      cursor,
-    });
-  }
+  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const data =
     (await tryPostgresTier(
       env,
       request,
       "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-    )) ?? (await fromD1());
+    )) ??
+    buildSubnetHyperparamsHistory([], netuid, {
+      limit,
+      offset,
+      nextCursor: null,
+    });
   return envelopeResponse(
     request,
     {

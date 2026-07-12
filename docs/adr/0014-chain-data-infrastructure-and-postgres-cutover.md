@@ -249,8 +249,9 @@ silently drift from each other.
    `EVENTS_LOAD_CRON`, `HEALTH_PRUNE_CRON`, and `NEURON_HISTORY_ROLLUP_CRON` to
    drop only what they retired (`subnet_hyperparams`/`account_identity`
    staging and `account_position_daily`'s rollup/prune are untouched, and stay
-   D1-only pending their own Postgres migration — see item 12, which found
-   this premise stale). Every read route already
+   D1-only pending their own Postgres migration — see item 12
+   (`account_position_daily`) and item 13 (`subnet_hyperparams`), which found
+   this premise stale for both). Every read route already
    falls back through `tryPostgresTier(...) ?? d1Fallback()`, and `d1All`
    degrades a missing-table error to an empty result, so dropping the D1
    tables after this code deploys is provably safe — sequenced as
@@ -318,6 +319,31 @@ NOTHING`, so a backfill re-run would have silently preserved
     8's ~40 that's addressed now rather than deferred to #4909, specifically
     because its D1 source data had gone from merely unwritten to actively
     erroring, unlike the other ~40 (still tracked, not urgent).
+13. ✅ **`subnet_hyperparams`/`subnet_hyperparams_history` D1 write path
+    retired (2026-07-12), following item 8's own precedent — and, like item
+    12, addressing its own read-route fallback now rather than deferring to
+    #4909.** Item 8 explicitly deferred these two tables ("stay D1-only
+    pending their own Postgres migration") — that migration is #4832's
+    `handleSubnetHyperparamsSync` write route, already live and
+    `METAGRAPH_SUBNET_HYPERPARAMS_SOURCE`-flipped per a prior
+    live-verification pass. This step removes the now-redundant D1 half:
+    `loadStagedSubnetHyperparams` (the R2-stage-to-D1 loader in
+    `workers/request-handlers/staging.mjs`) and the
+    `refresh-subnet-hyperparams.yml` step that fed it, mirroring item 8's
+    `loadStagedNeurons`-etc. removal exactly. Unlike item 12 (whose D1 source
+    had gone from unwritten to actively erroring), this table's D1 copy was
+    still merely frozen, not broken — the read-route cleanup here is a
+    deliberate scope choice matching item 12's precedent, not a forced one:
+    removes the two READ routes' `?? d1Fallback()` branches
+    (`handleSubnetHyperparams`/`handleSubnetHyperparamsHistory` in
+    `workers/request-handlers/entities.mjs`) rather than deferring them to
+    #4909 — #4909 explicitly excluded `subnet_hyperparams`/`account_identity`
+    from its ~40-branch cleanup as "not part of this [item 8] retirement,"
+    and this step IS that table's own retirement, so its read fallback is in
+    scope this time rather than being carried as a second, later cleanup
+    pass. The D1 tables themselves are left in place, not dropped — same
+    code-first-then-drop staging as items 8 and 12. `account_identity`'s D1
+    staging is untouched, still pending its own migration.
 
 ## Links/resources
 

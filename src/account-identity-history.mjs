@@ -1,11 +1,12 @@
 // Personal (coldkey) chain identity history diff-tracking (#4326, epic
 // #4301/5.2): detect account_identity changes against the last recorded hash
 // per account and store append-only rows in D1. Mirrors
-// src/subnet-hyperparams-history.mjs's recordSubnetHyperparamsChanges shape
-// exactly (itself mirroring src/subnet-identity-history.mjs), keyed by
-// account instead of netuid, running as an additional step inside the same
-// staged load rather than a separate pipeline (workers/request-handlers/
-// staging.mjs's loadStagedAccountIdentity).
+// src/subnet-identity-history.mjs's diff-and-append shape (subnet_hyperparams's
+// own D1-side diff-and-append, recordSubnetHyperparamsChanges, was retired
+// alongside its D1 write path -- see src/subnet-hyperparams-history.mjs's
+// header), keyed by account instead of netuid, running as an additional step
+// inside the same staged load rather than a separate pipeline
+// (workers/request-handlers/staging.mjs's loadStagedAccountIdentity).
 //
 // Read/format/build functions land here with the serving route (#4328/5.4),
 // mirroring src/subnet-identity-history.mjs's read side exactly (keyed by
