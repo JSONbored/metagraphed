@@ -16,9 +16,9 @@ indexer-rs → (writes, as it always has) → Postgres
                                               │
                                     pg_notify('chain_firehose', <payload>)
                                               │
-                          box-side relay (LISTEN, #4981) → Cloudflare Durable Object (#4982)
+                          box-side relay (LISTEN, #4981) → Cloudflare Durable Object (#4982, live)
                                                                           │
-                                                        SSE / WS / GraphQL subs / MCP (#4982, #4983)
+                                                        SSE / WS (#4982, live) / GraphQL subs / MCP (#4983)
 ```
 
 `indexer-rs` requires **zero code changes** and has **zero awareness** any of
@@ -61,14 +61,64 @@ role — see [`JSONbored/metagraphed-infra`](https://github.com/JSONbored/metagr
 — not an ad-hoc SSH-installed process. Unlike the old streamer, this relay is
 a pure consumer: it never writes to Postgres and is never in `indexer-rs`'s
 critical path, so there is no equivalent of the old blocking-retry-starves-the-subscription
-failure mode to guard against here.
+failure mode to guard against here. Its target is the ingest endpoint
+documented below.
 
-## The hub + transports (#4982, #4983, not yet built)
+## The hub + SSE/WS transports (#4982, live)
 
-A single Cloudflare Durable Object (`ChainFirehoseHub`) receives relay
-forwards on an authenticated internal endpoint and fans them out over SSE
-(`GET /api/v1/chain/stream`), WebSocket, a GraphQL `Subscription` type, and
-MCP resource subscriptions — one hub, four transports.
+A single Cloudflare Durable Object, `ChainFirehoseHub`
+(`workers/chain-firehose-hub.mjs`) — the first Durable Object this codebase
+has used — co-located with the main `metagraphed` Worker (`wrangler.jsonc`'s
+`durable_objects`/`migrations` blocks) rather than a dedicated Worker, since
+it serves this Worker's own public route directly.
+
+One global instance (`idFromName("global")`) owns two endpoints:
+
+- `POST /api/v1/internal/chain-firehose-ingest` — the #4981 relay's target.
+  Shared-secret authenticated (`x-chain-firehose-sync-token` header,
+  `timingSafeEqual` against `CHAIN_FIREHOSE_SYNC_SECRET`, matching every
+  other `/api/v1/internal/*-sync` route's convention), 503 if the secret
+  isn't provisioned, 401 if the token is missing/wrong. The auth check lives
+  in `workers/api.mjs`, not inside the Durable Object itself — a DO is never
+  internet-addressable on its own, so this Worker's binding is the only path
+  in, and the one place a forged request could be rejected.
+- `GET /api/v1/chain/stream` — the public read side, no auth (the same
+  public data `/api/v1/chain-events` already serves, pushed instead of
+  polled). SSE by default (`event: chain` frames, JSON payload matching the
+  trigger's NOTIFY shape); a WebSocket `Upgrade` header on the same path gets
+  the WS transport instead. Both support `?topics=blocks,extrinsics,chain_events`
+  (comma-separated, defaults to all three) to avoid forcing a client to
+  consume the full firehose.
+
+Bounded per-connection buffering: an SSE client whose `ReadableStream`
+controller falls behind (`desiredSize < 0` against a 64-frame
+`CountQueuingStrategy` high-water mark) is dropped rather than left to grow
+memory unboundedly. WebSocket connections use the hibernation API
+(`state.acceptWebSocket`, `WebSocket.serializeAttachment`/
+`deserializeAttachment` for the per-connection topic filter,
+`state.getWebSockets()` for fanout) so an idle subscriber doesn't pin the
+DO's compute — Cloudflare's WebSocket object exposes no confirmed
+backpressure signal for hibernatable sockets (no verified `bufferedAmount`
+equivalent), so instead of relying on one, total concurrent WS connections
+are capped (`CHAIN_FIREHOSE_MAX_WS_CONNECTIONS`) and a dead socket is
+reconciled via try/catch around `send()` plus the hibernation runtime's own
+`state.getWebSockets()` pruning.
+
+Testability: this repo has no Durable Object-capable test harness (no
+`@cloudflare/vitest-pool-workers`/Miniflare). Every actual decision the hub
+makes (topic parsing/matching, ingest payload validation, SSE framing) is a
+plain pure function, unit-tested directly
+(`tests/chain-firehose-hub.test.mjs`). Most of the DO class itself is ALSO
+Node-testable against a stubbed `state` object — `ReadableStream`/
+`CountQueuingStrategy`/`TextEncoder` are real Web Streams APIs under plain
+Node/vitest, and `state.getWebSockets()` is trivially stubbable — so only the
+literal `WebSocketPair`/`state.acceptWebSocket` upgrade branch (no Node
+equivalent) is `/* v8 ignore */`-marked, not the whole class.
+`tests/chain-firehose-routes.test.mjs` covers the `workers/api.mjs`
+routing/auth boundary (mirroring the existing `*-sync-proxy` test shape).
+
+GraphQL `Subscription` and MCP resource subscriptions are #4983, layered on
+this same hub rather than needing their own state.
 
 ## The alerter (#4984, not yet built)
 
@@ -84,3 +134,31 @@ psql "$DATABASE_URL" -c "LISTEN chain_firehose;"
 # in another session, insert (or wait for indexer-rs to insert) a row into
 # blocks/extrinsics/chain_events — the LISTENing session prints a Notification
 ```
+
+## Provisioning + verifying the hub (#4982)
+
+The ingest secret is provisioned the same way every other `*_SYNC_SECRET`
+is, on the MAIN Worker (the hub is co-located there, not on
+`wrangler.data.jsonc`):
+
+```sh
+wrangler secret put CHAIN_FIREHOSE_SYNC_SECRET
+```
+
+Until #4981's relay is deployed, the ingest endpoint can be exercised
+directly to confirm the hub itself is live end-to-end:
+
+```sh
+# terminal 1: subscribe (SSE)
+curl -N https://api.metagraph.sh/api/v1/chain/stream
+
+# terminal 2: push a synthetic notification
+curl -X POST https://api.metagraph.sh/api/v1/internal/chain-firehose-ingest \
+  -H "x-chain-firehose-sync-token: $CHAIN_FIREHOSE_SYNC_SECRET" \
+  -H "content-type: application/json" \
+  -d '{"table":"blocks","block_number":1,"observed_at":"2026-07-12T00:00:00.000Z"}'
+# terminal 1 should immediately print the matching `event: chain` frame
+```
+
+Full path (`indexer-rs` block → trigger → relay → hub → a real subscriber)
+can only be live-verified once #4981 ships and points at this endpoint.
