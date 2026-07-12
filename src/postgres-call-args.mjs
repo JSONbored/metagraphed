@@ -467,6 +467,37 @@ function walk(value, keyHint, nestedCall, topCall) {
     const ss58 = normalizeAccountId32Field(value);
     if (ss58) return ss58;
   }
+  // A generic enum-tree node (Option<T>'s Some/None, or any other tagged
+  // union) that isn't a reconstructed nested call, a RawN text variant, or
+  // an account-keyed MultiAddress::Id/AccountId32 wrap (all already handled
+  // above -- this check runs AFTER isAccountField specifically so a real
+  // `dest: {name:"Id", values:[[bytes]]}` MultiAddress field still gets
+  // normalizeAccountId32Field's whole-shape unwrap-and-SS58-encode, not this
+  // generic per-element walk) -- e.g. a nested call's own Option<u64> field,
+  // `limit_price: {name:"Some", values:[0]}`. Must be walked as its OWN
+  // shape (each element of `values` individually) rather than falling
+  // through to the generic object recursion below, which would hand the
+  // WHOLE `values` array to the nestedCall byte-blob heuristic under
+  // keyHint="values" -- confirmed live 2026-07-12: a nested SubtensorModule.
+  // remove_stake_full_limit (inside Utility.batch) with limit_price Some(0)
+  // served `{"name":"Some","values":"0x00"}` instead of the scalar 0,
+  // because `unwrapByteArray([0])` sees a single valid byte value and
+  // decodeBytesField hex-encodes it -- actively WRONG, not just undecoded,
+  // and only for values 0-255 (a genuine Some(32896091) survives unscathed,
+  // since 32896091 fails the byte-array shape check and falls through
+  // untouched). scale-normalize.mjs's normalizePostgresValue (which runs
+  // AFTER this module) still does the actual Some/None/C-enum collapse on
+  // the shape this preserves -- this branch only protects `values`'
+  // elements from the byte-blob heuristic before that later pass gets a
+  // chance to see them.
+  if (isEnumTreeNode(value)) {
+    return {
+      name: value.name,
+      values: value.values.map((item) =>
+        walk(item, keyHint, nestedCall, topCall),
+      ),
+    };
+  }
   // BTREESET_FIELDS-allowlisted fields (postgres-collection-normalize.mjs)
   // are excluded from the generic byte-blob heuristic below -- confirmed
   // live 2026-07-12: a nested SubtensorModule.claim_root's `subnets` (inside

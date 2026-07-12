@@ -535,4 +535,120 @@ describe("decodeChainEventArgs", () => {
       result: { name: "Ok", values: [[]] },
     });
   });
+
+  test("decodes contract (Contracts.ContractEmitted) to SS58, previously missing from ACCOUNT_KEYS (real block 8606116/157)", () => {
+    const args = {
+      contract: [
+        [
+          201, 64, 152, 192, 92, 30, 3, 109, 25, 1, 241, 97, 18, 22, 108, 234,
+          241, 133, 248, 60, 51, 238, 193, 162, 238, 53, 60, 174, 183, 33, 236,
+          67,
+        ],
+      ],
+      data: [],
+    };
+    assert.equal(
+      decodeChainEventArgs(args, {
+        pallet: "Contracts",
+        method: "ContractEmitted",
+      }).contract,
+      "5GcaftCj1psi5489Dp8RiL5UmMsbRMf9XsfNrDMMsfM5hFoB",
+    );
+  });
+
+  test("decodes contract (Contracts.Called) to SS58 alongside caller, previously missing from ACCOUNT_KEYS (real block 8606268/612)", () => {
+    const args = {
+      caller: {
+        name: "Signed",
+        values: [
+          [
+            [
+              202, 232, 71, 249, 210, 189, 168, 73, 116, 18, 3, 108, 59, 153,
+              137, 124, 86, 117, 67, 86, 45, 7, 44, 82, 58, 94, 4, 234, 83, 139,
+              27, 119,
+            ],
+          ],
+        ],
+      },
+      contract: [
+        [
+          201, 64, 152, 192, 92, 30, 3, 109, 25, 1, 241, 97, 18, 22, 108, 234,
+          241, 133, 248, 60, 51, 238, 193, 162, 238, 53, 60, 174, 183, 33, 236,
+          67,
+        ],
+      ],
+    };
+    const out = decodeChainEventArgs(args, {
+      pallet: "Contracts",
+      method: "Called",
+    });
+    assert.equal(
+      out.contract,
+      "5GcaftCj1psi5489Dp8RiL5UmMsbRMf9XsfNrDMMsfM5hFoB",
+    );
+    assert.equal(
+      out.caller,
+      "5GekXoBfig3G9yqnYmD2N7VGruNQwqU2UpeksXDytzHEGduw",
+    );
+  });
+
+  test("decodes signer (LimitOrders.OrderExecuted) to SS58, previously missing from ACCOUNT_KEYS (real block 8605497/410)", () => {
+    const args = {
+      netuid: 97,
+      signer: [
+        [
+          234, 255, 34, 21, 96, 42, 74, 67, 71, 170, 124, 177, 152, 223, 123,
+          243, 9, 253, 62, 44, 230, 106, 211, 253, 170, 40, 153, 130, 79, 78,
+          235, 74,
+        ],
+      ],
+      amount_in: 65802619318,
+    };
+    const out = decodeChainEventArgs(args, {
+      pallet: "LimitOrders",
+      method: "OrderExecuted",
+    });
+    assert.equal(
+      out.signer,
+      "5HNprQFF4MmHNgDFnfQE4XznnNaVTz2qBtufLG4Apq1RUNrf",
+    );
+    assert.equal(out.amount_in, 65802619318);
+  });
+
+  test("Drand.NewPulse's rounds stays an array for a single-round pulse, not collapsed to a bare number (real block 8606141/148)", () => {
+    const args = { rounds: [30355357] };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "Drand", method: "NewPulse" }),
+      { rounds: [30355357] },
+    );
+  });
+
+  test("Drand.NewPulse's rounds stays an array for a multi-round pulse (real block 4633999/58, unaffected baseline)", () => {
+    const args = {
+      rounds: [
+        14409684, 14409685, 14409686, 14409687, 14409688, 14409689, 14409690,
+        14409691,
+      ],
+    };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "Drand", method: "NewPulse" }),
+      {
+        rounds: [
+          14409684, 14409685, 14409686, 14409687, 14409688, 14409689, 14409690,
+          14409691,
+        ],
+      },
+    );
+  });
+
+  test("a single-element Vec field NOT in COLLECTION_FIELDS still collapses via normalizePostgresValue (baseline, unaffected)", () => {
+    const args = { fee_rate: [0] };
+    assert.deepEqual(
+      decodeChainEventArgs(args, {
+        pallet: "LimitOrders",
+        method: "SomeOtherEvent",
+      }),
+      { fee_rate: 0 },
+    );
+  });
 });

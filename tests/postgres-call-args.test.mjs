@@ -680,6 +680,119 @@ describe("decodePostgresCallArgs", () => {
     });
   });
 
+  describe("nested enum-tree nodes (fixed 2026-07-12: a nested Option<u64> Some(0-255) was corrupted into a hex string)", () => {
+    // Real raw shape confirmed via direct Postgres query, block 8606044/13:
+    // a Utility.batch wrapping SubtensorModule.remove_stake_full_limit,
+    // whose limit_price: Option<u64> arrives as this enum-tree node.
+    const rawBatch = (limitPriceValue) => [
+      {
+        name: "calls",
+        type: "Vec<RuntimeCall>",
+        value: [
+          {
+            name: "SubtensorModule",
+            values: [
+              {
+                name: "remove_stake_full_limit",
+                values: {
+                  hotkey: [
+                    [
+                      62, 34, 147, 208, 104, 248, 29, 37, 128, 200, 66, 207,
+                      247, 252, 215, 171, 215, 140, 177, 84, 32, 140, 232, 171,
+                      206, 168, 176, 128, 94, 80, 101, 113,
+                    ],
+                  ],
+                  netuid: 10,
+                  limit_price: limitPriceValue,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    test("a nested Option<u64> Some(0) decodes to the scalar 0, not a corrupted hex string (real block 8606044/13)", () => {
+      const raw = rawBatch({ name: "Some", values: [0] });
+      const out = decode(raw);
+      assert.equal(out[0].value[0].call_args.limit_price, 0);
+    });
+
+    test("a nested Option<u64> Some(<256) decodes correctly for another small value (real block 8602712/8)", () => {
+      // Every value 0-255 is shape-identical to a genuine 1-byte blob, so
+      // this isn't just the 0 case -- confirm a couple more small values.
+      for (const v of [1, 64, 255]) {
+        const raw = rawBatch({ name: "Some", values: [v] });
+        const out = decode(raw);
+        assert.equal(out[0].value[0].call_args.limit_price, v);
+      }
+    });
+
+    test("a nested Option<u64> Some(>255) still decodes correctly (real block 8601736/10, the pre-existing working baseline)", () => {
+      const raw = rawBatch({ name: "Some", values: [32896091] });
+      const out = decode(raw);
+      assert.equal(out[0].value[0].call_args.limit_price, 32896091);
+    });
+
+    test("a nested Option<u64> None decodes to null", () => {
+      const raw = rawBatch({ name: "None", values: [] });
+      const out = decode(raw);
+      assert.equal(out[0].value[0].call_args.limit_price, null);
+    });
+
+    test("a top-level (non-nested) Option<u64> Some(0) is unaffected -- already correct before this fix (real block 8606132/11)", () => {
+      const raw = [
+        {
+          name: "limit_price",
+          type: "Option<u64>",
+          value: { name: "Some", values: [0] },
+        },
+      ];
+      const out = decode(raw);
+      // Top-level typed descriptors don't hit the nestedCall byte-blob
+      // heuristic at all (nestedCall is null there) -- normalizePostgresValue
+      // alone already unwraps Some(0) correctly via its generic pass.
+      assert.equal(out[0].value, 0);
+    });
+
+    test("does not regress MultiAddress::Id decoding inside a nested call -- the same enum-tree shape, but account-keyed (real block 8605925/20's own Balances.transfer_keep_alive dest)", () => {
+      const raw = {
+        name: "calls",
+        type: "Vec<RuntimeCall>",
+        value: [
+          {
+            name: "Balances",
+            values: [
+              {
+                name: "transfer_keep_alive",
+                values: {
+                  dest: {
+                    name: "Id",
+                    values: [
+                      [
+                        [
+                          2, 231, 237, 169, 77, 48, 47, 104, 42, 49, 75, 52,
+                          183, 161, 133, 231, 62, 34, 120, 255, 67, 79, 133, 73,
+                          252, 53, 179, 55, 34, 140, 130, 223,
+                        ],
+                      ],
+                    ],
+                  },
+                  value: 1415000000,
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const out = decode(raw);
+      assert.equal(
+        out.value[0].call_args.dest,
+        "5C8WrFofZBQWdEctJhwticZ2osjL7eVDeHyL5mE6V3AGx1VN",
+      );
+    });
+  });
+
   describe("Vec<u8>/BoundedVec<u8> byte-blob-typed collections (fixed 2026-07-12: MevShield's ciphertext/enc_key were never hex-decoded, miscategorized as a generic collection)", () => {
     test("hex-encodes a bare BoundedVec<u8,_> field (real MevShield.submit_encrypted.ciphertext, block 8543969/7)", () => {
       const raw = [

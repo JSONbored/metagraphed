@@ -74,6 +74,14 @@ const ACCOUNT_KEYS = new Set([
   "approving",
   "sender",
   "caller",
+  // Added from a follow-up live sweep (2026-07-12): contract (Contracts.
+  // ContractEmitted/Called) and signer (LimitOrders.OrderExecuted) are
+  // confirmed-live 32-byte AccountId32 fields, cross-checked against a
+  // sibling field with the identical raw bytes correctly SS58-encoded in
+  // the same block (Contracts.Called's own "caller", and
+  // LimitOrders.execute_batched_orders' explicitly-typed nested "signer").
+  "contract",
+  "signer",
 ]);
 
 function isByteArray(v, len) {
@@ -157,6 +165,24 @@ const ENUM_PAYLOAD_FIELDS = new Map([
   ["Proxy.ProxyExecuted.result", "unit-or-passthrough"],
   ["Sudo.Sudid.sudo_result", "unit-or-passthrough"],
 ]);
+
+// Known genuine Vec<T>/collection fields that must stay arrays regardless of
+// element count, mirroring TEXTUAL_FIELDS/HEX_BLOB_FIELDS/ENUM_PAYLOAD_FIELDS'
+// narrow-allowlist discipline for the identical reason (chain_events.args
+// has no per-field type string to consult -- see #4724's COLLECTION_TYPE_RE
+// note in scale-normalize.mjs, which explicitly scopes ITS fix to the
+// `{name,type,value}` D1/extrinsics shape only and punts this untyped side
+// to a narrow allowlist here). normalizePostgresValue's generic newtype-
+// scalar rule runs BEFORE decode() ever sees this tree and has no ctx to
+// consult, so a genuine single-element Vec (e.g. Drand.NewPulse's `rounds`
+// on a pulse carrying exactly one round -- the common case at current block
+// heights, confirmed live 2026-07-12: block 8606141 event_index 148 served
+// `"rounds": 30355357` instead of `[30355357]`, while a multi-round pulse a
+// few million blocks earlier correctly stayed an array) has already been
+// collapsed to a bare scalar by the time this file's own decode() runs.
+// Restored below in decode()'s object branch, the one place ctx + the
+// collapsed value are both in scope together.
+const COLLECTION_FIELDS = new Set(["Drand.NewPulse.rounds"]);
 
 function decodeTextualField(bytes) {
   try {
@@ -252,7 +278,17 @@ function decode(value, keyHint, ctx) {
       }
     }
     const out = {};
-    for (const [k, val] of Object.entries(value)) out[k] = decode(val, k, ctx);
+    for (const [k, val] of Object.entries(value)) {
+      // Restore a COLLECTION_FIELDS field's array-ness before recursing --
+      // see that allowlist's own comment for why normalizePostgresValue can
+      // collapse a genuine single-element Vec<T> to a bare scalar upstream.
+      // Never fires on an already-multi-element array (Array.isArray(val)
+      // is already true, so there is nothing to restore).
+      const key = ctx ? `${ctx.pallet ?? ""}.${ctx.method ?? ""}.${k}` : "";
+      const restored =
+        COLLECTION_FIELDS.has(key) && !Array.isArray(val) ? [val] : val;
+      out[k] = decode(restored, k, ctx);
+    }
     return out;
   }
   return value;
