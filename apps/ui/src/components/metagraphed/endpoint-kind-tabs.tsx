@@ -29,7 +29,7 @@ export function EndpointKindTabs({ value, counts, onChange }: Props) {
             aria-selected={active}
             onClick={() => onChange(k)}
             className={classNames(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+              "mg-focus-ring inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
               active
                 ? "border-accent/60 bg-accent/15 text-ink-strong"
                 : "border-border bg-card text-ink-muted hover:text-ink-strong hover:border-ink/30",
