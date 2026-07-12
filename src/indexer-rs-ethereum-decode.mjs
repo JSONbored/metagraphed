@@ -110,7 +110,7 @@ export function decodeH160Bytes(value) {
 
 // A 32-byte hash-like value (Ethereum's ECDSA signature r/s components) --
 // same generic byte-blob-to-hex treatment, just gated on length 32 instead
-// of 20. Not exported: only meaningful composed inside decodeEip1559Payload
+// of 20. Not exported: only meaningful composed inside decodeEthereumTransactionPayload
 // below, unlike decodeH160Bytes which Requirement 3 names as its own
 // reusable unit.
 function decodeHash32Bytes(value) {
@@ -133,17 +133,27 @@ const U256_FIELDS = [
   "gas_limit",
   "max_fee_per_gas",
   "max_priority_fee_per_gas",
+  // Added 2026-07-12, found live-verifying #4933: TransactionV3::Legacy
+  // (confirmed live alongside EIP1559 -- both are the only two variants
+  // observed so far) uses a single `gas_price` U256 instead of the dual
+  // max_fee_per_gas/max_priority_fee_per_gas fee-market fields -- it stayed
+  // raw because it wasn't in this list, the same shape gap as every other
+  // field here, just missed because the initial fix's fixture happened to
+  // be an EIP1559 transaction.
+  "gas_price",
 ];
 
-// Ethereum.transact's `transaction` field's inner EIP1559 struct: the 5 U256
-// fields above, `action` (a nested TransactionAction::Call tuple-variant
+// Ethereum.transact's `transaction` field's inner payload struct (shared by
+// every TransactionV3 variant -- EIP1559 and Legacy confirmed live): the
+// U256 fields above, `action` (a nested TransactionAction::Call tuple-variant
 // wrapping an H160), and `signature.r`/`signature.s` (32-byte hash-like
-// values, NOT wrapped in an enum -- EIP1559's own ECDSA signature is a plain
-// struct, unrelated to the Signature::Sr25519 enum family below).
-// `chain_id`/`odd_y_parity`/`access_list` need no decode (already plain
-// scalars/empty arrays either tier). `input` is deliberately left untouched
-// -- its own mojibake bug is D1's, out of scope here (bytes.mjs's own header).
-function decodeEip1559Payload(payload) {
+// values, NOT wrapped in an enum -- the ECDSA signature is a plain struct,
+// unrelated to the Signature::Sr25519 enum family below). `chain_id`/
+// `odd_y_parity`/`access_list`/Legacy's `signature.v` need no decode
+// (already plain scalars/empty arrays either tier). `input` is deliberately
+// left untouched -- its own mojibake bug is D1's, out of scope here
+// (bytes.mjs's own header).
+function decodeEthereumTransactionPayload(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return payload;
   }
@@ -221,7 +231,7 @@ export function decodeEthereumTransactArgs(callArgs) {
   return withCallArg(
     callArgs,
     "transaction",
-    decodeTupleVariantEnum(tx, decodeEip1559Payload),
+    decodeTupleVariantEnum(tx, decodeEthereumTransactionPayload),
   );
 }
 

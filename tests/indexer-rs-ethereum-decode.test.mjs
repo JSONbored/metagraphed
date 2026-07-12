@@ -206,6 +206,64 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
     });
   });
 
+  test("decodes a Legacy transaction's gas_price (real production fixture, block 8604625/17, fixed 2026-07-12)", () => {
+    // Found live while verifying #4933: TransactionV3::Legacy uses a single
+    // gas_price U256 instead of EIP1559's dual max_fee_per_gas/
+    // max_priority_fee_per_gas fee-market fields -- U256_FIELDS didn't list
+    // it, so it stayed a raw 4-limb array while every other field decoded
+    // correctly.
+    const legacyRaw = {
+      transaction: {
+        name: "Legacy",
+        values: [
+          {
+            input: [172, 30, 93, 191],
+            nonce: [[1555, 0, 0, 0]],
+            value: [[0, 0, 0, 0]],
+            action: {
+              name: "Call",
+              values: [
+                [
+                  [
+                    45, 121, 248, 109, 83, 187, 141, 203, 154, 206, 22, 32, 10,
+                    219, 1, 78, 247, 227, 135, 61,
+                  ],
+                ],
+              ],
+            },
+            gas_limit: [[150000, 0, 0, 0]],
+            gas_price: [[10000000000, 0, 0, 0]],
+            signature: {
+              r: [
+                [
+                  179, 97, 128, 16, 14, 209, 76, 209, 215, 88, 24, 117, 168,
+                  130, 228, 240, 229, 86, 14, 29, 46, 159, 224, 129, 224, 52,
+                  248, 68, 179, 224, 104, 131,
+                ],
+              ],
+              s: [
+                [
+                  112, 178, 135, 59, 14, 137, 89, 93, 207, 134, 232, 100, 105,
+                  242, 238, 120, 85, 182, 108, 100, 7, 46, 79, 120, 5, 229, 105,
+                  144, 92, 91, 166, 198,
+                ],
+              ],
+              v: 1963,
+            },
+          },
+        ],
+      },
+    };
+    const out = decode("Ethereum", "transact", legacyRaw);
+    assert.equal(out.transaction.Legacy.gas_price, "10000000000");
+    assert.equal(out.transaction.Legacy.nonce, "1555");
+    assert.equal(
+      out.transaction.Legacy.action.Call,
+      "0x2d79f86d53bb8dcb9ace16200adb014ef7e3873d",
+    );
+    assert.equal(out.transaction.Legacy.signature.v, 1963);
+  });
+
   test("decodes the real production call_args shape -- an array of {name,type,value} descriptors, confirmed live 2026-07-12 (block 8604176/7)", () => {
     // This is what genuine indexer-rs/Postgres output actually looks like for
     // EVERY extrinsic (D1 is fully retired, #4772) -- decodeEthereumTransactArgs
