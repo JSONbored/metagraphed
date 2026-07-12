@@ -140,7 +140,11 @@ export function Sparkline({
       onFocus={onFocus}
       onBlur={() => setHover(null)}
       tabIndex={canTooltip ? 0 : undefined}
-      aria-label={canTooltip ? `${ariaLabel ?? "Sparkline chart"}, use arrow keys to step through values` : undefined}
+      aria-label={
+        canTooltip
+          ? `${ariaLabel ?? "Sparkline chart"}, use arrow keys to step through values`
+          : undefined
+      }
     >
       <svg
         width="100%"
