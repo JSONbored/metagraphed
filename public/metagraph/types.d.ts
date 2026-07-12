@@ -11966,7 +11966,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "next_before": 1,
-                     *         "next_cursor": "example"
+                     *         "next_cursor": "100.123.4"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
