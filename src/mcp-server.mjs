@@ -979,6 +979,38 @@ function mcpExtrinsicDetailRequest(ref) {
   return new Request(`https://d/api/v1/extrinsics/${encodeURIComponent(ref)}`);
 }
 
+// Synthetic GET /api/v1/subnets/{netuid}/identity-history{...} request,
+// forwarded UNCHANGED to DATA_API via tryPostgresTier -- mirrors REST's
+// handleSubnetIdentityHistory, which parses the identical limit/offset/cursor
+// query-string shape (workers/data-api.mjs's subnetIdentityHistory route),
+// same METAGRAPH_SUBNET_IDENTITY_SOURCE flag, so get_subnet_identity_history
+// and GET /api/v1/subnets/{netuid}/identity-history never diverge on which
+// tier answered.
+function mcpSubnetIdentityHistoryRequest(netuid, { limit, offset, cursor }) {
+  const params = new URLSearchParams();
+  if (limit != null) params.set("limit", String(limit));
+  if (offset != null) params.set("offset", String(offset));
+  if (cursor) params.set("cursor", cursor);
+  const qs = params.toString();
+  return new Request(
+    `https://d/api/v1/subnets/${encodeURIComponent(netuid)}/identity-history${qs ? `?${qs}` : ""}`,
+  );
+}
+
+// Synthetic GET /api/v1/chain/identity-history{...} request, same contract as
+// mcpSubnetIdentityHistoryRequest above but for the network-wide feed --
+// mirrors REST's handleChainIdentityHistory (also gated on
+// METAGRAPH_SUBNET_IDENTITY_SOURCE, the one flag covering both the per-subnet
+// and network-wide subnet_identity_history reads).
+function mcpChainIdentityHistoryRequest({ limit }) {
+  const params = new URLSearchParams();
+  if (limit != null) params.set("limit", String(limit));
+  const qs = params.toString();
+  return new Request(
+    `https://d/api/v1/chain/identity-history${qs ? `?${qs}` : ""}`,
+  );
+}
+
 // One subnet's economics: live KV tier (KV-primary), else the committed R2
 // snapshot — the precedence /api/v1/economics uses. A missing row → economics:null.
 async function loadSubnetEconomics(ctx, netuid) {
@@ -1182,16 +1214,28 @@ async function loadSubnetHistory(ctx, netuid, { label, days }) {
   return buildSubnetHistory(rows, netuid, { window: label });
 }
 
+// Mirrors REST's handleSubnetIdentityHistory: try Postgres first, fall back
+// to D1 on any failure -- same tryPostgresTier contract, same
+// METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST route (#4832), so this
+// tool and GET /api/v1/subnets/{netuid}/identity-history never diverge on
+// which tier answered.
 async function loadSubnetIdentityHistoryTool(
   ctx,
   netuid,
   { limit, offset, cursor },
 ) {
-  return loadSubnetIdentityHistory(mcpD1Runner(ctx), netuid, {
-    limit,
-    offset,
-    cursor,
-  });
+  return (
+    (await tryPostgresTier(
+      ctx.env,
+      mcpSubnetIdentityHistoryRequest(netuid, { limit, offset, cursor }),
+      "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+    )) ??
+    (await loadSubnetIdentityHistory(mcpD1Runner(ctx), netuid, {
+      limit,
+      offset,
+      cursor,
+    }))
+  );
 }
 
 // One UID's per-day time series — mirrors handleNeuronHistory: neuron_daily rows
@@ -2542,9 +2586,21 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      return loadChainIdentityHistory(mcpD1Runner(ctx), {
-        limit: args?.limit,
-      });
+      // Mirrors REST's handleChainIdentityHistory: try Postgres first, fall
+      // back to D1 on any failure -- same tryPostgresTier contract, same
+      // METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST route (#4832), so
+      // this tool and GET /api/v1/chain/identity-history never diverge on
+      // which tier answered.
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpChainIdentityHistoryRequest({ limit: args?.limit }),
+          "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+        )) ??
+        (await loadChainIdentityHistory(mcpD1Runner(ctx), {
+          limit: args?.limit,
+        }))
+      );
     },
   },
   {

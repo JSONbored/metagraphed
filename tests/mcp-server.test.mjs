@@ -9081,6 +9081,149 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.changes[1].netuid, 7);
   });
 
+  // #4832 gap-closure: get_chain_identity_history mirrors REST's
+  // handleChainIdentityHistory tier-selection exactly (same
+  // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryPostgresTier fallback
+  // contract) -- see the equivalent "flag=postgres" tests for
+  // handleSubnetIdentityHistory in tests/request-handlers-entities.test.mjs.
+  describe("get_chain_identity_history D1 -> Postgres serving cutover", () => {
+    function identityHistoryD1(rows, capture = []) {
+      return {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  if (sql.includes("FROM subnet_identity_history")) {
+                    return Promise.resolve({ results: rows });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      };
+    }
+    const ALPHA_ROW = {
+      id: 1,
+      netuid: 7,
+      block_number: 100,
+      observed_at: 1_600_000_000_000,
+      subnet_name: "Alpha",
+      symbol: "α",
+      description: null,
+      github_repo: null,
+      subnet_url: null,
+      discord: null,
+      logo_url: null,
+      identity_hash: "h1",
+    };
+
+    test("flag=postgres uses Postgres data, D1 never queried", async () => {
+      const capture = [];
+      const env = {
+        METAGRAPH_HEALTH_DB: identityHistoryD1([], capture),
+        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              count: 1,
+              subnet_count: 1,
+              changes: [{ netuid: 99, subnet_name: "pg-only" }],
+            }),
+        },
+      };
+      const res = await callTool("get_chain_identity_history", {}, { env });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.changes[0].subnet_name, "pg-only");
+      assert.deepEqual(capture, []);
+    });
+
+    test("flag=postgres falls back to D1 on failure", async () => {
+      const capture = [];
+      const env = {
+        METAGRAPH_HEALTH_DB: identityHistoryD1([ALPHA_ROW], capture),
+        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool("get_chain_identity_history", {}, { env });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.changes[0].subnet_name, "Alpha");
+      assert.ok(capture.length > 0, "D1 must actually be queried on fallback");
+    });
+
+    test("flag absent uses D1 even when DATA_API is bound (zero regression, unflipped)", async () => {
+      const capture = [];
+      const env = {
+        METAGRAPH_HEALTH_DB: identityHistoryD1([ALPHA_ROW], capture),
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              count: 0,
+              subnet_count: 0,
+              changes: [],
+            }),
+        },
+      };
+      const res = await callTool("get_chain_identity_history", {}, { env });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.changes[0].subnet_name, "Alpha");
+      assert.ok(capture.length > 0, "D1 must actually be queried");
+    });
+
+    test("flag=postgres forwards limit as a REST-equivalent query param", async () => {
+      let seenUrl;
+      const env = {
+        METAGRAPH_HEALTH_DB: identityHistoryD1([]),
+        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            seenUrl = new URL(request.url);
+            return Response.json({
+              schema_version: 1,
+              count: 0,
+              subnet_count: 0,
+              changes: [],
+            });
+          },
+        },
+      };
+      await callTool("get_chain_identity_history", { limit: 25 }, { env });
+      assert.equal(seenUrl.pathname, "/api/v1/chain/identity-history");
+      assert.equal(seenUrl.searchParams.get("limit"), "25");
+    });
+
+    test("flag=postgres omits the limit param when not supplied", async () => {
+      let seenUrl;
+      const env = {
+        METAGRAPH_HEALTH_DB: identityHistoryD1([]),
+        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            seenUrl = new URL(request.url);
+            return Response.json({
+              schema_version: 1,
+              count: 0,
+              subnet_count: 0,
+              changes: [],
+            });
+          },
+        },
+      };
+      await callTool("get_chain_identity_history", {}, { env });
+      assert.equal(seenUrl.pathname, "/api/v1/chain/identity-history");
+      assert.equal(seenUrl.searchParams.has("limit"), false);
+    });
+  });
+
   test("get_chain_yield returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_yield", {});
     const out = res.body.result.structuredContent;
@@ -13524,6 +13667,153 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.equal(out.entry_count, 1);
     assert.equal(out.entries[0].subnet_name, "MIAO");
     assert.equal(out.limit, 10);
+  });
+
+  // #4832 gap-closure: get_subnet_identity_history mirrors REST's
+  // handleSubnetIdentityHistory tier-selection exactly (same
+  // METAGRAPH_SUBNET_IDENTITY_SOURCE flag, same tryPostgresTier fallback
+  // contract) -- see the equivalent "flag=postgres" tests for
+  // handleSubnetIdentityHistory in tests/request-handlers-entities.test.mjs,
+  // which this block mirrors. Also mirrors list_extrinsics/get_extrinsic's own
+  // "D1 -> Postgres serving cutover (#4694)" block in the block-explorer
+  // describe above.
+  describe("get_subnet_identity_history D1 -> Postgres serving cutover", () => {
+    const MIAO_ROW = {
+      id: 2,
+      block_number: 100,
+      observed_at: 1_700_000_000_000,
+      subnet_name: "MIAO",
+      symbol: "α",
+      description: "sound AI",
+      github_repo: null,
+      subnet_url: null,
+      discord: null,
+      logo_url: null,
+      identity_hash: "hash-1",
+    };
+
+    test("flag=postgres uses Postgres data, D1 never queried", async () => {
+      const capture = [];
+      const env = {
+        ...parityD1({ identityHistory: [] }, capture),
+        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              netuid: 86,
+              entry_count: 1,
+              limit: null,
+              offset: null,
+              next_cursor: null,
+              entries: [{ identity_hash: "pg-hash" }],
+            }),
+        },
+      };
+      const res = await callTool(
+        "get_subnet_identity_history",
+        { netuid: 86 },
+        { env },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.entries[0].identity_hash, "pg-hash");
+      assert.deepEqual(capture, []);
+    });
+
+    test("flag=postgres falls back to D1 on failure", async () => {
+      const env = {
+        ...parityD1({ identityHistory: [MIAO_ROW] }),
+        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(
+        "get_subnet_identity_history",
+        { netuid: 86 },
+        { env },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.entries[0].identity_hash, "hash-1");
+    });
+
+    test("flag absent uses D1 even when DATA_API is bound (zero regression, unflipped)", async () => {
+      const capture = [];
+      const env = {
+        ...parityD1({ identityHistory: [MIAO_ROW] }, capture),
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              netuid: 86,
+              entry_count: 0,
+              entries: [],
+            }),
+        },
+      };
+      const res = await callTool(
+        "get_subnet_identity_history",
+        { netuid: 86 },
+        { env },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.entries[0].identity_hash, "hash-1");
+      assert.ok(capture.length > 0, "D1 must actually be queried");
+    });
+
+    test("flag=postgres forwards netuid + limit/offset/cursor as a REST-equivalent request", async () => {
+      let seenUrl;
+      const env = {
+        ...parityD1({ identityHistory: [] }),
+        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            seenUrl = new URL(request.url);
+            return Response.json({
+              schema_version: 1,
+              netuid: 86,
+              entry_count: 0,
+              entries: [],
+            });
+          },
+        },
+      };
+      await callTool(
+        "get_subnet_identity_history",
+        { netuid: 86, limit: 10, offset: 5, cursor: "abc" },
+        { env },
+      );
+      assert.equal(seenUrl.pathname, "/api/v1/subnets/86/identity-history");
+      assert.equal(seenUrl.searchParams.get("limit"), "10");
+      assert.equal(seenUrl.searchParams.get("offset"), "5");
+      assert.equal(seenUrl.searchParams.get("cursor"), "abc");
+    });
+
+    test("flag=postgres omits pagination params when not supplied", async () => {
+      let seenUrl;
+      const env = {
+        ...parityD1({ identityHistory: [] }),
+        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (request) => {
+            seenUrl = new URL(request.url);
+            return Response.json({
+              schema_version: 1,
+              netuid: 86,
+              entry_count: 0,
+              entries: [],
+            });
+          },
+        },
+      };
+      await callTool("get_subnet_identity_history", { netuid: 86 }, { env });
+      assert.equal(seenUrl.pathname, "/api/v1/subnets/86/identity-history");
+      assert.equal(seenUrl.searchParams.has("limit"), false);
+      assert.equal(seenUrl.searchParams.has("offset"), false);
+      assert.equal(seenUrl.searchParams.has("cursor"), false);
+    });
   });
 
   test("get_neuron_history returns one UID's per-day series", async () => {
