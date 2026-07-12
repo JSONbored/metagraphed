@@ -1311,6 +1311,7 @@ async fn connect_chain(url: &str) -> Result<Api> {
     // log line (the exact failure mode that silently stalled the metered run). A
     // bounded timeout turns that into an Err the retry loop recovers from (a dead/
     // half-open socket surfaces as a timed-out request within 60s rather than never).
+    use subxt::backend::LegacyBackend;
     use subxt::rpcs::client::{ReconnectingRpcClient, RpcClient};
     eprintln!("connect_chain: building reconnecting rpc client -> {url}");
     let inner = ReconnectingRpcClient::builder()
@@ -1321,8 +1322,21 @@ async fn connect_chain(url: &str) -> Result<Api> {
         .map_err(|e| anyhow::anyhow!("reconnecting rpc build: {e}"))?;
     eprintln!("connect_chain: reconnecting rpc client built, wrapping RpcClient");
     let rpc_client = RpcClient::new(inner);
-    eprintln!("connect_chain: calling OnlineClient::from_rpc_client");
-    let api = OnlineClient::<PolkadotConfig>::from_rpc_client(rpc_client)
+    // LegacyBackend, not OnlineClient::from_rpc_client's default (CombinedBackend,
+    // which tries chainhead_* before legacy_* per call): this is the actual fix for
+    // the KNOWN ISSUE documented at the top of this file, not just a mitigation.
+    // paritytech/subxt#2050 is specifically the chainHead_v1_follow subscription
+    // silently going idle under heavy concurrent block-import churn -- a failure
+    // mode intrinsic to that stateful subscription protocol. LegacyBackend never
+    // opens one; every call (state_getMetadata, chain_getBlock, state_getStorage,
+    // Core_version via state_call, ...) is a stateless one-shot RPC request, so the
+    // whole bug CLASS is structurally unreachable, not just recovered-from-faster.
+    // ChainClient's timeout+reconnect above stays as defense-in-depth (a slow/dead
+    // TCP connection is still possible under any backend), but is no longer the
+    // primary defense against #2050 specifically.
+    eprintln!("connect_chain: calling OnlineClient::from_backend (LegacyBackend)");
+    let backend = LegacyBackend::builder().build(rpc_client);
+    let api = OnlineClient::<PolkadotConfig>::from_backend(std::sync::Arc::new(backend))
         .await
         .context("online client")?;
     eprintln!("connect_chain: OnlineClient ready");
