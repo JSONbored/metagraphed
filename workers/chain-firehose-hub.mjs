@@ -1,0 +1,297 @@
+// ChainFirehoseHub -- the realtime chain-event fanout (#4982, ADR 0015,
+// docs/realtime-firehose.md). The first Durable Object in this codebase.
+//
+// One global instance (idFromName("global")) receives #4980's NOTIFY
+// payloads from the #4981 box-side relay on an authenticated internal
+// endpoint and fans each one out to connected clients over SSE and
+// WebSocket. Reached only through workers/api.mjs's CHAIN_FIREHOSE_HUB
+// binding -- a Durable Object is never internet-addressable on its own, so
+// every auth check lives in workers/api.mjs (handleChainFirehoseIngest),
+// not here.
+//
+// This module is split in two for testability: the functions below make
+// every actual decision (topic filtering, payload validation, SSE framing)
+// and are plain, pure, unit-tested code. The ChainFirehoseHub class at the
+// bottom is thin runtime glue over the Durable Object / WebSocket
+// hibernation APIs (state.acceptWebSocket, ReadableStream controllers,
+// WebSocketPair) -- none of which this repo's plain-vitest harness can drive
+// (no @cloudflare/vitest-pool-workers / Miniflare here). Per #4982's own
+// issue body ("note any coverage gap explicitly rather than skipping
+// silently"), that glue is marked with an explicit /* v8 ignore */ block
+// rather than pretending it's covered.
+
+export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
+
+// Matches deploy/postgres/schema.sql's notify_chain_firehose() trigger --
+// the only three tables it ever fires `table:` for.
+export const CHAIN_FIREHOSE_TABLES = new Set([
+  "blocks",
+  "extrinsics",
+  "chain_events",
+]);
+
+// Headroom over Postgres's 8000-byte NOTIFY payload cap (the trigger's own
+// payload is already far smaller than this -- see the trigger's comment).
+export const CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES = 16_000;
+
+// Per-field string length bound -- generous over every string field the
+// trigger actually emits (call_module/call_function/pallet/method/signer/
+// block_hash), catching a malformed or hostile ingest payload as a clean 400
+// rather than an oversized SSE frame reaching every connected client.
+export const CHAIN_FIREHOSE_MAX_FIELD_STRING_BYTES = 256;
+
+// SSE: how many queued-but-unflushed frames a client may accumulate (via the
+// stream's CountQueuingStrategy) before it's treated as stalled and dropped.
+// WS: hard cap on concurrent hibernated sockets this hub instance accepts --
+// Cloudflare's WebSocket object exposes no confirmed, documented backpressure
+// signal (no verified `bufferedAmount` equivalent for hibernatable sockets),
+// so a per-message byte watermark isn't a reliable primitive here; capping
+// total connections bounds the DO's worst-case fanout cost directly instead,
+// with per-send try/catch as the second line of defense against dead sockets.
+export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
+export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
+
+function utf8ByteLength(value) {
+  return new TextEncoder().encode(value).length;
+}
+
+// null => no filter (every table). An empty Set means every requested topic
+// was unrecognized -- the caller matches nothing, rather than silently
+// falling back to "everything" for a typo'd topic name.
+export function parseChainFirehoseTopics(searchParams) {
+  const raw = searchParams.get("topics");
+  if (!raw) return null;
+  const requested = raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const matched = requested.filter((entry) => CHAIN_FIREHOSE_TABLES.has(entry));
+  return new Set(matched);
+}
+
+export function chainFirehoseMatchesTopics(payload, topics) {
+  if (topics === null || topics === undefined) return true;
+  return topics.has(payload?.table);
+}
+
+// Validates a raw ingest body against the shape notify_chain_firehose()
+// actually emits. Deliberately loose on which optional fields are present
+// (the three tables carry different columns) but strict on: valid JSON, a
+// known `table`, a well-formed `block_number`, and every field being a
+// bounded scalar (never nested JSON) -- an oversized or malformed payload is
+// rejected here as a clean 400 rather than reaching SSE/WS fanout.
+export function validateChainFirehoseIngestPayload(raw) {
+  if (typeof raw !== "string" || raw.length === 0) {
+    return { ok: false, error: "request body must be a non-empty JSON string" };
+  }
+  if (utf8ByteLength(raw) > CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES) {
+    return {
+      ok: false,
+      error: `request body exceeds ${CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES} bytes`,
+    };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false, error: "request body is not valid JSON" };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ok: false, error: "request body must be a JSON object" };
+  }
+  if (!CHAIN_FIREHOSE_TABLES.has(parsed.table)) {
+    return {
+      ok: false,
+      error: `table must be one of ${[...CHAIN_FIREHOSE_TABLES].join(", ")}`,
+    };
+  }
+  if (!Number.isInteger(parsed.block_number) || parsed.block_number < 0) {
+    return { ok: false, error: "block_number must be a non-negative integer" };
+  }
+  for (const [key, value] of Object.entries(parsed)) {
+    if (value === null) continue;
+    if (typeof value === "string") {
+      if (utf8ByteLength(value) > CHAIN_FIREHOSE_MAX_FIELD_STRING_BYTES) {
+        return { ok: false, error: `${key} exceeds the field size limit` };
+      }
+      continue;
+    }
+    if (typeof value === "number") {
+      /* v8 ignore next 3 -- defensive: JSON.parse can never produce a
+         non-finite number (Infinity/NaN aren't valid JSON syntax; malformed
+         text fails at the JSON.parse call above instead) */
+      if (!Number.isFinite(value)) {
+        return { ok: false, error: `${key} must be a finite number` };
+      }
+      continue;
+    }
+    if (typeof value === "boolean") continue;
+    return { ok: false, error: `${key} has an unsupported value type` };
+  }
+  return { ok: true, payload: parsed };
+}
+
+export function formatChainFirehoseSseFrame(payload) {
+  return `event: chain\ndata: ${JSON.stringify(payload)}\n\n`;
+}
+
+// Only the WebSocket-upgrade branch of handleSubscribe below needs a real
+// Durable Object runtime (WebSocketPair/state.acceptWebSocket have no Node
+// equivalent -- no @cloudflare/vitest-pool-workers/Miniflare in this repo,
+// see this module's header comment). Everything else on this class --
+// fetch's routing, handleIngest, the SSE branch of handleSubscribe,
+// webSocketMessage/Close/Error, and broadcast's fanout to both SSE clients
+// and a stubbed state.getWebSockets() -- runs and is unit-tested under plain
+// Node/vitest (ReadableStream/CountQueuingStrategy/TextEncoder are real Web
+// Streams APIs there), so only that one branch is /* v8 ignore */-marked
+// below, not the whole class -- see #4982's issue body ("note any coverage
+// gap explicitly rather than skipping silently").
+export class ChainFirehoseHub {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+    this.sseClients = new Set();
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === "/ingest" && request.method === "POST") {
+      return this.handleIngest(request);
+    }
+    if (url.pathname === "/subscribe") {
+      return this.handleSubscribe(request, url);
+    }
+    return new Response("not found", { status: 404 });
+  }
+
+  async handleIngest(request) {
+    const raw = await request.text();
+    const result = validateChainFirehoseIngestPayload(raw);
+    if (!result.ok) {
+      return new Response(JSON.stringify({ error: result.error }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    this.broadcast(result.payload);
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 202,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  handleSubscribe(request, url) {
+    const topics = parseChainFirehoseTopics(url.searchParams);
+
+    /* v8 ignore start -- WebSocketPair/state.acceptWebSocket have no Node
+       equivalent; see this class's header comment. */
+    if (request.headers.get("upgrade") === "websocket") {
+      if (
+        this.state.getWebSockets().length >= CHAIN_FIREHOSE_MAX_WS_CONNECTIONS
+      ) {
+        return new Response("too many connections", { status: 503 });
+      }
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+      this.state.acceptWebSocket(server);
+      server.serializeAttachment({
+        topics: topics === null ? null : [...topics],
+      });
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    /* v8 ignore stop */
+
+    const encoder = new TextEncoder();
+    const clients = this.sseClients;
+    let entry;
+    const stream = new ReadableStream(
+      {
+        start(controller) {
+          entry = { controller, topics };
+          clients.add(entry);
+          controller.enqueue(encoder.encode(": connected\n\n"));
+        },
+        cancel() {
+          clients.delete(entry);
+        },
+      },
+      new CountQueuingStrategy({
+        highWaterMark: CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK,
+      }),
+    );
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-store",
+        "access-control-allow-origin": "*",
+        connection: "keep-alive",
+      },
+    });
+  }
+
+  webSocketMessage() {
+    // Clients never send meaningful messages -- the topic filter is fixed at
+    // subscribe time via the query string. Required by the hibernation API
+    // contract even though this hub is send-only.
+  }
+
+  webSocketClose(ws, code, reason) {
+    try {
+      ws.close(code, reason);
+    } catch {
+      // already closed
+    }
+  }
+
+  webSocketError() {
+    // The hibernation runtime prunes the socket from state.getWebSockets()
+    // itself; there is no in-memory connection list here to reconcile.
+  }
+
+  broadcast(payload) {
+    const encoder = new TextEncoder();
+    for (const entry of this.sseClients) {
+      if (!chainFirehoseMatchesTopics(payload, entry.topics)) continue;
+      if (
+        entry.controller.desiredSize !== null &&
+        entry.controller.desiredSize < 0
+      ) {
+        // Stalled client: its queue is already over the high-water mark --
+        // drop it instead of enqueueing further and growing memory.
+        try {
+          entry.controller.close();
+        } catch {
+          // already closed
+        }
+        this.sseClients.delete(entry);
+        continue;
+      }
+      try {
+        entry.controller.enqueue(
+          encoder.encode(formatChainFirehoseSseFrame(payload)),
+        );
+      } catch {
+        this.sseClients.delete(entry);
+      }
+    }
+
+    for (const ws of this.state.getWebSockets()) {
+      let topics = null;
+      try {
+        const attachment = ws.deserializeAttachment();
+        topics = attachment?.topics ? new Set(attachment.topics) : null;
+      } catch {
+        // deserializeAttachment threw -- treat as unfiltered rather than
+        // dropping the client outright; topics is already null above.
+      }
+      if (!chainFirehoseMatchesTopics(payload, topics)) continue;
+      try {
+        ws.send(JSON.stringify(payload));
+      } catch {
+        // a dead socket throws here; the hibernation runtime reconciles
+        // state.getWebSockets() on its own, nothing further to clean up
+      }
+    }
+  }
+}

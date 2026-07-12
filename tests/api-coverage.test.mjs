@@ -2787,6 +2787,7 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
   // listed with the reason it is excluded from the OpenAPI contract.
   const NON_CONTRACT_PATHS = new Set([
     "/api/v1/ask", // grounded-RAG POST, degrades to 503; not a GET artifact
+    "/api/v1/chain/stream", // realtime firehose (#4982): SSE or WS, not a JSON artifact
     "/api/v1/events", // SSE change feed (text/event-stream)
     "/api/v1/feeds/", // SSE/webhook feed prefix
     "/api/v1/graphql", // GraphQL POST layer over the same artifacts
