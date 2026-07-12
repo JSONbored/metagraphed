@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, useRouter } from "@tanstack/react-router";
+import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { routeTree } from "./routeTree.gen";
 import { ApiError } from "./lib/metagraphed/client";
 import { ErrorState, Skeleton } from "./components/metagraphed/states";
@@ -66,6 +67,14 @@ export const getRouter = () => {
     defaultErrorComponent: DefaultRouteError,
     defaultPendingComponent: DefaultRoutePending,
   });
+
+  // #4967: bridge React Query's SSR→CSR state through TanStack Router's stream.
+  // Without this, route components' `useSuspenseQuery` re-suspend during the
+  // hydration commit against an empty client cache — leaving the Suspense
+  // boundary permanently "dehydrated", so no sibling `useQuery` effects (and
+  // their fetches) ever run on detail pages. `wrapQueryClient: false` keeps the
+  // existing manual <QueryClientProvider> in __root.tsx as the single provider.
+  setupRouterSsrQueryIntegration({ router, queryClient, wrapQueryClient: false });
 
   return router;
 };
