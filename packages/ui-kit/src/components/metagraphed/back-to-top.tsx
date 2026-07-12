@@ -8,17 +8,32 @@ import { classNames } from "@/lib/format";
  * or router state, so it never collides with hash-based scroll handlers
  * (see `useHashScroll` / `SectionQuickJump`).
  */
+// #3987: the pill sits `fixed` at the bottom-right, so when a page is scrolled
+// to its very end the last row of content lands directly under it (e.g. the
+// Reward Drift table's final row). Hide the pill once the viewport is within
+// this many px of the document bottom — its footprint (bottom offset + height)
+// plus a little clearance — so it can never obscure the final content.
+const BOTTOM_HIDE_GAP = 96;
+
 export function BackToTop({ threshold = 600 }: { threshold?: number }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     function onScroll() {
-      setVisible(window.scrollY > threshold);
+      const scrolledPast = window.scrollY > threshold;
+      const doc = document.documentElement;
+      const distanceToBottom =
+        doc.scrollHeight - (window.scrollY + window.innerHeight);
+      setVisible(scrolledPast && distanceToBottom > BOTTOM_HIDE_GAP);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, [threshold]);
 
   const onClick = () => {

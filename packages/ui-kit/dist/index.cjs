@@ -596,16 +596,24 @@ function AnimatedNumber({
     }
   );
 }
+var BOTTOM_HIDE_GAP = 96;
 function BackToTop({ threshold = 600 }) {
   const [visible, setVisible] = React3.useState(false);
   React3.useEffect(() => {
     if (typeof window === "undefined") return;
     function onScroll() {
-      setVisible(window.scrollY > threshold);
+      const scrolledPast = window.scrollY > threshold;
+      const doc = document.documentElement;
+      const distanceToBottom = doc.scrollHeight - (window.scrollY + window.innerHeight);
+      setVisible(scrolledPast && distanceToBottom > BOTTOM_HIDE_GAP);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, [threshold]);
   const onClick = () => {
     if (typeof window === "undefined") return;
