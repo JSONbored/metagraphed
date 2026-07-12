@@ -593,11 +593,24 @@ CREATE TABLE IF NOT EXISTS indexer_cursor (
 -- a `REFERENCING NEW TABLE AS new_rows` transition table, batching one
 -- NOTIFY per INSERT statement -- not attempted here to avoid over-building
 -- ahead of measured need.
+--
+-- Which logical table fired is passed as an explicit trigger argument
+-- (TG_ARGV[0]), NOT read from TG_TABLE_NAME: on a TimescaleDB hypertable,
+-- inserts are physically routed to a per-time-range CHUNK table (e.g.
+-- `_hyper_1_379_chunk`), and a trigger attached to the hypertable is
+-- transparently propagated to (and fires on) that chunk -- so TG_TABLE_NAME
+-- inside the function body is the CHUNK's internal name, never the logical
+-- hypertable name 'blocks'/'extrinsics'/'chain_events'. Verified live
+-- (2026-07-12): a debug trigger using TG_TABLE_NAME on a real indexer-rs
+-- insert observed the value `_hyper_1_379_chunk`, not `blocks` -- confirming
+-- an earlier version of this function that branched on TG_TABLE_NAME was a
+-- silent no-op on every real insert (always took the ELSE branch, never
+-- notified) despite creating and attaching without error.
 CREATE OR REPLACE FUNCTION notify_chain_firehose() RETURNS TRIGGER AS $$
 DECLARE
   payload JSONB;
 BEGIN
-  IF TG_TABLE_NAME = 'blocks' THEN
+  IF TG_ARGV[0] = 'blocks' THEN
     payload := jsonb_build_object(
       'table', 'blocks',
       'block_number', NEW.block_number,
@@ -606,7 +619,7 @@ BEGIN
       'event_count', NEW.event_count,
       'observed_at', NEW.observed_at
     );
-  ELSIF TG_TABLE_NAME = 'extrinsics' THEN
+  ELSIF TG_ARGV[0] = 'extrinsics' THEN
     payload := jsonb_build_object(
       'table', 'extrinsics',
       'block_number', NEW.block_number,
@@ -617,7 +630,7 @@ BEGIN
       'success', NEW.success,
       'observed_at', NEW.observed_at
     );
-  ELSIF TG_TABLE_NAME = 'chain_events' THEN
+  ELSIF TG_ARGV[0] = 'chain_events' THEN
     payload := jsonb_build_object(
       'table', 'chain_events',
       'block_number', NEW.block_number,
@@ -645,17 +658,17 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_blocks_firehose ON blocks;
 CREATE TRIGGER trg_blocks_firehose
   AFTER INSERT ON blocks
-  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose();
+  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose('blocks');
 
 DROP TRIGGER IF EXISTS trg_extrinsics_firehose ON extrinsics;
 CREATE TRIGGER trg_extrinsics_firehose
   AFTER INSERT ON extrinsics
-  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose();
+  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose('extrinsics');
 
 DROP TRIGGER IF EXISTS trg_chain_events_firehose ON chain_events;
 CREATE TRIGGER trg_chain_events_firehose
   AFTER INSERT ON chain_events
-  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose();
+  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose('chain_events');
 
 -- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
 -- schema-timescaledb.sql in this same directory — apply it separately, only

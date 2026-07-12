@@ -31,7 +31,14 @@ completely unaffected, by construction.
 ## The trigger (`deploy/postgres/schema.sql`)
 
 `notify_chain_firehose()` is a single `plpgsql` function, reused by three
-`AFTER INSERT ... FOR EACH ROW` triggers (one per table). Payload is a
+`AFTER INSERT ... FOR EACH ROW` triggers (one per table), each passed its
+logical table name as an explicit trigger argument (`EXECUTE FUNCTION
+notify_chain_firehose('blocks')`, read inside as `TG_ARGV[0]`). This is
+deliberate, not stylistic: on a TimescaleDB hypertable, `TG_TABLE_NAME`
+inside the function body resolves to the physical per-time-range CHUNK name
+(e.g. `_hyper_1_379_chunk`), never the logical hypertable name — an earlier
+version of this function branched on `TG_TABLE_NAME` and was a silent no-op
+on every real insert as a result (verified live 2026-07-12). Payload is a
 compact reference — table name + primary-key fields + a couple of headline
 columns — not the full row, to stay well under Postgres's 8000-byte `NOTIFY`
 payload cap. A subscriber that wants full row detail re-fetches by primary
