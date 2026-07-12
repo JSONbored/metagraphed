@@ -2758,6 +2758,18 @@ test("GET /api/v1/accounts/:ss58/counterparties?counterparty= returns the relati
   expect(queryText()).toContain("(hotkey = ");
 });
 
+test("GET /api/v1/accounts/:ss58/counterparties?counterparty= with no matching transfers returns an empty counterparties array", async () => {
+  mockRows.current = [];
+  const res = await req(
+    `/api/v1/accounts/${SS58}/counterparties?counterparty=5Cold`,
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.counterparty_count).toBe(0);
+  expect(body.counterparties).toEqual([]);
+  expect(body.relationship.transfer_count).toBe(0);
+});
+
 // #4832 gap-closure: POST /api/v1/internal/rollup-account-events-daily -- the
 // account_events_daily write path account_events itself lacked (indexer-rs
 // writes account_events continuously, but nothing rolled it into the daily
