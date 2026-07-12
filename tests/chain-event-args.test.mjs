@@ -266,4 +266,196 @@ describe("decodeChainEventArgs", () => {
     const args = { extra_data: [1, 2, 3] };
     assert.deepEqual(decodeChainEventArgs(args, {}), { extra_data: [1, 2, 3] });
   });
+
+  test("decodes the expanded ACCOUNT_KEYS entries to SS58 (real Proxy.RealPaysFeeSet, block 8602853/169)", () => {
+    const args = {
+      real: [
+        [
+          110, 166, 14, 55, 47, 227, 14, 161, 235, 124, 205, 108, 34, 72, 103,
+          213, 183, 86, 243, 33, 182, 132, 58, 138, 179, 161, 214, 5, 245, 217,
+          13, 56,
+        ],
+      ],
+      delegate: [
+        [
+          230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117,
+          251, 19, 70, 95, 132, 123, 114, 171, 235, 189, 66, 130, 2, 183, 175,
+          143, 88,
+        ],
+      ],
+      pays_fee: true,
+    };
+    assert.deepEqual(decodeChainEventArgs(args), {
+      real: "5EZnTF4puVufyK8HQvtw41gVrxe1GsfDMBtLSeNw5jQXocrp",
+      delegate: "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
+      pays_fee: true,
+    });
+  });
+
+  test("decodes new_hotkey/old_hotkey to SS58 alongside coldkey (real SubtensorModule.HotkeySwappedOnSubnet, block 8604030/450)", () => {
+    const args = {
+      netuid: 15,
+      coldkey: [
+        [
+          144, 158, 68, 79, 84, 143, 61, 208, 20, 43, 118, 26, 39, 96, 148, 122,
+          168, 30, 111, 246, 84, 111, 21, 202, 65, 235, 176, 84, 214, 32, 171,
+          91,
+        ],
+      ],
+      new_hotkey: [
+        [
+          228, 83, 193, 133, 106, 220, 127, 200, 235, 67, 95, 159, 89, 171, 150,
+          18, 90, 19, 131, 225, 161, 7, 15, 132, 128, 133, 147, 204, 144, 163,
+          135, 27,
+        ],
+      ],
+      old_hotkey: [
+        [
+          130, 205, 192, 119, 145, 18, 5, 151, 137, 1, 185, 235, 182, 204, 47,
+          122, 81, 6, 91, 207, 22, 229, 133, 239, 30, 171, 204, 195, 118, 169,
+          31, 6,
+        ],
+      ],
+    };
+    const decoded = decodeChainEventArgs(args);
+    assert.equal(
+      decoded.new_hotkey,
+      "5HE5eye8JdfMFe8Q1z7HosfwebqFUNUnyvmLZ1WWYtircSWe",
+    );
+    assert.equal(
+      decoded.old_hotkey,
+      "5F2DCjvQ5VruGJF2cjHfYou7SW6mVKBgpLjHFr6bF1SgAQWr",
+    );
+    assert.equal(decoded.netuid, 15);
+  });
+
+  test("hex-encodes an arbitrary-length EVM.Log.data byte blob regardless of length (real, block 8604282/307, 96 bytes)", () => {
+    const args = {
+      log: {
+        data: new Array(96).fill(0).map((_, i) => (i * 7) % 256),
+        address: [new Array(20).fill(1)],
+        topics: [],
+      },
+    };
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "EVM",
+      method: "Log",
+    });
+    assert.equal(typeof decoded.log.data, "string");
+    assert.match(decoded.log.data, /^0x[0-9a-f]{192}$/);
+  });
+
+  test("hex-encodes Contracts.ContractEmitted.data at a length that never coincidentally hits the 32-byte special case (real, block 8604169/872, 41 bytes)", () => {
+    const args = {
+      caller: [new Array(32).fill(2)],
+      contract:
+        "0xc94098c05c1e036d1901f16112166ceaf185f83c33eec1a2ee353caeb721ec43",
+      data: [
+        206, 2, 0, 0, 0, 0, 8, 80, 95, 223, 85, 98, 11, 0, 0, 0, 0, 0, 0, 0, 96,
+        81, 155, 233, 204, 157, 239, 94, 11, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 1,
+      ],
+    };
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "Contracts",
+      method: "ContractEmitted",
+    });
+    assert.equal(
+      decoded.data,
+      "0xce020000000008505fdf55620b0000000000000060519be9cc9def5e0b000000000000000200000001",
+    );
+  });
+
+  test("leaves a byte blob raw when its pallet.method.field isn't in HEX_BLOB_FIELDS (no false-positive on shape alone)", () => {
+    const args = { data: [1, 2, 3, 4, 5] };
+    assert.deepEqual(
+      decodeChainEventArgs(args, {
+        pallet: "SomeOtherPallet",
+        method: "SomeEvent",
+      }),
+      { data: [1, 2, 3, 4, 5] },
+    );
+  });
+
+  test("unwraps MultiAddress::Signed(AccountId32) to the bare decoded account (real Contracts.Called.caller, block 8604327/354)", () => {
+    const args = {
+      caller: {
+        name: "Signed",
+        values: [
+          [
+            [
+              12, 161, 152, 251, 73, 180, 215, 182, 98, 3, 243, 174, 222, 51,
+              134, 229, 244, 110, 198, 95, 220, 89, 229, 182, 237, 96, 43, 252,
+              89, 64, 167, 112,
+            ],
+          ],
+        ],
+      },
+      contract:
+        "0xc94098c05c1e036d1901f16112166ceaf185f83c33eec1a2ee353caeb721ec43",
+    };
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "Contracts",
+      method: "Called",
+    });
+    assert.equal(
+      decoded.caller,
+      "0x0ca198fb49b4d7b66203f3aede3386e5f46ec65fdc59e5b6ed602bfc5940a770",
+    );
+  });
+
+  test('collapses Result<(),DispatchError>::Ok(()) to bare "Ok" (real Proxy.ProxyExecuted.result, block 8604336/424)', () => {
+    const args = { result: { name: "Ok", values: [[]] } };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "Proxy", method: "ProxyExecuted" }),
+      { result: "Ok" },
+    );
+  });
+
+  test("collapses Sudo.Sudid.sudo_result's Ok(()) the same way (real, block 231589/3)", () => {
+    const args = { sudo_result: { name: "Ok", values: [[]] } };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "Sudo", method: "Sudid" }),
+      { sudo_result: "Ok" },
+    );
+  });
+
+  test("preserves an Err(DispatchError) payload untouched -- only an empty-unit Ok(()) collapses", () => {
+    const args = {
+      result: {
+        name: "Err",
+        values: [
+          { name: "Module", values: [{ index: 7, error: [31, 0, 0, 0] }] },
+        ],
+      },
+    };
+    assert.deepEqual(
+      decodeChainEventArgs(args, { pallet: "Proxy", method: "ProxyExecuted" }),
+      {
+        result: {
+          name: "Err",
+          values: [
+            { name: "Module", values: [{ index: 7, error: [31, 0, 0, 0] }] },
+          ],
+        },
+      },
+    );
+  });
+
+  test("does not collapse an enum-tag node for a field outside ENUM_PAYLOAD_FIELDS", () => {
+    const args = { outcome: { name: "Ok", values: [[]] } };
+    assert.deepEqual(
+      decodeChainEventArgs(args, {
+        pallet: "SomeOtherPallet",
+        method: "SomeEvent",
+      }),
+      { outcome: { name: "Ok", values: [[]] } },
+    );
+  });
+
+  test("tolerates a ctx object missing pallet/method when checking the enum-payload allowlist", () => {
+    const args = { result: { name: "Ok", values: [[]] } };
+    assert.deepEqual(decodeChainEventArgs(args, {}), {
+      result: { name: "Ok", values: [[]] },
+    });
+  });
 });

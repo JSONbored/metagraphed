@@ -21,7 +21,12 @@
 // 20-byte arrays always hex-decode as H160 (Ethereum addresses have no SS58
 // form). A narrow, explicit pallet.method.field allowlist additionally
 // UTF-8-decodes the handful of known free-text byte fields (e.g. Ethereum.
-// Executed's extra_data). Everything else is untouched.
+// Executed's extra_data), hex-decodes a few known opaque byte-blob fields
+// (e.g. EVM.Log's log data) regardless of length, and collapses a handful of
+// known {name,values} enum-tag nodes once their payload is fully decoded
+// (e.g. a MultiAddress::Signed(AccountId32) tag once the account itself is
+// hex, or a Result<(),E>::Ok(()) down to bare "Ok"). Everything else is
+// untouched.
 import { encodeAccountId32 } from "./ss58.mjs";
 import { normalizePostgresValue } from "./scale-normalize.mjs";
 
@@ -43,6 +48,19 @@ const ACCOUNT_KEYS = new Set([
   "target",
   "validator",
   "address",
+  // Added 2026-07-12 from a live sweep of every chain_events.args pallet.method
+  // combination: real/proxy/delegatee/delegator (Proxy.RealPaysFeeSet/
+  // Announced/ProxyAdded/ProxyRemoved) and new_hotkey/old_hotkey
+  // (SubtensorModule.HotkeySwappedOnSubnet) are all confirmed-live 32-byte
+  // AccountId32 fields that stayed raw hex only because their exact key name
+  // wasn't in this set yet -- same root cause/fix shape as the original
+  // allowlist, not a new mechanism.
+  "real",
+  "proxy",
+  "delegatee",
+  "delegator",
+  "new_hotkey",
+  "old_hotkey",
 ]);
 
 function isByteArray(v, len) {
@@ -84,6 +102,48 @@ function toHex(bytes) {
 // "Gotta Go Fast" (empty on most blocks). Everything not in this allowlist
 // falls through to the generic array-map/object-recurse below, untouched.
 const TEXTUAL_FIELDS = new Set(["Ethereum.Executed.extra_data"]);
+
+// Known opaque variable-length byte-blob fields, same narrow allowlist
+// discipline as TEXTUAL_FIELDS (and for the same reason -- no per-field type
+// string to consult) but decoded as 0x-hex instead of UTF-8: EVM log data and
+// contract-emitted data are raw binary payloads (typically ABI-encoded
+// parameters), not intended text. Confirmed live 2026-07-12: both fields
+// already happened to render as hex on the rare occasion they were exactly
+// 32 bytes (isByteArray(value,32) below catches that length coincidentally),
+// but stayed a raw, unbounded number array at every other length (64/96/128/
+// 224/320/352 bytes all observed live) -- this closes the gap uniformly.
+const HEX_BLOB_FIELDS = new Set([
+  "EVM.Log.data",
+  "Contracts.ContractEmitted.data",
+]);
+
+// Known {name, values:[payload]} enum-tree nodes (indexer-rs's generic shape
+// for any enum variant carrying data, left otherwise untouched by
+// normalizePostgresValue -- see its own module header) worth a further,
+// field-specific collapse once `payload` has been fully decoded below. Keyed
+// "Pallet.method.field" like the two allowlists above, for the identical
+// narrow-allowlist-over-shape-heuristic reason: a generic "collapse any
+// single-payload enum tag" rule would risk erasing a genuinely meaningful
+// tag/payload pair this codebase hasn't seen yet, so this only ever fires
+// for a name explicitly confirmed live below.
+//
+// - "unwrap": drop the tag, keep only the (now-decoded) payload --
+//   Contracts.Called.caller is MultiAddress::Signed(AccountId32); the
+//   "Signed" tag carries no information once the account itself is hex, and
+//   MultiAddress has no OTHER variant this pallet's caller ever takes.
+// - "unit-or-passthrough": if the decoded payload is SCALE's `()` unit
+//   (an empty array -- decode()'s own array-map leaves a genuine empty array
+//   untouched, so this is unambiguous), collapse to the bare variant name
+//   the same way normalizePostgresValue already does for a zero-payload
+//   C-like unit enum (Proxy.ProxyExecuted.result / Sudo.Sudid.sudo_result are
+//   both Result<(), DispatchError> -- Ok(()) becomes bare "Ok"). Otherwise
+//   (a real Err(DispatchError) payload) the tag+payload are left exactly as
+//   decoded -- the error detail is meaningful and must not be discarded.
+const ENUM_PAYLOAD_FIELDS = new Map([
+  ["Contracts.Called.caller", "unwrap"],
+  ["Proxy.ProxyExecuted.result", "unit-or-passthrough"],
+  ["Sudo.Sudid.sudo_result", "unit-or-passthrough"],
+]);
 
 function decodeTextualField(bytes) {
   try {
@@ -134,6 +194,9 @@ function decode(value, keyHint, ctx) {
     if (TEXTUAL_FIELDS.has(key)) {
       return decodeTextualField(value);
     }
+    if (HEX_BLOB_FIELDS.has(key)) {
+      return toHex(value);
+    }
   }
   // Arrays inherit the parent key hint (e.g. `who: [<accountId bytes>]`) --
   // this is also what makes an untagged positional args array (no object
@@ -145,6 +208,32 @@ function decode(value, keyHint, ctx) {
   if (value && typeof value === "object") {
     const out = {};
     for (const [k, val] of Object.entries(value)) out[k] = decode(val, k, ctx);
+    // Field-specific enum-tag collapse (see ENUM_PAYLOAD_FIELDS above) --
+    // only after `out` has been fully decoded, so "unit-or-passthrough" sees
+    // the REAL payload shape (an untouched empty array for a unit `()`, or
+    // whatever a genuine Err(DispatchError) decoded to).
+    if (
+      keyHint &&
+      ctx &&
+      Object.keys(out).length === 2 &&
+      typeof out.name === "string" &&
+      Array.isArray(out.values) &&
+      out.values.length === 1
+    ) {
+      const strategy = ENUM_PAYLOAD_FIELDS.get(
+        `${ctx.pallet ?? ""}.${ctx.method ?? ""}.${keyHint}`,
+      );
+      if (strategy === "unwrap") {
+        return out.values[0];
+      }
+      if (
+        strategy === "unit-or-passthrough" &&
+        Array.isArray(out.values[0]) &&
+        out.values[0].length === 0
+      ) {
+        return out.name;
+      }
+    }
     return out;
   }
   return value;
@@ -174,18 +263,27 @@ function decode(value, keyHint, ctx) {
  * instead of the bare string "Normal" -- exactly the shape
  * normalizePostgresValue's C-like-unit-enum rule collapses; and (2026-07-12)
  * Ethereum.Executed's `to`/`from` and EVM.Log's `address` rendered as raw
- * 20-byte arrays instead of hex H160 addresses.
+ * 20-byte arrays instead of hex H160 addresses. A broader live sweep across
+ * all 75 distinct chain_events pallet.method combinations (also 2026-07-12)
+ * additionally found: several more AccountId32 fields missing from
+ * ACCOUNT_KEYS by key-name only (real/proxy/delegatee/delegator/new_hotkey/
+ * old_hotkey); EVM.Log.data/Contracts.ContractEmitted.data staying raw byte
+ * arrays at every length except the one where they coincidentally matched
+ * the 32-byte special case (HEX_BLOB_FIELDS); and three {name,values} enum
+ * nodes worth a field-specific collapse once decoded (ENUM_PAYLOAD_FIELDS).
  *
  * `ctx` is the emitting event's `{pallet, method}` (pass `row.pallet`/
  * `row.method` from the Postgres row) -- used only by the narrow
- * TEXTUAL_FIELDS allowlist above; omit it and every other decode still
- * works identically, just without that one field's UTF-8 treatment.
- * Deliberately does NOT add a GENERIC byte-blob heuristic beyond the two
- * fixed lengths (32/20) and the explicit allowlist -- chain_events.args
- * carries no per-field type string the way extrinsics.call_args does
- * post-#4724, so a length-based guess for an arbitrary-length field would
- * risk the same collection-vs-blob ambiguity #4693/#4915 avoid elsewhere by
- * consulting a typed descriptor's own `type` first. */
+ * TEXTUAL_FIELDS/HEX_BLOB_FIELDS/ENUM_PAYLOAD_FIELDS allowlists above; omit
+ * it and every other decode still works identically, just without those
+ * fields' extra treatment.
+ * Deliberately does NOT add a GENERIC byte-blob or enum-collapse heuristic
+ * beyond the two fixed byte-array lengths (32/20) and the explicit
+ * allowlists -- chain_events.args carries no per-field type string the way
+ * extrinsics.call_args does post-#4724, so a length- or shape-based guess
+ * for an arbitrary field would risk the same collection-vs-blob ambiguity
+ * #4693/#4915 avoid elsewhere by consulting a typed descriptor's own `type`
+ * first. */
 export function decodeChainEventArgs(args, ctx = null) {
   return decode(normalizePostgresValue(args), undefined, ctx);
 }
