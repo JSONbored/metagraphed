@@ -108,4 +108,41 @@ describe("decodeChainEventArgs", () => {
     assert.equal(decodeChainEventArgs(42), 42);
     assert.equal(decodeChainEventArgs("x"), "x");
   });
+
+  test("unwraps a C-like unit-variant enum tag to its bare name (real System.ExtrinsicSuccess.dispatch_info, block 8602601/381, fixed 2026-07-12)", () => {
+    // Found live 2026-07-11: dispatch_info.class/pays_fee rendered as
+    // {"name":"Normal","values":[]} / {"name":"No","values":[]} instead of
+    // the bare strings D1 always produced -- decodeChainEventArgs only ran
+    // the account-id decode above, never normalizePostgresValue's C-like
+    // unit-enum rule (#4690), despite every other consumer of that rule
+    // (extrinsics.call_args) already getting it.
+    const args = {
+      dispatch_info: {
+        class: { name: "Normal", values: [] },
+        weight: { ref_time: 1012718000, proof_size: 11869 },
+        pays_fee: { name: "No", values: [] },
+      },
+    };
+    assert.deepEqual(decodeChainEventArgs(args), {
+      dispatch_info: {
+        class: "Normal",
+        weight: { ref_time: 1012718000, proof_size: 11869 },
+        pays_fee: "No",
+      },
+    });
+  });
+
+  test("unwraps an Option<T> Some/None pair alongside an account-keyed field in the same event", () => {
+    const bytes = new Array(32).fill(9);
+    const args = {
+      who: [bytes],
+      maybe_amount: { name: "Some", values: [42] },
+      maybe_note: { name: "None", values: [] },
+    };
+    assert.deepEqual(decodeChainEventArgs(args), {
+      who: "5CGYyLcrWUfBDKExbvRjDQinEoCZWQmD6SjaXBLhny6A2wjE",
+      maybe_amount: 42,
+      maybe_note: null,
+    });
+  });
 });

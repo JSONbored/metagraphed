@@ -19,6 +19,7 @@
 // non-System/Balances pallet event's args tuple -- always falls to hex
 // rather than guessing). Everything else is untouched.
 import { encodeAccountId32 } from "./ss58.mjs";
+import { normalizePostgresValue } from "./scale-normalize.mjs";
 
 const ACCOUNT_KEYS = new Set([
   "who",
@@ -86,7 +87,28 @@ function decode(value, keyHint) {
   return value;
 }
 
-/** Decode account ids inside a chain-event args value (leaves everything else as-is). */
+/** Decode account ids inside a chain-event args value, then unwrap Option<T>/
+ * C-like unit-variant enum tags via normalizePostgresValue (#4690's generic
+ * pass, reused here for the first time -- previously chain_events.args only
+ * got the account-id decode above). Order matters: account decode runs
+ * first so its 32-byte-array checks see the pristine byte arrays before
+ * normalizePostgresValue's newtype-scalar rule could touch them (neither
+ * pass's rules actually collide here -- normalize()'s newtype-scalar
+ * collapse only fires on a SCALAR-wrapping single-element array, and a
+ * 32-byte account array is never scalar-shaped -- but matching the same
+ * ordering src/extrinsics.mjs's formatExtrinsic already uses keeps the two
+ * call sites consistent). Confirmed live 2026-07-11: System.ExtrinsicSuccess's
+ * `dispatch_info.class`/`pays_fee` rendered as `{"name":"Normal","values":[]}`
+ * instead of the bare string "Normal" -- exactly the shape
+ * normalizePostgresValue's C-like-unit-enum rule collapses. Deliberately does
+ * NOT add general byte-blob decoding here (a 20-byte Ethereum H160 stays a
+ * raw array) -- chain_events.args carries no per-field type string the way
+ * extrinsics.call_args does post-#4724, so there is no reliable way to
+ * distinguish a genuine byte blob from a single-element typed collection by
+ * shape alone (the exact #4693 ambiguity src/postgres-call-args.mjs's
+ * typed-descriptor path avoids by consulting `type` first); tracked as a
+ * separate, narrower-scoped follow-up rather than risking that collision
+ * here. */
 export function decodeChainEventArgs(args) {
-  return decode(args, undefined);
+  return normalizePostgresValue(decode(args, undefined));
 }
