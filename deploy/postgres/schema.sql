@@ -572,6 +572,91 @@ CREATE TABLE IF NOT EXISTS indexer_cursor (
   CONSTRAINT indexer_cursor_singleton CHECK (id = 1)
 );
 
+-- ---------------------------------------------------------------------------
+-- Realtime firehose tee (ADR 0015, #4980)
+-- ---------------------------------------------------------------------------
+
+-- Fires AFTER a row is already durably committed to blocks/extrinsics/
+-- chain_events -- by construction this can never affect whether that write
+-- itself succeeded, so it adds zero risk to indexer-rs's live-follow
+-- reliability (ADR 0015 -- this design deliberately replaces a direct push
+-- from indexer-rs's own process with this trigger specifically to avoid
+-- that risk). Payload is a compact reference, not the full row, to stay
+-- well under Postgres's 8000-byte NOTIFY payload cap; a subscriber that
+-- wants full row detail re-fetches by primary key.
+--
+-- Row-level (FOR EACH ROW), not statement-level: simpler to reason about
+-- for a first cut, at the cost of one NOTIFY per row rather than one per
+-- batch insert. indexer-rs batch-inserts many extrinsics/chain_events per
+-- block, so a busy block can fire dozens of NOTIFYs. If that volume becomes
+-- a real problem, the natural fast-follow is a statement-level trigger with
+-- a `REFERENCING NEW TABLE AS new_rows` transition table, batching one
+-- NOTIFY per INSERT statement -- not attempted here to avoid over-building
+-- ahead of measured need.
+CREATE OR REPLACE FUNCTION notify_chain_firehose() RETURNS TRIGGER AS $$
+DECLARE
+  payload JSONB;
+BEGIN
+  IF TG_TABLE_NAME = 'blocks' THEN
+    payload := jsonb_build_object(
+      'table', 'blocks',
+      'block_number', NEW.block_number,
+      'block_hash', NEW.block_hash,
+      'extrinsic_count', NEW.extrinsic_count,
+      'event_count', NEW.event_count,
+      'observed_at', NEW.observed_at
+    );
+  ELSIF TG_TABLE_NAME = 'extrinsics' THEN
+    payload := jsonb_build_object(
+      'table', 'extrinsics',
+      'block_number', NEW.block_number,
+      'extrinsic_index', NEW.extrinsic_index,
+      'call_module', NEW.call_module,
+      'call_function', NEW.call_function,
+      'signer', NEW.signer,
+      'success', NEW.success,
+      'observed_at', NEW.observed_at
+    );
+  ELSIF TG_TABLE_NAME = 'chain_events' THEN
+    payload := jsonb_build_object(
+      'table', 'chain_events',
+      'block_number', NEW.block_number,
+      'event_index', NEW.event_index,
+      'pallet', NEW.pallet,
+      'method', NEW.method,
+      'observed_at', NEW.observed_at
+    );
+  ELSE
+    RETURN NEW;
+  END IF;
+  -- pg_notify raises an error if payload exceeds 8000 bytes; the fields
+  -- above are all short scalars, so this should never realistically trip,
+  -- but a truncation fallback is safer than letting a future column
+  -- addition silently break every insert on this table.
+  BEGIN
+    PERFORM pg_notify('chain_firehose', payload::text);
+  EXCEPTION WHEN OTHERS THEN
+    NULL; -- never let firehose delivery failure affect the write itself.
+  END;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_blocks_firehose ON blocks;
+CREATE TRIGGER trg_blocks_firehose
+  AFTER INSERT ON blocks
+  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose();
+
+DROP TRIGGER IF EXISTS trg_extrinsics_firehose ON extrinsics;
+CREATE TRIGGER trg_extrinsics_firehose
+  AFTER INSERT ON extrinsics
+  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose();
+
+DROP TRIGGER IF EXISTS trg_chain_events_firehose ON chain_events;
+CREATE TRIGGER trg_chain_events_firehose
+  AFTER INSERT ON chain_events
+  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose();
+
 -- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
 -- schema-timescaledb.sql in this same directory — apply it separately, only
 -- on a Postgres that actually has the TimescaleDB extension. This file is a
