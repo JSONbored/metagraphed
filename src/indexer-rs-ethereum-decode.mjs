@@ -164,32 +164,73 @@ function decodeEip1559Payload(payload) {
   return out;
 }
 
-/** Ethereum.transact's call_args: decodes the `transaction` field's nested
- * EIP1559 payload (U256s, action's H160, signature's hash bytes) into D1's
- * `{transaction: {EIP1559: {...}}}` shape. No-op (returns callArgs
- * unchanged) when `transaction` isn't Postgres's enum-tree shape -- D1's own
- * `[{name,type,value}]` descriptor array has no `.transaction` property at
- * all (arrays don't have named keys), so this never fires on a D1 row. */
-export function decodeEthereumTransactArgs(callArgs) {
-  if (!callArgs || typeof callArgs !== "object" || Array.isArray(callArgs)) {
-    return callArgs;
+// #4692's original design assumed call_args reaches this point as a flat
+// {fieldName: value} object -- D1's shape was documented as the ONLY
+// exception, an array of {name,type,value} descriptors with "no .transaction
+// property at all (arrays don't have named keys)". That assumption was
+// wrong: confirmed live 2026-07-12, EVERY extrinsic's call_args -- D1 is
+// fully retired (#4772), so this is genuine indexer-rs/Postgres output, not
+// a legacy D1 artifact -- is served as this exact descriptor-array shape
+// (e.g. Ethereum.transact's sole argument arrives as
+// `[{name:"transaction",type:"TransactionV3",value:{...}}]`), which is WHY
+// every decoder below was silently a 100% no-op in production despite being
+// individually well-tested against hand-constructed flat-object fixtures.
+// decodePostgresCallArgs (walk(), src/postgres-call-args.mjs) already
+// decodes AccountId32/byte-blob fields INSIDE each descriptor's `.value`
+// without flattening the outer array -- by design, since the descriptor
+// array is the real, final served shape for every call type, not something
+// meant to be unwrapped away. findCallArg/withCallArg below locate and
+// replace a named argument within that array (or, defensively, a flat
+// object, since nothing else in this file distinguishes the two and a past
+// design intended to support both).
+function findCallArg(callArgs, fieldName) {
+  if (Array.isArray(callArgs)) {
+    const descriptor = callArgs.find(
+      (d) => d && typeof d === "object" && d.name === fieldName,
+    );
+    return descriptor ? descriptor.value : undefined;
   }
-  const tx = callArgs.transaction;
-  if (!isEnumTreeNode(tx) || tx.values.length !== 1) return callArgs;
-  return {
-    ...callArgs,
-    transaction: decodeTupleVariantEnum(tx, decodeEip1559Payload),
-  };
+  if (callArgs && typeof callArgs === "object") {
+    return callArgs[fieldName];
+  }
+  return undefined;
 }
 
-/** EVM.withdraw's call_args: decodes `address` (H160) to hex. Same D1
- * no-op guarantee as above (a D1 descriptor array has no `.address` key). */
-export function decodeEvmWithdrawArgs(callArgs) {
-  if (!callArgs || typeof callArgs !== "object" || Array.isArray(callArgs)) {
-    return callArgs;
+// Only ever called after findCallArg has already returned a defined value
+// for the same (callArgs, fieldName) pair, which requires callArgs to
+// already be an array or an object (see findCallArg above) -- no third
+// fallback needed.
+function withCallArg(callArgs, fieldName, newValue) {
+  if (Array.isArray(callArgs)) {
+    return callArgs.map((d) =>
+      d && typeof d === "object" && d.name === fieldName
+        ? { ...d, value: newValue }
+        : d,
+    );
   }
-  if (!("address" in callArgs)) return callArgs;
-  return { ...callArgs, address: decodeH160Bytes(callArgs.address) };
+  return { ...callArgs, [fieldName]: newValue };
+}
+
+/** Ethereum.transact's call_args: decodes the `transaction` field's nested
+ * EIP1559 payload (U256s, action's H160, signature's hash bytes). Returns
+ * callArgs unchanged (same shape, `transaction` untouched) when the field
+ * isn't found or isn't Postgres's enum-tree shape. */
+export function decodeEthereumTransactArgs(callArgs) {
+  const tx = findCallArg(callArgs, "transaction");
+  if (!isEnumTreeNode(tx) || tx.values.length !== 1) return callArgs;
+  return withCallArg(
+    callArgs,
+    "transaction",
+    decodeTupleVariantEnum(tx, decodeEip1559Payload),
+  );
+}
+
+/** EVM.withdraw's call_args: decodes `address` (H160) to hex. Returns
+ * callArgs unchanged when the field isn't found. */
+export function decodeEvmWithdrawArgs(callArgs) {
+  const address = findCallArg(callArgs, "address");
+  if (address === undefined) return callArgs;
+  return withCallArg(callArgs, "address", decodeH160Bytes(address));
 }
 
 // {name:"Sr25519", values:[bytes]} -> {Sr25519: "0x..."}. Gated on the
@@ -213,24 +254,44 @@ function decodeSr25519SignatureValue(value) {
   return bytes ? { Sr25519: bytesToHex(bytes) } : value;
 }
 
-// Recursively finds every key literally named "signature" and decodes it if
-// (and only if) its value matches the Sr25519 shape above -- scoped to
-// LimitOrders.execute_batched_orders/Drand.write_pulse specifically (via the
-// dispatch table below), not applied to every call's args. A plain
-// recursive walk rather than a fixed-depth lookup because the two calls
-// place `signature` at different depths: Drand.write_pulse has it as a
-// direct top-level field, LimitOrders.execute_batched_orders has it nested
-// inside each entry of its (Vec-wrapped) `orders` array -- both confirmed
-// against real production data.
+// A "signature"/"randomness"-named field that ISN'T enum-wrapped -- confirmed
+// live 2026-07-12: Drand.write_pulse's per-pulse `signature`/`randomness`
+// (round-based VRF output, not a MultiSignature) are bare 32-byte newtype-
+// wrapped arrays, unlike LimitOrders.execute_batched_orders' per-order
+// `signature`, which genuinely IS a Signature::Sr25519 enum variant. Tries
+// the enum shape first so LimitOrders keeps its richer {Sr25519:"0x..."}
+// output; falls back to plain hex (the same generic hash-like treatment
+// decodeHash32Bytes already gives EIP1559's r/s) when the enum shape doesn't
+// match, rather than leaving a bare hash-like field raw.
+function decodeSignatureLikeField(value) {
+  const enumDecoded = decodeSr25519SignatureValue(value);
+  return enumDecoded === value ? decodeHash32Bytes(value) : enumDecoded;
+}
+
+// Recursively finds every key literally named "signature"/"randomness"
+// (decodeSignatureLikeField -- enum-wrapped or bare 32 bytes, either way) or
+// "public" (decodeSr25519SignatureValue -- Drand.write_pulse's
+// MultiSigner::Sr25519 pubkey, the same enum shape as a Signature::Sr25519
+// payload) -- scoped to LimitOrders.execute_batched_orders/Drand.write_pulse
+// specifically (via the dispatch table below), not applied to every call's
+// args. A plain recursive walk rather than a fixed-depth lookup because the
+// two calls place these fields at different depths: Drand.write_pulse has
+// `public`/`pulses[].signature`/`pulses[].randomness`, LimitOrders.
+// execute_batched_orders has `signature` nested inside each entry of its
+// (Vec-wrapped) `orders` array -- all confirmed against real production
+// data.
 function walkForSignatureFields(value) {
   if (Array.isArray(value)) return value.map(walkForSignatureFields);
   if (value && typeof value === "object") {
     const out = {};
     for (const [key, val] of Object.entries(value)) {
-      out[key] =
-        key === "signature"
-          ? decodeSr25519SignatureValue(val)
-          : walkForSignatureFields(val);
+      if (key === "signature" || key === "randomness") {
+        out[key] = decodeSignatureLikeField(val);
+      } else if (key === "public") {
+        out[key] = decodeSr25519SignatureValue(val);
+      } else {
+        out[key] = walkForSignatureFields(val);
+      }
     }
     return out;
   }
@@ -238,10 +299,10 @@ function walkForSignatureFields(value) {
 }
 
 /** LimitOrders.execute_batched_orders / Drand.write_pulse call_args: decodes
- * any `signature` field matching the Sr25519 shape, at whatever depth it
- * occurs. A no-op on D1's own already-decoded {"Sr25519": "0x..."} shape
- * (isEnumTreeNode requires a "values" array key, which a single-key shorthand
- * object doesn't have). */
+ * every `signature`/`randomness`/`public` field matching the shapes above, at
+ * whatever depth they occur. A no-op on an already-decoded shape (a bare hex
+ * string or a single-key `{Sr25519: "..."}` shorthand doesn't match either
+ * decoder's own shape check). */
 export function decodeSignatureFieldArgs(callArgs) {
   return walkForSignatureFields(callArgs);
 }

@@ -206,14 +206,41 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
     });
   });
 
-  test("is a no-op on D1's own call_args shape (an array of {name,type,value} descriptors has no .transaction property)", () => {
-    const d1Shape = [
-      { name: "transaction", type: "Transaction", value: { EIP1559: {} } },
+  test("decodes the real production call_args shape -- an array of {name,type,value} descriptors, confirmed live 2026-07-12 (block 8604176/7)", () => {
+    // This is what genuine indexer-rs/Postgres output actually looks like for
+    // EVERY extrinsic (D1 is fully retired, #4772) -- decodeEthereumTransactArgs
+    // previously assumed this shape meant "not Postgres's data, skip", making
+    // it a 100% no-op in production. The `transaction` field lives inside a
+    // {name,type,value} descriptor, not a flat top-level key.
+    const descriptorShape = [
+      {
+        name: "transaction",
+        type: "TransactionV3",
+        value: raw.transaction,
+      },
     ];
-    assert.deepEqual(decodeEthereumTransactArgs(d1Shape), d1Shape);
+    const out = decodeEthereumTransactArgs(descriptorShape);
+    assert.equal(Array.isArray(out), true);
+    assert.equal(out[0].name, "transaction");
+    assert.equal(out[0].type, "TransactionV3");
+    assert.deepEqual(out[0].value.EIP1559.action, {
+      Call: "0x7e4c9cc4b96eeb035aa16f1a73df55252dc7055c",
+    });
+    assert.equal(out[0].value.EIP1559.nonce, "69392");
+    // Sibling descriptors (if any) pass through untouched.
+    const withSibling = [
+      { name: "unrelated", type: "u32", value: 42 },
+      descriptorShape[0],
+    ];
+    const outWithSibling = decodeEthereumTransactArgs(withSibling);
+    assert.deepEqual(outWithSibling[0], {
+      name: "unrelated",
+      type: "u32",
+      value: 42,
+    });
   });
 
-  test("is a no-op when transaction is missing or already D1-shaped", () => {
+  test("is a no-op when transaction is missing from either shape, or the descriptor array has no matching entry", () => {
     assert.deepEqual(decodeEthereumTransactArgs({}), {});
     assert.deepEqual(
       decodeEthereumTransactArgs({ transaction: { EIP1559: {} } }),
@@ -222,6 +249,8 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
       },
     );
     assert.equal(decodeEthereumTransactArgs(null), null);
+    const noMatch = [{ name: "other_field", type: "u32", value: 1 }];
+    assert.deepEqual(decodeEthereumTransactArgs(noMatch), noMatch);
   });
 
   test("passes a non-object EIP1559 payload through unchanged (malformed/defensive case)", () => {
@@ -304,10 +333,35 @@ describe("decodeEvmWithdrawArgs (real production fixture, block 8573895/15)", ()
     });
   });
 
-  test("is a no-op when address is absent or already D1-shaped", () => {
+  test("is a no-op when address is absent, and leaves an already-hex address untouched", () => {
     assert.deepEqual(decodeEvmWithdrawArgs({ value: 1 }), { value: 1 });
-    const d1Shape = [{ name: "address", type: "H160", value: "0x..." }];
-    assert.deepEqual(decodeEvmWithdrawArgs(d1Shape), d1Shape);
+    const alreadyHex = [{ name: "address", type: "H160", value: "0x..." }];
+    assert.deepEqual(decodeEvmWithdrawArgs(alreadyHex), alreadyHex);
+    const noMatch = [{ name: "value", type: "u128", value: 1 }];
+    assert.deepEqual(decodeEvmWithdrawArgs(noMatch), noMatch);
+  });
+
+  test("decodes the real production call_args shape -- an array of {name,type,value} descriptors", () => {
+    const descriptorShape = [
+      { name: "value", type: "u128", value: 67756440 },
+      {
+        name: "address",
+        type: "H160",
+        value: [
+          [
+            211, 47, 118, 124, 7, 153, 44, 49, 231, 209, 195, 129, 20, 9, 75,
+            146, 116, 40, 240, 71,
+          ],
+        ],
+      },
+    ];
+    const out = decodeEvmWithdrawArgs(descriptorShape);
+    assert.deepEqual(out[0], { name: "value", type: "u128", value: 67756440 });
+    assert.deepEqual(out[1], {
+      name: "address",
+      type: "H160",
+      value: "0xd32f767c07992c31e7d1c38114094b927428f047",
+    });
   });
 });
 
@@ -366,10 +420,9 @@ describe("decodeSignatureFieldArgs", () => {
         ],
       },
       pulses_payload: {
-        // A DIFFERENT field that happens to also be Sr25519-shaped (a
-        // MultiSigner public key, not a MultiSignature) -- deliberately left
-        // untouched, confirming decodeSignatureFieldArgs only targets keys
-        // literally named "signature", not any Sr25519-shaped value anywhere.
+        // A DIFFERENT field that also uses the Sr25519 shape (a MultiSigner
+        // public key, not a MultiSignature) -- decoded the same way, since
+        // "public" is now a matched key alongside "signature"/"randomness".
         public: { name: "Sr25519", values: [[1, 2, 3, 4]] },
       },
     };
@@ -379,9 +432,44 @@ describe("decodeSignatureFieldArgs", () => {
         "0x84b9970dc4354e6298a3ed7bca069992d8601d93b80e0c7794c5c555fb2d727ea02301c2881babd215069cc6cc7faab9765135d7da3680d845068ef918a55d8d",
     });
     assert.deepEqual(out.pulses_payload.public, {
-      name: "Sr25519",
-      values: [[1, 2, 3, 4]],
+      Sr25519: "0x01020304",
     });
+  });
+
+  test("decodes Drand.write_pulse's per-pulse signature/randomness -- bare 32-byte arrays, NOT Sr25519-enum-wrapped (real production fixture, block 8604176)", () => {
+    const raw = {
+      pulses_payload: {
+        pulses: [
+          {
+            round: 30347496,
+            signature: [
+              [
+                146, 56, 3, 31, 123, 237, 132, 59, 123, 234, 164, 93, 97, 46,
+                156, 91, 23, 39, 177, 160, 170, 10, 92, 222, 197, 83, 161, 45,
+                20, 120, 163, 1,
+              ],
+            ],
+            randomness: [
+              [
+                240, 33, 67, 144, 32, 232, 205, 35, 16, 13, 65, 216, 92, 171,
+                251, 103, 72, 7, 98, 149, 253, 169, 154, 217, 2, 11, 177, 42,
+                234, 132, 67, 65,
+              ],
+            ],
+          },
+        ],
+      },
+    };
+    const out = decode("Drand", "write_pulse", raw);
+    assert.equal(
+      out.pulses_payload.pulses[0].signature,
+      "0x9238031f7bed843b7beaa45d612e9c5b1727b1a0aa0a5cdec553a12d1478a301",
+    );
+    assert.equal(
+      out.pulses_payload.pulses[0].randomness,
+      "0xf021439020e8cd23100d41d85cabfb6748076295fda99ad9020bb12aea844341",
+    );
+    assert.equal(out.pulses_payload.pulses[0].round, 30347496);
   });
 
   test("is a no-op on D1's own already-decoded {Sr25519: hex} shorthand", () => {
