@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-evaluation-problems",
+      "kind": "data-artifact",
+      "name": "Ridges latest evaluation-set problems dataset",
+      "notes": "Public no-auth JSON dataset of the current SN62 Ridges evaluation-set problems -- the SWE-bench-family coding tasks agents are scored against. Each entry carries set_id, set_group, problem_name, benchmark_family, problem_suite_name, and an execution_spec (task s3_key, sha256 digest, dataset_name). Served from agent-upload.ridges.ai, the DEFAULT_API_BASE_URL of the official ridgesai/ridges miner CLI (same host as the registered subnet-api and OpenAPI surfaces) and documented in that API's OpenAPI spec. A distinct standalone dataset, not the /retrieval/top-agents leaderboard already registered.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://agent-upload.ridges.ai/openapi.json",
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/miners/cli/commands/upload.py#L21"
+      ],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
     }
   ],
   "contact": "hello@ridges.ai"
