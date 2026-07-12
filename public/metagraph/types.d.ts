@@ -3767,13 +3767,13 @@ export interface components {
             method: string | null;
             pallet: string | null;
         };
-        /** @description Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor (exclusive), while ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). next_cursor is the cursor for the next page (null when the page was not full); next_before is retained for legacy callers. Empty (count:0, events:[]) before the all-events backfill runs. */
+        /** @description Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless observed_at.block_number.event_index keyset cursor (exclusive), while ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). next_cursor is the cursor for the next page (null when the page was not full); next_before is retained for legacy callers. Empty (count:0, events:[]) before the all-events backfill runs. */
         ChainEventsFeedArtifact: {
             count: number;
             events: components["schemas"]["ChainEvent"][];
             /** @description Legacy block_number-only cursor for the next page. Prefer next_cursor to avoid skipping same-block events. */
             next_before?: number | null;
-            /** @description Lossless block_number.event_index cursor for the next page. Both parts are non-negative safe integers; pass it back as ?cursor=. */
+            /** @description Lossless observed_at.block_number.event_index cursor for the next page. All parts are non-negative safe integers; pass it back as ?cursor=. */
             next_cursor?: string | null;
         } & {
             [key: string]: unknown;
@@ -11966,7 +11966,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "next_before": 1,
-                     *         "next_cursor": "123.4"
+                     *         "next_cursor": "example"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

@@ -437,7 +437,7 @@ test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)
   const body = await res.json();
   expect(body.count).toBe(1);
   expect(body.next_before).toBe(123); // rows.length === limit → cursor is the last row
-  expect(body.next_cursor).toBe("123.0"); // lossless block_number.event_index cursor
+  expect(body.next_cursor).toBe("100.123.0"); // lossless observed_at.block_number.event_index cursor
   // BIGINT columns are coerced from postgres.js strings to numbers (D1-route parity).
   expect(body.events[0].block_number).toBe(123);
   expect(typeof body.events[0].block_number).toBe("number");
@@ -445,15 +445,19 @@ test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)
   expect(typeof body.events[0].observed_at).toBe("number");
 });
 
-test("chain-events cursor seeks by block_number and event_index", async () => {
-  const res = await req("/api/v1/chain-events?limit=1&cursor=123.4&before=500");
+test("chain-events cursor seeks by observed_at, block_number and event_index", async () => {
+  const res = await req(
+    "/api/v1/chain-events?limit=1&cursor=50.123.4&before=500",
+  );
   expect(res.status).toBe(200);
-  expect(queryText()).toContain("AND (block_number, event_index) < (?, ?)");
+  expect(queryText()).toContain(
+    "AND (observed_at, block_number, event_index) < (?, ?, ?)",
+  );
   expect(queryText()).not.toContain("AND block_number <");
   const cursorCall = sqlCalls.find((call) =>
-    call.text.includes("(block_number, event_index) <"),
+    call.text.includes("(observed_at, block_number, event_index) <"),
   );
-  expect(cursorCall.values).toEqual([123, 4]);
+  expect(cursorCall.values).toEqual([50, 123, 4]);
 });
 
 test("limit is clamped and defaults safely", async () => {
@@ -867,9 +871,9 @@ test("GET /api/v1/extrinsics ignores a malformed call_hash instead of erroring",
 
 test("GET /api/v1/extrinsics uses a composite cursor seek instead of OFFSET", async () => {
   mockRows.current = [EXTRINSIC_ROW];
-  await req("/api/v1/extrinsics?cursor=8586300.2");
+  await req("/api/v1/extrinsics?cursor=1783600000000.8586300.2");
   const text = queryText();
-  expect(text).toContain("AND (block_number, extrinsic_index) <");
+  expect(text).toContain("AND (observed_at, block_number, extrinsic_index) <");
   expect(text).not.toContain("OFFSET");
 });
 
@@ -1125,7 +1129,7 @@ test("GET /api/v1/governance/config-changes filters to call_module='AdminUtils'"
 test("GET /api/v1/sudo applies block/block_start/block_end/from/to filters and a cursor seek", async () => {
   mockRows.current = [];
   await req(
-    "/api/v1/sudo?block=1&block_start=1&block_end=2&from=1&to=2&cursor=8586300.2",
+    "/api/v1/sudo?block=1&block_start=1&block_end=2&from=1&to=2&cursor=1783600000000.8586300.2",
   );
   const text = queryText();
   expect(text).toContain("AND block_number =");
@@ -1133,7 +1137,7 @@ test("GET /api/v1/sudo applies block/block_start/block_end/from/to filters and a
   expect(text).toContain("AND block_number <=");
   expect(text).toContain("AND observed_at >=");
   expect(text).toContain("AND observed_at <=");
-  expect(text).toContain("AND (block_number, extrinsic_index) <");
+  expect(text).toContain("AND (observed_at, block_number, extrinsic_index) <");
   expect(text).not.toContain("OFFSET");
 });
 
@@ -1151,7 +1155,7 @@ test("GET /api/v1/sudo returns a next_cursor when the page is full", async () =>
   mockRows.current = [{ ...EXTRINSIC_ROW, call_module: "Sudo" }];
   const res = await req("/api/v1/sudo?limit=1");
   const body = await res.json();
-  expect(body.next_cursor).toBe("8586300.2");
+  expect(body.next_cursor).toBe("1783600000000.8586300.2");
 });
 
 test("GET /api/v1/runtime returns the spec-version transition timeline", async () => {

@@ -2446,14 +2446,32 @@ export default {
         // GET /api/v1/extrinsics — the recent-extrinsic feed, mirroring
         // src/extrinsics.mjs's loadExtrinsics filter set exactly (signer,
         // call_module, call_function, call_hash, success, block, block_start/
-        // block_end, from/to, cursor). Index selection is left to Postgres'
-        // planner (schema.sql's idx_extrinsics_signer_block / idx_extrinsics_call
-        // cover the same access patterns D1's INDEXED BY hints targeted) --
-        // Postgres has no INDEXED BY equivalent.
+        // block_end, from/to, cursor). Ordered by observed_at (not
+        // block_number) because `extrinsics` is a TimescaleDB hypertable
+        // partitioned on observed_at (see timescaledb_information.dimensions):
+        // an unfiltered/broad `ORDER BY block_number DESC` forces a
+        // Parallel Append + Sort across every chunk (including decompressing
+        // historical compressed chunks) since block_number carries no chunk-
+        // exclusion information, which measured 6+ seconds live against
+        // production on 2026-07-12 -- past this route's 3000ms
+        // statement_timeout, tripping tryPostgresTier's D1 fallback into the
+        // now-fully-dropped D1 extrinsics table (#4772), which silently
+        // resolves to an empty-but-200 response. `ORDER BY observed_at DESC,
+        // block_number DESC, extrinsic_index DESC` lets ChunkAppend prune to
+        // just the live head chunk (confirmed live: same queries dropped to
+        // 0.5-75ms). observed_at is the genuine on-chain block timestamp
+        // (verified against block #1: 2023-03-20, not an ingestion clock), so
+        // this produces the identical "most recent first" ordering as
+        // block_number DESC -- block production is strictly monotonic with
+        // wall-clock time -- with block_number/extrinsic_index only breaking
+        // ties among the (rare) extrinsics that share one block's timestamp.
+        // The cursor is now a 3-tuple to match; decodeCursor's arity check
+        // makes an old 2-part cursor a clean "ignored, no next-page" miss
+        // rather than a crash.
         if (url.pathname === "/api/v1/extrinsics") {
           const limit = clampBlockLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
-          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 3);
           const block = nonNegativeIntegerParam(url.searchParams, "block");
           const signer = url.searchParams.get("signer") || null;
           const callModule = url.searchParams.get("call_module") || null;
@@ -2492,13 +2510,14 @@ export default {
             ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
             ${from != null ? sql`AND observed_at >= ${from}` : sql``}
             ${to != null ? sql`AND observed_at <= ${to}` : sql``}
-            ${cursor ? sql`AND (block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
-          ORDER BY block_number DESC, extrinsic_index DESC
+            ${cursor ? sql`AND (observed_at, block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+          ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC
           LIMIT ${limit}
           ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
             ? encodeCursor([
+                numberOrNull(last.observed_at),
                 numberOrNull(last.block_number),
                 numberOrNull(last.extrinsic_index),
               ])
@@ -2511,6 +2530,8 @@ export default {
         // fixed rather than caller-supplied (mirroring src/extrinsics.mjs's
         // loadExtrinsics({callModule: "Sudo"|"AdminUtils", ...}) call sites in
         // entities.mjs) -- so neither accepts ?signer=/?call_module=/?call_hash=.
+        // Ordered by observed_at for the same chunk-exclusion reason as
+        // /api/v1/extrinsics above (identical hypertable, identical cursor shape).
         const SUDO_GOVERNANCE_ROUTES = {
           "/api/v1/sudo": "Sudo",
           "/api/v1/governance/config-changes": "AdminUtils",
@@ -2519,7 +2540,7 @@ export default {
           const callModule = SUDO_GOVERNANCE_ROUTES[url.pathname];
           const limit = clampBlockLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
-          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 3);
           const block = nonNegativeIntegerParam(url.searchParams, "block");
           const callFunction = url.searchParams.get("call_function") || null;
           const successRaw = url.searchParams.get("success");
@@ -2550,13 +2571,14 @@ export default {
             ${blockEnd != null ? sql`AND block_number <= ${blockEnd}` : sql``}
             ${from != null ? sql`AND observed_at >= ${from}` : sql``}
             ${to != null ? sql`AND observed_at <= ${to}` : sql``}
-            ${cursor ? sql`AND (block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]})` : sql``}
-          ORDER BY block_number DESC, extrinsic_index DESC
+            ${cursor ? sql`AND (observed_at, block_number, extrinsic_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
+          ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC
           LIMIT ${limit}
           ${!cursor ? sql`OFFSET ${offset}` : sql``}`;
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextCursor = last
             ? encodeCursor([
+                numberOrNull(last.observed_at),
                 numberOrNull(last.block_number),
                 numberOrNull(last.extrinsic_index),
               ])
@@ -4862,7 +4884,15 @@ export default {
             blockN != null
               ? nonNegativeIntegerParam(url.searchParams, "extrinsic")
               : null;
-          const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+          // 3-tuple cursor (observed_at, block_number, event_index) for the
+          // same reason as /api/v1/extrinsics above: chain_events is a
+          // TimescaleDB hypertable partitioned on observed_at, so ordering
+          // (and seeking) by observed_at first lets ChunkAppend prune to the
+          // live head chunk instead of a full cross-chunk sort. The legacy
+          // `before` (block_number) cursor still does a plain inequality —
+          // correct (block_number and observed_at are monotonic together)
+          // even though it can't get the same single-chunk shortcut.
+          const cursor = decodeCursor(url.searchParams.get("cursor"), 3);
           const beforeBn = cursor
             ? null
             : nonNegativeIntegerParam(url.searchParams, "before"); // legacy block_number cursor
@@ -4883,19 +4913,23 @@ export default {
             ${extrN != null ? sql`AND extrinsic_index = ${extrN}` : sql``}
             ${
               cursor
-                ? sql`AND (block_number, event_index) < (${cursor[0]}, ${cursor[1]})`
+                ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})`
                 : beforeBn != null
                   ? sql`AND block_number < ${beforeBn}`
                   : sql``
             }
             ${pallet ? sql`AND pallet = ${pallet}` : sql``}
             ${method ? sql`AND method = ${method}` : sql``}
-          ORDER BY block_number DESC, event_index DESC
+          ORDER BY observed_at DESC, block_number DESC, event_index DESC
           LIMIT ${limit}`;
           const last = rows.length === limit ? rows[rows.length - 1] : null;
           const nextBlock = last ? numberOrNull(last.block_number) : null;
           const nextCursor = last
-            ? encodeCursor([nextBlock, numberOrNull(last.event_index)])
+            ? encodeCursor([
+                numberOrNull(last.observed_at),
+                nextBlock,
+                numberOrNull(last.event_index),
+              ])
             : null;
           return json({
             count: rows.length,
