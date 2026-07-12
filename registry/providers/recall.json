@@ -1,0 +1,9 @@
+{
+  "authority": "community",
+  "id": "recall",
+  "kind": "subnet-team",
+  "name": "Recall",
+  "public_notes": "",
+  "schema_version": 1,
+  "website_url": "https://recall.network/"
+}
