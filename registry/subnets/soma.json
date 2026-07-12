@@ -178,6 +178,25 @@
         "https://thesoma.ai/"
       ],
       "url": "https://thesoma.ai/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-114-soma-openapi",
+      "kind": "openapi",
+      "name": "SOMA platform OpenAPI schema",
+      "notes": "Public no-auth OpenAPI 3.1 schema for the SN114 SOMA platform API (title 'MCP-subnet'), served at platform.thesoma.ai/openapi.json with interactive Swagger UI at /docs. The official DendriteHQ/SOMA validator config (validator/.env.example) declares NETUID=114 and PLATFORM_URL=https://platform.thesoma.ai, tying this host to the subnet. The individual data endpoints require an API key, but the schema document and docs are fully public.",
+      "provider": "soma",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://github.com/DendriteHQ/SOMA/blob/main/validator/.env.example"
+      ],
+      "url": "https://platform.thesoma.ai/openapi.json"
     }
   ],
   "website_url": "https://thesoma.ai/"
