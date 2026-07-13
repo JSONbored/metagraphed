@@ -109,7 +109,7 @@ export function isPublicWebhookAddress(value) {
       ? Number.parseInt(firstHextet, 16)
       : null;
     const isDiscardOnly =
-      Number.isInteger(discardOnlyValue) &&
+      discardOnlyValue != null &&
       discardOnlyValue >= 0x100 &&
       discardOnlyValue <= 0x1ff;
     if (
