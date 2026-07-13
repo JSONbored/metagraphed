@@ -104,6 +104,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
           eyebrow="Validators / miners"
           value={`${y.validator_count ?? "—"} / ${y.miner_count ?? "—"}`}
           hint={`${y.neuron_count ?? neurons.length} UIDs`}
+          truncate={false}
         />
       </div>
 
