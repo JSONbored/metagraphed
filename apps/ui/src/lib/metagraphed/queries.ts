@@ -3533,9 +3533,7 @@ function normalizeChainWeightSetters(raw: unknown, window: ChainWindow): ChainWe
       const rec = isRecord(row) ? row : {};
       return { ...setter, netuid: setter.hotkey ? null : (firstFiniteNumber(rec.netuid) ?? null) };
     })
-    .filter(
-      (setter): setter is ChainWeightSetter => setter != null,
-    )
+    .filter((setter): setter is ChainWeightSetter => setter != null)
     .slice(0, MAX_CHAIN_WEIGHT_SETTERS);
   return {
     schema_version: firstFiniteNumber(rec.schema_version) ?? 1,

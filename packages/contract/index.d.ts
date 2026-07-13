@@ -14828,6 +14828,7 @@ export interface operations {
                      *             "first_set_at": "2026-06-01T00:00:00.000Z",
                      *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *             "last_set_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": null,
                      *             "share": 0.75,
                      *             "uid": 3,
                      *             "weight_sets": 30
@@ -14836,6 +14837,7 @@ export interface operations {
                      *             "first_set_at": "2026-06-01T00:00:00.000Z",
                      *             "hotkey": null,
                      *             "last_set_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 5,
                      *             "share": 0.25,
                      *             "uid": 8,
                      *             "weight_sets": 10

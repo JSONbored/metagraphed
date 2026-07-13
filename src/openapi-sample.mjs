@@ -484,6 +484,7 @@ function normalizeChainWeightSettersSample(out) {
   out.setters = [
     {
       hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      netuid: null,
       uid: 3,
       weight_sets: 30,
       share: 0.75,
@@ -492,6 +493,7 @@ function normalizeChainWeightSettersSample(out) {
     },
     {
       hotkey: null,
+      netuid: 5,
       uid: 8,
       weight_sets: 10,
       share: 0.25,

@@ -1015,7 +1015,11 @@ function fmtShare(share: number | null): string {
   return share == null ? "—" : `${(share * 100).toFixed(1)}%`;
 }
 
-function weightSetterKey(setter: { hotkey: string | null; netuid?: number | null; uid: number | null }): string {
+function weightSetterKey(setter: {
+  hotkey: string | null;
+  netuid?: number | null;
+  uid: number | null;
+}): string {
   return setter.hotkey ?? `uid:${setter.netuid ?? "unknown"}:${setter.uid ?? "unknown"}`;
 }
 
