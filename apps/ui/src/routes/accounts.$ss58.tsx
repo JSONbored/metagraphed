@@ -1807,13 +1807,13 @@ function AccountFootprintSection({
   const subnetsResult = useQuery(accountSubnetsQuery(ss58));
   const rows = subnetsResult.data?.data.subnets ?? fallback;
 
-  // Match the loading/error handling of the sibling account feed sections
-  // (teardown, deregistration, weight-setting, endpoint-announcement): skeleton
-  // while pending with nothing to show, a distinct error state on failure.
+  // Keep this optional enrichment non-blocking: fallback registrations should
+  // render while the dedicated subnet feed is pending or has failed.
   const phase = accountFeedSectionPhase({
     isPending: subnetsResult.isPending,
     isError: subnetsResult.isError,
     rowCount: rows.length,
+    preferErrorWithRows: false,
   });
   if (phase === "skeleton") {
     return (
