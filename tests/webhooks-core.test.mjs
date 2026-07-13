@@ -9,6 +9,7 @@ import {
   isPublicWebhookUrl,
   isResolvedPublicWebhookUrl,
   normalizeFilters,
+  resolveWebhookHostnamesWithDoh,
   publicSubscriptionView,
   signPayload,
   timingSafeEqual,
@@ -211,6 +212,36 @@ describe("isResolvedPublicWebhookUrl", () => {
       ),
       false,
     );
+  });
+});
+
+// --- resolveWebhookHostnamesWithDoh ------------------------------------------
+describe("resolveWebhookHostnamesWithDoh", () => {
+  test("returns A and AAAA address answers from DNS-over-HTTPS", async () => {
+    const calls = [];
+    const fetchImpl = async (url, init) => {
+      calls.push({ url, init });
+      const query = new URL(url);
+      const type = query.searchParams.get("type");
+      const data =
+        type === "A" ? "93.184.216.34" : "2606:2800:220:1:248:1893:25c8:1946";
+      return new Response(JSON.stringify({ Answer: [{ data }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    const addresses = await resolveWebhookHostnamesWithDoh("example.com", {
+      fetchImpl,
+      dnsJsonEndpoint: "https://dns.test/query",
+    });
+
+    assert.deepEqual(addresses, [
+      "93.184.216.34",
+      "2606:2800:220:1:248:1893:25c8:1946",
+    ]);
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every((call) => call.init.redirect === "manual"));
   });
 });
 

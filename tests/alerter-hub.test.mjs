@@ -47,6 +47,7 @@ test("deliverAlertMatch: webhook channel POSTs the built request", async () => {
     { table: "account_events" },
     {},
     fetchFn,
+    { resolveHostnames: async () => ["93.184.216.34"] },
   );
   assert.equal(fetchFn.mock.calls.length, 1);
   assert.equal(received.url, "https://example.com/hook");
@@ -67,9 +68,44 @@ test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slo
     {},
     {},
     fetchFn,
+    { resolveHostnames: async () => ["93.184.216.34"] },
   );
   assert.ok(receivedSignal instanceof AbortSignal);
   assert.equal(receivedSignal.aborted, false);
+});
+
+test("deliverAlertMatch: webhook delivery uses manual redirects", async () => {
+  let receivedInit;
+  const fetchFn = vi.fn(async (_url, init) => {
+    receivedInit = init;
+    return new Response(null, { status: 200 });
+  });
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "webhook",
+      destination: "https://example.com/hook",
+    }),
+    {},
+    {},
+    fetchFn,
+    { resolveHostnames: async () => ["93.184.216.34"] },
+  );
+  assert.equal(receivedInit.redirect, "manual");
+});
+
+test("deliverAlertMatch: webhook channel sends nothing when DNS resolves private", async () => {
+  const fetchFn = vi.fn();
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "webhook",
+      destination: "https://example.com/hook",
+    }),
+    {},
+    {},
+    fetchFn,
+    { resolveHostnames: async () => ["10.0.0.1"] },
+  );
+  assert.equal(fetchFn.mock.calls.length, 0);
 });
 
 test("deliverAlertMatch: webhook channel sends nothing when the destination fails the defense-in-depth URL re-check", async () => {
