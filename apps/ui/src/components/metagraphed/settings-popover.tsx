@@ -1,5 +1,6 @@
 import { Settings, Sun, Moon, Monitor, Rows3, Rows4 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@jsonbored/ui-kit";
+import { Popover, PopoverTrigger } from "@jsonbored/ui-kit";
+import { ClampedPopoverContent } from "./clamped-popover-content";
 import { useTheme, type ThemeChoice } from "@/lib/theme";
 import { useDensity, type Density } from "@/lib/density";
 import { useHealthPalette, HEALTH_PALETTES, type HealthPaletteId } from "@/lib/health-palette";
@@ -33,9 +34,9 @@ export function SettingsPopover() {
           <Settings className="size-3.5" aria-hidden="true" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 p-3">
+      <ClampedPopoverContent align="end" className="w-72 p-3">
         <SettingsPanel />
-      </PopoverContent>
+      </ClampedPopoverContent>
     </Popover>
   );
 }
