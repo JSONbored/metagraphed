@@ -7,6 +7,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { PageHero, ShareButton } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
+import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -76,6 +77,7 @@ function ValidatorsPage() {
         description="Network-wide validator directory — hotkeys ranked across all Bittensor subnets, computed live from the chain-direct metagraph."
         actions={<ShareButton />}
       />
+      <ValidatorGuide />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <ValidatorsTable
