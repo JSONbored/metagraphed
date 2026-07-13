@@ -1,5 +1,16 @@
 @import "tailwindcss" source(none);
 @source "../src";
+/* source(none) above disables Tailwind automatic scanning and the
+   package-relative auto-detection an un-annotated import would otherwise
+   get for packages/ui-kit own directory (its import of ui-kit styles.css
+   below carries no Tailwind bootstrap of its own, see that file header
+   comment), so without this line every utility class used only inside
+   packages/ui-kit/src (never duplicated verbatim in apps/ui/src) was
+   silently absent from the built CSS. Confirmed against command.tsx in
+   ui-kit: its cmdk-group-heading variant selectors and its arbitrary
+   max-w and max-h values did not appear in a real production build
+   output before this line existed. */
+@source "../../../packages/ui-kit/src";
 @import "tw-animate-css";
 
 @import "@jsonbored/ui-kit/styles.css";

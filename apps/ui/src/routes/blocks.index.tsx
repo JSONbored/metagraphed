@@ -232,6 +232,12 @@ function BlocksTable() {
 
   const filters = (
     <>
+      <span
+        className="font-mono text-[11px] text-ink-muted whitespace-nowrap"
+        title="Blocks are listed newest first"
+      >
+        <span aria-hidden="true">↓ </span>Newest first
+      </span>
       <SearchInput
         value={search.author}
         onChange={(v) => setSearch({ author: v, offset: 0 })}
