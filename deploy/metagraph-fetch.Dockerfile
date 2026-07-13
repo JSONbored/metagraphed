@@ -14,16 +14,23 @@
 # GitHub Actions jobs gave (fetch job has zero secrets; sign-and-stage job
 # starts from a fresh checkout and never runs this untrusted code).
 #
-# One generic image for all three scripts -- which one to run and which
-# pinned bittensor SDK version to fetch (uv resolves it fresh each run, not
-# baked into the image) are both runtime arguments, matching each script's
-# own GitHub Actions invocation exactly (see entrypoint.sh).
+# One generic image for all three scripts -- which one to run is a runtime
+# argument (see entrypoint.sh). bittensor is pinned to a SINGLE version
+# (10.5.0) for all three: verified 2026-07-14 that fetch-metagraph-native.py
+# and fetch-account-identity.py's entire API surface (get_all_metagraphs_info/
+# MetagraphInfo) is byte-identical between bittensor 10.4.0 and 10.5.0 (the
+# versions the 3 source GitHub Actions workflows used to split across) --
+# fetch-subnet-hyperparams.py is the one that genuinely needs 10.5.0 (#4973,
+# certain SubnetHyperparameters fields are silently unreadable under 10.4.0),
+# so unifying costs nothing and simplifies this image to one locked venv.
 #
 # Deployed the same way chain-firehose-relay/streamer are: the Ansible
 # `data-refresh-cron` role in JSONbored/metagraphed-infra copies this
-# Dockerfile + the three scripts into roles/data-refresh-cron/files/ and
-# builds directly on the indexer box. Re-run that role after updating any of
-# the four files to rebuild with the latest fix.
+# Dockerfile + scripts/pyproject.toml + scripts/uv.lock + the three scripts
+# into roles/data-refresh-cron/files/ and builds directly on the indexer box.
+# Re-run that role after updating any of these files to rebuild with the
+# latest fix. To bump the pinned bittensor version: edit scripts/pyproject.toml,
+# run `cd scripts && uv lock`, commit the updated scripts/uv.lock.
 #
 # Local:  docker build -f deploy/metagraph-fetch.Dockerfile -t metagraphed-data-refresh .
 #
@@ -44,19 +51,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 RUN useradd -u 10001 -m fetcher
 WORKDIR /app
 
+# Hash-locked dependency install at BUILD time, not runtime -- a security scan
+# correctly flagged the earlier `uvx --from bittensor==X.Y` pattern (2026-07-14,
+# P2): it re-resolved bittensor and its ~46 transitive dependencies from PyPI
+# fresh on EVERY container run with only a semver pin, no hash verification, so
+# a compromised release at that exact version (or any transitive dependency)
+# could execute inside this container on every fetch. `uv sync --locked`
+# verifies every artifact against uv.lock's embedded hashes and FAILS THE
+# BUILD on any mismatch -- verification happens once, at `docker build`, and
+# the resulting venv is baked into the image; no PyPI resolution happens at
+# container runtime anymore.
+COPY scripts/pyproject.toml scripts/uv.lock ./
+RUN uv sync --locked
+
 COPY scripts/fetch-metagraph-native.py ./scripts/fetch-metagraph-native.py
 COPY scripts/fetch-account-identity.py ./scripts/fetch-account-identity.py
 COPY scripts/fetch-subnet-hyperparams.py ./scripts/fetch-subnet-hyperparams.py
 COPY scripts/metagraph-fetch-entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh && chown -R fetcher:fetcher /app
 
-ENV UV_CACHE_DIR=/app/.uv-cache
-RUN mkdir -p /app/.uv-cache && chown -R fetcher:fetcher /app/.uv-cache
-
 USER fetcher
+ENV PATH="/app/.venv/bin:$PATH"
 # Provide at runtime: SCRIPT (one of fetch-metagraph-native.py /
-# fetch-account-identity.py / fetch-subnet-hyperparams.py), BITTENSOR_VERSION,
-# SUBTENSOR_RPC_URL (non-secret -- our own fullnode's tailnet address), and
-# whichever *_JSON output-path env var the target script reads (see each
-# script's own OUT/module-level constant). Mount /out for the result.
+# fetch-account-identity.py / fetch-subnet-hyperparams.py), SUBTENSOR_RPC_URL
+# (non-secret -- our own fullnode's tailnet address), and whichever *_JSON
+# output-path env var the target script reads (see each script's own
+# OUT/module-level constant). Mount /out for the result.
 ENTRYPOINT ["./entrypoint.sh"]
