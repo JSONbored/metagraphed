@@ -124,8 +124,11 @@ export function SelectFilter({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        // Native <select> doesn't inherit the surrounding font by default — pin it
+        // to font-mono so the value matches the label instead of falling back to
+        // the sans body font, which reads as unstyled next to the mono label.
         className={classNames(
-          "min-w-0 truncate bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "min-w-0 truncate bg-transparent font-mono text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           fill ? "flex-1" : "",
         )}
       >
