@@ -324,7 +324,7 @@ export const SDL = `
   # path) -- POSTing a subscription operation to the regular query endpoint
   # returns a standard GraphQL error, same as any other GraphQL server.
   type Subscription {
-    "Live chain events as they land (blocks/extrinsics/chain_events), optionally filtered to one or more tables. Field shape mirrors the #4980 NOTIFY payload -- only the fields relevant to the event's table are populated."
+    "Live chain events as they land (blocks/extrinsics/chain_events/account_events), optionally filtered to one or more tables. Field shape mirrors the #4980 NOTIFY payload -- only the fields relevant to the event's table are populated."
     chainEvents(tables: [ChainFirehoseTable!]): ChainEvent!
   }
 
@@ -332,6 +332,7 @@ export const SDL = `
     blocks
     extrinsics
     chain_events
+    account_events
   }
 
   type ChainEvent {
@@ -354,12 +355,22 @@ export const SDL = `
     signer: String
     "extrinsics only"
     success: Boolean
-    "chain_events only"
+    "chain_events / account_events (event index within the block)"
     event_index: Int
     "chain_events only"
     pallet: String
     "chain_events only"
     method: String
+    "account_events only -- the curated kind (e.g. Transfer, StakeAdded)"
+    event_kind: String
+    "account_events only"
+    hotkey: String
+    "account_events only"
+    coldkey: String
+    "account_events only"
+    netuid: Int
+    "account_events only"
+    amount_tao: Float
   }
 `;
 

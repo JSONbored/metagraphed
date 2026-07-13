@@ -59,6 +59,10 @@ firehose's two halves live.
    for the accurate, narrow tail-risk this design actually carries — real,
    not zero, but bounded and low-likelihood given this deployment's only
    listener (the #4981 relay) never holds a long transaction open.
+   **Extended 2026-07-13** (#4984 prerequisite): the trigger now also fires on
+   `account_events` inserts. None of the original three tables carry
+   netuid/hotkey/coldkey/amount_tao, which the alerter's own example trigger
+   conditions need directly, without a per-event Postgres round-trip.
 2. **A new, separate box-side relay process bridges Postgres to Cloudflare**
    (#4981), subscribing via `LISTEN` and forwarding to the Durable Object over
    HTTP with a bounded, drop-oldest retry policy. If this process is down,

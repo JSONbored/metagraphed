@@ -1,7 +1,8 @@
 # Realtime chain-event firehose (#2114, ADR 0015)
 
 The `chain_firehose` Postgres channel: a compact, best-effort NOTIFY stream of
-every row landing in `blocks`/`extrinsics`/`chain_events`, decoupled from
+every row landing in `blocks`/`extrinsics`/`chain_events`/`account_events`
+(the last added for #4984 -- see below), decoupled from
 `indexer-rs`'s own write path so nothing downstream of it can ever affect
 whether `indexer-rs` keeps following the chain head. See ADR 0015 for why this
 shape was chosen over a direct push from `indexer-rs` (the retired
@@ -98,9 +99,10 @@ One global instance (`idFromName("global")`) owns two endpoints:
   public data `/api/v1/chain-events` already serves, pushed instead of
   polled). SSE by default (`event: chain` frames, JSON payload matching the
   trigger's NOTIFY shape); a WebSocket `Upgrade` header on the same path gets
-  the WS transport instead. Both support `?topics=blocks,extrinsics,chain_events`
-  (comma-separated, defaults to all three) to avoid forcing a client to
-  consume the full firehose.
+  the WS transport instead. Both support
+  `?topics=blocks,extrinsics,chain_events,account_events` (comma-separated,
+  defaults to all four) to avoid forcing a client to consume the full
+  firehose.
 
 Bounded per-connection buffering: an SSE client whose `ReadableStream`
 controller falls behind (`desiredSize < 0` against a 64-frame
@@ -285,7 +287,8 @@ Discord.
 ```sh
 psql "$DATABASE_URL" -c "LISTEN chain_firehose;"
 # in another session, insert (or wait for indexer-rs to insert) a row into
-# blocks/extrinsics/chain_events — the LISTENing session prints a Notification
+# blocks/extrinsics/chain_events/account_events — the LISTENing session
+# prints a Notification
 ```
 
 ## Provisioning + verifying the hub (#4982)

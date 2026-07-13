@@ -651,6 +651,23 @@ BEGIN
       'method', NEW.method,
       'observed_at', NEW.observed_at
     );
+  ELSIF TG_ARGV[0] = 'account_events' THEN
+    -- #4984 prerequisite: blocks/extrinsics/chain_events carry no netuid/
+    -- hotkey/coldkey/amount_tao -- the alerter's own example trigger
+    -- conditions ("netuid=X", "account=Z", "amount_tao > N") need this
+    -- curated tier's columns directly, so it gets its own firehose branch
+    -- rather than requiring every alert evaluation to re-fetch by PK.
+    payload := jsonb_build_object(
+      'table', 'account_events',
+      'block_number', NEW.block_number,
+      'event_index', NEW.event_index,
+      'event_kind', NEW.event_kind,
+      'hotkey', NEW.hotkey,
+      'coldkey', NEW.coldkey,
+      'netuid', NEW.netuid,
+      'amount_tao', NEW.amount_tao,
+      'observed_at', NEW.observed_at
+    );
   ELSE
     RETURN NEW;
   END IF;
@@ -681,6 +698,16 @@ DROP TRIGGER IF EXISTS trg_chain_events_firehose ON chain_events;
 CREATE TRIGGER trg_chain_events_firehose
   AFTER INSERT ON chain_events
   FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose('chain_events');
+
+-- #4984 prerequisite (see notify_chain_firehose()'s account_events branch
+-- above). account_events is ALSO a TimescaleDB hypertable
+-- (schema-timescaledb.sql), so this trigger fires on its per-time-range
+-- chunk exactly like the three above -- TG_ARGV[0] carries the logical name
+-- for the same reason.
+DROP TRIGGER IF EXISTS trg_account_events_firehose ON account_events;
+CREATE TRIGGER trg_account_events_firehose
+  AFTER INSERT ON account_events
+  FOR EACH ROW EXECUTE FUNCTION notify_chain_firehose('account_events');
 
 -- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
 -- schema-timescaledb.sql in this same directory — apply it separately, only

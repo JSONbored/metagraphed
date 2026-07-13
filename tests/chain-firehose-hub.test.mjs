@@ -204,6 +204,13 @@ test("parseChainFirehoseTopics: trims whitespace around entries", () => {
   assert.deepEqual([...topics].sort(), ["blocks", "chain_events"]);
 });
 
+test("parseChainFirehoseTopics: account_events is a recognized topic (#4984 prerequisite)", () => {
+  const topics = parseChainFirehoseTopics(
+    new URLSearchParams("topics=account_events"),
+  );
+  assert.deepEqual([...topics], ["account_events"]);
+});
+
 test("parseChainFirehoseTopics: drops unknown table names silently", () => {
   const topics = parseChainFirehoseTopics(
     new URLSearchParams("topics=blocks,not_a_real_table"),
@@ -267,6 +274,25 @@ test("validateChainFirehoseIngestPayload: accepts a well-formed chain_events pay
     }),
   );
   assert.equal(result.ok, true);
+});
+
+test("validateChainFirehoseIngestPayload: accepts a well-formed account_events payload (#4984 prerequisite)", () => {
+  const result = validateChainFirehoseIngestPayload(
+    JSON.stringify({
+      table: "account_events",
+      block_number: 8608870,
+      event_index: 4,
+      event_kind: "Transfer",
+      hotkey: "5F...",
+      coldkey: "5G...",
+      netuid: 7,
+      amount_tao: 12.5,
+      observed_at: "2026-07-13T02:00:00.000Z",
+    }),
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.payload.netuid, 7);
+  assert.equal(result.payload.amount_tao, 12.5);
 });
 
 test("validateChainFirehoseIngestPayload: accepts a boolean field (e.g. extrinsics.success)", () => {
@@ -850,6 +876,7 @@ test("CHAIN_FIREHOSE_INGEST_TOKEN_HEADER and CHAIN_FIREHOSE_TABLES are the docum
     "x-chain-firehose-sync-token",
   );
   assert.deepEqual([...CHAIN_FIREHOSE_TABLES].sort(), [
+    "account_events",
     "blocks",
     "chain_events",
     "extrinsics",

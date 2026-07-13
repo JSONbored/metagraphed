@@ -52,11 +52,15 @@ import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.mjs";
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
 // Matches deploy/postgres/schema.sql's notify_chain_firehose() trigger --
-// the only three tables it ever fires `table:` for.
+// the only four tables it ever fires `table:` for. account_events (#4984
+// prerequisite) carries netuid/hotkey/coldkey/amount_tao directly, unlike
+// the other three -- the alerter's trigger conditions need those columns
+// without a per-event Postgres round-trip.
 export const CHAIN_FIREHOSE_TABLES = new Set([
   "blocks",
   "extrinsics",
   "chain_events",
+  "account_events",
 ]);
 
 // Headroom over Postgres's 8000-byte NOTIFY payload cap (the trigger's own
