@@ -33,6 +33,7 @@ import {
   CopyableCode,
   MethodologyCallout,
   StatTile,
+  RealtimeFreshness,
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
@@ -825,59 +826,67 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
     );
   }
   return (
-    <div className="overflow-x-auto rounded border border-border bg-card">
-      <table className="w-full min-w-[720px] text-left text-sm">
-        <thead className="bg-surface/40">
-          <tr>
-            <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
-            <th className="px-4 py-2.5 whitespace-nowrap">Kind</th>
-            <th className="px-4 py-2.5 whitespace-nowrap">Hotkey</th>
-            <th className="px-4 py-2.5 text-right whitespace-nowrap">Amount</th>
-            <th className="px-4 py-2.5 text-right whitespace-nowrap">Observed</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {events.map((ev, i) => (
-            <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface/40">
-              <td className="px-4 py-2.5 font-mono text-[12px] whitespace-nowrap">
-                {ev.block_number != null ? (
-                  <Link
-                    to="/blocks/$ref"
-                    params={{ ref: String(ev.block_number) }}
-                    className="text-ink hover:underline"
-                  >
-                    #{formatNumber(ev.block_number)}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-2.5 whitespace-nowrap">
-                <EventKindCell kind={ev.event_kind} />
-              </td>
-              <td className="px-4 py-2.5 font-mono text-[11px] whitespace-nowrap">
-                {ev.hotkey ? (
-                  <Link
-                    to="/accounts/$ss58"
-                    params={{ ss58: ev.hotkey }}
-                    className="text-ink-muted hover:text-ink hover:underline"
-                  >
-                    {shortHash(ev.hotkey) ?? ev.hotkey}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink whitespace-nowrap">
-                {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted whitespace-nowrap">
-                <TimeAgo at={ev.observed_at} />
-              </td>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          {events.length} event{events.length === 1 ? "" : "s"}
+        </span>
+        <RealtimeFreshness at={data.meta?.generated_at} />
+      </div>
+      <div className="overflow-x-auto rounded border border-border bg-card">
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead className="bg-surface/40">
+            <tr>
+              <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
+              <th className="px-4 py-2.5 whitespace-nowrap">Kind</th>
+              <th className="px-4 py-2.5 whitespace-nowrap">Hotkey</th>
+              <th className="px-4 py-2.5 text-right whitespace-nowrap">Amount</th>
+              <th className="px-4 py-2.5 text-right whitespace-nowrap">Observed</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {events.map((ev, i) => (
+              <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface/40">
+                <td className="px-4 py-2.5 font-mono text-[12px] whitespace-nowrap">
+                  {ev.block_number != null ? (
+                    <Link
+                      to="/blocks/$ref"
+                      params={{ ref: String(ev.block_number) }}
+                      className="text-ink hover:underline"
+                    >
+                      #{formatNumber(ev.block_number)}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                  <EventKindCell kind={ev.event_kind} />
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[11px] whitespace-nowrap">
+                  {ev.hotkey ? (
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: ev.hotkey }}
+                      className="text-ink-muted hover:text-ink hover:underline"
+                    >
+                      {shortHash(ev.hotkey) ?? ev.hotkey}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink whitespace-nowrap">
+                  {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted whitespace-nowrap">
+                  <TimeAgo at={ev.observed_at} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

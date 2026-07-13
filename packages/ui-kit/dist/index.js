@@ -1815,14 +1815,27 @@ function FreshnessIndicator({
     }
   );
 }
+function tierFreshnessLabel(tier, at) {
+  if (at == null) return "No freshness data";
+  const prefix = tier === "realtime" ? "Live chain read" : "Daily rollup snapshot";
+  return `${prefix} \u2014 updated ${formatRelative(at)}`;
+}
 function DailyRollupFreshness({
   at,
   className
 }) {
-  const label = at == null ? "No freshness data" : `Daily rollup snapshot \u2014 updated ${formatRelative(at)}`;
   return /* @__PURE__ */ jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
     /* @__PURE__ */ jsx(FreshnessIndicator, { at, dotOnly: true }),
-    /* @__PURE__ */ jsx(InfoTooltip, { label })
+    /* @__PURE__ */ jsx(InfoTooltip, { label: tierFreshnessLabel("daily", at) })
+  ] });
+}
+function RealtimeFreshness({
+  at,
+  className
+}) {
+  return /* @__PURE__ */ jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
+    /* @__PURE__ */ jsx(FreshnessIndicator, { at, dotOnly: true }),
+    /* @__PURE__ */ jsx(InfoTooltip, { label: tierFreshnessLabel("realtime", at) })
   ] });
 }
 function HoverPreview({
@@ -3666,4 +3679,4 @@ function TreemapMini({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProfileHero, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, timeAgoAbsoluteTitle, visibleTools };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProfileHero, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel, timeAgoAbsoluteTitle, visibleTools };

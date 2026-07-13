@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
 import {
   TableState,
-  DailyRollupFreshness,
+  RealtimeFreshness,
   BarMini,
   TreemapMini,
   type TreemapMiniDatum,
@@ -63,7 +63,7 @@ export function ValidatorsTableLoader({
     );
   }
 
-  const freshness = <DailyRollupFreshness at={meta?.generated_at} />;
+  const freshness = <RealtimeFreshness at={meta?.generated_at} />;
 
   return (
     <div className="space-y-4">

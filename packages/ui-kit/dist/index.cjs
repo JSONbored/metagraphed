@@ -1844,14 +1844,27 @@ function FreshnessIndicator({
     }
   );
 }
+function tierFreshnessLabel(tier, at) {
+  if (at == null) return "No freshness data";
+  const prefix = tier === "realtime" ? "Live chain read" : "Daily rollup snapshot";
+  return `${prefix} \u2014 updated ${formatRelative(at)}`;
+}
 function DailyRollupFreshness({
   at,
   className
 }) {
-  const label = at == null ? "No freshness data" : `Daily rollup snapshot \u2014 updated ${formatRelative(at)}`;
   return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
     /* @__PURE__ */ jsxRuntime.jsx(FreshnessIndicator, { at, dotOnly: true }),
-    /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label })
+    /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tierFreshnessLabel("daily", at) })
+  ] });
+}
+function RealtimeFreshness({
+  at,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
+    /* @__PURE__ */ jsxRuntime.jsx(FreshnessIndicator, { at, dotOnly: true }),
+    /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tierFreshnessLabel("realtime", at) })
   ] });
 }
 function HoverPreview({
@@ -3764,6 +3777,7 @@ exports.PopoverContent = PopoverContent;
 exports.PopoverTrigger = PopoverTrigger;
 exports.PrimaryLinksRail = PrimaryLinksRail;
 exports.ProfileHero = ProfileHero;
+exports.RealtimeFreshness = RealtimeFreshness;
 exports.ReviewChip = ReviewChip;
 exports.SCOPES = SCOPES;
 exports.ScrollReveal = ScrollReveal;
@@ -3805,5 +3819,6 @@ exports.freshnessDotClass = freshnessDotClass;
 exports.freshnessTierLabel = freshnessTierLabel;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.safeExternalUrl = safeExternalUrl;
+exports.tierFreshnessLabel = tierFreshnessLabel;
 exports.timeAgoAbsoluteTitle = timeAgoAbsoluteTitle;
 exports.visibleTools = visibleTools;
