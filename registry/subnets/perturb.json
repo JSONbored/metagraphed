@@ -56,6 +56,25 @@
         "submitted_by": "dalledajay-coder"
       },
       "notes": "Public no-auth GET returning SN26 Perturb's current emission burn rate as JSON ({\"burnRate\":0.5} observed at submission time). The endpoint is declared as BURN_RATE_ENDPOINT in the subnet's validator source (perturbnet/constants.py in the official repo, pinned above) and is served from api.perturbai.io, the same host as the already-registered health surface."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-26-perturb-leaderboard",
+      "kind": "dashboard",
+      "name": "Perturb miner leaderboard",
+      "notes": "Public no-auth web leaderboard for SN26 Perturb at leaderboard.perturbai.io (page title \"Leaderboard — Perturb\") ranking miners by UID/hotkey with incentive, average score, RMSE, and normalized score. Fed by the leaderboard reports validators submit each scoring round (perturbnet/constants.py LEADERBOARD_API_URL). Hosted on the subnet's official perturbai.io domain; distinct host from the api.perturbai.io API.",
+      "provider": "perturb",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/0xsigurd/Perturb/blob/main/README.md",
+        "https://www.perturbai.io/"
+      ],
+      "url": "https://leaderboard.perturbai.io/"
     }
   ],
   "social": {
