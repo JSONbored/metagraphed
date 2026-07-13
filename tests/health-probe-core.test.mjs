@@ -203,6 +203,8 @@ describe("isUnsafePublicUrl", () => {
     }
     // Control: 0x1000:: is outside 0100::/8; don't block it via the discard-only check.
     assert.equal(isUnsafePublicUrl("http://[1000::1]/x"), false);
+    // Control: a 3-hex-digit non-0100::/8 prefix must stay unblocked.
+    assert.equal(isUnsafePublicUrl("http://[200::1]/x"), false);
   });
 
   test("blocks a reserved/multicast v4 tunnelled inside an IPv6 literal host", () => {
