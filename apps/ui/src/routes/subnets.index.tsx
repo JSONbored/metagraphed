@@ -49,7 +49,7 @@ import {
   agentCatalogMapQuery,
   economicsQuery,
 } from "@/lib/metagraphed/queries";
-import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
 import {
   joinEconomics,
@@ -136,6 +136,8 @@ function SubnetsPage() {
     !!search.health ||
     !!search.serviceKind ||
     !!search.readiness ||
+    !!search.kind ||
+    !!search.stale ||
     !!search.cursor;
   const onReset = () =>
     navigate({
@@ -354,6 +356,8 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     search.health ||
     search.serviceKind ||
     search.readiness ||
+    search.kind ||
+    search.stale ||
     search.sort
   );
 
@@ -372,9 +376,30 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         if (search.serviceKind && !(s.service_kinds ?? []).includes(search.serviceKind))
           return false;
         if (search.readiness && s.readiness_tier !== search.readiness) return false;
+        // Mega-menu "Has APIs/docs/SSE" links (nav-mega-menu-data.ts). "api"/"sse"
+        // are agent-catalog service_kinds; "docs" has no service_kinds entry (a
+        // docs page isn't a callable service) so it checks the row's own
+        // docs_url instead — this is the one case service_kinds can't answer.
+        if (search.kind === "api" && !(s.service_kinds ?? []).includes("subnet-api")) return false;
+        if (search.kind === "sse" && !(s.service_kinds ?? []).includes("sse")) return false;
+        if (search.kind === "docs" && !s.docs_url) return false;
+        // Mega-menu "Stale > 24h" link: same threshold as the label, using the
+        // same isStaleFreshness convention as the rest of the app. The list API
+        // doesn't emit a `freshness` field on these rows — `updated_at` is what's
+        // actually populated (confirmed against the live response).
+        if (search.stale && !isStaleFreshness(s.updated_at, 24 * 60 * 60_000)) return false;
         return true;
       }),
-    [all, search.q, search.curation, search.health, search.serviceKind, search.readiness],
+    [
+      all,
+      search.q,
+      search.curation,
+      search.health,
+      search.serviceKind,
+      search.readiness,
+      search.kind,
+      search.stale,
+    ],
   );
   const rows = useMemo(
     () =>
