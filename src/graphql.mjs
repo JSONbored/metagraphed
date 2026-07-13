@@ -316,9 +316,113 @@ export const SDL = `
     ok_count: Int
     avg_latency_ms: Int
   }
+
+  # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
+  # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
+  # transports use, not a second event pipeline. Reached over WebSocket only
+  # (Sec-WebSocket-Protocol: graphql-transport-ws at this same /api/v1/graphql
+  # path) -- POSTing a subscription operation to the regular query endpoint
+  # returns a standard GraphQL error, same as any other GraphQL server.
+  type Subscription {
+    "Live chain events as they land (blocks/extrinsics/chain_events/account_events), optionally filtered to one or more tables. Field shape mirrors the #4980 NOTIFY payload -- only the fields relevant to the event's table are populated."
+    chainEvents(tables: [ChainFirehoseTable!]): ChainEvent!
+  }
+
+  enum ChainFirehoseTable {
+    blocks
+    extrinsics
+    chain_events
+    account_events
+  }
+
+  type ChainEvent {
+    table: ChainFirehoseTable!
+    block_number: Int!
+    observed_at: String
+    "blocks only"
+    block_hash: String
+    "blocks only"
+    extrinsic_count: Int
+    "blocks only"
+    event_count: Int
+    "extrinsics only"
+    extrinsic_index: Int
+    "extrinsics only"
+    call_module: String
+    "extrinsics only"
+    call_function: String
+    "extrinsics only"
+    signer: String
+    "extrinsics only"
+    success: Boolean
+    "chain_events / account_events (event index within the block)"
+    event_index: Int
+    "chain_events only"
+    pallet: String
+    "chain_events only"
+    method: String
+    "account_events only -- the curated kind (e.g. Transfer, StakeAdded)"
+    event_kind: String
+    "account_events only"
+    hotkey: String
+    "account_events only"
+    coldkey: String
+    "account_events only"
+    netuid: Int
+    "account_events only"
+    amount_tao: Float
+  }
 `;
 
-const schema = buildSchema(SDL);
+// Exported so workers/chain-firehose-hub.mjs's graphql-ws server (#4983) can
+// execute against the SAME schema -- not a copy, so the two transports never
+// drift.
+export const schema = buildSchema(SDL);
+
+// SDL-only schemas (buildSchema) carry no resolver functions -- Query/Mutation
+// fields read straight off rootValue/artifacts via the default field resolver,
+// but a subscription root field needs an explicit `subscribe` (an
+// AsyncIterable source), which SDL has no syntax for. Attached here, once, at
+// module load, the same graphql-js technique used by every SDL-first server
+// that also needs subscriptions. context.chainFirehose is supplied by
+// whichever Durable Object drives the graphql-ws server (workers/chain-firehose-hub.mjs)
+// -- see GRAPHQL_SUBSCRIPTION_CONTEXT_KEY below.
+export const GRAPHQL_SUBSCRIPTION_CONTEXT_KEY = "chainFirehose";
+schema.getSubscriptionType().getFields().chainEvents.subscribe =
+  async function* chainEventsSubscribe(_source, args, context) {
+    const hub = context?.[GRAPHQL_SUBSCRIPTION_CONTEXT_KEY];
+    if (!hub) {
+      throw new GraphQLError(
+        "chainEvents is only reachable over the WebSocket transport (Sec-WebSocket-Protocol: graphql-transport-ws) at /api/v1/graphql.",
+      );
+    }
+    // Distinguish omitted (undefined -> null, no filter, matches everything)
+    // from an EXPLICIT empty list (tables: [] -> an empty Set, matches
+    // nothing) -- consistent with the SSE/WS firehose's own
+    // parseChainFirehoseTopics semantics (an all-unrecognized topics= string
+    // also collapses to an empty Set, never silently falling back to
+    // "everything"). Previously both cases collapsed to null.
+    const topics = args.tables === undefined ? null : new Set(args.tables);
+    // context.clientIp is set by workers/chain-firehose-hub.mjs's
+    // graphqlWsServer context() callback from ctx.extra.ip (itself populated
+    // by handleSubscribe's opened(adapterSocket, { ip: clientIp }) call) --
+    // threaded through so subscribeChainEvents can enforce its per-IP
+    // subscription-count cap alongside the global one (#5004 item 2).
+    const repeater = hub.subscribeChainEvents(topics, context.clientIp);
+    if (!repeater) {
+      throw new GraphQLError(
+        "The realtime chain firehose has reached its maximum number of " +
+          "concurrent GraphQL subscriptions; try again later.",
+      );
+    }
+    try {
+      for await (const payload of repeater) {
+        yield { chainEvents: payload };
+      }
+    } finally {
+      hub.unsubscribeChainEvents(repeater);
+    }
+  };
 
 // --- Complexity weights ---
 

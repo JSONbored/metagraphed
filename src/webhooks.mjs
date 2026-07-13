@@ -613,8 +613,10 @@ export async function deliverChangeEvent({
 }
 
 // Bounded-concurrency map: drains `items` through at most `concurrency` in-flight
-// `fn` calls. Shared by the fresh fan-out and the redelivery sweep.
-async function mapBounded(items, concurrency, fn) {
+// `fn` calls. Shared by the fresh fan-out and the redelivery sweep -- exported
+// (#4984 Part 3 adversarial-review fix) so workers/alerter-hub.mjs's own
+// delivery fan-out can reuse it rather than duplicating this logic.
+export async function mapBounded(items, concurrency, fn) {
   const list = [...(items || [])];
   // Place each result at its INPUT index, not in completion order — workers
   // resolve concurrently (and the per-item work does real async I/O: crypto

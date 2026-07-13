@@ -227,16 +227,16 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
 
   return (
     <div className="border-t border-border max-h-[55vh] overflow-auto">
-      <table className="w-full text-[12px]">
+      <table className="min-w-full text-[12px]">
         <thead className="sticky top-0 bg-card/95 backdrop-blur z-[1]">
           <tr>
-            <th className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-muted w-40">
+            <th className="sticky left-0 z-[2] w-40 bg-card/95 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-muted backdrop-blur">
               Metric
             </th>
             {netuids.map((n) => (
               <th
                 key={n}
-                className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-strong"
+                className="min-w-[6rem] whitespace-nowrap px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-strong"
               >
                 SN{n}
               </th>
@@ -246,7 +246,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.label}>
-              <td className="px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted bg-paper/30">
+              <td className="sticky left-0 z-[1] bg-card px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                 {row.label}
               </td>
               {netuids.map((n) => (

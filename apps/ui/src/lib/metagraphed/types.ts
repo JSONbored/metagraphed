@@ -226,6 +226,8 @@ export interface Surface {
   provider_slug?: string;
   auth_required?: boolean;
   public_safe?: boolean;
+  /** Free-text note describing a rate limit, when the surface documents one. */
+  rate_limit_notes?: string | null;
   verified?: boolean;
   schema_url?: string;
   curation_level?: CurationLevel;

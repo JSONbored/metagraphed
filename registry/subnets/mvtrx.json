@@ -98,6 +98,22 @@
       },
       "source_urls": ["https://github.com/taos-im/sn-79/blob/main/README.md"],
       "url": "https://mvtrx.exchange/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-79-mvtrx-grafana-dashboard",
+      "kind": "dashboard",
+      "name": "MVTRX Grafana metrics dashboard",
+      "notes": "Public no-auth Grafana metrics dashboard for SN79 MVTRX, where miner/validator Prometheus telemetry is published. The official taos-im/sn-79 README links it (Grafana badge to taos.simulate.trading) and tells operators \"your data will still appear at taos.simulate.trading\". Distinct from the mvtrx.exchange trading host and the taos.im site.",
+      "provider": "taos-im",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://github.com/taos-im/sn-79/blob/main/README.md"],
+      "url": "https://taos.simulate.trading/"
     }
   ],
   "social": {

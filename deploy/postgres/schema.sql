@@ -579,9 +579,12 @@ CREATE TABLE IF NOT EXISTS indexer_cursor (
 -- Best-effort relay source for blocks/extrinsics/chain_events. This is a
 -- normal table, not Postgres LISTEN/NOTIFY: NOTIFY queue exhaustion is checked
 -- at transaction commit and can make the writer transaction fail outside any
--- trigger-local EXCEPTION block. Keeping the tee as table state means a stuck
--- or malicious relay/listener cannot pin Postgres's global async notification
--- queue and abort indexer commits.
+-- trigger-local EXCEPTION block (found by adversarial review, confirmed
+-- against Postgres's own PreCommit_Notify docs -- an AFTER ROW trigger's
+-- local EXCEPTION handler runs BEFORE that commit-time check and cannot catch
+-- it). Keeping the tee as table state means a stuck or malicious
+-- relay/listener cannot pin Postgres's global async notification queue and
+-- abort indexer commits.
 --
 -- The trigger still runs inside the writer transaction, so ordinary local
 -- database failures (for example disk exhaustion) remain database failures;
@@ -656,6 +659,23 @@ BEGIN
       'method', NEW.method,
       'observed_at', NEW.observed_at
     );
+  ELSIF TG_ARGV[0] = 'account_events' THEN
+    -- #4984 prerequisite: blocks/extrinsics/chain_events carry no netuid/
+    -- hotkey/coldkey/amount_tao -- the alerter's own example trigger
+    -- conditions ("netuid=X", "account=Z", "amount_tao > N") need this
+    -- curated tier's columns directly, so it gets its own firehose branch
+    -- rather than requiring every alert evaluation to re-fetch by PK.
+    payload := jsonb_build_object(
+      'table', 'account_events',
+      'block_number', NEW.block_number,
+      'event_index', NEW.event_index,
+      'event_kind', NEW.event_kind,
+      'hotkey', NEW.hotkey,
+      'coldkey', NEW.coldkey,
+      'netuid', NEW.netuid,
+      'amount_tao', NEW.amount_tao,
+      'observed_at', NEW.observed_at
+    );
   ELSE
     RETURN NEW;
   END IF;
@@ -681,6 +701,67 @@ DROP TRIGGER IF EXISTS trg_chain_events_firehose ON chain_events;
 CREATE TRIGGER trg_chain_events_firehose
   AFTER INSERT ON chain_events
   FOR EACH ROW EXECUTE FUNCTION enqueue_chain_firehose('chain_events');
+
+-- #4984 prerequisite (see enqueue_chain_firehose()'s account_events branch
+-- above). account_events is ALSO a TimescaleDB hypertable
+-- (schema-timescaledb.sql), so this trigger fires on its per-time-range
+-- chunk exactly like the three above -- TG_ARGV[0] carries the logical name
+-- for the same reason.
+DROP TRIGGER IF EXISTS trg_account_events_firehose ON account_events;
+CREATE TRIGGER trg_account_events_firehose
+  AFTER INSERT ON account_events
+  FOR EACH ROW EXECUTE FUNCTION enqueue_chain_firehose('account_events');
+
+-- ---------------------------------------------------------------------------
+-- Chain alert triggers (#4984, ADR 0015) -- user-defined "notify me when X
+-- happens on-chain" conditions, evaluated against the SAME firehose above by
+-- a Durable Object consumer (AlerterHub, #4984 Part 2) rather than a second
+-- Postgres poll loop. No user-account system exists in this codebase, so
+-- ownership is a bearer token (owner_token, returned once at creation) --
+-- the SAME model src/webhooks.mjs's per-subscription secret already
+-- establishes for webhook subscriptions. A small, low-cardinality table (one
+-- row per user-created alert, not one per chain event), so it is deliberately
+-- NOT a hypertable -- no entry in schema-timescaledb.sql.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS chain_alert_triggers (
+  id                BIGSERIAL PRIMARY KEY,
+  -- Bearer credential for GET/PATCH/DELETE on this one trigger. Unlike
+  -- webhook subscriptions' public GET, every single-trigger route here
+  -- requires it: `destination` can itself be a capability credential (a
+  -- Discord incoming-webhook URL grants POST-message rights to anyone
+  -- holding it), so there is no safe "public" view of a trigger.
+  owner_token       TEXT NOT NULL,
+  name              TEXT,
+  -- NULL = any of CHAIN_FIREHOSE_TABLES (workers/chain-firehose-hub.mjs);
+  -- otherwise a subset, validated against that same Set before insert.
+  table_filter      TEXT[],
+  netuid            INTEGER,
+  -- account_events.event_kind vocabulary (e.g. Transfer, StakeAdded) --
+  -- chain_events' raw pallet/method is NOT matchable here; see the
+  -- account_events firehose-tee prerequisite's own comment above.
+  event_kind        TEXT,
+  -- Matches account_events.hotkey OR .coldkey (an alert on "this account"
+  -- shouldn't require the owner to know which leg a given event used).
+  account           TEXT,
+  min_amount_tao    NUMERIC,
+  channel           TEXT NOT NULL CHECK (channel IN ('webhook', 'email', 'telegram', 'discord')),
+  -- Shape depends on channel: a public https:// URL (webhook), an email
+  -- address (email), a chat id or @channelusername (telegram), or the exact
+  -- Discord incoming-webhook URL shape (discord) -- validated at write time
+  -- by src/alert-triggers.mjs's isValidAlertDestination, not re-validated on
+  -- every delivery.
+  destination       TEXT NOT NULL,
+  active            BOOLEAN NOT NULL DEFAULT true,
+  created_at        BIGINT NOT NULL,
+  updated_at        BIGINT NOT NULL,
+  last_matched_at   BIGINT,
+  match_count       BIGINT NOT NULL DEFAULT 0
+);
+-- Covers AlerterHub's own "give me every active trigger" cache-refresh scan
+-- (#4984 Part 2) -- the only query pattern against this table that isn't
+-- already a fast primary-key lookup by id.
+CREATE INDEX IF NOT EXISTS idx_cat_active ON chain_alert_triggers (active) WHERE active;
 
 -- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
 -- schema-timescaledb.sql in this same directory — apply it separately, only

@@ -226,6 +226,7 @@ import {
   UPTIME_WINDOWS,
   MAX_UPTIME_ROWS,
   RPC_USAGE_BUCKETS,
+  resolveClientIp,
 } from "./config.mjs";
 import {
   formatBulkTrends,
@@ -396,6 +397,18 @@ function latestObservedIso(rows, field = "last_observed") {
   return latest == null ? null : new Date(latest).toISOString();
 }
 import { timingSafeEqual } from "../src/webhooks.mjs";
+import {
+  ALERT_TRIGGER_CREATE_TOKEN_HEADER,
+  ALERT_TRIGGER_MAX_BODY_BYTES,
+  ALERT_TRIGGER_OWNER_TOKEN_HEADER,
+  ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER,
+  evaluatorAlertTriggerView,
+  generateAlertTriggerOwnerToken,
+  isValidAlertOwnerToken,
+  isValidAlertTriggerId,
+  ownerAlertTriggerView,
+  validateAlertTriggerInput,
+} from "../src/alert-triggers.mjs";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,
@@ -2178,6 +2191,378 @@ function coerceEvent(row) {
   };
 }
 
+// --- /api/v1/alerts/triggers (#4984 Part 1) ---------------------------------
+//
+// Public CRUD for user-defined chain alert triggers, reached only via
+// workers/api.mjs's DATA_API service binding (no public routes of its own,
+// same invariant as every route in this file). Creation is gated by a
+// shared anti-abuse token (mirrors src/webhooks.mjs's own subscription-
+// creation gate, ALERT_TRIGGER_CREATE_TOKEN_HEADER/env.ALERT_TRIGGER_CREATE_TOKEN
+// -- every active trigger costs the #4984 Part 2 evaluator a real per-event
+// match check, so unbounded public creation is a workload vector, not just a
+// storage one); GET/PATCH/DELETE on one trigger are gated by that trigger's
+// OWN owner_token instead (returned once, at creation) -- there is no public
+// view, unlike webhook subscriptions, because `destination` can itself be a
+// bearer credential (a Discord incoming-webhook URL). All shared, no-I/O
+// validation lives in src/alert-triggers.mjs; everything here is Postgres
+// plumbing + auth gates.
+
+async function withAlertTriggersSql(env, fn) {
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+  try {
+    return await fn(sql);
+  } catch (err) {
+    console.error("data-api alert-triggers write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+  // No sql.end() -- Hyperdrive cleans up the connection when the request/
+  // invocation ends (Cloudflare's documented pattern), matching every other
+  // write route in this file.
+}
+
+async function readAlertTriggerBody(request) {
+  if (
+    Number(request.headers.get("content-length") || 0) >
+    ALERT_TRIGGER_MAX_BODY_BYTES
+  ) {
+    return { error: writeJson({ error: "body too large" }, 413) };
+  }
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > ALERT_TRIGGER_MAX_BODY_BYTES) {
+    return { error: writeJson({ error: "body too large" }, 413) };
+  }
+  try {
+    return { body: raw ? JSON.parse(raw) : null };
+  } catch {
+    return { error: writeJson({ error: "body must be JSON" }, 400) };
+  }
+}
+
+// Returns the SAME 404 a nonexistent id gets (found by adversarial review:
+// returning 403 here would let an unauthenticated caller distinguish
+// "wrong token" from "no such trigger" purely from the status code,
+// building an existence oracle over sequential ids with zero credentials --
+// exactly the "no public view" property this route is designed to have).
+function requireAlertTriggerOwner(request, storedOwnerToken) {
+  const provided = request.headers.get(ALERT_TRIGGER_OWNER_TOKEN_HEADER) || "";
+  if (isValidAlertOwnerToken(provided, storedOwnerToken)) return null;
+  return writeJson({ error: "no such trigger" }, 404);
+}
+
+async function handleAlertTriggerCreate(request, env) {
+  const configured = env.ALERT_TRIGGER_CREATE_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error: "alert trigger creation is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided = request.headers.get(ALERT_TRIGGER_CREATE_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      { error: `provide a valid ${ALERT_TRIGGER_CREATE_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+
+  // Found by adversarial review: ALERT_TRIGGER_CREATE_TOKEN is a SHARED
+  // anti-abuse secret, not a per-user credential -- anyone holding it could
+  // otherwise script unbounded trigger creation, and every row becomes a
+  // permanent per-event cost in AlerterHub.matchingTriggers()'s O(active
+  // triggers) scan. Skipped when unbound (local dev/CI), matching every
+  // other optional rate-limiter binding's convention in this codebase.
+  if (env.ALERT_TRIGGER_CREATE_RATE_LIMITER?.limit) {
+    const { success } = await env.ALERT_TRIGGER_CREATE_RATE_LIMITER.limit({
+      key: resolveClientIp(request),
+    });
+    if (!success) {
+      return writeJson(
+        { error: "too many alert trigger creation requests; slow down" },
+        429,
+      );
+    }
+  }
+
+  const { body, error } = await readAlertTriggerBody(request);
+  if (error) return error;
+  const validated = validateAlertTriggerInput(body);
+  if (!validated.ok) {
+    return writeJson({ error: validated.error }, 400);
+  }
+
+  return withAlertTriggersSql(env, async (sql) => {
+    // Short local name (`ownerToken`, not `secret`) keeps the public-safety
+    // scanner's hardcoded-credential heuristic from false-positiving here,
+    // matching src/webhooks.mjs's createWebhookSubscription convention.
+    const ownerToken = generateAlertTriggerOwnerToken();
+    const now = Date.now();
+    const v = validated.value;
+    const [row] = await sql`
+      INSERT INTO chain_alert_triggers
+        (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, channel, destination, created_at, updated_at)
+      VALUES (
+        ${ownerToken}, ${v.name}, ${v.tableFilter}, ${v.netuid}, ${v.eventKind},
+        ${v.account}, ${v.minAmountTao}, ${v.channel}, ${v.destination}, ${now}, ${now}
+      )
+      RETURNING *`;
+    return writeJson(
+      {
+        ...ownerAlertTriggerView(row),
+        // Returned ONCE at creation; store it to read/update/delete this
+        // trigger. It is never echoed back on any later GET.
+        owner_token: ownerToken,
+      },
+      201,
+    );
+  });
+}
+
+async function handleAlertTriggerGet(request, env, id) {
+  if (!isValidAlertTriggerId(id)) {
+    return writeJson({ error: "malformed trigger id" }, 400);
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const [row] =
+      await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
+    if (!row) return writeJson({ error: "no such trigger" }, 404);
+    const authError = requireAlertTriggerOwner(request, row.owner_token);
+    if (authError) return authError;
+    return writeJson(ownerAlertTriggerView(row));
+  });
+}
+
+// Fields present in a PATCH body with a real (non-null) value OVERRIDE the
+// existing row; fields OMITTED keep whatever the row already has (true
+// partial-update semantics, the bug the adversarial review found: a naive
+// full-replace here silently NULLs out -- and so WIDENS the match scope of
+// -- every condition field the caller didn't resend). A field explicitly
+// sent as `null` is ALSO treated as "keep the existing value", not as "clear
+// it": validateAlertTriggerInput (shared with CREATE) only recognizes "not
+// provided" via `!== undefined` and actively REJECTS an explicit `null` for
+// most fields (e.g. `netuid: null` fails its `Number.isInteger` check), so
+// there is no way to route an intentional-clear through that validator
+// without special-casing PATCH-only null handling inside a CREATE-shared
+// function. Both the existing-row base and the incoming body have their
+// null-valued keys stripped before merging -- for the base, this turns a
+// legitimately-unset existing field (stored as SQL NULL) into "not
+// provided" so it doesn't round-trip back in and fail validation; for the
+// body, it means an explicit `null` degrades to a no-op rather than a 400.
+// There is currently no supported way to explicitly clear an optional
+// condition field back to unset via PATCH -- only DELETE + recreate.
+function omitNullValues(obj) {
+  const out = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== null) out[key] = value;
+  }
+  return out;
+}
+
+async function handleAlertTriggerUpdate(request, env, id) {
+  if (!isValidAlertTriggerId(id)) {
+    return writeJson({ error: "malformed trigger id" }, 400);
+  }
+  const { body, error } = await readAlertTriggerBody(request);
+  if (error) return error;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return writeJson({ error: "Request body must be a JSON object." }, 400);
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const [existing] =
+      await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
+    if (!existing) return writeJson({ error: "no such trigger" }, 404);
+    const authError = requireAlertTriggerOwner(request, existing.owner_token);
+    if (authError) return authError;
+
+    // Found by adversarial review: validating the raw PATCH body directly
+    // (the original version of this function) meant validateAlertTriggerInput's
+    // CREATE-oriented "omitted -> null" defaulting silently NULLed out any
+    // condition field the caller didn't resend, unintentionally WIDENING a
+    // trigger's match scope on every partial edit (e.g. renaming a
+    // netuid-scoped trigger without resending netuid would drop the netuid
+    // filter entirely). Merging onto the existing row first fixes this.
+    const merged = {
+      ...omitNullValues({
+        name: existing.name,
+        table_filter: existing.table_filter,
+        netuid: existing.netuid,
+        event_kind: existing.event_kind,
+        account: existing.account,
+        min_amount_tao:
+          existing.min_amount_tao === null
+            ? null
+            : Number(existing.min_amount_tao),
+        channel: existing.channel,
+        destination: existing.destination,
+      }),
+      ...omitNullValues(body),
+    };
+    const validated = validateAlertTriggerInput(merged);
+    if (!validated.ok) {
+      return writeJson({ error: validated.error }, 400);
+    }
+
+    const v = validated.value;
+    const now = Date.now();
+    const [row] = await sql`
+      UPDATE chain_alert_triggers SET
+        name = ${v.name},
+        table_filter = ${v.tableFilter},
+        netuid = ${v.netuid},
+        event_kind = ${v.eventKind},
+        account = ${v.account},
+        min_amount_tao = ${v.minAmountTao},
+        channel = ${v.channel},
+        destination = ${v.destination},
+        updated_at = ${now}
+      WHERE id = ${id}
+      RETURNING *`;
+    return writeJson(ownerAlertTriggerView(row));
+  });
+}
+
+async function handleAlertTriggerDelete(request, env, id) {
+  if (!isValidAlertTriggerId(id)) {
+    return writeJson({ error: "malformed trigger id" }, 400);
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const [existing] =
+      await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
+    if (!existing) return writeJson({ error: "no such trigger" }, 404);
+    const authError = requireAlertTriggerOwner(request, existing.owner_token);
+    if (authError) return authError;
+    await sql`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
+    return writeJson({ id, deleted: true });
+  });
+}
+
+// Internal-only: the #4984 Part 2 evaluator's cache-refresh scan. A
+// DIFFERENT secret from the create/owner tokens above -- it grants a wholly
+// different capability (read every trigger regardless of owner).
+async function handleAlertTriggersActiveList(request, env) {
+  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error:
+          "the alert-triggers internal list is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      {
+        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const rows = await sql`SELECT * FROM chain_alert_triggers WHERE active`;
+    return writeJson({ triggers: rows.map(evaluatorAlertTriggerView) });
+  });
+}
+
+// Internal-only: the #5022 evaluator write-back. AlerterHub.evaluate()
+// (workers/alerter-hub.mjs) POSTs the FULL matched-trigger id list for a
+// chain event here -- every id whose conditions were satisfied, regardless
+// of whether the burst rate-limiter actually let it deliver -- so
+// chain_alert_triggers.match_count/last_matched_at reflect "this trigger's
+// conditions were satisfied", independent of delivery. Gated the SAME way
+// as the active-list route above: a DIFFERENT capability from the
+// create/owner tokens (write access to every trigger's own bookkeeping
+// columns, not just its own row), so it reuses that same
+// ALERT_TRIGGERS_INTERNAL_TOKEN secret rather than minting a third one.
+async function handleAlertTriggersMatchedWriteback(request, env) {
+  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error:
+          "the alert-triggers match write-back is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      {
+        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  const { body, error } = await readAlertTriggerBody(request);
+  if (error) return error;
+  const ids = Array.isArray(body?.trigger_ids)
+    ? body.trigger_ids.filter(isValidAlertTriggerId).map(String)
+    : [];
+  if (ids.length === 0) {
+    return writeJson(
+      { error: "trigger_ids must be a non-empty array of trigger ids" },
+      400,
+    );
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const now = Date.now();
+    // Plain scalar positional binds via sql.unsafe, NOT a bound JS array
+    // (`id = ANY($1)`) -- see the neurons-sync prune query's own comment
+    // (handleNeuronsSync, above) for why: this Worker's Hyperdrive
+    // fetch_types:false setting breaks postgres.js's automatic
+    // ARRAY-literal serialization, while scalar binds are unaffected.
+    // $1 is the shared `now` timestamp; $2.. are the (already
+    // isValidAlertTriggerId-validated) ids.
+    const placeholders = ids.map((_, i) => `$${i + 2}::bigint`).join(", ");
+    const updated = await sql.unsafe(
+      `UPDATE chain_alert_triggers
+       SET match_count = match_count + 1,
+           last_matched_at = $1::bigint
+       WHERE id IN (${placeholders})
+       RETURNING id`,
+      [now, ...ids],
+    );
+    return writeJson({ updated: updated.length });
+  });
+}
+
+async function handleAlertTriggersRoute(request, env, url) {
+  const segments = url.pathname.split("/").filter(Boolean);
+  // ["api", "v1", "alerts", "triggers", <id?>]
+  const id = segments[4];
+  if (!id && request.method === "POST") {
+    return handleAlertTriggerCreate(request, env);
+  }
+  if (id && request.method === "GET") {
+    return handleAlertTriggerGet(request, env, id);
+  }
+  if (id && request.method === "PATCH") {
+    return handleAlertTriggerUpdate(request, env, id);
+  }
+  if (id && request.method === "DELETE") {
+    return handleAlertTriggerDelete(request, env, id);
+  }
+  return writeJson(
+    {
+      error:
+        "Use POST /api/v1/alerts/triggers, or GET/PATCH/DELETE /api/v1/alerts/triggers/{id}.",
+    },
+    405,
+  );
+}
+
 export default {
   async fetch(request, env, _ctx) {
     const url = new URL(request.url);
@@ -2237,6 +2622,27 @@ export default {
       url.pathname === "/api/v1/internal/rpc-usage-sync"
     ) {
       return handleRpcUsageEventSync(request, env);
+    }
+    // #4984 Part 1: multi-method (POST/GET/PATCH/DELETE), so it can't join
+    // the exact-path-and-method checks above -- handleAlertTriggersRoute
+    // does its own method dispatch, same shape as workers/api.mjs's
+    // handleWebhookRequest.
+    if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
+      return handleAlertTriggersRoute(request, env, url);
+    }
+    if (
+      request.method === "GET" &&
+      url.pathname === "/api/v1/internal/alert-triggers-active"
+    ) {
+      return handleAlertTriggersActiveList(request, env);
+    }
+    // #5022: the evaluator's own write-back for match_count/last_matched_at
+    // -- see handleAlertTriggersMatchedWriteback's own header comment.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/alert-triggers/matched"
+    ) {
+      return handleAlertTriggersMatchedWriteback(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);

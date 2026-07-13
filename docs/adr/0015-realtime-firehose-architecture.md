@@ -50,6 +50,10 @@ firehose's two halves live.
    table commits: a stuck relay or listener cannot pin Postgres's global async
    notification queue and cause commit-time `NOTIFY` failures. Ordinary local
    database failures remain database failures. See #4980.
+   **Extended 2026-07-13** (#4984 prerequisite): the trigger now also fires on
+   `account_events` inserts. None of the original three tables carry
+   netuid/hotkey/coldkey/amount_tao, which the alerter's own example trigger
+   conditions need directly, without a per-event Postgres round-trip.
 2. **A new, separate box-side relay process bridges Postgres to Cloudflare**
    (#4981), polling/claiming pending outbox rows and forwarding to the Durable
    Object over HTTP with a bounded, drop-oldest retry policy. If this process

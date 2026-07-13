@@ -46,6 +46,25 @@
         "https://backprop.finance/dtao/subnets/119-satori"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/119"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-119-taomarketcap-candle-chart",
+      "kind": "data-artifact",
+      "name": "SN119 TaoMarketCap OHLCV candle-chart dataset",
+      "notes": "Public no-auth GET /public/v1/subnets/119/candle-chart on api.taomarketcap.com returning a machine-readable JSON time-series of hourly OHLCV candles for SN119 Satori's alpha token: each record carries period_name, timestamp, block_number, open/high/low/close, volume, start_volume, and tao_price_usd/eur, every record scoped to subnet_id 119. A standalone historical price/volume dataset, distinct from the point-in-time /subnets/119 snapshot already registered. SN119 exposes no first-party API; this indexed feed is the concrete public JSON data endpoint for netuid 119, documented in the TaoMarketCap developer API (its public-oas3.json lists this GET with an optional API key, i.e. no-auth access is supported).",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh171112"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://backprop.finance/dtao/subnets/119-satori"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/119/candle-chart/"
     }
   ],
   "website_url": null

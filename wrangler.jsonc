@@ -345,6 +345,73 @@
       "service": "metagraphed-registry-sync-api",
     },
   ],
+  // Realtime chain-event firehose (#4982, ADR 0015): the first Durable Object
+  // in this codebase. One global instance (idFromName("global"), see
+  // workers/chain-firehose-hub.mjs) fans out #4980's Postgres NOTIFY payloads
+  // -- forwarded here by the #4981 box-side relay -- over SSE and WebSocket.
+  // Co-located with this Worker (not a dedicated Worker like DATA_API/
+  // REGISTRY_SYNC_API above) because it serves this Worker's own public
+  // /api/v1/chain/stream route directly, not a separate database tier. The
+  // #4981 relay's ingest secret is provisioned the same way every other
+  // *_SYNC_SECRET is: `wrangler secret put CHAIN_FIREHOSE_SYNC_SECRET`
+  // (see docs/realtime-firehose.md).
+  //
+  // #4984 Part 2: AlerterHub calls the DATA_API service binding's internal
+  // active-trigger-list route directly, so this Worker needs the SAME
+  // ALERT_TRIGGERS_INTERNAL_TOKEN value already provisioned on
+  // wrangler.data.jsonc (`wrangler secret put ALERT_TRIGGERS_INTERNAL_TOKEN`
+  // -- see that file's own comment). Not yet provisioned on any deployment;
+  // until it is, the evaluator's trigger cache just stays empty (no crash,
+  // no delivery, matching every other optional binding's degrade-gracefully
+  // convention in this codebase).
+  //
+  // #4984 Part 3 (workers/alerter-hub.mjs's deliverAlertMatch) needs three
+  // MORE secrets, one per non-webhook/-discord channel (those two need
+  // nothing beyond the trigger's own `destination` -- a URL, not a shared
+  // credential):
+  //   wrangler secret put TELEGRAM_BOT_TOKEN
+  //   wrangler secret put RESEND_API_KEY
+  //   wrangler secret put RESEND_FROM_ADDRESS
+  // None yet provisioned on any deployment; until each is, that ONE
+  // channel silently no-ops on delivery (webhook/discord/the other two
+  // channels are unaffected).
+  "durable_objects": {
+    "bindings": [
+      { "name": "CHAIN_FIREHOSE_HUB", "class_name": "ChainFirehoseHub" },
+      // #4983 MCP half: one instance per Mcp-Session-Id (workers/mcp-session-hub.mjs),
+      // reached only from src/mcp-server.mjs's /mcp dispatch -- see that
+      // file's own header comment for why this is a SEPARATE DO from
+      // ChainFirehoseHub rather than a fourth connection population on it.
+      { "name": "MCP_SESSION_HUB", "class_name": "McpSessionHub" },
+      // #4984 Part 2: the alerter evaluator, a SINGLETON (idFromName("global"),
+      // like ChainFirehoseHub itself) -- pinged unconditionally on every
+      // broadcast(), unlike McpSessionHub's per-session Set, since there is
+      // exactly one evaluator. See workers/alerter-hub.mjs's own header
+      // comment for why it stays a separate DO rather than in-memory state
+      // on ChainFirehoseHub.
+      { "name": "ALERTER_HUB", "class_name": "AlerterHub" },
+    ],
+  },
+  // Durable Object class migrations are one-way and versioned: adding a new
+  // class is a `new_sqlite_classes` entry (SQLite storage backend -- the
+  // default for new classes; no legacy `new_classes` durable-storage class to
+  // migrate from). Renaming/deleting a class later needs its OWN migration
+  // entry appended here, never an edit to an existing one -- hence
+  // McpSessionHub getting its own v2 tag rather than joining v1's array.
+  "migrations": [
+    {
+      "tag": "v1-chain-firehose-hub",
+      "new_sqlite_classes": ["ChainFirehoseHub"],
+    },
+    {
+      "tag": "v2-mcp-session-hub",
+      "new_sqlite_classes": ["McpSessionHub"],
+    },
+    {
+      "tag": "v3-alerter-hub",
+      "new_sqlite_classes": ["AlerterHub"],
+    },
+  ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV
   // (served live); the hourly trigger prunes the D1 time-series. 15 min (96
   // checks/day/surface) is ample for a registry's uptime + incident signal and

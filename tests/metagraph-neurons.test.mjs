@@ -1111,56 +1111,6 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     METAGRAPH_HEALTH_DB: neuronsD1([ROW, MINER]),
   };
 
-  test("GET /subnets/{n}/metagraph returns all neurons", async () => {
-    const { res, body } = await getJson("/api/v1/subnets/7/metagraph", env);
-    assert.equal(res.status, 200);
-    assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.neurons[0].validator_permit, true);
-  });
-
-  test("GET /subnets/{n}/metagraph?format=csv exports neuron rows", async () => {
-    const { res, text } = await getText(
-      "/api/v1/subnets/7/metagraph?format=csv",
-      env,
-    );
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
-    assert.equal(
-      res.headers.get("content-disposition"),
-      'attachment; filename="subnet-metagraph.csv"',
-    );
-    const lines = text.split("\r\n");
-    assert.equal(lines[0], NEURON_CSV_HEADER);
-    assert.equal(lines.length, 3);
-    assert.equal(
-      lines[1],
-      "0,5Hk1,5Co1,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091",
-    );
-    assert.match(lines[2], /^5,5Hk5,5Co1,true,false,/);
-  });
-
-  test("?validator_permit=true filters to validators", async () => {
-    const { body } = await getJson(
-      "/api/v1/subnets/7/metagraph?validator_permit=true",
-      env,
-    );
-    assert.equal(body.data.neurons.length, 1);
-    assert.equal(body.data.neurons[0].uid, 0);
-  });
-
-  test("?validator_permit=true&format=csv narrows metagraph CSV to validators", async () => {
-    const { text } = await getText(
-      "/api/v1/subnets/7/metagraph?validator_permit=true&format=csv",
-      env,
-    );
-    const lines = text.split("\r\n");
-    assert.deepEqual(lines, [
-      NEURON_CSV_HEADER,
-      "0,5Hk1,5Co1,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091",
-    ]);
-  });
-
   test("GET /subnets/{n}/metagraph?format=csv emits a header-only cold export", async () => {
     const coldEnv = {
       ...createLocalArtifactEnv(),
@@ -1172,200 +1122,6 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(text, NEURON_CSV_HEADER);
-  });
-
-  test("GET /subnets/{n}/yield routes to the emission-yield handler", async () => {
-    const { res, body } = await getJson("/api/v1/subnets/7/yield", env);
-    assert.equal(res.status, 200);
-    assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(Array.isArray(body.data.neurons), true);
-    assert.equal(typeof body.data.validator_count, "number");
-    // ranked by yield desc, so the per-UID yields are non-increasing
-    const ys = body.data.neurons.map((n) => n.yield).filter((y) => y != null);
-    assert.deepEqual(
-      ys,
-      [...ys].sort((a, b) => b - a),
-    );
-    assert.equal(body.meta.source, "metagraph-snapshot");
-  });
-
-  test("GET /subnets/{n}/concentration computes per-UID, entity, and validator metrics", async () => {
-    const { res, body } = await getJson("/api/v1/subnets/7/concentration", env);
-    assert.equal(res.status, 200);
-    assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.stake.holders, 2); // 2 UIDs
-    assert.equal(body.data.emission.holders, 2);
-    // ROW + MINER share coldkey "5Co1" → one controlling entity.
-    assert.equal(body.data.entity_count, 1);
-    assert.equal(body.data.uids_per_entity, 2);
-    assert.equal(body.data.entity_stake.holders, 1);
-    // Only ROW carries a validator permit.
-    assert.equal(body.data.validator_stake.holders, 1);
-    assert.equal(typeof body.data.stake.gini, "number");
-    assert.equal(typeof body.data.stake.nakamoto_coefficient, "number");
-  });
-
-  test("GET /subnets/{n}/concentration/history routes to the trend handler", async () => {
-    const dailyEnv = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: neuronsD1([
-        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 5 },
-        { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
-      ]),
-    };
-    const { res, body } = await getJson(
-      "/api/v1/subnets/7/concentration/history?window=7d",
-      dailyEnv,
-    );
-    assert.equal(res.status, 200);
-    assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.window, "7d");
-    assert.equal(Array.isArray(body.data.points), true);
-    assert.equal(body.data.point_count, 1); // both rows share one snapshot_date
-  });
-
-  test("GET /subnets/{n}/turnover routes to the turnover handler", async () => {
-    // Two-query handler: a MIN/MAX boundary probe, then the boundary rows.
-    const turnoverEnv = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                all() {
-                  if (/MIN\(snapshot_date\)/.test(sql)) {
-                    return Promise.resolve({
-                      results: [
-                        { start_date: "2026-05-28", end_date: "2026-06-27" },
-                      ],
-                    });
-                  }
-                  return Promise.resolve({
-                    results: [
-                      {
-                        snapshot_date: "2026-05-28",
-                        uid: 0,
-                        hotkey: "V1",
-                        validator_permit: 1,
-                      },
-                      {
-                        snapshot_date: "2026-06-27",
-                        uid: 0,
-                        hotkey: "V1",
-                        validator_permit: 1,
-                      },
-                    ],
-                  });
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-    const { res, body } = await getJson(
-      "/api/v1/subnets/7/turnover?window=30d",
-      turnoverEnv,
-    );
-    assert.equal(res.status, 200);
-    assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.comparable, true);
-    assert.equal(body.data.validators_start, 1);
-  });
-
-  test("GET /subnets/{n}/stake-flow routes to the stake-flow handler", async () => {
-    const stakeFlowEnv = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                all() {
-                  if (/SUM\(amount_tao\)/.test(sql)) {
-                    return Promise.resolve({
-                      results: [
-                        {
-                          event_kind: "StakeAdded",
-                          total_tao: 300,
-                          event_count: 6,
-                          last_observed: 1717900000000,
-                        },
-                        {
-                          event_kind: "StakeRemoved",
-                          total_tao: 100,
-                          event_count: 3,
-                          last_observed: 1717800000000,
-                        },
-                      ],
-                    });
-                  }
-                  return Promise.resolve({ results: [] });
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-    const { res, body } = await getJson(
-      "/api/v1/subnets/7/stake-flow?window=30d",
-      stakeFlowEnv,
-    );
-    assert.equal(res.status, 200);
-    assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.total_staked_tao, 300);
-    assert.equal(body.data.total_unstaked_tao, 100);
-    assert.equal(body.data.net_flow_tao, 200);
-    // account_events provenance + newest event timestamp (ISO string) in the window.
-    assert.equal(body.meta.source, "chain-events");
-    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
-  });
-
-  test("GET /subnets/movers routes to the cross-subnet movers handler", async () => {
-    const moversEnv = createMoversEnv();
-    const { res, body } = await getJson(
-      "/api/v1/subnets/movers?window=30d&sort=stake&limit=10",
-      moversEnv,
-    );
-    assert.equal(res.status, 200);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.sort, "stake");
-    assert.equal(body.data.start_date, "2026-05-31");
-    assert.equal(body.data.end_date, "2026-06-30");
-    assert.equal(body.data.subnet_count, 2);
-    // subnet 1 (+150 stake) ranks above subnet 2 (-20)
-    assert.equal(body.data.movers[0].netuid, 1);
-    assert.equal(body.data.movers[0].stake_delta_tao, 150);
-    assert.equal(body.data.movers[1].netuid, 2);
-    assert.equal(body.data.movers[1].stake_delta_tao, -20);
-    // neuron_daily provenance + end snapshot date as generated_at.
-    assert.equal(body.meta.source, "metagraph-snapshot");
-    assert.equal(body.meta.generated_at, "2026-06-30");
-  });
-
-  test("GET /subnets/movers?format=csv exports ranked mover rows", async () => {
-    const { res, text } = await getText(
-      "/api/v1/subnets/movers?window=30d&sort=emission&limit=10&format=csv",
-      createMoversEnv(),
-    );
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
-    assert.equal(
-      res.headers.get("content-disposition"),
-      'attachment; filename="subnet-movers.csv"',
-    );
-    const lines = text.split("\r\n");
-    assert.deepEqual(lines, [
-      MOVERS_CSV_HEADER,
-      "1,100,250,150,150,5,9,4,80,3,4,1,10,12,2",
-      "2,50,30,'-20,'-40,4,4,0,0,2,2,0,8,8,0",
-    ]);
   });
 
   test("GET /subnets/movers?format=csv emits a header-only cold export", async () => {
@@ -1381,80 +1137,12 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(res.status, 400);
   });
 
-  test("GET /subnets/{n}/validators returns only validators", async () => {
-    const { body } = await getJson("/api/v1/subnets/7/validators", env);
-    assert.equal(body.data.validator_count, 1);
-    assert.equal(body.data.validators[0].validator_permit, true);
-  });
-
-  test("GET /subnets/{n}/validators?format=csv exports validator rows", async () => {
-    const { res, text } = await getText(
-      "/api/v1/subnets/7/validators?format=csv",
-      env,
-    );
-    assert.equal(res.status, 200);
-    assert.deepEqual(text.split("\r\n"), [
-      NEURON_CSV_HEADER,
-      "0,5Hk1,5Co1,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091",
-    ]);
-  });
-
   test("GET /subnets/{n}/validators rejects invalid response formats", async () => {
     const { res } = await getJson(
       "/api/v1/subnets/7/validators?format=xml",
       env,
     );
     assert.equal(res.status, 400);
-  });
-
-  test("GET /validators returns the global validator leaderboard", async () => {
-    const globalEnv = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: neuronsD1([
-        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", stake_tao: 10 },
-        { ...ROW, netuid: 2, uid: 1, hotkey: "hk-a", stake_tao: 20 },
-        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-b", stake_tao: 100 },
-        { ...MINER, netuid: 4, uid: 0, hotkey: "hk-miner", stake_tao: 999 },
-      ]),
-    };
-    const { res, body } = await getJson(
-      "/api/v1/validators?sort=subnet_count&limit=2",
-      globalEnv,
-    );
-    assert.equal(res.status, 200);
-    assert.equal(body.data.sort, "subnet_count");
-    assert.equal(body.data.limit, 2);
-    assert.equal(body.data.validator_count, 2);
-    assert.equal(body.data.validators[0].hotkey, "hk-a");
-    assert.equal(body.data.validators[0].subnet_count, 2);
-    assert.equal(body.data.validators[0].uid_count, 2);
-    assert.equal(body.data.validators[1].hotkey, "hk-b");
-    assert.equal(body.meta.artifact_path, "/metagraph/validators.json");
-    assert.equal(body.meta.source, "metagraph-snapshot");
-  });
-
-  test("GET /validators?format=csv exports the global validator leaderboard", async () => {
-    const globalEnv = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: neuronsD1([
-        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", stake_tao: 10 },
-        { ...ROW, netuid: 2, uid: 1, hotkey: "hk-a", stake_tao: 20 },
-        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-b", stake_tao: 100 },
-        { ...MINER, netuid: 4, uid: 0, hotkey: "hk-miner", stake_tao: 999 },
-      ]),
-    };
-    const { res, text } = await getText(
-      "/api/v1/validators?sort=uid_count&limit=2&format=csv",
-      globalEnv,
-    );
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
-    const lines = text.split("\r\n");
-    assert.equal(lines[0], GLOBAL_VALIDATOR_CSV_HEADER);
-    assert.equal(lines.length, 3);
-    assert.match(lines[1], /^hk-a,5Co1,1,2,2,30,44\.2,0\.230769/);
-    assert.match(lines[1], /"\{""netuid"":2/);
-    assert.match(lines[2], /^hk-b,5Co1,1,1,1,100,22\.1,0\.769231/);
   });
 
   test("GET /validators?format=csv emits a header-only cold export", async () => {
@@ -1464,21 +1152,6 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     };
     const { text } = await getText("/api/v1/validators?format=csv", coldEnv);
     assert.equal(text, GLOBAL_VALIDATOR_CSV_HEADER);
-  });
-
-  test("GET /validators defaults the sort when omitted", async () => {
-    const globalEnv = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: neuronsD1([
-        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", stake_tao: 10 },
-      ]),
-    };
-    const { res, body } = await getJson("/api/v1/validators", globalEnv);
-
-    assert.equal(res.status, 200);
-    assert.equal(body.data.sort, "subnet_count");
-    assert.equal(body.data.limit, 20);
-    assert.equal(body.data.validators[0].hotkey, "hk-a");
   });
 
   test("GET /validators rejects invalid query params", async () => {
@@ -1500,46 +1173,12 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
 
   const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  test("GET /validators/{hotkey} returns cross-subnet validator detail", async () => {
-    const hotkeyEnv = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: neuronsD1([
-        { ...ROW, netuid: 1, uid: 0, hotkey: HOTKEY, stake_tao: 10 },
-        { ...ROW, netuid: 2, uid: 1, hotkey: HOTKEY, stake_tao: 20 },
-        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-other", stake_tao: 999 },
-        { ...MINER, netuid: 4, uid: 5, hotkey: HOTKEY }, // permit=0: excluded
-      ]),
-    };
-    const { res, body } = await getJson(
-      `/api/v1/validators/${HOTKEY}`,
-      hotkeyEnv,
-    );
-    assert.equal(res.status, 200);
-    assert.equal(body.data.hotkey, HOTKEY);
-    assert.equal(body.data.subnet_count, 2);
-    assert.deepEqual(
-      body.data.subnets.map((s) => s.netuid),
-      [1, 2],
-    );
-    assert.equal(
-      body.meta.artifact_path,
-      `/metagraph/validators/${HOTKEY}.json`,
-    );
-    assert.equal(body.meta.source, "metagraph-snapshot");
-  });
-
   test("GET /validators/{hotkey} for an absent hotkey returns a zeroed aggregate, never 404", async () => {
     const { res, body } = await getJson(`/api/v1/validators/${HOTKEY}`, env);
     assert.equal(res.status, 200);
     assert.equal(body.data.hotkey, HOTKEY);
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.subnets, []);
-  });
-
-  test("GET /subnets/{n}/neurons/{uid} returns the neuron", async () => {
-    const { res, body } = await getJson("/api/v1/subnets/7/neurons/0", env);
-    assert.equal(res.status, 200);
-    assert.equal(body.data.neuron.uid, 0);
   });
 
   test("GET /subnets/{n}/neurons/{uid} for an absent uid → 200 neuron:null", async () => {

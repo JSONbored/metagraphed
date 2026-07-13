@@ -1467,47 +1467,79 @@ function CopyableCode({
     }
   );
 }
+function SegmentedToggle({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      role: "tablist",
+      "aria-label": ariaLabel,
+      className: classNames(
+        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
+        className
+      ),
+      children: options.map(
+        ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
+          const active = v === value;
+          return /* @__PURE__ */ jsxRuntime.jsxs(
+            "button",
+            {
+              type: "button",
+              role: "tab",
+              "aria-selected": active,
+              "aria-label": optionAriaLabel ?? label,
+              title: title ?? label,
+              onClick: () => onChange(v),
+              className: classNames(
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
+                active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
+              ),
+              children: [
+                Icon ? /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5" }) : null,
+                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
+              ]
+            },
+            v
+          );
+        }
+      )
+    }
+  );
+}
 function DensityToggle({
   value,
   onChange,
   className
 }) {
   const options = [
-    { value: "comfortable", label: "Comfortable", Icon: lucideReact.Rows3 },
-    { value: "compact", label: "Compact", Icon: lucideReact.Rows2 }
+    {
+      value: "comfortable",
+      label: "Comfortable",
+      Icon: lucideReact.Rows3,
+      ariaLabel: "Comfortable row density",
+      title: "Comfortable rows"
+    },
+    {
+      value: "compact",
+      label: "Compact",
+      Icon: lucideReact.Rows2,
+      ariaLabel: "Compact row density",
+      title: "Compact rows"
+    }
   ];
   return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
+    SegmentedToggle,
     {
-      role: "tablist",
-      "aria-label": "Row density",
-      className: classNames(
-        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
-        className
-      ),
-      children: options.map(({ value: v, label, Icon }) => {
-        const active = v === value;
-        return /* @__PURE__ */ jsxRuntime.jsxs(
-          "button",
-          {
-            type: "button",
-            role: "tab",
-            "aria-selected": active,
-            "aria-label": `${label} row density`,
-            title: `${label} rows`,
-            onClick: () => onChange(v),
-            className: classNames(
-              "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
-              active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
-            ),
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5" }),
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
-            ]
-          },
-          v
-        );
-      })
+      options,
+      value,
+      onChange,
+      ariaLabel: "Row density",
+      className
     }
   );
 }
@@ -2437,9 +2469,24 @@ function TableState({
   );
 }
 var OPTIONS = [
-  { value: "table", label: "Table", Icon: lucideReact.List },
-  { value: "grid", label: "Grid", Icon: lucideReact.LayoutGrid },
-  { value: "matrix", label: "Matrix", Icon: lucideReact.Grid3x3 }
+  {
+    value: "table",
+    label: "Table",
+    Icon: lucideReact.List,
+    ariaLabel: "Switch to table view"
+  },
+  {
+    value: "grid",
+    label: "Grid",
+    Icon: lucideReact.LayoutGrid,
+    ariaLabel: "Switch to grid view"
+  },
+  {
+    value: "matrix",
+    label: "Matrix",
+    Icon: lucideReact.Grid3x3,
+    ariaLabel: "Switch to matrix view"
+  }
 ];
 function ViewModeToggle({
   value,
@@ -2449,37 +2496,13 @@ function ViewModeToggle({
 }) {
   const available = OPTIONS.filter((o) => options.includes(o.value));
   return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
+    SegmentedToggle,
     {
-      role: "tablist",
-      "aria-label": "View mode",
-      className: classNames(
-        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
-        className
-      ),
-      children: available.map(({ value: v, label, Icon }) => {
-        const active = v === value;
-        return /* @__PURE__ */ jsxRuntime.jsxs(
-          "button",
-          {
-            type: "button",
-            role: "tab",
-            "aria-selected": active,
-            "aria-label": `Switch to ${label.toLowerCase()} view`,
-            title: label,
-            onClick: () => onChange(v),
-            className: classNames(
-              "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
-              active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
-            ),
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5" }),
-              /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
-            ]
-          },
-          v
-        );
-      })
+      options: available,
+      value,
+      onChange,
+      ariaLabel: "View mode",
+      className
     }
   );
 }

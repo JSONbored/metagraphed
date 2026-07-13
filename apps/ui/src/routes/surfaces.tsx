@@ -38,11 +38,12 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { surfacesInfiniteQuery, providersQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
+import { sortBy } from "@/lib/metagraphed/url-state";
+import { surfacesSearchSchema, matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
 import type { Surface, Provider, Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/surfaces")({
-  validateSearch: tableSearchSchema,
+  validateSearch: surfacesSearchSchema,
   head: () => ({
     meta: [
       { title: "Surfaces — Metagraphed" },
@@ -71,6 +72,9 @@ function SurfacesPage() {
     !!search.kind ||
     !!search.provider ||
     !!search.netuid ||
+    !!search.public_safe ||
+    !!search.auth ||
+    !!search.rate_limited ||
     !!search.cursor;
   const onReset = () =>
     navigate({
@@ -223,14 +227,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
         }) as never,
     });
 
-  const filtered = all.filter((s) => {
-    if (!matchesQuery([s.name, s.url, s.provider, s.provider_slug, s.netuid], search.q))
-      return false;
-    if (search.kind && s.kind !== search.kind) return false;
-    if (search.provider && (s.provider_slug ?? s.provider) !== search.provider) return false;
-    if (search.netuid && String(s.netuid) !== search.netuid) return false;
-    return true;
-  });
+  const filtered = all.filter((s) => matchesSurfaceFilters(s, search));
   const rows = sortBy(
     filtered,
     search.sort,
@@ -267,7 +264,15 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
     </>
   );
 
-  const filtersActive = !!(search.q || search.kind || search.provider || search.netuid);
+  const filtersActive = !!(
+    search.q ||
+    search.kind ||
+    search.provider ||
+    search.netuid ||
+    search.public_safe ||
+    search.auth ||
+    search.rate_limited
+  );
 
   const emptyNode = (
     <RegistryEmpty
@@ -285,7 +290,16 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           ? [
               {
                 label: "Reset filters",
-                onClick: () => setSearch({ q: "", kind: "", provider: "", netuid: "" }),
+                onClick: () =>
+                  setSearch({
+                    q: "",
+                    kind: "",
+                    provider: "",
+                    netuid: "",
+                    public_safe: "",
+                    auth: "",
+                    rate_limited: "",
+                  }),
                 primary: true,
               },
               { label: "Open API", href: "/api/v1/surfaces", external: true },

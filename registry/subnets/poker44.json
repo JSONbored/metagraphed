@@ -51,6 +51,24 @@
         "https://api.poker44.net/api/v1/benchmark"
       ],
       "url": "https://api.poker44.net/api/v1/benchmark"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-dashboard",
+      "kind": "dashboard",
+      "name": "Poker44 live benchmark dashboard",
+      "notes": "Public no-auth Poker44 (SN126) web dashboard at poker44.net/dashboard — the 'Live Benchmark for Bot Detection' leaderboard showing per-round miner scores, validator fleet status, and cycle progress across the subnet's competition rounds. Served on the official poker44.net platform linked from the Poker44/Poker44-subnet README; distinct from the api.poker44.net JSON benchmark/health endpoints.",
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/README.md"
+      ],
+      "url": "https://poker44.net/dashboard"
     }
   ],
   "website_url": "https://poker44.net/"

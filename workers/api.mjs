@@ -221,6 +221,10 @@ import {
   WEBHOOK_SIGNATURE_HEADER,
 } from "../src/webhooks.mjs";
 import {
+  ALERT_TRIGGER_CREATE_TOKEN_HEADER,
+  ALERT_TRIGGER_OWNER_TOKEN_HEADER,
+} from "../src/alert-triggers.mjs";
+import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
   pruneHealthHistory,
@@ -255,6 +259,12 @@ import {
   validEconomicsBackfillRows,
 } from "../src/economics-backfill.mjs";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
+import {
+  CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
+  ChainFirehoseHub,
+} from "./chain-firehose-hub.mjs";
+import { McpSessionHub } from "./mcp-session-hub.mjs";
+import { AlerterHub } from "./alerter-hub.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -426,6 +436,13 @@ export default {
     return handleScheduled(controller, env, ctx);
   },
 };
+
+// Durable Object classes must be named exports of this Worker's main entry
+// module (wrangler.jsonc's "main": "workers/api.mjs") -- re-exporting the
+// classes defined in chain-firehose-hub.mjs/mcp-session-hub.mjs is what
+// makes the "durable_objects"/"migrations" bindings in wrangler.jsonc
+// resolvable.
+export { ChainFirehoseHub, McpSessionHub, AlerterHub };
 
 // The staged-artifact loaders now live in request-handlers/staging.mjs (#1763).
 // Re-export it so the scheduled cron drain (handleScheduled) and the staging
@@ -742,6 +759,44 @@ async function handleChainEventsProxy(request, env, url) {
   );
 }
 
+// Proxies /api/v1/alerts/triggers* (#4984 Part 1) to the DATA_API service
+// binding. Unlike proxyToDataApi below (POST-only), this forwards every
+// method as-is: POST/GET/PATCH/DELETE all reach
+// workers/data-api.mjs's handleAlertTriggersRoute, which owns all
+// auth (creation token / per-trigger owner token) and routing itself --
+// mirrors handleChainEventsProxy's envelope-translation shape above, just
+// generalized past GET.
+async function handleAlertTriggersProxy(request, env) {
+  if (!env.DATA_API) {
+    return errorResponse(
+      "alert_triggers_unavailable",
+      "The alert triggers tier is not bound to this deployment.",
+      503,
+    );
+  }
+  const upstream = await env.DATA_API.fetch(request);
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(
+      "alert_triggers_unavailable",
+      "The alert triggers tier returned an unreadable response.",
+      502,
+    );
+  }
+  if (!upstream.ok) {
+    return errorResponse(
+      "alert_trigger_request_failed",
+      typeof body?.error === "string"
+        ? body.error
+        : "The alert triggers tier returned an error.",
+      upstream.status,
+    );
+  }
+  return dataResponse(env, body, upstream.status);
+}
+
 // Proxies POST /api/v1/internal/registry-sync to the dedicated registry-sync
 // Worker (REGISTRY_SYNC_API service binding), the sole write path into the
 // registry Postgres instance. This function forwards the request as-is
@@ -863,6 +918,76 @@ async function handleAccountIdentitySyncProxy(request, env) {
   });
 }
 
+// GET /api/v1/chain/stream (#4982, ADR 0015) -- the public realtime firehose
+// transport. SSE by default; a WebSocket Upgrade header on this same path
+// gets the WS transport instead. No auth: this is the same public read-only
+// data /api/v1/chain-events already serves, just pushed instead of polled.
+// ChainFirehoseHub itself decides SSE vs WS and applies the ?topics= filter
+// -- this is only the forwarding boundary into the DO.
+async function handleChainFirehoseStream(request, env, url) {
+  if (!env.CHAIN_FIREHOSE_HUB) {
+    return errorResponse(
+      "chain_firehose_unavailable",
+      "The realtime chain firehose is not bound to this deployment.",
+      503,
+    );
+  }
+  const stub = env.CHAIN_FIREHOSE_HUB.get(
+    env.CHAIN_FIREHOSE_HUB.idFromName("global"),
+  );
+  const forwardUrl = new URL("https://chain-firehose-hub.internal/subscribe");
+  forwardUrl.search = url.search;
+  return stub.fetch(new Request(forwardUrl, request));
+}
+
+// POST /api/v1/internal/chain-firehose-ingest -- the write path the #4981
+// box-side relay calls with each #4980 NOTIFY payload it forwards. Auth
+// happens HERE, not inside ChainFirehoseHub: a Durable Object is never
+// internet-addressable on its own (only reachable through this Worker's
+// binding), so this is the one place a forged request could be rejected --
+// mirrors every other /api/v1/internal/*-sync route's shared-secret
+// convention (see handleNeuronsSync in workers/data-api.mjs).
+async function handleChainFirehoseIngest(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "Only POST is supported.", 405);
+  }
+  if (!env.CHAIN_FIREHOSE_SYNC_SECRET) {
+    return errorResponse(
+      "chain_firehose_ingest_unavailable",
+      "The chain-firehose ingest tier is not provisioned on this deployment.",
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(CHAIN_FIREHOSE_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.CHAIN_FIREHOSE_SYNC_SECRET)) {
+    return errorResponse(
+      "chain_firehose_ingest_unauthorized",
+      `Provide a valid ${CHAIN_FIREHOSE_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  if (!env.CHAIN_FIREHOSE_HUB) {
+    return errorResponse(
+      "chain_firehose_unavailable",
+      "The realtime chain firehose is not bound to this deployment.",
+      503,
+    );
+  }
+  const body = await request.text();
+  const stub = env.CHAIN_FIREHOSE_HUB.get(
+    env.CHAIN_FIREHOSE_HUB.idFromName("global"),
+  );
+  const upstream = await stub.fetch(
+    "https://chain-firehose-hub.internal/ingest",
+    { method: "POST", body, headers: { "content-type": "application/json" } },
+  );
+  return new Response(await upstream.text(), {
+    status: upstream.status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
 export async function handleRequest(request, env = {}, ctx = {}) {
   let url = new URL(request.url);
 
@@ -931,9 +1056,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleWebhookRequest(request, env, url);
   }
 
-  // Remote MCP server (stateless JSON-RPC over POST), for AI agents. Runs before
-  // the read-only method gate (it is POST-only) like the RPC proxy. Artifact/KV
-  // readers are injected so the MCP tools reuse the exact R2/ASSETS resolution.
+  // Chain alert triggers (#4984 Part 1): CRUD accepts POST/GET/PATCH/DELETE,
+  // so it must run before the read-only method gate below, same as webhooks
+  // above. All auth/routing/validation live in workers/data-api.mjs's
+  // handleAlertTriggersRoute -- this is only the DATA_API forwarding
+  // boundary.
+  if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
+    return handleAlertTriggersProxy(request, env);
+  }
+
+  // Remote MCP server, for AI agents: stateless JSON-RPC over POST, plus GET
+  // (the SSE resource-subscription push stream, #4983) and DELETE (explicit
+  // session termination) -- all three handled inside handleMcpRequest itself.
+  // Runs before the read-only method gate (POST/DELETE would otherwise be
+  // rejected there) like the RPC proxy. Artifact/KV readers are injected so
+  // the MCP tools reuse the exact R2/ASSETS resolution.
   if (url.pathname === "/mcp") {
     return handleMcpRequest(request, env, { readArtifact, readHealthKv });
   }
@@ -986,12 +1123,37 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   if (url.pathname === "/api/v1/internal/account-identity-sync") {
     return handleAccountIdentitySyncProxy(request, env);
   }
+  // The write path the #4981 box-side relay POSTs #4980's NOTIFY payloads to
+  // (#4982, ADR 0015) -- forwards into ChainFirehoseHub after its own
+  // shared-secret check. POST-only, so it must run before the read-only
+  // method gate below, like the other internal sync routes above.
+  if (url.pathname === "/api/v1/internal/chain-firehose-ingest") {
+    return handleChainFirehoseIngest(request, env);
+  }
+  // The public realtime firehose transport (#4982, ADR 0015) -- SSE by
+  // default, WebSocket on an Upgrade header, same path either way. Runs
+  // early (like /rpc/v1/ and the chain-events proxy above) since a WebSocket
+  // upgrade request must never be routed through JSON-response machinery.
+  if (url.pathname === "/api/v1/chain/stream") {
+    return handleChainFirehoseStream(request, env, url);
+  }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs
   // before the read-only method gate because GraphQL accepts POST requests.
   // Rate-limited up front (same binding/strategy/429 as the RPC proxy) so a
   // single client can't fan out into unbounded artifact reads + query execution.
   if (url.pathname === "/api/v1/graphql") {
+    // GraphQL subscriptions (#4983, ADR 0015) reuse this SAME path over a
+    // WebSocket upgrade (Sec-WebSocket-Protocol: graphql-transport-ws) --
+    // handleChainFirehoseStream already forwards the request as-is (headers
+    // included) to ChainFirehoseHub's /subscribe, which inspects that same
+    // header to pick graphql-ws vs plain-firehose mode; reused unchanged
+    // rather than duplicating the DO-forwarding boilerplate. Checked before
+    // the rate limiter: a long-lived WS connection isn't the same shape of
+    // load a per-request POST limiter is meant for.
+    if (request.headers.get("upgrade") === "websocket") {
+      return handleChainFirehoseStream(request, env, url);
+    }
     const limited = await graphqlRateLimited(request, env);
     if (limited) return limited;
     return handleGraphQLRequest(request, env);
@@ -2363,6 +2525,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/blocks/summary" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
+    pathname.startsWith("/api/v1/alerts/triggers") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
     PERCENTILES_PATH_PATTERN.test(pathname) ||
@@ -4156,16 +4319,24 @@ function corsPreflight(request) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";
+  } else if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
+    methods = "POST, GET, PATCH, DELETE, OPTIONS";
   } else if (url.pathname === "/api/v1/graphql") {
     // POST executes queries; GET serves the published SDL document.
     methods = "GET, POST, OPTIONS";
-  } else if (url.pathname === "/mcp" || url.pathname === "/api/v1/ask") {
+  } else if (url.pathname === "/mcp") {
+    // GET opens the bounded SSE push stream (#4983 MCP half); DELETE
+    // terminates a session explicitly; POST is the stateless JSON-RPC path.
+    methods = "GET, POST, DELETE, OPTIONS";
+  } else if (url.pathname === "/api/v1/ask") {
     methods = "POST, OPTIONS";
   }
   headers.set("access-control-allow-methods", methods);
   headers.set(
     "access-control-allow-headers",
-    `content-type, if-none-match, ${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}`,
+    `content-type, if-none-match, mcp-session-id, mcp-protocol-version, ` +
+      `${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}, ` +
+      `${ALERT_TRIGGER_CREATE_TOKEN_HEADER}, ${ALERT_TRIGGER_OWNER_TOKEN_HEADER}`,
   );
   headers.set("access-control-max-age", "86400");
   return new Response(null, { status: 204, headers });
