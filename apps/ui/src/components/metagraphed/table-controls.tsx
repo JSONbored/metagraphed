@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { HTMLAttributes } from "react";
-import { ArrowUp, ArrowDown, X } from "lucide-react";
+import { ArrowUp, ArrowDown, X, Filter } from "lucide-react";
 import { classNames } from "@/lib/metagraphed/format";
 
 /**
@@ -133,6 +133,52 @@ export function SelectFilter({
         )}
       >
         {allowEmpty ? <option value="">all</option> : null}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/**
+ * Pill-shaped filter chip matching the EndpointKindTabs / window-toggle idiom
+ * used elsewhere for compact filters, rather than the generic bordered-box
+ * label+select pattern (SelectFilter) — a native <select> still drives it for
+ * a11y and mobile-native option picking, the Filter icon carries the label so
+ * the chip stays narrow enough that it never pushes a section title onto
+ * multiple lines.
+ */
+export function FilterChip({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  placeholder = "All",
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{ value: string; label: string }>;
+  ariaLabel: string;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <label className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-ink-muted hover:border-ink/30 transition-colors">
+      <Filter className="size-3 shrink-0" aria-hidden />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
+        className={classNames(
+          "min-w-0 max-w-[85px] truncate bg-transparent font-mono text-[11px] uppercase tracking-widest text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded",
+          className,
+        )}
+      >
+        <option value="">{placeholder}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

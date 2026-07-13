@@ -178,7 +178,6 @@
 
   /* Layout geometry tokens — single source of truth for structural offsets. */
   --spacing-nav: 3.5rem; /* app header height (h-nav in app-shell) */
-  --spacing-sticky-offset: 6.5rem; /* nav + filter-bar height — sticky thead anchor */
   --spacing-section-gap: 4rem; /* between top-level page sections */
   --spacing-shell-max: 1400px; /* page shell max width (max-w-shell-max) */
 }
@@ -873,8 +872,17 @@ html[data-density="compact"] .bg-card > table td {
   }
 }
 
+/* `backwards` (not `both`): applies the 0% keyframe pre-start so there's no
+   flash of fully-visible content, but does NOT persist the 100% keyframe's
+   `transform: translateY(0)` after the animation finishes. `both` did persist
+   it -- a computed `transform` other than `none` establishes a new containing
+   block, which silently broke `position: sticky` for every descendant on
+   every route (the header would "stick" relative to this div instead of the
+   viewport) for as long as that route stayed mounted. `translateY(0)` is
+   visually a no-op either way, so this changes nothing about how the
+   animation looks, only what it leaves behind once it's done. */
 .mg-route-enter {
-  animation: mg-route-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: mg-route-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @media (hover: hover) {
@@ -1296,6 +1304,15 @@ html[data-density="compact"] .bg-card > table td {
     0 0 0 1px var(--ring),
     0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
   border-radius: 6px;
+}
+
+/* Bounded height for ListShell's sticky-header table viewport (#5073) -- a
+   plain class, not a Tailwind arbitrary-value utility (max-h-[70vh]):
+   packages/ui-kit's own Tailwind build doesn't pick up bracket-arbitrary
+   values from source (confirmed against command.tsx's pre-existing,
+   equally-silently-broken max-h-[300px] -- neither ever reaches dist/index.css). */
+.mg-table-scroll {
+  max-height: 70vh;
 }
 
 @keyframes mg-marquee {

@@ -66,7 +66,7 @@ export function SectionAnchor({
           ),
       )}
     >
-      <div className="mb-3 flex items-baseline gap-3">
+      <div className="mb-3 flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">

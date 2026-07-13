@@ -17,6 +17,17 @@ describe("accountFeedSectionPhase", () => {
     expect(accountFeedSectionPhase({ isPending: false, isError: true, rowCount: 0 })).toBe("error");
   });
 
+  it("can render fallback rows instead of an error panel", () => {
+    expect(
+      accountFeedSectionPhase({
+        isPending: false,
+        isError: true,
+        rowCount: 1,
+        preferErrorWithRows: false,
+      }),
+    ).toBe("content");
+  });
+
   it("hides the section when the feed succeeded with zero rows", () => {
     expect(accountFeedSectionPhase({ isPending: false, isError: false, rowCount: 0 })).toBe(
       "empty",

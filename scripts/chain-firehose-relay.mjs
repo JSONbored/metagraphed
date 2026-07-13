@@ -69,6 +69,7 @@ export const CHAIN_FIREHOSE_CLEANUP_INTERVAL_MS = 60 * 1000;
 export const CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS = 3;
 export const CHAIN_FIREHOSE_BACKOFF_BASE_MS = 500;
 export const CHAIN_FIREHOSE_BACKOFF_MAX_MS = 15_000;
+export const CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS = 10_000;
 
 // forwardBatch's in-flight concurrency -- forwarding a CHAIN_FIREHOSE_POLL_BATCH_SIZE
 // batch one row at a time (matching src/webhooks.mjs's own ALERT_DELIVERY_CONCURRENCY
@@ -148,15 +149,27 @@ export async function forwardChainFirehoseNotification(
   { ingestUrl, syncSecret },
   fetchImpl = fetch,
 ) {
-  const response = await fetchImpl(ingestUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      [CHAIN_FIREHOSE_INGEST_TOKEN_HEADER]: syncSecret,
-    },
-    body: payload,
-  });
-  return { ok: response.ok, status: response.status };
+  const abortController = new AbortController();
+  const timeout = setTimeout(
+    () => abortController.abort(),
+    CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS,
+  );
+  try {
+    const response = await fetchImpl(ingestUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        [CHAIN_FIREHOSE_INGEST_TOKEN_HEADER]: syncSecret,
+      },
+      body: payload,
+      signal: abortController.signal,
+    });
+    const result = { ok: response.ok, status: response.status };
+    await response.body?.cancel();
+    return result;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // Forwards one payload with bounded retry/backoff. Returns true if the

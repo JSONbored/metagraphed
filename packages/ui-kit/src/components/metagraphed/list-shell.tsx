@@ -22,9 +22,17 @@ export function ListShell({
   empty,
   isEmpty,
   isStale,
-  /** When true, the rendered table can stick its <thead> at top-sticky-offset
-   *  (just under the sticky filter bar) because outer wrappers avoid
-   *  creating a vertical scroll container. */
+  /** When true, the rendered table can stick its <thead> at `top-0` inside a
+   *  bounded-height, internally-scrolling viewport (both axes) -- the
+   *  standard sticky-header-data-table pattern. A page-scroll-relative
+   *  sticky header and native horizontal scroll cannot coexist on the same
+   *  wrapper: `overflow-x: auto` makes that wrapper the header's nearest
+   *  scroll-container ancestor per the CSS sticky-positioning spec, and
+   *  since the wrapper itself never scrolls internally (the page scrolls
+   *  past it instead), the header's "stuck" trigger never fires -- verified
+   *  directly (#5073). Bounding the wrapper's height and letting it scroll
+   *  internally makes it the header's OWN scroll reference, so both work.
+   */
   stickyHeader = true,
 }: {
   filters: ReactNode;
@@ -37,12 +45,14 @@ export function ListShell({
   isStale?: boolean;
   stickyHeader?: boolean;
 }) {
-  // Horizontal scroll lives on an inner wrapper so wide tables stay reachable at
-  // tablet widths. `overflow-y-clip` avoids a vertical scroll container (which
-  // would break `position: sticky` on <thead> against page scroll); the outer
-  // card uses `overflow-hidden` only to clip rounded corners.
+  const tableCard = "rounded border border-border bg-card overflow-hidden";
+  // stickyHeader: bounded height + overflow-auto on both axes, so the
+  // <thead>'s `sticky top-0` sticks to this box's own scroll instead of the
+  // page's, while horizontal overflow still scrolls within the same box.
+  // !stickyHeader: unbounded height, horizontal-only scroll, table grows
+  // with the page (the previous, simpler behavior -- unchanged).
   const tableScroll = stickyHeader
-    ? "overflow-x-auto overflow-y-clip"
+    ? "mg-table-scroll overflow-auto"
     : "overflow-x-auto";
   return (
     <div>
@@ -64,7 +74,7 @@ export function ListShell({
         <div className={isStale ? "opacity-70 transition-opacity" : undefined}>
           {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
           <div className={cards ? "hidden md:block" : undefined}>
-            <div className="rounded border border-border bg-card overflow-hidden">
+            <div className={tableCard}>
               <div className={tableScroll}>{table}</div>
               {footer}
             </div>

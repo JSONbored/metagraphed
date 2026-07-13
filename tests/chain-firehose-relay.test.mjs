@@ -6,10 +6,11 @@
 // function's own /* v8 ignore */ comment. Every decision it makes is tested
 // directly here instead.
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import {
   CHAIN_FIREHOSE_BACKOFF_BASE_MS,
   CHAIN_FIREHOSE_BACKOFF_MAX_MS,
+  CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS,
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS,
   computeBackoffDelayMs,
@@ -126,6 +127,7 @@ test("forwardChainFirehoseNotification: POSTs the payload with the sync-token he
     "shh",
   );
   assert.equal(received.init.body, '{"table":"blocks","block_number":1}');
+  assert.equal(received.init.signal instanceof AbortSignal, true);
 });
 
 test("forwardChainFirehoseNotification: a non-2xx response is reported as not ok", async () => {
@@ -137,6 +139,47 @@ test("forwardChainFirehoseNotification: a non-2xx response is reported as not ok
   );
   assert.equal(result.ok, false);
   assert.equal(result.status, 401);
+});
+
+test("forwardChainFirehoseNotification: cancels the response body before returning", async () => {
+  let canceled = false;
+  const result = await forwardChainFirehoseNotification(
+    "{}",
+    { ingestUrl: "https://hub.example.com/ingest", syncSecret: "shh" },
+    async () => ({
+      ok: true,
+      status: 202,
+      body: {
+        async cancel() {
+          canceled = true;
+        },
+      },
+    }),
+  );
+  assert.deepEqual(result, { ok: true, status: 202 });
+  assert.equal(canceled, true);
+});
+
+test("forwardChainFirehoseNotification: aborts a stalled fetch after the per-attempt timeout", async () => {
+  vi.useFakeTimers();
+  try {
+    const promise = forwardChainFirehoseNotification(
+      "{}",
+      { ingestUrl: "https://hub.example.com/ingest", syncSecret: "shh" },
+      async (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    );
+    const rejection = assert.rejects(promise, /aborted/);
+
+    await vi.advanceTimersByTimeAsync(CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS);
+    await rejection;
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 // --- forwardWithRetry ---------------------------------------------------------
