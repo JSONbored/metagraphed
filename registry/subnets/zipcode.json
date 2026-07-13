@@ -90,6 +90,25 @@
         "https://zipcode.ai/api/dashboard/docs"
       ],
       "url": "https://zipcode.ai/api/dashboard/stats/emissions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-46-zipcode-wandb",
+      "kind": "dashboard",
+      "name": "Zipcode (SN46) validator Weights & Biases dashboard",
+      "notes": "Public Weights & Biases project the SN46 Zipcode (RESI) validators log evaluation runs to (wandb.ai/resi-labs/subnet-46-evaluations-main). Project 'subnet-46-evaluations-main' and entity 'resi-labs' are the validator defaults in the official resi-labs-ai/RESI-models config (real_estate/validator/config.py), and docs/VALIDATOR.md documents that validators log to this team project. Publicly readable via the W&B API. Distinct host from the zipcode.ai API surfaces.",
+      "provider": "zipcode",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/resi-labs-ai/RESI-models/blob/main/real_estate/validator/config.py",
+        "https://github.com/resi-labs-ai/RESI-models/blob/main/docs/VALIDATOR.md"
+      ],
+      "url": "https://wandb.ai/resi-labs/subnet-46-evaluations-main"
     }
   ],
   "source_repo": "https://github.com/resi-labs-ai/RESI-models",
