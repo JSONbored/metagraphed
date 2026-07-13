@@ -1,0 +1,62 @@
+name: Enrichment Issues
+
+# Tops up the contributor-workable "Enrich SN<n>" issue buffer from the live
+# enrichment queue (registry/subnets/**), deduped against issues already open.
+# Previously only ever ran when a maintainer invoked scripts/enrichment-issues.mjs
+# by hand, which let the buffer go stale for 6 straight days (#5153) with every
+# open Enrich-SN issue pointing at a since-closed tracker (#5152). Scheduling it
+# keeps the contributor flywheel fed without a manual trigger each time.
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly — the queue moves on the order of days as subnets ship new surfaces
+    # and contributors close existing issues, so a low cadence keeps the buffer
+    # topped up without flooding the tracker.
+    - cron: "17 8 * * 3"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: enrichment-issues
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+
+      - name: Install
+        run: npm ci
+
+      - name: Reopen the rolling intake tracker if the bot auto-closed it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue reopen 427 || true
+
+      - name: Generate enrichment issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/enrichment-issues.mjs --write | tee enrichment-run.log
+
+      - name: Job summary
+        run: |
+          {
+            echo '## Enrichment issue generation'
+            echo '```json'
+            cat enrichment-run.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
