@@ -1,4 +1,4 @@
-# ADR 0015 — Realtime firehose architecture: Postgres NOTIFY tee, not an indexer push
+# ADR 0015 — Realtime firehose architecture: Postgres outbox tee, not an indexer push
 
 - **Status:** Accepted
 - **Date:** 2026-07-12
@@ -42,18 +42,20 @@ firehose's two halves live.
 
 ## Decision
 
-1. **The tee is Postgres's own `LISTEN`/`NOTIFY`, driven by an `AFTER INSERT`
+1. **The tee is a Postgres outbox table populated by an `AFTER INSERT`
    trigger on `blocks`/`extrinsics`/`chain_events` — not a push from
-   `indexer-rs`.** A trigger fires only after a row is durably committed; by
-   construction it cannot affect whether that commit succeeded. `indexer-rs`
-   requires zero code changes and has zero awareness the firehose exists.
-   This is the load-bearing safety property of the whole design — see #4980.
+   `indexer-rs`, and not `LISTEN`/`NOTIFY`.** `indexer-rs` requires zero code
+   changes and has zero awareness the firehose exists. The load-bearing safety
+   property is that downstream delivery state cannot participate in source
+   table commits: a stuck relay or listener cannot pin Postgres's global async
+   notification queue and cause commit-time `NOTIFY` failures. Ordinary local
+   database failures remain database failures. See #4980.
 2. **A new, separate box-side relay process bridges Postgres to Cloudflare**
-   (#4981), subscribing via `LISTEN` and forwarding to the Durable Object over
-   HTTP with a bounded, drop-oldest retry policy. If this process is down,
-   lagging, or can't reach Cloudflare, the only consequence is the firehose
-   stalls — `indexer-rs` and Postgres are completely unaffected. This process
-   is new self-hosted infrastructure (Docker container on the indexer box,
+   (#4981), polling/claiming pending outbox rows and forwarding to the Durable
+   Object over HTTP with a bounded, drop-oldest retry policy. If this process
+   is down, lagging, or can't reach Cloudflare, the firehose stalls and outbox
+   rows remain pending; it does not subscribe with `LISTEN`. This process is
+   new self-hosted infrastructure (Docker container on the indexer box,
    Ansible-managed per the existing `streamer` role's precedent in
    `deploy/README.md`), not a Cloudflare-side component.
 3. **The hub itself is a Cloudflare Durable Object** (#4982), consistent with
@@ -86,10 +88,11 @@ from what it already durably writes).
   already establishes for `streamer`/`indexer-rs`, not an ad-hoc SSH-installed
   process, or it becomes exactly the kind of undocumented, unreproducible
   infrastructure this repo's deploy runbook exists to prevent.
-- **NOTIFY payloads are capped at 8000 bytes by Postgres itself** — the
-  trigger must send a compact reference payload, not full row data, which
-  means the bridge/DO may need a re-fetch path for consumers that want more
-  than the headline fields. Scoped explicitly in #4980.
+- **The outbox must be retained and drained deliberately** — the trigger writes
+  a compact reference payload, not full row data, so the relay/DO may need a
+  re-fetch path for consumers that want more than the headline fields. The
+  relay owns claiming, delivery marking, and bounded retention/drop-oldest
+  behavior under prolonged downstream outages. Scoped explicitly in #4980/#4981.
 - **This is the first Durable Object in the codebase** — no existing pattern
   to copy from within this repo; #4982's implementation is genuine new-pattern
   work and should get commensurate review care, not a rubber stamp because
