@@ -377,7 +377,17 @@ async function* walk(target) {
     return;
   }
 
-  const entries = await fs.readdir(fullPath, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await fs.readdir(fullPath, { withFileTypes: true });
+  } catch (err) {
+    // Same TOCTOU race as the readFile guard below: the stat above can see a
+    // directory that a concurrent rebuild removes before readdir gets to it.
+    if (err.code === "ENOENT") {
+      return;
+    }
+    throw err;
+  }
   for (const entry of entries) {
     if (entry.name === ".DS_Store") {
       continue;
@@ -400,7 +410,20 @@ for (const root of targetRoots) {
     if (isBinaryOrIgnored(relative)) {
       continue;
     }
-    const content = await fs.readFile(filePath, "utf8");
+    let content;
+    try {
+      content = await fs.readFile(filePath, "utf8");
+    } catch (err) {
+      // A file that existed when walk() listed its directory can vanish
+      // before this read (e.g. a concurrent rebuild replacing the tree it's
+      // walking) -- that's nothing to scan, not a scan failure, so skip it
+      // rather than crashing the whole run on an ENOENT race. Any other
+      // error (permissions, etc.) is a real problem and still propagates.
+      if (err.code === "ENOENT") {
+        continue;
+      }
+      throw err;
+    }
     const lines = content.split(/\r?\n/);
     const skipSoft =
       isMirroredExternalSpec(relative) ||
