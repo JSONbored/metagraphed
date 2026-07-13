@@ -313,11 +313,13 @@ export function ownerAlertTriggerView(record) {
 // ownerAlertTriggerView (no owner_token, but also no created_at/updated_at
 // bookkeeping the evaluator never reads) and pre-shaped for
 // triggerMatchesEvent's field names (camelCase, matching validateAlertTriggerInput's
-// `value`).
+// `value`). Includes `name` (#4984 Part 3) so delivery message formatting
+// can reference it without a second Postgres read.
 export function evaluatorAlertTriggerView(record) {
   if (!record || typeof record !== "object") return null;
   return {
     id: String(record.id),
+    name: record.name ?? null,
     tableFilter: record.table_filter ?? null,
     netuid: record.netuid ?? null,
     eventKind: record.event_kind ?? null,

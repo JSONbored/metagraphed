@@ -1,8 +1,9 @@
-// AlerterHub -- the #4984 Part 2 evaluator: a singleton Durable Object
-// (idFromName("global")) that ChainFirehoseHub pings on every broadcast()
-// (see that class's own ALERTER_HUB ping, mirroring the #4983 MCP-notify
-// loop's exact shape -- but unconditional/global rather than per-session,
-// since there is exactly one evaluator, not one per subscriber).
+// AlerterHub -- the #4984 evaluator + delivery dispatcher: a singleton
+// Durable Object (idFromName("global")) that ChainFirehoseHub pings on
+// every broadcast() (see that class's own ALERTER_HUB ping, mirroring the
+// #4983 MCP-notify loop's shape -- but unconditional/global rather than
+// per-session, since there is exactly one evaluator, not one per
+// subscriber).
 //
 // Caches active trigger definitions (refreshed from Postgres via the
 // DATA_API service binding's internal-only active-list route, #4984 Part 1)
@@ -14,26 +15,77 @@
 // matching; a deleted one keeps matching for the same window) rather than
 // adding a synchronous Postgres round-trip to every single chain event.
 //
-// Delivery itself (#4984 Part 3: webhook/email/telegram/discord) is
-// deliberately NOT this file's concern -- deliverAlertMatch below is the
-// integration point Part 3 replaces; this class only decides WHICH
-// triggers matched a given event. Matches "one focused change per PR",
-// the same scoping every other piece of this epic (#4981/#4982/#4983
-// GraphQL/#4983 MCP) already used.
+// Delivery (#4984 Part 3) is deliberately factored into src/alert-delivery.mjs
+// (pure request-building, no I/O) + deliverAlertMatch below (the thin I/O
+// shell that actually calls fetch) -- this class only decides WHICH
+// triggers matched AND whether a match should actually be delivered right
+// now (burst rate-limiting), never how each channel's request is shaped.
 import { triggerMatchesEvent } from "../src/alert-triggers.mjs";
+import {
+  buildDiscordDeliveryRequest,
+  buildEmailDeliveryRequest,
+  buildTelegramDeliveryRequest,
+  buildWebhookDeliveryRequest,
+  isDeliveryRateLimited,
+} from "../src/alert-delivery.mjs";
 
 export const ALERTER_HUB_TRIGGER_CACHE_TTL_MS = 5 * 60 * 1000;
 
-// Default delivery hook, called once per (trigger, matching payload) pair
-// -- a no-op until #4984 Part 3 replaces its body with real channel
-// dispatch. Constructor-injectable (see AlerterHub below) rather than a
-// hardcoded call inside evaluate(), both so Part 3 can wire a real
-// implementation without touching evaluate() itself and so tests can
-// substitute a spy/failing stub to exercise the catch-wrapping resilience
-// below without needing real delivery logic to exist yet.
-export async function deliverAlertMatch(_trigger, _payload, _env) {
-  // #4984 Part 3: webhook/email/telegram/discord dispatch + rate-limit/
-  // dedup + match_count/last_matched_at bookkeeping land here.
+// The I/O shell around src/alert-delivery.mjs's pure request builders --
+// constructor-injectable (see AlerterHub below) rather than a hardcoded
+// call inside evaluate(), so tests can substitute a spy/failing stub
+// without needing a real network, and so a future channel doesn't require
+// restructuring evaluate() itself. Telegram/email degrade to a silent
+// no-op when their secret isn't provisioned, matching every other optional
+// integration's convention in this codebase (never throw for a
+// deployment-config gap the caller can't do anything about).
+export async function deliverAlertMatch(
+  trigger,
+  payload,
+  env,
+  fetchFn = fetch,
+) {
+  let request;
+  switch (trigger.channel) {
+    case "webhook":
+      request = buildWebhookDeliveryRequest(trigger, payload, Date.now());
+      break;
+    case "discord":
+      request = buildDiscordDeliveryRequest(trigger, payload);
+      break;
+    case "telegram":
+      if (!env.TELEGRAM_BOT_TOKEN) return;
+      request = buildTelegramDeliveryRequest(
+        trigger,
+        payload,
+        env.TELEGRAM_BOT_TOKEN,
+      );
+      break;
+    case "email":
+      if (!env.RESEND_API_KEY || !env.RESEND_FROM_ADDRESS) return;
+      request = buildEmailDeliveryRequest(trigger, payload, {
+        resendKey: env.RESEND_API_KEY,
+        fromAddress: env.RESEND_FROM_ADDRESS,
+      });
+      break;
+    default:
+      return;
+  }
+  // A null request means the builder itself refused (e.g.
+  // buildWebhookDeliveryRequest's defense-in-depth URL re-check) --
+  // nothing to send.
+  if (!request) return;
+  const response = await fetchFn(request.url, request.init);
+  if (!response.ok) {
+    // Never throw for a non-2xx response -- evaluate()'s .catch() only
+    // guards against a REJECTED fetch (network/timeout); an HTTP-level
+    // failure resolves normally, so it's logged here instead, server-side
+    // only, matching this codebase's "log internals, never leak them"
+    // convention.
+    console.error(
+      `alert delivery failed (channel=${trigger.channel}, trigger=${trigger.id}): HTTP ${response.status}`,
+    );
+  }
 }
 
 export class AlerterHub {
@@ -48,6 +100,13 @@ export class AlerterHub {
     // fires one /evaluate POST per chain event, and events can arrive
     // faster than a single refresh round-trip completes.
     this.loadingPromise = null;
+    // Per-trigger burst rate-limit state (#4984 Part 3's "a burst of
+    // matching events... doesn't spam a single subscriber" deliverable).
+    // In-memory, not persisted -- a DO reconstruction (hibernation wake,
+    // redeploy) resets it, which just means the next match after a
+    // reconstruction is never wrongly rate-limited; the opposite failure
+    // (permanently under-limiting) would be the unsafe direction here.
+    this.lastDeliveredAt = new Map();
   }
 
   isTriggerCacheStale() {
@@ -109,15 +168,38 @@ export class AlerterHub {
     await this.ensureTriggersLoaded();
     const matched = this.matchingTriggers(payload);
     if (matched.length === 0) return { matched: 0 };
+
+    // Every match counts toward the response (an owner querying "did this
+    // fire?" wants the true answer), but only NOT-rate-limited matches
+    // actually attempt delivery -- coalescing a burst into one delivery
+    // per window rather than dropping the burst's own visibility.
+    const now = Date.now();
+    const toDeliver = [];
+    let rateLimited = 0;
+    for (const trigger of matched) {
+      if (isDeliveryRateLimited(this.lastDeliveredAt.get(trigger.id), now)) {
+        rateLimited += 1;
+        continue;
+      }
+      this.lastDeliveredAt.set(trigger.id, now);
+      toDeliver.push(trigger);
+    }
+
     await Promise.all(
-      matched.map((trigger) =>
+      toDeliver.map((trigger) =>
         this.deliver(trigger, payload, this.env).catch(() => {
           // A single misbehaving delivery integration must never fail the
           // evaluation response ChainFirehoseHub's broadcast() awaits.
         }),
       ),
     );
-    return { matched: matched.length, trigger_ids: matched.map((t) => t.id) };
+
+    return {
+      matched: matched.length,
+      trigger_ids: matched.map((t) => t.id),
+      delivered: toDeliver.length,
+      rate_limited: rateLimited,
+    };
   }
 
   async fetch(request) {

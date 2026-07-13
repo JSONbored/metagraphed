@@ -364,6 +364,17 @@
   // until it is, the evaluator's trigger cache just stays empty (no crash,
   // no delivery, matching every other optional binding's degrade-gracefully
   // convention in this codebase).
+  //
+  // #4984 Part 3 (workers/alerter-hub.mjs's deliverAlertMatch) needs three
+  // MORE secrets, one per non-webhook/-discord channel (those two need
+  // nothing beyond the trigger's own `destination` -- a URL, not a shared
+  // credential):
+  //   wrangler secret put TELEGRAM_BOT_TOKEN
+  //   wrangler secret put RESEND_API_KEY
+  //   wrangler secret put RESEND_FROM_ADDRESS
+  // None yet provisioned on any deployment; until each is, that ONE
+  // channel silently no-ops on delivery (webhook/discord/the other two
+  // channels are unaffected).
   "durable_objects": {
     "bindings": [
       { "name": "CHAIN_FIREHOSE_HUB", "class_name": "ChainFirehoseHub" },

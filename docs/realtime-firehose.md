@@ -275,11 +275,11 @@ confirmed 2026-07-13, immediately after #5007 merged and propagated (no
 Cloudflare edge-propagation retry needed this time, unlike the graphql-ws
 verification above).
 
-## The alerter (#4984, in progress)
+## The alerter (#4984, live)
 
 A consumer of the same hub: evaluates user-defined trigger conditions against
 the stream and delivers matches via webhook, email, Telegram, or Discord.
-Landing in three parts, each its own PR (matching every other piece of this
+Landed in three parts, each its own PR (matching every other piece of this
 epic):
 
 **Part 1 (live): trigger storage + CRUD.** A new `chain_alert_triggers`
@@ -305,13 +305,35 @@ Postgres via `DATA_API`'s internal-only active-list route, TTL
 Postgres round-trip, since evaluation shares the same `broadcast()` call
 every other consumer (SSE/WS/GraphQL/MCP) is waiting on.
 
-**Part 3 (not yet built): delivery.** `deliverAlertMatch`
-(`workers/alerter-hub.mjs`) is currently a no-op -- the integration point
-Part 3 replaces with real webhook (reusing `src/webhooks.mjs`'s existing
-HMAC-signing/retry/SSRF-guard machinery via a new per-event entry point,
-not its publish-time batch dispatcher), email, Telegram, and Discord
-dispatch, plus rate-limiting/dedup for event bursts and
-`match_count`/`last_matched_at` bookkeeping on the trigger row.
+**Part 3 (live): delivery.** `deliverAlertMatch` (`workers/alerter-hub.mjs`)
+dispatches to all four channels via pure request builders in the new
+`src/alert-delivery.mjs`: webhook (a `metagraph.alert` JSON envelope POSTed
+to the trigger's own `destination`, re-validated against
+`isPublicWebhookUrl` at delivery time as defense in depth), Discord (a
+`{content}` POST to the trigger's own incoming-webhook URL, truncated to
+Discord's 2000-char cap), Telegram (`sendMessage` against a single
+per-deployment bot -- `TELEGRAM_BOT_TOKEN` -- targeting the trigger's own
+`chat_id`), and email (Resend's HTTP API, `RESEND_API_KEY` +
+`RESEND_FROM_ADDRESS`). Telegram/email silently no-op when their secret
+isn't provisioned, matching every other optional integration's convention
+here.
+
+Two deliberate v1 scope cuts, both documented rather than silent: delivery
+is single-attempt (no retry/dead-letter, unlike `src/webhooks.mjs`'s own
+`deliverChangeEvent` -- these are lower-stakes "ping me" notifications, not
+a change feed automated pipelines depend on), and webhook payloads are NOT
+HMAC-signed (signing would need the per-trigger `owner_token` threaded
+through the evaluator's trusted-internal cache, which
+`evaluatorAlertTriggerView` deliberately never exposes past the CRUD layer
+today). Both are easy fast-follows if real-world use surfaces a need.
+
+**Burst rate-limiting** (`AlerterHub.evaluate()`, `src/alert-delivery.mjs`'s
+`isDeliveryRateLimited`): at most one delivery per trigger per
+`ALERT_DELIVERY_MIN_INTERVAL_MS` (1 minute), in-memory per DO instance. A
+burst of matching events within the window still counts toward `matched` in
+the evaluation response (an owner asking "did this fire?" gets the true
+answer) but only the first delivers -- the rest are reported as
+`rate_limited`, not silently dropped from the response shape.
 
 ## Verifying the trigger locally
 

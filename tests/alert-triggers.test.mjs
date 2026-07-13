@@ -563,6 +563,7 @@ test("evaluatorAlertTriggerView: reshapes snake_case columns into triggerMatches
   const view = evaluatorAlertTriggerView({
     id: 7,
     owner_token: "should-not-appear",
+    name: "whale watcher",
     table_filter: ["account_events"],
     netuid: 7,
     event_kind: "Transfer",
@@ -573,6 +574,7 @@ test("evaluatorAlertTriggerView: reshapes snake_case columns into triggerMatches
   });
   assert.equal(view.id, "7");
   assert.equal("owner_token" in view, false);
+  assert.equal(view.name, "whale watcher");
   assert.deepEqual(view.tableFilter, ["account_events"]);
   assert.equal(view.eventKind, "Transfer");
   assert.equal(view.minAmountTao, 10);
@@ -595,6 +597,7 @@ test("evaluatorAlertTriggerView: a minimal record (every optional field absent) 
     channel: "email",
     destination: "a@b.com",
   });
+  assert.equal(view.name, null);
   assert.equal(view.tableFilter, null);
   assert.equal(view.netuid, null);
   assert.equal(view.eventKind, null);

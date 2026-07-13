@@ -1,6 +1,6 @@
-// Unit tests for workers/alerter-hub.mjs (#4984 Part 2). No Durable Object
-// runtime needed -- state.storage is never touched by this class (the
-// trigger cache is plain in-memory instance state, refreshed from
+// Unit tests for workers/alerter-hub.mjs (#4984 Parts 2+3). No Durable
+// Object runtime needed -- state.storage is never touched by this class
+// (the trigger cache is plain in-memory instance state, refreshed from
 // env.DATA_API), so it's fully Node-testable like McpSessionHub.
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
@@ -34,10 +34,155 @@ test("ALERTER_HUB_TRIGGER_CACHE_TTL_MS is the documented value (5 minutes)", () 
   assert.equal(ALERTER_HUB_TRIGGER_CACHE_TTL_MS, 5 * 60 * 1000);
 });
 
-test("deliverAlertMatch: the default hook resolves without throwing (Part 3 replaces its body)", async () => {
-  await assert.doesNotReject(() =>
-    deliverAlertMatch(triggerRow(), { table: "account_events" }, {}),
+// --- deliverAlertMatch (#4984 Part 3) -----------------------------------------
+
+test("deliverAlertMatch: webhook channel POSTs the built request", async () => {
+  let received;
+  const fetchFn = vi.fn(async (url, init) => {
+    received = { url, init };
+    return new Response(null, { status: 200 });
+  });
+  await deliverAlertMatch(
+    triggerRow({ channel: "webhook", destination: "https://example.com/hook" }),
+    { table: "account_events" },
+    {},
+    fetchFn,
   );
+  assert.equal(fetchFn.mock.calls.length, 1);
+  assert.equal(received.url, "https://example.com/hook");
+  assert.equal(JSON.parse(received.init.body).type, "metagraph.alert");
+});
+
+test("deliverAlertMatch: webhook channel sends nothing when the destination fails the defense-in-depth URL re-check", async () => {
+  const fetchFn = vi.fn();
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "webhook",
+      destination: "http://not-https.example.com",
+    }),
+    {},
+    {},
+    fetchFn,
+  );
+  assert.equal(fetchFn.mock.calls.length, 0);
+});
+
+test("deliverAlertMatch: discord channel POSTs to the trigger's own webhook URL", async () => {
+  const fetchFn = vi.fn(async () => new Response(null, { status: 204 }));
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "discord",
+      destination: "https://discord.com/api/webhooks/1/token",
+    }),
+    { table: "account_events" },
+    {},
+    fetchFn,
+  );
+  assert.equal(
+    fetchFn.mock.calls[0][0],
+    "https://discord.com/api/webhooks/1/token",
+  );
+});
+
+test("deliverAlertMatch: telegram channel is a silent no-op when TELEGRAM_BOT_TOKEN is unset", async () => {
+  const fetchFn = vi.fn();
+  await deliverAlertMatch(
+    triggerRow({ channel: "telegram", destination: "123456789" }),
+    {},
+    {},
+    fetchFn,
+  );
+  assert.equal(fetchFn.mock.calls.length, 0);
+});
+
+test("deliverAlertMatch: telegram channel POSTs to the bot API when the token is configured", async () => {
+  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  await deliverAlertMatch(
+    triggerRow({ channel: "telegram", destination: "123456789" }),
+    {},
+    { TELEGRAM_BOT_TOKEN: "bot-token" },
+    fetchFn,
+  );
+  assert.equal(
+    fetchFn.mock.calls[0][0],
+    "https://api.telegram.org/botbot-token/sendMessage",
+  );
+});
+
+test("deliverAlertMatch: email channel is a silent no-op when RESEND_API_KEY or RESEND_FROM_ADDRESS is unset", async () => {
+  const fetchFn = vi.fn();
+  await deliverAlertMatch(triggerRow({ channel: "email" }), {}, {}, fetchFn);
+  assert.equal(fetchFn.mock.calls.length, 0);
+  await deliverAlertMatch(
+    triggerRow({ channel: "email" }),
+    {},
+    { RESEND_API_KEY: "k" }, // no from-address
+    fetchFn,
+  );
+  assert.equal(fetchFn.mock.calls.length, 0);
+});
+
+test("deliverAlertMatch: email channel POSTs to Resend when both secrets are configured", async () => {
+  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  await deliverAlertMatch(
+    triggerRow({ channel: "email", destination: "a@b.com" }),
+    {},
+    { RESEND_API_KEY: "k", RESEND_FROM_ADDRESS: "alerts@metagraph.sh" },
+    fetchFn,
+  );
+  assert.equal(fetchFn.mock.calls[0][0], "https://api.resend.com/emails");
+});
+
+test("deliverAlertMatch: an unrecognized channel is a silent no-op", async () => {
+  const fetchFn = vi.fn();
+  await deliverAlertMatch(
+    triggerRow({ channel: "carrier-pigeon" }),
+    {},
+    {},
+    fetchFn,
+  );
+  assert.equal(fetchFn.mock.calls.length, 0);
+});
+
+test("deliverAlertMatch: a non-ok HTTP response is logged, not thrown", async () => {
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const fetchFn = vi.fn(async () => new Response(null, { status: 500 }));
+  await assert.doesNotReject(() =>
+    deliverAlertMatch(
+      triggerRow({
+        channel: "discord",
+        destination: "https://discord.com/api/webhooks/1/t",
+      }),
+      {},
+      {},
+      fetchFn,
+    ),
+  );
+  assert.equal(errorSpy.mock.calls.length, 1);
+  assert.match(errorSpy.mock.calls[0][0], /HTTP 500/);
+  errorSpy.mockRestore();
+});
+
+test("deliverAlertMatch: defaults fetchFn to the global fetch when not injected", async () => {
+  const originalFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => {
+    called = true;
+    return new Response(null, { status: 200 });
+  };
+  try {
+    await deliverAlertMatch(
+      triggerRow({
+        channel: "discord",
+        destination: "https://discord.com/api/webhooks/1/t",
+      }),
+      {},
+      {},
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.equal(called, true);
 });
 
 // --- isTriggerCacheStale / refreshTriggers -----------------------------------
@@ -276,8 +421,62 @@ test("evaluate: reports every matching trigger and calls deliver once per match"
   const result = await hub.evaluate(payload);
   assert.equal(result.matched, 2);
   assert.deepEqual(result.trigger_ids.sort(), ["1", "2"]);
+  assert.equal(result.delivered, 2);
+  assert.equal(result.rate_limited, 0);
   assert.equal(deliver.mock.calls.length, 2);
   assert.equal(deliver.mock.calls[0][1], payload);
+});
+
+test("evaluate: a burst of matches for the SAME trigger within the rate-limit window delivers once and skips the rest", async () => {
+  const deliver = vi.fn().mockResolvedValue(undefined);
+  const hub = new AlerterHub({}, {}, { deliver });
+  hub.triggers = [triggerRow({ netuid: 7 })];
+  hub.triggersLoadedAt = Date.now();
+  const payload = { table: "account_events", netuid: 7 };
+
+  const first = await hub.evaluate(payload);
+  assert.equal(first.delivered, 1);
+  assert.equal(first.rate_limited, 0);
+
+  const second = await hub.evaluate(payload);
+  assert.equal(second.matched, 1); // still reported as a real match...
+  assert.equal(second.delivered, 0); // ...but not delivered again this soon
+  assert.equal(second.rate_limited, 1);
+
+  assert.equal(deliver.mock.calls.length, 1);
+});
+
+test("evaluate: a DIFFERENT trigger's match is never rate-limited by another trigger's recent delivery", async () => {
+  const deliver = vi.fn().mockResolvedValue(undefined);
+  const hub = new AlerterHub({}, {}, { deliver });
+  hub.triggers = [
+    triggerRow({ id: "1", netuid: 7 }),
+    triggerRow({ id: "2", netuid: 7 }),
+  ];
+  hub.triggersLoadedAt = Date.now();
+  const payload = { table: "account_events", netuid: 7 };
+
+  await hub.evaluate(payload); // delivers both "1" and "2" once
+  hub.lastDeliveredAt.delete("2"); // simulate "2" being outside its own window already
+  const second = await hub.evaluate(payload);
+  assert.equal(second.delivered, 1); // only "2" delivers again
+  assert.equal(second.rate_limited, 1); // "1" is still within its window
+});
+
+test("evaluate: once the rate-limit window elapses, the same trigger can deliver again", async () => {
+  const deliver = vi.fn().mockResolvedValue(undefined);
+  const hub = new AlerterHub({}, {}, { deliver });
+  hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
+  hub.triggersLoadedAt = Date.now();
+  const payload = { table: "account_events", netuid: 7 };
+
+  await hub.evaluate(payload);
+  // Simulate the window having elapsed rather than waiting on a real clock.
+  hub.lastDeliveredAt.set("1", Date.now() - 10 * 60 * 1000);
+  const result = await hub.evaluate(payload);
+  assert.equal(result.delivered, 1);
+  assert.equal(result.rate_limited, 0);
+  assert.equal(deliver.mock.calls.length, 2);
 });
 
 test("evaluate: a rejecting deliver call never fails the overall evaluation", async () => {
@@ -325,6 +524,8 @@ test("fetch: POST /evaluate with a valid JSON body returns the evaluate() result
   assert.deepEqual(await res.json(), {
     matched: 1,
     trigger_ids: [triggerRow().id],
+    delivered: 1,
+    rate_limited: 0,
   });
 });
 
