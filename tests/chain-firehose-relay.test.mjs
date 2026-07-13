@@ -16,8 +16,43 @@ import {
   forwardBatch,
   forwardChainFirehoseNotification,
   forwardWithRetry,
+  mapBounded,
   parseRelayConfig,
 } from "../scripts/chain-firehose-relay.mjs";
+
+// --- mapBounded ---------------------------------------------------------------
+
+test("mapBounded: preserves result order by input index regardless of completion order", async () => {
+  const results = await mapBounded([30, 10, 20], 3, async (ms) => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    return ms;
+  });
+  assert.deepEqual(results, [30, 10, 20]);
+});
+
+test("mapBounded: never runs more than `concurrency` workers at once", async () => {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  await mapBounded([1, 2, 3, 4, 5, 6], 2, async () => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    inFlight -= 1;
+  });
+  assert.equal(maxInFlight, 2);
+});
+
+test("mapBounded: an empty items array resolves to an empty results array", async () => {
+  const results = await mapBounded([], 5, async () => {
+    throw new Error("should never be called");
+  });
+  assert.deepEqual(results, []);
+});
+
+test("mapBounded: a null/undefined items list is treated as empty, not a crash", async () => {
+  const results = await mapBounded(null, 5, async () => 1);
+  assert.deepEqual(results, []);
+});
 
 // --- parseRelayConfig -------------------------------------------------------
 
@@ -199,8 +234,8 @@ test("forwardWithRetry: never sleeps after the final attempt (no wasted delay be
 
 // --- forwardBatch --------------------------------------------------------------
 
-test("forwardBatch: forwards every row sequentially, in order, JSON-stringifying the already-parsed payload", async () => {
-  const seen = [];
+test("forwardBatch: forwards every row concurrently, JSON-stringifying the already-parsed payload", async () => {
+  const seen = new Set();
   const rows = [
     { id: 1, payload: { table: "blocks", block_number: 1 } },
     { id: 2, payload: { table: "blocks", block_number: 2 } },
@@ -210,7 +245,7 @@ test("forwardBatch: forwards every row sequentially, in order, JSON-stringifying
     { ingestUrl: "u", syncSecret: "s" },
     {
       fetchImpl: async (_url, init) => {
-        seen.push(init.body);
+        seen.add(init.body);
         return new Response("{}", { status: 202 });
       },
       sleepImpl: async () => {},
@@ -218,27 +253,32 @@ test("forwardBatch: forwards every row sequentially, in order, JSON-stringifying
   );
   assert.equal(result.forwarded, 2);
   assert.equal(result.dropped, 0);
-  assert.deepEqual(seen, [
-    '{"table":"blocks","block_number":1}',
-    '{"table":"blocks","block_number":2}',
-  ]);
+  // Concurrent dispatch (CHAIN_FIREHOSE_FORWARD_CONCURRENCY), not strictly
+  // sequential -- assert both were sent, not the order they arrived in.
+  assert.deepEqual(
+    [...seen].sort(),
+    [
+      '{"table":"blocks","block_number":1}',
+      '{"table":"blocks","block_number":2}',
+    ].sort(),
+  );
 });
 
 test("forwardBatch: counts a row dropped after exhausting retries separately from forwarded rows", async () => {
   const rows = [
-    { id: 1, payload: { table: "blocks", block_number: 1 } },
-    { id: 2, payload: { table: "blocks", block_number: 2 } },
+    { id: 1, payload: { table: "blocks", block_number: 1 } }, // always fails
+    { id: 2, payload: { table: "blocks", block_number: 2 } }, // always succeeds
   ];
-  let call = 0;
   const result = await forwardBatch(
     rows,
     { ingestUrl: "u", syncSecret: "s" },
     {
-      fetchImpl: async () => {
-        call += 1;
-        // Row 1 (attempts 1-3) always fails; row 2's first attempt (call 4) succeeds.
-        return new Response("{}", { status: call <= 3 ? 500 : 202 });
-      },
+      // Keyed by payload body, not a shared call counter -- rows forward
+      // concurrently, so interleaving between the two isn't deterministic.
+      fetchImpl: async (_url, init) =>
+        new Response("{}", {
+          status: init.body.includes('"block_number":1') ? 500 : 202,
+        }),
       sleepImpl: async () => {},
     },
   );

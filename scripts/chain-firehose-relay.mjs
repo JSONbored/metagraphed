@@ -70,7 +70,44 @@ export const CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS = 3;
 export const CHAIN_FIREHOSE_BACKOFF_BASE_MS = 500;
 export const CHAIN_FIREHOSE_BACKOFF_MAX_MS = 15_000;
 
+// forwardBatch's in-flight concurrency -- forwarding a CHAIN_FIREHOSE_POLL_BATCH_SIZE
+// batch one row at a time (matching src/webhooks.mjs's own ALERT_DELIVERY_CONCURRENCY
+// default) would take minutes to drain any real backlog (each row is a real
+// HTTP round trip); this is the ingest endpoint's own Worker, not an
+// arbitrary third-party webhook, so higher concurrency than that 8 is
+// reasonable. Forwarding is no longer strictly ordered across a batch as a
+// result -- acceptable for a best-effort live stream where consumers already
+// have block_number/observed_at to reconstruct order if they need to, not
+// acceptable to trade away for a queue that can take an hour to catch up
+// after downtime.
+export const CHAIN_FIREHOSE_FORWARD_CONCURRENCY = 16;
+
 // --- pure, unit-tested logic ----------------------------------------------------
+
+// Bounded-concurrency map: drains `items` through at most `concurrency`
+// in-flight `fn` calls. Duplicated from src/webhooks.mjs's own mapBounded
+// (not imported) -- this script is deployed standalone, COPYing only itself
+// into a minimal container (deploy/chain-firehose-relay.Dockerfile's own
+// comment: "a single small ESM file + one npm dependency"); pulling in `src/`
+// would grow that deploy surface for a ~15-line utility.
+export async function mapBounded(items, concurrency, fn) {
+  const list = [...(items || [])];
+  const results = new Array(list.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < list.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await fn(list[index]);
+    }
+  };
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(concurrency, list.length)) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
 
 // Validates the process env this relay needs. Throws (rather than returning
 // a result object) so a misconfigured deploy fails loudly at startup instead
@@ -158,26 +195,20 @@ export async function forwardWithRetry(
   return false;
 }
 
-// Forwards every row in a claimed batch sequentially, in claim order --
-// matches the old NOTIFY relay's one-at-a-time forwarding (never fans out
-// concurrently), so downstream ordering per subscriber connection is
-// preserved. `rows` are already claimed (delivered_at stamped) by the
+// Forwards every row in a claimed batch with bounded concurrency (see
+// CHAIN_FIREHOSE_FORWARD_CONCURRENCY's own comment for why this isn't
+// sequential). `rows` are already claimed (delivered_at stamped) by the
 // caller's UPDATE ... RETURNING before this runs -- forwarding failure after
 // exhausting retries still counts as "handled" (best-effort, not
 // at-least-once, same as the old design), not re-queued.
 export async function forwardBatch(rows, config, options = {}) {
-  let forwarded = 0;
-  let dropped = 0;
-  for (const row of rows) {
-    const ok = await forwardWithRetry(
-      JSON.stringify(row.payload),
-      config,
-      options,
-    );
-    if (ok) forwarded += 1;
-    else dropped += 1;
-  }
-  return { forwarded, dropped };
+  const results = await mapBounded(
+    rows,
+    CHAIN_FIREHOSE_FORWARD_CONCURRENCY,
+    (row) => forwardWithRetry(JSON.stringify(row.payload), config, options),
+  );
+  const forwarded = results.filter(Boolean).length;
+  return { forwarded, dropped: results.length - forwarded };
 }
 
 /* v8 ignore start -- the long-running poll/cleanup loop needs a real
