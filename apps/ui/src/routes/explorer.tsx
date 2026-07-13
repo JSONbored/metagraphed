@@ -22,6 +22,7 @@ import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-lead
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import {
+  blocksQuery,
   chainActivityQuery,
   chainCallsQuery,
   chainEventsInfiniteQuery,
@@ -58,6 +59,26 @@ import type {
   ChainPrometheus,
   ChainTransfers,
 } from "@/lib/metagraphed/types";
+
+// #3373: compact live chain-head tip in the hero — "head #NNNN · N ago" from the
+// live /api/v1/blocks feed (limit 1), linking to that block. Mirrors #3372's
+// ChainHeadTip on the home page: plain useQuery so a cold/failed fetch silently
+// renders null and never disrupts the primary hero or the daily-aggregate KPIs.
+function ChainHeadTip() {
+  const { data } = useQuery(blocksQuery({ limit: 1 }));
+  const head = data?.data?.[0];
+  if (!head || head.block_number == null) return null;
+  return (
+    <Link
+      to="/blocks/$ref"
+      params={{ ref: String(head.block_number) }}
+      className="mg-fade-in mg-fade-in-delay-3 inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted hover:text-accent transition-colors"
+    >
+      <span className="mg-live-dot" />
+      head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
+    </Link>
+  );
+}
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -103,7 +124,12 @@ function ExplorerPage() {
         live
         title="Chain explorer"
         description="The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers."
-        actions={<ShareButton />}
+        actions={
+          <>
+            <ShareButton />
+            <ChainHeadTip />
+          </>
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-[40rem] w-full" />}>
@@ -113,6 +139,7 @@ function ExplorerPage() {
       <ChainEventsFeedSection />
       <ApiSourceFooter
         paths={[
+          "/api/v1/blocks",
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
