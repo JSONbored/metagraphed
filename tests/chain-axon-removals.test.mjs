@@ -308,6 +308,58 @@ describe("GET /api/v1/chain/axon-removals", () => {
     assert.equal(body.data.intensity_distribution, null);
   });
 
+  // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
+  // table this handler already reads, no new flag) -- tryPostgresTier's own
+  // fallback contract is unit-tested in workers/postgres-tier.mjs's own
+  // tests, so these two just prove the wiring: a Postgres hit is served
+  // as-is with D1 never queried, and a Postgres failure falls back to D1.
+  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = {
+      ...axonRemovalsEnv(cold),
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            observed_at: "2026-01-01T00:00:00.000Z",
+            subnet_count: 99,
+            network: {},
+            intensity_distribution: null,
+            subnets: [{ netuid: 42 }],
+          }),
+      },
+    };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    const res = await handleRequest(req("?window=7d"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.subnet_count, 99);
+    assert.equal(d1Called, false);
+  });
+
+  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const env = {
+      ...axonRemovalsEnv(warm),
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await handleRequest(req("?window=7d"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.subnet_count, 3);
+  });
+
   test("rejects an unsupported window with 400", async () => {
     const res = await handleRequest(
       req("?window=90d"),

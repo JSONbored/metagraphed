@@ -2,8 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertOctagon, AlertTriangle, Info } from "lucide-react";
 import { subnetHealthIncidentsQuery, flattenSurfaceIncidents } from "@/lib/metagraphed/queries";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { TimeAgo, SectionAnchor } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import { incidentDurationLabel } from "@/lib/metagraphed/incident-duration";
 

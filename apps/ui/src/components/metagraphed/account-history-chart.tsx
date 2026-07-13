@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkline, type SparklinePoint } from "@/components/metagraphed/charts/sparkline";
+import { Sparkline, type SparklinePoint } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { accountHistoryQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";

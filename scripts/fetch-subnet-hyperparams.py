@@ -111,7 +111,18 @@ def main():
 
     # Reuse the bulk metagraph call purely to discover the active netuid set —
     # the same pattern fetch-native-subnets.py already uses for the same reason
-    # (get_subnet_hyperparameters itself has no bulk/all-subnets variant).
+    # (get_subnet_hyperparameters itself has no bulk/all-subnets variant). Also
+    # reuse its per-info `.block` (the metagraph snapshot's chain height) as
+    # this run's block_number: `get_subnet_hyperparameters()` itself carries no
+    # block field, and the previous `getattr(s.substrate, "block_number", 0)`
+    # always silently fell back to 0 because SubstrateInterface has no
+    # `block_number` attribute (it's a method, `get_block_number()`) — live-
+    # verified 2026-07-12, every hyperparameters row served in production had
+    # block_number:0. One shared value for the whole run, matching
+    # fetch-metagraph-native.py's `int(getattr(info, "block", 0) or 0)`
+    # convention, rather than a fresh get_block_number() call per netuid
+    # (~129 extra RPC round-trips returning a slightly different block each
+    # time as the loop runs).
     infos = s.metagraphs.get_all_metagraphs_info(all_mechanisms=True)
     netuids = sorted(
         {
@@ -120,6 +131,7 @@ def main():
             if int(getattr(info, "mechid", 0) or 0) == 0
         }
     )
+    block_number = int(getattr(infos[0], "block", 0) or 0) if infos else 0
 
     captured_at = int(time.time() * 1000)
     rows = []
@@ -141,7 +153,6 @@ def main():
         if hp is None:
             errors.append(f"netuid={netuid}: empty hyperparameters response")
             continue
-        block_number = int(getattr(s.substrate, "block_number", 0) or 0)
         rows.append(
             {
                 "netuid": netuid,

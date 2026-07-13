@@ -5,18 +5,25 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero } from "@/components/metagraphed/page-hero";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
-import { ShareButton } from "@/components/metagraphed/share-button";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
-import { BarMini } from "@/components/metagraphed/charts/bar-mini";
-import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
-import { SearchInput } from "@/components/metagraphed/table-controls";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import {
+  PageHero,
+  ShareButton,
+  ListShell,
+  LoadMore,
+  TimeAgo,
+  StatTile,
+  Sparkline,
+  BarMini,
+  Donut,
+} from "@jsonbored/ui-kit";
+import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
+import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
+import { SearchInput } from "@/components/metagraphed/table-controls";
+import {
+  blocksQuery,
   chainActivityQuery,
   chainCallsQuery,
   chainEventsInfiniteQuery,
@@ -25,6 +32,8 @@ import {
   chainSignersQuery,
   chainWeightSettersQuery,
   chainRegistrationsQuery,
+  chainServingQuery,
+  chainPrometheusQuery,
   chainStakeFlowQuery,
   chainStakeMovesQuery,
   chainTurnoverQuery,
@@ -47,8 +56,30 @@ import type {
   EconomicsTrends,
   ChainAxonRemovals,
   ChainRegistrations,
+  ChainServing,
+  ChainPrometheus,
   ChainTransfers,
 } from "@/lib/metagraphed/types";
+
+// #3373: compact live chain-head tip in the hero — "head #NNNN · N ago" from the
+// live /api/v1/blocks feed (limit 1), linking to that block. Mirrors #3372's
+// ChainHeadTip on the home page: plain useQuery so a cold/failed fetch silently
+// renders null and never disrupts the primary hero or the daily-aggregate KPIs.
+function ChainHeadTip() {
+  const { data } = useQuery(blocksQuery({ limit: 1 }));
+  const head = data?.data?.[0];
+  if (!head || head.block_number == null) return null;
+  return (
+    <Link
+      to="/blocks/$ref"
+      params={{ ref: String(head.block_number) }}
+      className="mg-fade-in mg-fade-in-delay-3 inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted hover:text-accent transition-colors"
+    >
+      <span className="mg-live-dot" />
+      head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
+    </Link>
+  );
+}
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -94,7 +125,12 @@ function ExplorerPage() {
         live
         title="Chain explorer"
         description="The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers."
-        actions={<ShareButton />}
+        actions={
+          <>
+            <ShareButton />
+            <ChainHeadTip />
+          </>
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-[40rem] w-full" />}>
@@ -104,12 +140,15 @@ function ExplorerPage() {
       <ChainEventsFeedSection />
       <ApiSourceFooter
         paths={[
+          "/api/v1/blocks",
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
           "/api/v1/chain/signers",
           "/api/v1/chain/weights/setters",
           "/api/v1/chain/registrations",
+          "/api/v1/chain/serving",
+          "/api/v1/chain/prometheus",
           "/api/v1/chain/stake-flow",
           "/api/v1/chain/stake-moves",
           "/api/v1/chain/turnover",
@@ -173,9 +212,25 @@ function MiniSeries({
  * Call mix — the top modules as a BarMini, plus a click-through drill-down into
  * the selected module's call_function rows (where the grouping exposes them).
  */
+// #3384: cycle the shared chart palette across the call-mix donut segments +
+// their legend swatches, matching providers.index.tsx's ProviderOverview.
+const CALL_MIX_PALETTE = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+];
+
 function CallMixSection({ calls }: { calls: ChainCalls }) {
   const modules = calls.calls.slice(0, 10);
   const [selected, setSelected] = useState<string | null>(null);
+  const moduleSegments = modules.map((c, i) => ({
+    label: c.call_module,
+    value: c.count,
+    color: CALL_MIX_PALETTE[i % CALL_MIX_PALETTE.length]!,
+  }));
   // Function-level rows exist only when the aggregate is grouped by function;
   // at module grouping call_function is null, so this stays empty until then.
   const functions = calls.calls.filter(
@@ -183,8 +238,8 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Call mix
         </h2>
@@ -194,45 +249,49 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
       </div>
       {modules.length > 0 ? (
         <div className="space-y-4">
-          <ul className="space-y-1.5">
-            {modules.map((c) => {
-              const cap = Math.max(1, ...modules.map((m) => m.count));
-              const pct = Math.max(2, Math.round((c.count / cap) * 100));
-              const active = selected === c.call_module;
-              return (
-                <li key={c.call_module}>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(active ? null : c.call_module)}
-                    className="grid w-full grid-cols-[7rem_1fr_auto] items-center gap-2 text-left"
-                    aria-pressed={active}
-                  >
-                    <span
-                      className={
-                        active
-                          ? "truncate font-mono text-[10px] uppercase tracking-widest text-accent"
-                          : "truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-                      }
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <Donut
+              segments={moduleSegments}
+              centerLabel={formatNumber(calls.total_extrinsics)}
+              centerSub="calls"
+            />
+            {/* Interactive legend: `Donut`/`DonutLegend` are presentational, so
+                the click-to-drill-in affordance lives on these legend rows,
+                preserving the module-select behaviour the bar list had. */}
+            <ul className="min-w-0 flex-1 space-y-1">
+              {modules.map((c, i) => {
+                const active = selected === c.call_module;
+                return (
+                  <li key={c.call_module}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(active ? null : c.call_module)}
+                      className="flex w-full items-center gap-2 text-left"
+                      aria-pressed={active}
                     >
-                      {c.call_module}
-                    </span>
-                    <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
                       <span
-                        className="absolute inset-y-0 left-0 rounded-full"
-                        style={{
-                          width: `${pct}%`,
-                          background: active ? "var(--accent)" : "var(--chart-1)",
-                        }}
+                        aria-hidden
+                        className="inline-block size-2 shrink-0 rounded-sm"
+                        style={{ background: CALL_MIX_PALETTE[i % CALL_MIX_PALETTE.length] }}
                       />
-                    </span>
-                    <span className="font-mono text-[10px] tabular-nums text-ink-strong">
-                      {formatNumber(c.count)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                      <span
+                        className={
+                          active
+                            ? "truncate font-mono text-[10px] uppercase tracking-widest text-accent"
+                            : "truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+                        }
+                      >
+                        {c.call_module}
+                      </span>
+                      <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums text-ink-strong">
+                        {formatNumber(c.count)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
 
           {functions.length > 0 ? (
             <div className="border-t border-border pt-3">
@@ -271,8 +330,8 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
   const cap = Math.max(1, ...rows.map((r) => r.count));
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Pallet event mix
         </h2>
@@ -353,8 +412,8 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
   const cap = Math.max(1, ...inflows.map((s) => s.net_flow_tao));
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Stake flow
         </h2>
@@ -455,8 +514,8 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
   const cap = Math.max(1, ...busiest.map((s) => s.movements));
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Stake moves
         </h2>
@@ -521,6 +580,173 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
 }
 
 /**
+ * #3463: network-wide axon-serving and Prometheus-telemetry leaderboards side
+ * by side — which subnets are actively announcing operational endpoints. The
+ * wrapping section leaves room for #3464's axon-removals panel to slot in later.
+ */
+function NetworkOperationsSection({
+  serving,
+  prometheus,
+}: {
+  serving: ChainServing;
+  prometheus: ChainPrometheus;
+}) {
+  return (
+    <section>
+      <h2 className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+        Network operations
+      </h2>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ChainServingLeaderboard board={serving} />
+        <ChainPrometheusLeaderboard board={prometheus} />
+      </div>
+    </section>
+  );
+}
+
+function ChainServingLeaderboard({ board }: { board: ChainServing }) {
+  const net = board.network;
+
+  return (
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+        <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Axon serving
+        </h3>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(board.subnet_count)} subnets
+        </span>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StakeFlowMetric label="Announcements" value={formatNumber(net.announcements)} />
+        <StakeFlowMetric label="Distinct servers" value={formatNumber(net.distinct_servers)} />
+        <StakeFlowMetric
+          label="Per server"
+          value={
+            net.announcements_per_server != null ? net.announcements_per_server.toFixed(2) : "—"
+          }
+        />
+      </div>
+
+      {board.subnets.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Announcements</th>
+                <th className={`${TH} text-right`}>Distinct servers</th>
+                <th className={`${TH} text-right`}>Per server</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {board.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.announcements)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.distinct_servers)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {s.announcements_per_server != null
+                      ? s.announcements_per_server.toFixed(2)
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="No serving activity in this window yet." />
+      )}
+    </section>
+  );
+}
+
+function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
+  const net = board.network;
+
+  return (
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+        <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          Prometheus telemetry
+        </h3>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {formatNumber(board.subnet_count)} subnets
+        </span>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StakeFlowMetric label="Announcements" value={formatNumber(net.announcements)} />
+        <StakeFlowMetric label="Distinct exporters" value={formatNumber(net.distinct_exporters)} />
+        <StakeFlowMetric
+          label="Per exporter"
+          value={
+            net.announcements_per_exporter != null ? net.announcements_per_exporter.toFixed(2) : "—"
+          }
+        />
+      </div>
+
+      {board.subnets.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Announcements</th>
+                <th className={`${TH} text-right`}>Distinct exporters</th>
+                <th className={`${TH} text-right`}>Per exporter</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {board.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.announcements)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.distinct_exporters)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {s.announcements_per_exporter != null
+                      ? s.announcements_per_exporter.toFixed(2)
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="No Prometheus telemetry in this window yet." />
+      )}
+    </section>
+  );
+}
+
+/**
  * #3464: network-wide axon-teardown ("churn") leaderboard — the teardown-side
  * complement of the serving/stake-transfer boards, from the newly-wired
  * chainAxonRemovalsQuery. Network rollup line + per-subnet table, mirroring the
@@ -528,8 +754,8 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
  */
 function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <div>
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Axon churn leaderboard
@@ -593,8 +819,8 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
   const net = registrations.network;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Network registrations
         </h2>
@@ -630,42 +856,44 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
       </div>
 
       {registrations.subnets.length > 0 ? (
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr>
-              <th className={TH}>Subnet</th>
-              <th className={`${TH} text-right`}>Registrations</th>
-              <th className={`${TH} text-right`}>Distinct registrants</th>
-              <th className={`${TH} text-right`}>Per registrant</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {registrations.subnets.map((s) => (
-              <tr key={s.netuid} className="hover:bg-surface/40">
-                <td className="px-4 py-2 font-mono text-[11px]">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: s.netuid }}
-                    className="text-ink-strong hover:text-accent hover:underline"
-                  >
-                    SN{s.netuid}
-                  </Link>
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                  {formatNumber(s.registrations)}
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                  {formatNumber(s.distinct_registrants)}
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                  {s.registrations_per_registrant != null
-                    ? s.registrations_per_registrant.toFixed(2)
-                    : "—"}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Subnet</th>
+                <th className={`${TH} text-right`}>Registrations</th>
+                <th className={`${TH} text-right`}>Distinct registrants</th>
+                <th className={`${TH} text-right`}>Per registrant</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {registrations.subnets.map((s) => (
+                <tr key={s.netuid} className="hover:bg-surface/40">
+                  <td className="px-4 py-2 font-mono text-[11px]">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: s.netuid }}
+                      className="text-ink-strong hover:text-accent hover:underline"
+                    >
+                      SN{s.netuid}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(s.registrations)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(s.distinct_registrants)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {s.registrations_per_registrant != null
+                      ? s.registrations_per_registrant.toFixed(2)
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <EmptyState title="No registrations in this window yet." />
       )}
@@ -688,8 +916,8 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
     .slice(0, 12);
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Validator turnover
         </h2>
@@ -779,8 +1007,8 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
 function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
   const chrono = [...trends.days].reverse();
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Network economics trend
         </h2>
@@ -847,8 +1075,8 @@ function weightSetterKey(setter: { hotkey: string | null; uid: number | null }):
  */
 function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Transfers leaderboard
         </h2>
@@ -873,37 +1101,39 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
             Top senders
           </div>
           {transfers.top_senders.length > 0 ? (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr>
-                  <th className={TH}>Account</th>
-                  <th className={`${TH} text-right`}>Volume</th>
-                  <th className={`${TH} text-right`}>Transfers</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {transfers.top_senders.map((s) => (
-                  <tr key={s.address} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: s.address }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={s.address}
-                      >
-                        {shortHash(s.address) ?? s.address}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatTao(s.volume_tao)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatNumber(s.transfer_count)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={TH}>Account</th>
+                    <th className={`${TH} text-right`}>Volume</th>
+                    <th className={`${TH} text-right`}>Transfers</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {transfers.top_senders.map((s) => (
+                    <tr key={s.address} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: s.address }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                          title={s.address}
+                        >
+                          {shortHash(s.address) ?? s.address}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {formatTao(s.volume_tao)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatNumber(s.transfer_count)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="font-mono text-[12px] text-ink-muted">No senders in this window yet.</p>
           )}
@@ -914,37 +1144,39 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
             Top receivers
           </div>
           {transfers.top_receivers.length > 0 ? (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr>
-                  <th className={TH}>Account</th>
-                  <th className={`${TH} text-right`}>Volume</th>
-                  <th className={`${TH} text-right`}>Transfers</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {transfers.top_receivers.map((r) => (
-                  <tr key={r.address} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: r.address }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={r.address}
-                      >
-                        {shortHash(r.address) ?? r.address}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatTao(r.volume_tao)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatNumber(r.transfer_count)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={TH}>Account</th>
+                    <th className={`${TH} text-right`}>Volume</th>
+                    <th className={`${TH} text-right`}>Transfers</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {transfers.top_receivers.map((r) => (
+                    <tr key={r.address} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: r.address }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                          title={r.address}
+                        >
+                          {shortHash(r.address) ?? r.address}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {formatTao(r.volume_tao)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatNumber(r.transfer_count)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="font-mono text-[12px] text-ink-muted">No receivers in this window yet.</p>
           )}
@@ -976,6 +1208,8 @@ function ExplorerDashboard() {
     { data: signersRes },
     { data: weightSettersRes },
     { data: registrationsRes },
+    { data: servingRes },
+    { data: prometheusRes },
     { data: stakeFlowRes },
     { data: stakeMovesRes },
     { data: turnoverRes },
@@ -992,6 +1226,8 @@ function ExplorerDashboard() {
       chainSignersQuery(win),
       chainWeightSettersQuery(win),
       chainRegistrationsQuery(win),
+      chainServingQuery(win),
+      chainPrometheusQuery(win),
       chainStakeFlowQuery(win),
       chainStakeMovesQuery(win),
       chainTurnoverQuery(win),
@@ -1008,6 +1244,8 @@ function ExplorerDashboard() {
   const signers = signersRes.data;
   const weightSetters = weightSettersRes.data;
   const registrations = registrationsRes.data;
+  const serving = servingRes.data;
+  const prometheus = prometheusRes.data;
   const stakeFlow = stakeFlowRes.data;
   const stakeMoves = stakeMovesRes.data;
   const turnover = turnoverRes.data;
@@ -1086,8 +1324,8 @@ function ExplorerDashboard() {
       </div>
 
       {/* daily activity series */}
-      <section className="rounded-lg border border-border bg-card p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Daily activity
           </h2>
@@ -1138,8 +1376,8 @@ function ExplorerDashboard() {
 
       {/* fees: daily series + tip series + top payers */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Daily fees &amp; tips
             </h2>
@@ -1181,8 +1419,8 @@ function ExplorerDashboard() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Top fee payers
             </h2>
@@ -1204,7 +1442,7 @@ function ExplorerDashboard() {
                 formatValue={formatTao}
                 ariaLabel="Top fee payers ranked by total fees paid this window"
               />
-              <table className="w-full text-left text-sm">
+              <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
                 <thead>
                   <tr>
                     <th className={TH}>Account</th>
@@ -1238,15 +1476,15 @@ function ExplorerDashboard() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ExplorerLeaderboardTableShell>
             </>
           ) : (
             <EmptyState title="No fee payers in this window yet." />
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5 lg:col-span-2">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Network weight-setters
             </h2>
@@ -1255,50 +1493,52 @@ function ExplorerDashboard() {
             </span>
           </div>
           {weightSetters.setters.length > 0 ? (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr>
-                  <th className={TH}>Validator</th>
-                  <th className={`${TH} text-right`}>WeightsSet</th>
-                  <th className={`${TH} text-right`}>Share</th>
-                  <th className={`${TH} text-right`}>Last set</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {weightSetters.setters.map((setter) => (
-                  <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      {setter.hotkey ? (
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: setter.hotkey }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={setter.hotkey}
-                        >
-                          {shortHash(setter.hotkey) ?? setter.hotkey}
-                        </Link>
-                      ) : (
-                        <span
-                          className="text-ink-muted"
-                          title="Uid-only setter (no network-wide hotkey)"
-                        >
-                          uid {setter.uid ?? "—"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatNumber(setter.weight_sets)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {fmtShare(setter.share)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className={TH}>Validator</th>
+                    <th className={`${TH} text-right`}>WeightsSet</th>
+                    <th className={`${TH} text-right`}>Share</th>
+                    <th className={`${TH} text-right`}>Last set</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {weightSetters.setters.map((setter) => (
+                    <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        {setter.hotkey ? (
+                          <Link
+                            to="/accounts/$ss58"
+                            params={{ ss58: setter.hotkey }}
+                            className="text-ink-strong hover:text-accent hover:underline"
+                            title={setter.hotkey}
+                          >
+                            {shortHash(setter.hotkey) ?? setter.hotkey}
+                          </Link>
+                        ) : (
+                          <span
+                            className="text-ink-muted"
+                            title="Uid-only setter (no network-wide hotkey)"
+                          >
+                            uid {setter.uid ?? "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {formatNumber(setter.weight_sets)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {fmtShare(setter.share)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <EmptyState title="No weight-setters in this window yet." />
           )}
@@ -1317,12 +1557,12 @@ function ExplorerDashboard() {
         <CallMixSection calls={calls} />
 
         {/* top signers */}
-        <section className="rounded-lg border border-border bg-card p-5">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
           <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Most active accounts
           </h2>
           {signers.signers.length > 0 ? (
-            <table className="w-full text-left text-sm">
+            <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}>
               <thead>
                 <tr>
                   <th className={TH}>Account</th>
@@ -1370,12 +1610,14 @@ function ExplorerDashboard() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ExplorerLeaderboardTableShell>
           ) : (
             <EmptyState title="No signers in this window yet." />
           )}
         </section>
       </div>
+
+      <NetworkOperationsSection serving={serving} prometheus={prometheus} />
 
       <TransferPairsSection win={win} />
 
@@ -1388,8 +1630,8 @@ function ExplorerDashboard() {
       <NetworkRegistrationsSection registrations={registrations} />
 
       {/* stake-transfer leaderboard */}
-      <section className="rounded-lg border border-border bg-card p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
           <div>
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Stake-transfer leaderboard
@@ -1404,40 +1646,73 @@ function ExplorerDashboard() {
           </span>
         </div>
         {stakeTransfers.subnets.length > 0 ? (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr>
-                <th className={TH}>Subnet</th>
-                <th className={`${TH} text-right`}>Transfers</th>
-                <th className={`${TH} text-right`}>Distinct senders</th>
-                <th className={`${TH} text-right`}>Transfers per sender</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
+          <>
+            {/* < md: a squeezed 4-column table either clips its last column or
+                requires an undiscoverable horizontal scroll, so narrow
+                viewports get a stacked card per subnet instead (mirrors the
+                cards/table split ListShell uses for paginated lists). */}
+            <div className="md:hidden space-y-2">
               {stakeTransfers.subnets.map((s) => (
-                <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                <div key={s.netuid} className="rounded border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: s.netuid }}
-                      className="text-ink-strong hover:text-accent hover:underline"
+                      className="font-mono text-[12px] font-medium text-ink-strong hover:text-accent hover:underline"
                     >
                       SN{s.netuid}
                     </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {formatNumber(s.transfers)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {formatNumber(s.distinct_senders)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
-                  </td>
-                </tr>
+                    <span className="font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.transfers_per_sender != null
+                        ? `${s.transfers_per_sender.toFixed(2)} / sender`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                    <span>{formatNumber(s.transfers)} transfers</span>
+                    <span>{formatNumber(s.distinct_senders)} senders</span>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+            <ExplorerLeaderboardTableShell
+              leaderboardId={EXPLORER_LEADERBOARD_IDS.stakeTransfers}
+              visibility="desktop-only"
+            >
+              <thead>
+                <tr>
+                  <th className={TH}>Subnet</th>
+                  <th className={`${TH} text-right`}>Transfers</th>
+                  <th className={`${TH} text-right`}>Distinct senders</th>
+                  <th className={`${TH} text-right`}>Transfers per sender</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {stakeTransfers.subnets.map((s) => (
+                  <tr key={s.netuid} className="hover:bg-surface/40">
+                    <td className="px-4 py-2 font-mono text-[11px]">
+                      <Link
+                        to="/subnets/$netuid"
+                        params={{ netuid: s.netuid }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                      >
+                        SN{s.netuid}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(s.transfers)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(s.distinct_senders)}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </ExplorerLeaderboardTableShell>
+          </>
         ) : (
           <EmptyState title="No stake transfers in this window yet." />
         )}
@@ -1460,8 +1735,8 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
   const rows = pairs?.pairs ?? [];
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div>
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Transfer pairs

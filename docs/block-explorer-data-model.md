@@ -123,9 +123,10 @@ direct independent cross-check against two sources with zero shared infrastructu
 indexing pipeline (our own archive node for a historical block, `entrypoint-finney.opentensor.ai`
 for a live one): perfect parity, both extrinsic and event content, exact order.
 
-Per-neuron metagraph state is already captured (see above) via D1, not Postgres — the
-Postgres `neurons`/`neuron_daily`/`economics_history` tables exist in the schema as future
-D1→Postgres cutover targets (ADR 0013) but have no writer yet; check D1's route list in
+Per-neuron metagraph state is now served from Postgres (`neurons`/`neuron_daily`, ADR 0014's
+#4771 cutover, flipped 2026-07-10) — the ADR-0013-era `economics_history` table was superseded
+by folding economics columns into D1's/Postgres's `subnet_snapshots` (migration 0008) instead,
+and has been removed from `deploy/postgres/schema.sql` as dead schema. Check D1's route list in
 `workers/config.mjs` before assuming a chain-data tier is missing, the two can diverge.
 
 The one confirmed, unfiled capture gap is **subnet hyperparameters** — no pipeline captures

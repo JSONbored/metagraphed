@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, Radio, Database, AlertOctagon } from "lucide-react";
-import { HealthDot } from "./chips";
+import { HealthDot } from "@jsonbored/ui-kit";
 import { EmptyState, RECOVERY } from "./states";
 import { classNames } from "@/lib/metagraphed/format";
 import { useIsMobile } from "@/hooks/use-mobile";

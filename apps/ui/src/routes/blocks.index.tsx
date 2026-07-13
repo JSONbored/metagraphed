@@ -6,21 +6,26 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChevronLeft, ChevronRight, Timer, Activity, Users } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { PageHero } from "@/components/metagraphed/page-hero";
-import { ListShell } from "@/components/metagraphed/list-shell";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { AccountCell } from "@/components/metagraphed/account-cell";
+import {
+  TimeAgo,
+  PageHero,
+  ListShell,
+  ShareButton,
+  DownloadCsvButton,
+  StatTile,
+  Sparkline,
+  CopyButton,
+  CopyableCode,
+} from "@jsonbored/ui-kit";
 import {
   PageSizeSelect,
   ResetFiltersButton,
   SearchInput,
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { ShareButton } from "@/components/metagraphed/share-button";
-import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { blocksQuery, blocksSummaryQuery, chainActivityQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
@@ -387,20 +392,28 @@ function BlocksTable() {
                   </Link>
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  <Link
-                    to="/blocks/$ref"
-                    params={{ ref: b.block_hash || String(b.block_number) }}
-                    className="hover:text-ink-strong"
-                    title={b.block_hash}
-                  >
-                    {shortHash(b.block_hash)}
-                  </Link>
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <Link
+                      to="/blocks/$ref"
+                      params={{ ref: b.block_hash || String(b.block_number) }}
+                      className="hover:text-ink-strong truncate"
+                      title={b.block_hash}
+                    >
+                      {shortHash(b.block_hash)}
+                    </Link>
+                    {b.block_hash ? <CopyButton value={b.block_hash} label="block hash" /> : null}
+                  </span>
                 </td>
                 <td
                   className="px-4 py-2.5 font-mono text-[11px] text-ink-muted"
                   title={b.author ?? undefined}
                 >
-                  {shortHash(b.author) ?? "—"}
+                  <AccountCell
+                    ss58={b.author}
+                    fallback={
+                      b.author ? <CopyableCode value={b.author} className="max-w-full" /> : "—"
+                    }
+                  />
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
                   {formatNumber(b.extrinsic_count ?? 0)}

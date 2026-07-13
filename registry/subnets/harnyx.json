@@ -46,6 +46,22 @@
         "https://github.com/harnyx/harnyx/blob/41771ae6b74fc8b2f14b365745c1292782ed9d3a/packages/commons/src/harnyx_commons/miner_task_benchmark/webwalkerqa/data/versions/2026-05-14-webwalkerqa-test-single-source-easy__correctness-v1/test.json"
       ],
       "url": "https://raw.githubusercontent.com/harnyx/harnyx/41771ae6b74fc8b2f14b365745c1292782ed9d3a/packages/commons/src/harnyx_commons/miner_task_benchmark/webwalkerqa/data/versions/2026-05-14-webwalkerqa-test-single-source-easy__correctness-v1/test.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-67-harnyx-dashboard",
+      "kind": "dashboard",
+      "name": "Harnyx live benchmark dashboard",
+      "notes": "Public no-auth web dashboard for SN67 Harnyx at dashboard.harnyx.ai/benchmark (page title \"Harnyx Dashboard\") showing the live miner-task benchmark: champion miner, reward estimates, recent winning batches, and network health. Linked as the \"Live benchmark\" from the official harnyx/harnyx README. Distinct host from the harnyx.ai website/API.",
+      "provider": "harnyx",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": ["https://github.com/harnyx/harnyx/blob/main/README.md"],
+      "url": "https://dashboard.harnyx.ai/benchmark"
     }
   ],
   "source_repo": "https://github.com/harnyx/harnyx",

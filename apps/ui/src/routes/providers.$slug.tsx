@@ -10,12 +10,14 @@ import {
   RECOVERY,
 } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { ProfileHero } from "@/components/metagraphed/profile-hero";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { PrimaryLinksRail } from "@/components/metagraphed/primary-links-rail";
+import {
+  ProfileHero,
+  BrandIcon,
+  PrimaryLinksRail,
+  CopyableCode,
+  SectionAnchor,
+} from "@jsonbored/ui-kit";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";

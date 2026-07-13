@@ -15,42 +15,6 @@ import {
   buildAccountExtrinsics,
 } from "./extrinsics.mjs";
 
-// D1 safety-valve, ORIGINALLY 365 days ("prevents unbounded growth before the
-// Postgres cold tier (#1519) ships") -- but #1519 never shipped, and real
-// ingestion volume (measured 2026-07-04: ~1.3M rows/day, steady) meant 365 days
-// of retention never actually got old enough to prune (the table is younger
-// than that), so this "safety valve" never engaged and the table grew until
-// it hit D1's hard, unraisable 10GB-per-database cap in production (a live
-// outage: every write into this D1 failed with D1_ERROR: Exceeded maximum DB
-// size). 3 days is what the measured ingestion rate can sustainably fit with
-// real headroom under 10GB across all tables sharing this database -- this is
-// an emergency-driven number, not an arbitrary product decision; raise it only
-// once the raw/long-history chain data lives in Postgres (self-hosted, no cap)
-// instead of D1, per ADR 0013's own "demote/retire D1" end state.
-export const EVENT_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
-
-// Columns written to account_events — THE load contract. scripts/fetch-events.py
-// emits rows with exactly these keys; loadStagedEvents binds them in this order.
-// Values are always bound, never interpolated into SQL.
-export const EVENT_INSERT_COLUMNS = [
-  "block_number",
-  "event_index",
-  "event_kind",
-  "hotkey",
-  "coldkey",
-  "netuid",
-  "uid",
-  "amount_tao",
-  // The alpha leg of a stake swap (#1856): subnet alpha bought/sold, in TAO units.
-  // Only StakeAdded/StakeRemoved carry it; null for every other kind. Display-only.
-  "alpha_amount",
-  "observed_at",
-  // The 0-based index of the extrinsic that emitted this event (#1849), read from
-  // the event's phase=ApplyExtrinsic; null for Initialization/Finalization events.
-  // 11 cols x ROWS_PER_STMT(9) = 99 bound params — under D1's 100 ceiling.
-  "extrinsic_index",
-];
-
 // The SubtensorModule events the poller indexes — entity-relevant only, which
 // keeps volume ~1 MB/day (not ~100 MB/day). Kept in sync with fetch-events.py
 // EXTRACTORS; positional field order verified against live finney (2026-06-21).
@@ -203,125 +167,6 @@ export function formatAccountEvent(row) {
     observed_at: toIso(row.observed_at),
     extrinsic_index: toBlockNumber(row.extrinsic_index),
   };
-}
-
-// UTC-day bounds for the timestamp `ms`: { date: 'YYYY-MM-DD', start, end } in
-// epoch ms. The rollup re-rolls the two active days each hour (past days are
-// already finalized + unchanged), keyed by these bounds.
-export function utcDayBounds(ms) {
-  const d = new Date(ms);
-  const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  return {
-    date: new Date(start).toISOString().slice(0, 10),
-    start,
-    end: start + 24 * 60 * 60 * 1000,
-  };
-}
-
-// Roll the raw account_events for the two active UTC days into the durable
-// per-(hotkey, netuid, day) summary, BEFORE the hot window is pruned. Upsert keeps
-// it idempotent; only hotkey-attributed events roll up (coldkey-only events like
-// RootClaimed stay queryable in the hot window). No-ops when D1 is cold.
-export async function rollupAccountEventsDaily(env, overrides = {}) {
-  const now = overrides.now || (() => Date.now());
-  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return { rolled: false };
-  const runAt = now();
-  const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
-  try {
-    const stmt = db.prepare(
-      `INSERT INTO account_events_daily
-         (hotkey, netuid, day, event_count, event_kinds, first_block, last_block, updated_at)
-       SELECT
-         hotkey,
-         netuid,
-         ? AS day,
-         COUNT(*) AS event_count,
-         GROUP_CONCAT(DISTINCT event_kind) AS event_kinds,
-         MIN(block_number) AS first_block,
-         MAX(block_number) AS last_block,
-         ? AS updated_at
-       FROM account_events
-       WHERE hotkey IS NOT NULL AND netuid IS NOT NULL
-         AND observed_at >= ? AND observed_at < ?
-       GROUP BY hotkey, netuid
-       ON CONFLICT(hotkey, netuid, day) DO UPDATE SET
-         event_count = excluded.event_count,
-         event_kinds = excluded.event_kinds,
-         first_block = excluded.first_block,
-         last_block = excluded.last_block,
-         updated_at = excluded.updated_at`,
-    );
-    await db.batch(
-      days.map(({ date, start, end }) => stmt.bind(date, runAt, start, end)),
-    );
-    return { rolled: true, days: days.map((d) => d.date) };
-  } catch {
-    return { rolled: false };
-  }
-}
-
-// Hourly maintenance: prune raw events older than the retention window so the hot
-// table stays lean (the daily rollup preserves the long-term history).
-export async function pruneAccountEvents(env, overrides = {}) {
-  const now = overrides.now || (() => Date.now());
-  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return { pruned: false };
-  const cutoff = now() - (overrides.retentionMs || EVENT_RETENTION_MS);
-  try {
-    const result = await db
-      .prepare(`DELETE FROM account_events WHERE observed_at < ?`)
-      .bind(cutoff)
-      .run();
-    return { pruned: true, cutoff, changes: result?.meta?.changes ?? null };
-  } catch {
-    return { pruned: false };
-  }
-}
-
-// Keep only well-formed account_events rows (a valid (block_number, event_index)
-// primary key). Shared by the staged-batch loader (#1346) and the realtime ingest
-// endpoint (#1360) so both reject garbage identically.
-export function validEventRows(rows) {
-  return Array.isArray(rows)
-    ? rows.filter(
-        (r) =>
-          Number.isInteger(r?.block_number) &&
-          r.block_number >= 0 &&
-          Number.isInteger(r?.event_index) &&
-          r.event_index >= 0 &&
-          typeof r?.event_kind === "string" &&
-          r.event_kind.length > 0 &&
-          Number.isInteger(r?.observed_at),
-      )
-    : [];
-}
-
-// Build parameterized INSERT OR IGNORE statements for account_events rows, chunked
-// under D1's 100-bound-param limit (11 cols x 9 = 99). Idempotent on (block_number,
-// event_index). Values are ALWAYS bound, never interpolated — a tampered payload
-// can only fail, never inject. Shared by loadStagedEvents (#1346) + the ingest
-// endpoint (#1360).
-export function eventInsertStatements(db, rows) {
-  const cols = EVENT_INSERT_COLUMNS;
-  const colList = cols.join(",");
-  const ROWS_PER_STMT = 9;
-  const statements = [];
-  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
-    const chunk = rows.slice(i, i + ROWS_PER_STMT);
-    const tuples = chunk
-      .map(() => `(${cols.map(() => "?").join(",")})`)
-      .join(",");
-    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
-    statements.push(
-      db
-        .prepare(
-          `INSERT OR IGNORE INTO account_events (${colList}) VALUES ${tuples}`,
-        )
-        .bind(...values),
-    );
-  }
-  return statements;
 }
 
 // ---- Entity API builders (#1347) -------------------------------------------
@@ -723,7 +568,7 @@ export function buildBlockEvents(
 }
 
 // One account_events_daily row → a clean API day object (#1854). Splits the
-// event_kinds GROUP_CONCAT CSV (rollupAccountEventsDaily) back into an array.
+// event_kinds GROUP_CONCAT CSV back into an array.
 export function formatAccountDay(row) {
   if (!row || typeof row !== "object") return null;
   return {
@@ -874,8 +719,8 @@ const REGISTRATION_COLUMNS = "netuid, uid, stake_tao, validator_permit, active";
 export const ACCOUNT_ACTIVITY_RECENT_LIMIT = 1000;
 
 // Bound the account-summary EVENT aggregates the same way: a public, unauthenticated
-// GET /accounts/{ss58} must not aggregate a high-volume coldkey's entire 365-day
-// retained event history (EVENT_RETENTION_MS) on every request. Each key branch seeks
+// GET /accounts/{ss58} must not aggregate a high-volume coldkey's entire retained
+// event history on every request. Each key branch seeks
 // its own newest N through its feed index, then the union is re-sorted and capped to N,
 // so an aggregate over it sees exactly the account's newest N events — never up to 2N,
 // never the full history.

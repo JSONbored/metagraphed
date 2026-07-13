@@ -2,10 +2,8 @@ import { useMemo, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
-import { ExternalLink } from "./external-link";
-import { HoverPreview } from "./hover-preview";
+import { ExternalLink, HoverPreview, TimeAgo } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "./states";
-import { TimeAgo } from "./time-ago";
 import { formatRelative } from "@/lib/metagraphed/format";
 import type { ApiMeta, EvidenceItem } from "@/lib/metagraphed/types";
 

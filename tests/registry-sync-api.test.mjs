@@ -29,6 +29,18 @@ vi.mock("postgres", () => ({
     };
     sql.json = (value) => value;
     sql.end = () => Promise.resolve();
+    // sql.unsafe(text, params) -- the surfaces-prune's (kind, url) VALUES
+    // join (a bound JS array broke under this Worker's real Hyperdrive
+    // fetch_types:false setting, see the prune's own comment). Recorded into
+    // the SAME sqlCalls list so existing assertions work unchanged
+    // regardless of which call form produced them.
+    sql.unsafe = (text, params = []) => {
+      sqlCalls.push({ text, values: params });
+      if (/DELETE FROM surfaces/.test(text)) {
+        return Promise.resolve(deleteResult.surfaces);
+      }
+      return Promise.resolve([]);
+    };
     // sql.begin(cb) reserves a connection for cb in real postgres.js; the
     // mock just invokes cb with this same sql function so every existing
     // tagged-template assertion (sqlCalls) still sees the identical call
@@ -336,10 +348,9 @@ test("REGRESSION: prune_surfaces with authority_scope 'community' passes a true 
 
   expect(res.status).toBe(200);
   const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text));
-  expect(deleteCall.text).toMatch(/authority = /);
+  expect(deleteCall.text).toMatch(/authority = 'community'/);
   // The scope flag is bound as a real parameter (true), not spliced into the query text.
   expect(deleteCall.values).toContain(true);
-  expect(deleteCall.values).toContain("community");
 });
 
 test("does not scope by authority when authority_scope is absent (the scheduled full-resync path)", async () => {
@@ -369,6 +380,55 @@ test("does not scope by authority when authority_scope is absent (the scheduled 
   // The scope flag is still present in the query shape (always-composed OR clause),
   // but bound to false so it never actually filters by authority.
   expect(deleteCall.values).toContain(false);
+});
+
+test("REGRESSION: prunes with a non-empty current_surfaces list via scalar positional binds, not a bound array", async () => {
+  // Hyperdrive's fetch_types:false breaks postgres.js's ANY($1)/array
+  // serialization (confirmed live 2026-07-10, #4771) -- a bound JS array
+  // parameter here sends Postgres a malformed literal with no braces and
+  // every write that pruned against a non-empty current_surfaces list
+  // 502'd. This mock can't reproduce the real Postgres-side failure, but it
+  // pins the query shape that avoids it: every bound value must be a
+  // scalar (never an array), and the (kind, url) pairs must appear as
+  // explicit $N::text placeholders in the query text instead.
+  deleteResult.surfaces = [];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [
+              { kind: "docs", url: "https://example.com/docs" },
+              { kind: "website", url: "https://example.com" },
+            ],
+            source_commit: "def456",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+    {},
+  );
+
+  expect(res.status).toBe(200);
+  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text));
+  for (const value of deleteCall.values) {
+    expect(Array.isArray(value)).toBe(false);
+  }
+  expect(deleteCall.values).toEqual([
+    false,
+    8,
+    "docs",
+    "https://example.com/docs",
+    "website",
+    "https://example.com",
+  ]);
+  expect(deleteCall.text).toMatch(/\$3::text, \$4::text/);
+  expect(deleteCall.text).toMatch(/\$5::text, \$6::text/);
+  expect(deleteCall.text).not.toMatch(/ANY\(/);
 });
 
 test("skips a prune_surfaces entry missing subnet_netuid/current_surfaces/source_commit instead of failing the request", async () => {

@@ -3096,7 +3096,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/extrinsics",
     "/metagraph/extrinsics.json",
-    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345).",
+    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345).",
     "short",
     ["extrinsics", "analytics"],
     csvRouteQuery([
@@ -3109,6 +3109,8 @@ export const API_ROUTES = [
       { name: "call_function", schema: { type: "string" } },
       {
         name: "call_hash",
+        description:
+          "Requires call_module so the decoded call-args JSON scan stays scoped.",
         schema: { type: "string", pattern: "^0x[0-9a-fA-F]{64}$" },
       },
       { name: "success", schema: { type: "string", enum: ["true", "false"] } },

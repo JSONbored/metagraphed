@@ -27,6 +27,11 @@ SELECT create_hypertable('extrinsics',     'observed_at', chunk_time_interval =>
 SELECT create_hypertable('account_events', 'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
 SELECT create_hypertable('chain_events',   'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
 SELECT create_hypertable('neuron_daily',   'snapshot_date', chunk_time_interval => INTERVAL '30 days', migrate_data => true, if_not_exists => true);
+-- Written every 15 minutes (~150-200 surfaces/run, wrangler.jsonc
+-- "*/15 * * * *") with the shortest retention of anything here -- D1 keeps
+-- only a 30-day hot window before pruning, so a 1-day chunk interval keeps
+-- individual chunks small without accumulating chunks indefinitely.
+SELECT create_hypertable('surface_checks', 'checked_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
 
 -- INTEGER-time hypertables (observed_at is BIGINT epoch-ms, not a native
 -- timestamp) need an explicit "what counts as now" function, or compression/
@@ -42,13 +47,16 @@ SELECT set_integer_now_func('blocks',         'current_epoch_ms');
 SELECT set_integer_now_func('extrinsics',     'current_epoch_ms');
 SELECT set_integer_now_func('account_events', 'current_epoch_ms');
 SELECT set_integer_now_func('chain_events',   'current_epoch_ms');
+SELECT set_integer_now_func('surface_checks', 'current_epoch_ms');
 
 ALTER TABLE blocks         SET (timescaledb.compress, timescaledb.compress_orderby = 'observed_at DESC');
 ALTER TABLE extrinsics     SET (timescaledb.compress, timescaledb.compress_segmentby = 'signer', timescaledb.compress_orderby = 'observed_at DESC');
 ALTER TABLE account_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'hotkey', timescaledb.compress_orderby = 'observed_at DESC');
 ALTER TABLE chain_events   SET (timescaledb.compress, timescaledb.compress_segmentby = 'pallet', timescaledb.compress_orderby = 'observed_at DESC');
+ALTER TABLE surface_checks SET (timescaledb.compress, timescaledb.compress_segmentby = 'surface_id', timescaledb.compress_orderby = 'checked_at DESC');
 
 SELECT add_compression_policy('blocks',         BIGINT '604800000');  -- 7d in ms
 SELECT add_compression_policy('extrinsics',     BIGINT '604800000');
 SELECT add_compression_policy('account_events', BIGINT '604800000');
 SELECT add_compression_policy('chain_events',   BIGINT '604800000');
+SELECT add_compression_policy('surface_checks', BIGINT '604800000');

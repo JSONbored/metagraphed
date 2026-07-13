@@ -9,8 +9,6 @@ import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import { encodeCursor } from "../src/cursor.mjs";
-import { EXTRINSIC_RETENTION_MS } from "../src/extrinsics.mjs";
 import { MOVERS_WINDOWS } from "../src/movers.mjs";
 import { unsupportedWindowMessage } from "../src/neuron-history.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
@@ -20,18 +18,36 @@ import {
   handleNeuron,
   handleSubnetValidators,
   handleGlobalValidators,
+  handleValidatorDetail,
+  handleValidatorNominators,
+  handleAccountWeightSetters,
+  handleSubnetWeightSetters,
+  handleAccountRegistrations,
+  handleAccountServing,
+  handleAccountAxonRemovals,
+  handleAccountPrometheus,
+  handleAccountDeregistrations,
+  handleValidatorHistory,
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetIdentityHistory,
+  handleSubnetHyperparams,
   handleSubnetHyperparamsHistory,
   handleSubnetConcentration,
   handleSubnetPerformance,
+  handleChainConcentration,
+  handleChainPerformance,
+  handleChainYield,
+  handleAccountPortfolio,
+  handleAccountsList,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
   handleSubnetYieldHistory,
+  handleChainTurnover,
   handleSubnetTurnover,
   handleSubnetStakeFlow,
   handleSubnetWeights,
+  handleSubnetAlphaVolume,
   handleSubnetServing,
   handleSubnetPrometheus,
   handleSubnetStakeMoves,
@@ -49,6 +65,7 @@ import {
   handleAccountStakeFlow,
   handleAccountStakeMoves,
   handleAccountSubnets,
+  handleAccountPositionHistory,
   handleSubnetEventSummary,
   handleSubnetEvents,
   handleAccountBalance,
@@ -58,6 +75,10 @@ import {
   handleBlock,
   handleBlockExtrinsics,
   handleBlockEvents,
+  handleBlocksSummary,
+  handleSudo,
+  handleGovernanceConfigChanges,
+  handleRuntime,
   handleExtrinsics,
   handleExtrinsic,
   canonicalSubnetHistoryCachePath,
@@ -133,25 +154,6 @@ function neuronRow(overrides = {}) {
     axon: "1.2.3.4:9000",
     block_number: 5_000_000,
     captured_at: OBSERVED_AT,
-    ...overrides,
-  };
-}
-
-function neuronDailyRow(overrides = {}) {
-  return {
-    snapshot_date: "2026-06-20",
-    ...neuronRow(overrides),
-    ...overrides,
-  };
-}
-
-function subnetHistoryRow(overrides = {}) {
-  return {
-    snapshot_date: "2026-06-20",
-    neuron_count: 2,
-    validator_count: 1,
-    total_stake_tao: 900,
-    total_emission_tao: 12.5,
     ...overrides,
   };
 }
@@ -244,6 +246,47 @@ function identityHistoryRow(overrides = {}) {
   };
 }
 
+function hyperparamsRow(overrides = {}) {
+  return {
+    block_number: 100,
+    captured_at: OBSERVED_AT,
+    kappa_ratio: 0.5,
+    immunity_period: 7200,
+    min_allowed_weights: 8,
+    max_weight_limit_ratio: 1,
+    tempo: 360,
+    weights_version: 1,
+    weights_rate_limit: 100,
+    activity_cutoff: 5000,
+    activity_cutoff_factor: 1,
+    registration_allowed: 1,
+    target_regs_per_interval: 1,
+    min_burn_tao: 0.001,
+    max_burn_tao: 100,
+    burn_half_life: 100_000,
+    burn_increase_mult: 1,
+    bonds_moving_avg_raw: 900_000,
+    max_regs_per_block: 1,
+    serving_rate_limit: 50,
+    max_validators: 64,
+    commit_reveal_period: 1,
+    commit_reveal_enabled: 0,
+    alpha_high_ratio: 0.9,
+    alpha_low_ratio: 0.1,
+    liquid_alpha_enabled: 0,
+    alpha_sigmoid_steepness: 10,
+    yuma_version: 3,
+    subnet_is_active: 1,
+    transfers_enabled: 1,
+    bonds_reset_enabled: 0,
+    user_liquidity_enabled: 0,
+    owner_cut_enabled: 1,
+    owner_cut_auto_lock_enabled: 1,
+    min_childkey_take_ratio: 0,
+    ...overrides,
+  };
+}
+
 function hyperparamsHistoryRow(overrides = {}) {
   return {
     id: 10,
@@ -305,6 +348,7 @@ function dbWith({
   accountEvents,
   accountEventsDaily,
   subnetIdentityHistory,
+  subnetHyperparams,
   subnetHyperparamsHistory,
   accountIdentity,
   accountIdentityHistory,
@@ -441,6 +485,10 @@ function dbWith({
                   // Historical hyperparameter change tracking (#4309).
                   if (/FROM subnet_hyperparams_history/.test(sql)) {
                     return { results: subnetHyperparamsHistory || [] };
+                  }
+                  // Subnet hyperparameters, latest-only (#4307/1.4).
+                  if (/FROM subnet_hyperparams WHERE netuid = \?/.test(sql)) {
+                    return { results: subnetHyperparams || [] };
                   }
                   // Personal chain identity, latest-only (epic #4301/5.4) —
                   // checked before the history branch below (both match
@@ -668,56 +716,6 @@ describe("handleSubnetMetagraph", () => {
     assert.equal(body.data.captured_at, null);
     assert.equal(body.meta.source, "metagraph-snapshot");
   });
-
-  test("happy path returns neurons from mocked D1 rows", async () => {
-    const { env } = dbWith({ neurons: [neuronRow()] });
-    const body = await json(
-      await handleSubnetMetagraph(
-        req(`/api/v1/subnets/${NETUID}/metagraph`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/metagraph`),
-      ),
-    );
-    assert.equal(body.data.neuron_count, 1);
-    assert.equal(body.data.neurons[0].uid, UID);
-    assert.equal(body.data.neurons[0].validator_permit, true);
-    assert.equal(
-      body.meta.artifact_path,
-      `/metagraph/subnets/${NETUID}/metagraph.json`,
-    );
-  });
-
-  test("validator_permit=true filters to validators only", async () => {
-    const { env, captures } = dbWith({
-      neurons: [neuronRow({ validator_permit: 1 })],
-    });
-    await handleSubnetMetagraph(
-      req(`/api/v1/subnets/${NETUID}/metagraph`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/metagraph?validator_permit=true`),
-    );
-    assert.ok(
-      captures.sql.some((s) => /validator_permit = 1/.test(s)),
-      "expected validator_permit filter in SQL",
-    );
-  });
-
-  test("validator_permit=false is not treated as validators-only", async () => {
-    const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    await handleSubnetMetagraph(
-      req(`/api/v1/subnets/${NETUID}/metagraph`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/metagraph?validator_permit=false`),
-    );
-    const metagraphSql = captures.sql.find((s) =>
-      /FROM neurons WHERE netuid/.test(s),
-    );
-    assert.ok(metagraphSql);
-    assert.ok(!/validator_permit = 1/.test(metagraphSql));
-  });
 });
 
 describe("handleSubnetYield", () => {
@@ -752,44 +750,6 @@ describe("handleSubnetYield", () => {
     );
     assert.equal(body.meta.source, "metagraph-snapshot");
   });
-
-  test("computes per-UID yield, role split, and ranking from mocked D1 rows", async () => {
-    const { env, captures } = dbWith({
-      neurons: [
-        neuronRow({
-          uid: 0,
-          validator_permit: 1,
-          stake_tao: 100,
-          emission_tao: 2,
-        }), // yield 0.02
-        neuronRow({
-          uid: 1,
-          validator_permit: 0,
-          stake_tao: 100,
-          emission_tao: 5,
-        }), // yield 0.05
-      ],
-    });
-    const body = await json(
-      await handleSubnetYield(
-        req(`/api/v1/subnets/${NETUID}/yield`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/yield`),
-      ),
-    );
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.validator_count, 1);
-    assert.equal(body.data.miner_count, 1);
-    assert.equal(body.data.subnet_yield, 0.035); // 7/200
-    assert.equal(body.data.neurons[0].uid, 1); // higher yield ranks first
-    assert.equal(body.data.neurons[0].yield, 0.05);
-    await assertValidComponent("SubnetYieldArtifact", body.data);
-    assert.ok(
-      captures.sql.some((s) => /FROM neurons WHERE netuid = \?/.test(s)),
-    );
-    assert.equal(body.meta.source, "metagraph-snapshot");
-  });
 });
 
 describe("handleNeuron", () => {
@@ -805,25 +765,6 @@ describe("handleNeuron", () => {
     assert.equal(body.data.neuron, null);
     assert.equal(body.data.captured_at, null);
     assert.equal(body.meta.source, "metagraph-snapshot");
-  });
-
-  test("happy path returns a single neuron detail", async () => {
-    const { env } = dbWith({ neurons: [neuronRow()] });
-    const body = await json(
-      await handleNeuron(
-        req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
-        env,
-        NETUID,
-        UID,
-      ),
-    );
-    assert.equal(body.data.neuron.uid, UID);
-    assert.equal(body.data.neuron.hotkey, SS58);
-    assert.equal(body.data.neuron.active, true);
-    assert.equal(
-      body.meta.artifact_path,
-      `/metagraph/subnets/${NETUID}/neurons/${UID}.json`,
-    );
   });
 
   test("missing UID row yields neuron:null (not 404)", async () => {
@@ -861,29 +802,6 @@ describe("handleSubnetValidators", () => {
     );
     assert.equal(body.data.validator_count, 0);
     assert.deepEqual(body.data.validators, []);
-  });
-
-  test("happy path returns validator rows ranked by stake", async () => {
-    const { env } = dbWith({
-      neurons: [
-        neuronRow({ uid: 1, stake_tao: 50 }),
-        neuronRow({ uid: 2, stake_tao: 200 }),
-      ],
-    });
-    const body = await json(
-      await handleSubnetValidators(
-        req(`/api/v1/subnets/${NETUID}/validators`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/validators`),
-      ),
-    );
-    assert.equal(body.data.validator_count, 2);
-    assert.equal(body.data.validators[0].uid, 1);
-    assert.equal(
-      body.meta.artifact_path,
-      `/metagraph/subnets/${NETUID}/validators.json`,
-    );
   });
 });
 
@@ -1007,37 +925,6 @@ describe("handleNeuronHistory", () => {
     assert.deepEqual(body.data.points, []);
     assert.equal(body.data.window, "30d");
   });
-
-  test("happy path returns daily history points", async () => {
-    const { env } = dbWith({ neuronDailyUid: [neuronDailyRow()] });
-    const body = await json(
-      await handleNeuronHistory(
-        req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-        env,
-        NETUID,
-        UID,
-        url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=7d`),
-      ),
-    );
-    assert.equal(body.data.point_count, 1);
-    assert.equal(body.data.window, "7d");
-    assert.equal(body.data.points[0].snapshot_date, "2026-06-20");
-    assert.equal(body.data.points[0].uid, UID);
-  });
-
-  test("window=all omits the snapshot_date lower bound", async () => {
-    const { env, captures } = dbWith({ neuronDailyUid: [neuronDailyRow()] });
-    await handleNeuronHistory(
-      req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-      env,
-      NETUID,
-      UID,
-      url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=all`),
-    );
-    const historySql = captures.sql.find((s) => /FROM neuron_daily/.test(s));
-    assert.ok(historySql);
-    assert.ok(!/snapshot_date >=/.test(historySql));
-  });
 });
 
 describe("handleSubnetHistory", () => {
@@ -1062,25 +949,6 @@ describe("handleSubnetHistory", () => {
     assert.equal(body.data.netuid, NETUID);
     assert.equal(body.data.point_count, 0);
     assert.deepEqual(body.data.points, []);
-  });
-
-  test("happy path returns per-day subnet aggregates", async () => {
-    const { env } = dbWith({
-      neuronDailySubnet: [subnetHistoryRow()],
-    });
-    const body = await json(
-      await handleSubnetHistory(
-        req(`/api/v1/subnets/${NETUID}/history`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/history?window=90d`),
-      ),
-    );
-    assert.equal(body.data.point_count, 1);
-    assert.equal(body.data.window, "90d");
-    assert.equal(body.data.points[0].neuron_count, 2);
-    assert.equal(body.data.points[0].validator_count, 1);
-    assert.equal(body.data.points[0].total_stake_tao, 900);
   });
 
   test("uses the covering index for the aggregate history query plan", () => {
@@ -1186,6 +1054,35 @@ describe("handleSubnetIdentityHistory", () => {
   });
 });
 
+describe("handleSubnetHyperparams", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetHyperparams(
+      req(`/api/v1/subnets/${NETUID}/hyperparameters`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/hyperparameters?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  // D1 retirement: subnet_hyperparams's D1 write/read path is retired
+  // (workers/request-handlers/entities.mjs's handleSubnetHyperparams no
+  // longer queries D1 at all), so this is now "Postgres unconfigured" rather
+  // than "D1 queried but cold" -- same schema-stable null contract either way.
+  test("returns schema-stable hyperparameters:null when Postgres is unconfigured", async () => {
+    const body = await assertColdSchema(
+      handleSubnetHyperparams,
+      req(`/api/v1/subnets/${NETUID}/hyperparameters`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/hyperparameters`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.hyperparameters, null);
+    assert.equal(body.data.captured_at, null);
+  });
+});
+
 describe("handleSubnetHyperparamsHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetHyperparamsHistory(
@@ -1197,7 +1094,9 @@ describe("handleSubnetHyperparamsHistory", () => {
     await errorJson(res);
   });
 
-  test("returns schema-stable empty entries on cold D1", async () => {
+  // D1 retirement: same as handleSubnetHyperparams above -- no D1 fallback
+  // left to query, so this is "Postgres unconfigured" rather than "D1 cold".
+  test("returns schema-stable empty entries when Postgres is unconfigured", async () => {
     const body = await assertColdSchema(
       handleSubnetHyperparamsHistory,
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
@@ -1208,24 +1107,6 @@ describe("handleSubnetHyperparamsHistory", () => {
     assert.equal(body.data.netuid, NETUID);
     assert.equal(body.data.entry_count, 0);
     assert.deepEqual(body.data.entries, []);
-  });
-
-  test("happy path returns hyperparameter change timeline rows", async () => {
-    const { env } = dbWith({
-      subnetHyperparamsHistory: [hyperparamsHistoryRow()],
-    });
-    const body = await json(
-      await handleSubnetHyperparamsHistory(
-        req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/hyperparameters/history?limit=20`),
-      ),
-    );
-    assert.equal(body.data.entry_count, 1);
-    assert.equal(body.data.entries[0].hyperparameters.tempo, 360);
-    assert.equal(body.data.entries[0].hyperparams_hash, "abc");
-    assert.equal(body.data.limit, 20);
   });
 });
 
@@ -1280,58 +1161,6 @@ describe("handleSubnetConcentration", () => {
     assert.equal(body.data.emission, null);
   });
 
-  test("computes per-UID, per-entity, and validator concentration over the neurons tier", async () => {
-    const { env, captures } = dbWith({
-      neurons: [
-        neuronRow({
-          stake_tao: 100,
-          emission_tao: 2,
-          coldkey: "ck-a",
-          validator_permit: 1,
-        }),
-        neuronRow({
-          uid: 1,
-          stake_tao: 50,
-          emission_tao: 1,
-          coldkey: "ck-a",
-          validator_permit: 0,
-        }),
-        neuronRow({
-          uid: 2,
-          stake_tao: 30,
-          emission_tao: 1,
-          coldkey: "ck-b",
-          validator_permit: 1,
-        }),
-      ],
-    });
-    const body = await json(
-      await handleSubnetConcentration(
-        req(`/api/v1/subnets/${NETUID}/concentration`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/concentration`),
-      ),
-    );
-    assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.neuron_count, 3);
-    assert.equal(body.data.entity_count, 2); // ck-a (2 UIDs) + ck-b
-    assert.equal(body.data.uids_per_entity, 1.5);
-    assert.equal(body.data.stake.holders, 3); // per-UID
-    assert.equal(body.data.entity_stake.holders, 2); // ck-a's UIDs collapsed
-    assert.equal(body.data.entity_stake.total, 180);
-    assert.equal(body.data.validator_stake.holders, 2); // the two permitted UIDs
-    assert.equal(body.data.validator_stake.total, 130); // 100 + 30
-    // Bound to the netuid; the read selects coldkey + validator_permit.
-    const idx = captures.sql.findIndex((s) =>
-      /FROM neurons WHERE netuid = \?/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.ok(/coldkey/.test(captures.sql[idx]));
-    assert.ok(/validator_permit/.test(captures.sql[idx]));
-    assert.equal(captures.params[idx][0], NETUID);
-  });
-
   test("degrades to schema-stable null blocks when the D1 read throws", async () => {
     // A bound DB whose .all() rejects (schema drift) — d1All swallows it to [],
     // so the handler still answers 200 with null metric blocks, never 5xx/404.
@@ -1350,30 +1179,6 @@ describe("handleSubnetConcentration", () => {
     assert.equal(body.data.emission, null);
     assert.equal(body.data.validator_stake, null);
     assert.equal(body.data.captured_at, null);
-  });
-
-  test("is null-safe on sparse / all-zero neuron rows (null metric blocks)", async () => {
-    // Rows present but carrying no positive distribution (zero stake/emission,
-    // missing coldkeys) → neuron_count reflects the rows, every metric block null.
-    const { env } = dbWith({
-      neurons: [
-        neuronRow({ stake_tao: 0, emission_tao: 0, coldkey: null }),
-        neuronRow({ uid: 1, stake_tao: 0, emission_tao: 0, coldkey: "" }),
-      ],
-    });
-    const body = await json(
-      await handleSubnetConcentration(
-        req(`/api/v1/subnets/${NETUID}/concentration`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/concentration`),
-      ),
-    );
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.entity_count, 2); // two missing-coldkey singletons
-    assert.equal(body.data.stake, null); // no positive stake → null block
-    assert.equal(body.data.emission, null);
-    assert.equal(body.data.validator_stake, null);
   });
 });
 
@@ -1412,36 +1217,6 @@ describe("handleSubnetConcentrationHistory", () => {
     assert.deepEqual(body.data.points, []);
   });
 
-  test("happy path computes a per-day concentration trend", async () => {
-    const { env, captures } = dbWith({
-      neuronDailyHistory: [
-        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
-        { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
-        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
-        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
-      ],
-    });
-    const body = await json(
-      await handleSubnetConcentrationHistory(
-        req(`/api/v1/subnets/${NETUID}/concentration/history`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/concentration/history?window=30d`),
-      ),
-    );
-    assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.point_count, 2);
-    assert.equal(body.data.points[0].snapshot_date, "2026-06-27"); // newest first
-    assert.ok(body.data.points[0].stake_gini > body.data.points[1].stake_gini);
-    // Windowed neuron_daily read bound to the netuid.
-    const idx = captures.sql.findIndex((s) =>
-      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], NETUID);
-  });
-
   test("degrades to an empty series when the D1 read throws", async () => {
     // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetConcentrationHistory(
@@ -1457,52 +1232,6 @@ describe("handleSubnetConcentrationHistory", () => {
     assert.equal(body.data.window, "7d");
     assert.equal(body.data.point_count, 0);
     assert.deepEqual(body.data.points, []);
-  });
-
-  test("binds the windowed read with a row cap and an ISO date cutoff", async () => {
-    // The raw per-UID read is bounded by CONCENTRATION_HISTORY_ROW_CAP and a
-    // window-derived YYYY-MM-DD cutoff — assert both are bound (params, not SQL).
-    const { env, captures } = dbWith({ neuronDailyHistory: [] });
-    await handleSubnetConcentrationHistory(
-      req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/concentration/history?window=30d`),
-    );
-    const idx = captures.sql.findIndex((s) =>
-      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \? ORDER BY snapshot_date DESC LIMIT \?/.test(
-        s,
-      ),
-    );
-    assert.ok(idx !== -1);
-    const [boundNetuid, cutoff, cap] = captures.params[idx];
-    assert.equal(boundNetuid, NETUID);
-    assert.match(cutoff, /^\d{4}-\d{2}-\d{2}$/); // ISO day cutoff
-    assert.equal(cap, 50_000); // CONCENTRATION_HISTORY_ROW_CAP
-  });
-
-  test("skips dateless rows and is null-safe on sparse history rows", async () => {
-    const { env } = dbWith({
-      neuronDailyHistory: [
-        { snapshot_date: null, stake_tao: 5 }, // dropped (no date)
-        { snapshot_date: "2026-06-27" }, // present but no value columns
-        { snapshot_date: "2026-06-27", stake_tao: 0, emission_tao: 0 },
-      ],
-    });
-    const body = await json(
-      await handleSubnetConcentrationHistory(
-        req(`/api/v1/subnets/${NETUID}/concentration/history`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/concentration/history?window=7d`),
-      ),
-    );
-    assert.equal(body.data.point_count, 1); // only the dated day
-    assert.equal(body.data.points[0].snapshot_date, "2026-06-27");
-    assert.equal(body.data.points[0].neuron_count, 2);
-    // No positive distribution in that day → null per-metric fields, not throws.
-    assert.equal(body.data.points[0].stake_gini, null);
-    assert.equal(body.data.points[0].emission_gini, null);
   });
 });
 
@@ -1541,65 +1270,6 @@ describe("handleSubnetPerformanceHistory", () => {
     assert.deepEqual(body.data.points, []);
   });
 
-  test("happy path computes a per-day reward-flow trend", async () => {
-    const { env, captures } = dbWith({
-      neuronDailyHistory: [
-        {
-          snapshot_date: "2026-06-27",
-          incentive: 0.9,
-          dividends: 0.9,
-          trust: 0.8,
-          consensus: 0.7,
-          validator_trust: 0.85,
-          validator_permit: 1,
-          active: 1,
-        },
-        {
-          snapshot_date: "2026-06-27",
-          incentive: 0.05,
-          dividends: 0,
-          trust: 0.2,
-          consensus: 0.1,
-          validator_trust: 0,
-          validator_permit: 0,
-          active: 1,
-        },
-        {
-          snapshot_date: "2026-06-26",
-          incentive: 0.5,
-          dividends: 0.5,
-          trust: 0.5,
-          consensus: 0.5,
-          validator_trust: 0.5,
-          validator_permit: 1,
-          active: 1,
-        },
-      ],
-    });
-    const body = await json(
-      await handleSubnetPerformanceHistory(
-        req(`/api/v1/subnets/${NETUID}/performance/history`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/performance/history?window=30d`),
-      ),
-    );
-    assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.point_count, 2);
-    assert.equal(body.data.points[0].snapshot_date, "2026-06-27"); // newest first
-    assert.ok(
-      body.data.points[0].incentive_gini > body.data.points[1].incentive_gini,
-    );
-    assert.equal(typeof body.data.points[0].trust_mean, "number");
-    // Windowed neuron_daily read bound to the netuid.
-    const idx = captures.sql.findIndex((s) =>
-      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], NETUID);
-  });
-
   test("degrades to an empty series when the D1 read throws", async () => {
     // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetPerformanceHistory(
@@ -1615,26 +1285,6 @@ describe("handleSubnetPerformanceHistory", () => {
     assert.equal(body.data.window, "7d");
     assert.equal(body.data.point_count, 0);
     assert.deepEqual(body.data.points, []);
-  });
-
-  test("binds the windowed read with a row cap and an ISO date cutoff", async () => {
-    const { env, captures } = dbWith({ neuronDailyHistory: [] });
-    await handleSubnetPerformanceHistory(
-      req(`/api/v1/subnets/${NETUID}/performance/history`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/performance/history?window=30d`),
-    );
-    const idx = captures.sql.findIndex((s) =>
-      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \? ORDER BY snapshot_date DESC LIMIT \?/.test(
-        s,
-      ),
-    );
-    assert.ok(idx !== -1);
-    const [boundNetuid, cutoff, cap] = captures.params[idx];
-    assert.equal(boundNetuid, NETUID);
-    assert.match(cutoff, /^\d{4}-\d{2}-\d{2}$/); // ISO day cutoff
-    assert.equal(cap, 50_000); // PERFORMANCE_HISTORY_ROW_CAP
   });
 });
 
@@ -1673,51 +1323,6 @@ describe("handleSubnetYieldHistory", () => {
     assert.deepEqual(body.data.points, []);
   });
 
-  test("happy path computes a per-day yield-distribution trend", async () => {
-    const { env, captures } = dbWith({
-      neuronDailyHistory: [
-        {
-          snapshot_date: "2026-06-27",
-          stake_tao: 100,
-          emission_tao: 10,
-          validator_permit: 1,
-        },
-        {
-          snapshot_date: "2026-06-27",
-          stake_tao: 100,
-          emission_tao: 5,
-          validator_permit: 0,
-        },
-        {
-          snapshot_date: "2026-06-26",
-          stake_tao: 100,
-          emission_tao: 10,
-          validator_permit: 1,
-        },
-      ],
-    });
-    const body = await json(
-      await handleSubnetYieldHistory(
-        req(`/api/v1/subnets/${NETUID}/yield/history`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/yield/history?window=30d`),
-      ),
-    );
-    assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.point_count, 2);
-    assert.equal(body.data.points[0].snapshot_date, "2026-06-27"); // newest first
-    assert.equal(body.data.points[0].median_yield, 0.075); // 0.1 & 0.05
-    assert.equal(typeof body.data.points[0].subnet_yield, "number");
-    // Windowed neuron_daily read bound to the netuid.
-    const idx = captures.sql.findIndex((s) =>
-      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], NETUID);
-  });
-
   test("degrades to an empty series when the D1 read throws", async () => {
     // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetYieldHistory(
@@ -1733,26 +1338,6 @@ describe("handleSubnetYieldHistory", () => {
     assert.equal(body.data.window, "7d");
     assert.equal(body.data.point_count, 0);
     assert.deepEqual(body.data.points, []);
-  });
-
-  test("binds the windowed read with a row cap and an ISO date cutoff", async () => {
-    const { env, captures } = dbWith({ neuronDailyHistory: [] });
-    await handleSubnetYieldHistory(
-      req(`/api/v1/subnets/${NETUID}/yield/history`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield/history?window=30d`),
-    );
-    const idx = captures.sql.findIndex((s) =>
-      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \? ORDER BY snapshot_date DESC LIMIT \?/.test(
-        s,
-      ),
-    );
-    assert.ok(idx !== -1);
-    const [boundNetuid, cutoff, cap] = captures.params[idx];
-    assert.equal(boundNetuid, NETUID);
-    assert.match(cutoff, /^\d{4}-\d{2}-\d{2}$/); // ISO day cutoff
-    assert.equal(cap, 50_000); // YIELD_HISTORY_ROW_CAP
   });
 });
 
@@ -1780,60 +1365,6 @@ describe("handleSubnetTurnover", () => {
     assert.equal(body.data.validator_retention, null);
   });
 
-  test("happy path computes validator churn between the two boundary snapshots", async () => {
-    const { env, captures } = dbWith({
-      turnoverBounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
-      turnoverRows: [
-        {
-          snapshot_date: "2026-06-01",
-          uid: 0,
-          hotkey: "V1",
-          validator_permit: 1,
-        },
-        {
-          snapshot_date: "2026-06-01",
-          uid: 1,
-          hotkey: "V2",
-          validator_permit: 1,
-        },
-        {
-          snapshot_date: "2026-06-30",
-          uid: 0,
-          hotkey: "V1",
-          validator_permit: 1,
-        },
-        {
-          snapshot_date: "2026-06-30",
-          uid: 1,
-          hotkey: "V3",
-          validator_permit: 1,
-        },
-      ],
-    });
-    const body = await json(
-      await handleSubnetTurnover(
-        req(`/api/v1/subnets/${NETUID}/turnover`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/turnover?window=30d`),
-      ),
-    );
-    assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.comparable, true);
-    assert.equal(body.data.start_date, "2026-06-01");
-    assert.equal(body.data.end_date, "2026-06-30");
-    assert.equal(body.data.validators_entered, 1); // V3 joined
-    assert.equal(body.data.validators_exited, 1); // V2 left
-    assert.equal(body.data.uids_deregistered, 1); // uid1: V2 → V3
-    // Bound to the netuid; reads the two boundary snapshots.
-    const idx = captures.sql.findIndex((s) =>
-      /FROM neuron_daily WHERE netuid = \? AND snapshot_date IN/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], NETUID);
-  });
-
   test("rejects an invalid changes flag with 400", async () => {
     const res = await handleSubnetTurnover(
       req(`/api/v1/subnets/${NETUID}/turnover`),
@@ -1859,44 +1390,6 @@ describe("handleSubnetTurnover", () => {
       body.meta.artifact_path,
       `/metagraph/subnets/${NETUID}/turnover.json`,
     );
-  });
-
-  test("changes=true returns entry, exit, and UID reassignment detail", async () => {
-    const { env } = dbWith({
-      turnoverBounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
-      turnoverRows: [
-        {
-          snapshot_date: "2026-06-01",
-          uid: 1,
-          hotkey: "V2",
-          validator_permit: 1,
-        },
-        {
-          snapshot_date: "2026-06-30",
-          uid: 1,
-          hotkey: "V3",
-          validator_permit: 1,
-        },
-      ],
-    });
-    const body = await json(
-      await handleSubnetTurnover(
-        req(`/api/v1/subnets/${NETUID}/turnover`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/turnover?window=30d&changes=true`),
-      ),
-    );
-    assert.equal(body.data.window, "30d");
-    assert.deepEqual(body.data.changes.validators_entered, [
-      { hotkey: "V3", uid: 1 },
-    ]);
-    assert.deepEqual(body.data.changes.validators_exited, [
-      { hotkey: "V2", uid: 1 },
-    ]);
-    assert.deepEqual(body.data.changes.uid_reassignments, [
-      { uid: 1, from_hotkey: "V2", to_hotkey: "V3" },
-    ]);
   });
 
   describe("canonicalSubnetTurnoverCachePath", () => {
@@ -2710,148 +2203,6 @@ describe("handleSubnetStakeFlow", () => {
     assert.equal(body.meta.generated_at, null);
   });
 
-  test("sums StakeAdded vs StakeRemoved into net flow, bound to the netuid + both kinds", async () => {
-    const { env, captures } = dbWith({
-      stakeFlow: [
-        {
-          event_kind: "StakeAdded",
-          total_tao: 200,
-          event_count: 5,
-          last_observed: 1717000000000,
-        },
-        {
-          event_kind: "StakeRemoved",
-          total_tao: 50,
-          event_count: 2,
-          last_observed: 1717900000000,
-        },
-      ],
-    });
-    const body = await json(
-      await handleSubnetStakeFlow(
-        req(`/api/v1/subnets/${NETUID}/stake-flow`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/stake-flow?window=90d`),
-      ),
-    );
-    assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.window, "90d");
-    assert.equal(body.data.total_staked_tao, 200);
-    assert.equal(body.data.total_unstaked_tao, 50);
-    assert.equal(body.data.net_flow_tao, 150);
-    assert.equal(body.data.stake_events, 5);
-    assert.equal(body.data.unstake_events, 2);
-    await assertValidComponent("SubnetStakeFlowArtifact", body.data);
-    const idx = captures.sql.findIndex((s) =>
-      /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], NETUID);
-    assert.equal(captures.params[idx][1], "StakeAdded");
-    assert.equal(captures.params[idx][2], "StakeRemoved");
-    // Provenance: account_events source + generated_at = newest event in the window
-    // as an ISO string (string|null per the envelope contract).
-    assert.equal(body.meta.source, "chain-events");
-    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
-  });
-
-  test("direction=in binds StakeAdded only", async () => {
-    const { env, captures } = dbWith({
-      stakeFlow: [
-        {
-          event_kind: "StakeAdded",
-          total_tao: 200,
-          event_count: 5,
-          last_observed: 1717000000000,
-        },
-      ],
-    });
-    const body = await json(
-      await handleSubnetStakeFlow(
-        req(`/api/v1/subnets/${NETUID}/stake-flow`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/stake-flow?direction=in`),
-      ),
-    );
-    assert.equal(body.data.total_staked_tao, 200);
-    assert.equal(body.data.total_unstaked_tao, 0);
-    assert.equal(body.data.net_flow_tao, 200);
-    const idx = captures.sql.findIndex((s) =>
-      /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][1], "StakeAdded");
-    assert.equal(captures.params[idx].length, 3);
-  });
-
-  test("direction=out binds StakeRemoved only", async () => {
-    const { env, captures } = dbWith({
-      stakeFlow: [
-        {
-          event_kind: "StakeRemoved",
-          total_tao: 50,
-          event_count: 2,
-          last_observed: 1717900000000,
-        },
-      ],
-    });
-    const body = await json(
-      await handleSubnetStakeFlow(
-        req(`/api/v1/subnets/${NETUID}/stake-flow`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/stake-flow?direction=out`),
-      ),
-    );
-    assert.equal(body.data.total_staked_tao, 0);
-    assert.equal(body.data.total_unstaked_tao, 50);
-    assert.equal(body.data.net_flow_tao, -50);
-    const idx = captures.sql.findIndex((s) =>
-      /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][1], "StakeRemoved");
-    assert.equal(captures.params[idx].length, 3);
-  });
-
-  test("direction=all and omitted direction both query both kinds", async () => {
-    for (const query of ["", "?direction=all"]) {
-      const { env, captures } = dbWith({
-        stakeFlow: [
-          {
-            event_kind: "StakeAdded",
-            total_tao: 10,
-            event_count: 1,
-            last_observed: 1717000000000,
-          },
-          {
-            event_kind: "StakeRemoved",
-            total_tao: 3,
-            event_count: 1,
-            last_observed: 1717000000000,
-          },
-        ],
-      });
-      const body = await json(
-        await handleSubnetStakeFlow(
-          req(`/api/v1/subnets/${NETUID}/stake-flow`),
-          env,
-          NETUID,
-          url(`/api/v1/subnets/${NETUID}/stake-flow${query}`),
-        ),
-      );
-      assert.equal(body.data.net_flow_tao, 7);
-      const idx = captures.sql.findIndex((s) =>
-        /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
-      );
-      assert.ok(idx !== -1);
-      assert.equal(captures.params[idx][1], "StakeAdded");
-      assert.equal(captures.params[idx][2], "StakeRemoved");
-    }
-  });
-
   describe("canonicalSubnetStakeFlowCachePath", () => {
     test("canonicalizes omitted and explicit default window to one cache key", () => {
       const omitted = canonicalSubnetStakeFlowCachePath(
@@ -3094,49 +2445,6 @@ describe("handleAccount", () => {
     );
     assert.equal(second.headers.get("etag"), etag);
   });
-
-  test("happy path aggregates account_events + neurons + extrinsics activity", async () => {
-    const { env } = dbWith({
-      agg: {
-        c: 12,
-        sc: 3,
-        fb: 100,
-        lb: 200,
-        fo: OBSERVED_AT - 1000,
-        lo: OBSERVED_AT,
-      },
-      kinds: [
-        { kind: "StakeAdded", count: 7 },
-        { kind: "WeightsSet", count: 5 },
-      ],
-      registrations: [
-        {
-          netuid: NETUID,
-          uid: UID,
-          stake_tao: 100,
-          validator_permit: 1,
-          active: 1,
-        },
-      ],
-      accountEvents: [accountEventRow()],
-      activity: {
-        tx_count: 9,
-        last_tx_block: BLOCK_NUM,
-        last_tx_at: OBSERVED_AT,
-        total_fee_tao: 0.05,
-      },
-      modules: [{ call_module: "SubtensorModule", count: 7 }],
-    });
-    const body = await json(
-      await handleAccount(req(`/api/v1/accounts/${SS58}`), env, SS58),
-    );
-    assert.equal(body.data.event_count, 12);
-    assert.equal(body.data.subnet_count, 3);
-    assert.equal(body.data.activity.tx_count, 9);
-    assert.equal(body.data.registrations[0].netuid, NETUID);
-    assert.equal(body.data.recent_events[0].event_kind, "StakeAdded");
-    assert.equal(body.meta.artifact_path, `/metagraph/accounts/${SS58}.json`);
-  });
 });
 
 describe("handleAccountEvents", () => {
@@ -3183,28 +2491,6 @@ describe("handleAccountEvents", () => {
     assert.equal(body.meta.parameter, "netuid");
   });
 
-  test("netuid filter narrows results to one subnet", async () => {
-    const { env, captures } = dbWith({
-      accountEvents: [accountEventRow({ netuid: 7 })],
-    });
-    await handleAccountEvents(
-      req(`/api/v1/accounts/${SS58}/events`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/events?netuid=7`),
-    );
-    assert.ok(
-      captures.sql.some((s) => /AND netuid = \?/.test(s)),
-      "expected netuid filter in SQL",
-    );
-    const eventsSql = captures.sql.find((s) => /FROM account_events/.test(s));
-    assert.equal(
-      eventsSql.match(/AND netuid = \?/g)?.length,
-      2,
-      "expected netuid filter on both union branches",
-    );
-  });
-
   test("netuid absent leaves the feed unfiltered", async () => {
     const { env, captures } = dbWith({
       accountEvents: [accountEventRow()],
@@ -3219,21 +2505,6 @@ describe("handleAccountEvents", () => {
       captures.sql.every((s) => !/AND netuid = \?/.test(s)),
       "expected no netuid filter when param is absent",
     );
-  });
-
-  test("netuid combines with kind filter", async () => {
-    const { env, captures } = dbWith({
-      accountEvents: [accountEventRow({ event_kind: "WeightsSet", netuid: 3 })],
-    });
-    await handleAccountEvents(
-      req(`/api/v1/accounts/${SS58}/events`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/events?netuid=3&kind=WeightsSet`),
-    );
-    const eventsSql = captures.sql.find((s) => /FROM account_events/.test(s));
-    assert.ok(/AND event_kind = \?/.test(eventsSql));
-    assert.equal(eventsSql.match(/AND netuid = \?/g)?.length, 2);
   });
 
   test("short-circuits an inverted block_start>block_end window before D1", async () => {
@@ -3267,36 +2538,6 @@ describe("handleAccountEvents", () => {
     assert.equal(body.data.next_cursor, null);
   });
 
-  test("happy path returns paginated events", async () => {
-    const { env } = dbWith({ accountEvents: [accountEventRow()] });
-    const body = await json(
-      await handleAccountEvents(
-        req(`/api/v1/accounts/${SS58}/events`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/events?limit=50`),
-      ),
-    );
-    assert.equal(body.data.events[0].event_kind, "StakeAdded");
-    assert.equal(body.data.limit, 50);
-  });
-
-  test("kind filter narrows results", async () => {
-    const { env, captures } = dbWith({
-      accountEvents: [accountEventRow({ event_kind: "WeightsSet" })],
-    });
-    await handleAccountEvents(
-      req(`/api/v1/accounts/${SS58}/events`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/events?kind=WeightsSet`),
-    );
-    assert.ok(
-      captures.sql.some((s) => /event_kind = \?/.test(s)),
-      "expected kind filter in SQL",
-    );
-  });
-
   test("rejects an unknown event kind with 400", async () => {
     const { env, captures } = dbWith({
       accountEvents: [accountEventRow()],
@@ -3311,39 +2552,6 @@ describe("handleAccountEvents", () => {
     assert.equal(body.meta.parameter, "kind");
     assert.match(body.error.message, /not a supported event kind/);
     assert.equal(captures.sql.length, 0);
-  });
-
-  test("accepts a non-SubtensorModule ingested kind (Transfer), not just INDEXED_EVENT_KINDS", async () => {
-    const { env, captures } = dbWith({
-      accountEvents: [accountEventRow({ event_kind: "Transfer" })],
-    });
-    await handleAccountEvents(
-      req(`/api/v1/accounts/${SS58}/events`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/events?kind=Transfer`),
-    );
-    assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
-  });
-
-  test("cursor uses keyset seek instead of offset", async () => {
-    const { env, captures } = dbWith({
-      accountEvents: [accountEventRow({ block_number: 150, event_index: 2 })],
-    });
-    const body = await json(
-      await handleAccountEvents(
-        req(`/api/v1/accounts/${SS58}/events`),
-        env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/events?limit=1&cursor=${encodeCursor([200, 1])}`,
-        ),
-      ),
-    );
-    const eventsSql = captures.sql.find((s) => /FROM account_events/.test(s));
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(eventsSql));
-    assert.ok(!/OFFSET/.test(eventsSql));
-    assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
   });
 });
 
@@ -3504,80 +2712,6 @@ describe("handleAccountExtrinsics", () => {
     assert.equal(body.data.next_cursor, null);
     assert.equal(captures.sql.length, 0);
   });
-
-  test("happy path returns signer-matched extrinsics", async () => {
-    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
-    const body = await json(
-      await handleAccountExtrinsics(
-        req(`/api/v1/accounts/${SS58}/extrinsics`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/extrinsics?limit=25`),
-      ),
-    );
-    assert.equal(body.data.extrinsic_count, 1);
-    assert.equal(body.data.extrinsics[0].signer, SS58);
-    assert.equal(body.data.extrinsics[0].success, true);
-  });
-
-  test("block_start/block_end range filter is applied and bound", async () => {
-    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
-    await handleAccountExtrinsics(
-      req(`/api/v1/accounts/${SS58}/extrinsics`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/extrinsics?block_start=100&block_end=900`),
-    );
-    const idx = captures.sql.findIndex((s) => /FROM extrinsics/.test(s));
-    assert.ok(idx !== -1);
-    const sql = captures.sql[idx];
-    assert.ok(/AND block_number >= \?/.test(sql));
-    assert.ok(/AND block_number <= \?/.test(sql));
-    assert.deepEqual(captures.params[idx], [SS58, 100, 900, 100, 0]);
-  });
-
-  test("cursor combines with block range filters and emits next_cursor", async () => {
-    const { env, captures } = dbWith({
-      extrinsics: [extrinsicRow({ block_number: 150, extrinsic_index: 4 })],
-    });
-    const body = await json(
-      await handleAccountExtrinsics(
-        req(`/api/v1/accounts/${SS58}/extrinsics`),
-        env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/extrinsics?block_start=100&block_end=900&limit=1&cursor=${encodeCursor([200, 2])}`,
-        ),
-      ),
-    );
-    const idx = captures.sql.findIndex((s) => /FROM extrinsics/.test(s));
-    assert.ok(idx !== -1);
-    const sql = captures.sql[idx];
-    assert.ok(/AND block_number >= \?/.test(sql));
-    assert.ok(/AND block_number <= \?/.test(sql));
-    assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(sql));
-    assert.ok(!/OFFSET/.test(sql));
-    assert.deepEqual(captures.params[idx], [SS58, 100, 900, 200, 2, 1]);
-    assert.equal(body.data.next_cursor, encodeCursor([150, 4]));
-  });
-
-  test("malformed cursor falls back to offset pagination", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    await handleAccountExtrinsics(
-      req(`/api/v1/accounts/${SS58}/extrinsics`),
-      env,
-      SS58,
-      url(
-        `/api/v1/accounts/${SS58}/extrinsics?cursor=not-a-cursor&limit=7&offset=5`,
-      ),
-    );
-    const idx = captures.sql.findIndex((s) => /FROM extrinsics/.test(s));
-    assert.ok(idx !== -1);
-    const sql = captures.sql[idx];
-    assert.ok(/OFFSET \?/.test(sql));
-    assert.ok(!/\(block_number, extrinsic_index\) </.test(sql));
-    assert.deepEqual(captures.params[idx], [SS58, 7, 5]);
-  });
 });
 
 describe("handleAccountTransfers", () => {
@@ -3652,125 +2786,6 @@ describe("handleAccountTransfers", () => {
     assert.equal(body.data.transfer_count, 0);
     assert.deepEqual(body.data.transfers, []);
   });
-
-  test("happy path reshapes Transfer rows (all direction)", async () => {
-    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
-    const body = await json(
-      await handleAccountTransfers(
-        req(`/api/v1/accounts/${SS58}/transfers`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/transfers`),
-      ),
-    );
-    assert.equal(body.data.transfer_count, 1);
-    assert.equal(body.data.transfers[0].from, SS58);
-    assert.equal(body.data.transfers[0].amount_tao, 4.2);
-    const sql = captures.sql.find((s) => /Transfer/.test(s));
-    assert.ok(/UNION ALL/.test(sql));
-    assert.ok(/hotkey = \?/.test(sql));
-    assert.ok(/coldkey = \? AND hotkey <> \?/.test(sql));
-    assert.equal(sql.includes(" OR "), false);
-  });
-
-  test("block_start/block_end range filter is applied and bound", async () => {
-    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
-    await handleAccountTransfers(
-      req(`/api/v1/accounts/${SS58}/transfers`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/transfers?block_start=100&block_end=900`),
-    );
-    const idx = captures.sql.findIndex((s) => /Transfer/.test(s));
-    assert.ok(idx !== -1);
-    const sql = captures.sql[idx];
-    assert.equal((sql.match(/block_number >= \?/g) || []).length, 2);
-    assert.equal((sql.match(/block_number <= \?/g) || []).length, 2);
-    assert.deepEqual(captures.params[idx], [
-      SS58,
-      100,
-      900,
-      SS58,
-      SS58,
-      100,
-      900,
-      100,
-      0,
-    ]);
-  });
-
-  test("direction=sent binds hotkey-only clause", async () => {
-    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
-    await handleAccountTransfers(
-      req(`/api/v1/accounts/${SS58}/transfers`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/transfers?direction=sent`),
-    );
-    const sql = captures.sql.find((s) => /Transfer/.test(s));
-    assert.ok(
-      /^[^O]*hotkey = \?/.test(sql.replace(/OR.*/, "")) ||
-        /hotkey = \?/.test(sql),
-    );
-    assert.ok(!/coldkey = \? OR/.test(sql) || /hotkey = \?/.test(sql));
-  });
-
-  test("direction=received binds coldkey-only clause", async () => {
-    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
-    await handleAccountTransfers(
-      req(`/api/v1/accounts/${SS58}/transfers`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/transfers?direction=received`),
-    );
-    const sql = captures.sql.find((s) => /Transfer/.test(s));
-    assert.ok(/coldkey = \?/.test(sql));
-  });
-
-  test("cursor uses keyset seek instead of offset", async () => {
-    const { env, captures } = dbWith({
-      transfers: [transferEventRow({ block_number: 150, event_index: 2 })],
-    });
-    const body = await json(
-      await handleAccountTransfers(
-        req(`/api/v1/accounts/${SS58}/transfers`),
-        env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/transfers?limit=1&cursor=${encodeCursor([200, 1])}`,
-        ),
-      ),
-    );
-    const idx = captures.sql.findIndex((s) => /Transfer/.test(s));
-    assert.ok(idx !== -1);
-    const sql = captures.sql[idx];
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(sql));
-    assert.ok(!/OFFSET/.test(sql));
-    assert.deepEqual(captures.params[idx], [
-      SS58,
-      200,
-      1,
-      SS58,
-      SS58,
-      200,
-      1,
-      1,
-    ]);
-    assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
-  });
-
-  test("a malformed cursor is ignored and falls back to the first page", async () => {
-    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
-    await handleAccountTransfers(
-      req(`/api/v1/accounts/${SS58}/transfers`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/transfers?cursor=not-a-cursor`),
-    );
-    const sql = captures.sql.find((s) => /Transfer/.test(s));
-    assert.ok(/OFFSET/.test(sql));
-    assert.ok(!/block_number, event_index\) </.test(sql));
-  });
 });
 
 describe("handleAccountCounterparties", () => {
@@ -3805,52 +2820,6 @@ describe("handleAccountCounterparties", () => {
     }
   });
 
-  test("accepts limit=100 at the documented upper bound", async () => {
-    const { env } = dbWith({
-      transfers: Array.from({ length: 150 }, (_, index) =>
-        transferEventRow({
-          hotkey: SS58,
-          coldkey: `CP-${index.toString().padStart(3, "0")}`,
-          amount_tao: index + 1,
-          block_number: 1_000 - index,
-        }),
-      ),
-    });
-    const body = await json(
-      await handleAccountCounterparties(
-        req(`/api/v1/accounts/${SS58}/counterparties?limit=100`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/counterparties?limit=100`),
-      ),
-    );
-    assert.equal(body.data.counterparty_count, 150);
-    assert.equal(body.data.counterparties.length, 100);
-  });
-
-  test("defaults limit to 20 when absent in list mode", async () => {
-    const { env } = dbWith({
-      transfers: Array.from({ length: 30 }, (_, index) =>
-        transferEventRow({
-          hotkey: SS58,
-          coldkey: `CP-${index.toString().padStart(3, "0")}`,
-          amount_tao: index + 1,
-          block_number: 2_000 - index,
-        }),
-      ),
-    });
-    const body = await json(
-      await handleAccountCounterparties(
-        req(`/api/v1/accounts/${SS58}/counterparties`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/counterparties`),
-      ),
-    );
-    assert.equal(body.data.counterparty_count, 30);
-    assert.equal(body.data.counterparties.length, 20);
-  });
-
   test("returns schema-stable empty rollup on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountCounterparties,
@@ -3862,34 +2831,6 @@ describe("handleAccountCounterparties", () => {
     assert.equal(body.data.ss58, SS58);
     assert.equal(body.data.counterparty_count, 0);
     assert.deepEqual(body.data.counterparties, []);
-  });
-
-  test("aggregates the account's transfers by counterparty", async () => {
-    const { env, captures } = dbWith({
-      transfers: [
-        { hotkey: SS58, coldkey: "A", amount_tao: 100, block_number: 10 },
-        { hotkey: "A", coldkey: SS58, amount_tao: 30, block_number: 8 },
-        { hotkey: "B", coldkey: SS58, amount_tao: 200, block_number: 7 },
-      ],
-    });
-    const body = await json(
-      await handleAccountCounterparties(
-        req(`/api/v1/accounts/${SS58}/counterparties`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/counterparties?limit=10`),
-      ),
-    );
-    assert.equal(body.data.ss58, SS58);
-    assert.equal(body.data.counterparty_count, 2); // A, B
-    assert.equal(body.data.counterparties[0].address, "B"); // highest volume (200)
-    // Read is two Transfer side seeks bound to the account, not a hotkey/coldkey OR.
-    const idx = captures.sql.findIndex(
-      (s) => /UNION ALL/.test(s) && /coldkey = \? AND hotkey <> \?/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.sql[idx].includes(" OR "), false);
-    assert.deepEqual(captures.params[idx].slice(0, 3), [SS58, SS58, SS58]);
   });
 });
 
@@ -3934,66 +2875,6 @@ describe("handleAccountCounterparties relationship drilldown", () => {
     }
   });
 
-  test("defaults limit to 50 when absent in relationship mode", async () => {
-    const { env } = dbWith({
-      relationshipTransfers: Array.from({ length: 80 }, (_, index) =>
-        transferEventRow({
-          block_number: 5_000 - index,
-          event_index: index,
-          hotkey: index % 2 === 0 ? SS58 : COUNTERPARTY,
-          coldkey: index % 2 === 0 ? COUNTERPARTY : SS58,
-          amount_tao: index + 1,
-          observed_at: OBSERVED_AT - index * 1_000,
-        }),
-      ),
-    });
-    const body = await json(
-      await handleAccountCounterparties(
-        req(
-          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
-        ),
-        env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
-        ),
-      ),
-    );
-    assert.equal(body.data.counterparty_count, 1);
-    assert.equal(body.data.relationship.transfer_count, 80);
-    assert.equal(body.data.relationship.transfers.length, 50);
-  });
-
-  test("accepts limit=100 at the documented upper bound in relationship mode", async () => {
-    const { env } = dbWith({
-      relationshipTransfers: Array.from({ length: 150 }, (_, index) =>
-        transferEventRow({
-          block_number: 5_000 - index,
-          event_index: index,
-          hotkey: index % 2 === 0 ? SS58 : COUNTERPARTY,
-          coldkey: index % 2 === 0 ? COUNTERPARTY : SS58,
-          amount_tao: index + 1,
-          observed_at: OBSERVED_AT - index * 1_000,
-        }),
-      ),
-    });
-    const body = await json(
-      await handleAccountCounterparties(
-        req(
-          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=100`,
-        ),
-        env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=100`,
-        ),
-      ),
-    );
-    assert.equal(body.data.counterparty_count, 1);
-    assert.equal(body.data.relationship.transfer_count, 150);
-    assert.equal(body.data.relationship.transfers.length, 100);
-  });
-
   test("returns schema-stable empty pair detail on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountCounterparties,
@@ -4010,61 +2891,6 @@ describe("handleAccountCounterparties relationship drilldown", () => {
     assert.equal(body.data.relationship.counterparty, COUNTERPARTY);
     assert.equal(body.data.relationship.transfer_count, 0);
     assert.deepEqual(body.data.relationship.transfers, []);
-  });
-
-  test("returns pair-level fund-flow detail and recent transfer evidence", async () => {
-    const { env, captures } = dbWith({
-      relationshipTransfers: [
-        transferEventRow({
-          block_number: 20,
-          event_index: 2,
-          hotkey: COUNTERPARTY,
-          coldkey: SS58,
-          amount_tao: 4,
-          observed_at: Date.UTC(2026, 5, 2),
-        }),
-        transferEventRow({
-          block_number: 10,
-          event_index: 1,
-          hotkey: SS58,
-          coldkey: COUNTERPARTY,
-          amount_tao: 10,
-          observed_at: Date.UTC(2026, 5, 1),
-        }),
-      ],
-    });
-    const body = await json(
-      await handleAccountCounterparties(
-        req(`/api/v1/accounts/${SS58}/counterparties`),
-        env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=1`,
-        ),
-      ),
-    );
-    assert.equal(body.data.counterparty_count, 1);
-    assert.equal(body.data.counterparties[0].address, COUNTERPARTY);
-    assert.equal(body.data.relationship.transfer_count, 2);
-    assert.equal(body.data.total_sent_tao, 10);
-    assert.equal(body.data.total_received_tao, 4);
-    assert.equal(body.data.relationship.net_tao, -6);
-    assert.equal(body.data.relationship.transfers.length, 1);
-    assert.equal(body.data.relationship.transfers[0].direction, "received");
-    const idx = captures.sql.findIndex(
-      (s) =>
-        /UNION ALL/.test(s) &&
-        /event_kind = 'Transfer' AND hotkey = \? AND coldkey = \?/.test(s),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.sql[idx].includes(" OR "), false);
-    assert.deepEqual(captures.params[idx].slice(0, 4), [
-      SS58,
-      COUNTERPARTY,
-      COUNTERPARTY,
-      SS58,
-    ]);
-    await assertValidComponent("AccountCounterpartiesArtifact", body.data);
   });
 });
 
@@ -4101,24 +2927,6 @@ describe("handleAccountStakeFlow", () => {
     assert.equal(body.meta.parameter, "direction");
   });
 
-  test("threads ?direction=in to the loader as StakeAdded only", async () => {
-    const { env, captures } = dbWith({ stakeFlow: [] });
-    await handleAccountStakeFlow(
-      req(`/api/v1/accounts/${SS58}/stake-flow`),
-      env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/stake-flow?direction=in`),
-    );
-    const bound = captures.params.find(
-      (p) => Array.isArray(p) && p.includes("StakeAdded"),
-    );
-    assert.ok(bound, "expected a bound StakeAdded param");
-    assert.ok(
-      !bound.includes("StakeRemoved"),
-      "direction=in must not bind StakeRemoved",
-    );
-  });
-
   test("returns schema-stable zeros on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountStakeFlow,
@@ -4140,64 +2948,6 @@ describe("handleAccountStakeFlow", () => {
     );
     assert.equal(body.meta.source, "chain-events");
     assert.equal(body.meta.generated_at, null);
-  });
-
-  test("folds per-subnet flow + totals, bound to the coldkey + both stake kinds", async () => {
-    const { env, captures } = dbWith({
-      stakeFlow: [
-        {
-          netuid: 1,
-          event_kind: "StakeAdded",
-          total_tao: 200,
-          event_count: 5,
-          last_observed: 1717900000000,
-        },
-        {
-          netuid: 1,
-          event_kind: "StakeRemoved",
-          total_tao: 50,
-          event_count: 2,
-          last_observed: 1717000000000,
-        },
-        {
-          netuid: 7,
-          event_kind: "StakeAdded",
-          total_tao: 10,
-          event_count: 1,
-          last_observed: 1717500000000,
-        },
-      ],
-    });
-    const body = await json(
-      await handleAccountStakeFlow(
-        req(`/api/v1/accounts/${SS58}/stake-flow`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/stake-flow?window=90d`),
-      ),
-    );
-    assert.equal(body.data.address, SS58);
-    assert.equal(body.data.window, "90d");
-    assert.equal(body.data.total_staked_tao, 210);
-    assert.equal(body.data.total_unstaked_tao, 50);
-    assert.equal(body.data.net_flow_tao, 160);
-    assert.equal(body.data.subnet_count, 2);
-    // subnet 1 has the most gross flow (250) so it leads + is dominant
-    assert.equal(body.data.subnets[0].netuid, 1);
-    assert.equal(body.data.dominant_netuid, 1);
-    await assertValidComponent("AccountStakeFlowArtifact", body.data);
-    const idx = captures.sql.findIndex((s) =>
-      /FROM account_events INDEXED BY idx_account_events_coldkey WHERE coldkey = \?/.test(
-        s,
-      ),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], SS58);
-    assert.equal(captures.params[idx][1], "StakeAdded");
-    assert.equal(captures.params[idx][2], "StakeRemoved");
-    // newest event across all rows, ISO
-    assert.equal(body.meta.source, "chain-events");
-    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 });
 
@@ -4246,69 +2996,6 @@ describe("handleAccountStakeMoves", () => {
     assert.equal(body.meta.source, "chain-events");
     assert.equal(body.meta.generated_at, null);
   });
-
-  test("folds per-subnet movements, bound to the coldkey + StakeMoved", async () => {
-    const { env, captures } = dbWith({
-      stakeMoves: [
-        {
-          netuid: 1,
-          movements: 5,
-          first_observed: 1717000000000,
-          last_observed: 1717900000000,
-        },
-        {
-          netuid: 7,
-          movements: 2,
-          first_observed: 1717500000000,
-          last_observed: 1717600000000,
-        },
-      ],
-      // Price-at-tx enrichment (#4332/6.3): only netuid 1's date has a
-      // snapshot; netuid 7 stays null (no matching row), proving the
-      // per-subnet lookup is genuinely keyed, not a blanket fill.
-      stakeMovesPrices: [
-        { netuid: 1, snapshot_date: "2024-06-09", alpha_price_tao: 3.25 },
-      ],
-    });
-    const body = await json(
-      await handleAccountStakeMoves(
-        req(`/api/v1/accounts/${SS58}/stake-moves`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/stake-moves?window=90d`),
-      ),
-    );
-    assert.equal(body.data.address, SS58);
-    assert.equal(body.data.window, "90d");
-    assert.equal(body.data.total_movements, 7);
-    assert.equal(body.data.subnet_count, 2);
-    assert.equal(body.data.subnets[0].netuid, 1);
-    assert.equal(body.data.dominant_netuid, 1);
-    assert.equal(
-      body.data.subnets[0].first_moved_at,
-      new Date(1717000000000).toISOString(),
-    );
-    assert.equal(
-      body.data.subnets[0].last_moved_at,
-      new Date(1717900000000).toISOString(),
-    );
-    assert.equal(body.data.subnets[0].price_tao_at_last_move, 3.25);
-    assert.equal(
-      body.data.subnets.find((s) => s.netuid === 7).price_tao_at_last_move,
-      null,
-    );
-    await assertValidComponent("AccountStakeMovesArtifact", body.data);
-    const idx = captures.sql.findIndex((s) =>
-      /FROM account_events INDEXED BY idx_account_events_coldkey WHERE coldkey = \?/.test(
-        s,
-      ),
-    );
-    assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], SS58);
-    assert.equal(captures.params[idx][1], "StakeMoved");
-    assert.equal(body.meta.source, "chain-events");
-    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
-  });
 });
 
 describe("handleAccountSubnets", () => {
@@ -4321,31 +3008,6 @@ describe("handleAccountSubnets", () => {
     );
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.subnets, []);
-  });
-
-  test("happy path returns cross-subnet registration footprint", async () => {
-    const { env } = dbWith({
-      registrations: [
-        {
-          netuid: NETUID,
-          uid: UID,
-          stake_tao: 100,
-          validator_permit: 0,
-          active: 1,
-        },
-        { netuid: 64, uid: 12, stake_tao: 5, validator_permit: 1, active: 1 },
-      ],
-    });
-    const body = await json(
-      await handleAccountSubnets(
-        req(`/api/v1/accounts/${SS58}/subnets`),
-        env,
-        SS58,
-      ),
-    );
-    assert.equal(body.data.subnet_count, 2);
-    assert.equal(body.data.subnets[1].netuid, 64);
-    assert.equal(body.data.subnets[1].validator_permit, true);
   });
 });
 
@@ -4373,35 +3035,6 @@ describe("handleSubnetEvents", () => {
     assert.deepEqual(body.data.events, []);
   });
 
-  test("happy path returns per-subnet event stream", async () => {
-    const { env } = dbWith({
-      subnetEvents: [accountEventRow({ event_kind: "NeuronRegistered" })],
-    });
-    const body = await json(
-      await handleSubnetEvents(
-        req(`/api/v1/subnets/${NETUID}/events`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/events?limit=25`),
-      ),
-    );
-    assert.equal(body.data.event_count, 1);
-    assert.equal(body.data.events[0].event_kind, "NeuronRegistered");
-  });
-
-  test("kind filter is applied", async () => {
-    const { env, captures } = dbWith({
-      subnetEvents: [accountEventRow({ event_kind: "WeightsSet" })],
-    });
-    await handleSubnetEvents(
-      req(`/api/v1/subnets/${NETUID}/events`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/events?kind=WeightsSet`),
-    );
-    assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
-  });
-
   test("rejects an unknown event kind with 400", async () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
@@ -4411,37 +3044,6 @@ describe("handleSubnetEvents", () => {
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "kind");
-  });
-
-  test("accepts a non-SubtensorModule ingested kind (Transfer), not just INDEXED_EVENT_KINDS", async () => {
-    const { env, captures } = dbWith({
-      subnetEvents: [accountEventRow({ event_kind: "Transfer" })],
-    });
-    await handleSubnetEvents(
-      req(`/api/v1/subnets/${NETUID}/events`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/events?kind=Transfer`),
-    );
-    assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
-  });
-
-  test("block_start/block_end range filter is applied and bound", async () => {
-    const { env, captures } = dbWith({
-      subnetEvents: [accountEventRow({ block_number: 500 })],
-    });
-    await handleSubnetEvents(
-      req(`/api/v1/subnets/${NETUID}/events`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/events?block_start=100&block_end=900`),
-    );
-    assert.ok(
-      captures.sql.some(
-        (s) => /block_number >= \?/.test(s) && /block_number <= \?/.test(s),
-      ),
-    );
-    assert.ok(captures.params.some((p) => p.includes(100) && p.includes(900)));
   });
 
   test("short-circuits an inverted block_start>block_end window before D1", async () => {
@@ -4482,41 +3084,6 @@ describe("handleSubnetEvents", () => {
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_end");
-  });
-
-  test("cursor uses keyset seek instead of offset", async () => {
-    const { env, captures } = dbWith({
-      subnetEvents: [accountEventRow({ block_number: 150, event_index: 2 })],
-    });
-    const body = await json(
-      await handleSubnetEvents(
-        req(`/api/v1/subnets/${NETUID}/events`),
-        env,
-        NETUID,
-        url(
-          `/api/v1/subnets/${NETUID}/events?limit=1&cursor=${encodeCursor([200, 1])}`,
-        ),
-      ),
-    );
-    const sql = captures.sql.find((s) => /FROM account_events/.test(s));
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(sql));
-    assert.ok(!/OFFSET/.test(sql));
-    assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
-  });
-
-  test("a malformed cursor is ignored and falls back to the first page", async () => {
-    const { env, captures } = dbWith({
-      subnetEvents: [accountEventRow()],
-    });
-    await handleSubnetEvents(
-      req(`/api/v1/subnets/${NETUID}/events`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/events?cursor=not-a-cursor`),
-    );
-    const sql = captures.sql.find((s) => /FROM account_events/.test(s));
-    assert.ok(/OFFSET/.test(sql));
-    assert.ok(!/block_number, event_index\) </.test(sql));
   });
 });
 
@@ -4567,58 +3134,6 @@ describe("handleSubnetEventSummary", () => {
     assert.deepEqual(body.data.categories, []);
     assert.deepEqual(body.data.event_kinds, []);
     assert.deepEqual(body.data.recent_events, []);
-  });
-
-  test("happy path returns kind/category aggregates and recent evidence", async () => {
-    const { env, captures } = dbWith({
-      subnetEventSummaryKinds: [
-        {
-          event_kind: "StakeAdded",
-          event_count: "3",
-          hotkey_count: "2",
-          coldkey_count: "1",
-          amount_tao: "4.5",
-          alpha_amount: "0.25",
-          first_block: "100",
-          last_block: "120",
-          first_observed_at: OBSERVED_AT - 1000,
-          last_observed_at: OBSERVED_AT,
-        },
-        {
-          event_kind: "WeightsSet",
-          event_count: 2,
-          hotkey_count: 1,
-          coldkey_count: 0,
-          amount_tao: null,
-          alpha_amount: null,
-          first_block: 90,
-          last_block: 119,
-          first_observed_at: OBSERVED_AT - 2000,
-          last_observed_at: OBSERVED_AT - 500,
-        },
-      ],
-      subnetEventSummaryRecent: [
-        accountEventRow({ event_kind: "StakeAdded", block_number: 120 }),
-      ],
-    });
-    const body = await json(
-      await handleSubnetEventSummary(
-        req(`/api/v1/subnets/${NETUID}/event-summary`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/event-summary?window=7d&limit=5`),
-      ),
-    );
-    assert.equal(body.data.window, "7d");
-    assert.equal(body.data.total_events, 5);
-    assert.equal(body.data.kind_count, 2);
-    assert.equal(body.data.category_count, 2);
-    assert.equal(body.data.event_kinds[0].event_kind, "StakeAdded");
-    assert.equal(body.data.event_kinds[0].category, "stake");
-    assert.equal(body.data.event_kinds[0].amount_tao, 4.5);
-    assert.equal(body.data.categories[0].category, "stake");
-    assert.equal(body.data.recent_events[0].event_kind, "StakeAdded");
-    assert.equal(captures.params.at(-1).at(-1), 5);
   });
 });
 
@@ -4854,50 +3369,6 @@ describe("handleBlocks", () => {
     assert.equal(body.data.next_cursor, null);
   });
 
-  test("happy path returns newest-first block feed", async () => {
-    const { env } = dbWith({ blocksFeed: [blockRow()] });
-    const body = await json(
-      await handleBlocks(
-        req("/api/v1/blocks"),
-        env,
-        url("/api/v1/blocks?limit=25"),
-      ),
-    );
-    assert.equal(body.data.block_count, 1);
-    assert.equal(body.data.blocks[0].block_number, BLOCK_NUM);
-    assert.equal(body.data.limit, 25);
-  });
-
-  test("?format=csv returns a named text/csv download with block columns (#2528)", async () => {
-    const { env } = dbWith({
-      blocksFeed: [
-        blockRow(),
-        blockRow({
-          block_number: BLOCK_NUM - 1,
-          block_hash: `0x${"c".repeat(64)}`,
-        }),
-      ],
-    });
-    const res = await handleBlocks(
-      req("/api/v1/blocks?format=csv"),
-      env,
-      url("/api/v1/blocks?format=csv"),
-    );
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
-    assert.equal(
-      res.headers.get("content-disposition"),
-      'attachment; filename="blocks.csv"',
-    );
-    const lines = (await res.text()).split("\r\n");
-    assert.equal(
-      lines[0],
-      "block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at",
-    );
-    assert.equal(lines.length, 3);
-    assert.match(lines[1], new RegExp(`^${BLOCK_NUM},`));
-  });
-
   test("Accept: text/csv negotiates CSV without an explicit format", async () => {
     const { env } = dbWith({ blocksFeed: [blockRow()] });
     const res = await handleBlocks(
@@ -4978,62 +3449,6 @@ describe("handleBlocks", () => {
     assert.equal(body.data.limit, 100);
   });
 
-  test("cursor uses keyset seek and emits next_cursor", async () => {
-    const { env, captures } = dbWith({
-      blocksFeed: [blockRow({ block_number: 150 })],
-    });
-    const body = await json(
-      await handleBlocks(
-        req("/api/v1/blocks"),
-        env,
-        url(`/api/v1/blocks?limit=1&cursor=${encodeCursor([200])}`),
-      ),
-    );
-    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
-    assert.ok(/WHERE block_number < \?/.test(sql));
-    assert.ok(!/OFFSET/.test(sql));
-    assert.equal(body.data.next_cursor, encodeCursor([150]));
-  });
-
-  test("applies the conjunctive filter set (#1991)", async () => {
-    const { env, captures } = dbWith({ blocksFeed: [] });
-    await handleBlocks(
-      req("/api/v1/blocks"),
-      env,
-      url(
-        "/api/v1/blocks?author=5Author&spec_version=423&block_start=100&block_end=200&from=1000&to=2000&min_extrinsics=1&min_events=5",
-      ),
-    );
-    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
-    assert.ok(/author = \?/.test(sql));
-    assert.ok(/spec_version = \?/.test(sql));
-    assert.ok(/block_number >= \?/.test(sql));
-    assert.ok(/block_number <= \?/.test(sql));
-    assert.ok(/observed_at >= \?/.test(sql));
-    assert.ok(/observed_at <= \?/.test(sql));
-    assert.ok(/extrinsic_count >= \?/.test(sql));
-    assert.ok(/event_count >= \?/.test(sql));
-    // every value bound (author string + the 7 clamped ints), never interpolated.
-    const params = captures.params.flat();
-    assert.ok(params.includes("5Author"));
-    assert.ok(params.includes(423));
-    // limit + offset are the last two bound params (no cursor → offset path).
-    assert.equal(params.at(-2), 50);
-    assert.equal(params.at(-1), 0);
-  });
-
-  test("a filter ANDs with the keyset cursor and drops OFFSET", async () => {
-    const { env, captures } = dbWith({ blocksFeed: [] });
-    await handleBlocks(
-      req("/api/v1/blocks"),
-      env,
-      url(`/api/v1/blocks?author=5Author&cursor=${encodeCursor([300])}`),
-    );
-    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
-    assert.ok(/author = \? AND block_number < \?/.test(sql));
-    assert.ok(!/OFFSET/.test(sql));
-  });
-
   test("short-circuits impossible count floors before querying D1", async () => {
     const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
     const body = await json(
@@ -5061,18 +3476,6 @@ describe("handleBlocks", () => {
     assert.deepEqual(body.data.blocks, []);
     assert.equal(captures.sql.length, 0);
   });
-
-  test("the unfiltered feed keeps the plain OFFSET path (no WHERE)", async () => {
-    const { env, captures } = dbWith({ blocksFeed: [] });
-    await handleBlocks(
-      req("/api/v1/blocks"),
-      env,
-      url("/api/v1/blocks?limit=10&offset=20"),
-    );
-    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
-    assert.ok(!/WHERE/.test(sql));
-    assert.ok(/ORDER BY block_number DESC LIMIT \? OFFSET \?/.test(sql));
-  });
 });
 
 describe("handleBlock", () => {
@@ -5089,65 +3492,6 @@ describe("handleBlock", () => {
     assert.equal(body.data.next_block_number, null);
   });
 
-  test("happy path resolves by numeric block_number", async () => {
-    const { env, captures } = dbWith({
-      blockDetail: blockRow(),
-      blockNeighbors: { prev: 1230, next: 1240 },
-    });
-    const body = await json(
-      await handleBlock(
-        req(`/api/v1/blocks/${BLOCK_NUM}`),
-        env,
-        String(BLOCK_NUM),
-      ),
-    );
-    const neighborSql = captures.sql.find((sql) =>
-      /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
-        sql,
-      ),
-    );
-    assert.ok(neighborSql);
-    assert.ok(!/MAX\(CASE WHEN block_number </.test(neighborSql));
-    assert.equal(body.data.block.block_number, BLOCK_NUM);
-    assert.equal(body.data.prev_block_number, 1230);
-    assert.equal(body.data.next_block_number, 1240);
-  });
-
-  test("happy path resolves by 0x block_hash ref", async () => {
-    const { env } = dbWith({ blockDetail: blockRow() });
-    const body = await json(
-      await handleBlock(req(`/api/v1/blocks/${HASH}`), env, HASH),
-    );
-    assert.equal(body.data.ref, HASH);
-    assert.equal(body.data.block.block_hash, HASH);
-  });
-
-  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
-    const upperHash = `0x${"A".repeat(64)}`;
-    const lowerHash = upperHash.toLowerCase();
-    const { env, captures } = dbWith({ blockDetail: blockRow() });
-    await handleBlock(req(`/api/v1/blocks/${upperHash}`), env, upperHash);
-    const idx = captures.sql.findIndex((s) =>
-      /FROM blocks WHERE block_hash = \?/.test(s),
-    );
-    assert.ok(idx !== -1, "expected a block_hash lookup");
-    assert.equal(captures.params[idx][0], lowerHash);
-  });
-
-  test("uses the static cache profile when the block resolves", async () => {
-    const { env } = dbWith({
-      blockDetail: blockRow(),
-      blockNeighbors: { prev: 1230, next: 1240 },
-    });
-    const res = await handleBlock(
-      req(`/api/v1/blocks/${BLOCK_NUM}`),
-      env,
-      String(BLOCK_NUM),
-    );
-    assert.match(res.headers.get("cache-control"), /max-age=600/);
-    assert.equal(res.headers.get("x-metagraph-cache-profile"), "static");
-  });
-
   test("keeps the short cache profile when the block is unknown", async () => {
     const res = await handleBlock(
       req(`/api/v1/blocks/${BLOCK_NUM}`),
@@ -5157,30 +3501,6 @@ describe("handleBlock", () => {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("cache-control"), /max-age=60/);
     assert.equal(res.headers.get("x-metagraph-cache-profile"), "short");
-  });
-
-  test("still emits a 304 for a resolved block when If-None-Match matches", async () => {
-    const { env } = dbWith({
-      blockDetail: blockRow(),
-      blockNeighbors: { prev: 1230, next: 1240 },
-    });
-    const first = await handleBlock(
-      req(`/api/v1/blocks/${BLOCK_NUM}`),
-      env,
-      String(BLOCK_NUM),
-    );
-    const etag = first.headers.get("etag");
-    assert.ok(etag);
-    const second = await handleBlock(
-      new Request(`https://api.metagraph.sh/api/v1/blocks/${BLOCK_NUM}`, {
-        headers: { "if-none-match": etag },
-      }),
-      env,
-      String(BLOCK_NUM),
-    );
-    assert.equal(second.status, 304);
-    assert.match(second.headers.get("cache-control"), /max-age=600/);
-    assert.equal(second.headers.get("etag"), etag);
   });
 });
 
@@ -5206,43 +3526,6 @@ describe("handleBlockExtrinsics", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.extrinsic_count, 0);
     assert.deepEqual(body.data.extrinsics, []);
-  });
-
-  test("happy path lists extrinsics in extrinsic_index ASC order", async () => {
-    const { env } = dbWith({
-      blockDetail: { block_number: BLOCK_NUM },
-      extrinsics: [extrinsicRow()],
-    });
-    const body = await json(
-      await handleBlockExtrinsics(
-        req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-        env,
-        String(BLOCK_NUM),
-        url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-      ),
-    );
-    assert.equal(body.data.extrinsic_count, 1);
-    assert.equal(body.data.extrinsics[0].call_function, "add_stake");
-  });
-
-  test("hash ref resolves block_number before listing extrinsics", async () => {
-    const { env } = dbWith({
-      blockDetail: { block_number: 9 },
-      blockNumberByHash: 9,
-      extrinsics: [extrinsicRow({ block_number: 9, extrinsic_index: 1 })],
-    });
-    const hash = HASH;
-    const body = await json(
-      await handleBlockExtrinsics(
-        req(`/api/v1/blocks/${hash}/extrinsics`),
-        env,
-        hash,
-        url(`/api/v1/blocks/${hash}/extrinsics`),
-      ),
-    );
-    assert.equal(body.data.ref, hash);
-    assert.equal(body.data.block_number, 9);
-    assert.equal(body.data.extrinsics[0].extrinsic_index, 1);
   });
 
   test("unknown numeric ref yields block_number:null + empty extrinsics", async () => {
@@ -5272,23 +3555,6 @@ describe("handleBlockExtrinsics", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.extrinsic_count, 0);
   });
-
-  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
-    const upperHash = `0x${"A".repeat(64)}`;
-    const lowerHash = upperHash.toLowerCase();
-    const { env, captures } = dbWith({ blockNumberByHash: 9, extrinsics: [] });
-    await handleBlockExtrinsics(
-      req(`/api/v1/blocks/${upperHash}/extrinsics`),
-      env,
-      upperHash,
-      url(`/api/v1/blocks/${upperHash}/extrinsics`),
-    );
-    const idx = captures.sql.findIndex((s) =>
-      /SELECT block_number FROM blocks WHERE block_hash = \?/.test(s),
-    );
-    assert.ok(idx !== -1, "expected a block_hash resolution lookup");
-    assert.equal(captures.params[idx][0], lowerHash);
-  });
 });
 
 describe("handleBlockEvents", () => {
@@ -5313,40 +3579,6 @@ describe("handleBlockEvents", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.event_count, 0);
     assert.deepEqual(body.data.events, []);
-  });
-
-  test("happy path returns block-scoped events", async () => {
-    const { env } = dbWith({
-      blockDetail: { block_number: BLOCK_NUM },
-      blockEvents: [accountEventRow()],
-    });
-    const body = await json(
-      await handleBlockEvents(
-        req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-        env,
-        String(BLOCK_NUM),
-        url(`/api/v1/blocks/${BLOCK_NUM}/events?limit=50`),
-      ),
-    );
-    assert.equal(body.data.event_count, 1);
-    assert.equal(body.data.events[0].event_kind, "StakeAdded");
-  });
-
-  test("hash ref resolves before reading events", async () => {
-    const { env } = dbWith({
-      blockNumberByHash: 9,
-      blockEvents: [accountEventRow({ block_number: 9 })],
-    });
-    const body = await json(
-      await handleBlockEvents(
-        req(`/api/v1/blocks/${HASH}/events`),
-        env,
-        HASH,
-        url(`/api/v1/blocks/${HASH}/events`),
-      ),
-    );
-    assert.equal(body.data.block_number, 9);
-    assert.equal(body.data.event_count, 1);
   });
 
   test("unknown numeric ref yields block_number:null + empty events", async () => {
@@ -5391,23 +3623,6 @@ describe("handleBlockEvents", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.event_count, 0);
   });
-
-  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
-    const upperHash = `0x${"A".repeat(64)}`;
-    const lowerHash = upperHash.toLowerCase();
-    const { env, captures } = dbWith({ blockNumberByHash: 9, blockEvents: [] });
-    await handleBlockEvents(
-      req(`/api/v1/blocks/${upperHash}/events`),
-      env,
-      upperHash,
-      url(`/api/v1/blocks/${upperHash}/events`),
-    );
-    const idx = captures.sql.findIndex((s) =>
-      /SELECT block_number FROM blocks WHERE block_hash = \?/.test(s),
-    );
-    assert.ok(idx !== -1, "expected a block_hash resolution lookup");
-    assert.equal(captures.params[idx][0], lowerHash);
-  });
 });
 
 describe("handleExtrinsics", () => {
@@ -5432,36 +3647,6 @@ describe("handleExtrinsics", () => {
     assert.equal(body.data.next_cursor, null);
   });
 
-  test("happy path returns recent extrinsic feed", async () => {
-    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
-    const body = await json(
-      await handleExtrinsics(
-        req("/api/v1/extrinsics"),
-        env,
-        url("/api/v1/extrinsics?limit=25"),
-      ),
-    );
-    assert.equal(body.data.extrinsic_count, 1);
-    assert.equal(body.data.extrinsics[0].block_number, BLOCK_NUM);
-  });
-
-  test("applies conjunctive filter set (#1846)", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url(
-        "/api/v1/extrinsics?signer=5Signer&call_module=SubtensorModule&call_function=add_stake&success=false&block_start=100&block_end=200",
-      ),
-    );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(/signer = \?/.test(sql));
-    assert.ok(/call_module = \?/.test(sql));
-    assert.ok(/success = \?/.test(sql));
-    assert.ok(/block_number >= \?/.test(sql));
-    assert.ok(captures.params.flat().includes(0));
-  });
-
   test("rejects a non-boolean success value with 400 (#2575)", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const res = await handleExtrinsics(
@@ -5477,43 +3662,6 @@ describe("handleExtrinsics", () => {
       captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
       0,
     );
-  });
-
-  test("success=true binds only successful extrinsics (#2575)", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url("/api/v1/extrinsics?success=true"),
-    );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(/success = \?/.test(sql));
-    assert.ok(captures.params.flat().includes(1));
-  });
-
-  test("success=false binds only failed extrinsics, omitting NULL (#2575)", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url("/api/v1/extrinsics?success=false"),
-    );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(/success = \?/.test(sql));
-    assert.ok(captures.params.flat().includes(0));
-    assert.ok(!/success IS NULL/.test(sql));
-  });
-
-  test("omitted success leaves the feed unfiltered (#2575)", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url("/api/v1/extrinsics"),
-    );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(sql);
-    assert.ok(!/success = \?/.test(sql));
   });
 
   test("rejects a malformed call_hash with 400 (#4322)", async () => {
@@ -5532,57 +3680,21 @@ describe("handleExtrinsics", () => {
     );
   });
 
-  test("call_hash binds a quoted LIKE match, scoped alongside call_module (#4322)", async () => {
+  test("rejects call_hash without call_module to avoid unscoped JSON scans", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const hash = `0x${"c".repeat(64)}`;
-    await handleExtrinsics(
+    const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
       env,
-      url(`/api/v1/extrinsics?call_module=Multisig&call_hash=${hash}`),
+      url(`/api/v1/extrinsics?call_hash=${hash}`),
     );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(/call_args LIKE \?/.test(sql));
-    assert.ok(captures.params.flat().includes(`%"${hash}"%`));
-  });
-
-  test("forces module-index for a module-only feed path (#2082)", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url("/api/v1/extrinsics?call_module=Balances&limit=10"),
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "call_module");
+    assert.equal(
+      captures.sql.filter((sql) => /FROM extrinsics/.test(sql)).length,
+      0,
     );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(sql);
-    assert.ok(
-      /INDEXED BY idx_extrinsics_module_block/.test(sql),
-      `expected module-filter call to use idx_extrinsics_module_block, got: ${sql}`,
-    );
-  });
-
-  test("does not force module-index for compound module filters", async () => {
-    const recentMs = Date.now() - 60_000;
-    const hash = `0x${"a".repeat(64)}`;
-    for (const query of [
-      "call_module=Balances&call_function=__never__",
-      "call_module=Balances&success=true",
-      `call_module=Balances&from=${recentMs}`,
-      `call_module=Balances&to=${recentMs}`,
-      `call_module=Multisig&call_hash=${hash}`,
-    ]) {
-      const { env, captures } = dbWith({ extrinsics: [] });
-      await handleExtrinsics(
-        req("/api/v1/extrinsics"),
-        env,
-        url(`/api/v1/extrinsics?${query}&limit=10`),
-      );
-      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-      assert.ok(sql);
-      assert.ok(
-        !/INDEXED BY idx_extrinsics_module_block/.test(sql),
-        `compound module filter must stay planner-selected for ${query}, got: ${sql}`,
-      );
-    }
   });
 
   test("uses idx_extrinsics_module_block for module feed query plan", () => {
@@ -5616,22 +3728,6 @@ describe("handleExtrinsics", () => {
       plan[0].detail,
       "SEARCH extrinsics USING INDEX idx_extrinsics_module_block (call_module=?)",
     );
-  });
-
-  test("keeps broad standalone time filters planner-selected", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url("/api/v1/extrinsics?from=0"),
-    );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(sql);
-    assert.ok(
-      !/INDEXED BY/.test(sql),
-      "broad filters must not force a sort-heavy timestamp index",
-    );
-    assert.ok(/observed_at >= \?/.test(sql));
   });
 
   test("rejects malformed time filters with 400 (#2086)", async () => {
@@ -5713,82 +3809,6 @@ describe("handleExtrinsics", () => {
     assert.equal(captures.sql.length, 0);
   });
 
-  test("a valid recent window is NOT short-circuited and queries D1", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    const now = Date.now();
-    await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url(`/api/v1/extrinsics?from=${now - 60_000}&to=${now}`),
-    );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(sql, "a valid window must reach D1");
-    assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
-    assert.ok(/observed_at >= \?/.test(sql));
-    assert.ok(/observed_at <= \?/.test(sql));
-  });
-
-  test("uses the observed-at index for selective one-sided time filters", async () => {
-    const now = Date.now();
-
-    {
-      const { env, captures } = dbWith({ extrinsics: [] });
-      await handleExtrinsics(
-        req("/api/v1/extrinsics"),
-        env,
-        url(`/api/v1/extrinsics?from=${now + 60_000}`),
-      );
-      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-      assert.ok(sql, "a near-future one-sided from filter must reach D1");
-      assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
-      assert.ok(/observed_at >= \?/.test(sql));
-    }
-
-    {
-      const { env, captures } = dbWith({ extrinsics: [] });
-      await handleExtrinsics(
-        req("/api/v1/extrinsics"),
-        env,
-        url(`/api/v1/extrinsics?to=${now - EXTRINSIC_RETENTION_MS + 60_000}`),
-      );
-      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-      assert.ok(sql, "a near-floor one-sided to filter must reach D1");
-      assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
-      assert.ok(/observed_at <= \?/.test(sql));
-    }
-  });
-
-  test("drops the observed-at index hint when an equality filter is present", async () => {
-    // With a (signer) equality the planner should use the order-aligned
-    // signer index, not be forced onto the observed-at one.
-    const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url("/api/v1/extrinsics?from=1750000000000&signer=5Signer"),
-    );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(sql);
-    assert.ok(!/INDEXED BY/.test(sql), "equality filter must drop the hint");
-    assert.ok(/signer = \?/.test(sql));
-  });
-
-  test("cursor seeks on (block_number, extrinsic_index)", async () => {
-    const { env, captures } = dbWith({
-      extrinsics: [extrinsicRow({ block_number: 150, extrinsic_index: 4 })],
-    });
-    const body = await json(
-      await handleExtrinsics(
-        req("/api/v1/extrinsics"),
-        env,
-        url(`/api/v1/extrinsics?limit=1&cursor=${encodeCursor([200, 2])}`),
-      ),
-    );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(sql));
-    assert.equal(body.data.next_cursor, encodeCursor([150, 4]));
-  });
-
   test("clamps limit to <=100", async () => {
     const { env } = dbWith({ extrinsics: [] });
     const body = await json(
@@ -5804,45 +3824,6 @@ describe("handleExtrinsics", () => {
   const EXTRINSICS_CSV_HEADER =
     "extrinsic_id,block_number,signer,call_module,call_function,success";
 
-  test("?format=csv exports filtered extrinsic rows (#2529)", async () => {
-    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
-    const res = await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url("/api/v1/extrinsics?limit=10&format=csv"),
-    );
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
-    assert.equal(
-      res.headers.get("content-disposition"),
-      'attachment; filename="extrinsics.csv"',
-    );
-    const text = await res.text();
-    assert.equal(
-      text,
-      `${EXTRINSICS_CSV_HEADER}\r\n${BLOCK_NUM}-2,${BLOCK_NUM},${SS58},SubtensorModule,add_stake,true`,
-    );
-  });
-
-  test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
-    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
-    const res = await handleExtrinsics(
-      new Request(
-        "https://api.metagraph.sh/api/v1/extrinsics?format=json&limit=10",
-        {
-          headers: { accept: "text/csv" },
-        },
-      ),
-      env,
-      url("/api/v1/extrinsics?format=json&limit=10"),
-    );
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type") || "", /application\/json/);
-    const body = await json(res);
-    assert.equal(body.ok, true);
-    assert.equal(body.data.extrinsic_count, 1);
-  });
-
   test("Accept: text/csv negotiates CSV on the extrinsics feed", async () => {
     const { env } = dbWith({ extrinsics: [extrinsicRow()] });
     const res = await handleExtrinsics(
@@ -5854,21 +3835,6 @@ describe("handleExtrinsics", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
-  });
-
-  test("?call_module=SubtensorModule&format=csv honors conjunctive filters", async () => {
-    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
-    const res = await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env,
-      url("/api/v1/extrinsics?call_module=SubtensorModule&format=csv"),
-    );
-    assert.equal(res.status, 200);
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(/call_module = \?/.test(sql));
-    const text = await res.text();
-    assert.equal(text.split("\r\n")[0], EXTRINSICS_CSV_HEADER);
-    assert.ok(text.includes("SubtensorModule"));
   });
 
   test("?format=csv emits a header-only export on cold D1", async () => {
@@ -5909,45 +3875,6 @@ describe("handleExtrinsic", () => {
     assert.deepEqual(body.data.events, []);
   });
 
-  test("happy path resolves by extrinsic_hash", async () => {
-    const { env } = dbWith({ extrinsicDetail: extrinsicRow() });
-    const body = await json(
-      await handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), env, HASH),
-    );
-    assert.equal(body.data.extrinsic.extrinsic_hash, HASH);
-    assert.equal(body.data.extrinsic.call_function, "add_stake");
-  });
-
-  test("normalizes an uppercase 0x extrinsic_hash to lowercase before D1 lookup", async () => {
-    const upperHash = `0x${"A".repeat(64)}`;
-    const lowerHash = upperHash.toLowerCase();
-    const { env, captures } = dbWith({ extrinsicDetail: extrinsicRow() });
-    await handleExtrinsic(
-      req(`/api/v1/extrinsics/${upperHash}`),
-      env,
-      upperHash,
-    );
-    const idx = captures.sql.findIndex((s) =>
-      /WHERE extrinsic_hash = \?/.test(s),
-    );
-    assert.ok(idx !== -1, "expected an extrinsic_hash lookup");
-    assert.equal(captures.params[idx][0], lowerHash);
-  });
-
-  test("happy path resolves by composite id block-index", async () => {
-    const { env } = dbWith({
-      extrinsicDetail: extrinsicRow({ extrinsic_hash: null }),
-    });
-    const ref = `${BLOCK_NUM}-2`;
-    const body = await json(
-      await handleExtrinsic(req(`/api/v1/extrinsics/${ref}`), env, ref),
-    );
-    assert.equal(body.data.ref, ref);
-    assert.equal(body.data.extrinsic.block_number, BLOCK_NUM);
-    assert.equal(body.data.extrinsic.extrinsic_index, 2);
-    assert.equal(body.data.extrinsic.extrinsic_hash, null);
-  });
-
   test("malformed composite id yields extrinsic:null", async () => {
     const body = await json(
       await handleExtrinsic(
@@ -5957,21 +3884,6 @@ describe("handleExtrinsic", () => {
       ),
     );
     assert.equal(body.data.extrinsic, null);
-  });
-
-  test("embeds emitted account_events when extrinsic resolves (#1849)", async () => {
-    const { env } = dbWith({
-      extrinsicDetail: extrinsicRow(),
-      extrinsicEvents: [
-        accountEventRow({ event_kind: "StakeAdded", extrinsic_index: 2 }),
-      ],
-    });
-    const body = await json(
-      await handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), env, HASH),
-    );
-    assert.equal(body.data.events.length, 1);
-    assert.equal(body.data.events[0].event_kind, "StakeAdded");
-    assert.equal(body.data.events[0].extrinsic_index, 2);
   });
 });
 
@@ -5986,18 +3898,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     return { fetch: async () => response };
   }
 
-  test("flag absent: uses D1 even when DATA_API is bound", async () => {
-    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
-    env.DATA_API = dataApi(
-      Response.json({ schema_version: 1, block_count: 99, blocks: [] }),
-    );
-    const body = await json(
-      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
-    );
-    assert.equal(body.data.block_count, 1); // the D1 fixture's count, not 99
-    assert.ok(captures.sql.length > 0); // D1 was actually queried
-  });
-
   test("flag=postgres + DATA_API succeeds: Postgres data wins, D1 never queried", async () => {
     const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
@@ -6009,52 +3909,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.block_count, 99); // the Postgres fixture, not D1's
     assert.deepEqual(captures.sql, []); // D1 was never touched
-  });
-
-  test("flag=postgres + DATA_API throws: falls back to D1 seamlessly", async () => {
-    const { env } = dbWith({ blocksFeed: [blockRow()] });
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => {
-        throw new Error("network error");
-      },
-    };
-    const body = await json(
-      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
-    );
-    assert.equal(body.data.block_count, 1); // the D1 fixture, not an error
-  });
-
-  test("flag=postgres + DATA_API returns non-2xx: falls back to D1", async () => {
-    const { env } = dbWith({ blocksFeed: [blockRow()] });
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = dataApi(new Response("upstream error", { status: 502 }));
-    const body = await json(
-      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
-    );
-    assert.equal(body.data.block_count, 1);
-  });
-
-  test("flag=postgres + DATA_API returns unparseable JSON: falls back to D1", async () => {
-    const { env } = dbWith({ blocksFeed: [blockRow()] });
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = dataApi(new Response("not json", { status: 200 }));
-    const body = await json(
-      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
-    );
-    assert.equal(body.data.block_count, 1);
-  });
-
-  test("flag=postgres + DATA_API returns valid JSON that isn't an object: falls back to D1", async () => {
-    // A 200 with a bare JSON scalar (not `null`, which JSON.parse also accepts)
-    // parses without throwing but isn't a usable payload shape.
-    const { env } = dbWith({ blocksFeed: [blockRow()] });
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = dataApi(Response.json(42));
-    const body = await json(
-      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
-    );
-    assert.equal(body.data.block_count, 1);
   });
 
   test("handleBlock: flag=postgres uses Postgres data over the D1 fixture", async () => {
@@ -6078,20 +3932,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.block.author, "postgres-author");
     assert.deepEqual(captures.sql, []);
-  });
-
-  test("handleBlock: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({ blockDetail: blockRow() });
-    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = { fetch: async () => new Response("err", { status: 500 }) };
-    const body = await json(
-      await handleBlock(
-        req(`/api/v1/blocks/${BLOCK_NUM}`),
-        env,
-        String(BLOCK_NUM),
-      ),
-    );
-    assert.equal(body.data.block.block_number, BLOCK_NUM);
   });
 
   test("handleExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -6118,24 +3958,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleExtrinsics: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => {
-        throw new Error("boom");
-      },
-    };
-    const body = await json(
-      await handleExtrinsics(
-        req("/api/v1/extrinsics"),
-        env,
-        url("/api/v1/extrinsics"),
-      ),
-    );
-    assert.equal(body.data.extrinsic_count, 1);
-  });
-
   test("handleExtrinsic: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ extrinsicDetail: extrinsicRow() });
     env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
@@ -6152,34 +3974,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.extrinsic.signer, "postgres-signer");
     assert.deepEqual(captures.sql, []);
-  });
-
-  test("handleExtrinsic: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({ extrinsicDetail: extrinsicRow() });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_API = { fetch: async () => new Response("err", { status: 500 }) };
-    const body = await json(
-      await handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), env, HASH),
-    );
-    assert.equal(body.data.extrinsic.extrinsic_hash, HASH);
-  });
-
-  test("handleAccountEvents: flag absent, uses D1 even when DATA_API is bound", async () => {
-    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
-    env.DATA_API = dataApi(
-      Response.json({
-        schema_version: 1,
-        ss58: SS58,
-        event_count: 99,
-        events: [],
-      }),
-    );
-    const path = `/api/v1/accounts/${SS58}/events`;
-    const body = await json(
-      await handleAccountEvents(req(path), env, SS58, url(path)),
-    );
-    assert.equal(body.data.event_count, 1); // the D1 fixture's count, not 99
-    assert.ok(captures.sql.length > 0);
   });
 
   test("handleAccountEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -6204,19 +3998,1511 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountEvents: flag=postgres falls back to D1 on failure", async () => {
-    const { env } = dbWith({ accountEvents: [accountEventRow()] });
+  // #4771: neurons/neuron_daily's new Postgres tier, same shared-fallback
+  // wiring as blocks/extrinsics/account_events above (METAGRAPH_NEURONS_SOURCE).
+  test("handleSubnetMetagraph: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        neuron_count: 99,
+        captured_at: null,
+        block_number: null,
+        neurons: [],
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/metagraph`;
+    const body = await json(
+      await handleSubnetMetagraph(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.neuron_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleNeuron: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        captured_at: null,
+        block_number: null,
+        neuron: { ...neuronRow(), hotkey: "postgres-hotkey" },
+      }),
+    );
+    const body = await json(
+      await handleNeuron(
+        req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
+        env,
+        NETUID,
+        UID,
+      ),
+    );
+    assert.equal(body.data.neuron.hotkey, "postgres-hotkey");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // #4832 gap-closure: subnet_hyperparams/subnet_hyperparams_history's own
+  // Postgres tier, own dedicated flag (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE)
+  // since it has an independent write path from neurons/neuron_daily above.
+  // D1 retirement: subnet_hyperparams's D1 write/read path is fully retired
+  // now (no code path ever prepares D1 SQL for these two routes), so
+  // `dbWith({subnetHyperparams: ...})` below only proves the D1 mock's rows
+  // are never touched -- a Postgres failure falls back to the same
+  // schema-stable null/empty shape a cold store returns, not to D1 data.
+  test("handleSubnetHyperparams: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ subnetHyperparams: [hyperparamsRow()] });
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        captured_at: null,
+        block_number: null,
+        hyperparameters: { tempo: 999 },
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/hyperparameters`;
+    const body = await json(
+      await handleSubnetHyperparams(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.hyperparameters.tempo, 999);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetHyperparams: flag=postgres falls back to schema-stable null on failure (D1 retired)", async () => {
+    const env = {};
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/hyperparameters`;
+    const body = await json(
+      await handleSubnetHyperparams(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.hyperparameters, null);
+    assert.equal(body.data.captured_at, null);
+  });
+
+  test("handleSubnetHyperparamsHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      subnetHyperparamsHistory: [hyperparamsHistoryRow()],
+    });
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        entry_count: 1,
+        limit: null,
+        offset: null,
+        next_cursor: null,
+        entries: [{ hyperparams_hash: "pg-hash" }],
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/hyperparameters/history`;
+    const body = await json(
+      await handleSubnetHyperparamsHistory(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.entries[0].hyperparams_hash, "pg-hash");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetHyperparamsHistory: flag=postgres falls back to schema-stable empty on failure (D1 retired)", async () => {
+    const env = {};
+    env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/hyperparameters/history`;
+    const body = await json(
+      await handleSubnetHyperparamsHistory(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.entry_count, 0);
+    assert.deepEqual(body.data.entries, []);
+  });
+
+  // #4832 gap-closure: account_identity/account_identity_history's new
+  // Postgres tier, own dedicated flag (METAGRAPH_ACCOUNT_IDENTITY_SOURCE).
+  test("handleAccountIdentity: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      accountIdentity: [accountIdentityRow()],
+    });
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        account: SS58,
+        has_identity: true,
+        name: "Postgres Team",
+      }),
+    );
+    const path = `/api/v1/accounts/${SS58}/identity`;
+    const body = await json(
+      await handleAccountIdentity(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.name, "Postgres Team");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountIdentity: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({ accountIdentity: [accountIdentityRow()] });
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/accounts/${SS58}/identity`;
+    const body = await json(
+      await handleAccountIdentity(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.name, "Example Team");
+  });
+
+  test("handleAccountIdentityHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      accountIdentityHistory: [
+        {
+          id: 10,
+          observed_at: OBSERVED_AT,
+          name: "Example Team",
+          url: null,
+          github: null,
+          image: null,
+          discord: null,
+          description: null,
+          additional: null,
+          identity_hash: "abc",
+        },
+      ],
+    });
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        account: SS58,
+        entry_count: 1,
+        limit: null,
+        offset: null,
+        next_cursor: null,
+        entries: [{ identity_hash: "pg-hash" }],
+      }),
+    );
+    const path = `/api/v1/accounts/${SS58}/identity-history`;
+    const body = await json(
+      await handleAccountIdentityHistory(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.entries[0].identity_hash, "pg-hash");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountIdentityHistory: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({
+      accountIdentityHistory: [
+        {
+          id: 10,
+          observed_at: OBSERVED_AT,
+          name: "Example Team",
+          url: null,
+          github: null,
+          image: null,
+          discord: null,
+          description: null,
+          additional: null,
+          identity_hash: "abc",
+        },
+      ],
+    });
+    env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/accounts/${SS58}/identity-history`;
+    const body = await json(
+      await handleAccountIdentityHistory(req(path), env, SS58, url(path)),
+    );
+    assert.equal(body.data.entries[0].identity_hash, "abc");
+  });
+
+  // #4832 gap-closure: subnet_identity_history's new Postgres tier, own
+  // dedicated flag (METAGRAPH_SUBNET_IDENTITY_SOURCE). Written from the main
+  // Worker's own hourly cron (writeSubnetSnapshot), not an external GitHub
+  // Actions workflow -- but served the same way as every other tier here.
+  test("handleSubnetIdentityHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      subnetIdentityHistory: [identityHistoryRow()],
+    });
+    env.METAGRAPH_SUBNET_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        entry_count: 1,
+        limit: null,
+        offset: null,
+        next_cursor: null,
+        entries: [{ identity_hash: "pg-hash" }],
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/identity-history`;
+    const body = await json(
+      await handleSubnetIdentityHistory(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.entries[0].identity_hash, "pg-hash");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetIdentityHistory: flag=postgres falls back to D1 on failure", async () => {
+    const { env } = dbWith({
+      subnetIdentityHistory: [identityHistoryRow()],
+    });
+    env.METAGRAPH_SUBNET_IDENTITY_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const path = `/api/v1/subnets/${NETUID}/identity-history`;
+    const body = await json(
+      await handleSubnetIdentityHistory(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.entries[0].identity_hash, "abc");
+  });
+
+  test("handleSubnetValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        netuid: NETUID,
+        validator_count: 99,
+        captured_at: null,
+        block_number: null,
+        validators: [],
+      }),
+    );
+    const path = `/api/v1/subnets/${NETUID}/validators`;
+    const body = await json(
+      await handleSubnetValidators(req(path), env, NETUID, url(path)),
+    );
+    assert.equal(body.data.validator_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleGlobalValidators: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      neurons: [neuronRow({ netuid: NETUID })],
+    });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        sort: "subnet_count",
+        limit: 20,
+        captured_at: null,
+        block_number: null,
+        validator_count: 99,
+        validators: [],
+      }),
+    );
+    const body = await json(
+      await handleGlobalValidators(
+        req("/api/v1/validators"),
+        env,
+        url("/api/v1/validators"),
+      ),
+    );
+    assert.equal(body.data.validator_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleValidatorDetail: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        hotkey: SS58,
+        coldkey: null,
+        coldkey_count: 0,
+        subnet_count: 99,
+        total_stake_tao: 0,
+        total_emission_tao: 0,
+        avg_validator_trust: null,
+        max_validator_trust: null,
+        captured_at: null,
+        block_number: null,
+        subnets: [],
+      }),
+    );
+    const body = await json(
+      await handleValidatorDetail(req(`/api/v1/validators/${SS58}`), env, SS58),
+    );
+    assert.equal(body.data.subnet_count, 99);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleValidatorNominators: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleValidatorNominators(
+        req(`/api/v1/validators/${SS58}/nominators`),
+        env,
+        SS58,
+        url(`/api/v1/validators/${SS58}/nominators`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountWeightSetters: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleAccountWeightSetters(
+        req(`/api/v1/accounts/${SS58}/weight-setters`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/weight-setters`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetWeightSetters: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSubnetWeightSetters(
+        req(`/api/v1/subnets/${NETUID}/weights/setters`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/weights/setters`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountStakeFlow: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleAccountStakeFlow(
+        req(`/api/v1/accounts/${SS58}/stake-flow`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/stake-flow`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetStakeFlow: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleSubnetStakeFlow(
+        req(`/api/v1/subnets/${NETUID}/stake-flow`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-flow`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountStakeMoves: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleAccountStakeMoves(
+        req(`/api/v1/accounts/${SS58}/stake-moves`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/stake-moves`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetStakeMoves: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSubnetStakeMoves(
+        req(`/api/v1/subnets/${NETUID}/stake-moves`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-moves`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetStakeTransfers: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSubnetStakeTransfers(
+        req(`/api/v1/subnets/${NETUID}/stake-transfers`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-transfers`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountRegistrations: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleAccountRegistrations(
+        req(`/api/v1/accounts/${SS58}/registrations`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/registrations`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetRegistrations: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSubnetRegistrations(
+        req(`/api/v1/subnets/${NETUID}/registrations`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/registrations`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountServing: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleAccountServing(
+        req(`/api/v1/accounts/${SS58}/serving`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/serving`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetServing: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSubnetServing(
+        req(`/api/v1/subnets/${NETUID}/serving`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/serving`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountAxonRemovals: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleAccountAxonRemovals(
+        req(`/api/v1/accounts/${SS58}/axon-removals`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/axon-removals`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetAxonRemovals: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSubnetAxonRemovals(
+        req(`/api/v1/subnets/${NETUID}/axon-removals`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/axon-removals`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPrometheus: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleAccountPrometheus(
+        req(`/api/v1/accounts/${SS58}/prometheus`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/prometheus`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetPrometheus: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSubnetPrometheus(
+        req(`/api/v1/subnets/${NETUID}/prometheus`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/prometheus`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountDeregistrations: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleAccountDeregistrations(
+        req(`/api/v1/accounts/${SS58}/deregistrations`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/deregistrations`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetDeregistrations: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleSubnetDeregistrations(
+        req(`/api/v1/subnets/${NETUID}/deregistrations`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/deregistrations`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountTransfers: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", transfers: [] }),
+    };
+    const body = await json(
+      await handleAccountTransfers(
+        req(`/api/v1/accounts/${SS58}/transfers`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/transfers`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountCounterparties: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountCounterparties: flag=postgres accepts relationship drilldown envelope", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          ss58: SS58,
+          counterparty_count: 1,
+          transfers_scanned: 1,
+          scan_capped: false,
+          total_sent_tao: 4.2,
+          total_received_tao: 0,
+          counterparties: [
+            {
+              address: COUNTERPARTY,
+              sent_tao: 4.2,
+              received_tao: 0,
+              net_tao: -4.2,
+              transfer_count: 1,
+              last_block: BLOCK_NUM,
+            },
+          ],
+          relationship: {
+            schema_version: 1,
+            ss58: SS58,
+            counterparty: COUNTERPARTY,
+            transfer_count: 1,
+            transfers_scanned: 1,
+            scan_capped: false,
+            total_sent_tao: 4.2,
+            total_received_tao: 0,
+            net_tao: -4.2,
+            first_seen_at: new Date(OBSERVED_AT).toISOString(),
+            last_seen_at: new Date(OBSERVED_AT).toISOString(),
+            first_block: BLOCK_NUM,
+            last_block: BLOCK_NUM,
+            transfers: [],
+          },
+        }),
+    };
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
+      ),
+    );
+    assert.equal(body.data.relationship.counterparty, COUNTERPARTY);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // #4832 Tier 1a: blocks/extrinsics-derived handlers that were reading D1
+  // directly with no Postgres tier at all -- silently serving data frozen
+  // since the streamer stopped. Same pattern as the blocks above.
+
+  test("handleBlockExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg", extrinsics: [] },
+        }),
+    };
+    const body = await json(
+      await handleBlockExtrinsics(
+        req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleBlockEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ blockEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg", events: [] },
+        }),
+    };
+    const body = await json(
+      await handleBlockEvents(
+        req(`/api/v1/blocks/${BLOCK_NUM}/events`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/events`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleBlocksSummary: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", block_count: 0 }),
+    };
+    const body = await json(
+      await handleBlocksSummary(
+        req("/api/v1/blocks/summary"),
+        env,
+        url("/api/v1/blocks/summary"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
+    };
+    const body = await json(
+      await handleAccountExtrinsics(
+        req(`/api/v1/accounts/${SS58}/extrinsics`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/extrinsics`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSudo: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "Sudo" })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
+    };
+    const body = await json(
+      await handleSudo(req("/api/v1/sudo"), env, url("/api/v1/sudo")),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleGovernanceConfigChanges: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      extrinsics: [extrinsicRow({ call_module: "AdminUtils" })],
+    });
+    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
+    };
+    const body = await json(
+      await handleGovernanceConfigChanges(
+        req("/api/v1/governance/config-changes"),
+        env,
+        url("/api/v1/governance/config-changes"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleRuntime: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", transitions: [] }),
+    };
+    const body = await json(
+      await handleRuntime(req("/api/v1/runtime"), env, url("/api/v1/runtime")),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // #4832 Tier 1b: the remaining account_events-derived handlers with no
+  // Postgres tier at all -- same pattern as Tier 1a above.
+
+  test("handleSubnetWeights: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", weight_sets: 0 }),
+    };
+    const body = await json(
+      await handleSubnetWeights(
+        req(`/api/v1/subnets/${NETUID}/weights`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/weights`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetAlphaVolume: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          data: { schema_version: 1, marker: "pg" },
+          generatedAt: null,
+        }),
+    };
+    const body = await json(
+      await handleSubnetAlphaVolume(
+        req(`/api/v1/subnets/${NETUID}/volume`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/volume`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ subnetEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", events: [] }),
+    };
+    const body = await json(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/events`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetEventSummary: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({
+      subnetEventSummaryKinds: [],
+      subnetEventSummaryRecent: [],
+    });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", event_kinds: [] }),
+    };
+    const body = await json(
+      await handleSubnetEventSummary(
+        req(`/api/v1/subnets/${NETUID}/event-summary`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/event-summary`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // #4832 Tier 1c: handleAccount (multi-table: account_events + neurons +
+  // extrinsics) and handleAccountSubnets (neurons-derived).
+
+  test("handleAccount: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", event_count: 0 }),
+    };
+    const body = await json(
+      await handleAccount(req(`/api/v1/accounts/${SS58}`), env, SS58),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountSubnets: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", subnets: [] }),
+    };
+    const body = await json(
+      await handleAccountSubnets(
+        req(`/api/v1/accounts/${SS58}/subnets`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // #4832 Tier 2a: the 8 flat-`neurons` handlers (concentration, performance,
+  // yield, portfolio, accounts list) across the subnet/chain/account scopes.
+
+  test("handleSubnetConcentration: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", netuid: NETUID }),
+    };
+    const body = await json(
+      await handleSubnetConcentration(
+        req(`/api/v1/subnets/${NETUID}/concentration`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", netuid: NETUID }),
+    };
+    const body = await json(
+      await handleSubnetPerformance(
+        req(`/api/v1/subnets/${NETUID}/performance`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/performance`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetYield: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", neurons: [] }),
+    };
+    const body = await json(
+      await handleSubnetYield(
+        req(`/api/v1/subnets/${NETUID}/yield`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/yield`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainConcentration: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleChainConcentration(
+        req("/api/v1/chain/concentration"),
+        env,
+        url("/api/v1/chain/concentration"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleChainPerformance(
+        req("/api/v1/chain/performance"),
+        env,
+        url("/api/v1/chain/performance"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainYield: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleChainYield(
+        req("/api/v1/chain/yield"),
+        env,
+        url("/api/v1/chain/yield"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPortfolio: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", positions: [] }),
+    };
+    const body = await json(
+      await handleAccountPortfolio(
+        req(`/api/v1/accounts/${SS58}/portfolio`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountsList: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", accounts: [] }),
+    };
+    const body = await json(
+      await handleAccountsList(
+        req("/api/v1/accounts"),
+        env,
+        url("/api/v1/accounts"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // #4832 Tier 2b: the 9 neuron_daily-history handlers (structural history,
+  // concentration/performance/yield history, chain/subnet turnover, movers).
+
+  test("handleValidatorHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+    };
+    const body = await json(
+      await handleValidatorHistory(
+        req(`/api/v1/validators/${SS58}/history`),
+        env,
+        SS58,
+        url(`/api/v1/validators/${SS58}/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleNeuronHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+    };
+    const body = await json(
+      await handleNeuronHistory(
+        req(`/api/v1/subnets/${NETUID}/neurons/1/history`),
+        env,
+        NETUID,
+        1,
+        url(`/api/v1/subnets/${NETUID}/neurons/1/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+    };
+    const body = await json(
+      await handleSubnetHistory(
+        req(`/api/v1/subnets/${NETUID}/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetConcentrationHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+    };
+    const body = await json(
+      await handleSubnetConcentrationHistory(
+        req(`/api/v1/subnets/${NETUID}/concentration/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetPerformanceHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+    };
+    const body = await json(
+      await handleSubnetPerformanceHistory(
+        req(`/api/v1/subnets/${NETUID}/performance/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/performance/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetYieldHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+    };
+    const body = await json(
+      await handleSubnetYieldHistory(
+        req(`/api/v1/subnets/${NETUID}/yield/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/yield/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainTurnover: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", subnets: [] }),
+    };
+    const body = await json(
+      await handleChainTurnover(
+        req("/api/v1/chain/turnover"),
+        env,
+        url("/api/v1/chain/turnover"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetTurnover: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", subnets: [] }),
+    };
+    const body = await json(
+      await handleSubnetTurnover(
+        req(`/api/v1/subnets/${NETUID}/turnover`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/turnover`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleSubnetMovers: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", movers: [] }),
+    };
+    const body = await json(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        env,
+        url("/api/v1/subnets/movers"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // #4832 gap-closure: handleAccountPositionHistory (account_position_daily,
+  // rolled from the same neurons snapshot as neuron_daily).
+
+  test("handleAccountPositionHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", points: [] }),
+    };
+    const body = await json(
+      await handleAccountPositionHistory(
+        req(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+        env,
+        SS58,
+        NETUID,
+        url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPositionHistory: HEAD uses the Postgres GET representation", async () => {
+    const { env, captures } = dbWith({});
+    let forwardedMethod;
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async (request) => {
+        forwardedMethod = request.method;
+        return Response.json({
+          schema_version: 1,
+          marker: "pg",
+          points: [{ captured_at: "2026-07-13T00:00:00.000Z" }],
+        });
+      },
+    };
+    const res = await handleAccountPositionHistory(
+      new Request(
+        `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/${NETUID}/history`,
+        { method: "HEAD" },
+      ),
+      env,
+      SS58,
+      NETUID,
+      url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), "");
+    assert.equal(forwardedMethod, "GET");
+    assert.notEqual(res.headers.get("etag"), null);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // No D1 fallback here (unlike the ~40 branches #4909 tracks separately):
+  // D1's own account_position_daily rollup has been permanently broken since
+  // #4908 dropped D1's `neurons` table, so a Postgres failure degrades to the
+  // same schema-stable empty series a cold store returns, never a D1 read.
+  test("handleAccountPositionHistory: flag=postgres degrades to an empty schema-stable series on failure, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleAccountPositionHistory(
+        req(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+        env,
+        SS58,
+        NETUID,
+        url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+      ),
+    );
+    assert.equal(body.data.marker, undefined);
+    assert.deepEqual(body.data.points, []);
+    assert.equal(body.data.point_count, 0);
+    assert.deepEqual(captures.sql, []);
+  });
+
+  // #4832 gap-closure: handleAccountHistory (account_events_daily, now
+  // populated by a dedicated hourly Postgres-side rollup route).
+
+  test("handleAccountHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({});
+    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", days: [] }),
+    };
+    const body = await json(
+      await handleAccountHistory(
+        req(`/api/v1/accounts/${SS58}/history`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/history`),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountHistory: flag=postgres falls back to D1 on failure", async () => {
+    const { env, captures } = dbWith({});
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
       },
     };
-    const path = `/api/v1/accounts/${SS58}/events`;
     const body = await json(
-      await handleAccountEvents(req(path), env, SS58, url(path)),
+      await handleAccountHistory(
+        req(`/api/v1/accounts/${SS58}/history`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/history`),
+      ),
     );
-    assert.equal(body.data.event_count, 1);
+    assert.equal(body.data.marker, undefined);
+    assert.ok(captures.sql.length > 0);
   });
 });
 
@@ -6431,104 +5717,6 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       assertData(body.data);
     });
   }
-});
-
-describe("dbWith SQL routing regressions (#1900)", () => {
-  test("routes account summary queries to distinct buckets", async () => {
-    const { env } = dbWith({
-      agg: { c: 1, sc: 1, fb: 1, lb: 1, fo: 1, lo: 1 },
-      kinds: [{ kind: "StakeAdded", count: 1 }],
-      registrations: [
-        { netuid: 1, uid: 0, stake_tao: 1, validator_permit: 0, active: 1 },
-      ],
-      accountEvents: [accountEventRow()],
-      activity: {
-        tx_count: 1,
-        last_tx_block: 1,
-        last_tx_at: 1,
-        total_fee_tao: 0,
-      },
-      modules: [{ call_module: "Balances", count: 1 }],
-    });
-    const body = await json(
-      await handleAccount(req(`/api/v1/accounts/${SS58}`), env, SS58),
-    );
-    assert.equal(body.data.event_count, 1);
-    assert.equal(body.data.activity.tx_count, 1);
-    assert.equal(body.data.registrations.length, 1);
-  });
-
-  test("routes transfer vs subnet vs account event queries separately", async () => {
-    const { env } = dbWith({
-      transfers: [transferEventRow()],
-      subnetEvents: [accountEventRow({ event_kind: "NeuronRegistered" })],
-      accountEvents: [accountEventRow({ event_kind: "WeightsSet" })],
-    });
-    const transfers = await json(
-      await handleAccountTransfers(
-        req(`/api/v1/accounts/${SS58}/transfers`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/transfers`),
-      ),
-    );
-    const subnet = await json(
-      await handleSubnetEvents(
-        req(`/api/v1/subnets/${NETUID}/events`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/events`),
-      ),
-    );
-    const account = await json(
-      await handleAccountEvents(
-        req(`/api/v1/accounts/${SS58}/events`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/events`),
-      ),
-    );
-    assert.equal(transfers.data.transfers[0].direction, "sent");
-    assert.equal(subnet.data.events[0].event_kind, "NeuronRegistered");
-    assert.equal(account.data.events[0].event_kind, "WeightsSet");
-  });
-
-  test("routes block hash resolution before extrinsic listing", async () => {
-    const { env, captures } = dbWith({
-      blockNumberByHash: BLOCK_NUM,
-      extrinsics: [extrinsicRow()],
-    });
-    await handleBlockExtrinsics(
-      req(`/api/v1/blocks/${HASH}/extrinsics`),
-      env,
-      HASH,
-      url(`/api/v1/blocks/${HASH}/extrinsics`),
-    );
-    assert.ok(
-      captures.sql.some((s) =>
-        /SELECT block_number FROM blocks WHERE block_hash/.test(s),
-      ),
-    );
-    assert.ok(
-      captures.sql.some((s) => /FROM extrinsics WHERE block_number/.test(s)),
-    );
-  });
-
-  test("routes extrinsic detail hash vs composite paths", async () => {
-    const row = extrinsicRow();
-    const { env: hashEnv } = dbWith({ extrinsicDetail: row });
-    const byHash = await json(
-      await handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), hashEnv, HASH),
-    );
-    assert.equal(byHash.data.extrinsic.extrinsic_hash, HASH);
-
-    const { env: compEnv } = dbWith({ extrinsicDetail: row });
-    const ref = `${BLOCK_NUM}-2`;
-    const byComposite = await json(
-      await handleExtrinsic(req(`/api/v1/extrinsics/${ref}`), compEnv, ref),
-    );
-    assert.equal(byComposite.data.extrinsic.extrinsic_index, 2);
-  });
 });
 
 describe("query-param guard matrix (#1900)", () => {

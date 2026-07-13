@@ -849,6 +849,78 @@ test("GET /api/v1/chain/transfers rejects non-canonical limits", async () => {
   }
 });
 
+// #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
+// table this handler already reads, no new flag) -- tryPostgresTier's own
+// fallback contract is unit-tested in workers/postgres-tier.mjs's own tests,
+// so these two just prove the wiring: a Postgres hit is served as-is with D1
+// never queried, and a Postgres failure falls back to D1.
+test("GET /api/v1/chain/transfers: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+  let d1Called = false;
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          window: "7d",
+          observed_at: "2026-01-01T00:00:00.000Z",
+          total_volume_tao: 999,
+          transfer_count: 1,
+          unique_senders: 1,
+          unique_receivers: 1,
+          top_sender_share: null,
+          top_senders: [],
+          top_receivers: [],
+        }),
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        d1Called = true;
+        throw new Error(
+          "D1 must not be queried when Postgres serves the request",
+        );
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=7d"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.total_volume_tao, 999);
+  assert.equal(d1Called, false);
+});
+
+test("GET /api/v1/chain/transfers: flag=postgres falls back to D1 when DATA_API fails", async () => {
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return {
+          bind: () => ({ all: () => Promise.resolve({ results: [] }) }),
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=7d"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.total_volume_tao, 0);
+});
+
 test("GET /api/v1/chain/transfer-pairs ranks directed transfer corridors", async () => {
   const captured = [];
   const env = {
@@ -1094,6 +1166,82 @@ test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", a
     const body = await res.json();
     assert.equal(body.error.code, "invalid_query");
   }
+});
+
+// #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events
+// table this handler already reads, no new flag) -- tryPostgresTier's own
+// fallback contract is unit-tested in workers/postgres-tier.mjs's own tests,
+// so these two just prove the wiring: a Postgres hit is served as-is with D1
+// never queried, and a Postgres failure falls back to D1.
+test("GET /api/v1/chain/transfer-pairs: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+  let d1Called = false;
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          window: "7d",
+          sort: "volume",
+          observed_at: "2026-01-01T00:00:00.000Z",
+          total_volume_tao: 999,
+          transfer_count: 1,
+          unique_pairs: 1,
+          pair_count: 1,
+          top_pair_share: null,
+          pairs: [],
+        }),
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        d1Called = true;
+        throw new Error(
+          "D1 must not be queried when Postgres serves the request",
+        );
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.total_volume_tao, 999);
+  assert.equal(d1Called, false);
+});
+
+test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to D1 when DATA_API fails", async () => {
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+    DATA_API: {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return {
+          bind: () => ({ all: () => Promise.resolve({ results: [] }) }),
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.total_volume_tao, 0);
 });
 
 test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", async () => {

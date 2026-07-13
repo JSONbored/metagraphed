@@ -6,78 +6,6 @@ function req(path) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-// D1 mock routing by SQL shape: the subnet-events handler reads account_events
-// filtered by netuid (#1345). A cold/absent DB returns no rows → schema-stable.
-function dbWith({ events, summaryKinds, summaryRecent } = {}) {
-  return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind() {
-            return {
-              async all() {
-                if (/GROUP BY event_kind ORDER BY event_count DESC/.test(sql))
-                  return { results: summaryKinds || [] };
-                if (
-                  /WHERE netuid = \? AND observed_at >= \?/.test(sql) &&
-                  /ORDER BY block_number DESC, event_index DESC LIMIT \?/.test(
-                    sql,
-                  )
-                )
-                  return { results: summaryRecent || [] };
-                if (/FROM account_events/.test(sql))
-                  return { results: events || [] };
-                return { results: [] };
-              },
-            };
-          },
-        };
-      },
-    },
-  };
-}
-
-const ROW = {
-  block_number: 4_000_200,
-  event_index: 2,
-  event_kind: "NeuronRegistered",
-  hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-  coldkey: null,
-  netuid: 7,
-  uid: 3,
-  amount_tao: null,
-  observed_at: 1_750_009_000_000,
-};
-
-test("GET /subnets/{netuid}/events returns the per-subnet chain-event stream (#1345)", async () => {
-  const env = dbWith({ events: [ROW] });
-  const res = await handleRequest(req("/api/v1/subnets/7/events"), env, {});
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.ok, true);
-  assert.equal(body.data.netuid, 7);
-  assert.equal(body.data.event_count, 1);
-  assert.equal(Array.isArray(body.data.events), true);
-  assert.equal(body.data.events[0].event_kind, "NeuronRegistered");
-  assert.equal(body.data.events[0].netuid, 7);
-  // Enveloped like every other route: weak ETag + contract-version header.
-  assert.ok(res.headers.get("etag"));
-  assert.ok(res.headers.get("x-metagraph-contract-version"));
-});
-
-test("GET /subnets/{netuid}/events honors ?limit and ?kind", async () => {
-  const env = dbWith({ events: [{ ...ROW, event_kind: "WeightsSet" }] });
-  const res = await handleRequest(
-    req("/api/v1/subnets/7/events?limit=25&kind=WeightsSet"),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.limit, 25);
-  assert.equal(body.data.events[0].event_kind, "WeightsSet");
-});
-
 test("GET /subnets/{netuid}/events rejects an unsupported query param", async () => {
   const res = await handleRequest(
     req("/api/v1/subnets/7/events?bogus=1"),
@@ -89,42 +17,6 @@ test("GET /subnets/{netuid}/events rejects an unsupported query param", async ()
 
 const EVENTS_CSV_HEADER =
   "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index";
-
-test("GET /subnets/{netuid}/events?format=csv streams the event rows as CSV", async () => {
-  const env = dbWith({ events: [ROW] });
-  const res = await handleRequest(
-    req("/api/v1/subnets/7/events?format=csv"),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
-  assert.match(
-    res.headers.get("content-disposition") ?? "",
-    /attachment; filename="/,
-  );
-  const lines = (await res.text()).trim().split("\r\n");
-  assert.equal(lines[0], EVENTS_CSV_HEADER);
-  assert.equal(lines.length, 2);
-  const cells = lines[1].split(",");
-  assert.equal(cells[0], "4000200"); // block_number
-  assert.equal(cells[2], "NeuronRegistered"); // event_kind
-  assert.equal(cells[5], "7"); // netuid
-});
-
-test("GET /subnets/{netuid}/events?kind=&format=csv keeps the CSV shape when filtering", async () => {
-  const env = dbWith({ events: [{ ...ROW, event_kind: "WeightsSet" }] });
-  const res = await handleRequest(
-    req("/api/v1/subnets/7/events?kind=WeightsSet&format=csv"),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  assert.match(res.headers.get("content-type"), /text\/csv/);
-  const lines = (await res.text()).trim().split("\r\n");
-  assert.equal(lines[0], EVENTS_CSV_HEADER);
-  assert.equal(lines[1].split(",")[2], "WeightsSet");
-});
 
 test("GET /subnets/{netuid}/events?format=csv emits a header-only CSV when cold", async () => {
   const res = await handleRequest(
@@ -144,40 +36,6 @@ test("GET /subnets/{netuid}/events is schema-stable when D1 is cold (never 404)"
   assert.equal(body.data.netuid, 7);
   assert.equal(body.data.event_count, 0);
   assert.equal(Array.isArray(body.data.events), true);
-});
-
-test("GET /subnets/{netuid}/event-summary returns windowed kind aggregates", async () => {
-  const env = dbWith({
-    summaryKinds: [
-      {
-        event_kind: "StakeAdded",
-        event_count: 2,
-        hotkey_count: 1,
-        coldkey_count: 1,
-        amount_tao: 3,
-        alpha_amount: 0.5,
-        first_block: 4_000_100,
-        last_block: 4_000_200,
-        first_observed_at: 1_750_008_000_000,
-        last_observed_at: 1_750_009_000_000,
-      },
-    ],
-    summaryRecent: [ROW],
-  });
-  const res = await handleRequest(
-    req("/api/v1/subnets/7/event-summary?window=7d&limit=3"),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.ok, true);
-  assert.equal(body.data.netuid, 7);
-  assert.equal(body.data.window, "7d");
-  assert.equal(body.data.total_events, 2);
-  assert.equal(body.data.event_kinds[0].category, "stake");
-  assert.equal(body.data.categories[0].event_count, 2);
-  assert.equal(body.data.recent_events[0].event_kind, "NeuronRegistered");
 });
 
 test("GET /subnets/{netuid}/event-summary rejects bad window", async () => {

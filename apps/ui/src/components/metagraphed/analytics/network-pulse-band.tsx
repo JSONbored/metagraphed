@@ -8,7 +8,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import { InfoTooltip } from "@jsonbored/ui-kit";
 import {
   useTimeRange,
   RANGE_HOURS,

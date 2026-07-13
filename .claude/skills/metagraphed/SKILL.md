@@ -425,6 +425,45 @@ skips this entirely — it isn't rendering anything different.
 > screenshot-taking itself (tracked in #3769) doesn't exist yet — until it lands, follow the steps
 > manually.
 
+**Animated evidence (#4825) — for effects no static screenshot can show.** Required whenever the
+changed behavior is only visible in motion: a hover-triggered popover, a scroll-linked effect, a CSS
+transition/animation, a drag interaction, or anything else where "before" and "after" aren't just two
+different static layouts. This is _additional_ to the static table above, not a replacement for it — a
+real PR (#4814) shipped both: the static viewport × theme matrix for the at-rest layout, plus a
+before/after GIF table for the hover behavior itself, because a still image genuinely cannot show what
+happens on hover.
+
+1. **Record the interaction, don't screenshot it.** Use your OS's screen recording (macOS `Cmd+Shift+5`
+   or `screencapture -V`; Linux `wf-recorder`/`ffmpeg -f x11grab`) or a Playwright video/trace, scoped
+   tightly to the interactive element — not the full viewport, and not a long clip. A few seconds
+   showing the cursor entering, the effect triggering, and the resulting state is enough.
+2. **Convert to a GIF** — a `.mov`/`.webm` file won't render inline in a GitHub-hosted `<img>` tag the
+   way a `.gif` does:
+   ```sh
+   ffmpeg -i recording.mov -vf "fps=12,scale=480:-1:flags=lanczos" -loop 0 hover-before.gif
+   ```
+   Keep it small (a few seconds, ~12fps, ≤480px wide) — an oversized GIF is as unreviewable as #3757's
+   full-page screenshot bug was.
+3. **Same hosting mechanism as step 5 above — the dedicated `screenshots` branch on your own fork.**
+   Push the `.gif` files alongside your PNGs in the same orphan-branch commit; reference them the same
+   way: `https://raw.githubusercontent.com/<your-fork-owner>/metagraphed/screenshots/<file>.gif`.
+4. **Table format — one row per interaction target** (not per viewport/theme; a hover/scroll/transition
+   effect is rarely breakpoint- or theme-dependent, so don't multiply it out the way the static matrix
+   does unless the interaction genuinely differs by breakpoint):
+   ```md
+   ### Hover interaction (animated)
+
+   Static images can't show the pointer-driven [behavior] — here's the actual interaction.
+
+   | Target                                                          | Before                                                   | After                                                  |
+   | --------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------ |
+   | <describe the interactive element, e.g. "Blocks · author cell"> | [<img src="BEFORE_GIF_URL" width="380">](BEFORE_GIF_URL) | [<img src="AFTER_GIF_URL" width="380">](AFTER_GIF_URL) |
+   ```
+   One row per distinct interactive element the PR changes.
+5. A PURELY interaction-only change (identical at-rest state, only the triggered behavior changed) can
+   skip the static matrix for that specific view — state why in one sentence, the same "provably
+   unaffected" exception already allowed for a static viewport/theme combo.
+
 ### Phase C3 — Test + gates locally
 
 The `ui` CI job runs lint, typecheck, test, a responsive-overflow e2e check, build, and a
@@ -447,9 +486,11 @@ your PR adds a new API call on one of the checked routes (`/`, `/subnets/1`,
 CI also gzip-measures the initial client JS for a cold `/` visit against a budget (currently ~300 KB,
 `.github/workflows/validate.yml`'s "Bundle size budget" step) — keep new dependencies/imports lean; if
 a real feature legitimately grows it, raise the budget deliberately in the same PR. If your PR also
-touches `packages/client`, CI rebuilds it fresh and diffs against the committed
-`packages/client/dist` — run `npm run build --workspace=packages/client` and commit the result if you
-changed `packages/client/src`.
+touches `packages/client` or `packages/ui-kit`, CI rebuilds each fresh and diffs against its committed
+`dist` (`packages/client/dist` / `packages/ui-kit/dist`) — run `npm run build --workspace=packages/client`
+(or `--workspace=packages/ui-kit`) and commit the result if you changed `packages/client/src` (or
+`packages/ui-kit/src`). `packages/ui-kit` also gets its own `npm run typecheck --workspace=packages/ui-kit`
+step in the `ui` CI job.
 
 ### Phase C4 — Commit + PR
 
@@ -503,9 +544,12 @@ confidence — this is a deliberate exception to the normal one-shot autonomous 
       one-off styling.
 - [ ] If visual: a filled before/after screenshot table (mobile + dark-mode captures where relevant) —
       missing/malformed table is an automatic close.
+- [ ] If the change is only visible in motion (hover/scroll/transition/animation): a before/after GIF
+      table alongside the static one, per the "Animated evidence" step in Phase C2.
 - [ ] `lint` + `format:check` + `typecheck` + `test` + `test:e2e` + `build` all green
       (`--workspace=apps/ui`); bundle size still under budget.
-- [ ] If `packages/client/src` changed: rebuilt and committed `packages/client/dist`.
+- [ ] If `packages/client/src` or `packages/ui-kit/src` changed: rebuilt and committed the respective
+      `dist` (`packages/client/dist` / `packages/ui-kit/dist`).
 - [ ] Conventional Commit (no AI attribution); `Closes #<issue>` — required, referencing an issue that's still open.
 
 If every box is checked, the PR has the best chance of a one-shot approve-and-merge. If any box can't

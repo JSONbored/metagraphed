@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, ChevronDown, Globe2, Pencil, TerminalSquare } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@jsonbored/ui-kit";
 import { useApiBase, useNetwork } from "@/hooks/use-api-base";
 import { CHAIN_NETWORKS, LOCAL_DEV, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";

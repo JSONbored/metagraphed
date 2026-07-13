@@ -7,15 +7,20 @@ import {
   subnetEndpointsQuery,
   subnetProfileQuery,
 } from "@/lib/metagraphed/queries";
-import { SectionAnchor } from "@/components/metagraphed/section-anchor";
-import { KeyChip } from "@/components/metagraphed/key-chip";
-import { CurationChip } from "@/components/metagraphed/chips";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { formatNumber } from "@/lib/metagraphed/format";
-import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  SectionAnchor,
+  KeyChip,
+  CurationChip,
+  TimeAgo,
+  InfoTooltip,
+  Donut,
+  DonutLegend,
+} from "@jsonbored/ui-kit";
 import type { Endpoint } from "@/lib/metagraphed/types";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 
 interface Field {
   label: string;

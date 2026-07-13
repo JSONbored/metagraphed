@@ -22,7 +22,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@jsonbored/ui-kit";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
 import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";

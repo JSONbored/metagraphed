@@ -4,9 +4,6 @@ import { BarChart3, Maximize2 } from "lucide-react";
 import { economicsQuery, subnetUptimeQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { Skeleton } from "@/components/metagraphed/states";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
-import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
-import type { SurfaceUptime } from "@/lib/metagraphed/types";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+  Sparkline,
+  Donut,
+  DonutLegend,
+} from "@jsonbored/ui-kit";
+import type { SurfaceUptime } from "@/lib/metagraphed/types";
 
 interface Props {
   netuid: number;
@@ -116,19 +117,19 @@ export function EconomicsMini({ netuid }: Props) {
                 centerSub="in"
               />
               <div className="grid flex-1 grid-cols-2 gap-3">
-                <div>
+                <div className="min-w-0">
                   <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
                     Alpha in pool
                   </div>
-                  <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong">
+                  <div className="mt-1 break-words font-display text-lg font-semibold tabular-nums text-ink-strong">
                     {formatNumber(inP)}
                   </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
                     Alpha out pool
                   </div>
-                  <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong">
+                  <div className="mt-1 break-words font-display text-lg font-semibold tabular-nums text-ink-strong">
                     {formatNumber(outP)}
                   </div>
                 </div>

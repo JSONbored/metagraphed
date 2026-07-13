@@ -53,6 +53,25 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/73/subnet.json"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/73"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-73-taomarketcap-candle-chart",
+      "kind": "data-artifact",
+      "name": "MetaHash TaoMarketCap OHLCV candle-chart dataset",
+      "notes": "Public no-auth GET /public/v1/subnets/73/candle-chart on api.taomarketcap.com returning a machine-readable JSON time-series of hourly OHLCV candles for SN73 MetaHash's alpha token: each record carries period_name, timestamp, block_number, open/high/low/close, volume, start_volume, and tao_price_usd/eur, every record scoped to subnet_id 73. A standalone historical price/volume dataset, distinct from the point-in-time /subnets/73 snapshot already registered. Documented in the TaoMarketCap developer API (its public-oas3.json lists this GET with an optional API key, i.e. no-auth access is supported).",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/73/subnet.json"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/73/candle-chart/"
     }
   ]
 }

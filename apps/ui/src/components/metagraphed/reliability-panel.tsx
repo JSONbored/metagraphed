@@ -82,11 +82,13 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Per-surface reliability · uptime · latency percentiles
         </div>
-        <div className="flex items-center gap-1">
+        <div role="tablist" aria-label="Reliability window" className="flex items-center gap-1">
           {WINDOWS.map((w) => (
             <button
               key={w}
               type="button"
+              role="tab"
+              aria-selected={w === window}
               onClick={() => setWindow(w)}
               className={classNames(
                 "rounded px-2 py-0.5 font-mono text-[11px] transition-colors",

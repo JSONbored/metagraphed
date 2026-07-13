@@ -8,12 +8,17 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { TimeAgo, safeExternalUrl } from "@jsonbored/ui-kit";
 import { ApiError } from "@/lib/metagraphed/client";
 import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { NativeOnlyNotice } from "./native-only-notice";
-import { safeExternalUrl } from "./external-link";
+
+// Re-exported so existing `import { Skeleton, ... } from "@/components/metagraphed/states"`
+// call sites keep working -- Skeleton's canonical home is now packages/ui-kit (needed by
+// the already-extracted ListShell), this file just isn't the place to update ~40 unrelated
+// call sites as a side effect of that.
+export { Skeleton } from "@jsonbored/ui-kit";
 
 // Scheme barrier for an EmptyState action link (CodeQL js/xss-through-dom): external
 // actions go through safeExternalUrl (http(s) only, no creds/private hosts); internal
@@ -223,8 +228,18 @@ export function StaleBanner({
   );
 }
 
-export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-surface ${className}`} />;
+/**
+ * Compact inline "Unavailable" indicator for a KPI/stat cell whose source query
+ * failed — a distinct error affordance so failure reads differently from a
+ * loading skeleton or a legitimately-empty "—". Used in the homepage KPI panels
+ * (#3964) and the About "At a glance" sidebar (#3968).
+ */
+export function StatUnavailable({ iconClassName = "size-3.5" }: { iconClassName?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-sm font-medium text-health-down">
+      <AlertCircle className={iconClassName} /> Unavailable
+    </span>
+  );
 }
 
 /**

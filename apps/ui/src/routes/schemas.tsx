@@ -5,17 +5,19 @@ import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import {
+  TimeAgo,
+  CopyableCode,
+  ExternalLink,
+  TableState,
+  PageHero,
+  PageSection,
+  AnimatedNumber,
+  MethodologyCallout,
+} from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { ExternalLink } from "@/components/metagraphed/external-link";
 import { Skeleton, StaleBanner, EmptyState } from "@/components/metagraphed/states";
-import { TableState } from "@/components/metagraphed/table-state";
-import { PageHero } from "@/components/metagraphed/page-hero";
-import { PageSection } from "@/components/metagraphed/page-section";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { AnimatedNumber } from "@/components/metagraphed/animated-number";
-import { MethodologyCallout } from "@/components/metagraphed/methodology-callout";
 import { SchemaDriftMatrix } from "@/components/metagraphed/analytics/schema-drift-matrix";
 import { DriftActivity } from "@/components/metagraphed/analytics/drift-activity";
 import { SchemaDriftDetail } from "@/components/metagraphed/schema-drift-detail";

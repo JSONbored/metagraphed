@@ -269,11 +269,16 @@ describe("mergeRpcEndpoints", () => {
 });
 
 describe("overlayRpcPoolEligibility", () => {
+  const baseEndpoint = {
+    kind: "subtensor-rpc",
+    auth_required: false,
+    public_safe: true,
+  };
   const pool = {
     id: "finney-rpc",
     endpoints: [
-      { id: "a", url: "https://a", pool_eligible: true },
-      { id: "b", url: "https://b", pool_eligible: true },
+      { ...baseEndpoint, id: "a", url: "https://a", pool_eligible: true },
+      { ...baseEndpoint, id: "b", url: "https://b", pool_eligible: true },
     ],
   };
   test("drops endpoints only after sustained (>=2) consecutive failures", () => {
@@ -286,6 +291,10 @@ describe("overlayRpcPoolEligibility", () => {
     const out = overlayRpcPoolEligibility(pool, live);
     assert.equal(out.endpoints.find((e) => e.id === "a").pool_eligible, true);
     assert.equal(out.endpoints.find((e) => e.id === "b").pool_eligible, false);
+    assert.deepEqual(
+      out.endpoints.find((e) => e.id === "b").pool_eligibility_reasons,
+      ["sustained-down"],
+    );
   });
   test("immediately drops wrong-chain endpoints from the proxy pool", () => {
     const live = {
@@ -320,6 +329,69 @@ describe("overlayRpcPoolEligibility", () => {
 
   test("returns the static pool unchanged when live is cold", () => {
     assert.equal(overlayRpcPoolEligibility(pool, null), pool);
+  });
+
+  // Live-reproduced 2026-07-12: the static daily build had marked all 4
+  // finney-rpc endpoints pool_eligible:false ("status-degraded"); the 15-min
+  // live-cron-prober had since found them status:"ok" again, but the served
+  // /rpc/pools output kept showing pool_eligible:false with the STALE reason
+  // -- and POST /rpc/v1/finney genuinely 503'd ("No eligible public RPC
+  // endpoint") because orderSafeRpcEndpoints filters on this same field. A
+  // recovered endpoint must become eligible again from the live status, not
+  // stay pinned to whatever the last daily rebuild happened to compute.
+  test("restores eligibility once a previously-degraded endpoint's live status recovers to ok", () => {
+    const degradedPool = {
+      id: "finney-rpc",
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "a",
+          url: "https://a",
+          pool_eligible: false,
+          pool_eligibility_reasons: ["status-degraded"],
+          status: "degraded",
+        },
+      ],
+    };
+    const live = {
+      endpoints: [{ id: "a", status: "ok", consecutive_failures: 0 }],
+    };
+    const out = overlayRpcPoolEligibility(degradedPool, live);
+    const a = out.endpoints.find((e) => e.id === "a");
+    assert.equal(a.status, "ok");
+    assert.equal(a.pool_eligible, true);
+    assert.deepEqual(a.pool_eligibility_reasons, ["eligible"]);
+  });
+
+  test("a single non-ok probe (below the sustained-down threshold) keeps eligibility (hysteresis)", () => {
+    const live = {
+      endpoints: [{ id: "a", status: "degraded", consecutive_failures: 1 }],
+    };
+    const out = overlayRpcPoolEligibility(pool, live);
+    const a = out.endpoints.find((e) => e.id === "a");
+    assert.equal(a.pool_eligible, true);
+    assert.deepEqual(a.pool_eligibility_reasons, ["eligible"]);
+  });
+
+  test("structural policy (auth_required/public_safe/kind) stays disqualifying regardless of live health", () => {
+    const authedPool = {
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "a",
+          auth_required: true,
+          pool_eligible: false,
+        },
+      ],
+    };
+    const live = {
+      endpoints: [{ id: "a", status: "ok", consecutive_failures: 0 }],
+    };
+    const out = overlayRpcPoolEligibility(authedPool, live);
+    const a = out.endpoints.find((e) => e.id === "a");
+    assert.equal(a.status, "ok"); // live status still refreshed for display
+    assert.equal(a.pool_eligible, false); // but structural policy still excludes it
+    assert.deepEqual(a.pool_eligibility_reasons, ["auth-required"]);
   });
 });
 
@@ -804,10 +876,15 @@ describe("overlayRpcPoolEligibility (additional paths)", () => {
   });
 
   test("endpoint with no live match stays unchanged; latency fallback used", () => {
+    const base = {
+      kind: "subtensor-rpc",
+      auth_required: false,
+      public_safe: true,
+    };
     const pool = {
       endpoints: [
-        { id: "a", pool_eligible: true, latency_ms: 11 },
-        { id: "no-live", pool_eligible: true, latency_ms: 99 },
+        { ...base, id: "a", pool_eligible: true, latency_ms: 11 },
+        { ...base, id: "no-live", pool_eligible: true, latency_ms: 99 },
       ],
     };
     const live = {
@@ -835,7 +912,16 @@ describe("overlayRpcPoolEligibility (additional paths)", () => {
 
   test("sustained-down endpoint with explicit live latency drops eligibility", () => {
     const pool = {
-      endpoints: [{ id: "a", pool_eligible: true, latency_ms: 5 }],
+      endpoints: [
+        {
+          id: "a",
+          kind: "subtensor-rpc",
+          auth_required: false,
+          public_safe: true,
+          pool_eligible: true,
+          latency_ms: 5,
+        },
+      ],
     };
     const live = {
       endpoints: [
@@ -1253,8 +1339,22 @@ describe("worker live health serving", () => {
             id: "finney-rpc",
             kind: "subtensor-rpc",
             endpoints: [
-              { id: "live", pool_eligible: true, status: "ok" },
-              { id: "dead", pool_eligible: true, status: "ok" },
+              {
+                id: "live",
+                kind: "subtensor-rpc",
+                auth_required: false,
+                public_safe: true,
+                pool_eligible: true,
+                status: "ok",
+              },
+              {
+                id: "dead",
+                kind: "subtensor-rpc",
+                auth_required: false,
+                public_safe: true,
+                pool_eligible: true,
+                status: "ok",
+              },
             ],
           },
         ],

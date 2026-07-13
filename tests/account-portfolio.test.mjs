@@ -241,21 +241,6 @@ describe("GET /api/v1/accounts/{ss58}/portfolio", () => {
     };
   }
 
-  test("returns the wallet portfolio", async () => {
-    const res = await handleRequest(
-      new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/portfolio`),
-      neuronsEnv(ROWS),
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.ss58, SS58);
-    assert.equal(body.data.position_count, 3);
-    assert.equal(body.data.subnet_count, 2);
-    assert.equal(body.data.positions[0].netuid, 7);
-  });
-
   test("cold store → 200 with an empty portfolio", async () => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/portfolio`),

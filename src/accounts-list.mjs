@@ -24,8 +24,8 @@
 // or delegated to someone else's validator, and never registered its own
 // hotkey, never appears here. That is the same "hotkey-only" framing
 // loadAccountPortfolio (src/account-portfolio.mjs) and
-// rollupAccountPositionDaily (src/account-position-history.mjs) already carry
-// for this exact reason — not a new gap this route introduces.
+// src/account-position-history.mjs already carry for this exact reason — not
+// a new gap this route introduces.
 
 const RAO_PER_TAO = 1e9;
 

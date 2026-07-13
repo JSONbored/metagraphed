@@ -10,34 +10,6 @@ import {
 } from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
-// D1 safety-valve, ORIGINALLY 365 days -- but blocks is small per-row (a header,
-// not a payload) so at measured volume (~4k rows/day) even a full 365-day
-// window is only ~600MB, nowhere near D1's 10GB cap on its own. 30 days keeps a
-// generous "recent blocks" hot window (comfortably longer than the pruned
-// extrinsics/account_events retention below it) while still being a real,
-// enforced bound rather than the effectively-unbounded 365 days that let
-// extrinsics (same table family, same cron) grow unchecked into the exact
-// D1_ERROR: Exceeded maximum DB size outage account_events already hit once
-// (see EVENT_RETENTION_MS in account-events.mjs). Raise it once the raw/
-// long-history chain data lives in Postgres (self-hosted, no cap) instead of
-// D1, per ADR 0013's "demote/retire D1" end state. pruneBlocks runs in the
-// HEALTH_PRUNE_CRON.
-export const BLOCK_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
-
-// Columns written to blocks — THE load contract. scripts/fetch-events.py emits
-// rows with exactly these keys; loadStagedBlocks binds them in this order. Values
-// are always bound, never interpolated into SQL.
-export const BLOCK_INSERT_COLUMNS = [
-  "block_number",
-  "block_hash",
-  "parent_hash",
-  "author",
-  "extrinsic_count",
-  "event_count",
-  "spec_version",
-  "observed_at",
-];
-
 function toIso(ms) {
   if (ms == null) return null;
   const n = Number(ms);
@@ -71,66 +43,6 @@ function toAuthorOrNull(value) {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   return value;
-}
-
-// Keep only well-formed blocks rows (a valid block_number primary key + a
-// non-empty hash + an integer timestamp). Shared by the staged-batch loader so
-// garbage is rejected before it touches D1.
-export function validBlockRows(rows) {
-  return Array.isArray(rows)
-    ? rows.filter(
-        (r) =>
-          Number.isInteger(r?.block_number) &&
-          r.block_number >= 0 &&
-          typeof r?.block_hash === "string" &&
-          r.block_hash.length > 0 &&
-          Number.isInteger(r?.observed_at),
-      )
-    : [];
-}
-
-// Build parameterized INSERT OR IGNORE statements for blocks rows, chunked under
-// D1's 100-bound-param limit (8 cols x 12 = 96). Idempotent on block_number (the
-// primary key). Values are ALWAYS bound, never interpolated — a tampered payload
-// can only fail, never inject. Mirrors eventInsertStatements (#1346).
-export function blockInsertStatements(db, rows) {
-  const cols = BLOCK_INSERT_COLUMNS;
-  const colList = cols.join(",");
-  const ROWS_PER_STMT = 12;
-  const statements = [];
-  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
-    const chunk = rows.slice(i, i + ROWS_PER_STMT);
-    const tuples = chunk
-      .map(() => `(${cols.map(() => "?").join(",")})`)
-      .join(",");
-    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
-    statements.push(
-      db
-        .prepare(`INSERT OR IGNORE INTO blocks (${colList}) VALUES ${tuples}`)
-        .bind(...values),
-    );
-  }
-  return statements;
-}
-
-// Hourly maintenance: prune raw blocks older than the retention window so the hot
-// table stays lean. Mirrors pruneAccountEvents (#1346) — no-ops on a cold/absent
-// store, returns pruned:false (never throws) so a failure here cannot break the
-// shared maintenance cron.
-export async function pruneBlocks(env, overrides = {}) {
-  const now = overrides.now || (() => Date.now());
-  const db = overrides.db || env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return { pruned: false };
-  const cutoff = now() - (overrides.retentionMs || BLOCK_RETENTION_MS);
-  try {
-    const result = await db
-      .prepare(`DELETE FROM blocks WHERE observed_at < ?`)
-      .bind(cutoff)
-      .run();
-    return { pruned: true, cutoff, changes: result?.meta?.changes ?? null };
-  } catch {
-    return { pruned: false };
-  }
 }
 
 // ---- Block API builders ----------------------------------------------------

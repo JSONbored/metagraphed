@@ -1,5 +1,4 @@
-import { HealthPill } from "./chips";
-import { TimeAgo } from "./time-ago";
+import { HealthPill, TimeAgo } from "@jsonbored/ui-kit";
 import { durationLabel } from "@/lib/metagraphed/format";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
 

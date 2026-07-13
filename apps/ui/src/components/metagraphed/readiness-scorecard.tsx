@@ -1,6 +1,5 @@
 import { ArrowRight, Check, Minus } from "lucide-react";
-import { HealthPill } from "@/components/metagraphed/chips";
-import { ExternalLink } from "@/components/metagraphed/external-link";
+import { HealthPill, ExternalLink } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import type { SubnetProfile } from "@/lib/metagraphed/types";
 

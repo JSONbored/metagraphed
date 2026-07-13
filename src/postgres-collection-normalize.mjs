@@ -29,7 +29,16 @@
 // exactly what this module then unwraps to [104,71,9]), but running after
 // keeps the two passes' responsibilities cleanly separated: generic
 // Option/enum/scalar shapes first, named-field collection shapes second.
-const BTREESET_FIELDS = new Set(["SubtensorModule.claim_root.subnets"]);
+//
+// Exported (not just used internally) because src/postgres-call-args.mjs's
+// walk() also needs it: confirmed live 2026-07-12, a NESTED claim_root call
+// (inside Utility.batch) has its `subnets` field corrupted from an array
+// into an opaque hex STRING by walk()'s own generic nestedCall byte-blob
+// heuristic -- the exact #4724 collection-vs-blob ambiguity this module's
+// header already describes, except walk() runs BEFORE this module ever gets
+// a chance to unwrap the (by-then-already-destroyed) field. walk() checks
+// this same set to skip that heuristic for an allowlisted field instead.
+export const BTREESET_FIELDS = new Set(["SubtensorModule.claim_root.subnets"]);
 
 function unwrapBTreeSetLayer(value) {
   return Array.isArray(value) && value.length === 1 && Array.isArray(value[0])
@@ -37,21 +46,95 @@ function unwrapBTreeSetLayer(value) {
     : value;
 }
 
+// True for postgres-call-args.mjs's tryReconstructNestedCall output --
+// {call_module, call_function, call_args} -- so walk() below can switch to
+// that nested call's own module/function when descending into its args,
+// the same context-tracking pattern postgres-call-args.mjs's own walk()
+// uses for AccountId32/byte-blob decoding.
+function isReconstructedCall(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof value.call_module === "string" &&
+    typeof value.call_function === "string" &&
+    "call_args" in value
+  );
+}
+
+// True for a typed field descriptor ({name, type, value}) -- the shape
+// EVERY extrinsic's own top-level call_args is genuinely served as
+// (confirmed live 2026-07-12; D1's `[{name,type,value}]` shape was never
+// D1-only -- see src/indexer-rs-ethereum-decode.mjs's header for the same
+// correction). A nested call's own call_args, by contrast, arrives as a
+// flat {fieldName: value} object with no per-field type string (confirmed
+// live: a nested claim_root's call_args is `{"subnets": ...}`, not an array
+// of descriptors) -- walk() below handles both shapes, since the field name
+// that matters for the BTREESET_FIELDS lookup is the descriptor's own
+// `.name` in one case and the plain object key in the other.
+function isTypedFieldDescriptor(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof value.name === "string" &&
+    typeof value.type === "string" &&
+    Object.keys(value).length === 3 &&
+    "value" in value
+  );
+}
+
+function walk(value, call) {
+  if (isReconstructedCall(value)) {
+    return {
+      ...value,
+      call_args: walk(value.call_args, {
+        call_module: value.call_module,
+        call_function: value.call_function,
+      }),
+    };
+  }
+  if (isTypedFieldDescriptor(value)) {
+    let inner = walk(value.value, call);
+    if (
+      call &&
+      BTREESET_FIELDS.has(
+        `${call.call_module}.${call.call_function}.${value.name}`,
+      )
+    ) {
+      inner = unwrapBTreeSetLayer(inner);
+    }
+    return { ...value, value: inner };
+  }
+  if (Array.isArray(value)) return value.map((item) => walk(item, call));
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, val] of Object.entries(value)) {
+      let processed = walk(val, call);
+      if (
+        call &&
+        BTREESET_FIELDS.has(`${call.call_module}.${call.call_function}.${key}`)
+      ) {
+        processed = unwrapBTreeSetLayer(processed);
+      }
+      out[key] = processed;
+    }
+    return out;
+  }
+  return value;
+}
+
 /** Unwraps BTreeSet-typed fields in callArgs for the small set of
- * (callModule, callFunction, fieldName) triples confirmed to need it. A
+ * (callModule, callFunction, fieldName) triples confirmed to need it, at any
+ * nesting depth (a top-level field, or one inside a reconstructed nested
+ * RuntimeCall -- e.g. Utility.batch wrapping SubtensorModule.claim_root). A
  * no-op (returns callArgs unchanged, or with only the confirmed fields
  * touched) for every other call -- safe to apply unconditionally in
  * formatExtrinsic regardless of which tier produced the row, same contract
  * as normalizePostgresValue (#4690) and decodePostgresCallArgs (#4691). */
 export function decodeBTreeSetFields(callModule, callFunction, callArgs) {
-  if (!callArgs || typeof callArgs !== "object" || Array.isArray(callArgs)) {
-    return callArgs;
-  }
-  const out = { ...callArgs };
-  for (const key of Object.keys(callArgs)) {
-    if (BTREESET_FIELDS.has(`${callModule}.${callFunction}.${key}`)) {
-      out[key] = unwrapBTreeSetLayer(callArgs[key]);
-    }
-  }
-  return out;
+  return walk(callArgs, {
+    call_module: callModule,
+    call_function: callFunction,
+  });
 }

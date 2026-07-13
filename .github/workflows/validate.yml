@@ -170,7 +170,7 @@ jobs:
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^apps/ui/|^packages/client/|^packages/contract/' changed-files.txt; then
+          if grep -qE '^apps/ui/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_ui_validation=false" >> "$GITHUB_OUTPUT"
@@ -630,7 +630,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
       # `--extra test` installs the httpx-backed test deps (declared in pyproject's
       # [test] extra) so the async cases run instead of skipping. uv provisions a
@@ -700,6 +700,36 @@ jobs:
             echo "::error::packages/client/dist is stale -- run 'npm run build --workspace=packages/client' and commit the result."
             exit 1
           fi
+
+      # Same drift-check shape as packages/client above, same reason:
+      # packages/ui-kit/dist/{index.js,index.cjs,index.css} are committed
+      # (see packages/ui-kit/.gitignore) so apps/ui's Cloudflare Workers
+      # Builds deploy never depends on rebuilding a sibling workspace
+      # package first (#4860).
+      - name: Build packages/ui-kit (drift check)
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: |
+          npm run build --workspace=packages/ui-kit
+          if ! git diff --exit-code -- packages/ui-kit/dist; then
+            echo "::error::packages/ui-kit/dist is stale -- run 'npm run build --workspace=packages/ui-kit' and commit the result."
+            exit 1
+          fi
+
+      - name: Typecheck packages/ui-kit
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm run typecheck --workspace=packages/ui-kit
+
+      - name: Test packages/ui-kit
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm test --workspace=packages/ui-kit
+
+      # Enforces the #4867 epic's core invariant: packages/ui-kit stays a
+      # real, standalone library. no-restricted-imports (packages/ui-kit/
+      # eslint.config.js) fails on @tanstack/react-router,
+      # @tanstack/react-query, or any import resolving into apps/ui/**.
+      - name: Lint packages/ui-kit (app-logic import guardrail)
+        if: env.RUN_UI_VALIDATION == 'true'
+        run: npm run lint --workspace=packages/ui-kit
 
       - name: Lint (ESLint + Prettier)
         if: env.RUN_UI_VALIDATION == 'true'
