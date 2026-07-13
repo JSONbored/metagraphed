@@ -21,6 +21,7 @@
 // triggers matched AND whether a match should actually be delivered right
 // now (burst rate-limiting), never how each channel's request is shaped.
 import { triggerMatchesEvent } from "../src/alert-triggers.mjs";
+import { mapBounded } from "../src/webhooks.mjs";
 import {
   buildDiscordDeliveryRequest,
   buildEmailDeliveryRequest,
@@ -30,6 +31,24 @@ import {
 } from "../src/alert-delivery.mjs";
 
 export const ALERTER_HUB_TRIGGER_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Found by adversarial review: this Worker-to-Worker call is on the SAME
+// synchronous path every single firehose event blocks on (via
+// ChainFirehoseHub.broadcast()'s ALERTER_HUB ping) -- an internal
+// Cloudflare-to-Cloudflare Hyperdrive round trip, so a much tighter bound
+// than the per-channel delivery timeout below is appropriate; a Postgres
+// query that's still running after this long is not going to finish in
+// time to matter anyway.
+const ALERT_TRIGGER_REFRESH_TIMEOUT_MS = 4000;
+
+// Found by adversarial review: a single chain event can match many DISTINCT
+// triggers (the per-trigger burst rate-limiter only throttles repeats of
+// the SAME trigger, not how many different triggers fire on one event) --
+// an unbounded Promise.all could open one outbound fetch per match,
+// exhausting this Durable Object invocation's concurrent-subrequest budget
+// under a large, broad-condition trigger set. Matches src/webhooks.mjs's
+// own dispatchChangeEvent concurrency default.
+const ALERT_DELIVERY_CONCURRENCY = 8;
 
 // AlerterHub.evaluate() is awaited by ChainFirehoseHub.broadcast() (see that
 // class's ALERTER_HUB ping), which every OTHER consumer (SSE/WS/GraphQL/MCP)
@@ -42,6 +61,18 @@ export const ALERTER_HUB_TRIGGER_CACHE_TTL_MS = 5 * 60 * 1000;
 // (same 8s default).
 const ALERT_DELIVERY_TIMEOUT_MS = 8000;
 
+// #5022: the internal write-back that reports EVERY matched trigger id (not
+// just the ones that clear the burst rate-limit -- match_count means "this
+// trigger's conditions were satisfied", independent of delivery) so
+// workers/data-api.mjs can persist chain_alert_triggers.match_count/
+// last_matched_at. Deliberately much tighter than ALERT_DELIVERY_TIMEOUT_MS:
+// this is a same-Cloudflare-network Worker-to-Worker call (like
+// ALERT_TRIGGER_REFRESH_TIMEOUT_MS above), not a fetch to an arbitrary
+// user-supplied endpoint, AND it runs CONCURRENTLY with the delivery
+// fan-out (see evaluate() below) rather than adding to its latency, so a
+// generous bound here would only cost something on the failure path.
+export const ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS = 3000;
+
 // The I/O shell around src/alert-delivery.mjs's pure request builders --
 // constructor-injectable (see AlerterHub below) rather than a hardcoded
 // call inside evaluate(), so tests can substitute a spy/failing stub
@@ -50,6 +81,16 @@ const ALERT_DELIVERY_TIMEOUT_MS = 8000;
 // no-op when their secret isn't provisioned, matching every other optional
 // integration's convention in this codebase (never throw for a
 // deployment-config gap the caller can't do anything about).
+//
+// #5023 contract: resolves `true` on a CONFIRMED 2xx delivery, `false` in
+// every other resolved case (non-2xx response, a builder returning null,
+// an unrecognized channel, or a telegram/email no-op from an unset
+// secret). A thrown/rejected fetch (network error, the AbortSignal timeout
+// below) is NOT swallowed here -- it propagates as a rejection so
+// evaluate()'s own wrapping can distinguish "delivery definitely did not
+// succeed" (this function's `false`) from "delivery attempt itself
+// failed" (a rejection), though both are treated identically for the
+// rate-limit rollback decision.
 export async function deliverAlertMatch(
   trigger,
   payload,
@@ -65,7 +106,7 @@ export async function deliverAlertMatch(
       request = buildDiscordDeliveryRequest(trigger, payload);
       break;
     case "telegram":
-      if (!env.TELEGRAM_BOT_TOKEN) return;
+      if (!env.TELEGRAM_BOT_TOKEN) return false;
       request = buildTelegramDeliveryRequest(
         trigger,
         payload,
@@ -73,19 +114,19 @@ export async function deliverAlertMatch(
       );
       break;
     case "email":
-      if (!env.RESEND_API_KEY || !env.RESEND_FROM_ADDRESS) return;
+      if (!env.RESEND_API_KEY || !env.RESEND_FROM_ADDRESS) return false;
       request = buildEmailDeliveryRequest(trigger, payload, {
         resendKey: env.RESEND_API_KEY,
         fromAddress: env.RESEND_FROM_ADDRESS,
       });
       break;
     default:
-      return;
+      return false;
   }
   // A null request means the builder itself refused (e.g.
   // buildWebhookDeliveryRequest's defense-in-depth URL re-check) --
   // nothing to send.
-  if (!request) return;
+  if (!request) return false;
   // The timeout signal is applied HERE, not baked into the pure builders in
   // src/alert-delivery.mjs -- AbortSignal.timeout() starts a real wall-clock
   // timer the moment it's constructed, which that module's own header
@@ -96,15 +137,17 @@ export async function deliverAlertMatch(
     signal: AbortSignal.timeout(ALERT_DELIVERY_TIMEOUT_MS),
   });
   if (!response.ok) {
-    // Never throw for a non-2xx response -- evaluate()'s .catch() only
-    // guards against a REJECTED fetch (network/timeout); an HTTP-level
+    // Never throw for a non-2xx response -- evaluate()'s own wrapping only
+    // needs to catch a REJECTED fetch (network/timeout); an HTTP-level
     // failure resolves normally, so it's logged here instead, server-side
     // only, matching this codebase's "log internals, never leak them"
     // convention.
     console.error(
       `alert delivery failed (channel=${trigger.channel}, trigger=${trigger.id}): HTTP ${response.status}`,
     );
+    return false;
   }
+  return true;
 }
 
 export class AlerterHub {
@@ -160,6 +203,7 @@ export class AlerterHub {
             "x-alert-triggers-internal-token":
               this.env.ALERT_TRIGGERS_INTERNAL_TOKEN,
           },
+          signal: AbortSignal.timeout(ALERT_TRIGGER_REFRESH_TIMEOUT_MS),
         },
       );
       if (!upstream.ok) return;
@@ -167,6 +211,21 @@ export class AlerterHub {
       if (Array.isArray(body?.triggers)) {
         this.triggers = body.triggers;
         this.triggersLoadedAt = Date.now();
+        // #5024: prune any lastDeliveredAt entry for a trigger id that is
+        // no longer present in the fresh active-trigger list (deleted or
+        // deactivated since the last refresh) -- otherwise a Durable
+        // Object that lives across many refresh cycles accumulates one
+        // permanently-stale Map entry per retired trigger. One pass,
+        // O(active triggers); only runs after a SUCCESSFUL refresh (never
+        // on a failed/skipped one, since a stale-but-still-valid cache
+        // must not have its rate-limit state pruned against a fetch that
+        // didn't actually happen).
+        const activeTriggerIds = new Set(this.triggers.map((t) => t.id));
+        for (const triggerId of this.lastDeliveredAt.keys()) {
+          if (!activeTriggerIds.has(triggerId)) {
+            this.lastDeliveredAt.delete(triggerId);
+          }
+        }
       }
     } catch {
       // Best-effort refresh -- keep serving the stale cache rather than
@@ -183,6 +242,50 @@ export class AlerterHub {
     );
   }
 
+  // #5022: best-effort write-back reporting EVERY matched trigger id (the
+  // FULL matched list, not just the ones that clear the burst rate-limit)
+  // to workers/data-api.mjs's internal match-count route, so
+  // chain_alert_triggers.match_count/last_matched_at reflect real values.
+  // No-op when DATA_API/ALERT_TRIGGERS_INTERNAL_TOKEN isn't provisioned,
+  // matching refreshTriggers()'s own optional-integration convention.
+  // Never throws -- called from evaluate() alongside the delivery fan-out
+  // via Promise.allSettled, and a write-back failure must never affect
+  // evaluate()'s response or reject out of that call.
+  async writeBackMatchCounts(triggerIds) {
+    if (
+      !this.env.DATA_API ||
+      !this.env.ALERT_TRIGGERS_INTERNAL_TOKEN ||
+      triggerIds.length === 0
+    ) {
+      return;
+    }
+    try {
+      const response = await this.env.DATA_API.fetch(
+        "https://data-api.internal/api/v1/internal/alert-triggers/matched",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-alert-triggers-internal-token":
+              this.env.ALERT_TRIGGERS_INTERNAL_TOKEN,
+          },
+          body: JSON.stringify({ trigger_ids: triggerIds }),
+          signal: AbortSignal.timeout(ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok) {
+        console.error(
+          `alert match-count write-back failed: HTTP ${response.status}`,
+        );
+      }
+    } catch {
+      // Best-effort -- match_count is an analytics aid, not something
+      // delivery or rate-limiting logic depends on; losing an increment
+      // here (a slow/unreachable DATA_API, a timeout) is fine, an
+      // exception propagating out of evaluate() is not.
+    }
+  }
+
   async evaluate(payload) {
     await this.ensureTriggersLoaded();
     const matched = this.matchingTriggers(payload);
@@ -194,24 +297,70 @@ export class AlerterHub {
     // per window rather than dropping the burst's own visibility.
     const now = Date.now();
     const toDeliver = [];
+    // #5023: the value each rate-limited-clearing trigger's lastDeliveredAt
+    // entry held BEFORE this call's optimistic set below (undefined if it
+    // had none) -- kept so a failed delivery can be rolled back to exactly
+    // that prior state instead of just guessing "delete it".
+    const priorLastDeliveredAt = new Map();
     let rateLimited = 0;
     for (const trigger of matched) {
-      if (isDeliveryRateLimited(this.lastDeliveredAt.get(trigger.id), now)) {
+      const prior = this.lastDeliveredAt.get(trigger.id);
+      if (isDeliveryRateLimited(prior, now)) {
         rateLimited += 1;
         continue;
       }
+      // Optimistic set BEFORE delivery is attempted -- this protects
+      // against a burst of near-simultaneous matches for the SAME trigger
+      // (within one evaluate() call, or racing across two evaluate() calls)
+      // both queueing a duplicate concurrent delivery attempt. Do NOT
+      // remove this: it is rolled back below (not left in place) when the
+      // delivery attempt does not actually succeed.
+      priorLastDeliveredAt.set(trigger.id, prior);
       this.lastDeliveredAt.set(trigger.id, now);
       toDeliver.push(trigger);
     }
 
-    await Promise.all(
-      toDeliver.map((trigger) =>
-        this.deliver(trigger, payload, this.env).catch(() => {
-          // A single misbehaving delivery integration must never fail the
-          // evaluation response ChainFirehoseHub's broadcast() awaits.
-        }),
-      ),
+    // #5022: the delivery fan-out and the match-count write-back run
+    // CONCURRENTLY (Promise.allSettled), never sequentially -- sequencing
+    // them would ADD the two latencies together, pushing evaluate()'s own
+    // worst case toward ChainFirehoseHub.broadcast()'s
+    // ALERTER_HUB_EVALUATE_TIMEOUT_MS ceiling (15s) that wraps this whole
+    // call. Neither promise here can reject (each swallows its own
+    // failures internally), so allSettled is defensive, not load-bearing.
+    const deliveryPromise = mapBounded(
+      toDeliver,
+      ALERT_DELIVERY_CONCURRENCY,
+      async (trigger) => {
+        // #5023: capture success/failure instead of relying on the old
+        // implicit "resolved == succeeded" convention -- a REJECTED
+        // deliver() (network error, delivery timeout) is treated
+        // identically to an explicit `false` return for the rollback
+        // decision below; either way, a single misbehaving delivery
+        // integration must never fail the evaluation response
+        // ChainFirehoseHub's broadcast() awaits.
+        let succeeded;
+        try {
+          succeeded = (await this.deliver(trigger, payload, this.env)) === true;
+        } catch {
+          succeeded = false;
+        }
+        if (succeeded) return;
+        // Roll back the optimistic set above: a delivery that did NOT
+        // succeed must not consume the rate-limit window, so the VERY NEXT
+        // matching event for this trigger retries immediately rather than
+        // waiting out the full window.
+        const prior = priorLastDeliveredAt.get(trigger.id);
+        if (prior === undefined) {
+          this.lastDeliveredAt.delete(trigger.id);
+        } else {
+          this.lastDeliveredAt.set(trigger.id, prior);
+        }
+      },
     );
+    const writebackPromise = this.writeBackMatchCounts(
+      matched.map((t) => t.id),
+    );
+    await Promise.allSettled([deliveryPromise, writebackPromise]);
 
     return {
       matched: matched.length,

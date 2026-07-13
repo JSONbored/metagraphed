@@ -4488,14 +4488,19 @@ export const subnetStakeFlowQuery = (netuid: number, window = "30d") =>
     staleTime: STALE_MED,
   });
 
-export const subnetEventsQuery = (netuid: number) =>
+export interface SubnetEventsParams {
+  /** Filter to one event_kind (e.g. "StakeAdded"). */
+  kind?: string;
+}
+
+export const subnetEventsQuery = (netuid: number, params: SubnetEventsParams = {}) =>
   queryOptions({
-    queryKey: k("subnet-events", netuid),
+    queryKey: k("subnet-events", netuid, params.kind ?? null),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>(
-        `/api/v1/subnets/${netuid}/events?limit=100`,
-        { signal },
-      );
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/events`, {
+        params: { limit: 100, kind: params.kind },
+        signal,
+      });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const events = normalizeAccountEvents(d.events);
       return {

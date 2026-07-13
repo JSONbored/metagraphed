@@ -1438,47 +1438,79 @@ function CopyableCode({
     }
   );
 }
+function SegmentedToggle({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      role: "tablist",
+      "aria-label": ariaLabel,
+      className: classNames(
+        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
+        className
+      ),
+      children: options.map(
+        ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
+          const active = v === value;
+          return /* @__PURE__ */ jsxs(
+            "button",
+            {
+              type: "button",
+              role: "tab",
+              "aria-selected": active,
+              "aria-label": optionAriaLabel ?? label,
+              title: title ?? label,
+              onClick: () => onChange(v),
+              className: classNames(
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
+                active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
+              ),
+              children: [
+                Icon ? /* @__PURE__ */ jsx(Icon, { className: "size-3.5" }) : null,
+                /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: label })
+              ]
+            },
+            v
+          );
+        }
+      )
+    }
+  );
+}
 function DensityToggle({
   value,
   onChange,
   className
 }) {
   const options = [
-    { value: "comfortable", label: "Comfortable", Icon: Rows3 },
-    { value: "compact", label: "Compact", Icon: Rows2 }
+    {
+      value: "comfortable",
+      label: "Comfortable",
+      Icon: Rows3,
+      ariaLabel: "Comfortable row density",
+      title: "Comfortable rows"
+    },
+    {
+      value: "compact",
+      label: "Compact",
+      Icon: Rows2,
+      ariaLabel: "Compact row density",
+      title: "Compact rows"
+    }
   ];
   return /* @__PURE__ */ jsx(
-    "div",
+    SegmentedToggle,
     {
-      role: "tablist",
-      "aria-label": "Row density",
-      className: classNames(
-        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
-        className
-      ),
-      children: options.map(({ value: v, label, Icon }) => {
-        const active = v === value;
-        return /* @__PURE__ */ jsxs(
-          "button",
-          {
-            type: "button",
-            role: "tab",
-            "aria-selected": active,
-            "aria-label": `${label} row density`,
-            title: `${label} rows`,
-            onClick: () => onChange(v),
-            className: classNames(
-              "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
-              active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
-            ),
-            children: [
-              /* @__PURE__ */ jsx(Icon, { className: "size-3.5" }),
-              /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: label })
-            ]
-          },
-          v
-        );
-      })
+      options,
+      value,
+      onChange,
+      ariaLabel: "Row density",
+      className
     }
   );
 }
@@ -1783,14 +1815,27 @@ function FreshnessIndicator({
     }
   );
 }
+function tierFreshnessLabel(tier, at) {
+  if (at == null) return "No freshness data";
+  const prefix = tier === "realtime" ? "Live chain read" : "Daily rollup snapshot";
+  return `${prefix} \u2014 updated ${formatRelative(at)}`;
+}
 function DailyRollupFreshness({
   at,
   className
 }) {
-  const label = at == null ? "No freshness data" : `Daily rollup snapshot \u2014 updated ${formatRelative(at)}`;
   return /* @__PURE__ */ jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
     /* @__PURE__ */ jsx(FreshnessIndicator, { at, dotOnly: true }),
-    /* @__PURE__ */ jsx(InfoTooltip, { label })
+    /* @__PURE__ */ jsx(InfoTooltip, { label: tierFreshnessLabel("daily", at) })
+  ] });
+}
+function RealtimeFreshness({
+  at,
+  className
+}) {
+  return /* @__PURE__ */ jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
+    /* @__PURE__ */ jsx(FreshnessIndicator, { at, dotOnly: true }),
+    /* @__PURE__ */ jsx(InfoTooltip, { label: tierFreshnessLabel("realtime", at) })
   ] });
 }
 function HoverPreview({
@@ -2408,9 +2453,24 @@ function TableState({
   );
 }
 var OPTIONS = [
-  { value: "table", label: "Table", Icon: List },
-  { value: "grid", label: "Grid", Icon: LayoutGrid },
-  { value: "matrix", label: "Matrix", Icon: Grid3x3 }
+  {
+    value: "table",
+    label: "Table",
+    Icon: List,
+    ariaLabel: "Switch to table view"
+  },
+  {
+    value: "grid",
+    label: "Grid",
+    Icon: LayoutGrid,
+    ariaLabel: "Switch to grid view"
+  },
+  {
+    value: "matrix",
+    label: "Matrix",
+    Icon: Grid3x3,
+    ariaLabel: "Switch to matrix view"
+  }
 ];
 function ViewModeToggle({
   value,
@@ -2420,37 +2480,13 @@ function ViewModeToggle({
 }) {
   const available = OPTIONS.filter((o) => options.includes(o.value));
   return /* @__PURE__ */ jsx(
-    "div",
+    SegmentedToggle,
     {
-      role: "tablist",
-      "aria-label": "View mode",
-      className: classNames(
-        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
-        className
-      ),
-      children: available.map(({ value: v, label, Icon }) => {
-        const active = v === value;
-        return /* @__PURE__ */ jsxs(
-          "button",
-          {
-            type: "button",
-            role: "tab",
-            "aria-selected": active,
-            "aria-label": `Switch to ${label.toLowerCase()} view`,
-            title: label,
-            onClick: () => onChange(v),
-            className: classNames(
-              "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
-              active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
-            ),
-            children: [
-              /* @__PURE__ */ jsx(Icon, { className: "size-3.5" }),
-              /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: label })
-            ]
-          },
-          v
-        );
-      })
+      options: available,
+      value,
+      onChange,
+      ariaLabel: "View mode",
+      className
     }
   );
 }
@@ -3274,7 +3310,8 @@ function StatTile({
   hint,
   chart,
   tone = "default",
-  className
+  className,
+  truncate = true
 }) {
   return /* @__PURE__ */ jsxs(
     "div",
@@ -3300,11 +3337,38 @@ function StatTile({
           }
         ) : null,
         /* @__PURE__ */ jsxs("div", { className: "min-w-0 flex-1", children: [
-          /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate", children: eyebrow }),
-          /* @__PURE__ */ jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
-            /* @__PURE__ */ jsx("span", { className: "min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
-            hint ? /* @__PURE__ */ jsx("span", { className: "min-w-0 font-mono text-[10px] text-ink-muted truncate", children: hint }) : null
-          ] })
+          /* @__PURE__ */ jsx(
+            "div",
+            {
+              className: classNames(
+                "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted",
+                truncate ? "truncate" : "leading-tight"
+              ),
+              children: eyebrow
+            }
+          ),
+          /* @__PURE__ */ jsxs(
+            "div",
+            {
+              className: classNames(
+                "mt-1 flex min-w-0 gap-1.5",
+                truncate ? "items-baseline" : "flex-wrap items-baseline"
+              ),
+              children: [
+                /* @__PURE__ */ jsx("span", { className: "min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
+                hint ? /* @__PURE__ */ jsx(
+                  "span",
+                  {
+                    className: classNames(
+                      "min-w-0 font-mono text-[10px] text-ink-muted",
+                      truncate ? "truncate" : ""
+                    ),
+                    children: hint
+                  }
+                ) : null
+              ]
+            }
+          )
         ] }),
         chart ? /* @__PURE__ */ jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
       ]
@@ -3643,4 +3707,4 @@ function TreemapMini({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProfileHero, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, timeAgoAbsoluteTitle, visibleTools };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, ExternalLink, FreshnessBadge, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListCard, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProfileHero, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SearchScopeChip, SectionAnchor, SectionHeading, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, cn, fmtYield, freshnessBadgeTimeCopy, freshnessDotClass, freshnessTierLabel, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel, timeAgoAbsoluteTitle, visibleTools };

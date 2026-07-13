@@ -47,6 +47,24 @@
         "https://api.almanac.market/api/markets/search?q=nfl"
       ],
       "url": "https://api.almanac.market/api/markets/events/202857"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-41-almanac-wandb",
+      "kind": "dashboard",
+      "name": "Almanac validator Weights & Biases dashboard",
+      "notes": "Public Weights & Biases project the SN41 Almanac validators log to (wandb.ai/sportstensor/sportstensor-vali-logs) — live validator run logs and sports-prediction scoring metrics. Validators import wandb and start runs under entity 'sportstensor' / project 'sportstensor-vali-logs' in the official sportstensor/sn41 validator.py. Publicly readable via the W&B API. Distinct host from the api.almanac.market API.",
+      "provider": "almanac",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/sportstensor/sn41/blob/main/validator.py"
+      ],
+      "url": "https://wandb.ai/sportstensor/sportstensor-vali-logs"
     }
   ],
   "website_url": "https://almanac.market/"

@@ -10,6 +10,13 @@ interface Props {
   chart?: ReactNode;
   tone?: "default" | "accent" | "ok" | "warn" | "down";
   className?: string;
+  /**
+   * When false, the eyebrow/hint wrap instead of truncating with an
+   * ellipsis — for a label too long to reliably fit one line at every
+   * breakpoint (e.g. "Validators / miners" in a 2-column mobile grid).
+   * Defaults to true, unchanged for every other consumer.
+   */
+  truncate?: boolean;
 }
 
 /**
@@ -24,6 +31,7 @@ export function StatTile({
   chart,
   tone = "default",
   className,
+  truncate = true,
 }: Props) {
   return (
     <div
@@ -55,15 +63,30 @@ export function StatTile({
         />
       ) : null}
       <div className="min-w-0 flex-1">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate">
+        <div
+          className={classNames(
+            "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted",
+            truncate ? "truncate" : "leading-tight",
+          )}
+        >
           {eyebrow}
         </div>
-        <div className="mt-1 flex min-w-0 items-baseline gap-1.5">
+        <div
+          className={classNames(
+            "mt-1 flex min-w-0 gap-1.5",
+            truncate ? "items-baseline" : "flex-wrap items-baseline",
+          )}
+        >
           <span className="min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl">
             {value}
           </span>
           {hint ? (
-            <span className="min-w-0 font-mono text-[10px] text-ink-muted truncate">
+            <span
+              className={classNames(
+                "min-w-0 font-mono text-[10px] text-ink-muted",
+                truncate ? "truncate" : "",
+              )}
+            >
               {hint}
             </span>
           ) : null}

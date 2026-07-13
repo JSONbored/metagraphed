@@ -93,6 +93,7 @@ export function SelectFilter({
   label,
   allowEmpty = true,
   fill = false,
+  className,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -104,22 +105,32 @@ export function SelectFilter({
   // When true, the control stretches to fill its flex track (label stays fixed,
   // the select grows) so a row of filters can be justified edge-to-edge.
   fill?: boolean;
+  // Extra classes on the wrapping <label> — e.g. a max-w-[...] cap for option
+  // lists with a few long entries, so the closed control doesn't size itself
+  // to its widest option (native <select> sizing behavior).
+  className?: string;
 }) {
   return (
     <label
-      className={`items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs ${
-        fill ? "flex w-full min-w-0" : "inline-flex"
-      }`}
+      className={classNames(
+        "items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs",
+        fill ? "flex w-full min-w-0" : "inline-flex",
+        className,
+      )}
     >
-      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+      <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
         {label}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-          fill ? "min-w-0 flex-1" : ""
-        }`}
+        // Native <select> doesn't inherit the surrounding font by default — pin it
+        // to font-mono so the value matches the label instead of falling back to
+        // the sans body font, which reads as unstyled next to the mono label.
+        className={classNames(
+          "min-w-0 truncate bg-transparent font-mono text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          fill ? "flex-1" : "",
+        )}
       >
         {allowEmpty ? <option value="">all</option> : null}
         {options.map((o) => (

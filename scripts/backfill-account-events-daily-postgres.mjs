@@ -57,10 +57,10 @@
 // Without --apply this only writes a SQL file -- land it in production via
 // the docker cp + psql -f pattern (printed at the end of a run), e.g.:
 //   scp .output/account-events-daily-backfill.sql \
-//     indexeradmin@meta-indexer-01-us-lax1:/tmp/account-events-daily-backfill.sql
-//   ssh indexeradmin@meta-indexer-01-us-lax1 \
-//     "sudo -n docker cp /tmp/account-events-daily-backfill.sql metagraphed-indexer-postgres-1:/tmp/x.sql && \
-//      sudo -n docker exec metagraphed-indexer-postgres-1 psql -U metagraphed -d metagraphed -v ON_ERROR_STOP=1 -f /tmp/x.sql"
+//     <indexer-ssh-target>:/tmp/account-events-daily-backfill.sql
+//   ssh <indexer-ssh-target> \
+//     "sudo -n docker cp /tmp/account-events-daily-backfill.sql <postgres-container>:/tmp/x.sql && \
+//      sudo -n docker exec <postgres-container> psql -U <postgres-user> -d <postgres-database> -v ON_ERROR_STOP=1 -f /tmp/x.sql"
 import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -321,8 +321,8 @@ async function main() {
 
   console.log(
     "land it in production via the docker cp + psql -f pattern, e.g.:\n" +
-      `  scp ${opts.out} indexeradmin@meta-indexer-01-us-lax1:/tmp/account-events-daily-backfill.sql\n` +
-      `  ssh indexeradmin@meta-indexer-01-us-lax1 "sudo -n docker cp /tmp/account-events-daily-backfill.sql metagraphed-indexer-postgres-1:/tmp/x.sql && sudo -n docker exec metagraphed-indexer-postgres-1 psql -U metagraphed -d metagraphed -v ON_ERROR_STOP=1 -f /tmp/x.sql"`,
+      `  scp ${opts.out} <indexer-ssh-target>:/tmp/account-events-daily-backfill.sql\n` +
+      `  ssh <indexer-ssh-target> "sudo -n docker cp /tmp/account-events-daily-backfill.sql <postgres-container>:/tmp/x.sql && sudo -n docker exec <postgres-container> psql -U <postgres-user> -d <postgres-database> -v ON_ERROR_STOP=1 -f /tmp/x.sql"`,
   );
 }
 

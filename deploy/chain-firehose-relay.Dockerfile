@@ -1,9 +1,10 @@
-# Box-side relay for the realtime chain-event firehose (#4981, ADR 0015).
-# A tiny always-on process: LISTEN chain_firehose on the box's own Postgres,
-# forward each notification to the Cloudflare Durable Object ingest endpoint
-# (#4982). Never writes to Postgres, never in indexer-rs's critical path --
-# see scripts/chain-firehose-relay.mjs's own header comment for why this is
-# safe by construction, unlike the retired streamer (docs/adr/0014).
+# Box-side relay for the realtime chain-event firehose (#4981, #5027, ADR
+# 0015). A tiny always-on process: polls/claims pending rows from the box's
+# own Postgres chain_firehose_outbox table, forwards each to the Cloudflare
+# Durable Object ingest endpoint (#4982). Only ever UPDATEs rows it has
+# itself claimed, never in indexer-rs's critical path -- see
+# scripts/chain-firehose-relay.mjs's own header comment for why this is safe
+# by construction, unlike the retired streamer (docs/adr/0014).
 #
 # Deployed the same way the (also retired) metagraphed-streamer was: the
 # Ansible `chain-firehose-relay` role in JSONbored/metagraphed-infra copies

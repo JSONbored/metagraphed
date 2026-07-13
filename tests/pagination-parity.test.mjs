@@ -12,25 +12,13 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
-  BLOCK_PAGINATION,
   FEED_PAGINATION,
   MAX_OFFSET,
   MIN_LIMIT,
 } from "../workers/request-params.mjs";
-import {
-  handleAccountEvents,
-  handleAccountExtrinsics,
-  handleAccountHistory,
-  handleAccountTransfers,
-  handleBlockEvents,
-  handleBlockExtrinsics,
-  handleBlocks,
-  handleExtrinsics,
-  handleSubnetEvents,
-} from "../workers/request-handlers/entities.mjs";
+import { handleAccountHistory } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-const NETUID = 7;
 const BLOCK_NUM = 1234;
 
 function req(path) {
@@ -90,19 +78,17 @@ function boundPage(call) {
     : { limit: p[p.length - 1], offset: null };
 }
 
+// #4909 D1 retirement: this suite used to cover 9 routes, but 8 of them
+// (accounts/{ss58}/events, extrinsics, transfers; subnets/{netuid}/events;
+// blocks/{ref}/events, blocks/{ref}/extrinsics; blocks; extrinsics) had their
+// D1 write path retired (#4772) and the underlying tables dropped in
+// production, so entities.mjs no longer runs a D1 query for them at all --
+// there is nothing left for a "the bound LIMIT/OFFSET matches the profile"
+// D1-capture assertion to observe. account_events_daily (the source behind
+// /accounts/{ss58}/history) is NOT part of that retirement -- it has its own
+// independent Postgres-side rollup and D1's copy is still a real,
+// live-queried fallback tier -- so its parity coverage stays.
 const ROUTES = [
-  {
-    name: "GET /accounts/{ss58}/events",
-    profile: FEED_PAGINATION,
-    feed: /INDEXED BY idx_account_events_hotkey.*UNION ALL.*idx_account_events_coldkey/s,
-    invoke: (env, qs) =>
-      handleAccountEvents(
-        req(`/api/v1/accounts/${SS58}/events`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/events?${qs}`),
-      ),
-  },
   {
     name: "GET /accounts/{ss58}/history",
     profile: FEED_PAGINATION,
@@ -113,84 +99,6 @@ const ROUTES = [
         env,
         SS58,
         url(`/api/v1/accounts/${SS58}/history?${qs}`),
-      ),
-  },
-  {
-    name: "GET /accounts/{ss58}/extrinsics",
-    profile: FEED_PAGINATION,
-    feed: /FROM extrinsics WHERE signer = \?/,
-    invoke: (env, qs) =>
-      handleAccountExtrinsics(
-        req(`/api/v1/accounts/${SS58}/extrinsics`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/extrinsics?${qs}`),
-      ),
-  },
-  {
-    name: "GET /accounts/{ss58}/transfers",
-    profile: FEED_PAGINATION,
-    feed: /event_kind = 'Transfer'/,
-    invoke: (env, qs) =>
-      handleAccountTransfers(
-        req(`/api/v1/accounts/${SS58}/transfers`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/transfers?${qs}`),
-      ),
-  },
-  {
-    name: "GET /subnets/{netuid}/events",
-    profile: FEED_PAGINATION,
-    feed: /FROM account_events WHERE netuid = \?/,
-    invoke: (env, qs) =>
-      handleSubnetEvents(
-        req(`/api/v1/subnets/${NETUID}/events`),
-        env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/events?${qs}`),
-      ),
-  },
-  {
-    name: "GET /blocks/{ref}/events",
-    profile: FEED_PAGINATION,
-    feed: /FROM account_events WHERE block_number = \? ORDER BY event_index ASC/,
-    invoke: (env, qs) =>
-      handleBlockEvents(
-        req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-        env,
-        String(BLOCK_NUM),
-        url(`/api/v1/blocks/${BLOCK_NUM}/events?${qs}`),
-      ),
-  },
-  {
-    name: "GET /blocks",
-    profile: BLOCK_PAGINATION,
-    feed: /FROM blocks ORDER BY block_number DESC/,
-    invoke: (env, qs) =>
-      handleBlocks(req(`/api/v1/blocks`), env, url(`/api/v1/blocks?${qs}`)),
-  },
-  {
-    name: "GET /blocks/{ref}/extrinsics",
-    profile: BLOCK_PAGINATION,
-    feed: /FROM extrinsics WHERE block_number = \? ORDER BY extrinsic_index ASC/,
-    invoke: (env, qs) =>
-      handleBlockExtrinsics(
-        req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-        env,
-        String(BLOCK_NUM),
-        url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics?${qs}`),
-      ),
-  },
-  {
-    name: "GET /extrinsics",
-    profile: BLOCK_PAGINATION,
-    feed: /FROM extrinsics ORDER BY block_number DESC, extrinsic_index DESC/,
-    invoke: (env, qs) =>
-      handleExtrinsics(
-        req(`/api/v1/extrinsics`),
-        env,
-        url(`/api/v1/extrinsics?${qs}`),
       ),
   },
 ];

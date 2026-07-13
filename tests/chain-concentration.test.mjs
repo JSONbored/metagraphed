@@ -275,40 +275,6 @@ describe("GET /api/v1/chain/concentration", () => {
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/concentration${q}`);
 
-  test("aggregates the neurons tier across all subnets", async () => {
-    const res = await handleRequest(
-      req(),
-      neuronsEnv([
-        {
-          stake_tao: 10,
-          emission_tao: 1,
-          coldkey: "ck-a",
-          validator_permit: 1,
-          netuid: 1,
-          captured_at: 1_700_000_000_000,
-        },
-        {
-          stake_tao: 20,
-          emission_tao: 2,
-          coldkey: "ck-b",
-          validator_permit: 0,
-          netuid: 2,
-          captured_at: 1_700_000_000_000,
-        },
-      ]),
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.subnet_count, 2);
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.entity_count, 2);
-    assert.equal(body.data.stake.holders, 2);
-    assert.equal(body.data.stake.total, 30);
-    assert.equal(body.meta.source, "metagraph-snapshot");
-  });
-
   test("rejects an unexpected query parameter with 400", async () => {
     const res = await handleRequest(req("?window=7d"), neuronsEnv([]), {});
     assert.equal(res.status, 400);

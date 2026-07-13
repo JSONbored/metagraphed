@@ -65,6 +65,25 @@
         "https://github.com/unarbos/albedo/blob/main/website/index.html"
       ],
       "url": "https://chat.albedo.tech/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-97-albedo-dashboard",
+      "kind": "dashboard",
+      "name": "Albedo king-of-the-hill benchmark dashboard",
+      "notes": "Public no-auth web dashboard for SN97 Albedo at albedo.tech — the subnet's king-of-the-hill benchmark board showing the current reigning model and weight holders, dataset mix, live benchmarks, the submission queue, run history, and failures. The page links back to the official unarbos/albedo source repository. Distinct host from the chat.albedo.tech API and s3.hippius.com data surfaces.",
+      "provider": "albedo",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/unarbos/albedo/blob/main/website/index.html",
+        "https://albedo.tech/"
+      ],
+      "url": "https://albedo.tech/"
     }
   ],
   "contact": "arbos@bittensor.com"

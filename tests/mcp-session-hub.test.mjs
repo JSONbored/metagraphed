@@ -357,6 +357,12 @@ test("handleStream: opens fine with no sessionId query param (already known from
 
 test("handleStream: a second concurrent stream request for the same session is rejected with 409", async () => {
   const hub = new McpSessionHub(stubState(), {});
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
   const first = await hub.fetch(
     new Request("https://mcp-session-hub.internal/stream?sessionId=session-1"),
   );
@@ -397,6 +403,12 @@ test("handleNotify: with a stream already open, delivers immediately (deliverNow
 
 test("handleStream: cancelling the stream clears streamController, allowing a new stream to open", async () => {
   const hub = new McpSessionHub(stubState(), {});
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
   const first = await hub.fetch(
     new Request("https://mcp-session-hub.internal/stream?sessionId=session-1"),
   );
@@ -413,6 +425,12 @@ test("handleStream: auto-closes after MCP_SESSION_MAX_STREAM_DURATION_MS, per th
   vi.useFakeTimers();
   try {
     const hub = new McpSessionHub(stubState(), {});
+    await hub.fetch(
+      jsonRequest("https://mcp-session-hub.internal/subscribe", {
+        sessionId: "session-1",
+        uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+      }),
+    );
     const res = await hub.fetch(
       new Request(
         "https://mcp-session-hub.internal/stream?sessionId=session-1",
@@ -490,6 +508,13 @@ test("handleTerminate: calling it twice is idempotent (second call doesn't re-no
 test("handleTerminate: calling the method directly a second time (bypassing fetch()'s own terminated-gate, as alarm() does) is still a no-op", async () => {
   const firehose = fakeChainFirehoseHubBinding();
   const hub = new McpSessionHub(stubState(), { CHAIN_FIREHOSE_HUB: firehose });
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  firehose.calls.length = 0;
   await hub.handleTerminate(
     jsonRequest("https://mcp-session-hub.internal/terminate", {
       sessionId: "session-1",
@@ -502,22 +527,65 @@ test("handleTerminate: calling the method directly a second time (bypassing fetc
     }),
   );
   assert.equal(res.status, 200);
-  assert.equal(firehose.calls.length, 0); // no subscriptions -> never called
+  assert.equal(firehose.calls.length, 1); // unchanged -- no second notify
 });
 
-test("handleTerminate: with no subscriptions, never calls ChainFirehoseHub at all", async () => {
+test("handleTerminate: with a known but unsubscribed session, never calls ChainFirehoseHub at all", async () => {
   const firehose = fakeChainFirehoseHubBinding();
   const hub = new McpSessionHub(stubState(), { CHAIN_FIREHOSE_HUB: firehose });
   await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/unsubscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
+  firehose.calls.length = 0;
+  const res = await hub.fetch(
     jsonRequest("https://mcp-session-hub.internal/terminate", {
       sessionId: "session-1",
     }),
   );
+  assert.equal(res.status, 200);
   assert.equal(firehose.calls.length, 0);
+});
+
+test("handleStream: rejects an arbitrary session id that has not subscribed", async () => {
+  const state = stubState();
+  const hub = new McpSessionHub(state, {});
+  const res = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/stream?sessionId=attacker"),
+  );
+  assert.equal(res.status, 404);
+  assert.equal(state.storage.raw.size, 0);
+  assert.equal(state.storage.lastAlarmTime, null);
+});
+
+test("handleTerminate: rejects an arbitrary session id without persisting a tombstone", async () => {
+  const state = stubState();
+  const hub = new McpSessionHub(state, {});
+  const res = await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/terminate", {
+      sessionId: "attacker",
+    }),
+  );
+  assert.equal(res.status, 404);
+  assert.equal(state.storage.raw.size, 0);
 });
 
 test("fetch: any route other than /notify 404s once the session is terminated", async () => {
   const hub = new McpSessionHub(stubState(), {});
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
   await hub.fetch(
     jsonRequest("https://mcp-session-hub.internal/terminate", {
       sessionId: "session-1",
@@ -538,6 +606,12 @@ test("fetch: any route other than /notify 404s once the session is terminated", 
 
 test("fetch: /notify still resolves (as a no-op) even for a terminated session -- a race with ChainFirehoseHub forgetting it, not an error", async () => {
   const hub = new McpSessionHub(stubState(), {});
+  await hub.fetch(
+    jsonRequest("https://mcp-session-hub.internal/subscribe", {
+      sessionId: "session-1",
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    }),
+  );
   await hub.fetch(
     jsonRequest("https://mcp-session-hub.internal/terminate", {
       sessionId: "session-1",

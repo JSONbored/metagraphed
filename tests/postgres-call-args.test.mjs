@@ -380,6 +380,17 @@ describe("decodePostgresCallArgs", () => {
       assert.deepEqual(out[0].value, [104]);
     });
 
+    test("typed scalar newtype wrappers survive for normalizePostgresValue instead of being hex-encoded", () => {
+      const out = decode([
+        { name: "fee_rate", type: "Rate", value: [0] },
+        { name: "small_count", type: "u32", value: [5] },
+        { name: "large_count", type: "u32", value: [256] },
+      ]);
+      assert.equal(out[0].value, 0);
+      assert.equal(out[1].value, 5);
+      assert.equal(out[2].value, 256);
+    });
+
     test("SubtensorModule.commit_weights' top-level commit_hash, an H256 (real, block 8602444/9)", () => {
       // A non-account, non-collection typed byte-blob field: `type` rules
       // out both AccountId32/MultiAddress (isAccountId32Type) and a

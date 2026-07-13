@@ -265,8 +265,16 @@ export class McpSessionHub {
     // has one); fall back to the persisted value for alarm()'s self-
     // termination call, which has no caller to hand it one -- see the
     // constructor's comment on why this class can't recover it any other
-    // way.
+    // way. A client-supplied id is authority only after this object already
+    // knows the session from resources/subscribe; otherwise DELETE must not
+    // create/persist a tombstone for an arbitrary Durable Object name.
     const { sessionId } = await request.json();
+    if (!this.sessionId || (sessionId && sessionId !== this.sessionId)) {
+      return new Response(JSON.stringify({ error: "session not found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    }
     const effectiveSessionId = sessionId ?? this.sessionId;
     if (!this.terminated) {
       this.terminated = true;
@@ -310,6 +318,17 @@ export class McpSessionHub {
   }
 
   async handleStream(url) {
+    const sessionId = url.searchParams.get("sessionId");
+    if (
+      !this.sessionId ||
+      (sessionId && sessionId !== this.sessionId) ||
+      !this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI)
+    ) {
+      return new Response(JSON.stringify({ error: "session not found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    }
     if (this.streamController) {
       return new Response(
         JSON.stringify({
@@ -319,11 +338,6 @@ export class McpSessionHub {
         }),
         { status: 409, headers: { "content-type": "application/json" } },
       );
-    }
-    const sessionId = url.searchParams.get("sessionId");
-    if (sessionId) {
-      this.sessionId = sessionId;
-      await this.persist();
     }
     void this.touch();
     const hub = this;

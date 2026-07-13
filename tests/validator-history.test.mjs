@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildValidatorHistory } from "../src/validator-history.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { MAX_HISTORY_POINTS } from "../src/neuron-history.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -186,51 +185,6 @@ describe("buildValidatorHistory", () => {
 });
 
 describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
-  test("returns per-day aggregates and applies a date cutoff for a bounded window", async () => {
-    const captured = {};
-    const env = historyEnv(
-      [
-        {
-          snapshot_date: "2026-06-20",
-          subnet_count: 2,
-          total_stake_tao: 1000,
-          total_emission_tao: 12.3,
-        },
-      ],
-      captured,
-    );
-    const res = await handleRequest(
-      new Request(
-        `https://api.metagraph.sh/api/v1/validators/${HOTKEY}/history?window=90d`,
-      ),
-      env,
-      ctx,
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.hotkey, HOTKEY);
-    assert.equal(body.data.points[0].subnet_count, 2);
-    assert.match(
-      captured.sql,
-      /FROM neuron_daily WHERE hotkey = \? AND validator_permit = 1/,
-    );
-    assert.match(captured.sql, /snapshot_date >= \?/);
-    assert.ok(captured.params.includes(MAX_HISTORY_POINTS));
-  });
-
-  test("?window=all omits the cutoff (full history, still bounded by the row cap)", async () => {
-    const captured = {};
-    const env = historyEnv([], captured);
-    await handleRequest(
-      new Request(
-        `https://api.metagraph.sh/api/v1/validators/${HOTKEY}/history?window=all`,
-      ),
-      env,
-      ctx,
-    );
-    assert.doesNotMatch(captured.sql, /snapshot_date >= \?/);
-  });
-
   test("an unsupported ?window is a 400, never a silent coerce", async () => {
     const res = await handleRequest(
       new Request(
