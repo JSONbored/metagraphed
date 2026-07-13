@@ -31,6 +31,7 @@ import {
 import {
   subnetEndpointsQuery,
   subnetDeregistrationsQuery,
+  subnetEventSummaryQuery,
   subnetHealthPercentilesQuery,
   subnetRegistrationsQuery,
   subnetTrajectoryQuery,
@@ -97,6 +98,16 @@ function classifyKind(k: unknown): string {
   for (const b of KIND_BUCKETS) if (b.id !== "other" && b.match(key)) return b.id;
   return "other";
 }
+
+// On-token palette for the event-summary category stack — cycled across the
+// top event categories (registration, stake, serving, …) in count order.
+const CATEGORY_COLORS = [
+  "var(--accent)",
+  "var(--ink-strong)",
+  "var(--health-ok)",
+  "var(--health-warn)",
+  "var(--border)",
+] as const;
 
 // Collapse the per-surface daily uptime history into a single subnet-wide
 // time-series: for each day, the mean uptime % and mean p50 latency across all
@@ -175,8 +186,31 @@ export function SubnetMasthead({
   const { data: pctRes } = useQuery(subnetHealthPercentilesQuery(netuid));
   const { data: regRes } = useQuery(subnetRegistrationsQuery(netuid));
   const { data: deregRes } = useQuery(subnetDeregistrationsQuery(netuid));
+  const { data: eventsRes } = useQuery(subnetEventSummaryQuery(netuid));
   const reg = regRes?.data;
   const dereg = deregRes?.data;
+
+  // Windowed on-chain event rollup for the aggregate "Activity" tile — one
+  // consolidated call in place of several per-kind queries. Top categories by
+  // event volume drive the mini-stack; days with no events degrade to a dash.
+  const eventSummary = eventsRes?.data;
+  const topCategories = [...(eventSummary?.categories ?? [])]
+    .sort((a, b) => b.event_count - a.event_count)
+    .slice(0, CATEGORY_COLORS.length);
+  const categorySegments = topCategories
+    .map((c, i) => ({
+      label: c.category,
+      value: c.event_count,
+      color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+    }))
+    .filter((s) => s.value > 0);
+  const activityHint = categorySegments.length
+    ? categorySegments
+        .slice(0, 3)
+        .map((s) => `${formatNumber(s.value)} ${s.label}`)
+        .join(" · ")
+    : "on-chain events";
+  const activityAt = eventSummary?.observed_at ?? eventsRes?.meta?.generated_at ?? generatedAt;
 
   // Subnet-wide daily uptime % + median latency, meaned across tracked surfaces.
   const trendWindowKey = uptimeRes?.data?.window ?? "90d";
@@ -436,6 +470,15 @@ export function SubnetMasthead({
           full={`Neuron-deregistration (eviction) events on this subnet over the trailing ${dereg?.window ?? "30d"} window.`}
           updatedAt={dereg?.observed_at ?? null}
           windowLabel={dereg?.window ?? "30d"}
+        />
+        <StatWithSpark
+          label="Activity"
+          value={formatNumber(eventSummary?.total_events)}
+          hint={activityHint}
+          full="Windowed on-chain event rollup for this subnet (registrations, stake, serving, transfers, etc.)"
+          updatedAt={activityAt}
+          windowLabel={eventSummary?.window ?? "7d"}
+          viz={<MiniStack segments={categorySegments} />}
         />
         <StatWithSpark
           label="Participants"
