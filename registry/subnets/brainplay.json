@@ -110,6 +110,24 @@
         "https://github.com/shiftlayer-llc/brainplay-subnet/blob/main/deploy/miner.py"
       ],
       "url": "https://raw.githubusercontent.com/shiftlayer-llc/brainplay-subnet/main/deploy/profiles/codenames.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-117-brainplay-min-compute",
+      "kind": "data-artifact",
+      "name": "BrainPlay minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification (min_compute.yml) at the root of the official SN117 BrainPlay repository shiftlayer-llc/brainplay-subnet — baseline CPU, GPU/VRAM, memory, storage, OS, and bandwidth floors for operators. Distinct from the deploy/profiles/codenames.json gameplay profile; served read-only via raw.githubusercontent from the same netuid-117 repo (the README registers the subnet with --netuid 117).",
+      "provider": "shiftlayer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/shiftlayer-llc/brainplay-subnet/blob/main/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/shiftlayer-llc/brainplay-subnet/main/min_compute.yml"
     }
   ]
 }
