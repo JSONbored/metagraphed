@@ -450,12 +450,16 @@ test("update: 200 on success, sends the new validated fields to the UPDATE", asy
   assert.ok(sqlCalls[1].values.includes("Transfer"));
 });
 
-test("update: omitting a field on PATCH keeps the existing row's value (partial-update semantics, not full-replace)", async () => {
+test("update: omitting a field on PATCH keeps the existing row's value (partial-update semantics, not full-replace), including a non-null min_amount_tao", async () => {
   mockQueue.current.push([
     row({
       owner_token: "correct-token",
       netuid: 7,
       event_kind: "Transfer",
+      // A non-null existing min_amount_tao specifically exercises the
+      // Number(existing.min_amount_tao) branch of the merge's ternary --
+      // every OTHER fixture in this file uses row()'s default (null).
+      min_amount_tao: "12.5", // Postgres numeric columns come back as strings
       channel: "email",
       destination: "a@b.com",
     }),
@@ -465,10 +469,10 @@ test("update: omitting a field on PATCH keeps the existing row's value (partial-
     req("/api/v1/alerts/triggers/1", {
       method: "PATCH",
       headers: { "x-alert-trigger-owner-token": "correct-token" },
-      // Only renaming -- netuid/event_kind/channel/destination are NOT
-      // resent, and must survive the update untouched (the exact bug the
-      // adversarial review found: a shared CREATE validator's "omitted ->
-      // unset" default would otherwise silently drop them).
+      // Only renaming -- netuid/event_kind/min_amount_tao/channel/destination
+      // are NOT resent, and must survive the update untouched (the exact bug
+      // the adversarial review found: a shared CREATE validator's
+      // "omitted -> unset" default would otherwise silently drop them).
       body: { name: "renamed" },
     }),
   );
@@ -476,6 +480,7 @@ test("update: omitting a field on PATCH keeps the existing row's value (partial-
   assert.equal(sqlCalls.length, 2);
   assert.ok(sqlCalls[1].values.includes(7));
   assert.ok(sqlCalls[1].values.includes("Transfer"));
+  assert.ok(sqlCalls[1].values.includes(12.5));
   assert.ok(sqlCalls[1].values.includes("email"));
   assert.ok(sqlCalls[1].values.includes("a@b.com"));
   assert.ok(sqlCalls[1].values.includes("renamed"));
