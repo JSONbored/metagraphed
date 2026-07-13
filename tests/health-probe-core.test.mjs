@@ -194,8 +194,10 @@ describe("isUnsafePublicUrl", () => {
   test("blocks 0100::/8 IPv6 discard-only (RFC 6666)", () => {
     for (const url of [
       "http://[100::1]/x", // 0x0100 normalized (0100::1)
+      "http://[0100::1]/x", // explicit leading zero form
       "http://[101::1]/x", // still within 0x01xx
       "http://[1ff::1]/x", // upper bound 0x01ff
+      "http://[01ff::1]/x", // explicit leading zero form
     ]) {
       assert.equal(isUnsafePublicUrl(url), true, url);
     }

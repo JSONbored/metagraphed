@@ -72,8 +72,10 @@ describe("isPublicWebhookAddress", () => {
 
   test("IPv6 discard-only (0100::/8) → false", () => {
     assert.equal(isPublicWebhookAddress("100::1"), false); // 0100::/8 normalized
+    assert.equal(isPublicWebhookAddress("0100::1"), false); // explicit leading zero form
     assert.equal(isPublicWebhookAddress("101::1"), false);
     assert.equal(isPublicWebhookAddress("1ff::1"), false);
+    assert.equal(isPublicWebhookAddress("01ff::1"), false); // explicit leading zero form
     // Control: outside 0100::/8
     assert.equal(isPublicWebhookAddress("1000::1"), true);
   });
