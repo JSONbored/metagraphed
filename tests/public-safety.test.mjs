@@ -560,3 +560,208 @@ describe("captured-fixture body scan", () => {
     }
   });
 });
+
+// scripts/, deploy/, and apps/indexer-rs/ joined targetRoots in the same PR
+// that added these tests (#5147) -- before that, a leak in any of the three
+// (a real internal box hostname + container name shipped in deploy/README.md
+// and two scripts/backfill-*-postgres.mjs files, redacted by hand in PR
+// #5064, CI never had a chance to catch it) went entirely unscanned. These
+// tests model that exact regression: a fixture placed in each of the three
+// newly-covered roots must still be scanned, not just the pattern that
+// catches it.
+describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () => {
+  const TEST_SCRIPTS_FIXTURE = path.join(
+    repoRoot,
+    "scripts",
+    "__public_safety_test__.mjs",
+  );
+  const TEST_DEPLOY_FIXTURE = path.join(
+    repoRoot,
+    "deploy",
+    "__public_safety_test__.md",
+  );
+  const TEST_INDEXER_RS_FIXTURE = path.join(
+    repoRoot,
+    "apps/indexer-rs",
+    "__public_safety_test__.rs",
+  );
+  const TEST_NODE_MODULES_DIR = path.join(repoRoot, "deploy", "node_modules");
+  const TEST_NODE_MODULES_FIXTURE = path.join(
+    TEST_NODE_MODULES_DIR,
+    "__public_safety_test__.md",
+  );
+
+  afterEach(async () => {
+    await fs.rm(TEST_SCRIPTS_FIXTURE, { force: true });
+    await fs.rm(TEST_DEPLOY_FIXTURE, { force: true });
+    await fs.rm(TEST_INDEXER_RS_FIXTURE, { force: true });
+    await fs.rm(TEST_NODE_MODULES_DIR, { recursive: true, force: true });
+  });
+
+  test("scans scripts/, deploy/, and apps/indexer-rs/ for a real secret shape", async () => {
+    // A bare AWS access key id (a hard pattern, not terminology) placed in
+    // each of the three newly-covered roots. If any root were still
+    // unwalked, this would silently pass -- exactly how the real leaks went
+    // undetected before this PR.
+    const token = "AKIA" + "IOSFODNN7EXAMPLE";
+    await fs.writeFile(TEST_SCRIPTS_FIXTURE, `${token}\n`, "utf8");
+    await fs.writeFile(TEST_DEPLOY_FIXTURE, `${token}\n`, "utf8");
+    await fs.writeFile(TEST_INDEXER_RS_FIXTURE, `${token}\n`, "utf8");
+    const output = runScanOutput();
+    for (const path_ of [
+      "scripts/__public_safety_test__.mjs",
+      "deploy/__public_safety_test__.md",
+      "apps/indexer-rs/__public_safety_test__.rs",
+    ]) {
+      assert.ok(
+        output.includes(`${path_}:1: aws access key id`),
+        `${path_} should have been scanned and flagged; got:\n${output}`,
+      );
+    }
+  });
+
+  test("flags the exact internal box hostname / container name shape from the real PR #5064 leak", async () => {
+    const lines = [
+      "ssh indexeradmin@meta-indexer-01-us-lax1",
+      "ssh archiveadmin@meta-archive-01-us-nyc1",
+      "docker exec metagraphed-indexer-postgres-1 psql -U metagraphed",
+      "docker exec metagraphed-registry-redis-1 redis-cli",
+    ];
+    await fs.writeFile(TEST_DEPLOY_FIXTURE, `${lines.join("\n")}\n`, "utf8");
+    const output = runScanOutput();
+    for (const [index] of lines.entries()) {
+      assert.ok(
+        output.includes(
+          `deploy/__public_safety_test__.md:${index + 1}: internal box or container identifier`,
+        ),
+        `line ${index + 1} should be flagged; got:\n${output}`,
+      );
+    }
+  });
+
+  test("does not flag an unrelated metagraphed-prefixed name outside the two known shapes", async () => {
+    await fs.writeFile(
+      TEST_DEPLOY_FIXTURE,
+      "See the metagraphed-ui repo for frontend work.\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes("internal box or container identifier"),
+      false,
+      `ordinary "metagraphed-" prose should not be flagged; got:\n${output}`,
+    );
+  });
+
+  test("flags a Tailscale CGNAT (100.64.0.0/10) URL as private/loopback, but not an adjacent public 100.x address", async () => {
+    const lines = [
+      "ws://100.106.70.94:9944",
+      "https://100.99.0.1/admin",
+      "https://100.63.255.255/not-cgnat",
+      "https://100.128.0.1/not-cgnat-either",
+    ];
+    await fs.writeFile(TEST_DEPLOY_FIXTURE, `${lines.join("\n")}\n`, "utf8");
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(
+        "deploy/__public_safety_test__.md:1: private or loopback URL",
+      ),
+      `CGNAT line 1 should be flagged; got:\n${output}`,
+    );
+    assert.ok(
+      output.includes(
+        "deploy/__public_safety_test__.md:2: private or loopback URL",
+      ),
+      `CGNAT line 2 should be flagged; got:\n${output}`,
+    );
+    assert.equal(
+      output.includes("deploy/__public_safety_test__.md:3:"),
+      false,
+      `100.63.x is outside the CGNAT range and must not be flagged; got:\n${output}`,
+    );
+    assert.equal(
+      output.includes("deploy/__public_safety_test__.md:4:"),
+      false,
+      `100.128.x is outside the CGNAT range and must not be flagged; got:\n${output}`,
+    );
+  });
+
+  test("flags a Tailscale MagicDNS hostname and the device-auth URL", async () => {
+    const lines = [
+      "box-one.some-tailnet.ts.net",
+      "login.tailscale.com/a/xyz123",
+    ];
+    await fs.writeFile(TEST_DEPLOY_FIXTURE, `${lines.join("\n")}\n`, "utf8");
+    const output = runScanOutput();
+    for (const [index] of lines.entries()) {
+      assert.ok(
+        output.includes(
+          `deploy/__public_safety_test__.md:${index + 1}: Tailscale device identity`,
+        ),
+        `line ${index + 1} should be flagged; got:\n${output}`,
+      );
+    }
+  });
+
+  test("does NOT broadly exempt loopback outside the two known-safe files/literals", async () => {
+    // deploy/__public_safety_test__.md is not scripts/worker-test.mjs or a
+    // deploy/wss-lb/test/*.test.mjs file (the two known, verified-safe test
+    // fixtures that get a file-level exemption below), so an ordinary loopback
+    // URL with an arbitrary port/path here must still be flagged -- proving
+    // the fix for those two files' false positives didn't become a blanket
+    // "any 127.0.0.1 is fine" relaxation, which would defeat the userinfo-
+    // smuggling bypass protection "flags local subtensor allowlist prefix
+    // bypass attempts" (above) exists to guard.
+    const lines = [
+      "http://127.0.0.1:5173/healthz",
+      "ws://localhost:9944/some/other/path",
+    ];
+    await fs.writeFile(TEST_DEPLOY_FIXTURE, `${lines.join("\n")}\n`, "utf8");
+    const output = runScanOutput();
+    for (const [index] of lines.entries()) {
+      assert.ok(
+        output.includes(
+          `deploy/__public_safety_test__.md:${index + 1}: private or loopback URL`,
+        ),
+        `line ${index + 1} should still be flagged; got:\n${output}`,
+      );
+    }
+  });
+
+  test("exempts the two known-safe local-server test files, but not an arbitrary third file", async () => {
+    // scripts/worker-test.mjs and deploy/wss-lb/test/*.test.mjs are, by
+    // inspection, entirely either (a) a local test server bootstrapped on
+    // 127.0.0.1, or (b) an explicit "these must be rejected" unsafe-URL array
+    // -- verified content, not a blanket file-type exemption. Scan the real
+    // files directly rather than a throwaway fixture, since the exemption is
+    // keyed by exact path.
+    const output = runScanOutput();
+    assert.equal(
+      output.includes("scripts/worker-test.mjs:"),
+      false,
+      `scripts/worker-test.mjs's own unsafe-URL test fixtures must not be flagged; got:\n${output}`,
+    );
+    assert.equal(
+      output.includes("deploy/wss-lb/test/"),
+      false,
+      `deploy/wss-lb/test/'s own local-server bootstrapping must not be flagged; got:\n${output}`,
+    );
+  });
+
+  test("skips node_modules-style directories under a newly-covered root", async () => {
+    await fs.mkdir(TEST_NODE_MODULES_DIR, { recursive: true });
+    const token = "AKIA" + "IOSFODNN7EXAMPLE";
+    await fs.writeFile(TEST_NODE_MODULES_FIXTURE, `${token}\n`, "utf8");
+    await fs.writeFile(TEST_DEPLOY_FIXTURE, `${token}\n`, "utf8");
+    const output = runScanOutput();
+    assert.equal(
+      output.includes("node_modules"),
+      false,
+      `a file under a node_modules-named directory must not be walked at all; got:\n${output}`,
+    );
+    assert.ok(
+      output.includes("deploy/__public_safety_test__.md:1: aws access key id"),
+      `the sibling file outside node_modules must still be scanned; got:\n${output}`,
+    );
+  });
+});
