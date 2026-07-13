@@ -55,6 +55,33 @@ test("deliverAlertMatch: webhook channel POSTs the built request and resolves tr
   assert.equal(result, true);
 });
 
+test("deliverAlertMatch: falls back to the real DoH resolver when no resolveHostnames is injected", async () => {
+  const fetchFn = vi.fn(async (url) => {
+    const target = new URL(String(url));
+    if (target.hostname === "cloudflare-dns.com") {
+      const type = target.searchParams.get("type");
+      const data =
+        type === "A" ? "93.184.216.34" : "2606:2800:220:1:248:1893:25c8:1946";
+      return new Response(JSON.stringify({ Answer: [{ data }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(null, { status: 200 });
+  });
+  const result = await deliverAlertMatch(
+    triggerRow({ channel: "webhook", destination: "https://example.com/hook" }),
+    { table: "account_events" },
+    {},
+    fetchFn,
+  );
+  assert.equal(result, true);
+  const deliveryCall = fetchFn.mock.calls.find(
+    ([url]) => String(url) === "https://example.com/hook",
+  );
+  assert.ok(deliveryCall, "the actual webhook delivery request was sent");
+});
+
 test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slow target can't stall the shared broadcast() call indefinitely", async () => {
   let receivedSignal;
   const fetchFn = vi.fn(async (_url, init) => {

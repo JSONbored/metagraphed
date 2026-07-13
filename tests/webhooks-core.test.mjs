@@ -244,14 +244,37 @@ describe("resolveWebhookHostnamesWithDoh", () => {
     assert.ok(calls.every((call) => call.init.redirect === "manual"));
   });
 
+  test("drops an Answer entry that is neither a valid IPv4 literal nor contains a colon", async () => {
+    const fetchImpl = async () =>
+      new Response(
+        JSON.stringify({
+          Answer: [{ data: "not-an-address" }, { data: "8.8.8.8" }],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+
+    const addresses = await resolveWebhookHostnamesWithDoh("example.com", {
+      fetchImpl,
+      dnsJsonEndpoint: "https://dns.test/query",
+    });
+
+    // The mock fetchImpl doesn't distinguish the A vs AAAA query, so both
+    // record-type lookups filter the same Answer array -- "8.8.8.8" survives
+    // from each, "not-an-address" from neither.
+    assert.deepEqual(addresses, ["8.8.8.8", "8.8.8.8"]);
+  });
+
   test("a thrown/timed-out lookup for one record type doesn't discard a public answer from the other", async () => {
     const fetchImpl = async (url) => {
       const type = new URL(url).searchParams.get("type");
       if (type === "AAAA") throw new Error("DoH timeout");
-      return new Response(JSON.stringify({ Answer: [{ data: "93.184.216.34" }] }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ Answer: [{ data: "93.184.216.34" }] }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
     };
 
     const addresses = await resolveWebhookHostnamesWithDoh("example.com", {
@@ -260,6 +283,21 @@ describe("resolveWebhookHostnamesWithDoh", () => {
     });
 
     assert.deepEqual(addresses, ["93.184.216.34"]);
+  });
+
+  test("a malformed DoH response body (no Answer array) yields no addresses, not a throw", async () => {
+    const fetchImpl = async () =>
+      new Response(JSON.stringify({ Comment: "no records" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    const addresses = await resolveWebhookHostnamesWithDoh("example.com", {
+      fetchImpl,
+      dnsJsonEndpoint: "https://dns.test/query",
+    });
+
+    assert.deepEqual(addresses, []);
   });
 
   test("both record types throwing resolves to an empty list instead of rejecting", async () => {
