@@ -8868,6 +8868,37 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
+  test("handleAccountPositionHistory: HEAD uses the Postgres GET representation", async () => {
+    const { env, captures } = dbWith({});
+    let forwardedMethod;
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async (request) => {
+        forwardedMethod = request.method;
+        return Response.json({
+          schema_version: 1,
+          marker: "pg",
+          points: [{ captured_at: "2026-07-13T00:00:00.000Z" }],
+        });
+      },
+    };
+    const res = await handleAccountPositionHistory(
+      new Request(
+        `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/${NETUID}/history`,
+        { method: "HEAD" },
+      ),
+      env,
+      SS58,
+      NETUID,
+      url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), "");
+    assert.equal(forwardedMethod, "GET");
+    assert.notEqual(res.headers.get("etag"), null);
+    assert.deepEqual(captures.sql, []);
+  });
+
   // No D1 fallback here (unlike the ~40 branches #4909 tracks separately):
   // D1's own account_position_daily rollup has been permanently broken since
   // #4908 dropped D1's `neurons` table, so a Postgres failure degrades to the
