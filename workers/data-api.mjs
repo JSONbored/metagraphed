@@ -4295,6 +4295,7 @@ export default {
           );
           const slaRows = await sql`
           SELECT MAX(surface_id) AS surface_id,
+                 COALESCE(surface_key, surface_id) AS surface_key,
                  COUNT(*) AS total,
                  SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}

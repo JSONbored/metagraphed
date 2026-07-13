@@ -4992,11 +4992,18 @@ test("GET /api/v1/subnets/:netuid/health/percentiles on a cold store returns sur
 test("GET /api/v1/subnets/:netuid/health/incidents: SLA rollup + gap-island incidents", async () => {
   mockQueue.current = [
     [],
-    [{ surface_id: "sn-7-api", total: 100, ok_count: 92 }],
     [
       {
         surface_id: "sn-7-api",
-        surface_key: "sn-7-api",
+        surface_key: "stable-sn-7-api",
+        total: 100,
+        ok_count: 92,
+      },
+    ],
+    [
+      {
+        surface_id: "sn-7-api",
+        surface_key: "stable-sn-7-api",
         started_at: "1780000000000",
         ended_at: "1780000600000",
         failed_samples: 3,
