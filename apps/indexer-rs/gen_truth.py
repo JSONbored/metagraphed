@@ -4,10 +4,9 @@ o stream-events.decode_head) on the given blocks and emits canonical JSON per bl
 so the Rust port can be diffed against it byte-for-byte (semantics)."""
 import importlib.util, os, json, sys
 
-SCRIPTS = os.environ.get(
-    "SCRIPTS_DIR",
-    "/Users/shadowbook/Documents/metagraphed/.claude/worktrees/hungry-pascal-8aae8f/scripts",
-)
+SCRIPTS = os.environ.get("SCRIPTS_DIR")
+if not SCRIPTS:
+    sys.exit("SCRIPTS_DIR must be set to the directory containing index-chain.py")
 
 
 def load(name, fn):

@@ -54,8 +54,8 @@ export function IncidentStrip() {
   if (!onOperationalRoute || active.length === 0) return null;
 
   const top = active[0]!;
-  const more = active.length - 1;
   const isDown = (top.state ?? "").toLowerCase() === "down";
+  const severity = isDown ? "Incident" : "Degraded";
 
   return (
     <div
@@ -67,44 +67,40 @@ export function IncidentStrip() {
           : "bg-health-warn/10 border-health-warn/30 text-ink-strong",
       )}
     >
-      <div className="max-w-shell-max mx-auto px-4 md:px-8 py-1.5 flex items-center gap-3">
+      <div className="max-w-shell-max mx-auto px-4 md:px-8 py-1.5 flex items-center gap-2.5">
         <AlertTriangle
           className={classNames(
             "size-3.5 shrink-0",
             isDown ? "text-health-down" : "text-health-warn",
           )}
         />
-        <span className="font-mono text-[10px] uppercase tracking-widest shrink-0">
-          {isDown ? "Incident" : "Degraded"}
-        </span>
-        <span className="min-w-0 flex-1 truncate">
-          {top.message ?? `Endpoint ${top.endpoint_id ?? top.id} reported ${top.state ?? "issue"}.`}
+        {/* #3951 redesign: lead with the AFFECTED entity + severity as one token,
+            so the banner always reads as that subnet's status — never the current
+            page's — and the old standalone label + trailing subnet link collapse
+            into it. A net simplification (fewer elements), not another chip. */}
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest">
           {top.netuid != null ? (
-            <>
-              {" · "}
-              <Link
-                to="/subnets/$netuid"
-                params={{ netuid: top.netuid }}
-                className="underline hover:text-accent"
-              >
-                SN{top.netuid}
-              </Link>
-            </>
-          ) : null}
+            <Link
+              to="/subnets/$netuid"
+              params={{ netuid: top.netuid }}
+              className="text-ink-strong underline decoration-dotted underline-offset-2 hover:text-accent"
+            >
+              SN{top.netuid}
+            </Link>
+          ) : (
+            <span className="text-ink-strong">Network</span>
+          )}{" "}
+          <span className={isDown ? "text-health-down" : "text-health-warn"}>{severity}</span>
         </span>
-        {more > 0 ? (
-          <Link
-            to="/health"
-            className="hidden sm:inline-flex shrink-0 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
-          >
-            +{more} more
-          </Link>
-        ) : null}
+        <span className="min-w-0 flex-1 truncate text-ink-muted">
+          {top.message ?? `Endpoint ${top.endpoint_id ?? top.id} reported ${top.state ?? "issue"}.`}
+        </span>
         <Link
           to="/health"
           className="shrink-0 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest hover:text-accent"
         >
-          View <ArrowRight className="size-3" />
+          {active.length > 1 ? `All ${active.length}` : "View"}
+          <ArrowRight className="size-3" />
         </Link>
         <button
           type="button"

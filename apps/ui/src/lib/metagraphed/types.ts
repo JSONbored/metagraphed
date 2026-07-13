@@ -1823,6 +1823,37 @@ export interface SubnetDeregistrations {
   deregistrations_per_hotkey: number | null;
 }
 
+/** One event-category aggregate in a subnet's windowed event-summary rollup. */
+export interface SubnetEventCategorySummary {
+  category: string;
+  event_count: number;
+  kind_count: number;
+  amount_tao: number;
+  alpha_amount: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+}
+
+/**
+ * Windowed on-chain event-summary rollup for one subnet, from
+ * /api/v1/subnets/{netuid}/event-summary (#3486) — the dashboard-friendly
+ * companion to the raw per-event feed the Activity tab renders. Zeroed/empty
+ * when the account_events tier is cold, never an error.
+ */
+export interface SubnetEventSummary {
+  schema_version: number;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  total_events: number;
+  kind_count: number;
+  category_count: number;
+  limit: number;
+  categories: SubnetEventCategorySummary[];
+}
+
 /**
  * Validator-set & registration turnover scorecard for one subnet, from
  * /api/v1/subnets/{netuid}/turnover — diffs the window's start/end

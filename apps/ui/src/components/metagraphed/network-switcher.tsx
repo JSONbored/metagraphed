@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, ChevronDown, Globe2, Pencil, TerminalSquare } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@jsonbored/ui-kit";
+import { Popover, PopoverTrigger } from "@jsonbored/ui-kit";
+import { ClampedPopoverContent } from "./clamped-popover-content";
 import { useApiBase, useNetwork } from "@/hooks/use-api-base";
 import { CHAIN_NETWORKS, LOCAL_DEV, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
@@ -81,7 +82,7 @@ export function NetworkSwitcher() {
           <ChevronDown className="size-3 text-ink-muted" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-3 space-y-3">
+      <ClampedPopoverContent align="end" className="w-80 p-3 space-y-3">
         <div>
           <div className="mg-label mb-1.5">Network</div>
           <ul className="space-y-1">
@@ -218,7 +219,7 @@ export function NetworkSwitcher() {
         <p className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
           Unofficial registry · public read-only data
         </p>
-      </PopoverContent>
+      </ClampedPopoverContent>
     </Popover>
   );
 }
