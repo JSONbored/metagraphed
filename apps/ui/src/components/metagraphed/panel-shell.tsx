@@ -69,32 +69,34 @@ export function PanelShell({
   };
 
   const headerRight = (
-    <div className="flex items-center gap-2 min-w-0">
-      {isUsableTimestamp(meta?.generatedAt) ? (
-        <span
-          className={
-            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] " +
-            (stale
-              ? "border-health-warn/40 bg-health-warn/10 text-health-warn"
-              : "border-border bg-paper/60 text-ink-muted")
-          }
-          title={meta?.generatedAt}
-        >
-          {stale ? "stale · " : "updated "}
-          <TimeAgo at={meta!.generatedAt} />
-        </span>
-      ) : null}
-      {refreshQueryKeys?.length ? (
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          aria-label="Refresh panel"
-          className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:cursor-progress disabled:opacity-60"
-        >
-          <RefreshCw className={classNames("size-3", refreshing && "animate-spin")} />
-        </button>
-      ) : null}
+    <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2 min-w-0">
+      <div className="flex items-center gap-2">
+        {isUsableTimestamp(meta?.generatedAt) ? (
+          <span
+            className={
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] " +
+              (stale
+                ? "border-health-warn/40 bg-health-warn/10 text-health-warn"
+                : "border-border bg-paper/60 text-ink-muted")
+            }
+            title={meta?.generatedAt}
+          >
+            {stale ? "stale · " : "updated "}
+            <TimeAgo at={meta!.generatedAt} />
+          </span>
+        ) : null}
+        {refreshQueryKeys?.length ? (
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-label="Refresh panel"
+            className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:cursor-progress disabled:opacity-60"
+          >
+            <RefreshCw className={classNames("size-3", refreshing && "animate-spin")} />
+          </button>
+        ) : null}
+      </div>
       {right}
     </div>
   );
