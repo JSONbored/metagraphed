@@ -68,6 +68,24 @@
         "https://gen.404.xyz/api/health"
       ],
       "url": "https://gen.404.xyz/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-17-404-gen-dashboard",
+      "kind": "dashboard",
+      "name": "404—GEN Grafana metrics dashboard",
+      "notes": "Public no-auth Grafana dashboard for SN17 404—GEN at dashboard.404.xyz/d/main/404-gen/ (anonymous viewing enabled; /api/health returns {\"database\":\"ok\"}). Visualizes live subnet generation and validator metrics. Linked as the \"404-GEN Dashboard\" from the official 404-Repo/three-gen-subnet README. Distinct host from the gen.404.xyz gateway portal and the www.404.xyz website.",
+      "provider": "404-gen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md"
+      ],
+      "url": "https://dashboard.404.xyz/d/main/404-gen/"
     }
   ],
   "website_url": "https://www.404.xyz/"
