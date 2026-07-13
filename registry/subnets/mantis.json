@@ -107,6 +107,25 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Public no-auth downloadable SQLite datalog of the SN123 MANTIS validator's full historical multi-asset signal/price time series — the DATALOG_ARCHIVE_URL declared in the official repo's config.py, distinct from and complementary to the latest_prices.json snapshot (this is the complete historical archive, served as a SQLite database file). Verified as a live SQLite artifact (magic bytes 'SQLite format 3'). Freshness/size are probe-derived and not asserted here."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-123-taomarketcap-candle-chart",
+      "kind": "data-artifact",
+      "name": "SN123 TaoMarketCap OHLCV candle-chart dataset",
+      "notes": "Public no-auth GET /public/v1/subnets/123/candle-chart on api.taomarketcap.com returning a machine-readable JSON time-series of hourly OHLCV candles for SN123 MANTIS's alpha token: each record carries period_name, timestamp, block_number, open/high/low/close, volume, start_volume, and tao_price_usd/eur, every record scoped to subnet_id 123. A standalone historical price/volume dataset, distinct from MANTIS's own model-input data artifacts (latest_prices.json / datalog.db). This indexed feed is the concrete public JSON market-data endpoint for netuid 123, documented in the TaoMarketCap developer API (its public-oas3.json lists this GET with an optional API key, i.e. no-auth access is supported).",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://backprop.finance/dtao/subnets/123-mantis"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/123/candle-chart"
     }
   ]
 }
