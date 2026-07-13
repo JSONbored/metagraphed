@@ -2529,7 +2529,7 @@ async function handleAlertTriggersMatchedWriteback(request, env) {
     const updated = await sql.unsafe(
       `UPDATE chain_alert_triggers
        SET match_count = match_count + 1,
-           last_matched_at = $1
+           last_matched_at = $1::bigint
        WHERE id IN (${placeholders})
        RETURNING id`,
       [now, ...ids],

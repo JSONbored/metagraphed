@@ -378,9 +378,8 @@ Part 3's own history:
   `mapBounded` (exported from `src/webhooks.mjs`, `ALERT_DELIVERY_CONCURRENCY`
   = 8) instead of an unbounded `Promise.all`.
 
-Findings investigated and deliberately deferred, each filed as its own
-tracked issue rather than silently dropped or rushed in under time
-pressure:
+One finding remains deliberately deferred as its own tracked issue rather
+than rushed in under time pressure:
 
 - [#5021](https://github.com/JSONbored/metagraphed/issues/5021) -- neither
   this alerter's webhook/Discord delivery nor the pre-existing
@@ -389,18 +388,21 @@ pressure:
   defense turns out to be Node-only (`scripts/dispatch-webhooks.mjs`'s cron
   script) and was never reachable from the live Worker in the first place.
   A real fix needs DNS-over-HTTPS via `fetch()`, shared across both paths.
-- [#5022](https://github.com/JSONbored/metagraphed/issues/5022) --
-  `match_count`/`last_matched_at` are schema columns and appear in the
-  owner-facing response shape, but nothing writes them; needs a new
-  internal write-back route.
-- [#5023](https://github.com/JSONbored/metagraphed/issues/5023) -- the
-  burst rate-limit timestamp is set before delivery is attempted, so a
-  failed/timed-out delivery still consumes the window as if it had
-  succeeded.
-- [#5024](https://github.com/JSONbored/metagraphed/issues/5024) -- low
-  severity, tracked for visibility: `lastDeliveredAt`'s in-memory Map is
-  never explicitly pruned (bounded in practice by how often the singleton
-  DO reconstructs).
+
+Three more findings from the same review -- [#5022](https://github.com/JSONbored/metagraphed/issues/5022)
+(`match_count`/`last_matched_at` were schema columns nothing wrote to),
+[#5023](https://github.com/JSONbored/metagraphed/issues/5023) (the burst
+rate-limit timestamp was set before delivery was even attempted, so a
+failed delivery silently consumed the window as if it had succeeded), and
+[#5024](https://github.com/JSONbored/metagraphed/issues/5024) (the
+`lastDeliveredAt` Map was never pruned) -- have since shipped. `evaluate()`
+now writes match counts back to Postgres concurrently with the delivery
+fan-out (bounded by its own `ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS`,
+best-effort, never adding to the fan-out's own latency), rolls the
+rate-limit timestamp back on a failed/non-2xx/timed-out delivery so the
+very next match retries immediately instead of waiting out the window, and
+prunes `lastDeliveredAt` of any trigger id no longer active at the end of
+every successful `refreshTriggers()`.
 
 ## Verifying the trigger locally
 
