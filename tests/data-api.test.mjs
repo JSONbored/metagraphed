@@ -2834,6 +2834,26 @@ test("backfill-neuron-daily accepts a null stake_tao (backfill-neuron-history.py
   expect(body.neuron_daily_written).toBe(1);
 });
 
+test("backfill-neuron-daily ignores client snapshot_date and derives it from captured_at", async () => {
+  const capturedAt = Date.parse("2026-05-29T12:34:56.000Z");
+  const res = await postNeuronDailyBackfill(
+    [
+      neuronSyncRow({
+        captured_at: capturedAt,
+        snapshot_date: "1999-01-01",
+      }),
+    ],
+    { secret: NEURON_DAILY_BACKFILL_SECRET },
+  );
+  expect(res.status).toBe(200);
+  expect((await res.json()).neuron_daily_written).toBe(1);
+  const neuronDailyInsert = sqlCalls.find((call) =>
+    /INSERT INTO neuron_daily\b/.test(call.text),
+  );
+  expect(neuronDailyInsert.values).toContain("2026-05-29");
+  expect(neuronDailyInsert.values).not.toContain("1999-01-01");
+});
+
 test("backfill-neuron-daily writes neuron_daily + account_position_daily but NEVER the latest-only neurons table", async () => {
   const res = await postNeuronDailyBackfill([neuronSyncRow()], {
     secret: NEURON_DAILY_BACKFILL_SECRET,

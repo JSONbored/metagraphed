@@ -574,6 +574,12 @@ function coerceNeuronSyncRow(row) {
   return out;
 }
 
+function stripClientSnapshotDate(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return row;
+  const { snapshot_date: _snapshotDate, ...rest } = row;
+  return rest;
+}
+
 async function handleNeuronsSync(request, env) {
   if (!env.NEURONS_SYNC_SECRET) {
     return writeJson(
@@ -904,11 +910,12 @@ async function handleNeuronDailyBackfill(request, env) {
       413,
     );
   }
-  if (!incoming.length || !incoming.every(validNeuronSyncRow)) {
+  const validatedIncoming = incoming.map(stripClientSnapshotDate);
+  if (!validatedIncoming.length || !validatedIncoming.every(validNeuronSyncRow)) {
     return writeJson({ error: "rows must match the neuron row shape" }, 400);
   }
 
-  const rows = incoming.map(coerceNeuronSyncRow);
+  const rows = validatedIncoming.map(coerceNeuronSyncRow);
   const dailyRows = rows.map((row) => ({
     ...row,
     snapshot_date: neuronSyncSnapshotDate(row.captured_at),
