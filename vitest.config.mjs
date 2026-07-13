@@ -19,36 +19,50 @@ export default defineConfig({
       "apps/ui/**",
       "packages/ui-kit/**",
     ],
-    // Run test FILES sequentially (each still in its own isolated fork). The
-    // artifact-build tests (tests/artifacts.test.mjs) execFileSync the real
-    // scripts/build-artifacts.mjs, which mutates the shared on-disk artifact
-    // trees in place: it rm's + repopulates the R2 staging dir
-    // (dist/metagraph-r2/metagraph, where R2-only artifacts such as
-    // registry-summary.json live with NO committed public/metagraph fallback)
-    // and writeFileSyncs forged JSON into committed public/metagraph files
-    // before restoring them. Reader tests that serve those artifacts via
-    // createLocalArtifactEnv (subnet-overview, mcp-server, api-coverage, …)
-    // would otherwise race that rebuild and intermittently 404 (e.g.
-    // GET /api/v1/registry/summary -> 404 instead of 200). The build output
-    // root resolves from the script's own location, so it can't be redirected
-    // to a temp dir without a full input+output tree copy — serializing files
-    // is the clean, low-risk fix. Per-file fork isolation is preserved; only
-    // filesystem-race concurrency is removed.
+    // Run test FILES sequentially (each still in its own isolated fork). Three
+    // files mutate shared on-disk state outside their own process and must never
+    // run alongside a concurrent reader/scanner of that same state:
+    //   - tests/artifacts.test.mjs and tests/discovery-artifacts.test.mjs
+    //     execFileSync the real scripts/build-artifacts.mjs, which mutates the
+    //     shared on-disk artifact trees in place: it rm's + repopulates the R2
+    //     staging dir (dist/metagraph-r2/metagraph, where R2-only artifacts such
+    //     as registry-summary.json live with NO committed public/metagraph
+    //     fallback) and writeFileSyncs forged JSON into committed
+    //     public/metagraph files before restoring them. Reader tests that serve
+    //     those artifacts via createLocalArtifactEnv (subnet-overview,
+    //     mcp-server, api-coverage, …) would otherwise race that rebuild and
+    //     intermittently 404 (e.g. GET /api/v1/registry/summary -> 404 instead
+    //     of 200). The build output root resolves from the script's own
+    //     location, so it can't be redirected to a temp dir without a full
+    //     input+output tree copy.
+    //   - tests/public-safety.test.mjs writes a transient fixture into
+    //     dist/metagraph-r2/metagraph/fixtures/ (to exercise
+    //     scan-public-safety.mjs's mirroredFixturePatterns exemption) and
+    //     deletes it in afterEach. scripts/validate-schemas.mjs treats that same
+    //     directory as a templated artifact location and schema-validates every
+    //     .json file in it, so a concurrently-running consumer of
+    //     validate-schemas.mjs (e.g. tests/validate-error-messages.test.mjs) can
+    //     read the fixture mid-write or after cleanup and throw ENOENT.
+    // Serializing these files is the clean, low-risk fix. Per-file fork
+    // isolation is preserved; only filesystem-race concurrency is removed.
     //
     // This serial default keeps a plain `npm test` / `npm run test:coverage`
-    // (which runs the FULL suite, including the two filesystem-mutating writers)
-    // race-free. CI instead runs the suite in two non-overlapping passes that
-    // recover the parallelism: `test:ci` runs everything EXCEPT the two writers
-    // with `--fileParallelism` (the 27 createLocalArtifactEnv readers only READ,
-    // so they parallelize safely once no writer runs alongside them) and a raised
-    // `--testTimeout` (the subprocess-spawning tests — public-safety's full-repo
-    // scan, script-utils, r2-upload — are CPU-starved under parallel load and
-    // would otherwise hit the 5s default); `test:ci:artifacts` then runs the two
-    // writers serially. The passes are sequential, so writers never overlap
-    // readers. Coverage is collected only in `test:ci` (the writers drive their
-    // work via execFileSync child processes, contributing zero in-process
-    // coverage — verified Δ=0.00 across all metrics), keeping CI to a single
-    // Codecov upload.
+    // (which runs the FULL suite, including the three filesystem-mutating
+    // writers) race-free. CI instead runs the suite in two non-overlapping
+    // passes that recover the parallelism: `test:ci` runs everything EXCEPT the
+    // three writers with `--fileParallelism` (the createLocalArtifactEnv readers
+    // only READ, so they parallelize safely once no writer runs alongside them)
+    // and a raised `--testTimeout` (the subprocess-spawning tests — public-safety's
+    // full-repo scan, script-utils, r2-upload — are CPU-starved under parallel
+    // load and would otherwise hit the 5s default); `test:ci:artifacts` then runs
+    // the three writers serially. The passes are sequential, so writers never
+    // overlap readers. Coverage is collected only in `test:ci` (all three
+    // writers drive their assertions primarily via execFileSync child
+    // processes — build-artifacts.mjs for the first two, scan-public-safety.mjs
+    // for the third — contributing zero in-process coverage there; none of the
+    // three scripts are in the `include` globs below, so moving their tests to
+    // the serial pass has no coverage effect either way — verified Δ=0.00
+    // across all metrics), keeping CI to a single Codecov upload.
     fileParallelism: false,
     reporters: junitPath ? ["default", "junit"] : ["default"],
     ...(junitPath ? { outputFile: { junit: junitPath } } : {}),
