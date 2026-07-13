@@ -335,6 +335,73 @@ the evaluation response (an owner asking "did this fire?" gets the true
 answer) but only the first delivers -- the rest are reported as
 `rate_limited`, not silently dropped from the response shape.
 
+**Part 4 (live): adversarial-review remediation.** After Part 3 merged, a
+dedicated adversarial-review pass (independent security/correctness/
+resource-exhaustion lenses, each candidate finding re-verified by two
+skeptical agents before being treated as real) surfaced six confirmed
+issues, all fixed on top of the merged code rather than folded silently into
+Part 3's own history:
+
+- **PATCH-as-full-replace on `chain_alert_triggers`** (the most severe
+  finding): `handleAlertTriggerUpdate` originally validated a PATCH body
+  directly against the CREATE-shared validator, so any condition field the
+  caller didn't resend was silently defaulted to unset -- unintentionally
+  _widening_ a trigger's match scope on every partial edit (e.g. renaming a
+  netuid-scoped trigger without resending `netuid` dropped the netuid filter
+  entirely). Fixed by merging the incoming body onto the existing row before
+  validating (`omitNullValues` + merge in `workers/data-api.mjs`). An
+  explicit `null` in a PATCH body is a no-op (keeps the existing value), not
+  a clear -- `validateAlertTriggerInput` rejects a real `null` for most
+  fields, so there's currently no supported way to explicitly clear an
+  optional condition field via PATCH short of delete + recreate.
+- **Existence oracle via differentiated 403/404**: GET/PATCH/DELETE all
+  returned 403 for "wrong owner token" vs 404 for "no such trigger",
+  letting an unauthenticated caller enumerate trigger existence over
+  sequential ids with zero credentials. `requireAlertTriggerOwner` now
+  returns the same 404 either way.
+- **Unbounded trigger creation**: `ALERT_TRIGGER_CREATE_TOKEN` is a shared
+  anti-abuse secret, not a per-user credential -- it didn't bound request
+  _volume_ from a legitimate holder, and every created row is a permanent
+  per-event cost in `AlerterHub.matchingTriggers()`'s scan. A
+  Workers-native rate limiter (`ALERT_TRIGGER_CREATE_RATE_LIMITER`, 10/min
+  per IP, `wrangler.data.jsonc`) now gates creation; skipped when unbound
+  (local dev/CI).
+- **Two missing timeouts**: `AlerterHub.refreshTriggers()`'s Hyperdrive
+  fetch (`ALERT_TRIGGER_REFRESH_TIMEOUT_MS`, 4s) and
+  `ChainFirehoseHub.broadcast()`'s own ping to the `AlerterHub` singleton
+  (`ALERTER_HUB_EVALUATE_TIMEOUT_MS`, 15s, `workers/chain-firehose-hub.mjs`)
+  both had no independent ceiling -- a slow Postgres query or a slow
+  delivery fan-out could stall `broadcast()` itself, delaying every OTHER
+  firehose consumer's (SSE/WS/GraphQL/MCP) response, not just the alerter's.
+- **Unbounded delivery-fan-out concurrency**: a single chain event can match
+  many distinct triggers; `evaluate()`'s delivery loop now runs through
+  `mapBounded` (exported from `src/webhooks.mjs`, `ALERT_DELIVERY_CONCURRENCY`
+  = 8) instead of an unbounded `Promise.all`.
+
+Findings investigated and deliberately deferred, each filed as its own
+tracked issue rather than silently dropped or rushed in under time
+pressure:
+
+- [#5021](https://github.com/JSONbored/metagraphed/issues/5021) -- neither
+  this alerter's webhook/Discord delivery nor the pre-existing
+  webhook-subscription delivery (`src/webhooks.mjs`) actually re-resolves
+  DNS at request time; the codebase's own `resolveHostnames`-based SSRF
+  defense turns out to be Node-only (`scripts/dispatch-webhooks.mjs`'s cron
+  script) and was never reachable from the live Worker in the first place.
+  A real fix needs DNS-over-HTTPS via `fetch()`, shared across both paths.
+- [#5022](https://github.com/JSONbored/metagraphed/issues/5022) --
+  `match_count`/`last_matched_at` are schema columns and appear in the
+  owner-facing response shape, but nothing writes them; needs a new
+  internal write-back route.
+- [#5023](https://github.com/JSONbored/metagraphed/issues/5023) -- the
+  burst rate-limit timestamp is set before delivery is attempted, so a
+  failed/timed-out delivery still consumes the window as if it had
+  succeeded.
+- [#5024](https://github.com/JSONbored/metagraphed/issues/5024) -- low
+  severity, tracked for visibility: `lastDeliveredAt`'s in-memory Map is
+  never explicitly pruned (bounded in practice by how often the singleton
+  DO reconstructs).
+
 ## Verifying the trigger locally
 
 ```sh
