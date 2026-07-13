@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @source "../src";
+@source "../../../packages/ui-kit/src";
 @import "tw-animate-css";
 
 @import "@jsonbored/ui-kit/styles.css";
