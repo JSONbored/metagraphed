@@ -1,7 +1,14 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Waves, Activity } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Waves,
+  Activity,
+  Filter,
+} from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
   EmptyState,
@@ -44,7 +51,6 @@ import { TurnoverLoader } from "@/components/metagraphed/turnover-panel";
 import { NeuronDetailCard } from "@/components/metagraphed/neuron-detail-card";
 import { NeuronHistoryChart } from "@/components/metagraphed/neuron-history-chart";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
-import { SelectFilter } from "@/components/metagraphed/table-controls";
 import {
   subnetProfileQuery,
   subnetSurfacesQuery,
@@ -682,8 +688,7 @@ function ActivityPanel({ netuid }: { netuid: number }) {
       title="On-chain activity"
       info="First-party chain events for this subnet, newest first. Registrations, stake, weights, axon, delegation, lifecycle, and transfers decoded directly from finney System.Events for recent finalized blocks (the rolling first-party event window) — not Taostats."
       right={
-        <SelectFilter
-          label="Kind"
+        <EventKindFilterChip
           value={ev_kind ?? ""}
           onChange={(v) =>
             navigate({
@@ -692,8 +697,6 @@ function ActivityPanel({ netuid }: { netuid: number }) {
               replace: true,
             })
           }
-          options={EVENT_KIND_OPTIONS}
-          className="max-w-[130px]"
         />
       }
     >
@@ -714,6 +717,39 @@ const EVENT_KIND_OPTIONS = Object.entries(EVENT_KIND_LABELS).map(([value, label]
   value,
   label,
 }));
+
+// Pill-shaped filter chip matching the EndpointKindTabs / window-toggle idiom
+// used elsewhere for compact filters, rather than the generic bordered-box
+// label+select pattern — a native <select> still drives it for a11y and
+// mobile-native option picking, the Filter icon carries the "Kind" label so
+// the chip stays narrow enough that it never pushes the section title onto
+// multiple lines.
+function EventKindFilterChip({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-ink-muted hover:border-ink/30 transition-colors">
+      <Filter className="size-3 shrink-0" aria-hidden />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Filter by event kind"
+        className="min-w-0 max-w-[85px] truncate bg-transparent font-mono text-[11px] uppercase tracking-widest text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+      >
+        <option value="">All</option>
+        {EVENT_KIND_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 const EVENT_KIND_CATEGORY_DOT: Record<EventKindCategory, string> = {
   registration: "var(--chart-1)",
