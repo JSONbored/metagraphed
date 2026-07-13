@@ -45,6 +45,24 @@
         "https://github.com/creativebuilds/sn77/blob/master/README.md"
       ],
       "url": "https://77.creativebuilds.io/weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-holders",
+      "kind": "data-artifact",
+      "name": "SN77 Liquidity token-holder registry",
+      "notes": "Public no-auth GET /allHolders on the official SN77 server 77.creativebuilds.io — the subnet's alpha token-holder registry (observed 1527 holders; per-holder address, alphaBalanceRaw, taoBalanceRaw, subnetRank). These are the holders whose votes drive the liquidity-pool weighting that validators push to subnet 77. Distinct from the already-listed /pools and /weights endpoints; the creativebuilds/sn77 README names 77.creativebuilds.io as the subnet's central server.",
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/README.md"
+      ],
+      "url": "https://77.creativebuilds.io/allHolders"
     }
   ],
   "source_repo": "https://github.com/creativebuilds/sn77",
