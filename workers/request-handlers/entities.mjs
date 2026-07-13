@@ -3655,7 +3655,11 @@ export async function handleBlocksSummary(request, env, url) {
 // neuron detail route — NEVER 404/throw).
 export async function handleBlock(request, env, ref) {
   const pg = await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE");
-  let data = pg;
+  // A Postgres block:null is a semantic miss, not authoritative data: during
+  // staged backfills Postgres can have known coverage gaps that D1 still has.
+  // Fall through to D1 so a successful empty DATA_API response cannot mask
+  // retained block rows in the fallback store.
+  let data = pg?.block === null ? null : pg;
   if (!data) {
     const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
     // A non-hash ref must be a strict decimal block_number; anything else (0x-short,

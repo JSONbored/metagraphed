@@ -6193,6 +6193,33 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.equal(body.data.block.block_number, BLOCK_NUM);
   });
 
+  test("handleBlock: flag=postgres falls back to D1 on block:null miss", async () => {
+    const { env, captures } = dbWith({ blockDetail: blockRow() });
+    env.METAGRAPH_BLOCKS_SOURCE = "postgres";
+    env.DATA_API = dataApi(
+      Response.json({
+        schema_version: 1,
+        ref: String(BLOCK_NUM),
+        block: null,
+        prev_block_number: null,
+        next_block_number: null,
+      }),
+    );
+    const body = await json(
+      await handleBlock(
+        req(`/api/v1/blocks/${BLOCK_NUM}`),
+        env,
+        String(BLOCK_NUM),
+      ),
+    );
+    assert.equal(body.data.block.block_number, BLOCK_NUM);
+    assert.ok(
+      captures.sql.some((sql) =>
+        /FROM blocks WHERE block_number = \?/.test(sql),
+      ),
+    );
+  });
+
   test("handleExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
     env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
