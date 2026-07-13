@@ -1121,13 +1121,18 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     assert.equal(second.body.data.endpoints.items[0].id, "e2");
   });
 
-  test("health lifts the live rollup and exposes per-subnet summaries", async () => {
+  test("health flattens the live global rollup counts and exposes per-subnet summaries", async () => {
     const env = fixtureEnv(
       {},
       {
         kv: {
           [KV_HEALTH_CURRENT]: {
-            summary: { status: "degraded", ok_count: 40, surface_count: 50 },
+            // The production shape the prober persists: nested status_counts,
+            // not flat ok_count/... (see health-prober.mjs / liveFromD1Rows).
+            summary: {
+              surface_count: 50,
+              status_counts: { ok: 40, degraded: 5, failed: 3, unknown: 2 },
+            },
             subnets: [
               { netuid: 1, status: "ok" },
               { netuid: 2, status: "failed" },
@@ -1137,12 +1142,15 @@ describe("graphql — surfaces / endpoints / health roots", () => {
       },
     );
     const { status, body } = await gql(
-      "{ health { status ok_count surface_count health_source subnets { netuid status } } }",
+      "{ health { surface_count ok_count degraded_count failed_count unknown_count health_source subnets { netuid status } } }",
       env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.health.status, "degraded");
+    assert.equal(body.data.health.surface_count, 50);
     assert.equal(body.data.health.ok_count, 40);
+    assert.equal(body.data.health.degraded_count, 5);
+    assert.equal(body.data.health.failed_count, 3);
+    assert.equal(body.data.health.unknown_count, 2);
     assert.equal(body.data.health.health_source, "live-cron-prober");
     assert.equal(body.data.health.subnets.length, 2);
     assert.equal(body.data.health.subnets[1].status, "failed");
