@@ -350,7 +350,10 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     showResults && active < flat.length ? `nav-omnibox-option-${active}` : undefined;
 
   return (
-    <div ref={wrapRef} className="relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0">
+    <div
+      ref={wrapRef}
+      className="hidden md:block relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
+    >
       {/* Input */}
       <div
         className={classNames(
