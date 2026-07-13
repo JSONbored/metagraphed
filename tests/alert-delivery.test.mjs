@@ -145,11 +145,22 @@ test("buildDiscordDeliveryRequest: posts {content} to the trigger's own webhook 
 
 test("buildDiscordDeliveryRequest: truncates content to Discord's 2000-char cap", () => {
   const request = buildDiscordDeliveryRequest(
-    trigger({ name: "x".repeat(3000) }),
+    trigger({
+      name: "x".repeat(3000),
+      destination: "https://discord.com/api/webhooks/1/token",
+    }),
     {},
   );
   const body = JSON.parse(request.init.body);
   assert.ok(body.content.length <= 2000);
+});
+
+test("buildDiscordDeliveryRequest: returns null (refuses to send) when the destination fails delivery-time re-validation", () => {
+  const request = buildDiscordDeliveryRequest(
+    trigger({ destination: "https://discord.com/invite/abc" }),
+    {},
+  );
+  assert.equal(request, null);
 });
 
 // --- buildTelegramDeliveryRequest -----------------------------------------------
