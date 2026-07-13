@@ -441,8 +441,11 @@ is, on the MAIN Worker (the hub is co-located there, not on
 wrangler secret put CHAIN_FIREHOSE_SYNC_SECRET
 ```
 
-Until #4981's relay is deployed, the ingest endpoint can be exercised
-directly to confirm the hub itself is live end-to-end:
+The #4981 relay is deployed and live — verified directly against the running
+infrastructure: `chain_firehose_outbox` on the indexer box's Postgres has zero
+pending rows, with the most recent row delivered within ~7s of being written.
+The ingest endpoint below can still be exercised directly to isolate the hub
+itself from the rest of the path when debugging:
 
 ```sh
 # terminal 1: subscribe (SSE)
@@ -456,5 +459,6 @@ curl -X POST https://api.metagraph.sh/api/v1/internal/chain-firehose-ingest \
 # terminal 1 should immediately print the matching `event: chain` frame
 ```
 
-Full path (`indexer-rs` block → trigger → relay → hub → a real subscriber)
-can only be live-verified once #4981 ships and points at this endpoint.
+Full path (`indexer-rs` block → trigger → relay → hub → a real subscriber) is
+live-verified: 284,248 outbox rows delivered as of this writing, zero
+pending, newest row delivered ~7s after being written.
