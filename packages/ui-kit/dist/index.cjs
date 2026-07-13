@@ -1957,7 +1957,8 @@ function ListShell({
    *  creating a vertical scroll container. */
   stickyHeader = true
 }) {
-  const tableScroll = stickyHeader ? "overflow-x-auto overflow-y-clip" : "overflow-x-auto";
+  const tableCard = stickyHeader ? "rounded border border-border bg-card overflow-x-clip" : "rounded border border-border bg-card overflow-hidden";
+  const tableScroll = stickyHeader ? "overflow-x-clip" : "overflow-x-auto";
   return /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
     /* @__PURE__ */ jsxRuntime.jsx(
       "div",
@@ -1974,7 +1975,7 @@ function ListShell({
     ),
     isEmpty ? empty : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
       cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "rounded border border-border bg-card overflow-hidden", children: [
+      /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: tableCard, children: [
         /* @__PURE__ */ jsxRuntime.jsx("div", { className: tableScroll, children: table }),
         footer
       ] }) }),
