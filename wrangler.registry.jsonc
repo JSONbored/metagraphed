@@ -13,16 +13,16 @@
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
   // Deliberately NOT smart-placed, unlike wrangler.data.jsonc's read-only
-  // sibling: #4767 added `placement: {mode: "smart"}` here, and every
-  // registry-sync write has 502'd ("write failed") since that reached
-  // production -- both the merge-triggered fast path and the 6h full resync
-  // went dark for ~3 days as a result. wrangler.data.jsonc's smart-placed
-  // Worker keeps serving reads fine over a comparable Tunnel+Hyperdrive path
-  // on a different box, so this is specific to this Worker/origin pairing,
-  // not a blanket incompatibility. Reverted to restore the last known-good
-  // state; re-investigate smart placement (e.g. an explicit `placement.host`
-  // pointed at the tunnel origin instead of `mode: "smart"`'s auto-detection)
-  // as deliberate follow-up, not a blind re-add.
+  // sibling. #4767 added `placement: {mode: "smart"}` here on a latency
+  // rationale and was reverted the same day every registry-sync write was
+  // observed 502ing -- but that was a false lead: the writes had actually
+  // been broken since #3892 (2026-07-06/07), three days before #4767 even
+  // merged, by an unrelated bug in the prune query's array parameter
+  // binding (see the fix below). #4767's revert landed first (before the
+  // real bug was found) and turned out to be a no-op fix for the live
+  // incident, but there's no live evidence either way on whether smart
+  // placement itself is safe here -- leave it off until it's deliberately
+  // re-evaluated on its own, not re-added blind.
   // This is a write path into a database, unlike wrangler.data.jsonc's
   // read-only sibling -- explicitly disabled (wrangler otherwise defaults
   // workers.dev to enabled) so the shared-secret check is the only way in,
