@@ -113,6 +113,25 @@
         "submitted_by": "nickmopen"
       },
       "notes": "Public no-auth GET returning the Sparket (SN57) miner leaderboard as JSON — per-miner rank, uid, component scores (skill/accuracy/edge/timeliness/uniqueness), incentive, and weight (25 ranked rows plus a meta block). Served on the subnet's own registered domain sparket.ai under /api/v1/; all fields are public scoreboard and ranking data. Fills the file's noted missing standalone-data-artifact gap."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-57-sparket-leaderboard-dashboard",
+      "kind": "dashboard",
+      "name": "Sparket miner leaderboard dashboard",
+      "notes": "Public no-auth web leaderboard for SN57 Sparket at dashboard.sparket.ai/leaderboard — the Sparket prediction-markets app's live miner leaderboard view, rendering the same rankings exposed by the subnet's public /api/v1/leaderboard endpoint. Served on the official sparket.ai domain (app subdomain); distinct host from the sparket.ai API surfaces.",
+      "provider": "sparket",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/sparket-ai/sparket-ai/blob/main/README.md",
+        "https://sparket.ai/"
+      ],
+      "url": "https://dashboard.sparket.ai/leaderboard"
     }
   ]
 }
