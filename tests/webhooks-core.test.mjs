@@ -70,6 +70,14 @@ describe("isPublicWebhookAddress", () => {
     assert.equal(isPublicWebhookAddress("64:ff9b::c0a8:101"), false); // 192.168.1.1
   });
 
+  test("IPv6 discard-only (0100::/8) → false", () => {
+    assert.equal(isPublicWebhookAddress("100::1"), false); // 0100::/8 normalized
+    assert.equal(isPublicWebhookAddress("101::1"), false);
+    assert.equal(isPublicWebhookAddress("1ff::1"), false);
+    // Control: outside 0100::/8
+    assert.equal(isPublicWebhookAddress("1000::1"), true);
+  });
+
   test("an IPv6 form wrapping a PUBLIC v4 stays public", () => {
     // 6to4 / NAT64 of 8.8.8.8 is genuinely routable — don't over-block.
     assert.equal(isPublicWebhookAddress("2002:808:808::"), true);
