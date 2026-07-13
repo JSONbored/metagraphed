@@ -448,7 +448,7 @@ function AccountFeedSectionSkeleton({
   info,
 }: {
   id: string;
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   info?: string;
 }) {
@@ -1711,6 +1711,15 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
  * Non-blocking: shows a graceful empty state when the account announced no
  * endpoints (typical for non-miner accounts).
  */
+// #3938: the "Endpoint announcements" heading is a few characters longer than
+// its "Teardown activity" sibling and, with the section header's wide tracking,
+// wrapped to two lines at the 375px mobile width. Tighten the tracking a step on
+// mobile so it stays on one line, restoring the default wider tracking from the
+// sm breakpoint up (tablet/desktop are unchanged).
+const endpointAnnouncementsTitle = (
+  <span className="tracking-normal sm:tracking-wider">Endpoint announcements</span>
+);
+
 function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
   const servingResult = useQuery(accountServingQuery(ss58));
   const prometheusResult = useQuery(accountPrometheusQuery(ss58));
@@ -1726,7 +1735,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
     return (
       <AccountFeedSectionSkeleton
         id="endpoint-announcements"
-        title="Endpoint announcements"
+        title={endpointAnnouncementsTitle}
         subtitle={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
       />
     );
@@ -1736,7 +1745,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
     return (
       <SectionAnchor
         id="endpoint-announcements"
-        title="Endpoint announcements"
+        title={endpointAnnouncementsTitle}
         subtitle={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
         tone="accent"
       >
@@ -1767,7 +1776,7 @@ function AccountEndpointAnnouncementSection({ ss58 }: { ss58: string }) {
   return (
     <SectionAnchor
       id="endpoint-announcements"
-      title="Endpoint announcements"
+      title={endpointAnnouncementsTitle}
       subtitle={`Axon endpoint (AxonServed) and Prometheus telemetry (PrometheusServed) announcements for this account over the trailing ${windowLabel} window.`}
       tone="accent"
       info="The account-level companion to subnet serving + prometheus activity — counts how often this hotkey announced axon and Prometheus endpoints."
