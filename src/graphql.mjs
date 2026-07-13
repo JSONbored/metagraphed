@@ -385,8 +385,20 @@ schema.getSubscriptionType().getFields().chainEvents.subscribe =
         "chainEvents is only reachable over the WebSocket transport (Sec-WebSocket-Protocol: graphql-transport-ws) at /api/v1/graphql.",
       );
     }
-    const topics = args.tables?.length ? new Set(args.tables) : null;
+    // Distinguish omitted (undefined -> null, no filter, matches everything)
+    // from an EXPLICIT empty list (tables: [] -> an empty Set, matches
+    // nothing) -- consistent with the SSE/WS firehose's own
+    // parseChainFirehoseTopics semantics (an all-unrecognized topics= string
+    // also collapses to an empty Set, never silently falling back to
+    // "everything"). Previously both cases collapsed to null.
+    const topics = args.tables === undefined ? null : new Set(args.tables);
     const repeater = hub.subscribeChainEvents(topics);
+    if (!repeater) {
+      throw new GraphQLError(
+        "The realtime chain firehose has reached its maximum number of " +
+          "concurrent GraphQL subscriptions; try again later.",
+      );
+    }
     try {
       for await (const payload of repeater) {
         yield { chainEvents: payload };

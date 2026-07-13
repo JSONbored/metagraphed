@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
+  CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
   CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
   CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS,
   CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK,
@@ -393,8 +394,19 @@ test("formatChainFirehoseSseFrame: frames a payload as an SSE `chain` event", ()
 
 // --- ChainFirehoseHub: fetch/handleIngest/broadcast/SSE (Node-testable) ---------
 
-function stubState(webSockets = []) {
-  return { getWebSockets: () => webSockets };
+// `graphqlWsTaggedSockets` defaults to empty -- every existing plain-firehose
+// test's mock sockets are untagged, matching real state.getWebSockets(tag)
+// semantics where a tag-scoped query returns only sockets accepted with
+// that tag. Pass a non-empty list to simulate a socket that IS
+// graphql-ws-tagged (see the hibernation-staleness tests below).
+function stubState(webSockets = [], graphqlWsTaggedSockets = []) {
+  return {
+    getWebSockets: (tag) => {
+      if (tag === undefined) return webSockets;
+      if (tag === GRAPHQL_WS_SOCKET_TAG) return graphqlWsTaggedSockets;
+      return [];
+    },
+  };
 }
 
 test("ChainFirehoseHub.fetch: 404s on an unrecognized path", async () => {
@@ -735,14 +747,96 @@ test("ChainFirehoseHub.unsubscribeChainEvents: unsubscribing a repeater not in t
   assert.doesNotThrow(() => hub.unsubscribeChainEvents(foreign));
 });
 
-test("ChainFirehoseHub.broadcast: a graphql-ws-tagged WebSocket is excluded from the plain firehose send() loop", () => {
+test("ChainFirehoseHub.broadcast: a REGISTERED graphql-ws-tagged WebSocket is excluded from the plain firehose send() loop", () => {
   const sent = [];
   const ws = { deserializeAttachment: () => null };
-  const hub = new ChainFirehoseHub(stubState([ws]), {});
+  const hub = new ChainFirehoseHub(stubState([ws], [ws]), {});
   hub.graphqlWsSockets.set(ws, { onMessageCb: async () => {} });
   ws.send = (message) => sent.push(message); // would fail the test if called
   hub.broadcast({ table: "blocks", block_number: 1 });
   assert.equal(sent.length, 0);
+});
+
+// --- Hibernation-survival staleness (Bug 1, found by adversarial review) --------
+//
+// A Durable Object is reconstructed from scratch (constructor runs again) on
+// every hibernation wake / idle eviction / Worker redeploy. The WebSocket
+// objects themselves survive (state.getWebSockets(), tag included), but
+// graphqlWsSockets/graphqlWsServer are fresh, in-memory-only state that does
+// NOT. A socket tagged graphql-ws at accept time but absent from the fresh
+// graphqlWsSockets WeakMap is exactly that scenario -- these tests assert it
+// gets closed (forcing a clean client reconnect) rather than silently
+// misrouted through the plain-firehose send path (wire-protocol corruption)
+// or having its messages silently dropped.
+
+test("ChainFirehoseHub.broadcast: a STALE graphql-ws-tagged WebSocket (tagged but unregistered) is closed, not sent to or silently skipped", () => {
+  const sent = [];
+  let closedWith;
+  const ws = {
+    deserializeAttachment: () => null,
+    send: (message) => sent.push(message),
+    close: (code, reason) => {
+      closedWith = [code, reason];
+    },
+  };
+  const hub = new ChainFirehoseHub(stubState([ws], [ws]), {});
+  // Deliberately NOT registered in hub.graphqlWsSockets -- simulates a
+  // post-hibernation-reconstruction instance that never re-opened it.
+  hub.broadcast({ table: "blocks", block_number: 1 });
+  assert.equal(sent.length, 0);
+  assert.equal(closedWith[0], 1012);
+});
+
+test("ChainFirehoseHub.webSocketMessage: a STALE graphql-ws-tagged WebSocket is closed rather than silently dropping the message", async () => {
+  let closedWith;
+  const ws = {
+    close: (code, reason) => {
+      closedWith = [code, reason];
+    },
+  };
+  const hub = new ChainFirehoseHub(stubState([ws], [ws]), {});
+  await hub.webSocketMessage(ws, "some graphql-ws protocol message");
+  assert.equal(closedWith[0], 1012);
+});
+
+test("ChainFirehoseHub.webSocketMessage: an untagged (genuinely plain) socket with no graphqlWsSockets entry stays a silent no-op", async () => {
+  const ws = { close: () => assert.fail("should not be closed") };
+  const hub = new ChainFirehoseHub(stubState([ws]), {}); // not tagged
+  await assert.doesNotReject(() => hub.webSocketMessage(ws, "ignored"));
+});
+
+test("ChainFirehoseHub.isGraphqlWsTaggedSocket / closeStaleGraphqlWsSocket: direct unit coverage", () => {
+  const ws = { close: () => {} };
+  const taggedHub = new ChainFirehoseHub(stubState([ws], [ws]), {});
+  assert.equal(taggedHub.isGraphqlWsTaggedSocket(ws), true);
+  const untaggedHub = new ChainFirehoseHub(stubState([ws]), {});
+  assert.equal(untaggedHub.isGraphqlWsTaggedSocket(ws), false);
+  assert.doesNotThrow(() => taggedHub.closeStaleGraphqlWsSocket(ws));
+  assert.doesNotThrow(() =>
+    taggedHub.closeStaleGraphqlWsSocket({
+      close: () => {
+        throw new Error("already closed");
+      },
+    }),
+  );
+});
+
+// --- CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS (Finding 1, found by adversarial review) --
+
+test("ChainFirehoseHub.subscribeChainEvents: returns null (not a repeater) once at CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS; i += 1) {
+    assert.notEqual(hub.subscribeChainEvents(null), null);
+  }
+  assert.equal(
+    hub.chainEventSubscribers.size,
+    CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
+  );
+  assert.equal(hub.subscribeChainEvents(null), null);
+  assert.equal(
+    hub.chainEventSubscribers.size,
+    CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
+  );
 });
 
 test("GRAPHQL_WS_SOCKET_TAG is the documented tag string", () => {

@@ -576,14 +576,26 @@ CREATE TABLE IF NOT EXISTS indexer_cursor (
 -- Realtime firehose tee (ADR 0015, #4980)
 -- ---------------------------------------------------------------------------
 
--- Fires AFTER a row is already durably committed to blocks/extrinsics/
--- chain_events -- by construction this can never affect whether that write
--- itself succeeded, so it adds zero risk to indexer-rs's live-follow
--- reliability (ADR 0015 -- this design deliberately replaces a direct push
--- from indexer-rs's own process with this trigger specifically to avoid
--- that risk). Payload is a compact reference, not the full row, to stay
--- well under Postgres's 8000-byte NOTIFY payload cap; a subscriber that
--- wants full row detail re-fetches by primary key.
+-- CORRECTED 2026-07-13 (found by adversarial review, ADR 0015's own text has
+-- the same correction): an AFTER ROW trigger fires WITHIN the same
+-- transaction as the triggering INSERT, after the row is written but BEFORE
+-- that transaction commits -- NOT "after the row is already durably
+-- committed" as an earlier version of this comment claimed. The
+-- EXCEPTION WHEN OTHERS THEN NULL handler below catches any error the
+-- trigger's OWN execution raises (e.g. a future oversized-payload bug), so
+-- a bug in this function's own logic can't fail the insert. It CANNOT catch
+-- a failure at Postgres's commit-time NOTIFY-queue-capacity check
+-- (PreCommit_Notify), which runs after this function has already returned --
+-- per the Postgres docs, if that shared queue is full at commit,
+-- "transactions calling NOTIFY will fail at commit", which would include
+-- indexer-rs's own insert. This is a narrow, low-likelihood tail risk (the
+-- queue only backs up if some session holds LISTEN open across a very long
+-- transaction elsewhere on this database -- this deployment's only listener,
+-- the #4981 relay, never does), not a zero-risk guarantee -- worth
+-- monitoring queue depth if a second real listener is ever added, not
+-- worth over-engineering against today. Payload is a compact reference, not
+-- the full row, to stay well under Postgres's 8000-byte NOTIFY payload cap;
+-- a subscriber that wants full row detail re-fetches by primary key.
 --
 -- Row-level (FOR EACH ROW), not statement-level: simpler to reason about
 -- for a first cut, at the cost of one NOTIFY per row rather than one per

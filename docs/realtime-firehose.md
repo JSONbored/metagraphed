@@ -22,11 +22,23 @@ indexer-rs → (writes, as it always has) → Postgres
 ```
 
 `indexer-rs` requires **zero code changes** and has **zero awareness** any of
-this exists — the trigger only fires after a row is already durably
-committed, so a firehose outage (relay down, Cloudflare unreachable, the
+this exists — a firehose outage (relay down, Cloudflare unreachable, the
 Durable Object itself failing) has exactly one consequence: the live
-subscription feed stalls. `indexer-rs`'s writes and Postgres's durability are
-completely unaffected, by construction.
+subscription feed stalls. `indexer-rs`'s writes are unaffected in every
+_normal_ failure mode of the downstream firehose (relay/Cloudflare/DO issues
+never reach Postgres at all — they're purely downstream of the already-fired
+`NOTIFY`).
+
+One caveat, corrected 2026-07-13 after an earlier overstated claim here (found
+by adversarial review): the trigger fires _within_ the same transaction as
+the insert, before commit — not "after the row is already durably committed."
+Its own `EXCEPTION` handler catches errors in its own logic, but Postgres's
+commit-time NOTIFY-queue-capacity check happens after the trigger returns and
+isn't catchable by it; if that shared queue is ever full at commit, the whole
+transaction (including the row insert) fails. See
+`deploy/postgres/schema.sql`'s own comment for why this is a narrow,
+low-likelihood tail risk given this deployment's single listener (the #4981
+relay), not a zero-risk guarantee.
 
 ## The trigger (`deploy/postgres/schema.sql`)
 
@@ -105,6 +117,35 @@ equivalent), so instead of relying on one, total concurrent WS connections
 are capped (`CHAIN_FIREHOSE_MAX_WS_CONNECTIONS`) and a dead socket is
 reconciled via try/catch around `send()` plus the hibernation runtime's own
 `state.getWebSockets()` pruning.
+
+**Hibernation survival (found by adversarial review, 2026-07-13):** a
+Durable Object is reconstructed from scratch (constructor runs again) on
+every hibernation wake, idle eviction, and Worker code deploy. The
+`WebSocket` objects themselves survive that cycle (`state.getWebSockets()`,
+tag included), but `graphqlWsSockets`/`graphqlWsServer` are fresh,
+in-memory-only state that does not -- an earlier version of this class let a
+graphql-ws socket that survived reconstruction but was no longer in the
+fresh `graphqlWsSockets` WeakMap silently fall through to the plain-firehose
+send path, corrupting the wire protocol for that client (raw JSON instead of
+a framed `graphql-transport-ws` message) on every redeploy a graphql-ws
+client happened to be connected across. Fixed: `broadcast()`/
+`webSocketMessage` now detect this case (tagged via
+`state.getWebSockets(GRAPHQL_WS_SOCKET_TAG)`, absent from `graphqlWsSockets`)
+and close the socket with `1012` ("Service Restart") instead, so the
+client's own reconnect logic re-establishes a fresh handshake -- graphql-ws
+has no session-resumption mechanism, so silently trying to "fix" the stale
+connection in place isn't an option.
+
+GraphQL `chainEvents` subscriptions are ALSO capped
+(`CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS`, also found by adversarial
+review): graphql-ws multiplexes many independent subscriptions over one
+WebSocket connection and only rejects a _duplicate_ operation id, never a
+total count, so the WS connection cap alone doesn't bound subscription count
+-- a single connection could otherwise open unboundedly many subscriptions,
+each one costing a real `execute()`+`send()` on every future `broadcast()`.
+`subscribeChainEvents` returns `null` at the cap; `src/graphql.mjs`'s
+resolver turns that into a clear `GraphQLError` rather than hanging the
+client on a stream that will never yield.
 
 Testability: this repo has no Durable Object-capable test harness (no
 `@cloudflare/vitest-pool-workers`/Miniflare). Every actual decision the hub

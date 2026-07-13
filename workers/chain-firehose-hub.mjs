@@ -79,6 +79,18 @@ export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
 export const CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS = 1000;
 export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
 
+// graphql-ws multiplexes many independent `subscribe` operations over ONE
+// WebSocket connection (the library only rejects a *duplicate* operation id
+// on the same socket, never a total count -- confirmed against its own
+// source, no size limit exists there). Without this, the WS connection cap
+// above bounds sockets but not subscriptions: a single raw client speaking
+// the wire protocol directly (no compliant library required) could open
+// unboundedly many `chainEvents` subscriptions on one socket, each one
+// costing a real execute()+send() on every future broadcast(). This is a
+// GLOBAL cap (matching CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS/_WS_CONNECTIONS'
+// own global-not-per-IP shape) checked in subscribeChainEvents below.
+export const CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS = 1000;
+
 // Hibernation tag distinguishing a graphql-ws socket from a plain firehose
 // one -- webSocketMessage/webSocketClose/webSocketError route on
 // graphqlWsSockets.has(ws) directly rather than this tag (a WeakMap lookup
@@ -316,7 +328,16 @@ export class ChainFirehoseHub {
   // Registered as context.chainFirehose by graphqlWsServer above; called from
   // src/graphql.mjs's chainEventsSubscribe field resolver. Mirrors the SSE/WS
   // firehose's own topic-filter semantics (chainFirehoseMatchesTopics).
+  // Returns null (not a repeater) at CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
+  // -- the resolver must throw a GraphQLError for that case, never treat
+  // null as "no filter"/an empty stream.
   subscribeChainEvents(topics) {
+    if (
+      this.chainEventSubscribers.size >=
+      CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
+    ) {
+      return null;
+    }
     const repeater = createAsyncRepeater();
     this.chainEventSubscribers.add({ repeater, topics });
     return repeater;
@@ -446,6 +467,38 @@ export class ChainFirehoseHub {
     });
   }
 
+  // Bounds-check helper for the hibernation-survival bug described in
+  // closeStaleGraphqlWsSocket's comment: is `ws` tagged graphql-ws
+  // (survives hibernation/reconstruction via state.getWebSockets(tag)),
+  // regardless of whether THIS DO instance's in-memory graphqlWsSockets
+  // WeakMap still has a live entry for it?
+  isGraphqlWsTaggedSocket(ws) {
+    return this.state.getWebSockets(GRAPHQL_WS_SOCKET_TAG).includes(ws);
+  }
+
+  // A Durable Object is reconstructed from scratch (constructor runs again)
+  // on every hibernation wake, idle eviction, AND on every Worker code
+  // deploy -- graphqlWsSockets/chainEventSubscribers/graphqlWsServer are all
+  // fresh, in-memory-only state that does NOT survive that cycle. The
+  // WebSocket objects themselves DO survive (state.getWebSockets() still
+  // returns them, tag included), but graphql-ws's own protocol state for
+  // them (has connection_init been acked, which subscriptions are active)
+  // lived only in the now-replaced graphqlWsServer and has no resumption
+  // mechanism. Rather than let such a socket silently fall through to the
+  // plain-firehose send path (raw JSON onto what the client expects to be a
+  // framed graphql-transport-ws stream -- exactly the wire-protocol
+  // corruption this class's other comments warn about) or silently drop its
+  // incoming messages, close it cleanly (1012 "Service Restart" is the
+  // semantically correct RFC 6455 code) so the client's own reconnect logic
+  // re-establishes a fresh handshake against the current graphqlWsServer.
+  closeStaleGraphqlWsSocket(ws) {
+    try {
+      ws.close(1012, "durable object restarted; reconnect");
+    } catch {
+      // already closed
+    }
+  }
+
   async webSocketMessage(ws, message) {
     // graphql-ws sockets: every incoming protocol message (connection_init,
     // subscribe, complete, ping/pong) is handled entirely by graphql-ws
@@ -461,6 +514,10 @@ export class ChainFirehoseHub {
           ? message
           : new TextDecoder().decode(message);
       await entry.onMessageCb(text);
+      return;
+    }
+    if (this.isGraphqlWsTaggedSocket(ws)) {
+      this.closeStaleGraphqlWsSocket(ws);
     }
   }
 
@@ -517,14 +574,30 @@ export class ChainFirehoseHub {
       }
     }
 
+    // Computed once per broadcast (not per-socket .includes() -- O(n) not
+    // O(n^2)): every socket tagged graphql-ws at accept time, regardless of
+    // whether this DO instance's in-memory graphqlWsSockets still recognizes
+    // it (see closeStaleGraphqlWsSocket's comment for why the two can
+    // diverge after a hibernation/reconstruction cycle).
+    const graphqlWsTagged = new Set(
+      this.state.getWebSockets(GRAPHQL_WS_SOCKET_TAG),
+    );
     for (const ws of this.state.getWebSockets()) {
-      // graphql-ws sockets are NOT plain firehose sockets -- sending a bare
-      // JSON payload onto one here would corrupt the graphql-transport-ws
-      // wire protocol (a real client only ever expects framed {type: "next",
-      // ...} messages). Their delivery goes through chainEventSubscribers
-      // below instead, via graphql-js's own subscribe() calling this
-      // adapter's send() with a properly framed message.
-      if (this.graphqlWsSockets.has(ws)) continue;
+      if (graphqlWsTagged.has(ws)) {
+        // graphql-ws sockets are NOT plain firehose sockets -- sending a bare
+        // JSON payload onto one here would corrupt the graphql-transport-ws
+        // wire protocol (a real client only ever expects framed {type: "next",
+        // ...} messages). A REGISTERED one's delivery goes through
+        // chainEventSubscribers below instead, via graphql-js's own
+        // subscribe() calling this adapter's send() with a properly framed
+        // message. An UNREGISTERED-but-tagged one is stale (survived
+        // hibernation, but this instance never re-opened it) -- close it
+        // rather than silently misrouting or ignoring it.
+        if (!this.graphqlWsSockets.has(ws)) {
+          this.closeStaleGraphqlWsSocket(ws);
+        }
+        continue;
+      }
       let topics = null;
       try {
         const attachment = ws.deserializeAttachment();

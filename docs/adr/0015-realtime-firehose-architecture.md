@@ -44,15 +44,26 @@ firehose's two halves live.
 
 1. **The tee is Postgres's own `LISTEN`/`NOTIFY`, driven by an `AFTER INSERT`
    trigger on `blocks`/`extrinsics`/`chain_events` — not a push from
-   `indexer-rs`.** A trigger fires only after a row is durably committed; by
-   construction it cannot affect whether that commit succeeded. `indexer-rs`
-   requires zero code changes and has zero awareness the firehose exists.
-   This is the load-bearing safety property of the whole design — see #4980.
+   `indexer-rs`.** `indexer-rs` requires zero code changes and has zero
+   awareness the firehose exists. This is the load-bearing safety property of
+   the whole design — see #4980.
+   **Corrected 2026-07-13** (found by adversarial review): an earlier version
+   of this line claimed the trigger "fires only after a row is durably
+   committed" and "by construction cannot affect whether that commit
+   succeeded" — this overstated the guarantee. An `AFTER ROW` trigger
+   actually fires _within_ the same transaction, before commit; its own
+   `EXCEPTION` handler (`deploy/postgres/schema.sql`) catches errors from the
+   trigger's own logic, but cannot catch a commit-time NOTIFY-queue-capacity
+   failure (`PreCommit_Notify`, which per the Postgres docs would fail the
+   whole transaction, including the row insert). See that file's own comment
+   for the accurate, narrow tail-risk this design actually carries — real,
+   not zero, but bounded and low-likelihood given this deployment's only
+   listener (the #4981 relay) never holds a long transaction open.
 2. **A new, separate box-side relay process bridges Postgres to Cloudflare**
    (#4981), subscribing via `LISTEN` and forwarding to the Durable Object over
    HTTP with a bounded, drop-oldest retry policy. If this process is down,
    lagging, or can't reach Cloudflare, the only consequence is the firehose
-   stalls — `indexer-rs` and Postgres are completely unaffected. This process
+   stalls, per the corrected note above — this process
    is new self-hosted infrastructure (Docker container on the indexer box,
    Ansible-managed per the existing `streamer` role's precedent in
    `deploy/README.md`), not a Cloudflare-side component.
