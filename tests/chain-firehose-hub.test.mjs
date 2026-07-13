@@ -15,6 +15,7 @@ import { test } from "vitest";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
+  CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS,
   CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK,
   CHAIN_FIREHOSE_TABLES,
   ChainFirehoseHub,
@@ -302,6 +303,27 @@ test("ChainFirehoseHub /subscribe (SSE): responds with a text/event-stream and a
   const { value } = await reader.read();
   assert.equal(new TextDecoder().decode(value), ": connected\n\n");
   await reader.cancel();
+});
+
+test("ChainFirehoseHub /subscribe (SSE): rejects new clients at the global connection cap", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const responses = [];
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS; i += 1) {
+    const res = await hub.fetch(
+      new Request("https://chain-firehose-hub.internal/subscribe"),
+    );
+    responses.push(res);
+  }
+
+  assert.equal(hub.sseClients.size, CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS);
+  const capped = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/subscribe"),
+  );
+  assert.equal(capped.status, 503);
+  assert.equal(await capped.text(), "too many connections");
+
+  await Promise.all(responses.map((res) => res.body.cancel()));
+  assert.equal(hub.sseClients.size, 0);
 });
 
 test("ChainFirehoseHub /subscribe (SSE) -> broadcast: a connected client receives a matching event, not a filtered-out one", async () => {

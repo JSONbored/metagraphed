@@ -42,13 +42,13 @@ export const CHAIN_FIREHOSE_MAX_FIELD_STRING_BYTES = 256;
 
 // SSE: how many queued-but-unflushed frames a client may accumulate (via the
 // stream's CountQueuingStrategy) before it's treated as stalled and dropped.
-// WS: hard cap on concurrent hibernated sockets this hub instance accepts --
-// Cloudflare's WebSocket object exposes no confirmed, documented backpressure
-// signal (no verified `bufferedAmount` equivalent for hibernatable sockets),
-// so a per-message byte watermark isn't a reliable primitive here; capping
-// total connections bounds the DO's worst-case fanout cost directly instead,
-// with per-send try/catch as the second line of defense against dead sockets.
+// Hard caps on concurrent clients this hub instance accepts bound the DO's
+// worst-case fanout set. Cloudflare's WebSocket object exposes no confirmed,
+// documented backpressure signal (no verified `bufferedAmount` equivalent for
+// hibernatable sockets), so a per-message byte watermark isn't a reliable WS
+// primitive here; the connection cap plus per-send try/catch are the bounds.
 export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
+export const CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS = 1000;
 export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
 
 function utf8ByteLength(value) {
@@ -200,6 +200,10 @@ export class ChainFirehoseHub {
       return new Response(null, { status: 101, webSocket: client });
     }
     /* v8 ignore stop */
+
+    if (this.sseClients.size >= CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS) {
+      return new Response("too many connections", { status: 503 });
+    }
 
     const encoder = new TextEncoder();
     const clients = this.sseClients;

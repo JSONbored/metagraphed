@@ -93,7 +93,9 @@ One global instance (`idFromName("global")`) owns two endpoints:
 Bounded per-connection buffering: an SSE client whose `ReadableStream`
 controller falls behind (`desiredSize < 0` against a 64-frame
 `CountQueuingStrategy` high-water mark) is dropped rather than left to grow
-memory unboundedly. WebSocket connections use the hibernation API
+memory unboundedly. Total concurrent SSE subscribers are capped
+(`CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS`) before a new stream is admitted,
+bounding the global hub fanout set. WebSocket connections use the hibernation API
 (`state.acceptWebSocket`, `WebSocket.serializeAttachment`/
 `deserializeAttachment` for the per-connection topic filter,
 `state.getWebSockets()` for fanout) so an idle subscriber doesn't pin the
