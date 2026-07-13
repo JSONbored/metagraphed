@@ -7,17 +7,24 @@ import { classNames } from "@/lib/metagraphed/format";
 const VIEWPORT_GUTTER = 12;
 
 /**
- * A `PopoverContent` that never renders wider than the viewport, with a small
- * gutter on every side. Radix's collision-avoidance repositions a panel to keep
- * it on-screen but does not shrink its fixed width — so a `w-80` (320px) /
- * `w-72` (288px) panel is pinned flush against (and on the narrowest devices
- * spills past) the screen edge, with no breathing room (#3945). Two things fix
- * that together: a `max-w` of the viewport minus the gutters turns the caller's
- * fixed width into a *maximum* (so it can shrink to fit), and a matching
- * `collisionPadding` keeps Radix from pinning that width flush to an edge. The
- * panel is unchanged where it already fits with room to spare; on narrow
- * viewports it shrinks and sits inside a consistent gutter instead of bleeding
- * to the device edge. Callers keep passing their usual width class.
+ * A drop-in `PopoverContent` that always fits — and is legible — inside the
+ * viewport, on every screen size. The base primitive has three gaps that make
+ * these fixed-width header panels (`w-80` / `w-72`) read as broken on small
+ * screens (#3945):
+ *
+ *  - **Width:** Radix keeps a panel on-screen but never shrinks its fixed
+ *    width, so it pins flush to (or spills past) the edge. `max-w` of the
+ *    viewport-minus-gutters makes the caller's width a *maximum*, and a matching
+ *    `collisionPadding` stops Radix pinning it flush.
+ *  - **Height:** a tall panel (network list, settings sections) ran off the
+ *    bottom of short viewports with no way to reach the cut-off content. Cap the
+ *    height to Radix's collision-aware available height and let it scroll.
+ *  - **Surface:** the base `bg-popover` token renders transparent in this app's
+ *    theme, so page content showed straight through the panel. Paint an explicit
+ *    solid card surface so the panel is always opaque.
+ *
+ * Panels that already fit with room to spare are visually unchanged; only the
+ * constrained cases are corrected. Callers keep passing their usual width class.
  */
 export const ClampedPopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverContent>,
@@ -26,7 +33,12 @@ export const ClampedPopoverContent = React.forwardRef<
   <PopoverContent
     ref={ref}
     collisionPadding={collisionPadding}
-    className={classNames("max-w-[calc(100vw-1.5rem)]", className)}
+    className={classNames(
+      "max-w-[calc(100vw-1.5rem)]",
+      "max-h-[min(var(--radix-popover-content-available-height),calc(100dvh-1.5rem))] overflow-y-auto",
+      "bg-card text-ink",
+      className,
+    )}
     {...props}
   />
 ));
