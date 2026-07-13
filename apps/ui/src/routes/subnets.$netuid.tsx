@@ -12,6 +12,7 @@ import {
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
   EmptyState,
+  ErrorState,
   PageHeading,
   Skeleton,
   StaleBanner,
@@ -1397,7 +1398,7 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
 }
 
 function GapsPanel({ netuid, compact }: { netuid: number; compact?: boolean }) {
-  const { data: gapsResult, isLoading, error } = useQuery(subnetGapsQuery(netuid));
+  const { data: gapsResult, isLoading, error, refetch } = useQuery(subnetGapsQuery(netuid));
   const gaps = gapsResult?.data;
   const missing = gaps?.missing_kinds ?? [];
   const notes = gaps?.gap_notes ?? [];
@@ -1411,11 +1412,7 @@ function GapsPanel({ netuid, compact }: { netuid: number; compact?: boolean }) {
   if (error) {
     return (
       <SectionAnchor id="gaps" title={compact ? "Known gaps" : "Gaps"}>
-        <EmptyState
-          title="Gaps unavailable"
-          description="The subnet gaps endpoint did not respond."
-          action={RECOVERY.gaps}
-        />
+        <ErrorState error={error} onRetry={() => void refetch()} context="gaps" />
       </SectionAnchor>
     );
   }
