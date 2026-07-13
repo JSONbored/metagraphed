@@ -31,6 +31,17 @@ import {
 
 export const ALERTER_HUB_TRIGGER_CACHE_TTL_MS = 5 * 60 * 1000;
 
+// AlerterHub.evaluate() is awaited by ChainFirehoseHub.broadcast() (see that
+// class's ALERTER_HUB ping), which every OTHER consumer (SSE/WS/GraphQL/MCP)
+// shares the same broadcast() call with -- unlike those consumers'
+// same-Cloudflare-network DO-to-DO calls, a delivery fetch here can hit an
+// arbitrary user-supplied webhook or a slow third-party API. Without a
+// bound, ONE slow/hanging delivery target would add its own latency to
+// EVERY firehose consumer's next event, not just this trigger's owner.
+// Matches src/webhooks.mjs's own deliverChangeEvent timeout convention
+// (same 8s default).
+const ALERT_DELIVERY_TIMEOUT_MS = 8000;
+
 // The I/O shell around src/alert-delivery.mjs's pure request builders --
 // constructor-injectable (see AlerterHub below) rather than a hardcoded
 // call inside evaluate(), so tests can substitute a spy/failing stub
@@ -75,7 +86,15 @@ export async function deliverAlertMatch(
   // buildWebhookDeliveryRequest's defense-in-depth URL re-check) --
   // nothing to send.
   if (!request) return;
-  const response = await fetchFn(request.url, request.init);
+  // The timeout signal is applied HERE, not baked into the pure builders in
+  // src/alert-delivery.mjs -- AbortSignal.timeout() starts a real wall-clock
+  // timer the moment it's constructed, which that module's own header
+  // comment promises never happens (no I/O, no timers, fully deterministic
+  // for tests).
+  const response = await fetchFn(request.url, {
+    ...request.init,
+    signal: AbortSignal.timeout(ALERT_DELIVERY_TIMEOUT_MS),
+  });
   if (!response.ok) {
     // Never throw for a non-2xx response -- evaluate()'s .catch() only
     // guards against a REJECTED fetch (network/timeout); an HTTP-level

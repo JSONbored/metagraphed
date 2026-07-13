@@ -53,6 +53,25 @@ test("deliverAlertMatch: webhook channel POSTs the built request", async () => {
   assert.equal(JSON.parse(received.init.body).type, "metagraph.alert");
 });
 
+test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slow target can't stall the shared broadcast() call indefinitely", async () => {
+  let receivedSignal;
+  const fetchFn = vi.fn(async (_url, init) => {
+    receivedSignal = init.signal;
+    return new Response(null, { status: 200 });
+  });
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "webhook",
+      destination: "https://example.com/hook",
+    }),
+    {},
+    {},
+    fetchFn,
+  );
+  assert.ok(receivedSignal instanceof AbortSignal);
+  assert.equal(receivedSignal.aborted, false);
+});
+
 test("deliverAlertMatch: webhook channel sends nothing when the destination fails the defense-in-depth URL re-check", async () => {
   const fetchFn = vi.fn();
   await deliverAlertMatch(
