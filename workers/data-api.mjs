@@ -7,7 +7,7 @@
 // tiers (chain_events / deep history); this exposes them to the public API.
 //
 // Mostly read-only, parameterized (postgres.js tagged templates), one request one
-// sql.begin("read only", ...) transaction (#4686 connection-affinity). The ONE
+// sql.begin(DATA_API_READ_TRANSACTION, ...) transaction (#4686 connection-affinity). The ONE
 // exception is POST /api/v1/internal/neurons-sync (#4771): the write path into
 // this SAME Postgres instance's neurons/neuron_daily tables. It does NOT get its
 // own dedicated Worker the way registry-sync-api.mjs does -- that split is
@@ -226,6 +226,7 @@ import {
   UPTIME_WINDOWS,
   MAX_UPTIME_ROWS,
   RPC_USAGE_BUCKETS,
+  resolveClientIp,
 } from "./config.mjs";
 import {
   formatBulkTrends,
@@ -322,6 +323,7 @@ import {
   buildChainSigners,
 } from "../src/chain-analytics.mjs";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
+const DATA_API_READ_TRANSACTION = "isolation level repeatable read read only";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -2244,15 +2246,15 @@ async function readAlertTriggerBody(request) {
   }
 }
 
+// Returns the SAME 404 a nonexistent id gets (found by adversarial review:
+// returning 403 here would let an unauthenticated caller distinguish
+// "wrong token" from "no such trigger" purely from the status code,
+// building an existence oracle over sequential ids with zero credentials --
+// exactly the "no public view" property this route is designed to have).
 function requireAlertTriggerOwner(request, storedOwnerToken) {
   const provided = request.headers.get(ALERT_TRIGGER_OWNER_TOKEN_HEADER) || "";
   if (isValidAlertOwnerToken(provided, storedOwnerToken)) return null;
-  return writeJson(
-    {
-      error: `provide the trigger's ${ALERT_TRIGGER_OWNER_TOKEN_HEADER} header`,
-    },
-    403,
-  );
+  return writeJson({ error: "no such trigger" }, 404);
 }
 
 async function handleAlertTriggerCreate(request, env) {
@@ -2271,6 +2273,24 @@ async function handleAlertTriggerCreate(request, env) {
       { error: `provide a valid ${ALERT_TRIGGER_CREATE_TOKEN_HEADER} header` },
       401,
     );
+  }
+
+  // Found by adversarial review: ALERT_TRIGGER_CREATE_TOKEN is a SHARED
+  // anti-abuse secret, not a per-user credential -- anyone holding it could
+  // otherwise script unbounded trigger creation, and every row becomes a
+  // permanent per-event cost in AlerterHub.matchingTriggers()'s O(active
+  // triggers) scan. Skipped when unbound (local dev/CI), matching every
+  // other optional rate-limiter binding's convention in this codebase.
+  if (env.ALERT_TRIGGER_CREATE_RATE_LIMITER?.limit) {
+    const { success } = await env.ALERT_TRIGGER_CREATE_RATE_LIMITER.limit({
+      key: resolveClientIp(request),
+    });
+    if (!success) {
+      return writeJson(
+        { error: "too many alert trigger creation requests; slow down" },
+        429,
+      );
+    }
   }
 
   const { body, error } = await readAlertTriggerBody(request);
@@ -2321,22 +2341,75 @@ async function handleAlertTriggerGet(request, env, id) {
   });
 }
 
+// Fields present in a PATCH body with a real (non-null) value OVERRIDE the
+// existing row; fields OMITTED keep whatever the row already has (true
+// partial-update semantics, the bug the adversarial review found: a naive
+// full-replace here silently NULLs out -- and so WIDENS the match scope of
+// -- every condition field the caller didn't resend). A field explicitly
+// sent as `null` is ALSO treated as "keep the existing value", not as "clear
+// it": validateAlertTriggerInput (shared with CREATE) only recognizes "not
+// provided" via `!== undefined` and actively REJECTS an explicit `null` for
+// most fields (e.g. `netuid: null` fails its `Number.isInteger` check), so
+// there is no way to route an intentional-clear through that validator
+// without special-casing PATCH-only null handling inside a CREATE-shared
+// function. Both the existing-row base and the incoming body have their
+// null-valued keys stripped before merging -- for the base, this turns a
+// legitimately-unset existing field (stored as SQL NULL) into "not
+// provided" so it doesn't round-trip back in and fail validation; for the
+// body, it means an explicit `null` degrades to a no-op rather than a 400.
+// There is currently no supported way to explicitly clear an optional
+// condition field back to unset via PATCH -- only DELETE + recreate.
+function omitNullValues(obj) {
+  const out = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== null) out[key] = value;
+  }
+  return out;
+}
+
 async function handleAlertTriggerUpdate(request, env, id) {
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
   const { body, error } = await readAlertTriggerBody(request);
   if (error) return error;
-  const validated = validateAlertTriggerInput(body);
-  if (!validated.ok) {
-    return writeJson({ error: validated.error }, 400);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return writeJson({ error: "Request body must be a JSON object." }, 400);
   }
   return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
-      await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
+      await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
     const authError = requireAlertTriggerOwner(request, existing.owner_token);
     if (authError) return authError;
+
+    // Found by adversarial review: validating the raw PATCH body directly
+    // (the original version of this function) meant validateAlertTriggerInput's
+    // CREATE-oriented "omitted -> null" defaulting silently NULLed out any
+    // condition field the caller didn't resend, unintentionally WIDENING a
+    // trigger's match scope on every partial edit (e.g. renaming a
+    // netuid-scoped trigger without resending netuid would drop the netuid
+    // filter entirely). Merging onto the existing row first fixes this.
+    const merged = {
+      ...omitNullValues({
+        name: existing.name,
+        table_filter: existing.table_filter,
+        netuid: existing.netuid,
+        event_kind: existing.event_kind,
+        account: existing.account,
+        min_amount_tao:
+          existing.min_amount_tao === null
+            ? null
+            : Number(existing.min_amount_tao),
+        channel: existing.channel,
+        destination: existing.destination,
+      }),
+      ...omitNullValues(body),
+    };
+    const validated = validateAlertTriggerInput(merged);
+    if (!validated.ok) {
+      return writeJson({ error: validated.error }, 400);
+    }
 
     const v = validated.value;
     const now = Date.now();
@@ -2399,6 +2472,70 @@ async function handleAlertTriggersActiveList(request, env) {
   return withAlertTriggersSql(env, async (sql) => {
     const rows = await sql`SELECT * FROM chain_alert_triggers WHERE active`;
     return writeJson({ triggers: rows.map(evaluatorAlertTriggerView) });
+  });
+}
+
+// Internal-only: the #5022 evaluator write-back. AlerterHub.evaluate()
+// (workers/alerter-hub.mjs) POSTs the FULL matched-trigger id list for a
+// chain event here -- every id whose conditions were satisfied, regardless
+// of whether the burst rate-limiter actually let it deliver -- so
+// chain_alert_triggers.match_count/last_matched_at reflect "this trigger's
+// conditions were satisfied", independent of delivery. Gated the SAME way
+// as the active-list route above: a DIFFERENT capability from the
+// create/owner tokens (write access to every trigger's own bookkeeping
+// columns, not just its own row), so it reuses that same
+// ALERT_TRIGGERS_INTERNAL_TOKEN secret rather than minting a third one.
+async function handleAlertTriggersMatchedWriteback(request, env) {
+  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error:
+          "the alert-triggers match write-back is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      {
+        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  const { body, error } = await readAlertTriggerBody(request);
+  if (error) return error;
+  const ids = Array.isArray(body?.trigger_ids)
+    ? body.trigger_ids.filter(isValidAlertTriggerId).map(String)
+    : [];
+  if (ids.length === 0) {
+    return writeJson(
+      { error: "trigger_ids must be a non-empty array of trigger ids" },
+      400,
+    );
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const now = Date.now();
+    // Plain scalar positional binds via sql.unsafe, NOT a bound JS array
+    // (`id = ANY($1)`) -- see the neurons-sync prune query's own comment
+    // (handleNeuronsSync, above) for why: this Worker's Hyperdrive
+    // fetch_types:false setting breaks postgres.js's automatic
+    // ARRAY-literal serialization, while scalar binds are unaffected.
+    // $1 is the shared `now` timestamp; $2.. are the (already
+    // isValidAlertTriggerId-validated) ids.
+    const placeholders = ids.map((_, i) => `$${i + 2}::bigint`).join(", ");
+    const updated = await sql.unsafe(
+      `UPDATE chain_alert_triggers
+       SET match_count = match_count + 1,
+           last_matched_at = $1::bigint
+       WHERE id IN (${placeholders})
+       RETURNING id`,
+      [now, ...ids],
+    );
+    return writeJson({ updated: updated.length });
   });
 }
 
@@ -2500,6 +2637,14 @@ export default {
     ) {
       return handleAlertTriggersActiveList(request, env);
     }
+    // #5022: the evaluator's own write-back for match_count/last_matched_at
+    // -- see handleAlertTriggersMatchedWriteback's own header comment.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/alert-triggers/matched"
+    ) {
+      return handleAlertTriggersMatchedWriteback(request, env);
+    }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
     if (!env.HYPERDRIVE?.connectionString) {
@@ -2548,8 +2693,10 @@ export default {
       // queries, so a bare SET (no transaction) has no guarantee it applies
       // to the query that follows it (Hyperdrive's connection-lifecycle
       // docs; #4686's root cause). "read only" matches this Worker's own
-      // READ-ONLY invariant (top of file) at the database level too.
-      return await sql.begin("read only", async (sql) => {
+      // READ-ONLY invariant (top of file) at the database level too, and
+      // repeatable read keeps multi-statement analytics responses on one
+      // stable snapshot while preserving each route's bounded timeouts.
+      return await sql.begin(DATA_API_READ_TRANSACTION, async (sql) => {
         await sql`SET statement_timeout = '3000ms'`;
 
         // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
@@ -2947,7 +3094,8 @@ export default {
           let lo = null;
           const kindCounts = new Map();
           for (const row of capped) {
-            netuids.add(row.netuid);
+            const netuid = numberOrNull(row.netuid);
+            if (netuid != null) netuids.add(netuid);
             const bn = numberOrNull(row.block_number);
             if (bn != null && (fb == null || bn < fb)) fb = bn;
             if (bn != null && (lb == null || bn > lb)) lb = bn;
@@ -3141,6 +3289,7 @@ export default {
           SELECT event_kind, COUNT(*) AS coldkey_count FROM (
             SELECT coldkey, event_kind FROM account_events
             WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
+              AND coldkey IS NOT NULL
             GROUP BY 1, 2
           ) grouped GROUP BY event_kind`;
           const coldkeyCountByKind = new Map(
@@ -4301,6 +4450,7 @@ export default {
           );
           const slaRows = await sql`
           SELECT MAX(surface_id) AS surface_id,
+                 COALESCE(surface_key, surface_id) AS surface_key,
                  COUNT(*) AS total,
                  SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}

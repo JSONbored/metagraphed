@@ -207,13 +207,10 @@ describe("decodeChainEventArgs", () => {
   test("keeps a single-element Vec<H256> as an array, not collapsed to a bare string (real EVM.Log.log.topics, fixed 2026-07-12)", () => {
     // Found live 2026-07-12 while fixing the H160 gap above: a single-topic
     // EVM.Log collapsed `topics` from `["0x...hash"]` down to a bare
-    // `"0x...hash"` -- normalizePostgresValue's newtype-scalar rule fired
-    // because, by the time it ran, the account/hash decode had already
-    // turned the sole topic into a plain hex STRING (a scalar), making the
-    // outer single-element array indistinguishable from a genuine
-    // newtype-scalar wrap. Fixed by running normalizePostgresValue BEFORE
-    // the byte-array decode instead of after (see decodeChainEventArgs'
-    // own header for why this reordering is safe).
+    // `"0x...hash"` when generic scalar-newtype normalization ran after
+    // account/hash decoding. The chain-event normalizer now avoids that
+    // ambiguous scalar-array collapse entirely because args have no type
+    // descriptor to distinguish a wrapper from a one-element collection.
     const hash = new Array(32).fill(3);
     const args = { log: { topics: [[hash]] } };
     const decoded = decodeChainEventArgs(args, {
@@ -641,14 +638,11 @@ describe("decodeChainEventArgs", () => {
     );
   });
 
-  test("a single-element Vec field NOT in COLLECTION_FIELDS still collapses via normalizePostgresValue (baseline, unaffected)", () => {
-    const args = { fee_rate: [0] };
-    assert.deepEqual(
-      decodeChainEventArgs(args, {
-        pallet: "LimitOrders",
-        method: "SomeOtherEvent",
-      }),
-      { fee_rate: 0 },
-    );
+  test("preserves untyped single-element scalar arrays because chain_events args lack type context", () => {
+    assert.deepEqual(decodeChainEventArgs([78]), [78]);
+    assert.deepEqual(decodeChainEventArgs({ uids: [1] }), { uids: [1] });
+    assert.deepEqual(decodeChainEventArgs({ outer: [[1], [2, 3]] }), {
+      outer: [[1], [2, 3]],
+    });
   });
 });

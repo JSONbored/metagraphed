@@ -1,23 +1,59 @@
-// Unit tests for scripts/chain-firehose-relay.mjs's pure logic (#4981, ADR
-// 0015). The long-running LISTEN/drain loop (main()) needs a real Postgres
-// connection and process lifecycle and is intentionally excluded from
-// vitest.config.mjs's coverage.include (matching deploy/wss-lb's
+// Unit tests for scripts/chain-firehose-relay.mjs's pure logic (#4981,
+// #5027, ADR 0015). The long-running poll/cleanup loop (main()) needs a real
+// Postgres connection and process lifecycle and is intentionally excluded
+// from vitest.config.mjs's coverage.include (matching deploy/wss-lb's
 // node --test convention for standalone deploy/-tier processes) -- see that
 // function's own /* v8 ignore */ comment. Every decision it makes is tested
 // directly here instead.
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import {
   CHAIN_FIREHOSE_BACKOFF_BASE_MS,
   CHAIN_FIREHOSE_BACKOFF_MAX_MS,
+  CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS,
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS,
   computeBackoffDelayMs,
-  createBoundedDropOldestQueue,
+  forwardBatch,
   forwardChainFirehoseNotification,
   forwardWithRetry,
+  mapBounded,
   parseRelayConfig,
 } from "../scripts/chain-firehose-relay.mjs";
+
+// --- mapBounded ---------------------------------------------------------------
+
+test("mapBounded: preserves result order by input index regardless of completion order", async () => {
+  const results = await mapBounded([30, 10, 20], 3, async (ms) => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    return ms;
+  });
+  assert.deepEqual(results, [30, 10, 20]);
+});
+
+test("mapBounded: never runs more than `concurrency` workers at once", async () => {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  await mapBounded([1, 2, 3, 4, 5, 6], 2, async () => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    inFlight -= 1;
+  });
+  assert.equal(maxInFlight, 2);
+});
+
+test("mapBounded: an empty items array resolves to an empty results array", async () => {
+  const results = await mapBounded([], 5, async () => {
+    throw new Error("should never be called");
+  });
+  assert.deepEqual(results, []);
+});
+
+test("mapBounded: a null/undefined items list is treated as empty, not a crash", async () => {
+  const results = await mapBounded(null, 5, async () => 1);
+  assert.deepEqual(results, []);
+});
 
 // --- parseRelayConfig -------------------------------------------------------
 
@@ -69,35 +105,6 @@ test("computeBackoffDelayMs: honors custom baseMs/maxMs", () => {
   assert.equal(computeBackoffDelayMs(10, { baseMs: 100, maxMs: 1000 }), 1000);
 });
 
-// --- createBoundedDropOldestQueue --------------------------------------------
-
-test("createBoundedDropOldestQueue: push/shift behaves as a plain FIFO under capacity", () => {
-  const queue = createBoundedDropOldestQueue(3);
-  queue.push("a");
-  queue.push("b");
-  assert.equal(queue.size, 2);
-  assert.equal(queue.shift(), "a");
-  assert.equal(queue.shift(), "b");
-  assert.equal(queue.shift(), undefined);
-  assert.equal(queue.size, 0);
-});
-
-test("createBoundedDropOldestQueue: drops the OLDEST entry once over maxSize, keeping size bounded", () => {
-  const queue = createBoundedDropOldestQueue(2);
-  queue.push("a");
-  queue.push("b");
-  queue.push("c"); // over capacity -- "a" is dropped
-  assert.equal(queue.size, 2);
-  assert.equal(queue.droppedCount, 1);
-  assert.equal(queue.shift(), "b");
-  assert.equal(queue.shift(), "c");
-});
-
-test("createBoundedDropOldestQueue: defaults to CHAIN_FIREHOSE_QUEUE_MAX_SIZE when no size is given", () => {
-  const queue = createBoundedDropOldestQueue();
-  assert.equal(queue.droppedCount, 0);
-});
-
 // --- forwardChainFirehoseNotification ----------------------------------------
 
 test("forwardChainFirehoseNotification: POSTs the payload with the sync-token header, returns ok/status", async () => {
@@ -120,6 +127,7 @@ test("forwardChainFirehoseNotification: POSTs the payload with the sync-token he
     "shh",
   );
   assert.equal(received.init.body, '{"table":"blocks","block_number":1}');
+  assert.equal(received.init.signal instanceof AbortSignal, true);
 });
 
 test("forwardChainFirehoseNotification: a non-2xx response is reported as not ok", async () => {
@@ -131,6 +139,47 @@ test("forwardChainFirehoseNotification: a non-2xx response is reported as not ok
   );
   assert.equal(result.ok, false);
   assert.equal(result.status, 401);
+});
+
+test("forwardChainFirehoseNotification: cancels the response body before returning", async () => {
+  let canceled = false;
+  const result = await forwardChainFirehoseNotification(
+    "{}",
+    { ingestUrl: "https://hub.example.com/ingest", syncSecret: "shh" },
+    async () => ({
+      ok: true,
+      status: 202,
+      body: {
+        async cancel() {
+          canceled = true;
+        },
+      },
+    }),
+  );
+  assert.deepEqual(result, { ok: true, status: 202 });
+  assert.equal(canceled, true);
+});
+
+test("forwardChainFirehoseNotification: aborts a stalled fetch after the per-attempt timeout", async () => {
+  vi.useFakeTimers();
+  try {
+    const promise = forwardChainFirehoseNotification(
+      "{}",
+      { ingestUrl: "https://hub.example.com/ingest", syncSecret: "shh" },
+      async (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    );
+    const rejection = assert.rejects(promise, /aborted/);
+
+    await vi.advanceTimersByTimeAsync(CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS);
+    await rejection;
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 // --- forwardWithRetry ---------------------------------------------------------
@@ -224,4 +273,63 @@ test("forwardWithRetry: never sleeps after the final attempt (no wasted delay be
     },
   );
   assert.equal(sleeps, CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS - 1);
+});
+
+// --- forwardBatch --------------------------------------------------------------
+
+test("forwardBatch: forwards every row concurrently, JSON-stringifying the already-parsed payload", async () => {
+  const seen = new Set();
+  const rows = [
+    { id: 1, payload: { table: "blocks", block_number: 1 } },
+    { id: 2, payload: { table: "blocks", block_number: 2 } },
+  ];
+  const result = await forwardBatch(
+    rows,
+    { ingestUrl: "u", syncSecret: "s" },
+    {
+      fetchImpl: async (_url, init) => {
+        seen.add(init.body);
+        return new Response("{}", { status: 202 });
+      },
+      sleepImpl: async () => {},
+    },
+  );
+  assert.equal(result.forwarded, 2);
+  assert.equal(result.dropped, 0);
+  // Concurrent dispatch (CHAIN_FIREHOSE_FORWARD_CONCURRENCY), not strictly
+  // sequential -- assert both were sent, not the order they arrived in.
+  assert.deepEqual(
+    [...seen].sort(),
+    [
+      '{"table":"blocks","block_number":1}',
+      '{"table":"blocks","block_number":2}',
+    ].sort(),
+  );
+});
+
+test("forwardBatch: counts a row dropped after exhausting retries separately from forwarded rows", async () => {
+  const rows = [
+    { id: 1, payload: { table: "blocks", block_number: 1 } }, // always fails
+    { id: 2, payload: { table: "blocks", block_number: 2 } }, // always succeeds
+  ];
+  const result = await forwardBatch(
+    rows,
+    { ingestUrl: "u", syncSecret: "s" },
+    {
+      // Keyed by payload body, not a shared call counter -- rows forward
+      // concurrently, so interleaving between the two isn't deterministic.
+      fetchImpl: async (_url, init) =>
+        new Response("{}", {
+          status: init.body.includes('"block_number":1') ? 500 : 202,
+        }),
+      sleepImpl: async () => {},
+    },
+  );
+  assert.equal(result.forwarded, 1);
+  assert.equal(result.dropped, 1);
+});
+
+test("forwardBatch: an empty batch forwards nothing and drops nothing", async () => {
+  const result = await forwardBatch([], { ingestUrl: "u", syncSecret: "s" });
+  assert.deepEqual(result, { forwarded: 0, dropped: 0 });
 });

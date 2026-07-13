@@ -37,10 +37,10 @@
 //
 // Apply the generated file against the indexer box's Postgres (never run
 // migrations directly on prod -- copy in, then execute):
-//   scp <out> indexeradmin@meta-indexer-01-us-lax1:/tmp/subnet-snapshots-backfill.sql
-//   ssh indexeradmin@meta-indexer-01-us-lax1 \
-//     "sudo docker cp /tmp/subnet-snapshots-backfill.sql metagraphed-indexer-postgres-1:/tmp/x.sql && \
-//      sudo docker exec metagraphed-indexer-postgres-1 psql -U metagraphed -d metagraphed \
+//   scp <out> <indexer-ssh-target>:/tmp/subnet-snapshots-backfill.sql
+//   ssh <indexer-ssh-target> \
+//     "sudo docker cp /tmp/subnet-snapshots-backfill.sql <postgres-container>:/tmp/x.sql && \
+//      sudo docker exec <postgres-container> psql -U <postgres-user> -d <postgres-database> \
 //        -v ON_ERROR_STOP=1 -f /tmp/x.sql"
 import { spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";

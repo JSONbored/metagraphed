@@ -985,6 +985,29 @@ describe("MCP transport handling", () => {
     assert.equal(body.error.code, -32600);
   });
 
+  test("the MCP rate limiter also covers GET and DELETE before session routing", async () => {
+    for (const method of ["GET", "DELETE"]) {
+      const hub = fakeMcpSessionHubBinding();
+      const response = await handleMcpRequest(
+        new Request(MCP_URL, {
+          method,
+          headers: { "mcp-session-id": A_SESSION_ID },
+        }),
+        {
+          MCP_SESSION_HUB: hub,
+          MCP_RATE_LIMITER: {
+            async limit() {
+              return { success: false };
+            },
+          },
+        },
+        makeDeps(),
+      );
+      assert.equal(response.status, 429);
+      assert.equal(hub.calls.length, 0);
+    }
+  });
+
   test("the MCP rate limiter is enforced before body parsing", async () => {
     let rateLimitKey;
     const request = new Request(MCP_URL, {
@@ -1219,6 +1242,22 @@ describe("MCP transport handling", () => {
       assert.deepEqual(JSON.parse(hub.calls[0].init.body), {
         sessionId: A_SESSION_ID,
       });
+    });
+
+    test("a 404 from the session hub (unknown session) passes through as 404", async () => {
+      const hub = fakeMcpSessionHubBinding({
+        "/terminate": () => new Response(null, { status: 404 }),
+      });
+      const request = new Request(MCP_URL, {
+        method: "DELETE",
+        headers: { "mcp-session-id": A_SESSION_ID },
+      });
+      const response = await handleMcpRequest(request, {
+        MCP_SESSION_HUB: hub,
+      });
+      assert.equal(response.status, 404);
+      const body = await response.json();
+      assert.match(body.error.message, /No such MCP session/);
     });
   });
 });

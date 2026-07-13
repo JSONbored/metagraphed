@@ -62,4 +62,24 @@
       "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
     },
   ],
+  // Found by adversarial review (#4984 Part 3): ALERT_TRIGGER_CREATE_TOKEN
+  // alone doesn't bound REQUEST VOLUME from a legitimate token holder --
+  // every created row becomes a permanent per-event cost in AlerterHub's
+  // O(active triggers) match scan. Namespace id is local to THIS Worker's
+  // own bindings (Cloudflare's Workers-native rate-limiting API, not the
+  // older account-wide Rate Limiting Rules product) -- reusing "1001" here
+  // does not collide with wrangler.jsonc's own RPC_RATE_LIMITER using the
+  // same id, since ratelimit namespaces are scoped per Worker script.
+  // Skipped when unbound (local dev/CI), matching every other optional
+  // rate-limiter's convention in this codebase.
+  "ratelimits": [
+    {
+      "name": "ALERT_TRIGGER_CREATE_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
+  ],
 }

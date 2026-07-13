@@ -2,7 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Coins, Flame, Award, Server, X } from "lucide-react";
 import { subnetNeuronQuery } from "@/lib/metagraphed/queries";
-import { TableState, DailyRollupFreshness, StatTile } from "@jsonbored/ui-kit";
+import { TableState, RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -64,7 +64,7 @@ export function NeuronDetailCard({
           ) : null}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <DailyRollupFreshness at={meta?.generated_at} />
+          <RealtimeFreshness at={meta?.generated_at} />
           {onClose ? (
             <button
               type="button"

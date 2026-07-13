@@ -178,7 +178,22 @@
 
   /* Layout geometry tokens — single source of truth for structural offsets. */
   --spacing-nav: 3.5rem; /* app header height (h-nav in app-shell) */
-  --spacing-sticky-offset: 6.5rem; /* nav + filter-bar height — sticky thead anchor */
+  /* h-9 (2.25rem) content + 1px border-t, shared by RegistryTicker and the
+     breadcrumb row (app-shell.tsx) -- both are md:block, so this only
+     applies at the same breakpoint top-sticky-offset's consumers use. */
+  --spacing-header-row: 2.3125rem;
+  /* nav + RegistryTicker + breadcrumb + the header's own 1px border-b --
+     sticky thead anchor. Must track app-shell.tsx's <header> stack exactly:
+     it was a flat 6.5rem (nav + filter-bar) until RegistryTicker and the
+     breadcrumb row were added on top of it without updating this, so the
+     sticky thead anchored 27px too high and rendered underneath the
+     (higher z-index) header instead of below it. Expressed via calc() off
+     the shared row height above, not re-hardcoded, so the next row added to
+     the header stack only needs one number changed here, not a second
+     independently-measured one. */
+  --spacing-sticky-offset: calc(
+    var(--spacing-nav) + 2 * var(--spacing-header-row) + 0.0625rem
+  );
   --spacing-section-gap: 4rem; /* between top-level page sections */
   --spacing-shell-max: 1400px; /* page shell max width (max-w-shell-max) */
 }
@@ -873,8 +888,17 @@ html[data-density="compact"] .bg-card > table td {
   }
 }
 
+/* `backwards` (not `both`): applies the 0% keyframe pre-start so there's no
+   flash of fully-visible content, but does NOT persist the 100% keyframe's
+   `transform: translateY(0)` after the animation finishes. `both` did persist
+   it -- a computed `transform` other than `none` establishes a new containing
+   block, which silently broke `position: sticky` for every descendant on
+   every route (the header would "stick" relative to this div instead of the
+   viewport) for as long as that route stayed mounted. `translateY(0)` is
+   visually a no-op either way, so this changes nothing about how the
+   animation looks, only what it leaves behind once it's done. */
 .mg-route-enter {
-  animation: mg-route-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: mg-route-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @media (hover: hover) {

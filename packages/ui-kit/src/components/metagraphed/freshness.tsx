@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { classNames, formatRelative, isStaleFreshness } from "@/lib/format";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import type { FreshnessTier } from "./freshness-badge";
 
 interface Props {
   at?: string | null;
@@ -58,6 +59,17 @@ export function FreshnessIndicator({
   );
 }
 
+/** Tooltip copy shared by the compact tier-freshness indicators below. */
+export function tierFreshnessLabel(
+  tier: FreshnessTier,
+  at?: string | null,
+): string {
+  if (at == null) return "No freshness data";
+  const prefix =
+    tier === "realtime" ? "Live chain read" : "Daily rollup snapshot";
+  return `${prefix} — updated ${formatRelative(at)}`;
+}
+
 /**
  * Minimal daily-rollup freshness signal — a staleness dot plus an info icon
  * whose tooltip carries the tier + relative time, instead of always-visible
@@ -71,14 +83,33 @@ export function DailyRollupFreshness({
   at?: string | null;
   className?: string;
 }) {
-  const label =
-    at == null
-      ? "No freshness data"
-      : `Daily rollup snapshot — updated ${formatRelative(at)}`;
   return (
     <span className={classNames("inline-flex items-center gap-1", className)}>
       <FreshnessIndicator at={at} dotOnly />
-      <InfoTooltip label={label} />
+      <InfoTooltip label={tierFreshnessLabel("daily", at)} />
+    </span>
+  );
+}
+
+/**
+ * Realtime/chain-derived twin of {@link DailyRollupFreshness} — same compact
+ * dot + info-tooltip shape, but "Live chain read" framing for data sourced
+ * from a live/near-realtime chain read (metagraph snapshot, validators,
+ * on-chain activity, live economics) rather than the daily registry-build
+ * snapshot. Use this, not DailyRollupFreshness, for anything backed by a
+ * query that isn't the daily subnetProfileQuery/registry-artifact family.
+ */
+export function RealtimeFreshness({
+  at,
+  className,
+}: {
+  at?: string | null;
+  className?: string;
+}) {
+  return (
+    <span className={classNames("inline-flex items-center gap-1", className)}>
+      <FreshnessIndicator at={at} dotOnly />
+      <InfoTooltip label={tierFreshnessLabel("realtime", at)} />
     </span>
   );
 }

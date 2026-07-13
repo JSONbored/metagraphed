@@ -37,13 +37,13 @@ export function ListShell({
   isStale?: boolean;
   stickyHeader?: boolean;
 }) {
-  // Horizontal scroll lives on an inner wrapper so wide tables stay reachable at
-  // tablet widths. `overflow-y-clip` avoids a vertical scroll container (which
-  // would break `position: sticky` on <thead> against page scroll); the outer
-  // card uses `overflow-hidden` only to clip rounded corners.
-  const tableScroll = stickyHeader
-    ? "overflow-x-auto overflow-y-clip"
-    : "overflow-x-auto";
+  // Sticky table headers must not sit inside an overflow ancestor; otherwise
+  // browsers anchor `position: sticky` to that wrapper instead of page scroll.
+  // Non-sticky tables can still use a horizontal scroll container.
+  const tableCard = stickyHeader
+    ? "rounded border border-border bg-card overflow-x-clip"
+    : "rounded border border-border bg-card overflow-hidden";
+  const tableScroll = stickyHeader ? "overflow-x-clip" : "overflow-x-auto";
   return (
     <div>
       <div
@@ -64,7 +64,7 @@ export function ListShell({
         <div className={isStale ? "opacity-70 transition-opacity" : undefined}>
           {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
           <div className={cards ? "hidden md:block" : undefined}>
-            <div className="rounded border border-border bg-card overflow-hidden">
+            <div className={tableCard}>
               <div className={tableScroll}>{table}</div>
               {footer}
             </div>

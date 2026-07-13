@@ -25,20 +25,19 @@
 
 ## Context — verified directly against running infrastructure, not inherited from prior docs
 
-**The indexer box (`meta-indexer-01-us-lax1`) is the real, permanent core —
-not a Railway stopgap.** It runs, self-hosted, with no Railway involvement:
-`indexer-rs` (Rust, live-follows the finalized chain head), `indexer-rs-backfill`
-(sharded historical decode), `metagraphed-indexer-postgres-1` (TimescaleDB,
-the durable chain sink both indexers write to), `metagraphed-indexer-redis-1`
-(cursor state), `metagraphed-registry-postgres-1` (a _separate_ Postgres
-instance for registry data — different scale, different write cadence, kept
+**The indexer box is the real, permanent core — not a Railway stopgap.** It
+runs, self-hosted, with no Railway involvement: `indexer-rs` (Rust,
+live-follows the finalized chain head), `indexer-rs-backfill` (sharded
+historical decode), a TimescaleDB container (the durable chain sink both
+indexers write to), a Redis container (cursor state), a _separate_ Postgres
+container for registry data (different scale, different write cadence, kept
 independent so one can't take the other down), and `metagraphed-streamer`
 (described below). Railway's only remaining role anywhere in this system is
 `wss-lb`. ADR 0013's "Railway core, Hetzner escape hatch" framing described a
 plan that was overtaken by events — the team went straight to bare metal.
 
-**A separate, full archive node (`meta-archive-01-us-nyc1`) is live but not
-yet caught up.** `node-subtensor --sync=full --state-pruning=archive
+**A separate, full archive node is live but not yet caught up.**
+`node-subtensor --sync=full --state-pruning=archive
 --blocks-pruning=archive`, syncing from genesis. As of this writing it is
 **~51% synced** to chain tip (measured via `system_syncState`), restarting
 roughly every 12 hours (a stability wrinkle, not fatal), and is expected to

@@ -45,7 +45,7 @@ export function ApiDrawerTrigger() {
           type="button"
           onClick={open}
           aria-label="View API source for this page"
-          className="hidden md:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+          className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
         >
           <Code2 className="size-4" />
         </button>

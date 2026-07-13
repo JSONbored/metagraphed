@@ -104,6 +104,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
           eyebrow="Validators / miners"
           value={`${y.validator_count ?? "—"} / ${y.miner_count ?? "—"}`}
           hint={`${y.neuron_count ?? neurons.length} UIDs`}
+          truncate={false}
         />
       </div>
 
@@ -131,7 +132,53 @@ export function YieldLoader({ netuid }: { netuid: number }) {
 
       {/* Per-UID yield leaderboard (top yielders). */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* < md: a 7-column table squeezes Yield/vs-median off an undiscoverable
+            horizontal scroll, so narrow viewports get a stacked card per UID
+            instead — mirrors the cards/table split the explorer stake-transfer
+            leaderboard uses (explorer.tsx) and ListShell uses for paginated lists. */}
+        <div className="md:hidden divide-y divide-border/60">
+          {ranked.map((n) => (
+            <div key={n.uid} className="p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                    #{n.uid}
+                  </span>
+                  {n.hotkey ? (
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: n.hotkey }}
+                      className="truncate font-mono text-[12px] text-ink-strong hover:text-accent hover:underline"
+                      title={n.hotkey}
+                    >
+                      {shortHash(n.hotkey) ?? n.hotkey}
+                    </Link>
+                  ) : (
+                    <span className="font-mono text-[12px] text-ink-muted">—</span>
+                  )}
+                </div>
+                {n.role === "validator" ? (
+                  <span className="shrink-0 inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+                    Validator
+                  </span>
+                ) : (
+                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+                    Miner
+                  </span>
+                )}
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[11px] tabular-nums">
+                <span className="text-ink-muted">{taoCompact(n.stake_tao)} τ stake</span>
+                <span className="text-ink-muted">{taoCompact(n.emission_tao)} τ emission</span>
+                <span className="flex items-center gap-1 text-ink-strong">
+                  {fmtYield(n.yield)}
+                  <VsMedian vs={n.vs_median} />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
               <tr>

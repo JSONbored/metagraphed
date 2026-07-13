@@ -1,12 +1,11 @@
 # Realtime chain-event firehose (#2114, ADR 0015)
 
-The `chain_firehose` Postgres channel: a compact, best-effort NOTIFY stream of
+The `chain_firehose_outbox` table is a compact, best-effort stream source for
 every row landing in `blocks`/`extrinsics`/`chain_events`/`account_events`
-(the last added for #4984 -- see below), decoupled from
-`indexer-rs`'s own write path so nothing downstream of it can ever affect
-whether `indexer-rs` keeps following the chain head. See ADR 0015 for why this
-shape was chosen over a direct push from `indexer-rs` (the retired
-`metagraphed-streamer`'s exact failure mode, documented in ADR 0014).
+(the last added for #4984 -- see below), decoupled from `indexer-rs`'s own
+process so downstream delivery cannot block the chain follower. See ADR 0015
+for why this shape was chosen over a direct push from `indexer-rs` (the
+retired `metagraphed-streamer`'s exact failure mode, documented in ADR 0014).
 
 ## How it works
 
@@ -15,65 +14,62 @@ indexer-rs → (writes, as it always has) → Postgres
                                               │
                               AFTER INSERT trigger (deploy/postgres/schema.sql)
                                               │
-                                    pg_notify('chain_firehose', <payload>)
+                                 INSERT chain_firehose_outbox(payload)
                                               │
-                     box-side relay (LISTEN, #4981, live) → Cloudflare Durable Object (#4982, live)
+              box-side relay (poll/claim rows, #4981/#5027, live) → Cloudflare Durable Object (#4982, live)
                                                                           │
                                               SSE / WS (#4982, live) / GraphQL subs / MCP (#4983, live)
 ```
 
-`indexer-rs` requires **zero code changes** and has **zero awareness** any of
-this exists — a firehose outage (relay down, Cloudflare unreachable, the
-Durable Object itself failing) has exactly one consequence: the live
-subscription feed stalls. `indexer-rs`'s writes are unaffected in every
-_normal_ failure mode of the downstream firehose (relay/Cloudflare/DO issues
-never reach Postgres at all — they're purely downstream of the already-fired
-`NOTIFY`).
-
-One caveat, corrected 2026-07-13 after an earlier overstated claim here (found
-by adversarial review): the trigger fires _within_ the same transaction as
-the insert, before commit — not "after the row is already durably committed."
-Its own `EXCEPTION` handler catches errors in its own logic, but Postgres's
-commit-time NOTIFY-queue-capacity check happens after the trigger returns and
-isn't catchable by it; if that shared queue is ever full at commit, the whole
-transaction (including the row insert) fails. See
-`deploy/postgres/schema.sql`'s own comment for why this is a narrow,
-low-likelihood tail risk given this deployment's single listener (the #4981
-relay), not a zero-risk guarantee.
+this exists. The trigger writes compact references into a normal Postgres
+outbox table in the same transaction as the indexed row. Downstream consumers
+never use `LISTEN`/`NOTIFY`, so a stuck relay or any other listener cannot pin
+Postgres's global async notification queue and make source-table commits fail
+at commit time. Ordinary local database failures (for example disk exhaustion)
+remain database failures; relay, Cloudflare, or Durable Object outages only
+leave outbox rows pending.
 
 ## The trigger (`deploy/postgres/schema.sql`)
 
-`notify_chain_firehose()` is a single `plpgsql` function, reused by three
+`enqueue_chain_firehose()` is a single `plpgsql` function, reused by three
 `AFTER INSERT ... FOR EACH ROW` triggers (one per table), each passed its
 logical table name as an explicit trigger argument (`EXECUTE FUNCTION
-notify_chain_firehose('blocks')`, read inside as `TG_ARGV[0]`). This is
+enqueue_chain_firehose('blocks')`, read inside as `TG_ARGV[0]`). This is
 deliberate, not stylistic: on a TimescaleDB hypertable, `TG_TABLE_NAME`
 inside the function body resolves to the physical per-time-range CHUNK name
 (e.g. `_hyper_1_379_chunk`), never the logical hypertable name — an earlier
 version of this function branched on `TG_TABLE_NAME` and was a silent no-op
-on every real insert as a result (verified live 2026-07-12). Payload is a
-compact reference — table name + primary-key fields + a couple of headline
-columns — not the full row, to stay well under Postgres's 8000-byte `NOTIFY`
-payload cap. A subscriber that wants full row detail re-fetches by primary
-key. Any error raised inside the trigger (e.g. a future oversized payload) is
-swallowed, not propagated — firehose delivery must never be able to fail an
-insert.
+on every real insert as a result (verified live 2026-07-12).
+
+Payload is a compact reference — table name + primary-key fields + a couple
+of headline columns — not the full row. A subscriber that wants full row detail
+re-fetches by primary key. The function inserts that payload into
+`chain_firehose_outbox`; the relay claims pending rows using the indexed
+`delivered_at IS NULL` view of the table and then forwards them.
 
 Row-level, not statement-level: simpler for a first cut, at the cost of one
-`NOTIFY` per row rather than one per batch insert. If per-block NOTIFY volume
+outbox row per source row rather than one per batch insert. If per-block volume
 becomes a real bottleneck, the documented fast-follow is a statement-level
 trigger with a `REFERENCING NEW TABLE AS new_rows` transition table.
 
 ## The relay (#4981, live)
 
-A new, small, self-hosted process on the indexer box — `LISTEN
-chain_firehose;`, forward each notification to the Durable Object over HTTP,
-bounded retry/drop-oldest under sustained Cloudflare-side unavailability.
-Deployed via the same Ansible-managed convention as the (retired) `streamer`
-role — see [`JSONbored/metagraphed-infra`](https://github.com/JSONbored/metagraphed-infra)
+A new, small, self-hosted process on the indexer box polls and claims pending
+`chain_firehose_outbox` rows, forwards each payload to the Durable Object over
+HTTP, and uses bounded retry/drop-oldest behavior under sustained
+Cloudflare-side unavailability. It does **not** `LISTEN` on a Postgres channel:
+PostgreSQL delivers `NOTIFY` at transaction commit and its global notification
+queue can be held back by a listener that remains in a transaction; if that
+queue fills, committing transactions that executed `NOTIFY` can fail outside a
+trigger-local exception block.
+
+The relay is deployed via the same Ansible-managed convention as the (retired)
+`streamer` role — see [`JSONbored/metagraphed-infra`](https://github.com/JSONbored/metagraphed-infra)
 — not an ad-hoc SSH-installed process. Unlike the old streamer, this relay is
-a pure consumer: it never writes to Postgres and is never in `indexer-rs`'s
-critical path, so there is no equivalent of the old blocking-retry-starves-the-subscription
+a pure consumer: it only ever writes to `chain_firehose_outbox` itself
+(claiming rows via `delivered_at`, cleanup deletes), never to `indexer-rs`'s
+source tables, and is never in `indexer-rs`'s process-level critical path, so
+there is no equivalent of the old blocking-retry-starves-the-subscription
 failure mode to guard against here. Its target is the ingest endpoint
 documented below.
 
@@ -98,7 +94,7 @@ One global instance (`idFromName("global")`) owns two endpoints:
 - `GET /api/v1/chain/stream` — the public read side, no auth (the same
   public data `/api/v1/chain-events` already serves, pushed instead of
   polled). SSE by default (`event: chain` frames, JSON payload matching the
-  trigger's NOTIFY shape); a WebSocket `Upgrade` header on the same path gets
+  trigger's outbox payload shape); a WebSocket `Upgrade` header on the same path gets
   the WS transport instead. Both support
   `?topics=blocks,extrinsics,chain_events,account_events` (comma-separated,
   defaults to all four) to avoid forcing a client to consume the full
@@ -148,6 +144,25 @@ each one costing a real `execute()`+`send()` on every future `broadcast()`.
 `subscribeChainEvents` returns `null` at the cap; `src/graphql.mjs`'s
 resolver turns that into a clear `GraphQLError` rather than hanging the
 client on a stream that will never yield.
+
+**Per-IP sub-quotas (#5004):** every cap above is global, so one actor
+looping past it could otherwise lock out every other client of that
+transport. `CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP` (20, `resolveClientIp`)
+bounds SSE connections, plain-firehose WS connections, and graphql-ws
+socket upgrades per IP -- well under the global caps, tracked via
+`sseClientsByIp`/`wsClientsByIp` and released on the same
+connect/disconnect lifecycle hooks the underlying `sseClients`/
+`state.getWebSockets()` bookkeeping already uses, so the two can never
+drift apart. A WS-connection cap alone doesn't bound how many `chainEvents`
+subscriptions get multiplexed onto one already-open graphql-ws socket
+(graphql-ws itself imposes no per-socket subscription limit), so
+`CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP` (20) is a second,
+independent sub-quota on subscription count, with the connecting IP
+threaded from the WS upgrade through graphql-ws's own `opened()`/`context()`
+extension point (`ctx.extra.ip` -> `context.clientIp`) into
+`subscribeChainEvents`. All four per-IP Maps are in-memory only and reset
+to empty on every Durable Object reconstruction, the same hibernation-reset
+convention every other in-memory Map on this class already follows.
 
 Testability: this repo has no Durable Object-capable test harness (no
 `@cloudflare/vitest-pool-workers`/Miniflare). Every actual decision the hub
@@ -335,13 +350,82 @@ the evaluation response (an owner asking "did this fire?" gets the true
 answer) but only the first delivers -- the rest are reported as
 `rate_limited`, not silently dropped from the response shape.
 
+**Part 4 (live): adversarial-review remediation.** After Part 3 merged, a
+dedicated adversarial-review pass (independent security/correctness/
+resource-exhaustion lenses, each candidate finding re-verified by two
+skeptical agents before being treated as real) surfaced six confirmed
+issues, all fixed on top of the merged code rather than folded silently into
+Part 3's own history:
+
+- **PATCH-as-full-replace on `chain_alert_triggers`** (the most severe
+  finding): `handleAlertTriggerUpdate` originally validated a PATCH body
+  directly against the CREATE-shared validator, so any condition field the
+  caller didn't resend was silently defaulted to unset -- unintentionally
+  _widening_ a trigger's match scope on every partial edit (e.g. renaming a
+  netuid-scoped trigger without resending `netuid` dropped the netuid filter
+  entirely). Fixed by merging the incoming body onto the existing row before
+  validating (`omitNullValues` + merge in `workers/data-api.mjs`). An
+  explicit `null` in a PATCH body is a no-op (keeps the existing value), not
+  a clear -- `validateAlertTriggerInput` rejects a real `null` for most
+  fields, so there's currently no supported way to explicitly clear an
+  optional condition field via PATCH short of delete + recreate.
+- **Existence oracle via differentiated 403/404**: GET/PATCH/DELETE all
+  returned 403 for "wrong owner token" vs 404 for "no such trigger",
+  letting an unauthenticated caller enumerate trigger existence over
+  sequential ids with zero credentials. `requireAlertTriggerOwner` now
+  returns the same 404 either way.
+- **Unbounded trigger creation**: `ALERT_TRIGGER_CREATE_TOKEN` is a shared
+  anti-abuse secret, not a per-user credential -- it didn't bound request
+  _volume_ from a legitimate holder, and every created row is a permanent
+  per-event cost in `AlerterHub.matchingTriggers()`'s scan. A
+  Workers-native rate limiter (`ALERT_TRIGGER_CREATE_RATE_LIMITER`, 10/min
+  per IP, `wrangler.data.jsonc`) now gates creation; skipped when unbound
+  (local dev/CI).
+- **Two missing timeouts**: `AlerterHub.refreshTriggers()`'s Hyperdrive
+  fetch (`ALERT_TRIGGER_REFRESH_TIMEOUT_MS`, 4s) and
+  `ChainFirehoseHub.broadcast()`'s own ping to the `AlerterHub` singleton
+  (`ALERTER_HUB_EVALUATE_TIMEOUT_MS`, 15s, `workers/chain-firehose-hub.mjs`)
+  both had no independent ceiling -- a slow Postgres query or a slow
+  delivery fan-out could stall `broadcast()` itself, delaying every OTHER
+  firehose consumer's (SSE/WS/GraphQL/MCP) response, not just the alerter's.
+- **Unbounded delivery-fan-out concurrency**: a single chain event can match
+  many distinct triggers; `evaluate()`'s delivery loop now runs through
+  `mapBounded` (exported from `src/webhooks.mjs`, `ALERT_DELIVERY_CONCURRENCY`
+  = 8) instead of an unbounded `Promise.all`.
+
+One finding remains deliberately deferred as its own tracked issue rather
+than rushed in under time pressure:
+
+- [#5021](https://github.com/JSONbored/metagraphed/issues/5021) -- neither
+  this alerter's webhook/Discord delivery nor the pre-existing
+  webhook-subscription delivery (`src/webhooks.mjs`) actually re-resolves
+  DNS at request time; the codebase's own `resolveHostnames`-based SSRF
+  defense turns out to be Node-only (`scripts/dispatch-webhooks.mjs`'s cron
+  script) and was never reachable from the live Worker in the first place.
+  A real fix needs DNS-over-HTTPS via `fetch()`, shared across both paths.
+
+Three more findings from the same review -- [#5022](https://github.com/JSONbored/metagraphed/issues/5022)
+(`match_count`/`last_matched_at` were schema columns nothing wrote to),
+[#5023](https://github.com/JSONbored/metagraphed/issues/5023) (the burst
+rate-limit timestamp was set before delivery was even attempted, so a
+failed delivery silently consumed the window as if it had succeeded), and
+[#5024](https://github.com/JSONbored/metagraphed/issues/5024) (the
+`lastDeliveredAt` Map was never pruned) -- have since shipped. `evaluate()`
+now writes match counts back to Postgres concurrently with the delivery
+fan-out (bounded by its own `ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS`,
+best-effort, never adding to the fan-out's own latency), rolls the
+rate-limit timestamp back on a failed/non-2xx/timed-out delivery so the
+very next match retries immediately instead of waiting out the window, and
+prunes `lastDeliveredAt` of any trigger id no longer active at the end of
+every successful `refreshTriggers()`.
+
 ## Verifying the trigger locally
 
 ```sh
-psql "$DATABASE_URL" -c "LISTEN chain_firehose;"
+psql "$DATABASE_URL" -c "SELECT count(*) FROM chain_firehose_outbox WHERE delivered_at IS NULL;"
 # in another session, insert (or wait for indexer-rs to insert) a row into
-# blocks/extrinsics/chain_events/account_events — the LISTENing session
-# prints a Notification
+# blocks/extrinsics/chain_events/account_events, then query the pending
+# outbox rows again.
 ```
 
 ## Provisioning + verifying the hub (#4982)

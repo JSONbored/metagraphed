@@ -17,11 +17,13 @@ import {
   StatTile,
   Sparkline,
   BarMini,
+  Donut,
 } from "@jsonbored/ui-kit";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { SearchInput } from "@/components/metagraphed/table-controls";
 import {
+  blocksQuery,
   chainActivityQuery,
   chainCallsQuery,
   chainEventsInfiniteQuery,
@@ -58,6 +60,26 @@ import type {
   ChainPrometheus,
   ChainTransfers,
 } from "@/lib/metagraphed/types";
+
+// #3373: compact live chain-head tip in the hero — "head #NNNN · N ago" from the
+// live /api/v1/blocks feed (limit 1), linking to that block. Mirrors #3372's
+// ChainHeadTip on the home page: plain useQuery so a cold/failed fetch silently
+// renders null and never disrupts the primary hero or the daily-aggregate KPIs.
+function ChainHeadTip() {
+  const { data } = useQuery(blocksQuery({ limit: 1 }));
+  const head = data?.data?.[0];
+  if (!head || head.block_number == null) return null;
+  return (
+    <Link
+      to="/blocks/$ref"
+      params={{ ref: String(head.block_number) }}
+      className="mg-fade-in mg-fade-in-delay-3 inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted hover:text-accent transition-colors"
+    >
+      <span className="mg-live-dot" />
+      head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
+    </Link>
+  );
+}
 
 const explorerSearchSchema = z.object({
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
@@ -103,7 +125,12 @@ function ExplorerPage() {
         live
         title="Chain explorer"
         description="The Bittensor network at a glance — daily activity, fees, call mix, and the most active accounts, computed live from the chain-direct tiers."
-        actions={<ShareButton />}
+        actions={
+          <>
+            <ShareButton />
+            <ChainHeadTip />
+          </>
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-[40rem] w-full" />}>
@@ -113,6 +140,7 @@ function ExplorerPage() {
       <ChainEventsFeedSection />
       <ApiSourceFooter
         paths={[
+          "/api/v1/blocks",
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",
@@ -184,9 +212,25 @@ function MiniSeries({
  * Call mix — the top modules as a BarMini, plus a click-through drill-down into
  * the selected module's call_function rows (where the grouping exposes them).
  */
+// #3384: cycle the shared chart palette across the call-mix donut segments +
+// their legend swatches, matching providers.index.tsx's ProviderOverview.
+const CALL_MIX_PALETTE = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+];
+
 function CallMixSection({ calls }: { calls: ChainCalls }) {
   const modules = calls.calls.slice(0, 10);
   const [selected, setSelected] = useState<string | null>(null);
+  const moduleSegments = modules.map((c, i) => ({
+    label: c.call_module,
+    value: c.count,
+    color: CALL_MIX_PALETTE[i % CALL_MIX_PALETTE.length]!,
+  }));
   // Function-level rows exist only when the aggregate is grouped by function;
   // at module grouping call_function is null, so this stays empty until then.
   const functions = calls.calls.filter(
@@ -205,45 +249,49 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
       </div>
       {modules.length > 0 ? (
         <div className="space-y-4">
-          <ul className="space-y-1.5">
-            {modules.map((c) => {
-              const cap = Math.max(1, ...modules.map((m) => m.count));
-              const pct = Math.max(2, Math.round((c.count / cap) * 100));
-              const active = selected === c.call_module;
-              return (
-                <li key={c.call_module}>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(active ? null : c.call_module)}
-                    className="grid w-full grid-cols-[7rem_1fr_auto] items-center gap-2 text-left"
-                    aria-pressed={active}
-                  >
-                    <span
-                      className={
-                        active
-                          ? "truncate font-mono text-[10px] uppercase tracking-widest text-accent"
-                          : "truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-                      }
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <Donut
+              segments={moduleSegments}
+              centerLabel={formatNumber(calls.total_extrinsics)}
+              centerSub="calls"
+            />
+            {/* Interactive legend: `Donut`/`DonutLegend` are presentational, so
+                the click-to-drill-in affordance lives on these legend rows,
+                preserving the module-select behaviour the bar list had. */}
+            <ul className="min-w-0 flex-1 space-y-1">
+              {modules.map((c, i) => {
+                const active = selected === c.call_module;
+                return (
+                  <li key={c.call_module}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(active ? null : c.call_module)}
+                      className="flex w-full items-center gap-2 text-left"
+                      aria-pressed={active}
                     >
-                      {c.call_module}
-                    </span>
-                    <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
                       <span
-                        className="absolute inset-y-0 left-0 rounded-full"
-                        style={{
-                          width: `${pct}%`,
-                          background: active ? "var(--accent)" : "var(--chart-1)",
-                        }}
+                        aria-hidden
+                        className="inline-block size-2 shrink-0 rounded-sm"
+                        style={{ background: CALL_MIX_PALETTE[i % CALL_MIX_PALETTE.length] }}
                       />
-                    </span>
-                    <span className="font-mono text-[10px] tabular-nums text-ink-strong">
-                      {formatNumber(c.count)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                      <span
+                        className={
+                          active
+                            ? "truncate font-mono text-[10px] uppercase tracking-widest text-accent"
+                            : "truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+                        }
+                      >
+                        {c.call_module}
+                      </span>
+                      <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums text-ink-strong">
+                        {formatNumber(c.count)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
 
           {functions.length > 0 ? (
             <div className="border-t border-border pt-3">

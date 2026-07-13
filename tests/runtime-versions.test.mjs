@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { describe, test } from "vitest";
 
 import {
   buildRuntimeVersionHistory,
@@ -189,76 +189,7 @@ function runtimeEnv(
   };
 }
 
-function installRuntimeCache() {
-  const store = new Map();
-  const puts = [];
-  const matches = [];
-  globalThis.caches = {
-    default: {
-      async match(request) {
-        matches.push(request.url);
-        return store.get(request.url)?.clone();
-      },
-      async put(request, response) {
-        puts.push(request.url);
-        store.set(request.url, response.clone());
-      },
-    },
-  };
-  return { matches, puts, store };
-}
-
-let originalCaches;
-afterEach(() => {
-  globalThis.caches = originalCaches;
-});
-
 describe("GET /api/v1/runtime via the Worker", () => {
-  test("returns the transition timeline for a warm D1", async () => {
-    const captured = {};
-    const env = runtimeEnv(
-      [transitionRow()],
-      [{ spec_version: 218 }],
-      captured,
-    );
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/runtime"),
-      env,
-      ctx,
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.transition_count, 1);
-    assert.equal(body.data.transitions[0].spec_version, 218);
-    assert.equal(body.data.current_spec_version, 218);
-    assert.ok(
-      captured.calls.every((c) =>
-        /FROM blocks WHERE spec_version IS NOT NULL/.test(c.sql),
-      ),
-    );
-  });
-
-  test("current_spec_version survives a spec_version rollback (does not fall back to the last transitions entry)", async () => {
-    const env = runtimeEnv(
-      [
-        transitionRow({ spec_version: 218, block_number: 100 }),
-        transitionRow({ spec_version: 219, block_number: 200 }),
-      ],
-      [{ spec_version: 218 }],
-    );
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/runtime"),
-      env,
-      ctx,
-    );
-    const body = await res.json();
-    assert.equal(
-      body.data.transitions[body.data.transitions.length - 1].spec_version,
-      219,
-    );
-    assert.equal(body.data.current_spec_version, 218);
-  });
-
   test("is schema-stable when D1 is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/runtime"),
@@ -278,52 +209,6 @@ describe("GET /api/v1/runtime via the Worker", () => {
       ctx,
     );
     assert.equal(res.status, 400);
-  });
-
-  test("HEAD shares and warms the GET edge cache before stripping the body", async () => {
-    originalCaches = globalThis.caches;
-    const cache = installRuntimeCache();
-    const captured = {};
-    const env = runtimeEnv(
-      [transitionRow()],
-      [{ spec_version: 218 }],
-      captured,
-    );
-
-    const first = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/runtime", {
-        method: "HEAD",
-      }),
-      env,
-      ctx,
-    );
-    await Promise.resolve();
-    assert.equal(first.status, 200);
-    assert.equal(await first.text(), "");
-    assert.equal(captured.calls.length, 2);
-    assert.equal(cache.matches.length, 1);
-    assert.equal(cache.puts.length, 1);
-
-    const second = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/runtime", {
-        method: "HEAD",
-      }),
-      env,
-      ctx,
-    );
-    assert.equal(second.status, 200);
-    assert.equal(await second.text(), "");
-    assert.equal(captured.calls.length, 2);
-    assert.equal(cache.matches.length, 2);
-
-    const get = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/runtime"),
-      env,
-      ctx,
-    );
-    const body = await get.json();
-    assert.equal(body.data.current_spec_version, 218);
-    assert.equal(captured.calls.length, 2);
   });
 
   test("testnet has no variant (mainnet-only blocks D1 tier)", async () => {

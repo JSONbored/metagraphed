@@ -11522,11 +11522,24 @@ async function handleMcpTerminateRequest(request, env) {
   const stub = env.MCP_SESSION_HUB.get(
     env.MCP_SESSION_HUB.idFromName(rawSessionId),
   );
-  await stub.fetch("https://mcp-session-hub.internal/terminate", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ sessionId: rawSessionId }),
-  });
+  const upstream = await stub.fetch(
+    "https://mcp-session-hub.internal/terminate",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: rawSessionId }),
+    },
+  );
+  if (!upstream.ok) {
+    return jsonResponse(
+      rpcError(
+        null,
+        RPC_INVALID_REQUEST,
+        "No such MCP session; call initialize again.",
+      ),
+      404,
+    );
+  }
   return new Response(null, { status: 204, headers: MCP_HEADERS });
 }
 
@@ -11535,6 +11548,9 @@ async function handleMcpTerminateRequest(request, env) {
 // JSON-RPC 2.0 envelope; GET opens the SSE push stream; DELETE terminates a
 // session (see the two handlers above for both).
 export async function handleMcpRequest(request, env = {}, deps = {}) {
+  const rateLimitResponse = await enforceMcpRateLimit(request, env);
+  if (rateLimitResponse) return rateLimitResponse;
+
   if (request.method === "GET") {
     return handleMcpStreamRequest(request, env);
   }
@@ -11560,9 +11576,6 @@ export async function handleMcpRequest(request, env = {}, deps = {}) {
       },
     );
   }
-
-  const rateLimitResponse = await enforceMcpRateLimit(request, env);
-  if (rateLimitResponse) return rateLimitResponse;
 
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > MAX_MCP_BODY_BYTES) {

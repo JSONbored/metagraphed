@@ -1814,12 +1814,12 @@ function fakeChainFirehose(pushAfterSubscribe) {
   };
 }
 
-async function subscribeChainEvents(query, hub) {
+async function subscribeChainEvents(query, hub, clientIp) {
   const document = parse(query);
   return subscribe({
     schema: chainEventsSchema,
     document,
-    contextValue: { [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: hub },
+    contextValue: { [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: hub, clientIp },
   });
 }
 
@@ -1926,6 +1926,45 @@ describe("Subscription.chainEvents", () => {
       () => result[Symbol.asyncIterator]().next(),
       /graphql-transport-ws/,
     );
+  });
+
+  test("passes context.clientIp through to subscribeChainEvents as the second argument (#5004 item 2)", async () => {
+    // context.clientIp is populated by workers/chain-firehose-hub.mjs's
+    // graphqlWsServer context() callback (from ctx.extra.ip, itself set by
+    // handleSubscribe's opened(adapterSocket, { ip: clientIp }) call) -- not
+    // Node-testable end-to-end, so this proves the resolver's half of that
+    // wiring: it reads context.clientIp and forwards it, letting
+    // ChainFirehoseHub.subscribeChainEvents enforce its per-IP cap.
+    let receivedClientIp = "unset";
+    const hub = fakeChainFirehose();
+    const originalSubscribe = hub.subscribeChainEvents.bind(hub);
+    hub.subscribeChainEvents = (topics, clientIp) => {
+      receivedClientIp = clientIp;
+      return originalSubscribe(topics);
+    };
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+      "203.0.113.9",
+    );
+    result[Symbol.asyncIterator]().next(); // trigger the generator body
+    assert.equal(receivedClientIp, "203.0.113.9");
+  });
+
+  test("an absent context.clientIp is passed through as undefined, not crashing or defaulting to a fabricated IP", async () => {
+    let receivedClientIp = "unset";
+    const hub = fakeChainFirehose();
+    const originalSubscribe = hub.subscribeChainEvents.bind(hub);
+    hub.subscribeChainEvents = (topics, clientIp) => {
+      receivedClientIp = clientIp;
+      return originalSubscribe(topics);
+    };
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+    );
+    result[Symbol.asyncIterator]().next(); // trigger the generator body
+    assert.equal(receivedClientIp, undefined);
   });
 
   test("returns a clear GraphQLError when subscribeChainEvents reports the hub is at capacity (CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS)", async () => {

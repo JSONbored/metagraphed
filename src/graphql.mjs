@@ -403,7 +403,18 @@ schema.getSubscriptionType().getFields().chainEvents.subscribe =
     // also collapses to an empty Set, never silently falling back to
     // "everything"). Previously both cases collapsed to null.
     const topics = args.tables === undefined ? null : new Set(args.tables);
-    const repeater = hub.subscribeChainEvents(topics);
+    // context.clientIp/context.graphqlWsConnection are set by
+    // workers/chain-firehose-hub.mjs's graphqlWsServer context() callback
+    // from ctx.extra.ip/ctx.extra.graphqlWsConnection (populated by
+    // handleSubscribe's opened(adapterSocket, { ip, graphqlWsConnection })
+    // call) -- threaded through so subscribeChainEvents can enforce its
+    // per-IP (#5004 item 2) and per-socket subscription-count caps alongside
+    // the global one.
+    const repeater = hub.subscribeChainEvents(
+      topics,
+      context.clientIp,
+      context.graphqlWsConnection,
+    );
     if (!repeater) {
       throw new GraphQLError(
         "The realtime chain firehose has reached its maximum number of " +

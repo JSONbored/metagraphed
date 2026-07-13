@@ -34,6 +34,7 @@ import { ShortcutsPopover } from "./shortcuts-popover";
 import { CommandPalette } from "./command-palette";
 import { NavOmnibox } from "./nav-omnibox";
 import { ApiDrawer, ApiDrawerTrigger } from "./api-drawer";
+import { HeaderActionsMenu } from "./header-actions-menu";
 import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
 import { IncidentStrip } from "./incident-strip";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
@@ -155,7 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <Link
                       to="/settings"
                       aria-label="Developer settings"
-                      className="hidden md:inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                      className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded border border-border bg-card p-1.5 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
                     >
                       <Webhook className="size-3.5" aria-hidden="true" />
                     </Link>
@@ -164,8 +165,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                     Developer settings — webhook subscriptions
                   </TooltipContent>
                 </Tooltip>
-                <div className="hidden md:inline-flex">
+                <div className="hidden md:inline-flex lg:hidden xl:inline-flex">
                   <SettingsPopover />
+                </div>
+                {/* At lg the mega-menu appears and the trailing icons no longer
+                    fit; fold the secondary actions into one popover until xl
+                    restores the room (#3985). */}
+                <div className="hidden lg:inline-flex xl:hidden">
+                  <HeaderActionsMenu />
                 </div>
               </div>
             </div>

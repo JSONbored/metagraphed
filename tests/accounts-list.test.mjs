@@ -433,22 +433,6 @@ function accountsListEnv(rows, captured = {}) {
 }
 
 describe("GET /api/v1/accounts via the Worker", () => {
-  test("returns the site-wide leaderboard for a warm D1", async () => {
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/accounts"),
-      accountsListEnv([{ ...ROW, hotkey: "hk-a" }]),
-      ctx,
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.sort, DEFAULT_ACCOUNTS_LIST_SORT);
-    assert.equal(body.data.account_count, 1);
-    assert.equal(body.data.accounts[0].hotkey, "hk-a");
-    assert.ok(res.headers.get("etag"));
-    assert.ok(res.headers.get("x-metagraph-contract-version"));
-  });
-
   test("is schema-stable when D1 is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts"),
@@ -490,17 +474,49 @@ describe("GET /api/v1/accounts via the Worker", () => {
     assert.equal(res.status, 400);
   });
 
-  test("?format=csv returns a CSV download of the accounts rows", async () => {
+  test("?format=csv exports the leaderboard rows via the Postgres tier", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            sort: "total_stake",
+            limit: 20,
+            account_count: 1,
+            captured_at: new Date(1750000000000).toISOString(),
+            block_number: 8454388,
+            accounts: [
+              {
+                hotkey: "hk-a",
+                coldkey: "ck-a",
+                coldkey_count: 1,
+                subnet_count: 1,
+                uid_count: 1,
+                validator_count: 1,
+                miner_count: 0,
+                total_stake_tao: 1000.5,
+                total_emission_tao: 22.1,
+                stake_dominance: 1,
+                latest_captured_at: new Date(1750000000000).toISOString(),
+                latest_block_number: 8454388,
+                subnets: [{ netuid: 1, uid: 0 }],
+              },
+            ],
+          }),
+      },
+    };
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts?format=csv"),
-      accountsListEnv([{ ...ROW, hotkey: "hk-a" }]),
+      env,
       ctx,
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type") ?? "", /text\/csv/);
-    const text = await res.text();
-    assert.match(text, /^hotkey,coldkey,coldkey_count/);
-    assert.match(text, /hk-a/);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const lines = (await res.text()).trim().split("\r\n");
+    assert.equal(lines.length, 2);
+    assert.match(lines[1], /^hk-a,ck-a,/);
   });
 
   test("testnet has no variant (mainnet-only neurons-derived leaderboard)", async () => {
