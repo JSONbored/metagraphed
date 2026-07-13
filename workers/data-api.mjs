@@ -3543,7 +3543,10 @@ export default {
             DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
           );
           const rows = await sql`
-          SELECT MAX(hotkey) AS hotkey, MAX(uid) AS uid, COUNT(*) AS weight_sets,
+          SELECT MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END) AS hotkey,
+                 CASE WHEN MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END)
+                      IS NULL THEN MAX(netuid) ELSE NULL END AS netuid,
+                 MAX(uid) AS uid, COUNT(*) AS weight_sets,
                  MIN(observed_at) AS first_set, MAX(observed_at) AS last_set
           FROM account_events
           WHERE netuid = ${netuid} AND event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}
@@ -3629,7 +3632,10 @@ export default {
             DEFAULT_ANALYTICS_WINDOW,
           );
           const rows = await sql`
-          SELECT MAX(hotkey) AS hotkey, MAX(uid) AS uid, COUNT(*) AS weight_sets,
+          SELECT MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END) AS hotkey,
+                 CASE WHEN MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END)
+                      IS NULL THEN MAX(netuid) ELSE NULL END AS netuid,
+                 MAX(uid) AS uid, COUNT(*) AS weight_sets,
                  MIN(observed_at) AS first_set, MAX(observed_at) AS last_set
           FROM account_events WHERE event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}
             AND (CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey

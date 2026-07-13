@@ -40,7 +40,7 @@ describe("chainWeightSettersQuery", () => {
       weight_sets: 10,
       setters: [
         { hotkey: "5Grw", uid: 1, weight_sets: 6, share: 0.6, last_set_at: "2026-07-01T00:00:00Z" },
-        { uid: 9, weight_sets: 4, share: 0.4 },
+        { netuid: 2, uid: 9, weight_sets: 4, share: 0.4 },
         { weight_sets: 1 },
       ],
     });
@@ -53,6 +53,8 @@ describe("chainWeightSettersQuery", () => {
     expect(res.data.setters).toHaveLength(2);
     expect(res.data.setters[0]?.hotkey).toBe("5Grw");
     expect(res.data.setters[1]?.hotkey).toBeNull();
+    expect(res.data.setters[0]?.netuid).toBeNull();
+    expect(res.data.setters[1]?.netuid).toBe(2);
     expect(res.data.setters[1]?.uid).toBe(9);
   });
 
