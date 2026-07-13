@@ -89,6 +89,16 @@ function isByteBlobCollectionType(type) {
   return BYTE_BLOB_COLLECTION_RE.test(type);
 }
 
+// True when a descriptor's own non-collection type string names an opaque
+// byte/hash scalar. This intentionally does NOT treat arbitrary scalar
+// newtypes (Rate, u32, Compact<u64>, etc.) as byte blobs: single-field
+// scalar wrappers such as [0] must survive until normalizePostgresValue can
+// unwrap them to 0.
+const BYTE_BLOB_SCALAR_RE = /^(?:H\d+|Hash|Bytes|\[u8;\s*\d+\])$/;
+function isByteBlobScalarType(type) {
+  return BYTE_BLOB_SCALAR_RE.test(type);
+}
+
 // Decodes a byte-blob-typed descriptor's value, which may either be a bare
 // (possibly newtype-wrapped) byte array (BoundedVec<u8,_>) or an Option-
 // wrapped one (Option<BoundedVec<u8,_>> -- confirmed live: announce_next_key's
@@ -426,22 +436,12 @@ function walk(value, keyHint, nestedCall, topCall) {
         };
       }
     }
-    // U256 excluded from the generic byte-blob-unwrap attempt below: its
-    // 4-limb little-endian u64 array ([[limb0..limb3]]) is shape-identical
-    // to a genuine 1-4-byte blob whenever every limb happens to be small
-    // (0-255) -- the same #4693/#4915 collection-vs-blob ambiguity class,
-    // just for U256 instead of a BTreeSet. Confirmed live 2026-07-12:
-    // DynamicFee.note_min_gas_price_target's `target` (real value 1, raw
-    // limbs [1,0,0,0]) was silently misinterpreted as 4 raw bytes and
-    // hex-encoded to "0x01000000" (16,777,216) -- actively WRONG, not just
-    // undecoded -- before decodeEthereumEvmCallArgs (indexer-rs-ethereum-
-    // decode.mjs, which runs AFTER this module and knows the real 4-limb
-    // encoding) ever got a chance to correctly decode it via decodeU256Limbs.
-    // Every OTHER U256 field (Ethereum.transact's nonce/value/gas_limit/...)
-    // already survived this unscathed only because those arrive nested
-    // inside the `transaction` descriptor's untyped struct body, never
-    // themselves a separate top-level typed descriptor the way `target` is.
-    if (!isCollectionType(value.type) && value.type !== "U256") {
+    // Only descriptor types that are semantically byte/hash scalars take this
+    // typed byte-blob path. Other scalar/newtype wrappers (Rate/u32/U256/etc.)
+    // can be shape-identical to a one-byte blob while carrying numeric data,
+    // so they must fall through for normalizePostgresValue or the later
+    // type-specific decoders to unwrap them without corrupting [0] -> "0x00".
+    if (isByteBlobScalarType(value.type)) {
       const bytes = unwrapByteArray(value.value);
       if (bytes && bytes.length > 0) {
         const ctx = nestedCall ?? topCall;
