@@ -386,7 +386,10 @@ schema.getSubscriptionType().getFields().chainEvents.subscribe =
       );
     }
     const topics = args.tables?.length ? new Set(args.tables) : null;
-    const repeater = hub.subscribeChainEvents(topics);
+    const repeater = hub.subscribeChainEvents(
+      topics,
+      context?.graphqlWsConnection,
+    );
     try {
       for await (const payload of repeater) {
         yield { chainEvents: payload };

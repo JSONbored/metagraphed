@@ -78,6 +78,9 @@ export const CHAIN_FIREHOSE_MAX_FIELD_STRING_BYTES = 256;
 export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
 export const CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS = 1000;
 export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
+export const CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS_PER_SOCKET = 16;
+export const CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS = 1000;
+export const CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK = 64;
 
 // Hibernation tag distinguishing a graphql-ws socket from a plain firehose
 // one -- webSocketMessage/webSocketClose/webSocketError route on
@@ -222,10 +225,23 @@ export function validateChainEventsSubscribePayload(payload) {
 // consumes this the same way it would any other AsyncIterable subscription
 // source. No dependency on graphql/graphql-ws/the DO runtime, so it's fully
 // unit-tested on its own.
-export function createAsyncRepeater() {
+export function createAsyncRepeater({
+  highWaterMark = CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK,
+  onOverflow = null,
+} = {}) {
   const pending = [];
   let waitingResolve = null;
   let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    pending.length = 0;
+    if (waitingResolve) {
+      const resolve = waitingResolve;
+      waitingResolve = null;
+      resolve({ value: undefined, done: true });
+    }
+  };
   return {
     push(value) {
       if (finished) return;
@@ -234,17 +250,16 @@ export function createAsyncRepeater() {
         waitingResolve = null;
         resolve({ value, done: false });
       } else {
+        if (pending.length >= highWaterMark) {
+          finish();
+          if (onOverflow) onOverflow();
+          return;
+        }
         pending.push(value);
       }
     },
     end() {
-      if (finished) return;
-      finished = true;
-      if (waitingResolve) {
-        const resolve = waitingResolve;
-        waitingResolve = null;
-        resolve({ value: undefined, done: true });
-      }
+      finish();
     },
     [Symbol.asyncIterator]() {
       return {
@@ -260,8 +275,7 @@ export function createAsyncRepeater() {
           });
         },
         return() {
-          finished = true;
-          waitingResolve = null;
+          finish();
           return Promise.resolve({ value: undefined, done: true });
         },
       };
@@ -308,7 +322,10 @@ export class ChainFirehoseHub {
       /* v8 ignore start */
       onSubscribe: (_ctx, _id, payload) =>
         validateChainEventsSubscribePayload(payload) || undefined,
-      context: () => ({ [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: this }),
+      context: (ctx) => ({
+        [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: this,
+        graphqlWsConnection: ctx?.extra?.graphqlWsConnection,
+      }),
       /* v8 ignore stop */
     });
   }
@@ -316,9 +333,31 @@ export class ChainFirehoseHub {
   // Registered as context.chainFirehose by graphqlWsServer above; called from
   // src/graphql.mjs's chainEventsSubscribe field resolver. Mirrors the SSE/WS
   // firehose's own topic-filter semantics (chainFirehoseMatchesTopics).
-  subscribeChainEvents(topics) {
-    const repeater = createAsyncRepeater();
-    this.chainEventSubscribers.add({ repeater, topics });
+  subscribeChainEvents(topics, connection) {
+    const activeForSocket = connection?.activeSubscriptions ?? 0;
+    if (
+      activeForSocket >= CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS_PER_SOCKET
+    ) {
+      throw new GraphQLError(
+        `Too many active chainEvents subscriptions on this WebSocket; limit is ${CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS_PER_SOCKET}.`,
+      );
+    }
+    if (
+      this.chainEventSubscribers.size >=
+      CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS
+    ) {
+      throw new GraphQLError(
+        `Too many active chainEvents subscriptions; limit is ${CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS}.`,
+      );
+    }
+
+    const entry = { repeater: null, topics, connection };
+    const repeater = createAsyncRepeater({
+      onOverflow: () => this.unsubscribeChainEvents(repeater),
+    });
+    entry.repeater = repeater;
+    if (connection) connection.activeSubscriptions = activeForSocket + 1;
+    this.chainEventSubscribers.add(entry);
     return repeater;
   }
 
@@ -327,6 +366,12 @@ export class ChainFirehoseHub {
       if (entry.repeater === repeater) {
         entry.repeater.end();
         this.chainEventSubscribers.delete(entry);
+        if (entry.connection) {
+          entry.connection.activeSubscriptions = Math.max(
+            0,
+            (entry.connection.activeSubscriptions ?? 1) - 1,
+          );
+        }
         return;
       }
     }
@@ -394,7 +439,9 @@ export class ChainFirehoseHub {
             this.graphqlWsSockets.set(server, entry);
           },
         };
-        const closedCb = this.graphqlWsServer.opened(adapterSocket, {});
+        const closedCb = this.graphqlWsServer.opened(adapterSocket, {
+          graphqlWsConnection: { activeSubscriptions: 0 },
+        });
         const entry = this.graphqlWsSockets.get(server) || {};
         entry.closedCb = closedCb;
         this.graphqlWsSockets.set(server, entry);

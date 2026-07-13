@@ -14,7 +14,10 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
+  CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK,
   CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
+  CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS,
+  CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS_PER_SOCKET,
   CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS,
   CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK,
   CHAIN_FIREHOSE_TABLES,
@@ -180,6 +183,22 @@ test("createAsyncRepeater: a real for-await loop consumes pushed values in order
   repeater.push(3);
   await consumer;
   assert.deepEqual(seen, [1, 2, 3]);
+});
+
+test("createAsyncRepeater: ends instead of buffering beyond the high-water mark", async () => {
+  let overflowed = false;
+  const repeater = createAsyncRepeater({
+    highWaterMark: 2,
+    onOverflow: () => {
+      overflowed = true;
+    },
+  });
+  repeater.push("a");
+  repeater.push("b");
+  repeater.push("c");
+  const it = repeater[Symbol.asyncIterator]();
+  assert.equal(overflowed, true);
+  assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
 // --- parseChainFirehoseTopics --------------------------------------------------
@@ -708,6 +727,60 @@ test("ChainFirehoseHub.subscribeChainEvents: null topics receives every table", 
   assert.deepEqual(await it.next(), {
     value: { table: "chain_events", block_number: 1 },
     done: false,
+  });
+});
+
+test("ChainFirehoseHub.subscribeChainEvents: enforces the per-WebSocket active subscription cap", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const connection = {
+    activeSubscriptions: CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS_PER_SOCKET,
+  };
+  assert.throws(
+    () => hub.subscribeChainEvents(null, connection),
+    /Too many active chainEvents subscriptions on this WebSocket/,
+  );
+  assert.equal(hub.chainEventSubscribers.size, 0);
+});
+
+test("ChainFirehoseHub.subscribeChainEvents: enforces the global active subscription cap", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_WS_SUBSCRIPTIONS; i += 1) {
+    hub.chainEventSubscribers.add({
+      repeater: createAsyncRepeater(),
+      topics: null,
+    });
+  }
+  assert.throws(
+    () => hub.subscribeChainEvents(null, { activeSubscriptions: 0 }),
+    /Too many active chainEvents subscriptions; limit is/,
+  );
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: decrements the owning WebSocket subscription count", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const connection = { activeSubscriptions: 0 };
+  const repeater = hub.subscribeChainEvents(null, connection);
+  assert.equal(connection.activeSubscriptions, 1);
+  hub.unsubscribeChainEvents(repeater);
+  assert.equal(connection.activeSubscriptions, 0);
+});
+
+test("ChainFirehoseHub.broadcast: drops a stalled GraphQL subscription instead of queueing without bound", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const connection = { activeSubscriptions: 0 };
+  const repeater = hub.subscribeChainEvents(null, connection);
+  for (
+    let i = 0;
+    i < CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK + 1;
+    i += 1
+  ) {
+    hub.broadcast({ table: "blocks", block_number: i });
+  }
+  assert.equal(hub.chainEventSubscribers.size, 0);
+  assert.equal(connection.activeSubscriptions, 0);
+  assert.deepEqual(await repeater[Symbol.asyncIterator]().next(), {
+    value: undefined,
+    done: true,
   });
 });
 
