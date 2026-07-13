@@ -91,6 +91,26 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-data-artifact",
+      "kind": "data-artifact",
+      "name": "Ridges evaluation-set problem suite",
+      "notes": "Public, unauthenticated GET /evaluation-sets/all-latest-set-problems on the Ridges backend API returning the full machine-readable problem suite (set_id, problem_name, benchmark_family swe-bench, problem_suite_name, execution_spec) the subnet currently evaluates SWE agents against. agent-upload.ridges.ai is the DEFAULT_API_BASE_URL used by the official ridgesai/ridges miner CLI; the route is defined without auth in api/endpoints/evaluation_sets.py and mounted at the /evaluation-sets prefix in api/src/main.py.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/api/endpoints/evaluation_sets.py",
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/api/src/main.py",
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/miners/cli/commands/upload.py"
+      ],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
     }
   ],
   "contact": "hello@ridges.ai"
