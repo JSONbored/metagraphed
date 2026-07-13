@@ -13,6 +13,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  ALERTER_HUB_EVALUATE_TIMEOUT_MS,
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
   CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
@@ -1055,6 +1056,25 @@ test("broadcast: an unreachable/erroring AlerterHub is best-effort -- doesn't th
     hub.broadcast({ table: "account_events", block_number: 1 }),
   );
   assert.equal(alerterHub.calls.length, 1);
+});
+
+test("broadcast: the ALERTER_HUB ping carries a bounded AbortSignal, so a slow/stuck AlerterHub.evaluate() can't stall broadcast() (and therefore handleIngest's response) indefinitely", async () => {
+  const alerterHub = fakeAlerterHubBinding();
+  const hub = new ChainFirehoseHub(stubState(), { ALERTER_HUB: alerterHub });
+  await hub.broadcast({ table: "account_events", block_number: 1 });
+  assert.equal(alerterHub.calls.length, 1);
+  const { signal } = alerterHub.calls[0].init;
+  assert.ok(signal instanceof AbortSignal);
+  assert.equal(signal.aborted, false);
+});
+
+test("ALERTER_HUB_EVALUATE_TIMEOUT_MS is generous enough to cover AlerterHub's own worst-case refresh+delivery cycle", () => {
+  // Documents the reasoning, not just the number: workers/alerter-hub.mjs's
+  // own ALERT_TRIGGER_REFRESH_TIMEOUT_MS (4000) plus ALERT_DELIVERY_TIMEOUT_MS
+  // (8000, but bounded-concurrency so one slow batch, not summed across every
+  // match) should together stay comfortably under this ceiling.
+  assert.equal(ALERTER_HUB_EVALUATE_TIMEOUT_MS, 15_000);
+  assert.ok(ALERTER_HUB_EVALUATE_TIMEOUT_MS > 4000 + 8000);
 });
 
 test("broadcast: pings ALERTER_HUB unconditionally, unlike the per-session MCP loop -- no subscribe step required", async () => {

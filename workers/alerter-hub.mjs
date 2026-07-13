@@ -21,6 +21,7 @@
 // triggers matched AND whether a match should actually be delivered right
 // now (burst rate-limiting), never how each channel's request is shaped.
 import { triggerMatchesEvent } from "../src/alert-triggers.mjs";
+import { mapBounded } from "../src/webhooks.mjs";
 import {
   buildDiscordDeliveryRequest,
   buildEmailDeliveryRequest,
@@ -30,6 +31,24 @@ import {
 } from "../src/alert-delivery.mjs";
 
 export const ALERTER_HUB_TRIGGER_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Found by adversarial review: this Worker-to-Worker call is on the SAME
+// synchronous path every single firehose event blocks on (via
+// ChainFirehoseHub.broadcast()'s ALERTER_HUB ping) -- an internal
+// Cloudflare-to-Cloudflare Hyperdrive round trip, so a much tighter bound
+// than the per-channel delivery timeout below is appropriate; a Postgres
+// query that's still running after this long is not going to finish in
+// time to matter anyway.
+const ALERT_TRIGGER_REFRESH_TIMEOUT_MS = 4000;
+
+// Found by adversarial review: a single chain event can match many DISTINCT
+// triggers (the per-trigger burst rate-limiter only throttles repeats of
+// the SAME trigger, not how many different triggers fire on one event) --
+// an unbounded Promise.all could open one outbound fetch per match,
+// exhausting this Durable Object invocation's concurrent-subrequest budget
+// under a large, broad-condition trigger set. Matches src/webhooks.mjs's
+// own dispatchChangeEvent concurrency default.
+const ALERT_DELIVERY_CONCURRENCY = 8;
 
 // AlerterHub.evaluate() is awaited by ChainFirehoseHub.broadcast() (see that
 // class's ALERTER_HUB ping), which every OTHER consumer (SSE/WS/GraphQL/MCP)
@@ -160,6 +179,7 @@ export class AlerterHub {
             "x-alert-triggers-internal-token":
               this.env.ALERT_TRIGGERS_INTERNAL_TOKEN,
           },
+          signal: AbortSignal.timeout(ALERT_TRIGGER_REFRESH_TIMEOUT_MS),
         },
       );
       if (!upstream.ok) return;
@@ -204,13 +224,11 @@ export class AlerterHub {
       toDeliver.push(trigger);
     }
 
-    await Promise.all(
-      toDeliver.map((trigger) =>
-        this.deliver(trigger, payload, this.env).catch(() => {
-          // A single misbehaving delivery integration must never fail the
-          // evaluation response ChainFirehoseHub's broadcast() awaits.
-        }),
-      ),
+    await mapBounded(toDeliver, ALERT_DELIVERY_CONCURRENCY, (trigger) =>
+      this.deliver(trigger, payload, this.env).catch(() => {
+        // A single misbehaving delivery integration must never fail the
+        // evaluation response ChainFirehoseHub's broadcast() awaits.
+      }),
     );
 
     return {

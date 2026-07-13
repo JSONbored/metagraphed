@@ -274,6 +274,23 @@ test("refreshTriggers: fetches the internal active-list route with the correct U
   assert.notEqual(hub.triggersLoadedAt, 0);
 });
 
+test("refreshTriggers: the DATA_API fetch carries a bounded AbortSignal so a slow Postgres query can't stall ChainFirehoseHub's own broadcast()-wide wait", async () => {
+  let receivedSignal;
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (_url, init) => {
+        receivedSignal = init.signal;
+        return new Response(JSON.stringify({ triggers: [] }), { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await hub.refreshTriggers();
+  assert.ok(receivedSignal instanceof AbortSignal);
+  assert.equal(receivedSignal.aborted, false);
+});
+
 test("refreshTriggers: keeps the stale cache when the upstream response is not ok", async () => {
   const hub = new AlerterHub(
     {},
@@ -505,6 +522,49 @@ test("evaluate: a rejecting deliver call never fails the overall evaluation", as
   hub.triggersLoadedAt = Date.now();
   const result = await hub.evaluate({ table: "account_events", netuid: 7 });
   assert.equal(result.matched, 1);
+});
+
+test("evaluate: caps the delivery fan-out at ALERT_DELIVERY_CONCURRENCY (8) in-flight deliveries -- a broad-condition trigger set matching MANY distinct triggers on one event must not open one outbound fetch per match", async () => {
+  const TRIGGER_COUNT = 20;
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const resolvers = [];
+  const deliver = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        resolvers.push(() => {
+          inFlight -= 1;
+          resolve();
+        });
+      }),
+  );
+  const hub = new AlerterHub({}, {}, { deliver });
+  hub.triggers = Array.from({ length: TRIGGER_COUNT }, (_, i) =>
+    triggerRow({ id: String(i), netuid: 7 }),
+  );
+  hub.triggersLoadedAt = Date.now();
+
+  const evaluatePromise = hub.evaluate({ table: "account_events", netuid: 7 });
+  // Let every microtask-queued deliver() call actually start.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(inFlight, 8);
+  assert.equal(maxInFlight, 8);
+
+  // Drain in waves of 8, confirming the cap holds throughout, not just at
+  // the start.
+  while (resolvers.length > 0) {
+    const wave = resolvers.splice(0, resolvers.length);
+    wave.forEach((r) => r());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.ok(inFlight <= 8);
+  }
+
+  const result = await evaluatePromise;
+  assert.equal(result.delivered, TRIGGER_COUNT);
+  assert.equal(deliver.mock.calls.length, TRIGGER_COUNT);
+  assert.equal(maxInFlight, 8);
 });
 
 test("evaluate: triggers a refresh first when the cache is stale", async () => {

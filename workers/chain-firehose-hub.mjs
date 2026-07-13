@@ -67,6 +67,16 @@ export const CHAIN_FIREHOSE_TABLES = new Set([
 // payload is already far smaller than this -- see the trigger's comment).
 export const CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES = 16_000;
 
+// Found by adversarial review: bounds how long broadcast() will WAIT on the
+// #4984 AlerterHub singleton's own /evaluate call (see below), independent
+// of whatever AlerterHub's own internal timeouts add up to (a worst-case
+// ~4s trigger-cache refresh plus an ~8s-per-batch bounded-concurrency
+// delivery fan-out -- workers/alerter-hub.mjs's ALERT_TRIGGER_REFRESH_TIMEOUT_MS
+// and ALERT_DELIVERY_TIMEOUT_MS). Generous enough not to truncate a normal
+// evaluate() cycle, but a real ceiling so a slow/stuck evaluator can no
+// longer stall handleIngest()'s response to the box-side relay indefinitely.
+export const ALERTER_HUB_EVALUATE_TIMEOUT_MS = 15_000;
+
 // Per-field string length bound -- generous over every string field the
 // trigger actually emits (call_module/call_function/pallet/method/signer/
 // block_hash), catching a malformed or hostile ingest payload as a clean 400
@@ -708,6 +718,15 @@ export class ChainFirehoseHub {
     // evaluator, not one per subscriber, so no membership Set to check
     // first. Best-effort: an unreachable/erroring AlerterHub never blocks
     // ingest or any other broadcast population.
+    //
+    // Bounded (found by adversarial review): AlerterHub.evaluate() can
+    // itself take a while (a Postgres trigger-cache refresh, plus a
+    // delivery fan-out to arbitrary user-supplied targets) -- without an
+    // independent ceiling HERE, a slow evaluate() for ANY reason blocks
+    // broadcast() (and therefore handleIngest's response to the box-side
+    // relay) for however long that takes. This timeout only bounds how
+    // long broadcast() WAITS; it does not cancel AlerterHub's own
+    // in-flight work, which continues independently.
     if (this.env.ALERTER_HUB) {
       try {
         const stub = this.env.ALERTER_HUB.get(
@@ -717,6 +736,7 @@ export class ChainFirehoseHub {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(ALERTER_HUB_EVALUATE_TIMEOUT_MS),
         });
       } catch {
         // best-effort -- see the comment above
