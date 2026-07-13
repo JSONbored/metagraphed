@@ -14,6 +14,7 @@ import {
 } from "../src/subnet-identity-history.mjs";
 
 const sqlCalls = vi.hoisted(() => []);
+const sqlBeginOptions = vi.hoisted(() => []);
 const mockRows = vi.hoisted(() => ({
   current: [
     {
@@ -202,6 +203,7 @@ vi.mock("postgres", () => ({
     // sees the identical call stream, and resolves to whatever cb returns.
     sql.begin = (optionsOrCb, maybeCb) => {
       const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+      sqlBeginOptions.push(typeof optionsOrCb === "string" ? optionsOrCb : "");
       return cb(sql);
     };
     return sql;
@@ -235,6 +237,7 @@ const queryText = () => sqlCalls.map((call) => call.text).join("\n");
 
 beforeEach(() => {
   sqlCalls.length = 0;
+  sqlBeginOptions.length = 0;
   mockQueue.current = [];
   neuronsSyncFailure.error = null;
   neuronsSyncPruneRows.current = [];
@@ -4497,6 +4500,9 @@ test("GET /api/v1/chain/transfers: totals + distinct counts + senders + receiver
   ];
   const res = await req("/api/v1/chain/transfers?window=7d&limit=5");
   expect(res.status).toBe(200);
+  expect(sqlBeginOptions).toContain(
+    "isolation level repeatable read read only",
+  );
   const body = await res.json();
   expect(body.total_volume_tao).toBe(100);
   expect(body.unique_senders).toBe(2);

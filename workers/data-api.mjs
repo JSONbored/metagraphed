@@ -7,7 +7,7 @@
 // tiers (chain_events / deep history); this exposes them to the public API.
 //
 // Mostly read-only, parameterized (postgres.js tagged templates), one request one
-// sql.begin("read only", ...) transaction (#4686 connection-affinity). The ONE
+// sql.begin(DATA_API_READ_TRANSACTION, ...) transaction (#4686 connection-affinity). The ONE
 // exception is POST /api/v1/internal/neurons-sync (#4771): the write path into
 // this SAME Postgres instance's neurons/neuron_daily tables. It does NOT get its
 // own dedicated Worker the way registry-sync-api.mjs does -- that split is
@@ -322,6 +322,7 @@ import {
   buildChainSigners,
 } from "../src/chain-analytics.mjs";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
+const DATA_API_READ_TRANSACTION = "isolation level repeatable read read only";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -2548,8 +2549,10 @@ export default {
       // queries, so a bare SET (no transaction) has no guarantee it applies
       // to the query that follows it (Hyperdrive's connection-lifecycle
       // docs; #4686's root cause). "read only" matches this Worker's own
-      // READ-ONLY invariant (top of file) at the database level too.
-      return await sql.begin("read only", async (sql) => {
+      // READ-ONLY invariant (top of file) at the database level too, and
+      // repeatable read keeps multi-statement analytics responses on one
+      // stable snapshot while preserving each route's bounded timeouts.
+      return await sql.begin(DATA_API_READ_TRANSACTION, async (sql) => {
         await sql`SET statement_timeout = '3000ms'`;
 
         // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
