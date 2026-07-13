@@ -680,8 +680,7 @@ function ActivityPanel({ netuid }: { netuid: number }) {
     <SectionAnchor
       id="activity"
       title="On-chain activity"
-      subtitle="First-party chain events for this subnet, newest first."
-      info="Registrations, stake, weights, axon, delegation, lifecycle, and transfers decoded directly from finney System.Events for recent finalized blocks (the rolling first-party event window) — not Taostats."
+      info="First-party chain events for this subnet, newest first. Registrations, stake, weights, axon, delegation, lifecycle, and transfers decoded directly from finney System.Events for recent finalized blocks (the rolling first-party event window) — not Taostats."
       right={
         <SelectFilter
           label="Kind"
@@ -694,6 +693,7 @@ function ActivityPanel({ netuid }: { netuid: number }) {
             })
           }
           options={EVENT_KIND_OPTIONS}
+          className="max-w-[130px]"
         />
       }
     >
@@ -734,7 +734,7 @@ function EventKindCell({ kind }: { kind: string | null | undefined }) {
 
   return (
     <span
-      className="inline-flex flex-wrap items-center gap-1.5"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap"
       title={`${label} · ${categoryLabel}`}
     >
       <span
@@ -790,20 +790,20 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   }
   return (
     <div className="overflow-x-auto rounded border border-border bg-card">
-      <table className="w-full text-left text-sm">
+      <table className="w-full min-w-[720px] text-left text-sm">
         <thead className="bg-surface/40">
           <tr>
-            <th className="px-4 py-2.5">Block</th>
-            <th className="px-4 py-2.5">Kind</th>
-            <th className="px-4 py-2.5">Hotkey</th>
-            <th className="px-4 py-2.5 text-right">Amount</th>
-            <th className="px-4 py-2.5 text-right">Observed</th>
+            <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
+            <th className="px-4 py-2.5 whitespace-nowrap">Kind</th>
+            <th className="px-4 py-2.5 whitespace-nowrap">Hotkey</th>
+            <th className="px-4 py-2.5 text-right whitespace-nowrap">Amount</th>
+            <th className="px-4 py-2.5 text-right whitespace-nowrap">Observed</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {events.map((ev, i) => (
             <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface/40">
-              <td className="px-4 py-2.5 font-mono text-[12px]">
+              <td className="px-4 py-2.5 font-mono text-[12px] whitespace-nowrap">
                 {ev.block_number != null ? (
                   <Link
                     to="/blocks/$ref"
@@ -816,10 +816,10 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
                   "—"
                 )}
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2.5 whitespace-nowrap">
                 <EventKindCell kind={ev.event_kind} />
               </td>
-              <td className="px-4 py-2.5 font-mono text-[11px]">
+              <td className="px-4 py-2.5 font-mono text-[11px] whitespace-nowrap">
                 {ev.hotkey ? (
                   <Link
                     to="/accounts/$ss58"
@@ -832,10 +832,10 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
                   "—"
                 )}
               </td>
-              <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
+              <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink whitespace-nowrap">
                 {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
               </td>
-              <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+              <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted whitespace-nowrap">
                 <TimeAgo at={ev.observed_at} />
               </td>
             </tr>
