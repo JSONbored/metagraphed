@@ -826,10 +826,19 @@ const rootValue = {
     const snapshot = await loadLiveHealth(context);
     const result = snapshot ? buildGlobalHealth(snapshot, {}) : null;
     if (!result) return null;
-    // GlobalHealth exposes the rollup counts flat; buildGlobalHealth nests them
-    // under `global`.
+    // GlobalHealth declares the per-status counts flat, but buildGlobalHealth
+    // nests them under `global.status_counts` (the shape GET /api/v1/health
+    // serves). Spreading `global` verbatim only surfaces `surface_count` and
+    // leaves ok_count/degraded_count/failed_count/unknown_count null, so flatten
+    // status_counts onto the declared fields.
+    const global = result.global || {};
+    const counts = global.status_counts || {};
     return {
-      ...(result.global || {}),
+      surface_count: global.surface_count ?? null,
+      ok_count: counts.ok ?? null,
+      degraded_count: counts.degraded ?? null,
+      failed_count: counts.failed ?? null,
+      unknown_count: counts.unknown ?? null,
       generated_at: result.generated_at,
       operational_observed_at: result.operational_observed_at,
       health_source: result.health_source,
