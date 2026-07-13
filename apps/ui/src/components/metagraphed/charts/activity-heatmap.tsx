@@ -125,7 +125,9 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
                 <Tooltip key={c.key} delayDuration={120}>
                   <TooltipTrigger asChild>
                     <div
-                      className="aspect-square rounded-[2px] border border-border/40"
+                      role="button"
+                      tabIndex={0}
+                      className="mg-focus-ring aspect-square rounded-[2px] border border-border/40"
                       style={{ background: tone(c.score, maxScore) }}
                       aria-label={`${c.key}: ${c.probes} probes, ${c.incidents} incidents`}
                     />
