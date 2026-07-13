@@ -12,14 +12,17 @@
   "main": "workers/registry-sync-api.mjs",
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
-  // Smart placement: run the Worker close to the Hyperdrive origin (the registry
-  // Postgres instance, reached via Cloudflare Tunnel) rather than at the nearest
-  // edge to the caller (GitHub Actions) -- the case for this is if anything
-  // stronger than wrangler.data.jsonc's read-only sibling: a single sync run
-  // does a whole batch of sequential INSERT/UPDATE/DELETE round-trips (one per
-  // provider/subnet/surface), so shaving latency off each round-trip compounds
-  // across the whole batch rather than mattering once per request.
-  "placement": { "mode": "smart" },
+  // Deliberately NOT smart-placed, unlike wrangler.data.jsonc's read-only
+  // sibling: #4767 added `placement: {mode: "smart"}` here, and every
+  // registry-sync write has 502'd ("write failed") since that reached
+  // production -- both the merge-triggered fast path and the 6h full resync
+  // went dark for ~3 days as a result. wrangler.data.jsonc's smart-placed
+  // Worker keeps serving reads fine over a comparable Tunnel+Hyperdrive path
+  // on a different box, so this is specific to this Worker/origin pairing,
+  // not a blanket incompatibility. Reverted to restore the last known-good
+  // state; re-investigate smart placement (e.g. an explicit `placement.host`
+  // pointed at the tunnel origin instead of `mode: "smart"`'s auto-detection)
+  // as deliberate follow-up, not a blind re-add.
   // This is a write path into a database, unlike wrangler.data.jsonc's
   // read-only sibling -- explicitly disabled (wrangler otherwise defaults
   // workers.dev to enabled) so the shared-secret check is the only way in,
