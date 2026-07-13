@@ -1565,12 +1565,15 @@ function DownloadCsvButton({
       "aria-label": label,
       title: label,
       className: classNames(
-        "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
+        // other compact header controls it commonly sits next to — a plain
+        // `rounded` rectangle reads as a mismatched shape beside a pill.
+        "inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1.5 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1",
         className
       ),
       children: [
         /* @__PURE__ */ jsxRuntime.jsx(lucideReact.Download, { className: "size-3 text-ink-muted", "aria-hidden": true }),
-        label
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
       ]
     }
   );
@@ -2267,7 +2270,7 @@ function SectionAnchor({
         )
       ),
       children: [
-        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-3 flex items-baseline gap-3", children: [
+        /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mb-3 flex items-center gap-3", children: [
           /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0 flex-1", children: [
             /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "flex items-center gap-1.5", children: [
               /* @__PURE__ */ jsxRuntime.jsx("h2", { className: "font-display text-sm font-semibold uppercase tracking-wider text-ink-strong", children: title }),
