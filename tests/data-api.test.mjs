@@ -3148,6 +3148,24 @@ test("subnet-hyperparams-sync skips prune when expected_netuid_count is unmet", 
   expect(queryText()).not.toMatch(/DELETE FROM subnet_hyperparams\b/);
 });
 
+test("subnet-hyperparams-sync skips prune when netuids are duplicated even if expected_netuid_count matches rows.length", async () => {
+  const row = hyperparamsSyncRow({ netuid: 8 });
+  const res = await postSubnetHyperparams(
+    { rows: [row, row], expected_netuid_count: 2 },
+    { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({
+    ok: true,
+    subnet_hyperparams_written: 2,
+    deregistered_pruned: 0,
+    prune_skipped: true,
+  });
+  expect(queryText()).toMatch(/INSERT INTO subnet_hyperparams\b/);
+  expect(queryText()).not.toMatch(/DELETE FROM subnet_hyperparams\b/);
+});
+
 test("subnet-hyperparams-sync skips legacy prune when row count collapsed vs Postgres", async () => {
   subnetHyperparamsPriorCount.current = 4;
   const res = await postSubnetHyperparams([hyperparamsSyncRow({ netuid: 8 })], {

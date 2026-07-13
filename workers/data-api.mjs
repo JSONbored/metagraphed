@@ -1086,16 +1086,21 @@ async function handleSubnetHyperparamsSync(request, env) {
       const hasCompletenessContract = Number.isInteger(expectedNetuidCount);
       let canPrune = true;
       if (hasCompletenessContract) {
-        if (expectedNetuidCount <= 0 || rows.length !== expectedNetuidCount) {
+        const uniqueNetuids = new Set(netuids);
+        if (
+          expectedNetuidCount <= 0 ||
+          uniqueNetuids.size !== expectedNetuidCount ||
+          uniqueNetuids.size !== rows.length
+        ) {
           canPrune = false;
           console.warn(
-            `subnet-hyperparams-sync: incomplete snapshot (${rows.length}/${expectedNetuidCount}); skipping prune`,
+            `subnet-hyperparams-sync: incomplete snapshot (${uniqueNetuids.size}/${expectedNetuidCount}); skipping prune`,
           );
         }
       } else {
         const [{ c: priorCount }] =
           await sql`SELECT COUNT(*)::int AS c FROM subnet_hyperparams`;
-        if (priorCount > 0 && rows.length < priorCount / 2) {
+        if (priorCount > 0 && new Set(netuids).size < priorCount / 2) {
           canPrune = false;
           console.warn(
             `subnet-hyperparams-sync: legacy snapshot row count collapsed (${rows.length}/${priorCount}); skipping prune`,
