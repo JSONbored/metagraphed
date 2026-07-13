@@ -20,7 +20,7 @@ import {
   safeExternalUrl,
   CurationChip,
   HealthPill,
-  FreshnessIndicator,
+  DailyRollupFreshness,
   StatWithSpark,
   MiniStack,
   MiniRadial,
@@ -300,7 +300,7 @@ export function SubnetMasthead({
         <span aria-hidden className="opacity-50">
           ·
         </span>
-        <FreshnessIndicator at={generatedAt} />
+        <DailyRollupFreshness at={generatedAt} />
         {stale ? (
           <span className="inline-flex items-center gap-1 rounded border border-health-warn/40 bg-health-warn/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-health-warn">
             stale

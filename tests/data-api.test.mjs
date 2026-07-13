@@ -14,6 +14,7 @@ import {
 } from "../src/subnet-identity-history.mjs";
 
 const sqlCalls = vi.hoisted(() => []);
+const sqlBeginOptions = vi.hoisted(() => []);
 const mockRows = vi.hoisted(() => ({
   current: [
     {
@@ -202,6 +203,7 @@ vi.mock("postgres", () => ({
     // sees the identical call stream, and resolves to whatever cb returns.
     sql.begin = (optionsOrCb, maybeCb) => {
       const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+      sqlBeginOptions.push(typeof optionsOrCb === "string" ? optionsOrCb : "");
       return cb(sql);
     };
     return sql;
@@ -235,6 +237,7 @@ const queryText = () => sqlCalls.map((call) => call.text).join("\n");
 
 beforeEach(() => {
   sqlCalls.length = 0;
+  sqlBeginOptions.length = 0;
   mockQueue.current = [];
   neuronsSyncFailure.error = null;
   neuronsSyncPruneRows.current = [];
@@ -968,6 +971,22 @@ test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from one bounde
   expect(body.activity.modules_called[0].call_module).toBe("SubtensorModule");
   expect(queryText()).toContain("WHERE (hotkey =");
   expect(queryText()).toContain("OR coldkey =");
+});
+
+test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", async () => {
+  mockQueue.current = [
+    [], // SET
+    [ACCOUNT_EVENT_ROW, { ...ACCOUNT_EVENT_ROW, netuid: null }], // scanRows
+    [], // regRows
+    [], // activityRows
+    [], // moduleRows
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.event_count).toBe(2);
+  expect(body.subnet_count).toBe(1);
+  expect(body.recent_events.map((event) => event.netuid)).toEqual([4, null]);
 });
 
 test("GET /api/v1/accounts/:ss58 with no matching rows returns a schema-stable empty summary", async () => {
@@ -2433,6 +2452,7 @@ test("GET /api/v1/subnets/:netuid/event-summary shapes kind/category aggregates 
   expect(queryText()).toContain(
     "GROUP BY event_kind ORDER BY event_count DESC",
   );
+  expect(queryText()).toContain("AND coldkey IS NOT NULL");
 });
 
 test("GET /api/v1/subnets/:netuid/event-summary defaults the window when absent", async () => {
@@ -4497,6 +4517,9 @@ test("GET /api/v1/chain/transfers: totals + distinct counts + senders + receiver
   ];
   const res = await req("/api/v1/chain/transfers?window=7d&limit=5");
   expect(res.status).toBe(200);
+  expect(sqlBeginOptions).toContain(
+    "isolation level repeatable read read only",
+  );
   const body = await res.json();
   expect(body.total_volume_tao).toBe(100);
   expect(body.unique_senders).toBe(2);
@@ -4992,11 +5015,18 @@ test("GET /api/v1/subnets/:netuid/health/percentiles on a cold store returns sur
 test("GET /api/v1/subnets/:netuid/health/incidents: SLA rollup + gap-island incidents", async () => {
   mockQueue.current = [
     [],
-    [{ surface_id: "sn-7-api", total: 100, ok_count: 92 }],
     [
       {
         surface_id: "sn-7-api",
-        surface_key: "sn-7-api",
+        surface_key: "stable-sn-7-api",
+        total: 100,
+        ok_count: 92,
+      },
+    ],
+    [
+      {
+        surface_id: "sn-7-api",
+        surface_key: "stable-sn-7-api",
         started_at: "1780000000000",
         ended_at: "1780000600000",
         failed_samples: 3,

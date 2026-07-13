@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Boxes, Layers, ShieldCheck } from "lucide-react";
 import { subnetMetagraphQuery } from "@/lib/metagraphed/queries";
-import { TableState, DailyRollupFreshness, StatTile, BarMini } from "@jsonbored/ui-kit";
+import { TableState, RealtimeFreshness, StatTile, BarMini } from "@jsonbored/ui-kit";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
 import { classNames } from "@/lib/metagraphed/format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
@@ -60,7 +60,7 @@ export function MetagraphTableLoader({
     );
   }
 
-  const freshness = <DailyRollupFreshness at={meta?.generated_at} />;
+  const freshness = <RealtimeFreshness at={meta?.generated_at} />;
 
   return (
     <div className="space-y-4">

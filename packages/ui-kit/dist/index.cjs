@@ -1844,14 +1844,27 @@ function FreshnessIndicator({
     }
   );
 }
+function tierFreshnessLabel(tier, at) {
+  if (at == null) return "No freshness data";
+  const prefix = tier === "realtime" ? "Live chain read" : "Daily rollup snapshot";
+  return `${prefix} \u2014 updated ${formatRelative(at)}`;
+}
 function DailyRollupFreshness({
   at,
   className
 }) {
-  const label = at == null ? "No freshness data" : `Daily rollup snapshot \u2014 updated ${formatRelative(at)}`;
   return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
     /* @__PURE__ */ jsxRuntime.jsx(FreshnessIndicator, { at, dotOnly: true }),
-    /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label })
+    /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tierFreshnessLabel("daily", at) })
+  ] });
+}
+function RealtimeFreshness({
+  at,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsxs("span", { className: classNames("inline-flex items-center gap-1", className), children: [
+    /* @__PURE__ */ jsxRuntime.jsx(FreshnessIndicator, { at, dotOnly: true }),
+    /* @__PURE__ */ jsxRuntime.jsx(InfoTooltip, { label: tierFreshnessLabel("realtime", at) })
   ] });
 }
 function HoverPreview({
@@ -3327,7 +3340,8 @@ function StatTile({
   hint,
   chart,
   tone = "default",
-  className
+  className,
+  truncate = true
 }) {
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",
@@ -3353,11 +3367,38 @@ function StatTile({
           }
         ) : null,
         /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0 flex-1", children: [
-          /* @__PURE__ */ jsxRuntime.jsx("div", { className: "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate", children: eyebrow }),
-          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "mt-1 flex min-w-0 items-baseline gap-1.5", children: [
-            /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
-            hint ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 font-mono text-[10px] text-ink-muted truncate", children: hint }) : null
-          ] })
+          /* @__PURE__ */ jsxRuntime.jsx(
+            "div",
+            {
+              className: classNames(
+                "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted",
+                truncate ? "truncate" : "leading-tight"
+              ),
+              children: eyebrow
+            }
+          ),
+          /* @__PURE__ */ jsxRuntime.jsxs(
+            "div",
+            {
+              className: classNames(
+                "mt-1 flex min-w-0 gap-1.5",
+                truncate ? "items-baseline" : "flex-wrap items-baseline"
+              ),
+              children: [
+                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl", children: value }),
+                hint ? /* @__PURE__ */ jsxRuntime.jsx(
+                  "span",
+                  {
+                    className: classNames(
+                      "min-w-0 font-mono text-[10px] text-ink-muted",
+                      truncate ? "truncate" : ""
+                    ),
+                    children: hint
+                  }
+                ) : null
+              ]
+            }
+          )
         ] }),
         chart ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 opacity-80", children: chart }) : null
       ]
@@ -3765,6 +3806,7 @@ exports.PopoverContent = PopoverContent;
 exports.PopoverTrigger = PopoverTrigger;
 exports.PrimaryLinksRail = PrimaryLinksRail;
 exports.ProfileHero = ProfileHero;
+exports.RealtimeFreshness = RealtimeFreshness;
 exports.ReviewChip = ReviewChip;
 exports.SCOPES = SCOPES;
 exports.ScrollReveal = ScrollReveal;
@@ -3806,5 +3848,6 @@ exports.freshnessDotClass = freshnessDotClass;
 exports.freshnessTierLabel = freshnessTierLabel;
 exports.prefetchBrandIcon = prefetchBrandIcon;
 exports.safeExternalUrl = safeExternalUrl;
+exports.tierFreshnessLabel = tierFreshnessLabel;
 exports.timeAgoAbsoluteTitle = timeAgoAbsoluteTitle;
 exports.visibleTools = visibleTools;
