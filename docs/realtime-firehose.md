@@ -154,11 +154,16 @@ Unit-tested against graphql-js's real `subscribe()` engine (not a hand-rolled
 simulation) and against a stubbed Durable Object `state`. Cloudflare has a
 [documented history](https://github.com/cloudflare/workers-sdk/issues/1767)
 of not always echoing `Sec-WebSocket-Protocol` on upgrade responses in some
-contexts -- this needs a real `wss` client handshake against the live
-deployment (`connection_init` → `connection_ack` → `subscribe` → `next`,
-checking `ws.protocol` is actually negotiated) to be trusted, not assumed
-from docs alone. Not yet done as of this section being written -- see the
-PR/issue thread for whether that verification landed before merge.
+contexts, so this was checked for real rather than assumed from docs alone:
+a real `wss` client (Node's native `WebSocket`, requesting the
+`graphql-transport-ws` subprotocol) against the live deployment completed
+the full `connection_init` → `connection_ack` → `subscribe` → `next`
+handshake, `ws.protocol` correctly negotiated as `"graphql-transport-ws"`,
+and received a real chain event (block 8608447) as a properly-framed `next`
+message -- confirmed 2026-07-13. (The first few attempts immediately after
+merge failed with a generic connection error; that was Cloudflare's global
+edge propagation lag for the new Worker version, not a protocol bug --
+retrying a couple of minutes later succeeded cleanly.)
 
 ## MCP resource subscriptions (#4983, not yet built)
 
