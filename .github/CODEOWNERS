@@ -1,1 +1,19 @@
+# Default: everything.
 * @JSONbored
+
+# Explicit, path-specific rules below (#3080) for the highest-value targets a
+# compromised contributor or leaked token could hit: CI workflow definitions,
+# dependency manifests (a supply-chain injection point), the registry data
+# tree, and release/publish configuration. All still resolve to the sole
+# maintainer today (there's only one owner), but spelling them out
+# documents-as-code which paths are security-sensitive and is what
+# require_code_owner_reviews (branch protection) actually enforces against
+# once enabled — the blanket rule above alone doesn't give per-path signal.
+/.github/workflows/ @JSONbored
+/.github/CODEOWNERS @JSONbored
+/package.json @JSONbored
+/package-lock.json @JSONbored
+/registry/ @JSONbored
+/release-please-config.json @JSONbored
+/.release-please-manifest.json @JSONbored
+/renovate.json @JSONbored
