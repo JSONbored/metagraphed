@@ -13,6 +13,20 @@
   // (and, for the ones called from the main Worker's own cron rather than an
   // external GitHub Actions workflow, the SAME secret value on the main
   // Worker too -- see wrangler.jsonc.)
+  //
+  // #4984 Part 1's chain_alert_triggers CRUD (workers/data-api.mjs's
+  // handleAlertTrigger* functions) needs three MORE secrets, none yet
+  // provisioned on any deployment:
+  //   wrangler secret put ALERT_TRIGGER_CREATE_TOKEN -c wrangler.data.jsonc
+  //   wrangler secret put ALERT_TRIGGERS_INTERNAL_TOKEN -c wrangler.data.jsonc
+  // (ALERT_TRIGGER_CREATE_TOKEN gates public trigger creation, anti-abuse,
+  // like METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN; ALERT_TRIGGERS_INTERNAL_TOKEN
+  // gates the #4984 Part 2 evaluator's active-trigger list scan. There is no
+  // third secret to provision here -- per-trigger owner tokens are minted
+  // per row by the CREATE route itself, not a deployment secret.) Until
+  // ALERT_TRIGGER_CREATE_TOKEN is set, POST /api/v1/alerts/triggers 503s;
+  // the table/routes are otherwise fully live once this file's schema.sql
+  // is applied.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-data-api",
   "main": "workers/data-api.mjs",
