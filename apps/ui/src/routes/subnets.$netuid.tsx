@@ -200,6 +200,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   yield: "metagraph",
   turnover: "metagraph",
   validators: "validators",
+  activity: "activity",
   identity: "identity",
   hyperparameters: "hyperparameters",
   services: "services",
