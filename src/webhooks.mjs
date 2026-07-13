@@ -172,13 +172,24 @@ async function resolveWebhookDnsJson(
   const query = new URL(endpoint);
   query.searchParams.set("name", host);
   query.searchParams.set("type", recordType);
-  const response = await fetchImpl(query.toString(), {
-    headers: { accept: "application/dns-json" },
-    redirect: "manual",
-    signal: AbortSignal.timeout(WEBHOOK_DNS_TIMEOUT_MS),
-  });
-  if (!response?.ok) return [];
-  return dnsJsonAddressAnswers(await response.json());
+  try {
+    const response = await fetchImpl(query.toString(), {
+      headers: { accept: "application/dns-json" },
+      redirect: "manual",
+      signal: AbortSignal.timeout(WEBHOOK_DNS_TIMEOUT_MS),
+    });
+    if (!response?.ok) return [];
+    return dnsJsonAddressAnswers(await response.json());
+  } catch {
+    // A DoH timeout/network error/malformed-JSON parse failure for THIS
+    // record type must not sink the other record type's lookup via
+    // resolveWebhookHostnamesWithDoh's Promise.all below -- treat it as "no
+    // addresses from this lookup" so a public answer from the other record
+    // type can still be used, and so a fully-failed lookup fails closed
+    // (empty addresses -> resolvedWebhookUrlStatus's `allPublic` check on an
+    // empty array is false -> "unsafe") instead of throwing.
+    return [];
+  }
 }
 
 export async function resolveWebhookHostnamesWithDoh(

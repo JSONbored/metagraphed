@@ -14,8 +14,12 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   ALERTER_HUB_EVALUATE_TIMEOUT_MS,
+  CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK,
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
+  CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP,
   CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
+  CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP,
+  CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET,
   CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
   CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS,
   CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK,
@@ -183,6 +187,49 @@ test("createAsyncRepeater: a real for-await loop consumes pushed values in order
   repeater.push(3);
   await consumer;
   assert.deepEqual(seen, [1, 2, 3]);
+});
+
+test("createAsyncRepeater: defaults highWaterMark to CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK", async () => {
+  const repeater = createAsyncRepeater();
+  // Fills pending to exactly the default mark, none consumed yet -- not
+  // overflowed (the check is pending.length >= highWaterMark, so the LAST of
+  // these still finds room).
+  for (
+    let i = 0;
+    i < CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK;
+    i += 1
+  ) {
+    repeater.push(i);
+  }
+  // pending.length is now already at the mark -- this one overflows.
+  repeater.push("one-more");
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), { value: undefined, done: true });
+});
+
+test("createAsyncRepeater: ends and calls onOverflow instead of buffering past a custom highWaterMark", async () => {
+  let overflowed = false;
+  const repeater = createAsyncRepeater({
+    highWaterMark: 2,
+    onOverflow: () => {
+      overflowed = true;
+    },
+  });
+  repeater.push("a");
+  repeater.push("b");
+  repeater.push("c"); // exceeds the mark -> ends instead of buffering
+  assert.equal(overflowed, true);
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), { value: undefined, done: true });
+});
+
+test("createAsyncRepeater: overflow clears any already-buffered pending values", async () => {
+  const repeater = createAsyncRepeater({ highWaterMark: 1 });
+  repeater.push("fills-to-the-mark"); // pending.length 0 -> 1, at the mark
+  repeater.push("triggers-overflow"); // pending.length already >= mark -> finish(), pending cleared
+  repeater.push("dropped-after-finish"); // finished -> silent no-op
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
 // --- parseChainFirehoseTopics --------------------------------------------------
@@ -505,16 +552,23 @@ test("ChainFirehoseHub /subscribe (SSE): responds with a text/event-stream and a
 test("ChainFirehoseHub /subscribe (SSE): rejects new clients at the global connection cap", async () => {
   const hub = new ChainFirehoseHub(stubState(), {});
   const responses = [];
+  // Spread across many distinct IPs, well under the per-IP cap each (#5004
+  // item 1's dedicated tests further below cover THAT cap specifically) --
+  // this test is about the pre-existing GLOBAL cap, independent of it.
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS; i += 1) {
     const res = await hub.fetch(
-      new Request("https://chain-firehose-hub.internal/subscribe"),
+      new Request("https://chain-firehose-hub.internal/subscribe", {
+        headers: { "cf-connecting-ip": `198.51.100.${i % 100}` },
+      }),
     );
     responses.push(res);
   }
 
   assert.equal(hub.sseClients.size, CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS);
   const capped = await hub.fetch(
-    new Request("https://chain-firehose-hub.internal/subscribe"),
+    new Request("https://chain-firehose-hub.internal/subscribe", {
+      headers: { "cf-connecting-ip": "198.51.100.250" }, // a fresh IP, nowhere near its own per-IP cap
+    }),
   );
   assert.equal(capped.status, 503);
   assert.equal(await capped.text(), "too many connections");
@@ -586,6 +640,115 @@ test("ChainFirehoseHub /subscribe (SSE): cancelling the stream removes it from s
   assert.equal(hub.sseClients.size, 1);
   await res.body.cancel();
   assert.equal(hub.sseClients.size, 0);
+});
+
+// --- SSE per-IP connection sub-quota (#5004 item 1) -------------------------------
+//
+// CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS is a GLOBAL cap (tested above); this is
+// the per-IP sub-quota checked alongside it, so one IP can't consume the
+// entire global budget in a loop. subscribeRequest below builds a real
+// Request the same way every other test in this file does, just with a
+// cf-connecting-ip header attached (mirroring tests/config.test.mjs's own
+// fakeRequest pattern for resolveClientIp, but as a real Request since
+// handleSubscribe is exercised through hub.fetch here, not called directly).
+function subscribeRequest(ip, query = "") {
+  return new Request(
+    `https://chain-firehose-hub.internal/subscribe${query}`,
+    ip ? { headers: { "cf-connecting-ip": ip } } : undefined,
+  );
+}
+
+test("ChainFirehoseHub /subscribe (SSE): rejects a new client from the SAME IP at the per-IP cap, well below the global cap", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const responses = [];
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
+    responses.push(await hub.fetch(subscribeRequest("203.0.113.9")));
+  }
+  assert.equal(hub.sseClients.size, CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP);
+  assert.ok(
+    CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP < CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS,
+  );
+
+  const capped = await hub.fetch(subscribeRequest("203.0.113.9"));
+  assert.equal(capped.status, 503);
+  assert.equal(await capped.text(), "too many connections");
+  // The per-IP cap didn't consume any of the global budget beyond this IP's
+  // own connections -- the rejection is purely from sseClientsByIp, not
+  // sseClients hitting CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS.
+  assert.equal(hub.sseClients.size, CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP);
+
+  await Promise.all(responses.map((res) => res.body.cancel()));
+});
+
+test("ChainFirehoseHub /subscribe (SSE): a DIFFERENT IP is unaffected by another IP's per-IP cap", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const responses = [];
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
+    responses.push(await hub.fetch(subscribeRequest("203.0.113.9")));
+  }
+  const otherIp = await hub.fetch(subscribeRequest("198.51.100.4"));
+  assert.equal(otherIp.status, 200);
+  await Promise.all([...responses, otherIp].map((res) => res.body.cancel()));
+});
+
+test("ChainFirehoseHub /subscribe (SSE): cancelling one connection frees that IP's slot for a new one", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const responses = [];
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
+    responses.push(await hub.fetch(subscribeRequest("203.0.113.9")));
+  }
+  await responses[0].body.cancel();
+  assert.equal(
+    hub.sseClientsByIp.get("203.0.113.9"),
+    CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP - 1,
+  );
+
+  const reconnected = await hub.fetch(subscribeRequest("203.0.113.9"));
+  assert.equal(reconnected.status, 200);
+  assert.equal(
+    hub.sseClientsByIp.get("203.0.113.9"),
+    CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP,
+  );
+
+  await Promise.all(
+    [...responses.slice(1), reconnected].map((res) => res.body.cancel()),
+  );
+});
+
+test("ChainFirehoseHub /subscribe (SSE): requests with no cf-connecting-ip header share the anonymous bucket", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const responses = [];
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
+    responses.push(await hub.fetch(subscribeRequest(null)));
+  }
+  const capped = await hub.fetch(subscribeRequest(null));
+  assert.equal(capped.status, 503);
+  await Promise.all(responses.map((res) => res.body.cancel()));
+});
+
+test("ChainFirehoseHub broadcast: dropping a stalled SSE client also releases its per-IP slot (not just sseClients)", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const res = await hub.fetch(subscribeRequest("203.0.113.9"));
+  assert.equal(hub.sseClientsByIp.get("203.0.113.9"), 1);
+  for (let i = 0; i < CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK + 5; i += 1) {
+    hub.broadcast({ table: "blocks", block_number: i });
+  }
+  assert.equal(hub.sseClients.size, 0);
+  assert.equal(hub.sseClientsByIp.has("203.0.113.9"), false);
+  await res.body.cancel();
+});
+
+test("ChainFirehoseHub.addSseClient: a second connection from the same IP increments rather than overwrites the count", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.addSseClient({ ip: "203.0.113.9" });
+  hub.addSseClient({ ip: "203.0.113.9" });
+  assert.equal(hub.sseClientsByIp.get("203.0.113.9"), 2);
+});
+
+test("ChainFirehoseHub.removeSseClient: a no-op (does not throw or touch sseClientsByIp) when the entry was never registered", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  assert.doesNotThrow(() => hub.removeSseClient({ ip: "203.0.113.9" }));
+  assert.equal(hub.sseClientsByIp.size, 0);
 });
 
 test("ChainFirehoseHub broadcast: fans out to WebSockets via the stubbed state.getWebSockets(), honoring their attached topic filter", () => {
@@ -724,6 +887,76 @@ test("ChainFirehoseHub.webSocketError: falls back to a generic reason when no er
   });
   hub.webSocketError(ws);
   assert.deepEqual(closedWith, [1011, "internal error"]);
+});
+
+// --- releaseWsIpSlot / per-IP WS connection sub-quota (#5004 item 1) ------------
+//
+// The accept-time increment itself lives inside handleSubscribe's
+// WebSocket-upgrade branch, which is /* v8 ignore */-marked in the source
+// (WebSocketPair/state.acceptWebSocket have no Node equivalent -- same
+// convention as every other WS-accept-path test gap in this file). The
+// RELEASE half, though, runs inside webSocketClose/webSocketError -- both
+// already exercised under plain Node/vitest above via stubbed `ws` objects
+// -- so releaseWsIpSlot's branches are tested directly here the same way,
+// by seeding hub.wsClientsByIp directly (mirroring how other tests in this
+// file seed hub.sseClients/hub.graphqlWsSockets directly) rather than
+// needing a real accept step.
+
+test("ChainFirehoseHub.webSocketClose: releases the per-IP WS slot recorded in the socket's attachment", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.wsClientsByIp.set("203.0.113.9", 1);
+  const ws = {
+    deserializeAttachment: () => ({ topics: null, ip: "203.0.113.9" }),
+    close: () => {},
+  };
+  hub.webSocketClose(ws, 1000, "bye");
+  assert.equal(hub.wsClientsByIp.has("203.0.113.9"), false);
+});
+
+test("ChainFirehoseHub.webSocketClose: decrements (not deletes) when other connections from the same IP remain", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.wsClientsByIp.set("203.0.113.9", 3);
+  const ws = {
+    deserializeAttachment: () => ({ ip: "203.0.113.9" }),
+    close: () => {},
+  };
+  hub.webSocketClose(ws, 1000, "bye");
+  assert.equal(hub.wsClientsByIp.get("203.0.113.9"), 2);
+});
+
+test("ChainFirehoseHub.webSocketError: also releases the per-IP WS slot (not just webSocketClose)", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.wsClientsByIp.set("198.51.100.4", 1);
+  const ws = { deserializeAttachment: () => ({ ip: "198.51.100.4" }) };
+  hub.webSocketError(ws, new Error("boom"));
+  assert.equal(hub.wsClientsByIp.has("198.51.100.4"), false);
+});
+
+test("ChainFirehoseHub.releaseWsIpSlot: a no-op when the attachment has no ip (e.g. a legacy/malformed attachment)", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.wsClientsByIp.set("203.0.113.9", 1);
+  assert.doesNotThrow(() =>
+    hub.releaseWsIpSlot({ deserializeAttachment: () => ({ topics: null }) }),
+  );
+  // Unrelated IP's count is untouched -- nothing to attribute the release to.
+  assert.equal(hub.wsClientsByIp.get("203.0.113.9"), 1);
+});
+
+test("ChainFirehoseHub.releaseWsIpSlot: a no-op when deserializeAttachment returns null", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  assert.doesNotThrow(() =>
+    hub.releaseWsIpSlot({ deserializeAttachment: () => null }),
+  );
+});
+
+test("ChainFirehoseHub.releaseWsIpSlot: a no-op when this DO instance never recorded that IP (e.g. a socket accepted by a prior, now-replaced instance)", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  assert.doesNotThrow(() =>
+    hub.releaseWsIpSlot({
+      deserializeAttachment: () => ({ ip: "203.0.113.9" }),
+    }),
+  );
+  assert.equal(hub.wsClientsByIp.has("203.0.113.9"), false);
 });
 
 // --- subscribeChainEvents / unsubscribeChainEvents / broadcast (#4983) ----------
@@ -865,6 +1098,205 @@ test("ChainFirehoseHub.subscribeChainEvents: returns null (not a repeater) once 
     hub.chainEventSubscribers.size,
     CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
   );
+});
+
+// --- CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP (#5004 item 2) -------------
+//
+// The per-IP counterpart to the global cap above: CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP
+// bounds how many graphql-ws SOCKETS one IP can open, but graphql-ws itself
+// imposes no per-socket subscription-count limit -- so without this, a single
+// IP using just one of its (already capped) sockets could still multiplex its
+// way up to the ENTIRE global CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS budget.
+// clientIp is threaded from handleSubscribe's WS-upgrade branch through
+// graphql-ws's opened()/context() chain into src/graphql.mjs's
+// chainEventsSubscribe resolver as context.clientIp, which passes it here as
+// subscribeChainEvents's second argument -- see that resolver and
+// graphqlWsServer's context callback in the source for the other half of the
+// wiring (not Node-testable; same v8-ignored reachability class as every
+// other WS-accept-path branch in this file). subscribeChainEvents/
+// unsubscribeChainEvents are plain methods, though, so the actual cap logic
+// under test here is called directly, the same way the global-cap test above
+// does.
+
+test("ChainFirehoseHub.subscribeChainEvents: rejects a new subscription from the SAME IP at the per-IP cap, well below the global cap", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  assert.ok(
+    CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP <
+      CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
+  );
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP; i += 1) {
+    assert.notEqual(hub.subscribeChainEvents(null, "203.0.113.9"), null);
+  }
+  assert.equal(
+    hub.chainEventSubscribersByIp.get("203.0.113.9"),
+    CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP,
+  );
+
+  const capped = hub.subscribeChainEvents(null, "203.0.113.9");
+  assert.equal(capped, null);
+  // The per-IP rejection didn't consume any of the global budget beyond this
+  // IP's own subscriptions -- proves the rejection came from the per-IP
+  // check, not CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS.
+  assert.equal(
+    hub.chainEventSubscribers.size,
+    CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP,
+  );
+});
+
+test("ChainFirehoseHub.subscribeChainEvents: a DIFFERENT IP is unaffected by another IP's per-IP cap", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP; i += 1) {
+    hub.subscribeChainEvents(null, "203.0.113.9");
+  }
+  const otherIpRepeater = hub.subscribeChainEvents(null, "198.51.100.4");
+  assert.notEqual(otherIpRepeater, null);
+  assert.equal(hub.chainEventSubscribersByIp.get("198.51.100.4"), 1);
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: releases the subscribing IP's slot, freeing room for a new subscription from the same IP", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const repeaters = [];
+  for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP; i += 1) {
+    repeaters.push(hub.subscribeChainEvents(null, "203.0.113.9"));
+  }
+  assert.equal(hub.subscribeChainEvents(null, "203.0.113.9"), null); // capped
+
+  hub.unsubscribeChainEvents(repeaters[0]);
+  assert.equal(
+    hub.chainEventSubscribersByIp.get("203.0.113.9"),
+    CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP - 1,
+  );
+
+  const reconnected = hub.subscribeChainEvents(null, "203.0.113.9");
+  assert.notEqual(reconnected, null);
+  assert.equal(
+    hub.chainEventSubscribersByIp.get("203.0.113.9"),
+    CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP,
+  );
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: deletes (not zeroes) the IP's map entry once its last subscription ends", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const repeater = hub.subscribeChainEvents(null, "203.0.113.9");
+  assert.equal(hub.chainEventSubscribersByIp.get("203.0.113.9"), 1);
+  hub.unsubscribeChainEvents(repeater);
+  assert.equal(hub.chainEventSubscribersByIp.has("203.0.113.9"), false);
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: a defensive no-op when the entry carries a clientIp that was never (or is no longer) tracked in chainEventSubscribersByIp", () => {
+  // Structurally shouldn't happen via the normal subscribeChainEvents path
+  // (which always pairs the entry's clientIp with an increment), but this
+  // mirrors the same defensive shape releaseWsIpSlot/removeSseClient already
+  // use elsewhere in this class for an untracked IP -- seeded directly here
+  // (like several other tests in this file seed hub.sseClients/
+  // hub.graphqlWsSockets directly) to exercise that guard as its own branch.
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const repeater = createAsyncRepeater();
+  const entry = { repeater, topics: null, clientIp: "203.0.113.9" };
+  hub.chainEventSubscribers.add(entry);
+  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater));
+  assert.equal(hub.chainEventSubscribersByIp.has("203.0.113.9"), false);
+});
+
+test("ChainFirehoseHub.subscribeChainEvents: an undefined clientIp (e.g. a caller not going through the real WS/graphql-ws path) skips the per-IP check entirely, sharing no bucket and never getting capped by it", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  for (
+    let i = 0;
+    i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP + 5;
+    i += 1
+  ) {
+    assert.notEqual(hub.subscribeChainEvents(null), null);
+  }
+  assert.equal(
+    hub.chainEventSubscribers.size,
+    CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP + 5,
+  );
+  assert.equal(hub.chainEventSubscribersByIp.size, 0);
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: unsubscribing a repeater that was subscribed with no clientIp doesn't touch chainEventSubscribersByIp", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const repeater = hub.subscribeChainEvents(null);
+  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater));
+  assert.equal(hub.chainEventSubscribersByIp.size, 0);
+});
+
+// --- CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET -----------------------
+//
+// Defense-in-depth alongside the per-IP cap above: a hard, socket-scoped
+// invariant via the SAME connection object stamped on ctx.extra at opened()
+// time and threaded through context.graphqlWsConnection into
+// subscribeChainEvents's third argument.
+
+test("ChainFirehoseHub.subscribeChainEvents: enforces the per-socket active subscription cap independent of clientIp", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const connection = {
+    activeSubscriptions: CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET,
+  };
+  assert.equal(hub.subscribeChainEvents(null, "203.0.113.9", connection), null);
+  assert.equal(hub.chainEventSubscribers.size, 0);
+  assert.equal(hub.chainEventSubscribersByIp.has("203.0.113.9"), false);
+});
+
+test("ChainFirehoseHub.subscribeChainEvents: a DIFFERENT socket (same IP) is unaffected by another socket's per-socket cap", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const fullSocket = {
+    activeSubscriptions: CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET,
+  };
+  const freshSocket = { activeSubscriptions: 0 };
+  assert.equal(hub.subscribeChainEvents(null, "203.0.113.9", fullSocket), null);
+  const repeater = hub.subscribeChainEvents(null, "203.0.113.9", freshSocket);
+  assert.notEqual(repeater, null);
+  assert.equal(freshSocket.activeSubscriptions, 1);
+});
+
+test("ChainFirehoseHub.subscribeChainEvents: increments connection.activeSubscriptions on success", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const connection = { activeSubscriptions: 0 };
+  hub.subscribeChainEvents(null, null, connection);
+  hub.subscribeChainEvents(null, null, connection);
+  assert.equal(connection.activeSubscriptions, 2);
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: decrements connection.activeSubscriptions, floored at 0", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const connection = { activeSubscriptions: 0 };
+  const repeater = hub.subscribeChainEvents(null, null, connection);
+  assert.equal(connection.activeSubscriptions, 1);
+  hub.unsubscribeChainEvents(repeater);
+  assert.equal(connection.activeSubscriptions, 0);
+  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater)); // already removed, no-op
+});
+
+test("ChainFirehoseHub.subscribeChainEvents: an undefined connection skips the per-socket check entirely", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  for (
+    let i = 0;
+    i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET + 5;
+    i += 1
+  ) {
+    assert.notEqual(hub.subscribeChainEvents(null), null);
+  }
+});
+
+test("ChainFirehoseHub.broadcast: a subscription that overflows its buffer is dropped and its counters released", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const connection = { activeSubscriptions: 0 };
+  const repeater = hub.subscribeChainEvents(null, "203.0.113.9", connection);
+  for (
+    let i = 0;
+    i < CHAIN_FIREHOSE_GRAPHQL_SUBSCRIPTION_HIGH_WATER_MARK + 1;
+    i += 1
+  ) {
+    hub.broadcast({ table: "blocks", block_number: i });
+  }
+  assert.equal(hub.chainEventSubscribers.size, 0);
+  assert.equal(hub.chainEventSubscribersByIp.has("203.0.113.9"), false);
+  assert.equal(connection.activeSubscriptions, 0);
+  assert.deepEqual(await repeater[Symbol.asyncIterator]().next(), {
+    value: undefined,
+    done: true,
+  });
 });
 
 test("GRAPHQL_WS_SOCKET_TAG is the documented tag string", () => {

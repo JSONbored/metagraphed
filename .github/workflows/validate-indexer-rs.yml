@@ -1,0 +1,62 @@
+name: Validate indexer-rs
+
+# Scoped to apps/indexer-rs/** (plus itself) so every OTHER PR in this
+# monorepo — the overwhelming majority, JS/Python only — never pays for a
+# Cargo build. GitHub's ubuntu-latest runners ship a preinstalled rustup +
+# stable toolchain, so this deliberately uses no third-party Rust-toolchain
+# action: this repo's Actions allowlist is
+# {github_owned_allowed, verified_allowed, patterns_allowed: [...]} (see
+# validate.yml's own comment on this exact constraint), and an unlisted
+# third-party action hits a startup_failure rather than a clean skip.
+on:
+  pull_request:
+    paths:
+      - "apps/indexer-rs/**"
+      - ".github/workflows/validate-indexer-rs.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/indexer-rs/**"
+      - ".github/workflows/validate-indexer-rs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-indexer-rs-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/indexer-rs
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/indexer-rs/target
+          key: indexer-rs-cargo-${{ runner.os }}-${{ hashFiles('apps/indexer-rs/Cargo.lock') }}
+          restore-keys: |
+            indexer-rs-cargo-${{ runner.os }}-
+
+      - name: rustfmt --check
+        run: cargo fmt --check
+
+      - name: cargo build --locked
+        run: cargo build --locked
+
+      - name: cargo test --locked
+        run: cargo test --locked

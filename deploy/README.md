@@ -165,8 +165,8 @@ against the indexer box's Postgres to confirm the historical gaps found in
 flip relied on) does not prove this:
 
 ```sh
-ssh indexeradmin@meta-indexer-01-us-lax1
-sudo docker exec -i metagraphed-indexer-postgres-1 psql -U metagraphed -d metagraphed
+ssh <indexer-ssh-target>
+sudo docker exec -i <postgres-container> psql -U <postgres-user> -d <postgres-database>
 ```
 
 ```sql

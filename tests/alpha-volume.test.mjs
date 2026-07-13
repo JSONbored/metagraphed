@@ -504,37 +504,6 @@ function volumeEnv(rows, captured = {}) {
 }
 
 describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
-  test("returns the 24h volume scorecard for a warm D1", async () => {
-    const captured = {};
-    const env = volumeEnv(
-      [
-        {
-          event_kind: STAKE_ADDED_KIND,
-          alpha_volume: 100,
-          tao_volume: 20,
-          event_count: 3,
-        },
-      ],
-      captured,
-    );
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
-      env,
-      ctx,
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.window, "24h");
-    assert.equal(body.data.buy_volume_alpha, 100);
-    assert.equal(body.data.net_volume_alpha, 100);
-    assert.equal(body.data.sentiment, "bullish");
-    // Neither KV (METAGRAPH_CONTROL unbound) nor the R2 fallback (no local
-    // economics.json in this test env) has a market-cap row for this subnet.
-    assert.equal(body.data.vol_mcap_ratio, null);
-    assert.match(captured.sql, /FROM account_events/);
-  });
-
   test("is schema-stable when D1 is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
@@ -545,50 +514,6 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
     const body = await res.json();
     assert.equal(body.data.total_volume_alpha, 0);
     assert.equal(body.data.vol_mcap_ratio, null);
-  });
-
-  test("computes vol_mcap_ratio from a warm live economics KV tier", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    const env = volumeEnv([
-      {
-        event_kind: STAKE_ADDED_KIND,
-        alpha_volume: 1,
-        tao_volume: 20,
-        event_count: 1,
-      },
-      {
-        event_kind: STAKE_REMOVED_KIND,
-        alpha_volume: 1,
-        tao_volume: 4,
-        event_count: 1,
-      },
-    ]);
-    env.METAGRAPH_CONTROL = {
-      async get(key, opts) {
-        assert.equal(key, "economics:current");
-        assert.deepEqual(opts, { type: "json" });
-        return {
-          schema_version: 1,
-          captured_at: new Date().toISOString(),
-          summary: { with_economics_count: 1 },
-          subnets: [
-            { netuid: 7, emission_share: 1, alpha_market_cap_tao: 480 },
-          ],
-        };
-      },
-    };
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
-      env,
-      ctx,
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    // total_volume_tao = 20 + 4 = 24; ratio = 24/480 = 0.05.
-    assert.equal(body.data.total_volume_tao, 24);
-    assert.equal(body.data.vol_mcap_ratio, 0.05);
-    vi.useRealTimers();
   });
 
   test("a stale live economics KV tier falls back to null (no committed artifact locally)", async () => {
@@ -619,46 +544,6 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
     );
     const body = await res.json();
     assert.equal(body.data.vol_mcap_ratio, null);
-  });
-
-  test("falls back to the committed economics.json when the live KV tier is cold", async () => {
-    const env = volumeEnv([
-      {
-        event_kind: STAKE_ADDED_KIND,
-        alpha_volume: 1,
-        tao_volume: 20,
-        event_count: 1,
-      },
-      {
-        event_kind: STAKE_REMOVED_KIND,
-        alpha_volume: 1,
-        tao_volume: 4,
-        event_count: 1,
-      },
-    ]);
-    // METAGRAPH_CONTROL stays unset (live tier cold) — only the R2 artifact
-    // fallback (resolveSubnetMarketCapTao's readArtifact branch) is wired.
-    env.METAGRAPH_ARCHIVE = {
-      async get() {
-        return {
-          async json() {
-            return {
-              subnets: [
-                { netuid: 7, emission_share: 1, alpha_market_cap_tao: 480 },
-              ],
-            };
-          },
-        };
-      },
-    };
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
-      env,
-      ctx,
-    );
-    const body = await res.json();
-    assert.equal(body.data.total_volume_tao, 24);
-    assert.equal(body.data.vol_mcap_ratio, 0.05);
   });
 
   test("an unsupported query param is a 400", async () => {

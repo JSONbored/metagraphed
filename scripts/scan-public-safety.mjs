@@ -82,9 +82,28 @@ const patterns = [
   // phrase" or "validator hotkey" is public API documentation the subnet
   // published — not data we are leaking. The hard secret patterns above still
   // apply to those files.
+  //
+  // Tolerates hyphen/underscore/no-separator compound forms (seed-phrase,
+  // seedphrase, private_key, privateKey — the last via the case-insensitive
+  // flag), not just the two-word phrase with a literal space: matches
+  // scripts/lib.mjs's FIXTURE_SENSITIVE_KEY's own separator-tolerant design
+  // for the identical reason (a different, unrelated matcher there —
+  // redacting suspicious JSON *keys* before a fixture is committed, vs. this
+  // rule scanning free text for suspicious *prose* — but the same class of
+  // gap: requiring a literal space between the two words let a hyphenated or
+  // camelCase spelling slip past undetected). Confirmed 2026-07-13 this was a
+  // real, exploitable gap: "coldkey-only-seedphrase" only ever tripped the
+  // scan because the separate Bittensor-key-terminology rule below happened
+  // to also fire on "coldkey" in the same line — the SAME wording without a
+  // "coldkey" on the line (e.g. a bare "walletpath" or "privatekey" mention)
+  // would have passed silently. `\b` after the optional separator still
+  // requires a real word boundary, so "privateKeyRef"/"seedphrases" (a
+  // continuation into more identifier/word characters) are correctly NOT
+  // matched — only the exact two-word concept, however it's spelled.
   {
     name: "wallet/key wording",
-    regex: /\b(wallet path|private key|seed phrase|mnemonic)\b/i,
+    regex:
+      /\b(wallet[\s_-]?path|private[\s_-]?key|seed[\s_-]?phrase|mnemonic)\b/i,
     soft: true,
     scanFixtureBody: true,
   },
@@ -97,22 +116,41 @@ const patterns = [
     // "hotkey/coldkey" field-pair phrase (account routes #1347 doc text + the
     // generated MCP server-card prose), generated CSV headers for public exports,
     // the "coldkey-only" behaviour descriptor (a coldkey-only ss58 address has no
-    // hotkey-attributed rollup), and the `coldkey =` SQL column comparison. Strip
-    // those legitimate spans so only suspicious prose ("your coldkey seed phrase"
-    // — still caught here and by the
-    // wallet/key-wording rule) trips. The "coldkey-only" exemption is the exact
-    // hyphenated phrase, NOT a blanket `coldkey-` strip, so a hyphen can't be used
-    // to smuggle a secret ("coldkey-seedphrase: …" still trips). Same rationale as
-    // the isMirroredExternalSpec exemption, scoped to the safe forms so the guard
+    // hotkey-attributed rollup), and "coldkey" as a bare SQL/code identifier —
+    // one comprehensive alternation covering the common ways a column/field
+    // reference is followed in this codebase's actual query/type code (an
+    // operator, a NULL check, an IN-list, SQL keywords like ORDER
+    // BY/GROUP BY/AS, or a closing delimiter), rather than allowlisting each
+    // operator one at a time as new call sites are written — the previous
+    // narrower version (`coldkey\s*=` only) needed a follow-up patch the very
+    // first time a query used `IS NOT NULL` instead (2026-07-13). Strip those
+    // legitimate spans so only suspicious prose ("your coldkey seed phrase" —
+    // still caught here and by the wallet/key-wording rule above) trips. The
+    // "coldkey-only" exemption is the exact hyphenated phrase, NOT a blanket
+    // `coldkey-` strip, so a hyphen can't be used to smuggle a secret
+    // ("coldkey-seedphrase: …" still trips, and now so does bare
+    // "seedphrase" via the strengthened rule above). Same rationale as the
+    // isMirroredExternalSpec exemption, scoped to the safe forms so the guard
     // stays active everywhere else.
     allow:
-      /"coldkey"\s*:?|\bcoldkey(?=,)|\bcoldkey\s*\??\s*:|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*=/gi,
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b)/gi,
     soft: true,
   },
   {
     name: "sensitive hotkey wording",
+    // Space/hyphen-tolerant (not underscore) for the modifier+hotkey
+    // alternative specifically: unlike wallet-path/private-key/seed-phrase
+    // above, `<role>_hotkey` (miner_hotkey, validator_hotkey) is extremely
+    // common, benign snake_case Bittensor API field naming (confirmed live
+    // 2026-07-13 -- registry/subnets/ridges.json's own "miner_hotkey" field
+    // name, and several generated dist/ artifacts, all tripped a first,
+    // too-broad `[\s_-]+` version of this fix), not suspicious prose the way
+    // a hyphen/space-joined phrase can be. The hotkey+noun alternative still
+    // tolerates underscore since "hotkey_seed_phrase"-style compounds are not
+    // an established safe field-naming convention here the way `<role>_hotkey`
+    // is.
     regex:
-      /\b(?:private|secret|wallet|validator|miner)\s+hotkey\b|\bhotkey\s+(?:path|private key|seed|seed phrase|mnemonic)\b/i,
+      /\b(?:private|secret|wallet|validator|miner)[\s-]+hotkey\b|\bhotkey[\s_-]+(?:path|private[\s_-]?key|seed[\s_-]?phrase|seed|mnemonic)\b/i,
     soft: true,
   },
 ];

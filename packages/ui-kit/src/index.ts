@@ -107,6 +107,8 @@ export {
 export {
   FreshnessIndicator,
   DailyRollupFreshness,
+  RealtimeFreshness,
+  tierFreshnessLabel,
 } from "@/components/metagraphed/freshness";
 export { HoverPreview } from "@/components/metagraphed/hover-preview";
 export { InfoTooltip } from "@/components/metagraphed/info-tooltip";

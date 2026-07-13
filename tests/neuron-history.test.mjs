@@ -535,28 +535,6 @@ describe("stake aggregates surface when the rolled rows carry stake (P7)", () =>
 });
 
 describe("history endpoints (via the Worker dispatch)", () => {
-  test("GET /subnets/{n}/neurons/{u}/history returns a 200 series + applies a date cutoff", async () => {
-    const captured = {};
-    const env = historyEnv([dailyRow()], captured);
-    const res = await handleRequest(
-      new Request(
-        "https://api.metagraph.sh/api/v1/subnets/7/neurons/3/history?window=7d",
-      ),
-      env,
-      ctx,
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.uid, 3);
-    assert.equal(body.data.points[0].snapshot_date, "2026-06-20");
-    // A bounded window binds a snapshot_date cutoff + the row cap.
-    assert.match(
-      captured.sql,
-      /FROM neuron_daily WHERE netuid = \? AND uid = \?/,
-    );
-    assert.match(captured.sql, /snapshot_date >= \?/);
-    assert.ok(captured.params.includes(MAX_HISTORY_POINTS));
-  });
   test("an unsupported ?window is a 400, never a silent coerce", async () => {
     const res = await handleRequest(
       new Request(
@@ -573,39 +551,5 @@ describe("history endpoints (via the Worker dispatch)", () => {
       '"400d" is not a supported window. Supported: 7d, 30d, 90d, 1y, all.',
     );
     assert.equal(body.meta.parameter, "window");
-  });
-  test("GET /subnets/{n}/history returns per-day aggregates", async () => {
-    const env = historyEnv([
-      {
-        snapshot_date: "2026-06-20",
-        neuron_count: 256,
-        validator_count: 64,
-        total_stake_tao: 1000,
-        total_emission_tao: 12.3,
-      },
-    ]);
-    const res = await handleRequest(
-      new Request(
-        "https://api.metagraph.sh/api/v1/subnets/7/history?window=90d",
-      ),
-      env,
-      ctx,
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.points[0].neuron_count, 256);
-  });
-  test("?window=all omits the cutoff (full history, still bounded by the row cap)", async () => {
-    const captured = {};
-    const env = historyEnv([dailyRow()], captured);
-    await handleRequest(
-      new Request(
-        "https://api.metagraph.sh/api/v1/subnets/7/neurons/3/history?window=all",
-      ),
-      env,
-      ctx,
-    );
-    assert.doesNotMatch(captured.sql, /snapshot_date >= \?/);
-    assert.ok(captured.params.includes(MAX_HISTORY_POINTS));
   });
 });

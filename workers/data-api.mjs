@@ -7,7 +7,7 @@
 // tiers (chain_events / deep history); this exposes them to the public API.
 //
 // Mostly read-only, parameterized (postgres.js tagged templates), one request one
-// sql.begin("read only", ...) transaction (#4686 connection-affinity). The ONE
+// sql.begin(DATA_API_READ_TRANSACTION, ...) transaction (#4686 connection-affinity). The ONE
 // exception is POST /api/v1/internal/neurons-sync (#4771): the write path into
 // this SAME Postgres instance's neurons/neuron_daily tables. It does NOT get its
 // own dedicated Worker the way registry-sync-api.mjs does -- that split is
@@ -323,6 +323,7 @@ import {
   buildChainSigners,
 } from "../src/chain-analytics.mjs";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
+const DATA_API_READ_TRANSACTION = "isolation level repeatable read read only";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -2474,6 +2475,70 @@ async function handleAlertTriggersActiveList(request, env) {
   });
 }
 
+// Internal-only: the #5022 evaluator write-back. AlerterHub.evaluate()
+// (workers/alerter-hub.mjs) POSTs the FULL matched-trigger id list for a
+// chain event here -- every id whose conditions were satisfied, regardless
+// of whether the burst rate-limiter actually let it deliver -- so
+// chain_alert_triggers.match_count/last_matched_at reflect "this trigger's
+// conditions were satisfied", independent of delivery. Gated the SAME way
+// as the active-list route above: a DIFFERENT capability from the
+// create/owner tokens (write access to every trigger's own bookkeeping
+// columns, not just its own row), so it reuses that same
+// ALERT_TRIGGERS_INTERNAL_TOKEN secret rather than minting a third one.
+async function handleAlertTriggersMatchedWriteback(request, env) {
+  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error:
+          "the alert-triggers match write-back is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      {
+        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  const { body, error } = await readAlertTriggerBody(request);
+  if (error) return error;
+  const ids = Array.isArray(body?.trigger_ids)
+    ? body.trigger_ids.filter(isValidAlertTriggerId).map(String)
+    : [];
+  if (ids.length === 0) {
+    return writeJson(
+      { error: "trigger_ids must be a non-empty array of trigger ids" },
+      400,
+    );
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const now = Date.now();
+    // Plain scalar positional binds via sql.unsafe, NOT a bound JS array
+    // (`id = ANY($1)`) -- see the neurons-sync prune query's own comment
+    // (handleNeuronsSync, above) for why: this Worker's Hyperdrive
+    // fetch_types:false setting breaks postgres.js's automatic
+    // ARRAY-literal serialization, while scalar binds are unaffected.
+    // $1 is the shared `now` timestamp; $2.. are the (already
+    // isValidAlertTriggerId-validated) ids.
+    const placeholders = ids.map((_, i) => `$${i + 2}::bigint`).join(", ");
+    const updated = await sql.unsafe(
+      `UPDATE chain_alert_triggers
+       SET match_count = match_count + 1,
+           last_matched_at = $1::bigint
+       WHERE id IN (${placeholders})
+       RETURNING id`,
+      [now, ...ids],
+    );
+    return writeJson({ updated: updated.length });
+  });
+}
+
 async function handleAlertTriggersRoute(request, env, url) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "alerts", "triggers", <id?>]
@@ -2572,6 +2637,14 @@ export default {
     ) {
       return handleAlertTriggersActiveList(request, env);
     }
+    // #5022: the evaluator's own write-back for match_count/last_matched_at
+    // -- see handleAlertTriggersMatchedWriteback's own header comment.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/alert-triggers/matched"
+    ) {
+      return handleAlertTriggersMatchedWriteback(request, env);
+    }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
     if (!env.HYPERDRIVE?.connectionString) {
@@ -2620,8 +2693,10 @@ export default {
       // queries, so a bare SET (no transaction) has no guarantee it applies
       // to the query that follows it (Hyperdrive's connection-lifecycle
       // docs; #4686's root cause). "read only" matches this Worker's own
-      // READ-ONLY invariant (top of file) at the database level too.
-      return await sql.begin("read only", async (sql) => {
+      // READ-ONLY invariant (top of file) at the database level too, and
+      // repeatable read keeps multi-statement analytics responses on one
+      // stable snapshot while preserving each route's bounded timeouts.
+      return await sql.begin(DATA_API_READ_TRANSACTION, async (sql) => {
         await sql`SET statement_timeout = '3000ms'`;
 
         // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
@@ -3019,7 +3094,8 @@ export default {
           let lo = null;
           const kindCounts = new Map();
           for (const row of capped) {
-            netuids.add(row.netuid);
+            const netuid = numberOrNull(row.netuid);
+            if (netuid != null) netuids.add(netuid);
             const bn = numberOrNull(row.block_number);
             if (bn != null && (fb == null || bn < fb)) fb = bn;
             if (bn != null && (lb == null || bn > lb)) lb = bn;
@@ -3213,6 +3289,7 @@ export default {
           SELECT event_kind, COUNT(*) AS coldkey_count FROM (
             SELECT coldkey, event_kind FROM account_events
             WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
+              AND coldkey IS NOT NULL
             GROUP BY 1, 2
           ) grouped GROUP BY event_kind`;
           const coldkeyCountByKind = new Map(
@@ -4367,6 +4444,7 @@ export default {
           );
           const slaRows = await sql`
           SELECT MAX(surface_id) AS surface_id,
+                 COALESCE(surface_key, surface_id) AS surface_key,
                  COUNT(*) AS total,
                  SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}

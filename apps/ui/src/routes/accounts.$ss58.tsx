@@ -26,7 +26,7 @@ import {
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
-import { SelectFilter } from "@/components/metagraphed/table-controls";
+import { SelectFilter, FilterChip } from "@/components/metagraphed/table-controls";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
   CopyableCode,
@@ -37,6 +37,7 @@ import {
   SectionAnchor,
   StatTile,
   BarMini,
+  DownloadCsvButton,
 } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
@@ -60,6 +61,7 @@ import {
   accountTransfersQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
@@ -338,6 +340,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <AccountEventsSection ss58={ss58} kindOptions={account.event_kinds} />
 
       <AccountExtrinsicsSection
+        ss58={ss58}
         rows={signedExtrinsics}
         isPending={extrinsicsResult.isPending}
         isError={extrinsicsResult.isError}
@@ -442,25 +445,29 @@ function AccountFeedSectionSkeleton({
   id,
   title,
   subtitle,
+  info,
 }: {
   id: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
+  info?: string;
 }) {
   return (
-    <SectionAnchor id={id} title={title} subtitle={subtitle} tone="accent">
+    <SectionAnchor id={id} title={title} subtitle={subtitle} info={info} tone="accent">
       <Skeleton className="h-64 w-full" />
     </SectionAnchor>
   );
 }
 
 function AccountExtrinsicsSection({
+  ss58,
   rows,
   isPending,
   isError,
   error,
   onRetry,
 }: {
+  ss58: string;
   rows: Extrinsic[];
   isPending?: boolean;
   isError?: boolean;
@@ -477,7 +484,7 @@ function AccountExtrinsicsSection({
       <AccountFeedSectionSkeleton
         id="extrinsics"
         title="Signed extrinsics"
-        subtitle="The newest transactions this account signed, from the chain-direct extrinsics tier."
+        info="The newest transactions this account signed, from the chain-direct extrinsics tier."
       />
     );
   }
@@ -486,7 +493,7 @@ function AccountExtrinsicsSection({
       <SectionAnchor
         id="extrinsics"
         title="Signed extrinsics"
-        subtitle="The newest transactions this account signed, from the chain-direct extrinsics tier."
+        info="The newest transactions this account signed, from the chain-direct extrinsics tier."
         tone="accent"
       >
         <TableState
@@ -504,9 +511,14 @@ function AccountExtrinsicsSection({
     <SectionAnchor
       id="extrinsics"
       title="Signed extrinsics"
-      subtitle="The newest transactions this account signed, from the chain-direct extrinsics tier."
+      info="The newest transactions this account signed, from the chain-direct extrinsics tier."
       tone="accent"
-      right={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
+      right={
+        <div className="flex items-center gap-2">
+          <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
+          <DownloadCsvButton url={buildUrl(`/api/v1/accounts/${ss58}/extrinsics`)} />
+        </div>
+      }
     >
       <DataPanel>
         <table className="w-full text-left text-sm">
@@ -599,7 +611,7 @@ function AccountTransfersSection({
       <AccountFeedSectionSkeleton
         id="transfers"
         title="Transfers"
-        subtitle="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
+        info="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
       />
     );
   }
@@ -608,7 +620,7 @@ function AccountTransfersSection({
       <SectionAnchor
         id="transfers"
         title="Transfers"
-        subtitle="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
+        info="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
         tone="accent"
       >
         <TableState
@@ -626,9 +638,14 @@ function AccountTransfersSection({
     <SectionAnchor
       id="transfers"
       title="Transfers"
-      subtitle="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
+      info="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
       tone="accent"
-      right={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
+      right={
+        <div className="flex items-center gap-2">
+          <SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>
+          <DownloadCsvButton url={buildUrl(`/api/v1/accounts/${ss58}/transfers`)} />
+        </div>
+      }
     >
       <DataPanel>
         <table className="w-full text-left text-sm">
@@ -1974,7 +1991,7 @@ function AccountEventsSection({
       <AccountFeedSectionSkeleton
         id="events"
         title="Chain events"
-        subtitle="Full first-party event feed for this account, newest first."
+        info="Full first-party event feed for this account, newest first — filter by kind, page through history."
       />
     );
   }
@@ -1984,7 +2001,7 @@ function AccountEventsSection({
       <SectionAnchor
         id="events"
         title="Chain events"
-        subtitle="Full first-party event feed for this account, newest first — filter by kind, page through history."
+        info="Full first-party event feed for this account, newest first — filter by kind, page through history."
         tone="accent"
       >
         <TableState
@@ -2002,17 +2019,22 @@ function AccountEventsSection({
     <SectionAnchor
       id="events"
       title="Chain events"
-      subtitle="Full first-party event feed for this account, newest first — filter by kind, page through history."
+      info="Full first-party event feed for this account, newest first — filter by kind, page through history."
       tone="accent"
       right={
-        kindOptions.length > 0 ? (
-          <SelectFilter
-            label="Kind"
-            value={search.ev_kind ?? ""}
-            onChange={(v) => setSearch({ ev_kind: v || undefined, ev_offset: undefined })}
-            options={kindOptions.map((k) => ({ value: k.kind, label: k.kind }))}
+        <div className="flex items-center gap-2">
+          {kindOptions.length > 0 ? (
+            <FilterChip
+              ariaLabel="Filter by event kind"
+              value={search.ev_kind ?? ""}
+              onChange={(v) => setSearch({ ev_kind: v || undefined, ev_offset: undefined })}
+              options={kindOptions.map((k) => ({ value: k.kind, label: k.kind }))}
+            />
+          ) : null}
+          <DownloadCsvButton
+            url={buildUrl(`/api/v1/accounts/${ss58}/events`, { kind: search.ev_kind })}
           />
-        ) : undefined
+        </div>
       }
     >
       {events.length > 0 ? (
