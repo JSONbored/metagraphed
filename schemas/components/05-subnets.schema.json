@@ -4272,6 +4272,7 @@
               "additionalProperties": false,
               "required": [
                 "hotkey",
+                "netuid",
                 "uid",
                 "weight_sets",
                 "share",
@@ -4280,6 +4281,11 @@
               ],
               "properties": {
                 "hotkey": { "type": ["string", "null"] },
+                "netuid": {
+                  "type": ["integer", "null"],
+                  "minimum": 0,
+                  "description": "Subnet scope for uid-only setters; null when a network-wide hotkey identifies the setter."
+                },
                 "uid": { "type": ["integer", "null"], "minimum": 0 },
                 "weight_sets": { "type": "integer", "minimum": 0 },
                 "share": { "type": ["number", "null"], "minimum": 0 },

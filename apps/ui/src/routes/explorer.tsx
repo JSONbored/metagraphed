@@ -1015,8 +1015,13 @@ function fmtShare(share: number | null): string {
   return share == null ? "—" : `${(share * 100).toFixed(1)}%`;
 }
 
-function weightSetterKey(setter: { hotkey: string | null; uid: number | null }): string {
-  return setter.hotkey ?? `uid:${setter.uid ?? "unknown"}`;
+function weightSetterKey(setter: { hotkey: string | null; netuid?: number | null; uid: number | null }): string {
+  return setter.hotkey ?? `uid:${setter.netuid ?? "unknown"}:${setter.uid ?? "unknown"}`;
+}
+
+function weightSetterLabel(setter: { netuid?: number | null; uid: number | null }): string {
+  const uid = setter.uid ?? "—";
+  return setter.netuid == null ? `uid ${uid}` : `SN${setter.netuid} uid ${uid}`;
 }
 
 /**
@@ -1471,9 +1476,9 @@ function ExplorerDashboard() {
                         ) : (
                           <span
                             className="text-ink-muted"
-                            title="Uid-only setter (no network-wide hotkey)"
+                            title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
                           >
-                            uid {setter.uid ?? "—"}
+                            {weightSetterLabel(setter)}
                           </span>
                         )}
                       </td>

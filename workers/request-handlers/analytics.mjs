@@ -869,6 +869,7 @@ const CHAIN_WEIGHTS_CSV_COLUMNS = [
 // CSV column order for the /api/v1/chain/weights/setters network-wide leaderboard rows.
 const CHAIN_WEIGHT_SETTERS_CSV_COLUMNS = [
   "hotkey",
+  "netuid",
   "uid",
   "weight_sets",
   "share",

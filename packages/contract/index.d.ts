@@ -4215,6 +4215,8 @@ export interface components {
                 hotkey: string | null;
                 /** Format: date-time */
                 last_set_at: string | null;
+                /** @description Subnet scope for uid-only setters; null when a network-wide hotkey identifies the setter. */
+                netuid: number | null;
                 share: number | null;
                 uid: number | null;
                 weight_sets: number;
@@ -14872,8 +14874,8 @@ export interface operations {
                         data?: components["schemas"]["ChainWeightSettersArtifact"];
                     };
                     /**
-                     * @example hotkey,uid,weight_sets,share,first_set_at,last_set_at
-                     *     5Grw_sample,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z
+                     * @example hotkey,netuid,uid,weight_sets,share,first_set_at,last_set_at
+                     *     5Grw_sample,,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z
                      */
                     "text/csv": string;
                 };

@@ -1632,7 +1632,10 @@ export interface SubnetWeightSetter {
 }
 
 /** One validator's network-wide weight-setting activity over the window (#3470). */
-export type ChainWeightSetter = SubnetWeightSetter;
+export interface ChainWeightSetter extends SubnetWeightSetter {
+  /** Subnet scope for uid-only setters; null when a network-wide hotkey identifies the setter. */
+  netuid: number | null;
+}
 
 /**
  * Per-subnet weight-setters leaderboard over a 7d/30d window (#1657), from

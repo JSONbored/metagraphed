@@ -128,8 +128,30 @@ describe("buildChainWeightSetters", () => {
     assert.equal(a.last_set_at, new Date(1_750_600_000_000).toISOString());
 
     assert.equal(b.hotkey, null); // uid-only setter
+    assert.equal(b.netuid, null); // legacy/no netuid cell stays null
     assert.equal(b.uid, 8);
     assert.equal(b.share, 0.25); // 10 / 40
+  });
+
+  test("preserves subnet scope for duplicate uid-only chain setters", () => {
+    const d = buildChainWeightSetters(
+      [
+        { hotkey: null, netuid: 1, uid: 7, weight_sets: 3 },
+        { hotkey: null, netuid: 2, uid: 7, weight_sets: 2 },
+      ],
+      { weight_sets: 5, distinct_setters: 2 },
+    );
+    assert.deepEqual(
+      d.setters.map((setter) => ({
+        hotkey: setter.hotkey,
+        netuid: setter.netuid,
+        uid: setter.uid,
+      })),
+      [
+        { hotkey: null, netuid: 1, uid: 7 },
+        { hotkey: null, netuid: 2, uid: 7 },
+      ],
+    );
   });
 
   test("share is null when the network total is zero", () => {
@@ -224,6 +246,8 @@ describe("loadChainWeightSetters", () => {
     assert.doesNotMatch(leader.sql, /netuid = \?/); // network-wide: no netuid filter
     assert.match(leader.sql, /WHEN hotkey IS NOT NULL/);
     assert.match(leader.sql, /'uid:' \|\| netuid \|\| ':' \|\| uid/);
+    assert.match(leader.sql, /AS netuid/);
+    assert.match(leader.sql, /MAX\(netuid\)/);
     assert.match(leader.sql, /ORDER BY weight_sets DESC/);
     assert.equal(leader.params[0], WEIGHTS_EVENT_KIND);
     assert.equal(typeof leader.params[1], "number"); // cutoff epoch ms
@@ -381,7 +405,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   });
 
   const WEIGHT_SETTERS_CSV_HEADER =
-    "hotkey,uid,weight_sets,share,first_set_at,last_set_at";
+    "hotkey,netuid,uid,weight_sets,share,first_set_at,last_set_at";
 
   test("exports the leaderboard as CSV with ?format=csv", async () => {
     const res = await handleRequest(

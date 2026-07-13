@@ -6619,6 +6619,14 @@
                     "null"
                   ]
                 },
+                "netuid": {
+                  "description": "Subnet scope for uid-only setters; null when a network-wide hotkey identifies the setter.",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "share": {
                   "minimum": 0,
                   "type": [
@@ -6640,6 +6648,7 @@
               },
               "required": [
                 "hotkey",
+                "netuid",
                 "uid",
                 "weight_sets",
                 "share",
@@ -30997,7 +31006,7 @@
                 }
               },
               "text/csv": {
-                "example": "hotkey,uid,weight_sets,share,first_set_at,last_set_at\r\n5Grw_sample,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z",
+                "example": "hotkey,netuid,uid,weight_sets,share,first_set_at,last_set_at\r\n5Grw_sample,,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z",
                 "schema": {
                   "type": "string"
                 }
