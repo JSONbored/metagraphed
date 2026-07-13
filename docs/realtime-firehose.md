@@ -117,8 +117,43 @@ equivalent) is `/* v8 ignore */`-marked, not the whole class.
 `tests/chain-firehose-routes.test.mjs` covers the `workers/api.mjs`
 routing/auth boundary (mirroring the existing `*-sync-proxy` test shape).
 
-GraphQL `Subscription` and MCP resource subscriptions are #4983, layered on
-this same hub rather than needing their own state.
+## GraphQL subscriptions (#4983, live)
+
+`Subscription.chainEvents(tables: [ChainFirehoseTable!]): ChainEvent!`
+(`src/graphql.mjs`) is a thin protocol adapter over this SAME hub, not a
+second event pipeline -- exactly like SSE/WS are. Reached over WebSocket at
+the SAME `/api/v1/graphql` path the existing POST query layer uses,
+negotiated via `Sec-WebSocket-Protocol: graphql-transport-ws`
+([graphql-ws](https://github.com/enisdenjo/graphql-ws)'s wire protocol);
+POSTing a subscription operation to the regular query endpoint returns a
+standard GraphQL error, same as any other GraphQL server.
+
+`ChainFirehoseHub` owns a `graphql-ws` `Server` instance (`makeServer`) and
+adapts it onto the hibernation API: a graphql-ws connection is tagged
+(`GRAPHQL_WS_SOCKET_TAG`) and tracked separately from plain firehose sockets
+(`graphqlWsSockets`, a `WeakMap` from socket to that connection's graphql-ws
+callbacks) so the two populations never cross-contaminate -- a raw firehose
+JSON payload landing on a graphql-ws socket would corrupt the wire protocol
+for any real client. Each active `chainEvents` subscription is backed by
+`createAsyncRepeater()`, a minimal push-based async iterator `broadcast()`
+feeds directly (`chainEventSubscribers`), which graphql-js's own `subscribe()`
+consumes to produce properly-framed `{type: "next", payload: {...}}` messages.
+
+Unit-tested against graphql-js's real `subscribe()` engine (not a hand-rolled
+simulation) and against a stubbed Durable Object `state`. Cloudflare has a
+[documented history](https://github.com/cloudflare/workers-sdk/issues/1767)
+of not always echoing `Sec-WebSocket-Protocol` on upgrade responses in some
+contexts -- this needs a real `wss` client handshake against the live
+deployment (`connection_init` → `connection_ack` → `subscribe` → `next`,
+checking `ws.protocol` is actually negotiated) to be trusted, not assumed
+from docs alone. Not yet done as of this section being written -- see the
+PR/issue thread for whether that verification landed before merge.
+
+## MCP resource subscriptions (#4983, not yet built)
+
+Exposes the firehose as an MCP resource an agent client can subscribe to per
+the MCP resource-subscription spec (`resources/subscribe` +
+`notifications/resources/updated`), reusing this same hub connection.
 
 ## The alerter (#4984, not yet built)
 

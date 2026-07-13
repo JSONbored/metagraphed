@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { Blob } from "node:buffer";
-import { buildSchema, getIntrospectionQuery, parse, validate } from "graphql";
+import {
+  buildSchema,
+  getIntrospectionQuery,
+  parse,
+  subscribe,
+  validate,
+} from "graphql";
 import { describe, test } from "vitest";
 import {
   FIELD_COMPLEXITY,
@@ -8,10 +14,12 @@ import {
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_DEPTH,
   GRAPHQL_MAX_QUERY_BYTES,
+  GRAPHQL_SUBSCRIPTION_CONTEXT_KEY,
   SDL,
   handleGraphQLRequest,
   maxComplexityRule,
   maxDepthRule,
+  schema as chainEventsSchema,
 } from "../src/graphql.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp } from "../workers/config.mjs";
@@ -824,6 +832,29 @@ describe("handleRequest — GraphQL rate limiting (#security)", () => {
     // emptyEnv has no RPC_RATE_LIMITER; the gate must no-op, not 429.
     const res = await gqlPost(emptyEnv);
     assert.equal(res.status, 200);
+  });
+
+  test("a WebSocket upgrade bypasses the rate limiter entirely, even with an already-exhausted budget", async () => {
+    const env = countingRateLimiterEnv(0); // every check() would fail
+    let forwarded = false;
+    env.CHAIN_FIREHOSE_HUB = {
+      idFromName: () => "global",
+      get: () => ({
+        fetch: () => {
+          forwarded = true;
+          return new Response(null, { status: 200 });
+        },
+      }),
+    };
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/graphql", {
+        headers: { upgrade: "websocket" },
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(forwarded, true);
   });
 });
 
@@ -1731,5 +1762,181 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
 
   test("compare is weighted as a fan-out field", () => {
     assert.equal(FIELD_COMPLEXITY.compare, 5);
+  });
+});
+
+// --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
+//
+// The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,
+// the graphql-ws WS transport) is covered in tests/chain-firehose-hub.test.mjs.
+// These tests exercise the OTHER half: that the schema's chainEvents field is
+// wired to a real subscribe() resolver that correctly bridges
+// context.chainFirehose's repeater into graphql-js's own subscribe() engine
+// -- using graphql-js's real subscribe() function (not a hand-rolled
+// simulation) against a minimal fake hub, exactly the shape
+// ChainFirehoseHub actually provides via context.
+function fakeChainFirehose(pushAfterSubscribe) {
+  const subscriptions = [];
+  return {
+    subscribeChainEvents(topics) {
+      const pending = [];
+      let waitingResolve = null;
+      const repeater = {
+        push(value) {
+          if (waitingResolve) {
+            const resolve = waitingResolve;
+            waitingResolve = null;
+            resolve({ value, done: false });
+          } else {
+            pending.push(value);
+          }
+        },
+        [Symbol.asyncIterator]() {
+          return {
+            next: () =>
+              pending.length
+                ? Promise.resolve({ value: pending.shift(), done: false })
+                : new Promise((resolve) => {
+                    waitingResolve = resolve;
+                  }),
+          };
+        },
+      };
+      subscriptions.push({ repeater, topics });
+      if (pushAfterSubscribe) pushAfterSubscribe(repeater);
+      return repeater;
+    },
+    unsubscribeChainEvents(repeater) {
+      const index = subscriptions.findIndex((s) => s.repeater === repeater);
+      if (index !== -1) subscriptions.splice(index, 1);
+    },
+    subscriptions,
+  };
+}
+
+async function subscribeChainEvents(query, hub) {
+  const document = parse(query);
+  return subscribe({
+    schema: chainEventsSchema,
+    document,
+    contextValue: { [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: hub },
+  });
+}
+
+// graphql-js's execution results are null-prototype objects internally
+// (Object.create(null)) -- deepStrictEqual against a plain object literal
+// fails on prototype alone even with identical content. Round-tripping
+// through JSON is also a MORE faithful comparison than a raw deep-equal:
+// real clients only ever see this result after it's been JSON-serialized
+// for the wire, same as every other transport in this repo.
+function asPlainJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+describe("Subscription.chainEvents", () => {
+  test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
+    const hub = fakeChainFirehose((repeater) => {
+      // subscribeChainEvents is only invoked once the async generator is
+      // first pulled (async generator function BODIES don't run until
+      // next() is called) -- pushing here, synchronously inside that same
+      // call, lands in the repeater's buffer before the resolver's
+      // `for await` loop starts pulling, so no setTimeout/await gap is
+      // needed.
+      repeater.push({ table: "blocks", block_number: 42 });
+    });
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table block_number } }",
+      hub,
+    );
+    const { value, done } = await result[Symbol.asyncIterator]().next();
+    assert.equal(done, false);
+    assert.deepEqual(asPlainJson(value), {
+      data: { chainEvents: { table: "blocks", block_number: 42 } },
+    });
+  });
+
+  test("passes the tables argument through to subscribeChainEvents as a Set", async () => {
+    let receivedTopics;
+    const hub = fakeChainFirehose();
+    const originalSubscribe = hub.subscribeChainEvents.bind(hub);
+    hub.subscribeChainEvents = (topics) => {
+      receivedTopics = topics;
+      return originalSubscribe(topics);
+    };
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents(tables: [blocks, extrinsics]) { table } }",
+      hub,
+    );
+    // Pull once to actually run the generator body up to (and past) the
+    // hub.subscribeChainEvents(topics) call -- calling an async generator
+    // function only creates the generator object, it doesn't execute any of
+    // the body until the first next().
+    const pending = result[Symbol.asyncIterator]().next();
+    assert.deepEqual([...receivedTopics].sort(), ["blocks", "extrinsics"]);
+    await hub.unsubscribeChainEvents(hub.subscriptions[0]?.repeater);
+    pending.catch(() => {}); // left permanently pending; not under test here
+  });
+
+  test("an empty tables argument is treated as no filter (null), not an empty Set", async () => {
+    let receivedTopics = "unset";
+    const hub = fakeChainFirehose();
+    const originalSubscribe = hub.subscribeChainEvents.bind(hub);
+    hub.subscribeChainEvents = (topics) => {
+      receivedTopics = topics;
+      return originalSubscribe(topics);
+    };
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents(tables: []) { table } }",
+      hub,
+    );
+    result[Symbol.asyncIterator]().next(); // trigger the generator body
+    assert.equal(receivedTopics, null);
+  });
+
+  test("returns a clear GraphQLError when reached without the graphql-ws WS transport (no context.chainFirehose)", async () => {
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      undefined,
+    );
+    // The subscribe field resolver is an async generator, so the throw only
+    // happens once the first value is pulled -- and since it's thrown before
+    // any yield (a setup-phase failure, not a mid-stream one), graphql-js
+    // propagates it as a REJECTED next() rather than an {errors: [...]}
+    // iteration result. A real graphql-ws server catches this per-operation
+    // and sends the client an ErrorMessage -- this test only needs to prove
+    // the resolver actually rejects with a clear, actionable message.
+    await assert.rejects(
+      () => result[Symbol.asyncIterator]().next(),
+      /graphql-transport-ws/,
+    );
+  });
+
+  test("unsubscribeChainEvents is called when the async generator is returned early (client disconnects/completes)", async () => {
+    // Calling .return() while a .next() is still unresolved deadlocks
+    // graphql-js's internal withConcurrentAbruptClose handling (it waits for
+    // the in-flight next() before honoring return()) -- push a value so the
+    // pending next() actually resolves first, matching how a real client
+    // completes a subscription only after having received at least one
+    // event, not mid-flight on an empty stream.
+    const hub = fakeChainFirehose((repeater) => {
+      repeater.push({ table: "blocks" });
+    });
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+    );
+    const it = result[Symbol.asyncIterator]();
+    await it.next(); // starts the generator body (-> subscribeChainEvents) and resolves with the pushed value
+    assert.equal(hub.subscriptions.length, 1);
+    await it.return();
+    assert.equal(hub.subscriptions.length, 0);
+  });
+
+  test("POSTing a subscription operation to the regular query endpoint returns a standard GraphQL error, not a crash", async () => {
+    const { status, body } = await gql(
+      "subscription { chainEvents { table } }",
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors?.length);
   });
 });

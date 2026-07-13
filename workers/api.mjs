@@ -1086,6 +1086,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // Rate-limited up front (same binding/strategy/429 as the RPC proxy) so a
   // single client can't fan out into unbounded artifact reads + query execution.
   if (url.pathname === "/api/v1/graphql") {
+    // GraphQL subscriptions (#4983, ADR 0015) reuse this SAME path over a
+    // WebSocket upgrade (Sec-WebSocket-Protocol: graphql-transport-ws) --
+    // handleChainFirehoseStream already forwards the request as-is (headers
+    // included) to ChainFirehoseHub's /subscribe, which inspects that same
+    // header to pick graphql-ws vs plain-firehose mode; reused unchanged
+    // rather than duplicating the DO-forwarding boilerplate. Checked before
+    // the rate limiter: a long-lived WS connection isn't the same shape of
+    // load a per-request POST limiter is meant for.
+    if (request.headers.get("upgrade") === "websocket") {
+      return handleChainFirehoseStream(request, env, url);
+    }
     const limited = await graphqlRateLimited(request, env);
     if (limited) return limited;
     return handleGraphQLRequest(request, env);

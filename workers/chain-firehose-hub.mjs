@@ -19,6 +19,21 @@
 // issue body ("note any coverage gap explicitly rather than skipping
 // silently"), that glue is marked with an explicit /* v8 ignore */ block
 // rather than pretending it's covered.
+//
+// GraphQL subscriptions (#4983) are a second WS "mode" on this SAME class --
+// negotiated via Sec-WebSocket-Protocol: graphql-transport-ws on the SAME
+// /subscribe path the plain firehose WS uses, not a separate DO or a second
+// event pipeline (matches #4983's own issue body: "a thin protocol adapter
+// on top of the existing hub"). See handleSubscribe/webSocketMessage/
+// webSocketClose's graphql-ws branches, and src/graphql.mjs's
+// GRAPHQL_SUBSCRIPTION_CONTEXT_KEY for the other half of the wiring.
+
+import { execute, subscribe } from "graphql";
+import { GRAPHQL_TRANSPORT_WS_PROTOCOL, makeServer } from "graphql-ws";
+import {
+  GRAPHQL_SUBSCRIPTION_CONTEXT_KEY,
+  schema as chainEventsGraphqlSchema,
+} from "../src/graphql.mjs";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
@@ -50,6 +65,14 @@ export const CHAIN_FIREHOSE_MAX_FIELD_STRING_BYTES = 256;
 // with per-send try/catch as the second line of defense against dead sockets.
 export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
 export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
+
+// Hibernation tag distinguishing a graphql-ws socket from a plain firehose
+// one -- webSocketMessage/webSocketClose/webSocketError route on
+// graphqlWsSockets.has(ws) directly rather than this tag (a WeakMap lookup
+// is simpler than filtering state.getWebSockets(tag) per callback), but the
+// tag is still passed to state.acceptWebSocket so a future admin/debug tool
+// can enumerate the two populations separately via state.getWebSockets(tag).
+export const GRAPHQL_WS_SOCKET_TAG = "graphql-ws";
 
 function utf8ByteLength(value) {
   return new TextEncoder().encode(value).length;
@@ -135,6 +158,60 @@ export function formatChainFirehoseSseFrame(payload) {
   return `event: chain\ndata: ${JSON.stringify(payload)}\n\n`;
 }
 
+// A minimal push-based async iterator: push() delivers a value to whichever
+// `next()` call is currently pending (or buffers it if none is), end()
+// terminates the sequence. Backs the GraphQL `chainEvents` subscription field
+// (#4983, src/graphql.mjs's chainEventsSubscribe) -- graphql-js's subscribe()
+// consumes this the same way it would any other AsyncIterable subscription
+// source. No dependency on graphql/graphql-ws/the DO runtime, so it's fully
+// unit-tested on its own.
+export function createAsyncRepeater() {
+  const pending = [];
+  let waitingResolve = null;
+  let finished = false;
+  return {
+    push(value) {
+      if (finished) return;
+      if (waitingResolve) {
+        const resolve = waitingResolve;
+        waitingResolve = null;
+        resolve({ value, done: false });
+      } else {
+        pending.push(value);
+      }
+    },
+    end() {
+      if (finished) return;
+      finished = true;
+      if (waitingResolve) {
+        const resolve = waitingResolve;
+        waitingResolve = null;
+        resolve({ value: undefined, done: true });
+      }
+    },
+    [Symbol.asyncIterator]() {
+      return {
+        next() {
+          if (pending.length > 0) {
+            return Promise.resolve({ value: pending.shift(), done: false });
+          }
+          if (finished) {
+            return Promise.resolve({ value: undefined, done: true });
+          }
+          return new Promise((resolve) => {
+            waitingResolve = resolve;
+          });
+        },
+        return() {
+          finished = true;
+          waitingResolve = null;
+          return Promise.resolve({ value: undefined, done: true });
+        },
+      };
+    },
+  };
+}
+
 // Only the WebSocket-upgrade branch of handleSubscribe below needs a real
 // Durable Object runtime (WebSocketPair/state.acceptWebSocket have no Node
 // equivalent -- no @cloudflare/vitest-pool-workers/Miniflare in this repo,
@@ -151,6 +228,45 @@ export class ChainFirehoseHub {
     this.state = state;
     this.env = env;
     this.sseClients = new Set();
+    // #4983: GraphQL subscriptions over WS, negotiated via
+    // Sec-WebSocket-Protocol on the SAME /subscribe path -- see the class
+    // header comment. chainEventSubscribers holds active createAsyncRepeater()
+    // instances (one per live `chainEvents` subscription, keyed indirectly
+    // via topics); graphqlWsSockets maps a hibernated WebSocket -> the
+    // graphql-ws callbacks registered for it (onMessage from the adapter's
+    // own onMessage() registration, closed from Server.opened()'s return
+    // value) since hibernation delivers messages/close events through this
+    // class's own webSocketMessage/webSocketClose, not socket-level listeners.
+    this.chainEventSubscribers = new Set();
+    this.graphqlWsSockets = new WeakMap();
+    this.graphqlWsServer = makeServer({
+      schema: chainEventsGraphqlSchema,
+      execute,
+      subscribe,
+      /* v8 ignore next -- graphql-ws only invokes this once a real
+         connection_init lands over an actual WebSocketPair upgrade; same
+         reachability class as handleSubscribe's own v8-ignored branch. */
+      context: () => ({ [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: this }),
+    });
+  }
+
+  // Registered as context.chainFirehose by graphqlWsServer above; called from
+  // src/graphql.mjs's chainEventsSubscribe field resolver. Mirrors the SSE/WS
+  // firehose's own topic-filter semantics (chainFirehoseMatchesTopics).
+  subscribeChainEvents(topics) {
+    const repeater = createAsyncRepeater();
+    this.chainEventSubscribers.add({ repeater, topics });
+    return repeater;
+  }
+
+  unsubscribeChainEvents(repeater) {
+    for (const entry of this.chainEventSubscribers) {
+      if (entry.repeater === repeater) {
+        entry.repeater.end();
+        this.chainEventSubscribers.delete(entry);
+        return;
+      }
+    }
   }
 
   async fetch(request) {
@@ -191,8 +307,41 @@ export class ChainFirehoseHub {
       ) {
         return new Response("too many connections", { status: 503 });
       }
+      const requestedProtocols = (
+        request.headers.get("sec-websocket-protocol") || ""
+      )
+        .split(",")
+        .map((protocol) => protocol.trim());
+      const isGraphqlWs = requestedProtocols.includes(
+        GRAPHQL_TRANSPORT_WS_PROTOCOL,
+      );
+
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
+
+      if (isGraphqlWs) {
+        this.state.acceptWebSocket(server, [GRAPHQL_WS_SOCKET_TAG]);
+        const adapterSocket = {
+          protocol: GRAPHQL_TRANSPORT_WS_PROTOCOL,
+          send: (data) => server.send(data),
+          close: (code, reason) => server.close(code, reason),
+          onMessage: (cb) => {
+            const entry = this.graphqlWsSockets.get(server) || {};
+            entry.onMessageCb = cb;
+            this.graphqlWsSockets.set(server, entry);
+          },
+        };
+        const closedCb = this.graphqlWsServer.opened(adapterSocket, {});
+        const entry = this.graphqlWsSockets.get(server) || {};
+        entry.closedCb = closedCb;
+        this.graphqlWsSockets.set(server, entry);
+        return new Response(null, {
+          status: 101,
+          webSocket: client,
+          headers: { "sec-websocket-protocol": GRAPHQL_TRANSPORT_WS_PROTOCOL },
+        });
+      }
+
       this.state.acceptWebSocket(server);
       server.serializeAttachment({
         topics: topics === null ? null : [...topics],
@@ -230,13 +379,30 @@ export class ChainFirehoseHub {
     });
   }
 
-  webSocketMessage() {
-    // Clients never send meaningful messages -- the topic filter is fixed at
-    // subscribe time via the query string. Required by the hibernation API
-    // contract even though this hub is send-only.
+  async webSocketMessage(ws, message) {
+    // graphql-ws sockets: every incoming protocol message (connection_init,
+    // subscribe, complete, ping/pong) is handled entirely by graphql-ws
+    // itself via the onMessage callback its own opened() registered -- see
+    // handleSubscribe's graphql-ws branch. Plain firehose sockets never send
+    // meaningful messages (the topic filter is fixed at subscribe time via
+    // the query string); webSocketMessage still has to exist to satisfy the
+    // hibernation API contract even though that population is send-only.
+    const entry = this.graphqlWsSockets.get(ws);
+    if (entry?.onMessageCb) {
+      const text =
+        typeof message === "string"
+          ? message
+          : new TextDecoder().decode(message);
+      await entry.onMessageCb(text);
+    }
   }
 
   webSocketClose(ws, code, reason) {
+    const entry = this.graphqlWsSockets.get(ws);
+    if (entry?.closedCb) {
+      entry.closedCb(code, reason);
+      this.graphqlWsSockets.delete(ws);
+    }
     try {
       ws.close(code, reason);
     } catch {
@@ -244,9 +410,17 @@ export class ChainFirehoseHub {
     }
   }
 
-  webSocketError() {
-    // The hibernation runtime prunes the socket from state.getWebSockets()
-    // itself; there is no in-memory connection list here to reconcile.
+  webSocketError(ws, error) {
+    // Mirrors webSocketClose's graphql-ws cleanup -- Server.opened()'s
+    // returned closed() callback must run on an error close too, not only a
+    // clean one, or that connection's subscriptions leak. The hibernation
+    // runtime prunes the socket from state.getWebSockets() itself either
+    // way; there is no in-memory firehose connection list here to reconcile.
+    const entry = this.graphqlWsSockets.get(ws);
+    if (entry?.closedCb) {
+      entry.closedCb(1011, error?.message || "internal error");
+      this.graphqlWsSockets.delete(ws);
+    }
   }
 
   broadcast(payload) {
@@ -277,6 +451,13 @@ export class ChainFirehoseHub {
     }
 
     for (const ws of this.state.getWebSockets()) {
+      // graphql-ws sockets are NOT plain firehose sockets -- sending a bare
+      // JSON payload onto one here would corrupt the graphql-transport-ws
+      // wire protocol (a real client only ever expects framed {type: "next",
+      // ...} messages). Their delivery goes through chainEventSubscribers
+      // below instead, via graphql-js's own subscribe() calling this
+      // adapter's send() with a properly framed message.
+      if (this.graphqlWsSockets.has(ws)) continue;
       let topics = null;
       try {
         const attachment = ws.deserializeAttachment();
@@ -292,6 +473,16 @@ export class ChainFirehoseHub {
         // a dead socket throws here; the hibernation runtime reconciles
         // state.getWebSockets() on its own, nothing further to clean up
       }
+    }
+
+    // #4983: GraphQL `chainEvents` subscriptions -- push into every matching
+    // repeater; src/graphql.mjs's chainEventsSubscribe is consuming these via
+    // `for await`, and graphql-js's subscribe() takes it from there (executes
+    // the rest of the selection set, frames the result, and calls the
+    // graphql-ws adapter socket's send()).
+    for (const entry of this.chainEventSubscribers) {
+      if (!chainFirehoseMatchesTopics(payload, entry.topics)) continue;
+      entry.repeater.push(payload);
     }
   }
 }

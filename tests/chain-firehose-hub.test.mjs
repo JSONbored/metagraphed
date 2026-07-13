@@ -17,12 +17,88 @@ import {
   CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES,
   CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK,
   CHAIN_FIREHOSE_TABLES,
+  GRAPHQL_WS_SOCKET_TAG,
   ChainFirehoseHub,
   chainFirehoseMatchesTopics,
+  createAsyncRepeater,
   formatChainFirehoseSseFrame,
   parseChainFirehoseTopics,
   validateChainFirehoseIngestPayload,
 } from "../workers/chain-firehose-hub.mjs";
+
+// --- createAsyncRepeater (#4983) -------------------------------------------------
+
+test("createAsyncRepeater: a push before next() is consumed on the following next()", async () => {
+  const repeater = createAsyncRepeater();
+  repeater.push("a");
+  repeater.push("b");
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), { value: "a", done: false });
+  assert.deepEqual(await it.next(), { value: "b", done: false });
+});
+
+test("createAsyncRepeater: a next() called before any push() resolves once push() happens", async () => {
+  const repeater = createAsyncRepeater();
+  const it = repeater[Symbol.asyncIterator]();
+  const pending = it.next();
+  repeater.push("late");
+  assert.deepEqual(await pending, { value: "late", done: false });
+});
+
+test("createAsyncRepeater: end() completes a pending next() with done:true", async () => {
+  const repeater = createAsyncRepeater();
+  const it = repeater[Symbol.asyncIterator]();
+  const pending = it.next();
+  repeater.end();
+  assert.deepEqual(await pending, { value: undefined, done: true });
+});
+
+test("createAsyncRepeater: next() after end() resolves done:true immediately", async () => {
+  const repeater = createAsyncRepeater();
+  repeater.end();
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), { value: undefined, done: true });
+});
+
+test("createAsyncRepeater: push() after end() is silently dropped, not queued", async () => {
+  const repeater = createAsyncRepeater();
+  repeater.end();
+  repeater.push("too late");
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), { value: undefined, done: true });
+});
+
+test("createAsyncRepeater: calling end() twice is idempotent", async () => {
+  const repeater = createAsyncRepeater();
+  const it = repeater[Symbol.asyncIterator]();
+  const pending = it.next();
+  repeater.end();
+  assert.doesNotThrow(() => repeater.end());
+  assert.deepEqual(await pending, { value: undefined, done: true });
+});
+
+test("createAsyncRepeater: return() ends iteration (for-await early break support)", async () => {
+  const repeater = createAsyncRepeater();
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.return(), { value: undefined, done: true });
+  assert.deepEqual(await it.next(), { value: undefined, done: true });
+});
+
+test("createAsyncRepeater: a real for-await loop consumes pushed values in order", async () => {
+  const repeater = createAsyncRepeater();
+  const seen = [];
+  const consumer = (async () => {
+    for await (const value of repeater) {
+      seen.push(value);
+      if (seen.length === 3) break;
+    }
+  })();
+  repeater.push(1);
+  repeater.push(2);
+  repeater.push(3);
+  await consumer;
+  assert.deepEqual(seen, [1, 2, 3]);
+});
 
 // --- parseChainFirehoseTopics --------------------------------------------------
 
@@ -424,9 +500,23 @@ test("ChainFirehoseHub broadcast: a WebSocket whose send() throws (dead socket) 
   assert.equal(sent.length, 1);
 });
 
-test("ChainFirehoseHub.webSocketMessage: a no-op that never throws", () => {
+test("ChainFirehoseHub.webSocketMessage: a no-op for a plain firehose socket (not registered in graphqlWsSockets)", async () => {
   const hub = new ChainFirehoseHub(stubState(), {});
-  assert.doesNotThrow(() => hub.webSocketMessage({}, "ignored"));
+  await assert.doesNotReject(() => hub.webSocketMessage({}, "ignored"));
+});
+
+test("ChainFirehoseHub.webSocketMessage: routes to the graphql-ws onMessage callback registered for that socket, decoding a binary frame", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const ws = {};
+  const received = [];
+  hub.graphqlWsSockets.set(ws, {
+    onMessageCb: async (text) => {
+      received.push(text);
+    },
+  });
+  await hub.webSocketMessage(ws, '{"type":"ping"}');
+  await hub.webSocketMessage(ws, new TextEncoder().encode('{"type":"pong"}'));
+  assert.deepEqual(received, ['{"type":"ping"}', '{"type":"pong"}']);
 });
 
 test("ChainFirehoseHub.webSocketClose: closes the socket, swallowing an already-closed error", () => {
@@ -447,9 +537,113 @@ test("ChainFirehoseHub.webSocketClose: closes the socket, swallowing an already-
   );
 });
 
-test("ChainFirehoseHub.webSocketError: a no-op that never throws", () => {
+test("ChainFirehoseHub.webSocketClose: calls the graphql-ws closed() cleanup and removes the socket entry", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const ws = { close: () => {} };
+  let closedWith;
+  hub.graphqlWsSockets.set(ws, {
+    closedCb: (code, reason) => {
+      closedWith = [code, reason];
+    },
+  });
+  hub.webSocketClose(ws, 1000, "bye");
+  assert.deepEqual(closedWith, [1000, "bye"]);
+  assert.equal(hub.graphqlWsSockets.has(ws), false);
+});
+
+test("ChainFirehoseHub.webSocketError: a no-op for a plain firehose socket", () => {
   const hub = new ChainFirehoseHub(stubState(), {});
   assert.doesNotThrow(() => hub.webSocketError({}, new Error("boom")));
+});
+
+test("ChainFirehoseHub.webSocketError: calls the graphql-ws closed() cleanup with an internal-error close code", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const ws = {};
+  let closedWith;
+  hub.graphqlWsSockets.set(ws, {
+    closedCb: (code, reason) => {
+      closedWith = [code, reason];
+    },
+  });
+  hub.webSocketError(ws, new Error("boom"));
+  assert.deepEqual(closedWith, [1011, "boom"]);
+  assert.equal(hub.graphqlWsSockets.has(ws), false);
+});
+
+test("ChainFirehoseHub.webSocketError: falls back to a generic reason when no error/message is given", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const ws = {};
+  let closedWith;
+  hub.graphqlWsSockets.set(ws, {
+    closedCb: (code, reason) => {
+      closedWith = [code, reason];
+    },
+  });
+  hub.webSocketError(ws);
+  assert.deepEqual(closedWith, [1011, "internal error"]);
+});
+
+// --- subscribeChainEvents / unsubscribeChainEvents / broadcast (#4983) ----------
+
+test("ChainFirehoseHub.subscribeChainEvents: broadcast delivers matching payloads to the returned repeater", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const repeater = hub.subscribeChainEvents(new Set(["blocks"]));
+  hub.broadcast({ table: "extrinsics", block_number: 1 }); // filtered out
+  hub.broadcast({ table: "blocks", block_number: 2 }); // matches
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), {
+    value: { table: "blocks", block_number: 2 },
+    done: false,
+  });
+});
+
+test("ChainFirehoseHub.subscribeChainEvents: null topics receives every table", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const repeater = hub.subscribeChainEvents(null);
+  hub.broadcast({ table: "chain_events", block_number: 1 });
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), {
+    value: { table: "chain_events", block_number: 1 },
+    done: false,
+  });
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: ends the repeater and stops further delivery", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const repeater = hub.subscribeChainEvents(null);
+  assert.equal(hub.chainEventSubscribers.size, 1);
+  hub.unsubscribeChainEvents(repeater);
+  assert.equal(hub.chainEventSubscribers.size, 0);
+  const it = repeater[Symbol.asyncIterator]();
+  assert.deepEqual(await it.next(), { value: undefined, done: true });
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: a non-matching repeater in a NON-empty set leaves the real entry intact", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.subscribeChainEvents(null); // one real entry, so the loop body actually runs
+  const foreign = { end() {} };
+  hub.unsubscribeChainEvents(foreign);
+  assert.equal(hub.chainEventSubscribers.size, 1);
+});
+
+test("ChainFirehoseHub.unsubscribeChainEvents: unsubscribing a repeater not in the set is a no-op", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const foreign = { end() {} };
+  assert.doesNotThrow(() => hub.unsubscribeChainEvents(foreign));
+});
+
+test("ChainFirehoseHub.broadcast: a graphql-ws-tagged WebSocket is excluded from the plain firehose send() loop", () => {
+  const sent = [];
+  const ws = { deserializeAttachment: () => null };
+  const hub = new ChainFirehoseHub(stubState([ws]), {});
+  hub.graphqlWsSockets.set(ws, { onMessageCb: async () => {} });
+  ws.send = (message) => sent.push(message); // would fail the test if called
+  hub.broadcast({ table: "blocks", block_number: 1 });
+  assert.equal(sent.length, 0);
+});
+
+test("GRAPHQL_WS_SOCKET_TAG is the documented tag string", () => {
+  assert.equal(GRAPHQL_WS_SOCKET_TAG, "graphql-ws");
 });
 
 test("CHAIN_FIREHOSE_INGEST_TOKEN_HEADER and CHAIN_FIREHOSE_TABLES are the documented constants", () => {

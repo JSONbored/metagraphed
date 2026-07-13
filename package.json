@@ -117,6 +117,7 @@
   "dependencies": {
     "@noble/hashes": "^2.2.0",
     "graphql": "^17.0.2",
+    "graphql-ws": "^6.1.0",
     "postgres": "^3.4.9",
     "workers-og": "^0.0.27"
   },
