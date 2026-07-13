@@ -17,6 +17,8 @@ import {
   DownloadCsvButton,
   StatTile,
   Sparkline,
+  CopyButton,
+  CopyableCode,
 } from "@jsonbored/ui-kit";
 import {
   PageSizeSelect,
@@ -390,20 +392,28 @@ function BlocksTable() {
                   </Link>
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  <Link
-                    to="/blocks/$ref"
-                    params={{ ref: b.block_hash || String(b.block_number) }}
-                    className="hover:text-ink-strong"
-                    title={b.block_hash}
-                  >
-                    {shortHash(b.block_hash)}
-                  </Link>
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <Link
+                      to="/blocks/$ref"
+                      params={{ ref: b.block_hash || String(b.block_number) }}
+                      className="hover:text-ink-strong truncate"
+                      title={b.block_hash}
+                    >
+                      {shortHash(b.block_hash)}
+                    </Link>
+                    {b.block_hash ? <CopyButton value={b.block_hash} label="block hash" /> : null}
+                  </span>
                 </td>
                 <td
                   className="px-4 py-2.5 font-mono text-[11px] text-ink-muted"
                   title={b.author ?? undefined}
                 >
-                  <AccountCell ss58={b.author} fallback={shortHash(b.author) ?? "—"} />
+                  <AccountCell
+                    ss58={b.author}
+                    fallback={
+                      b.author ? <CopyableCode value={b.author} className="max-w-full" /> : "—"
+                    }
+                  />
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
                   {formatNumber(b.extrinsic_count ?? 0)}
