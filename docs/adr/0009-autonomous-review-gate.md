@@ -27,8 +27,16 @@ disposition is deterministic at the edges and conservative in the middle:
   AI reviewers ≥ 0.9**, CI green, and mergeable-clean.
 - **Hold for a human** only when genuinely uncertain.
 
-A linked issue is **optional** — its absence is never a close reason; when one
-exists the gate verifies the PR against the issue's intent.
+A linked, currently-open issue is **required** on a contributor PR — its
+absence, or a link to an issue that's already closed, is itself a
+deterministic close (issue creation is maintainer-only, so contributors pick
+an existing open issue rather than filing their own); when the link is valid
+the gate verifies the PR against that issue's intent, clause by clause. This
+requirement is scoped to contributor PRs — an owner/automation-bot PR is
+exempt from the missing-link close, judged on CI + content instead. (This
+record originally described an optional-link policy; CONTRIBUTING.md now
+states the required policy actually enforced, and this ADR is updated to
+match — see the "Keeping these current" note in `docs/adr/README.md`.)
 
 The default posture is **close-when-in-doubt**: a redundant or unprovable PR costs
 the contributor a re-submission, not the registry its integrity.
