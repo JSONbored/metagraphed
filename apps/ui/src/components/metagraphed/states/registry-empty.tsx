@@ -60,6 +60,11 @@ const TONE = {
  * Unified empty/error/stale state for registry surfaces. Surfaces a clear
  * headline, a plain-language explainer, an optional freshness hint, and a
  * compact row of "next actions" so users always know what to do next.
+ *
+ * Scope: registry-PROVENANCE content specifically — the badge + freshness +
+ * evidence rows are the point. For plain list/grid emptiness use `EmptyState`,
+ * and for paginated-table emptiness use `TableState`; see the empty-state
+ * decision rule above `EmptyState` in `../states.tsx` (#3962).
  */
 export function RegistryEmpty({
   variant,

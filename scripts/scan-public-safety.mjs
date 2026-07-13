@@ -12,10 +12,68 @@ const targetRoots = [
   ".github",
   "workers",
   "wrangler.jsonc",
+  // scripts/ and deploy/ were unscanned until a real internal box hostname +
+  // container-name leak shipped in deploy/README.md and two
+  // scripts/backfill-*-postgres.mjs files (redacted by hand, PR #5064) -- CI
+  // never had a chance to catch it. apps/indexer-rs specifically (not all of
+  // apps/) joins them: the Rust indexer is the other place this class of leak
+  // has occurred (an RPC-URL log line, PR #5091) and, like scripts/ and
+  // deploy/, is small and homogeneous enough to vet for false positives in one
+  // pass. apps/ui is deliberately NOT included here -- it's a large, fast-
+  // moving React/TSX codebase where the existing soft-terminology heuristics
+  // ("coldkey"/"hotkey" wording) produce many false positives never tuned for
+  // that syntactic context (JSX text, TS type members); doing that properly is
+  // its own follow-up, not a same-PR add-on. See SKIPPED_DIR_NAMES below for
+  // why walking these roots wholesale doesn't also walk node_modules/target.
+  "apps/indexer-rs",
+  "scripts",
+  "deploy",
 ];
 
+// Directory NAMES skipped anywhere they occur under a target root -- every one
+// of these is gitignored (root .gitignore + apps/indexer-rs/.gitignore +
+// apps/ui/.gitignore), so nothing under them is ever actually committed/shipped;
+// skipping them is purely about not wasting a scan pass on a contributor's local
+// node_modules/target build output (which can be gigabytes and would otherwise
+// be read as UTF-8 text file-by-file). Needed once `apps` joined targetRoots
+// above -- none of the pre-existing roots (workers/, docs/, registry/, ...) ever
+// contain a dependency/build-artifact tree, so this was previously moot.
+const SKIPPED_DIR_NAMES = new Set([
+  "node_modules",
+  ".git",
+  "target",
+  "dist",
+  "dist-ssr",
+  ".output",
+  ".vinxi",
+  ".tanstack",
+  ".nitro",
+  ".wrangler",
+  "coverage",
+  "coverage-tmp",
+  ".vite",
+  "test-results",
+  "playwright-report",
+  "__pycache__",
+  ".design-sync",
+  ".ds-sync",
+  "ds-bundle",
+  ".idea",
+  ".vscode",
+]);
+
 const patterns = [
-  { name: "local absolute path", regex: /\/Users\/|\/home\/|C:\\Users\\/ },
+  {
+    name: "local absolute path",
+    regex: /\/Users\/|\/home\/|C:\\Users\\/,
+    // deploy/docker-compose.yml's --chain flag points at a path INSIDE the
+    // third-party subtensor Docker image (/home/subtensor/chainspecs/...),
+    // not a contributor's own machine -- verified against that image's
+    // documented layout. Allowlisted by this one exact, known-safe path
+    // rather than broadening /home/ generally, which stays a real signal for
+    // an actual leaked developer home directory.
+    allow: /\/home\/subtensor\//g,
+  },
   { name: "private key marker", regex: /BEGIN [A-Z ]*PRIVATE KEY/ },
   // Covers every GitHub token prefix, not just the personal-access ghp_: gho_
   // (OAuth), ghu_ (user-to-server), ghs_ (server-to-server / App installation),
@@ -60,14 +118,50 @@ const patterns = [
     // Includes link-local 169.254.0.0/16 — the cloud-metadata endpoint
     // (169.254.169.254) is the canonical SSRF/credential-theft target and is
     // classified unsafe by lib.mjs isUnsafeUrl, so a leaked URL to it must be
-    // flagged alongside the RFC1918 ranges.
+    // flagged alongside the RFC1918 ranges. Also includes 100.64.0.0/10 (RFC
+    // 6598 CGNAT) — the range Tailscale assigns tailnet device IPs from; a
+    // leaked ws://100.x.x.x:9944-style URL is exactly the shape our own
+    // archive-box RPC address takes (see the no-Tailscale-info house rule).
     regex:
-      /(?:https?|wss?):\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|169\.254\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i,
+      /(?:https?|wss?):\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|169\.254\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+)/i,
     // The standard local subtensor RPC endpoint is documented setup guidance for
     // the `local` network surface (llms.txt / setup docs), not a leaked internal
     // URL. Scoped to the exact well-known endpoint; any other loopback URL on the
     // same line is still flagged (allowlisted spans are stripped before testing).
-    allow: /wss?:\/\/127\.0\.0\.1:9944(?![A-Za-z0-9._~:/?#\]@!$&'()*+,;=%-])/gi,
+    // Deliberately narrow, not "any 127.0.0.1 at any port/path": a userinfo-
+    // smuggling bypass like ws://127.0.0.1:9944@10.0.0.1/private uses a fake
+    // loopback-shaped prefix to hide the REAL host (10.0.0.1, after the `@`) --
+    // "flags local subtensor allowlist prefix bypass attempts" below tests
+    // exactly this, and a broader allow would silently defeat it. The second
+    // literal is the exact fixture apps/indexer-rs/src/main.rs's own
+    // redact_rpc_url test uses (PR #5091) -- allowlisted by its exact text for
+    // the same reason, not a general loopback-with-path exemption.
+    allow:
+      /wss?:\/\/127\.0\.0\.1:9944(?![A-Za-z0-9._~:/?#\]@!$&'()*+,;=%-])|ws:\/\/127\.0\.0\.1:9944\/path\b/gi,
+  },
+  {
+    name: "Tailscale device identity",
+    // MagicDNS hostnames (*.ts.net) and the device-auth flow URL. Deliberately
+    // does NOT hardcode the actual tailnet name (see the no-Tailscale-info
+    // house rule) -- the .ts.net suffix alone is a durable, tailnet-agnostic
+    // signal that doesn't need updating if the tailnet is ever renamed.
+    regex: /\b[a-z0-9-]+\.ts\.net\b|login\.tailscale\.com\/a\//i,
+  },
+  {
+    name: "internal box or container identifier",
+    // The exact naming convention behind the real leak this rule was added for
+    // (redacted by hand, PR #5064, before apps/scripts/deploy were even
+    // scanned): bare-metal box hostnames shaped meta-<role>-NN-<region> (role:
+    // indexer/archive/rpc) and their docker container names shaped
+    // metagraphed-<service>-<postgres|redis>-<n>. Scoped to this specific
+    // two-shape convention rather than a blanket "metagraphed-" ban, which
+    // would trip on the project's own name throughout ordinary public prose.
+    // (Deliberately not spelling out a literal matching example here -- this
+    // file is exempted from the SOFT patterns below via isSelfReferential, but
+    // this is a HARD pattern and stays active against its own source, same as
+    // a real github-token example would.)
+    regex:
+      /\bmeta-(?:indexer|archive|rpc)-\d{2}-[a-z]{2}-[a-z]+\d?\b|\bmetagraphed-(?:indexer|registry)-(?:postgres|redis)-\d\b/i,
   },
   {
     name: "token-like assignment",
@@ -76,6 +170,17 @@ const patterns = [
     // client_secret, so bare secret/password miss the most common credential names.
     regex:
       /\b(?:[a-z0-9]+(?:[_-][a-z0-9]+)*_)?(?:api[_-]?key|access[_-]?token|auth[_-]?token|secret|password)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{16,}/i,
+    // Two narrow, exact allowances (not a shape/range relaxation, unlike the
+    // loopback-URL rule above): a `= process.env.NAME` RHS is a reference to
+    // an env var's NAME, never a literal secret VALUE, and legitimately trips
+    // this pattern's 16+-char alnum/dot charset whenever the var name itself
+    // is long (scripts/lib.mjs's `const secret = process.env.REGISTRY_SYNC_SECRET`).
+    // The second is the exact literal fixture string apps/indexer-rs/src/main.rs's
+    // own redact_rpc_url test uses to verify credential-bearing URLs get
+    // scrubbed (PR #5091) -- an obviously-synthetic placeholder value, not a
+    // real credential shape, allowlisted by its exact text rather than a
+    // broader pattern so it can't accidentally cover a real one.
+    allow: /=\s*process\.env\.|api_key=SECRET_TOKEN_123\b/gi,
   },
   // `soft` patterns are terminology heuristics (not actual secrets). They are
   // skipped for mirrored third-party OpenAPI specs, where wording like "seed
@@ -132,8 +237,18 @@ const patterns = [
     // "seedphrase" via the strengthened rule above). Same rationale as the
     // isMirroredExternalSpec exemption, scoped to the safe forms so the guard
     // stays active everywhere else.
+    //
+    // Extended once scripts/, deploy/, and apps/indexer-rs joined targetRoots
+    // (this PR) with four more code-identifier shapes real (non-leak) content
+    // there actually takes: TS/JS optional-chaining access (coldkey?.ss58),
+    // a Postgres column type declaration (coldkey TEXT,), a single-quoted
+    // SQL/JSONB key literal ('coldkey', NEW.coldkey), and coldkey paired with
+    // an arbitrary adjacent field name via a slash or hyphen in prose/comments
+    // (coldkey/netuid, per-hotkey/per-coldkey) or followed by an explanatory
+    // parenthetical (stored in coldkey (the account...)) -- both common in
+    // Rust/SQL comments describing the data model, not suspicious wording.
     allow:
-      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b)/gi,
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
     soft: true,
   },
   {
@@ -188,6 +303,60 @@ const mirroredFixturePatterns = [
   /^dist\/metagraph-r2\/metagraph\/fixtures\/[^/]+\.json$/,
 ];
 
+// This file's own source, and two siblings that define their own sensitive-
+// key-name detectors (scripts/lib.mjs's fixture-body key scanner, scripts/
+// snapshot-adapters.mjs's field-name redaction check), are all, by
+// definition, where every soft terminology phrase and example identifier
+// these rules look for is written out literally (in the regex source itself,
+// and in the comments explaining why). None of the three needed this
+// exemption while scripts/ was unscanned; once scripts/ joined targetRoots
+// (this PR) each self-flags on every soft pattern otherwise. Only the soft
+// heuristics are skipped -- the hard secret-value patterns above still apply,
+// in case a real credential is ever pasted into a comment in any of them.
+const SELF_REFERENTIAL_PATHS = new Set([
+  "scripts/scan-public-safety.mjs",
+  "scripts/lib.mjs",
+  "scripts/snapshot-adapters.mjs",
+]);
+function isSelfReferential(relativePath) {
+  return SELF_REFERENTIAL_PATHS.has(relativePath);
+}
+
+// scripts/fetch-account-identity.py's module docstring is dense, entirely
+// legitimate Bittensor-identity domain prose (#4324/5.1) where "coldkey" is
+// unavoidable, ordinary vocabulary in running sentences ("a coldkey attaches
+// to itself", "the same coldkey can appear at multiple UIDs") -- not one of
+// the structural code shapes the allow-list above can reasonably enumerate.
+// Same rationale as isMirroredExternalSpec (legitimate published vocabulary,
+// soft heuristic only); the hard secret-value patterns still apply.
+const PROSE_HEAVY_SOFT_SKIP_PATHS = new Set([
+  "scripts/fetch-account-identity.py",
+]);
+function isProseHeavy(relativePath) {
+  return PROSE_HEAVY_SOFT_SKIP_PATHS.has(relativePath);
+}
+
+// scripts/worker-test.mjs and deploy/wss-lb/test/*.test.mjs both, by
+// inspection, build their entire private/loopback-URL content out of two
+// classes: (a) an explicit "these must be rejected" array of unsafe URLs
+// (127.0.0.1/10.0.0.2/169.254.169.254 -- proof the proxy blocks them, worker-
+// test.mjs) or (b) a local test server bootstrapped on 127.0.0.1 (the
+// generalized loopback allow above already covers this half; this exemption
+// exists for (a), the non-loopback ranges that allow can't touch). Unlike the
+// generalized loopback allow, this is a HARD-pattern file-level exemption --
+// narrower in scope (this ONE pattern, these TWO known test files only, not
+// every pattern or every test file) rather than a shape/range relaxation,
+// since a non-loopback private IP is still real signal everywhere else.
+const UNSAFE_URL_REJECTION_FIXTURE_PATTERNS = [
+  /^scripts\/worker-test\.mjs$/,
+  /^deploy\/wss-lb\/test\/[^/]+\.test\.mjs$/,
+];
+function isUnsafeUrlRejectionFixture(relativePath) {
+  return UNSAFE_URL_REJECTION_FIXTURE_PATTERNS.some((pattern) =>
+    pattern.test(relativePath),
+  );
+}
+
 function isMirroredExternalFixture(relativePath) {
   return mirroredFixturePatterns.some((pattern) => pattern.test(relativePath));
 }
@@ -215,6 +384,9 @@ async function* walk(target) {
     }
     const nested = path.join(target, entry.name);
     if (entry.isDirectory()) {
+      if (SKIPPED_DIR_NAMES.has(entry.name)) {
+        continue;
+      }
       yield* walk(nested);
     } else if (entry.isFile()) {
       yield path.join(repoRoot, nested);
@@ -230,7 +402,10 @@ for (const root of targetRoots) {
     }
     const content = await fs.readFile(filePath, "utf8");
     const lines = content.split(/\r?\n/);
-    const skipSoft = isMirroredExternalSpec(relative);
+    const skipSoft =
+      isMirroredExternalSpec(relative) ||
+      isSelfReferential(relative) ||
+      isProseHeavy(relative);
 
     if (isMirroredExternalFixture(relative)) {
       scanCapturedFixtureBody(relative, content);
@@ -239,6 +414,28 @@ for (const root of targetRoots) {
     for (const [index, line] of lines.entries()) {
       for (const pattern of patterns) {
         if (pattern.soft && skipSoft) {
+          continue;
+        }
+        if (
+          pattern.name === "private or loopback URL" &&
+          isUnsafeUrlRejectionFixture(relative)
+        ) {
+          continue;
+        }
+        // "local absolute path"'s own regex source literally contains the
+        // /Users/ and /home/ substrings it's written to detect, and this
+        // file's comments explain the "private or loopback URL" and
+        // "internal box or container identifier" rules using literal example
+        // URLs/identifiers of the exact shape those rules match -- same
+        // self-referential class as the soft patterns above, but these are
+        // hard patterns, so they need an explicit skip here rather than
+        // folding into skipSoft.
+        if (
+          isSelfReferential(relative) &&
+          (pattern.name === "local absolute path" ||
+            pattern.name === "private or loopback URL" ||
+            pattern.name === "internal box or container identifier")
+        ) {
           continue;
         }
         // Strip allowlisted spans (e.g. the documented local subtensor RPC

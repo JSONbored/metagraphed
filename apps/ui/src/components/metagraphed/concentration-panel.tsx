@@ -7,7 +7,7 @@ import {
   subnetPerformanceQuery,
   subnetPerformanceHistoryQuery,
 } from "@/lib/metagraphed/queries";
-import { TableState, StatTile, BarMini, Sparkline } from "@jsonbored/ui-kit";
+import { StatTile, BarMini, Sparkline } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
@@ -55,11 +55,9 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
   const hasMetrics = Boolean(stake?.gini != null || emission?.gini != null);
   if (!hasMetrics) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="No concentration metrics"
         description="Stake- and emission-distribution metrics (Gini, HHI, Nakamoto coefficient) are computed from the metagraph snapshot and will appear here once captured."
-        generatedAt={meta?.generated_at}
       />
     );
   }
@@ -326,11 +324,9 @@ function PerformanceLoader({ netuid }: { netuid: number }) {
   const hasMetrics = Boolean(incentive?.gini != null || dividends?.gini != null);
   if (!hasMetrics) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="No reward-distribution metrics"
         description="Incentive- and dividend-distribution metrics (Gini, HHI, Nakamoto coefficient) plus the 0-1 trust/consensus score spread are computed from the metagraph snapshot and will appear here once captured."
-        generatedAt={meta?.generated_at}
       />
     );
   }

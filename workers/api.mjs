@@ -1343,7 +1343,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       ctx,
       env,
       "global-validators",
-      () => handleGlobalValidators(request, env, url),
+      (cacheRequest) => handleGlobalValidators(cacheRequest, env, url),
       validatorsCache.cachePathAndSearch,
       (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
     );
@@ -1948,9 +1948,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(metagraphMatch[1]),
         "subnet-metagraph",
-        () =>
+        (cacheRequest) =>
           handleSubnetMetagraph(
-            request,
+            cacheRequest,
             env,
             Number(metagraphMatch[1]),
             resolved.url,

@@ -264,6 +264,23 @@ describe("resolveWebhookHostnamesWithDoh", () => {
     assert.deepEqual(addresses, ["8.8.8.8", "8.8.8.8"]);
   });
 
+  test("drops an Answer entry with no data field instead of throwing", async () => {
+    const fetchImpl = async () =>
+      new Response(
+        JSON.stringify({
+          Answer: [{ TTL: 300 }, { data: "8.8.8.8" }],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+
+    const addresses = await resolveWebhookHostnamesWithDoh("example.com", {
+      fetchImpl,
+      dnsJsonEndpoint: "https://dns.test/query",
+    });
+
+    assert.deepEqual(addresses, ["8.8.8.8", "8.8.8.8"]);
+  });
+
   test("a thrown/timed-out lookup for one record type doesn't discard a public answer from the other", async () => {
     const fetchImpl = async (url) => {
       const type = new URL(url).searchParams.get("type");

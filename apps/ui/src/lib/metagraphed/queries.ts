@@ -168,6 +168,8 @@ import type {
   Subnet,
   SubnetAxonRemovals,
   SubnetDeregistrations,
+  SubnetEventCategorySummary,
+  SubnetEventSummary,
   SubnetStakeMoves,
   SubnetServing,
   SubnetPrometheus,
@@ -5097,6 +5099,63 @@ export const subnetDeregistrationsQuery = (netuid: number, window = "30d") =>
       };
     },
     staleTime: STALE_MED,
+  });
+
+// #3486: windowed on-chain event-summary rollup for one subnet — total event
+// count plus per-category/per-kind aggregates over a 7d/30d/90d window. The
+// dashboard-friendly companion to the raw per-event feed the Activity tab
+// renders; consolidates what would otherwise be several per-kind calls.
+function normalizeSubnetEventCategory(raw: unknown): SubnetEventCategorySummary | null {
+  if (!isRecord(raw)) return null;
+  return {
+    category: firstString(raw.category) ?? "other",
+    event_count: firstFiniteNumber(raw.event_count) ?? 0,
+    kind_count: firstFiniteNumber(raw.kind_count) ?? 0,
+    amount_tao: firstFiniteNumber(raw.amount_tao) ?? 0,
+    alpha_amount: firstFiniteNumber(raw.alpha_amount) ?? 0,
+    first_block: firstFiniteNumber(raw.first_block) ?? null,
+    last_block: firstFiniteNumber(raw.last_block) ?? null,
+    first_observed_at: firstString(raw.first_observed_at) ?? null,
+    last_observed_at: firstString(raw.last_observed_at) ?? null,
+  };
+}
+
+export function normalizeSubnetEventSummary(netuid: number, raw: unknown): SubnetEventSummary {
+  const rec = isRecord(raw) ? raw : {};
+  const categories = Array.isArray(rec.categories)
+    ? rec.categories.flatMap((c) => {
+        const normalized = normalizeSubnetEventCategory(c);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    window: firstString(rec.window) ?? null,
+    observed_at: firstString(rec.observed_at) ?? null,
+    total_events: firstFiniteNumber(rec.total_events) ?? 0,
+    kind_count: firstFiniteNumber(rec.kind_count) ?? 0,
+    category_count: firstFiniteNumber(rec.category_count) ?? 0,
+    limit: firstFiniteNumber(rec.limit) ?? 0,
+    categories,
+  };
+}
+
+export const subnetEventSummaryQuery = (netuid: number, window = "7d") =>
+  queryOptions({
+    queryKey: k("subnet-event-summary", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetEventSummary>>(
+        `/api/v1/subnets/${netuid}/event-summary`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetEventSummary(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_SHORT,
   });
 
 // Per-subnet aggregate weight-setting activity over a 7d/30d window.

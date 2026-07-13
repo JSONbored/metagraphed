@@ -7,11 +7,12 @@ reference, not a per-change checklist); the channel policy and rationale live in
 
 ## Automatic — no action needed
 
-| Surface                        | Trigger                                | Mechanism                                           |
-| ------------------------------ | -------------------------------------- | --------------------------------------------------- |
-| Code + bundled assets          | push to `main`                         | Cloudflare Workers Builds (CF git integration)      |
-| Data artifacts (R2 / KV)       | push to `registry/**` + daily schedule | `publish-cloudflare.yml`                            |
-| Economics / metagraph / health | scheduled crons                        | `refresh-economics.yml`, `refresh-metagraph.yml`, … |
+| Surface                                           | Trigger                                | Mechanism                                                                                            |
+| ------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Code + bundled assets                             | push to `main`                         | Cloudflare Workers Builds (CF git integration)                                                       |
+| Data artifacts (R2 / KV)                          | push to `registry/**` + daily schedule | `publish-cloudflare.yml`                                                                             |
+| Economics / health                                | scheduled crons                        | `refresh-economics.yml`, …                                                                           |
+| Metagraph / account-identity / subnet-hyperparams | scheduled systemd timers               | indexer-box `data-refresh-cron` (JSONbored/metagraphed-infra) -- moved off GitHub Actions 2026-07-13 |
 
 Data is probe- and chain-derived and rebuilt on schedule — it is never
 hand-edited (health/uptime/latency especially). See

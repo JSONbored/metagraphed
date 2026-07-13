@@ -108,8 +108,9 @@ settings, etc.) — live state values, not events.
 
 **The metagraph** (per-neuron: UID, stake weight, VTrust, consensus, incentive, dividends,
 emission, "Updated" = blocks since last weight-set) — **fundamentally a state snapshot**.
-Already captured today via a separate D1-backed pipeline (`.github/workflows/refresh-metagraph.yml`
-→ `scripts/fetch-metagraph-native.py` → D1 `neurons`) — see the block-explorer completion
+Already captured today via a separate pipeline (`scripts/fetch-metagraph-native.py`, run on the
+indexer box's own `data-refresh-cron` systemd timer as of 2026-07-13, previously GitHub Actions'
+`refresh-metagraph.yml` → Postgres `neurons`/`neuron_daily`) — see the block-explorer completion
 roadmap issue tree for the one confirmed remaining gap (subnet hyperparameters).
 
 **Validator dashboards, historical time-series** (price charts, registration-cost charts,
