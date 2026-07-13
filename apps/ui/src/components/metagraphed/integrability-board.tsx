@@ -1,7 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Gauge, Layers, CheckCircle2 } from "lucide-react";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { BarMini, type BarMiniDatum } from "@/components/metagraphed/charts/bar-mini";
+import { StatTile, BarMini, type BarMiniDatum } from "@jsonbored/ui-kit";
 import { coverageQuery } from "@/lib/metagraphed/queries";
 import type { Coverage } from "@/lib/metagraphed/types";
 

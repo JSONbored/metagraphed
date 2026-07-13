@@ -2,7 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import { Scale, Users, BarChart3, Activity, Percent, Coins, ShieldCheck } from "lucide-react";
 import { chainConcentrationQuery, chainPerformanceQuery } from "@/lib/metagraphed/queries";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { StatTile } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import {
   networkDecentralizationModel,

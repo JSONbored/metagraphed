@@ -52,6 +52,24 @@
         "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/constants.py"
       ],
       "url": "https://niome-api.genomes.io/api/miner_scores"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-55-niome-wandb",
+      "kind": "dashboard",
+      "name": "NIOME Weights & Biases dashboard",
+      "notes": "Public Weights & Biases project the SN55 NIOME validators log to (wandb.ai/genomes/niome) — live validation runs and metrics. Entity 'genomes' and project 'niome' are the defaults set in the official genomesio/subnet-niome validator config (niome_subnet/utils/config.py), and wandb.init is called from neurons/validator.py. Publicly readable via the W&B API. Distinct host from the niome-api.genomes.io API.",
+      "provider": "niome",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/genomesio/subnet-niome/blob/main/niome_subnet/utils/config.py"
+      ],
+      "url": "https://wandb.ai/genomes/niome"
     }
   ],
   "website_url": "https://niome.genomes.io/"

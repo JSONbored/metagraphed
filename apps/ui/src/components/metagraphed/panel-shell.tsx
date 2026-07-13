@@ -1,9 +1,8 @@
 import { Component, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { SectionAnchor, type SectionTone } from "@/components/metagraphed/section-anchor";
+import { SectionAnchor, TimeAgo, type SectionTone } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { classNames, isStaleFreshness, isUsableTimestamp } from "@/lib/metagraphed/format";
 import { reportError } from "@/lib/error-reporting";
 

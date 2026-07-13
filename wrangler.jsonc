@@ -190,6 +190,79 @@
     // turnover/analytics) remain D1-only, portable one at a time under this
     // same flag in follow-up work.
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE": "postgres",
+    // neurons/neuron_daily (#4771): FLIPPED to "postgres" 2026-07-10, after a
+    // live parity pass. refresh-metagraph.yml's real daily-cron run (not just
+    // a manual trigger) synced 30,323 rows into a Postgres that started
+    // completely empty; a sampled row (netuid=8, uid=0) matched D1 field-for-
+    // field, including full-precision decimals (dividends) and the 0/1-to-
+    // boolean mapping (active/validator_permit/is_immunity_period) -- a
+    // stronger check than the other three tiers' first (reverted) attempt,
+    // which compared a row present in BOTH stores and couldn't distinguish
+    // genuine Postgres serving from a silently masked D1 fallback (#4686).
+    // Here Postgres had no prior data at all, so a correct sampled row is
+    // unambiguous proof the new pipeline (workers/data-api.mjs's
+    // handleNeuronsSync) actually works end-to-end. tryPostgresTier still
+    // falls back to D1 on any failure, so this remains a single-flag revert.
+    "METAGRAPH_NEURONS_SOURCE": "postgres",
+    // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
+    // after a live parity pass. refresh-subnet-hyperparams.yml's real
+    // workflow_dispatch run synced all 129 subnets (Postgres started
+    // completely empty) into workers/data-api.mjs's
+    // handleSubnetHyperparamsSync; a sampled row (netuid=8) matched the D1-
+    // served API response field-for-field (kappa_ratio, tempo,
+    // weights_rate_limit, registration_allowed, captured_at) captured moments
+    // before this flip. Also caught and fixed a real bug during this pass:
+    // netuid 0 (root)'s weights_rate_limit carries the chain's u64::MAX
+    // "unlimited" sentinel, wider than Postgres BIGINT's signed range --
+    // widened to NUMERIC (#4843) before this flip. tryPostgresTier still
+    // falls back to D1 on any failure, so this remains a single-flag revert.
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "postgres",
+    // account_identity (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
+    // after a live parity pass. refresh-account-identity.yml's real
+    // workflow_dispatch run synced all 455 accounts (Postgres started
+    // completely empty) into workers/data-api.mjs's
+    // handleAccountIdentitySync. Also caught and fixed a real bug during
+    // this pass: one real account's discord/additional fields carried a
+    // literal U+0000 placeholder -- Postgres' TEXT type rejects an embedded
+    // NUL byte outright (SQLite's D1 storage silently tolerates it), 502-ing
+    // the whole upsert; fixed by stripping NUL bytes before both the
+    // latest-only upsert and the history hash (#4849) before this flip.
+    // tryPostgresTier still falls back to D1 on any failure, so this remains
+    // a single-flag revert.
+    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "postgres",
+    // subnet_identity_history (#4832 gap-closure, final table): FLIPPED to
+    // "postgres" 2026-07-11, after a live parity pass with an unexpected
+    // finding -- D1's own write path (recordSubnetIdentityChanges) had never
+    // successfully appended a single row to production D1's
+    // subnet_identity_history table (confirmed empty via direct `wrangler d1
+    // execute`, both before and after a live cron tick), despite running
+    // every hour as part of writeSubnetSnapshot. In that SAME cron tick, the
+    // new Postgres mirror (syncSubnetIdentityToPostgres, called with the
+    // identical `profiles` array right after the D1 write) successfully
+    // appended 124 real rows across 124 distinct subnets, using the exact
+    // same identitySnapshotFromProfile/identityHash pure functions -- proving
+    // the new pipeline works end-to-end where the D1 path had a pre-existing,
+    // silent bug (filed as a follow-up, unrelated to this migration itself).
+    // tryPostgresTier still falls back to D1 on any failure, so this remains
+    // a single-flag revert -- though note D1's fallback is currently a no-op
+    // for reads (empty) until that bug is fixed.
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE": "postgres",
+    // rpc_proxy_events (#4832 gap-closure follow-up): FLIPPED to "postgres"
+    // 2026-07-12, after a one-time historical backfill closed the only gap --
+    // D1 had 70 rows (wrangler d1 execute, confirmed the same day), Postgres
+    // had 1 (the newest, already mirrored live by
+    // workers/request-handlers/rpc-proxy.mjs's syncRpcUsageEventToPostgres,
+    // matched via an exact observed_at tie); the other 69 were inserted
+    // directly into Postgres and verified row-for-row against D1 afterward
+    // (count, min/max observed_at, and a 5-row spot-check including the
+    // null-endpoint/cache-hit and 503-failure shapes). No historical-window
+    // regression risk here (unlike subnet_snapshots): handleRpcUsage's own
+    // ANALYTICS_WINDOWS caps every query at 7d/30d, and both D1 (via the
+    // hourly pruneHealthHistory) and Postgres only ever hold this same
+    // rolling 30-day slice, so there is no long-tail history to lose by
+    // switching the read tier. tryPostgresTier still falls back to D1 on any
+    // failure, so this remains a single-flag revert.
+    "METAGRAPH_RPC_USAGE_SOURCE": "postgres",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent
   // surface). The apex metagraph.sh is the metagraphed-ui worker. Agents hit the
@@ -262,10 +335,81 @@
   // shared-secret check. The only write path in either direction -- GitHub
   // Actions calls this route over HTTPS, never touches Postgres directly.
   "services": [
+    // #4771: the write path into the chain-indexer Postgres's neurons/
+    // neuron_daily tables (POST /api/v1/internal/neurons-sync) also lives
+    // behind THIS binding -- workers/data-api.mjs owns both read and write
+    // for this one Postgres instance, so there's no separate binding for it.
     { "binding": "DATA_API", "service": "metagraphed-data-api" },
     {
       "binding": "REGISTRY_SYNC_API",
       "service": "metagraphed-registry-sync-api",
+    },
+  ],
+  // Realtime chain-event firehose (#4982, ADR 0015): the first Durable Object
+  // in this codebase. One global instance (idFromName("global"), see
+  // workers/chain-firehose-hub.mjs) fans out #4980's Postgres NOTIFY payloads
+  // -- forwarded here by the #4981 box-side relay -- over SSE and WebSocket.
+  // Co-located with this Worker (not a dedicated Worker like DATA_API/
+  // REGISTRY_SYNC_API above) because it serves this Worker's own public
+  // /api/v1/chain/stream route directly, not a separate database tier. The
+  // #4981 relay's ingest secret is provisioned the same way every other
+  // *_SYNC_SECRET is: `wrangler secret put CHAIN_FIREHOSE_SYNC_SECRET`
+  // (see docs/realtime-firehose.md).
+  //
+  // #4984 Part 2: AlerterHub calls the DATA_API service binding's internal
+  // active-trigger-list route directly, so this Worker needs the SAME
+  // ALERT_TRIGGERS_INTERNAL_TOKEN value already provisioned on
+  // wrangler.data.jsonc (`wrangler secret put ALERT_TRIGGERS_INTERNAL_TOKEN`
+  // -- see that file's own comment). Not yet provisioned on any deployment;
+  // until it is, the evaluator's trigger cache just stays empty (no crash,
+  // no delivery, matching every other optional binding's degrade-gracefully
+  // convention in this codebase).
+  //
+  // #4984 Part 3 (workers/alerter-hub.mjs's deliverAlertMatch) needs three
+  // MORE secrets, one per non-webhook/-discord channel (those two need
+  // nothing beyond the trigger's own `destination` -- a URL, not a shared
+  // credential):
+  //   wrangler secret put TELEGRAM_BOT_TOKEN
+  //   wrangler secret put RESEND_API_KEY
+  //   wrangler secret put RESEND_FROM_ADDRESS
+  // None yet provisioned on any deployment; until each is, that ONE
+  // channel silently no-ops on delivery (webhook/discord/the other two
+  // channels are unaffected).
+  "durable_objects": {
+    "bindings": [
+      { "name": "CHAIN_FIREHOSE_HUB", "class_name": "ChainFirehoseHub" },
+      // #4983 MCP half: one instance per Mcp-Session-Id (workers/mcp-session-hub.mjs),
+      // reached only from src/mcp-server.mjs's /mcp dispatch -- see that
+      // file's own header comment for why this is a SEPARATE DO from
+      // ChainFirehoseHub rather than a fourth connection population on it.
+      { "name": "MCP_SESSION_HUB", "class_name": "McpSessionHub" },
+      // #4984 Part 2: the alerter evaluator, a SINGLETON (idFromName("global"),
+      // like ChainFirehoseHub itself) -- pinged unconditionally on every
+      // broadcast(), unlike McpSessionHub's per-session Set, since there is
+      // exactly one evaluator. See workers/alerter-hub.mjs's own header
+      // comment for why it stays a separate DO rather than in-memory state
+      // on ChainFirehoseHub.
+      { "name": "ALERTER_HUB", "class_name": "AlerterHub" },
+    ],
+  },
+  // Durable Object class migrations are one-way and versioned: adding a new
+  // class is a `new_sqlite_classes` entry (SQLite storage backend -- the
+  // default for new classes; no legacy `new_classes` durable-storage class to
+  // migrate from). Renaming/deleting a class later needs its OWN migration
+  // entry appended here, never an edit to an existing one -- hence
+  // McpSessionHub getting its own v2 tag rather than joining v1's array.
+  "migrations": [
+    {
+      "tag": "v1-chain-firehose-hub",
+      "new_sqlite_classes": ["ChainFirehoseHub"],
+    },
+    {
+      "tag": "v2-mcp-session-hub",
+      "new_sqlite_classes": ["McpSessionHub"],
+    },
+    {
+      "tag": "v3-alerter-hub",
+      "new_sqlite_classes": ["AlerterHub"],
     },
   ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV

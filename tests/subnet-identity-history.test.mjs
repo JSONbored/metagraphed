@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildSubnetIdentityHistory,
+  deriveNetuidGroupedAliases,
   derivePreviouslyKnownAs,
   formatIdentityHistoryEntry,
   identityHash,
@@ -12,6 +13,7 @@ import {
   loadSubnetIdentityHistory,
   overlayPreviouslyKnownAs,
   recordSubnetIdentityChanges,
+  syncSubnetIdentityToPostgres,
 } from "../src/subnet-identity-history.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
 
@@ -679,6 +681,64 @@ describe("recordSubnetIdentityChanges", () => {
     );
   });
 
+  test("logs a non-Error read failure via the error fallback", async () => {
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return this;
+          },
+          all: async () => {
+            throw "boom";
+          },
+        };
+      },
+    };
+    assert.deepEqual(
+      await recordSubnetIdentityChanges(
+        {},
+        {
+          profiles: [{ netuid: 7, native_identity: { subnet_name: "X" } }],
+          db,
+        },
+      ),
+      { recorded: false, reason: "read_failed" },
+    );
+  });
+
+  test("logs a non-Error write failure via the error fallback", async () => {
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return this;
+          },
+          all: async () => {
+            if (/FROM blocks/.test(sql)) {
+              return { results: [{ block_number: 123 }] };
+            }
+            return { results: [] };
+          },
+        };
+      },
+      batch: async () => {
+        throw "boom";
+      },
+    };
+    assert.deepEqual(
+      await recordSubnetIdentityChanges(
+        {},
+        {
+          profiles: [
+            { netuid: 7, native_identity: { subnet_name: "Changed" } },
+          ],
+          db,
+        },
+      ),
+      { recorded: false, reason: "write_failed" },
+    );
+  });
+
   test("tolerates a missing blocks table when resolving block_number", async () => {
     const binds = [];
     const db = {
@@ -1011,5 +1071,122 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
       [{ netuid: 86, name: "Current" }],
     );
     assert.deepEqual(map.get(86), ["System   [scrubbed] ."]);
+  });
+});
+
+// #4832 gap-closure: deriveNetuidGroupedAliases is the row-grouping half
+// extracted out of loadPreviouslyKnownAsForNetuids so workers/api.mjs's
+// Postgres-tier wrapper can reuse it directly on rows it fetched itself.
+describe("deriveNetuidGroupedAliases", () => {
+  test("returns an empty map when entries are null", () => {
+    const map = deriveNetuidGroupedAliases(
+      [{ netuid: 7, subnet_name: "Old7", observed_at: 1 }],
+      null,
+    );
+    // No current-name context, so the alias is kept unfiltered.
+    assert.deepEqual(map.get(7), ["Old7"]);
+  });
+
+  test("groups rows by netuid, matching loadPreviouslyKnownAsForNetuids", () => {
+    const map = deriveNetuidGroupedAliases(
+      [
+        { netuid: 86, subnet_name: "MIAO", observed_at: 2 },
+        { netuid: 7, subnet_name: "Old7", observed_at: 1 },
+      ],
+      [
+        { netuid: 86, name: "⚒" },
+        { netuid: 7, name: "Current" },
+      ],
+    );
+    assert.deepEqual(map.get(86), ["MIAO"]);
+    assert.deepEqual(map.get(7), ["Old7"]);
+  });
+});
+
+// #4832 gap-closure: syncSubnetIdentityToPostgres is called directly from
+// writeSubnetSnapshot (src/health-prober.mjs) via the DATA_API service
+// binding, not through workers/api.mjs's public proxy layer -- see that
+// function's own header comment for why.
+describe("syncSubnetIdentityToPostgres", () => {
+  const profiles = [{ netuid: 8, native_identity: { subnet_name: "MIAO" } }];
+
+  test("returns unavailable when DATA_API is not bound", async () => {
+    const result = await syncSubnetIdentityToPostgres(
+      { SUBNET_IDENTITY_SYNC_SECRET: "shh" },
+      { profiles },
+    );
+    assert.deepEqual(result, { synced: false, reason: "unavailable" });
+  });
+
+  test("returns unavailable when the secret is not configured", async () => {
+    const result = await syncSubnetIdentityToPostgres(
+      { DATA_API: { fetch: async () => new Response("{}", { status: 200 }) } },
+      { profiles },
+    );
+    assert.deepEqual(result, { synced: false, reason: "unavailable" });
+  });
+
+  test("returns no_profiles for an empty or missing profiles array", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
+      SUBNET_IDENTITY_SYNC_SECRET: "shh",
+    };
+    assert.deepEqual(
+      await syncSubnetIdentityToPostgres(env, { profiles: [] }),
+      {
+        synced: false,
+        reason: "no_profiles",
+      },
+    );
+    assert.deepEqual(await syncSubnetIdentityToPostgres(env, {}), {
+      synced: false,
+      reason: "no_profiles",
+    });
+  });
+
+  test("POSTs the profiles array with the token header and reports synced:true on 200", async () => {
+    let receivedToken;
+    let receivedPath;
+    let receivedBody;
+    const env = {
+      DATA_API: {
+        fetch: async (request) => {
+          receivedToken = request.headers.get("x-subnet-identity-sync-token");
+          receivedPath = new URL(request.url).pathname;
+          receivedBody = await request.json();
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+      },
+      SUBNET_IDENTITY_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetIdentityToPostgres(env, { profiles });
+    assert.deepEqual(result, { synced: true });
+    assert.equal(receivedToken, "shh");
+    assert.equal(receivedPath, "/api/v1/internal/subnet-identity-sync");
+    assert.deepEqual(receivedBody, profiles);
+  });
+
+  test("reports the upstream status when the response is not ok, never throws", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => new Response("{}", { status: 502 }),
+      },
+      SUBNET_IDENTITY_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetIdentityToPostgres(env, { profiles });
+    assert.deepEqual(result, { synced: false, reason: "status_502" });
+  });
+
+  test("reports fetch_failed and never throws when the binding call rejects", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("network down");
+        },
+      },
+      SUBNET_IDENTITY_SYNC_SECRET: "shh",
+    };
+    const result = await syncSubnetIdentityToPostgres(env, { profiles });
+    assert.deepEqual(result, { synced: false, reason: "fetch_failed" });
   });
 });

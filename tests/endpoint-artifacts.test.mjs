@@ -411,6 +411,15 @@ describe("buildEndpointPoolArtifact", () => {
     );
     assert.equal(rpcById.get("endpoint-a").pool_eligible, true);
     assert.equal(rpcById.get("endpoint-c").pool_eligible, false);
+    // auth_required/public_safe must survive onto the served pool endpoint
+    // objects themselves, not just feed the pool_eligible computed here: the
+    // Worker's live overlay (overlayRpcPoolEligibility, src/health-serving.mjs)
+    // re-derives eligibility from THESE serialized fields on every request, so
+    // if they're dropped here the live proxy permanently excludes every
+    // endpoint regardless of real health (a production 503 outage, not caught
+    // by only asserting pool_eligible on this build-time snapshot).
+    assert.equal(rpcById.get("endpoint-a").auth_required, false);
+    assert.equal(rpcById.get("endpoint-a").public_safe, true);
 
     const wssPool = poolsById.get("finney-wss");
     assert.equal(wssPool.endpoint_count, 1);

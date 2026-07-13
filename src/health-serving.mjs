@@ -276,6 +276,34 @@ function sortedRecord(record) {
 // after 2+ consecutive failed prober runs (~4 min sustained down); the in-isolate
 // circuit breaker handles instantaneous per-request failures. Returns the pool
 // unchanged when there is no live snapshot.
+//
+// pool_eligible/pool_eligibility_reasons are RECOMPUTED every overlay, not just
+// narrowed from the static build's boolean -- confirmed live 2026-07-12 that
+// the prior `Boolean(endpoint.pool_eligible) && !wrongChain && !sustainedDown`
+// form could only ever REMOVE eligibility from the static baseline (built once
+// daily by publish-cloudflare.yml), never restore it once the 15-minute
+// live-cron-prober found a previously-degraded endpoint healthy again -- a
+// real, live-reproduced incident: all 4 finney-rpc endpoints showed
+// status:"ok" (health_source:"live-cron-prober", so genuinely fresh) with
+// pool_eligible:false / pool_eligibility_reasons:["status-degraded"] served
+// from api.metagraph.sh, and POST /rpc/v1/finney genuinely 503'd with "No
+// eligible public RPC endpoint" -- up to ~24h of self-contradictory served
+// data plus a real proxy outage per stale-eligibility endpoint, self-healing
+// only at the next daily rebuild.
+//
+// Deliberately does NOT delegate to endpointPoolEligibility below: that
+// helper's `status !== "ok"` check has no hysteresis (any non-ok probe is
+// disqualifying), which is right for the build-time snapshot but would
+// regress the sustained-down tolerance this live overlay already provides --
+// a single transient non-ok probe must not evict an otherwise-healthy
+// endpoint. So only the STRUCTURAL checks (kind/auth_required/public_safe --
+// static properties that never change between prober runs) are reused here;
+// health eligibility is judged solely by wrongChain/sustainedDown, exactly
+// as before, just no longer gated behind the stale static boolean too.
+// score/score_reasons are intentionally left static (out of scope for this
+// fix; a stale score never excludes an eligible endpoint since
+// weightedPickEndpoint falls back to weight 1 for score<=0, only
+// deprioritises it).
 export function overlayRpcPoolEligibility(pool, liveRpcPool) {
   if (!pool || !liveRpcPool || !Array.isArray(liveRpcPool.endpoints)) {
     return pool;
@@ -286,18 +314,36 @@ export function overlayRpcPoolEligibility(pool, liveRpcPool) {
     endpoints: (pool.endpoints || []).map((endpoint) => {
       const live = liveById.get(endpoint.id);
       if (!live) return endpoint;
-      const wrongChain = live.classification === "wrong-chain";
-      const sustainedDown =
-        live.status !== "ok" &&
-        (live.consecutive_failures || 0) >= POOL_SUSTAINED_DOWN_FAILURES;
-      return {
+      const refreshed = {
         ...endpoint,
         status: normalizeProbeStatus(live.status),
         latency_ms: live.latency_ms ?? endpoint.latency_ms,
         latest_block: live.latest_block ?? endpoint.latest_block ?? null,
         health_source: "live-cron-prober",
-        pool_eligible:
-          Boolean(endpoint.pool_eligible) && !wrongChain && !sustainedDown,
+      };
+      const reasons = [];
+      if (!isBaseLayerEndpoint(refreshed.kind)) {
+        reasons.push("not-bittensor-base-layer");
+      }
+      if (refreshed.auth_required !== false) {
+        reasons.push("auth-required");
+      }
+      if (refreshed.public_safe !== true) {
+        reasons.push("not-public-safe");
+      }
+      if (live.classification === "wrong-chain") {
+        reasons.push("wrong-chain");
+      }
+      if (
+        live.status !== "ok" &&
+        (live.consecutive_failures || 0) >= POOL_SUSTAINED_DOWN_FAILURES
+      ) {
+        reasons.push("sustained-down");
+      }
+      return {
+        ...refreshed,
+        pool_eligible: reasons.length === 0,
+        pool_eligibility_reasons: reasons.length ? reasons : ["eligible"],
       };
     }),
   };

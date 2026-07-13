@@ -3,23 +3,28 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { ArrowUpRight, FileCode2 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AccentBand } from "@/components/metagraphed/accent-band";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
-import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
+import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { Sparkline, type SparklinePoint } from "@/components/metagraphed/charts/sparkline";
+import {
+  AccentBand,
+  BrandIcon,
+  TimeAgo,
+  CurationChip,
+  HealthPill,
+  AnimatedNumber,
+  CopyableCode,
+  InfoTooltip,
+  safeExternalUrl,
+  ScrollReveal,
+  Sparkline,
+  type SparklinePoint,
+} from "@jsonbored/ui-kit";
 import { SubnetPulseGrid } from "@/components/metagraphed/charts/subnet-pulse-grid";
-import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
-import { safeExternalUrl } from "@/components/metagraphed/external-link";
 import { LeaderboardsModule } from "@/components/metagraphed/leaderboards";
 import { MoversBand } from "@/components/metagraphed/movers-band";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
-import { ScrollReveal } from "@/components/metagraphed/scroll-reveal";
 import { CoverageFunnel } from "@/components/metagraphed/analytics/coverage-funnel";
 import { NetworkPulseBand } from "@/components/metagraphed/analytics/network-pulse-band";
 import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
@@ -361,9 +366,16 @@ function HomeHero() {
 }
 
 function HeroKpis() {
-  const coverage = useQuery(coverageQuery()).data?.data;
-  const freshness = useQuery(freshnessQuery()).data?.data;
-  const health = useQuery(healthQuery()).data?.data;
+  // #3964: track each source query's phase so a cell shows a skeleton (loading)
+  // or a distinct "Unavailable" glyph (error) instead of collapsing loading /
+  // error / genuinely-null all into "—". Shared statPhase()/StatUnavailable
+  // keep this identical to the About "At a glance" sidebar.
+  const coverageResult = useQuery(coverageQuery());
+  const freshnessResult = useQuery(freshnessQuery());
+  const healthResult = useQuery(healthQuery());
+  const coverage = coverageResult.data?.data;
+  const freshness = freshnessResult.data?.data;
+  const health = healthResult.data?.data;
   const active = coverage?.netuids_active;
   const avgAge = freshness?.avg_age_seconds;
   const uptime = health?.uptime_24h;
@@ -383,7 +395,8 @@ function HeroKpis() {
   // above — useQuery (not suspense), so a slow/failed fetch degrades this one
   // cell instead of blocking the whole hero card. No fabricated fallback: the
   // sparkline hides via HeroStatCell's own hasSeries guard when there's no data.
-  const activity = useQuery(chainActivityQuery("7d")).data?.data;
+  const activityResult = useQuery(chainActivityQuery("7d"));
+  const activity = activityResult.data?.data;
   const activityChrono = activity?.days.length ? [...activity.days].reverse() : undefined;
   const latestExtrinsics = activityChrono?.at(-1)?.extrinsic_count;
   const activitySeries = activityChrono?.map((d) => d.extrinsic_count);
@@ -429,6 +442,7 @@ function HeroKpis() {
         <HeroStatCell
           label="Healthy now"
           value={uptime != null ? `${(uptime * 100).toFixed(1)}%` : "—"}
+          phase={statPhase(healthResult)}
           formatValue={(v) => `${v.toFixed(1)}%`}
           tooltip="Share of verified endpoints passing their most recent probe. Failures are non-2xx, timeouts, or schema-invalid responses. Source: /api/v1/health."
           accent
@@ -436,6 +450,7 @@ function HeroKpis() {
         <HeroStatCell
           label="Freshness"
           value={avgAge != null ? humaniseSeconds(avgAge) : "—"}
+          phase={statPhase(freshnessResult)}
           series={freshSeries}
           points={freshPoints}
           formatValue={(v) => humaniseSeconds(v)}
@@ -444,6 +459,7 @@ function HeroKpis() {
         <HeroStatCell
           label="Chain activity"
           value={latestExtrinsics != null ? formatNumber(latestExtrinsics) : "—"}
+          phase={statPhase(activityResult)}
           series={activitySeries}
           points={activityPoints}
           formatValue={(v) => formatNumber(v)}
@@ -498,6 +514,7 @@ function LegendDot({ tone, label }: { tone: string; label: string }) {
 function HeroStatCell({
   label,
   value,
+  phase = "ready",
   series,
   points,
   formatValue,
@@ -507,6 +524,8 @@ function HeroStatCell({
 }: {
   label: string;
   value: string;
+  /** Loading/error/ready phase of the cell's source query (#3964). */
+  phase?: StatPhase;
   /** Real data series. When absent, no sparkline is rendered (no fabrication). */
   series?: number[];
   points?: SparklinePoint[];
@@ -516,7 +535,9 @@ function HeroStatCell({
   /** Cadence label under the sparkline; defaults to the freshness cell's 24h/hourly cadence. */
   seriesCaption?: string;
 }) {
-  const hasSeries = !!series && series.length > 1;
+  // Hide the sparkline unless the value settled successfully — a skeleton or
+  // error glyph replaces the number, so a stale series would misrepresent state.
+  const hasSeries = phase === "ready" && !!series && series.length > 1;
   return (
     <div className="px-4 py-3">
       <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
@@ -528,7 +549,13 @@ function HeroStatCell({
           accent ? "text-accent" : "text-ink-strong"
         }`}
       >
-        {value}
+        {phase === "pending" ? (
+          <Skeleton className="h-5 w-14" />
+        ) : phase === "error" ? (
+          <StatUnavailable />
+        ) : (
+          value
+        )}
       </div>
       {hasSeries ? (
         <>
@@ -613,8 +640,8 @@ function SectionHeader({
 }
 
 function TrackedGrid() {
-  const coverage = useQuery(coverageQuery()).data?.data as
-    Record<string, number | undefined> | undefined;
+  const coverageResult = useQuery(coverageQuery());
+  const coverage = coverageResult.data?.data as Record<string, number | undefined> | undefined;
   // Endpoint/provider totals are not in /api/v1/coverage — read from their own
   // list endpoints. Use limit=1 for endpoints (1197 items) to get only the
   // pagination meta; providers are small enough to load in full (cached for /providers).
@@ -629,30 +656,40 @@ function TrackedGrid() {
     providersResult.data?.meta.total ??
     providersResult.data?.data.length;
 
-  const items: Array<{ label: string; to: string; value: number | undefined; desc: string }> = [
+  const items: Array<{
+    label: string;
+    to: string;
+    value: number | undefined;
+    desc: string;
+    phase: StatPhase;
+  }> = [
     {
       label: "Subnets",
       to: "/subnets",
       value: coverage?.netuids_active,
       desc: "Active Finney netuids with curated overlays.",
+      phase: statPhase(coverageResult),
     },
     {
       label: "Surfaces",
       to: "/surfaces",
       value: coverage?.surfaces_total,
       desc: "Verified public APIs, schemas, docs, dashboards.",
+      phase: statPhase(coverageResult),
     },
     {
       label: "Endpoints",
       to: "/endpoints",
       value: endpointsTotal,
       desc: "Tracked endpoint resources including root RPC pools.",
+      phase: statPhase(endpointsResult),
     },
     {
       label: "Providers",
       to: "/providers",
       value: providersTotal,
       desc: "Subnet teams and infrastructure operators.",
+      phase: statPhase(providersResult),
     },
   ];
   return (
@@ -667,7 +704,15 @@ function TrackedGrid() {
             {item.label}
           </div>
           <div className="mt-3 font-display text-3xl md:text-4xl font-semibold leading-none tabular-nums text-ink-strong">
-            {item.value != null ? formatNumber(item.value) : "—"}
+            {item.phase === "pending" ? (
+              <Skeleton className="h-8 w-20" />
+            ) : item.phase === "error" ? (
+              <StatUnavailable iconClassName="size-4" />
+            ) : item.value != null ? (
+              formatNumber(item.value)
+            ) : (
+              "—"
+            )}
           </div>
           <p className="mt-3 text-xs text-ink-muted leading-relaxed flex-1">{item.desc}</p>
           <span className="mt-4 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted group-hover:text-accent transition-colors">
@@ -681,8 +726,10 @@ function TrackedGrid() {
 }
 
 function LivePerformance() {
-  const freshness = useQuery(freshnessQuery()).data?.data;
-  const health = useQuery(healthQuery()).data?.data;
+  const freshnessResult = useQuery(freshnessQuery());
+  const healthResult = useQuery(healthQuery());
+  const freshness = freshnessResult.data?.data;
+  const health = healthResult.data?.data;
 
   const ages = (freshness?.sources ?? [])
     .map((s) => (s.last_seen ? (Date.now() - new Date(s.last_seen).getTime()) / 1000 : null))
@@ -718,12 +765,14 @@ function LivePerformance() {
             freshness?.avg_age_seconds != null ? humaniseSeconds(freshness.avg_age_seconds) : "—"
           }
           hint="avg poll lag"
+          phase={statPhase(freshnessResult)}
           series={ages.length ? ages : undefined}
         />
         <PerfCard
           label="Global health"
           value={`${okPct}%`}
           hint={`${health?.ok ?? 0}/${total} OK`}
+          phase={statPhase(healthResult)}
           accent
         />
       </div>
@@ -735,17 +784,20 @@ function PerfCard({
   label,
   value,
   hint,
+  phase = "ready",
   series,
   accent,
 }: {
   label: string;
   value: string;
   hint: string;
+  /** Loading/error/ready phase of the card's source query (#3964). */
+  phase?: StatPhase;
   /** Real data series. When absent, no sparkline is rendered (no fabrication). */
   series?: number[];
   accent?: boolean;
 }) {
-  const hasSeries = !!series && series.length > 1;
+  const hasSeries = phase === "ready" && !!series && series.length > 1;
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-baseline justify-between mb-3">
@@ -757,7 +809,13 @@ function PerfCard({
       <div
         className={`font-display text-3xl md:text-4xl font-semibold leading-none tabular-nums ${accent ? "text-accent" : "text-ink-strong"}`}
       >
-        {value}
+        {phase === "pending" ? (
+          <Skeleton className="h-9 w-24" />
+        ) : phase === "error" ? (
+          <StatUnavailable iconClassName="size-4" />
+        ) : (
+          value
+        )}
       </div>
       {hasSeries ? (
         <div className="mt-4">

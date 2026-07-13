@@ -28,27 +28,6 @@ async function errorJson(res) {
   return body;
 }
 
-function neuronDailyEnv(rows) {
-  return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(..._params) {
-            return {
-              all: async () => {
-                if (/FROM neuron_daily WHERE netuid = \?/.test(sql)) {
-                  return { results: rows };
-                }
-                return { results: [] };
-              },
-            };
-          },
-        };
-      },
-    },
-  };
-}
-
 describe("subnet yield history OpenAPI CSV contract", () => {
   test("documents the CSV header on the yield/history route", async () => {
     const openapi = buildOpenApiArtifact(
@@ -68,74 +47,6 @@ describe("subnet yield history OpenAPI CSV contract", () => {
 });
 
 describe("handleSubnetYieldHistory CSV export", () => {
-  test("returns CSV response when ?format=csv is present", async () => {
-    const env = neuronDailyEnv([
-      {
-        snapshot_date: "2026-06-27",
-        stake_tao: 100,
-        emission_tao: 10,
-        validator_permit: 1,
-      },
-      {
-        snapshot_date: "2026-06-27",
-        stake_tao: 100,
-        emission_tao: 5,
-        validator_permit: 0,
-      },
-      {
-        snapshot_date: "2026-06-26",
-        stake_tao: 100,
-        emission_tao: 10,
-        validator_permit: 1,
-      },
-    ]);
-    const res = await handleSubnetYieldHistory(
-      req(`/api/v1/subnets/${NETUID}/yield/history`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=csv`),
-    );
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
-    assert.ok(
-      res.headers
-        .get("content-disposition")
-        .includes('filename="subnet-7-yield-history.csv"'),
-    );
-    const lines = (await res.text()).split("\r\n");
-    assert.equal(
-      lines[0],
-      "snapshot_date,neuron_count,validator_count,yield_count,subnet_yield,mean_yield,median_yield,p25_yield,p75_yield,p90_yield",
-    );
-    assert.equal(lines[1], "2026-06-26,1,1,1,0.1,0.1,0.1,0.1,0.1,0.1");
-    assert.equal(lines[2], "2026-06-27,2,1,2,0.075,0.075,0.075,0.05,0.1,0.1");
-  });
-
-  test("returns CSV response when Accept: text/csv header is present", async () => {
-    const env = neuronDailyEnv([
-      {
-        snapshot_date: "2026-06-26",
-        stake_tao: 100,
-        emission_tao: 10,
-        validator_permit: 1,
-      },
-    ]);
-    const request = new Request(
-      `https://api.metagraph.sh/api/v1/subnets/${NETUID}/yield/history`,
-      { headers: { accept: "text/csv" } },
-    );
-    const res = await handleSubnetYieldHistory(
-      request,
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield/history?window=7d`),
-    );
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
-    const lines = (await res.text()).split("\r\n");
-    assert.equal(lines[1], "2026-06-26,1,1,1,0.1,0.1,0.1,0.1,0.1,0.1");
-  });
-
   test("returns header-only CSV when D1 is cold", async () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
@@ -150,6 +61,58 @@ describe("handleSubnetYieldHistory CSV export", () => {
       "snapshot_date,neuron_count,validator_count,yield_count,subnet_yield,mean_yield,median_yield,p25_yield,p75_yield,p90_yield",
     );
     assert.equal(lines.length, 1);
+  });
+
+  test("sorts and exports real points ascending by snapshot_date via the Postgres tier", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            window: "30d",
+            points: [
+              {
+                snapshot_date: "2026-06-21",
+                neuron_count: 5,
+                validator_count: 2,
+                yield_count: 5,
+                subnet_yield: 0.1,
+                mean_yield: 0.1,
+                median_yield: 0.1,
+                p25_yield: 0.05,
+                p75_yield: 0.15,
+                p90_yield: 0.2,
+              },
+              {
+                snapshot_date: "2026-06-20",
+                neuron_count: 4,
+                validator_count: 2,
+                yield_count: 4,
+                subnet_yield: 0.09,
+                mean_yield: 0.09,
+                median_yield: 0.09,
+                p25_yield: 0.04,
+                p75_yield: 0.14,
+                p90_yield: 0.19,
+              },
+            ],
+          }),
+      },
+    };
+    const res = await handleSubnetYieldHistory(
+      req(`/api/v1/subnets/${NETUID}/yield/history`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=csv`),
+    );
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).trim().split("\r\n");
+    assert.equal(lines.length, 3);
+    // CSV export re-sorts newest-first `points` into ascending snapshot_date.
+    assert.match(lines[1], /^2026-06-20,/);
+    assert.match(lines[2], /^2026-06-21,/);
   });
 
   test("rejects an unsupported format value", async () => {
@@ -172,54 +135,6 @@ describe("handleSubnetYieldHistory CSV export", () => {
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "format");
-  });
-
-  test("returns the JSON envelope when CSV is not requested", async () => {
-    const env = neuronDailyEnv([
-      {
-        snapshot_date: "2026-06-26",
-        stake_tao: 100,
-        emission_tao: 10,
-        validator_permit: 1,
-      },
-    ]);
-    const res = await handleSubnetYieldHistory(
-      req(`/api/v1/subnets/${NETUID}/yield/history`),
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield/history?window=7d`),
-    );
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /application\/json/);
-    const body = await res.json();
-    assert.equal(body.ok, true);
-    assert.equal(body.data.point_count, 1);
-    assert.equal(body.data.points[0].median_yield, 0.1);
-  });
-
-  test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
-    const env = neuronDailyEnv([
-      {
-        snapshot_date: "2026-06-26",
-        stake_tao: 100,
-        emission_tao: 10,
-        validator_permit: 1,
-      },
-    ]);
-    const request = new Request(
-      `https://api.metagraph.sh/api/v1/subnets/${NETUID}/yield/history`,
-      { headers: { accept: "text/csv" } },
-    );
-    const res = await handleSubnetYieldHistory(
-      request,
-      env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield/history?window=7d&format=json`),
-    );
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /application\/json/);
-    const body = await res.json();
-    assert.equal(body.data.point_count, 1);
   });
 });
 

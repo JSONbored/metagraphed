@@ -2,14 +2,19 @@ name: Refresh Subnet Hyperparameters
 
 # Fetches every active subnet's hyperparameter set FIRST-PARTY via the Bittensor
 # SDK (#4303/1.2 — chain-direct, no Taostats, no API key) and loads it into the
-# metagraphed-health D1 `subnet_hyperparams` table (#4303/1.3). Powers
-# /api/v1/subnets/{netuid}/hyperparameters (#4307/1.4). Daily (hyperparameters
+# chain-indexer Postgres's `subnet_hyperparams`/`subnet_hyperparams_history`
+# tables (#4832 gap-closure). Powers /api/v1/subnets/{netuid}/hyperparameters
+# (#4307/1.4) and its /history sibling (#4309/1.6). Daily (hyperparameters
 # change rarely — could even be weekly, but daily costs nothing extra and keeps
-# staleness bounded). The snapshot is signed (sign-staged-neurons.mjs, reused
-# unchanged — same bare-array envelope shape as a legacy neuron snapshot) before
-# staging to R2; the Worker authenticates + bounds it before loading into D1 via
-# its binding (loadStagedSubnetHyperparams) — no API-token D1 permission
-# required. Mirrors refresh-metagraph.yml's fetch/sign-and-stage split exactly.
+# staleness bounded). The snapshot is signed (sign-staged-neurons.mjs, kept for
+# its HMAC signing utility) then POSTed straight to the Postgres write path
+# (workers/data-api.mjs's handleSubnetHyperparamsSync) — no D1 involved. D1's
+# `subnet_hyperparams`/`subnet_hyperparams_history` tables and their
+# R2-stage-to-D1 loader (loadStagedSubnetHyperparams) are retired (subnet
+# hyperparameters' own D1 write-path retirement, mirroring #4772's chain-data
+# retirement); this workflow's Postgres sync step (previously a best-effort
+# "#4832 gap-closure" mirror) is now this job's sole, required write path.
+# Mirrors refresh-metagraph.yml's fetch/sign-and-stage split exactly.
 on:
   schedule:
     - cron: "13 6 * * *" # daily 06:13 UTC — distinct minute from refresh-metagraph's 05:23
@@ -34,14 +39,14 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
       # First-party chain-direct fetch (pinned bittensor, matching refresh-metagraph):
       # one get_all_metagraphs_info call to discover the active netuid set, then one
       # get_subnet_hyperparameters(netuid) call per subnet (no bulk variant exists
       # for this call — see scripts/fetch-subnet-hyperparams.py's docstring).
       - name: Fetch subnet hyperparameters (Bittensor SDK)
-        run: uvx --from bittensor==10.4.0 python scripts/fetch-subnet-hyperparams.py
+        run: uvx --from bittensor==10.5.0 python scripts/fetch-subnet-hyperparams.py
         env:
           # Same hidden chain-RPC secret as the metagraph/events fetches (ADR 0012).
           # Unset → the script defaults to "finney"; set it to the private node URL
@@ -90,13 +95,19 @@ jobs:
         env:
           METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
 
-      # Stage the signed snapshot to R2 (the token's existing R2 permission); the
-      # Worker authenticates + bounds it before loading into D1 via its binding.
-      - name: Stage hyperparameters to R2 for the Worker to load into D1
-        run: npx wrangler r2 object put metagraphed-artifacts/metagraph/subnet-hyperparams-pending.json --file=dist/metagraph-subnet-hyperparams.json --remote
+      # Subnet hyperparameters' own D1 write-path retirement (mirroring #4772):
+      # the sole write path now (previously a best-effort "#4832 gap-closure"
+      # mirror alongside the R2/D1 stage step, which is removed). A failure
+      # here fails this job -- correct now that Postgres, not D1, is what's
+      # actually served.
+      - name: Sync subnet hyperparameters to the Postgres write path
+        run: |
+          curl -fsS -X POST "https://api.metagraph.sh/api/v1/internal/subnet-hyperparams-sync" \
+            -H "x-subnet-hyperparams-sync-token: ${SUBNET_HYPERPARAMS_SYNC_SECRET}" \
+            -H "content-type: application/json" \
+            --data-binary @dist/metagraph-subnet-hyperparams.json
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SUBNET_HYPERPARAMS_SYNC_SECRET: ${{ secrets.SUBNET_HYPERPARAMS_SYNC_SECRET }}
 
   notify-on-failure:
     needs: [fetch, sign-and-stage]
@@ -113,4 +124,4 @@ jobs:
           fi
           curl -fsS -X POST "$METAGRAPH_ALERT_WEBHOOK_URL" \
             -H 'content-type: application/json' \
-            -d '{"content":"🔴 metagraphed refresh-subnet-hyperparams FAILED — the subnet_hyperparams D1 tier may go stale."}'
+            -d '{"content":"🔴 metagraphed refresh-subnet-hyperparams FAILED — the subnet_hyperparams/subnet_hyperparams_history Postgres tier may go stale."}'

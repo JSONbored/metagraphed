@@ -176,6 +176,25 @@
       "notes": "Official TrajectoryRL source repository."
     },
     {
+      "id": "sn-11-trajectoryrl-api-docs",
+      "name": "TrajectoryRL API documentation",
+      "kind": "docs",
+      "url": "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/API.md",
+      "provider": "trajectoryrl",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/VALIDATOR_OPERATIONS.md",
+        "https://github.com/trajectoryRL/trajectoryRL/blob/main/docs/MINER_OPERATIONS.md"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jakearmstrong59"
+      },
+      "notes": "Public request/response API specification for TrajectoryRL validator and miner integration, covering the web-submit channel, pre-eval checks, score submission, winner lookup, heartbeat, and log-upload flows."
+    },
+    {
       "id": "sn-11-trajectoryrl-subnet-api",
       "name": "TrajectoryRL network stats API",
       "kind": "subnet-api",

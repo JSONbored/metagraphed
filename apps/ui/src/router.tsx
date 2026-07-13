@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter, useRouter } from "@tanstack/react-router";
+import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { routeTree } from "./routeTree.gen";
 import { ApiError } from "./lib/metagraphed/client";
 import { ErrorState, Skeleton } from "./components/metagraphed/states";
@@ -66,6 +67,14 @@ export const getRouter = () => {
     defaultErrorComponent: DefaultRouteError,
     defaultPendingComponent: DefaultRoutePending,
   });
+
+  // Bridges the router's SSR streaming with React Query: without this, the
+  // server's QueryClient and the client's QueryClient never share state, so
+  // useSuspenseQuery re-suspends on an empty client cache during hydration
+  // and the whole boundary gets stuck dehydrated forever (#4967).
+  // wrapQueryClient: false because __root.tsx already renders its own
+  // <QueryClientProvider client={queryClient}>.
+  setupRouterSsrQueryIntegration({ router, queryClient, wrapQueryClient: false });
 
   return router;
 };

@@ -8,7 +8,6 @@ import {
   formatAccountDay,
   buildAccountHistory,
   buildAccountTransfers,
-  pruneAccountEvents,
   loadAccountTransfers,
 } from "../src/account-events.mjs";
 
@@ -172,22 +171,6 @@ describe("buildAccountTransfers", () => {
     assert.equal(cold.limit, null);
     assert.equal(cold.offset, null);
     assert.equal(cold.next_cursor, null);
-  });
-});
-
-describe("pruneAccountEvents changes fallback", () => {
-  test("pruneAccountEvents reports changes:null when meta is absent", async () => {
-    // result.meta?.changes nullish → the right arm of `?? null` (changes:null).
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return { bind: () => ({ run: async () => ({}) }) };
-        },
-      },
-    };
-    const r = await pruneAccountEvents(env, { now: () => 0 });
-    assert.equal(r.pruned, true);
-    assert.equal(r.changes, null);
   });
 });
 

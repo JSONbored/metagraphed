@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero } from "@/components/metagraphed/page-hero";
+import { PageHero } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { WebhookSubscriptionManager } from "@/components/metagraphed/webhook-subscription-manager";
 

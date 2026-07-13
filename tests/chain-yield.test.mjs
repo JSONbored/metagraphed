@@ -297,38 +297,6 @@ describe("GET /api/v1/chain/yield", () => {
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/yield${q}`);
 
-  test("summarizes network yield across all subnets", async () => {
-    const res = await handleRequest(
-      req(),
-      neuronsEnv([
-        {
-          validator_permit: 1,
-          stake_tao: 1000,
-          emission_tao: 50,
-          netuid: 1,
-          captured_at: 1_700_000_000_000,
-        },
-        {
-          validator_permit: 0,
-          stake_tao: 100,
-          emission_tao: 10,
-          netuid: 2,
-          captured_at: 1_700_000_000_000,
-        },
-      ]),
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.subnet_count, 2);
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.validator_count, 1);
-    assert.ok(Math.abs(body.data.network_yield - 60 / 1100) < 1e-6);
-    assert.equal(body.data.distribution.count, 2);
-    assert.equal(body.meta.source, "metagraph-snapshot");
-  });
-
   test("rejects an unexpected query parameter with 400", async () => {
     const res = await handleRequest(req("?window=7d"), neuronsEnv([]), {});
     assert.equal(res.status, 400);

@@ -401,57 +401,18 @@ export const MAX_ASK_BODY_BYTES = 4096;
 export const WEBHOOK_SUBSCRIPTION_TOKEN_HEADER =
   "x-metagraph-webhook-subscription-token";
 // Realtime chain-event ingest (#1360): the header carrying the shared secret the
-// finalized-head streamer (#1361) presents to POST /api/v1/internal/events.
+// finalized-head streamer (#1361) used to present to POST /api/v1/internal/events.
+// The streamer + that route are retired (#4772 D1 chain-data retirement); this
+// header is still shared by the surviving neuron/economics backfill ingest routes.
 export const EVENTS_INGEST_TOKEN_HEADER = "x-metagraph-events-token";
-export const MAX_EVENTS_INGEST_BODY_BYTES = 262144; // 256 KB
-export const MAX_EVENTS_INGEST_ROWS = 500;
-// Internal historical backfill ingest (#1345 Phase 1): batched neuron_daily
-// upserts from the chain-direct backfill script (scripts/backfill-neuron-history.py).
+// Internal historical backfill ingest (#1345 Phase 1): batched subnet_snapshots
+// upserts from the chain-direct backfill script (scripts/backfill-economics-history.py).
 // Auth via the dedicated METAGRAPH_BACKFILL_SECRET (falls back to the events-ingest
-// secret) over the shared EVENTS_INGEST_TOKEN_HEADER. Caps are wider than the event
-// ingest because a metagraph row is wider and a subnet-day is up to ~256 rows; the
-// script chunks well under these and the PK upsert makes any re-POST idempotent.
+// secret) over the shared EVENTS_INGEST_TOKEN_HEADER. Caps are wider than the old
+// event ingest because a snapshot row is wider; the script chunks well under these
+// and the PK upsert makes any re-POST idempotent.
 export const MAX_BACKFILL_INGEST_BODY_BYTES = 1_048_576; // 1 MiB
 export const MAX_BACKFILL_INGEST_ROWS = 2_000;
-// Realtime block-explorer ingest (#1345 Option B): the finalized-head streamer also
-// POSTs the per-block `blocks` row + its `extrinsics` rows to POST
-// /api/v1/internal/blocks, authed by the SAME METAGRAPH_EVENTS_INGEST_SECRET over
-// EVENTS_INGEST_TOKEN_HEADER. Body is {blocks:[...], extrinsics:[...]}; idempotent
-// INSERT OR IGNORE on the PKs. Closes the blocks/extrinsics realtime gap (the
-// coalesced CI poller alone missed ~58% of blocks; #1749).
-export const MAX_BLOCKS_INGEST_BODY_BYTES = 262144; // 256 KB
-export const MAX_BLOCKS_INGEST_ROWS = 500; // cap per array (blocks[], extrinsics[])
-// Caps on the R2-staged chain-event drain (loadStagedEvents, #1346). Unlike the
-// single bounded HTTP body above, a staged file is produced by the CI poller and
-// can grow large on a backfill or a stuck window. The byte cap guards against
-// materializing a pathological body; the row cap bounds the D1 writes + subrequests
-// PER */3 tick (10 000 rows -> ~1 000 INSERT statements -> ~20 db.batch() calls,
-// far under the 1 000-subrequest limit). On overflow the drain loads up to the row
-// cap and LEAVES the remainder in R2 for the next tick — it never deletes
-// un-persisted rows; INSERT OR IGNORE on (block_number, event_index) makes any
-// re-drain idempotent.
-export const MAX_STAGED_EVENTS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
-export const MAX_STAGED_EVENT_ROWS = 10_000;
-// loadStagedNeurons retries the post-upsert snapshot prune when upserts span
-// multiple D1 batches. A transient DELETE failure must not leave deregistered
-// ghost rows until the next cron tick.
-export const NEURON_SNAPSHOT_PRUNE_RETRIES = 3;
-// Block-explorer hot window (#1345): the staged `blocks` sidecar caps. One block
-// row per finalized block in the rolling poller window, so the row volume is far
-// lower than the per-block event count — but keep the same byte ceiling +
-// progressive-drain row cap so a pathological body can never be materialized and
-// each */3 tick stays well under the subrequest limit. INSERT OR IGNORE on
-// block_number makes any re-drain idempotent.
-export const MAX_STAGED_BLOCKS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
-export const MAX_STAGED_BLOCK_ROWS = 10_000;
-// Block-explorer extrinsic slice (#1345): the staged `extrinsics` sidecar caps.
-// Several extrinsics per finalized block in the rolling poller window, so the row
-// volume sits between the per-block count and the per-event count — keep the same
-// byte ceiling + progressive-drain row cap so a pathological body can never be
-// materialized and each */3 tick stays well under the subrequest limit. INSERT OR
-// IGNORE on (block_number, extrinsic_index) makes any re-drain idempotent.
-export const MAX_STAGED_EXTRINSICS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
-export const MAX_STAGED_EXTRINSIC_ROWS = 10_000;
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
 // refreshes the TTL on each successful delivery.
 export const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;

@@ -1,5 +1,5 @@
 import { Settings, Sun, Moon, Monitor, Rows3, Rows4 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@jsonbored/ui-kit";
 import { useTheme, type ThemeChoice } from "@/lib/theme";
 import { useDensity, type Density } from "@/lib/density";
 import { useHealthPalette, HEALTH_PALETTES, type HealthPaletteId } from "@/lib/health-palette";

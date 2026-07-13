@@ -239,8 +239,8 @@ export async function loadSubnetYield(d1, netuid) {
 // oldest day.
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const YIELD_HISTORY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
-const DEFAULT_YIELD_HISTORY_WINDOW = "30d";
+export const YIELD_HISTORY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const DEFAULT_YIELD_HISTORY_WINDOW = "30d";
 // Safety valve on the raw per-UID read (≈256 UIDs × 90d ≈ 23k; leaves head room
 // and the builder drops a truncated oldest day so every point is complete).
 export const YIELD_HISTORY_ROW_CAP = 50_000;

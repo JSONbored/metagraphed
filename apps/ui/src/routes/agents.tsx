@@ -13,14 +13,16 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero } from "@/components/metagraphed/page-hero";
+import {
+  PageHero,
+  CopyButton,
+  ExternalLink,
+  McpToolsList,
+  SectionHeading,
+} from "@jsonbored/ui-kit";
 import { AskBox } from "@/components/metagraphed/ask-box";
-import { CopyButton } from "@/components/metagraphed/copy-button";
-import { ExternalLink } from "@/components/metagraphed/external-link";
-import { McpToolsList } from "@/components/metagraphed/mcp-tools-list";
 import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
 import { agentResourcesQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import type { AgentResources } from "@/lib/metagraphed/types";

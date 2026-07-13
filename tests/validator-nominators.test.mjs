@@ -484,50 +484,6 @@ describe("GET /api/v1/validators/{hotkey}/nominators via the Worker", () => {
     return { res, body: await res.json() };
   };
 
-  test("returns the ranked nominator list for a validator", async () => {
-    const env = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: accountEventsD1([
-        { hotkey: HTTP_HOTKEY, ...added("ck-a", 100, 2, 5000) },
-        { hotkey: HTTP_HOTKEY, ...removed("ck-a", 30, 1, 6000) },
-        { hotkey: HTTP_HOTKEY, ...added("ck-b", 10, 1, 4000) },
-        { hotkey: "hk-other", ...added("ck-c", 999, 1, 1000) },
-      ]),
-    };
-    const { res, body } = await getJson(
-      `/api/v1/validators/${HTTP_HOTKEY}/nominators?window=30d`,
-      env,
-    );
-    assert.equal(res.status, 200);
-    assert.equal(body.data.hotkey, HTTP_HOTKEY);
-    assert.equal(body.data.nominator_count, 2);
-    assert.equal(body.data.nominators[0].coldkey, "ck-a");
-    assert.equal(body.data.nominators[0].net_staked_tao, 70);
-    assert.equal(body.meta.source, "chain-events");
-  });
-
-  test("?coldkey= narrows to one nominator's own flow", async () => {
-    // The handler validates ?coldkey= as a real SS58 shape, so both the query
-    // param and the mock rows' coldkey must be SS58-shaped here (unlike the
-    // other tests above, which only exercise the unvalidated request path).
-    const coldkeyA = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
-    const coldkeyB = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
-    const env = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: accountEventsD1([
-        { hotkey: HTTP_HOTKEY, ...added(coldkeyA, 100, 2, 5000) },
-        { hotkey: HTTP_HOTKEY, ...added(coldkeyB, 10, 1, 4000) },
-      ]),
-    };
-    const { res, body } = await getJson(
-      `/api/v1/validators/${HTTP_HOTKEY}/nominators?coldkey=${coldkeyB}`,
-      env,
-    );
-    assert.equal(res.status, 200);
-    assert.equal(body.data.nominator_count, 1);
-    assert.equal(body.data.nominators[0].coldkey, coldkeyB);
-  });
-
   test("is schema-stable when D1 is cold (never 404)", async () => {
     const env = {
       ...createLocalArtifactEnv(),

@@ -1,52 +1,26 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Percent, Activity, Users, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { subnetYieldQuery, subnetYieldHistoryQuery } from "@/lib/metagraphed/queries";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { BarMini } from "@/components/metagraphed/charts/bar-mini";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import {
+  TableState,
+  YieldPercentileStrip,
+  fmtYield,
+  StatTile,
+  BarMini,
+  Sparkline,
+} from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
-import { TableState } from "@/components/metagraphed/table-state";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
 import type { SubnetYieldNeuron, YieldHistoryPoint } from "@/lib/metagraphed/types";
 
 type Win = "7d" | "30d" | "90d";
 const WINDOWS: Win[] = ["7d", "30d", "90d"];
 const TOP_N = 15;
-
-// Yield is an emission/stake return rate — tiny fractions (~1e-5..1e-1). Render
-// as a percentage with adaptive precision; null/non-finite collapses to em-dash.
-//
-// The 0.001-1% band uses significant-figure precision (toPrecision), not a
-// fixed decimal count (toFixed) — validator yields in this subnet-scale range
-// commonly cluster within a few percent of each other (e.g. 0.0041529% vs
-// 0.0041496% vs 0.0041425%), and a fixed toFixed(4) rounds several of them to
-// the exact same displayed string even though the underlying values genuinely
-// differ, making an otherwise-ranked leaderboard look like a data bug.
-export function fmtYield(v?: number | null): string {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (v === 0) return "0%";
-  const pct = v * 100;
-  if (Math.abs(pct) >= 1) return `${pct.toFixed(2)}%`;
-  if (Math.abs(pct) >= 0.001) return `${pct.toPrecision(5)}%`;
-  return `${pct.toExponential(2)}%`;
-}
-
-function Fact({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </div>
-      <div className="mt-1 font-display text-lg font-semibold tabular-nums text-ink-strong leading-none">
-        {value}
-      </div>
-    </div>
-  );
-}
 
 function VsMedian({ vs }: { vs: SubnetYieldNeuron["vs_median"] }) {
   if (vs === "above")
@@ -111,7 +85,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-4">
       {/* KPI tiles — the headline return + central tendency. */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className={PROFILE_KPI_GRID_CLASS}>
         <StatTile
           icon={Percent}
           eyebrow="Subnet yield"
@@ -146,13 +120,13 @@ export function YieldLoader({ netuid }: { netuid: number }) {
           )}
         </div>
 
-        {/* Yield percentile spread. */}
-        <div className="rounded-xl border border-border bg-card p-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Fact label="p25" value={fmtYield(y.p25_yield)} />
-          <Fact label="Median" value={fmtYield(y.median_yield)} />
-          <Fact label="p75" value={fmtYield(y.p75_yield)} />
-          <Fact label="p90" value={fmtYield(y.p90_yield)} />
-        </div>
+        {/* Yield percentile spread — container-query layout (#3934). */}
+        <YieldPercentileStrip
+          p25_yield={y.p25_yield}
+          median_yield={y.median_yield}
+          p75_yield={y.p75_yield}
+          p90_yield={y.p90_yield}
+        />
       </div>
 
       {/* Per-UID yield leaderboard (top yielders). */}
@@ -252,11 +226,17 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
   const hasData = series.subnet.length + series.median.length + series.p90.length > 0;
 
   const toggle = (
-    <div className="inline-flex rounded-md border border-border bg-surface/40 p-0.5">
+    <div
+      role="tablist"
+      aria-label="Yield window"
+      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+    >
       {WINDOWS.map((w) => (
         <button
           key={w}
           type="button"
+          role="tab"
+          aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
             "px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors",
@@ -271,7 +251,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Yield drift
         </span>
@@ -304,11 +284,9 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
 function DriftRow({ label, series, color }: { label: string; series: number[]; color: string }) {
   const last = series[series.length - 1];
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 font-mono text-[11px] uppercase tracking-wider text-ink-muted">
-        {label}
-      </span>
-      <div className="flex-1 min-w-0">
+    <div className="grid grid-cols-1 gap-1 min-[400px]:grid-cols-[minmax(0,7rem)_1fr_auto] min-[400px]:items-center min-[400px]:gap-3">
+      <span className="font-mono text-[11px] uppercase tracking-wider text-ink-muted">{label}</span>
+      <div className="min-w-0">
         <Sparkline
           values={series}
           color={color}
@@ -318,7 +296,7 @@ function DriftRow({ label, series, color }: { label: string; series: number[]; c
           ariaLabel={label}
         />
       </div>
-      <span className="w-20 shrink-0 text-right font-display text-sm font-semibold tabular-nums text-ink-strong">
+      <span className="min-w-0 font-display text-sm font-semibold tabular-nums text-ink-strong min-[400px]:text-right">
         {last != null ? fmtYield(last) : "—"}
       </span>
     </div>

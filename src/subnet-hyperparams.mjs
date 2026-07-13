@@ -2,8 +2,8 @@
 // Field mapping documented in scripts/fetch-subnet-hyperparams.py's docstring
 // and migrations/0036_subnet_hyperparams.sql. Mirrors NEURON_INSERT_COLUMNS's
 // role in src/metagraph-neurons.mjs — the full column set written by the
-// staged-load path (loadStagedSubnetHyperparams) and read by the serving
-// route (#4307/1.4).
+// Postgres write path (workers/data-api.mjs's handleSubnetHyperparamsSync)
+// and read by the serving route (#4307/1.4).
 
 export const SUBNET_HYPERPARAMS_INSERT_COLUMNS = [
   "netuid",
@@ -43,14 +43,6 @@ export const SUBNET_HYPERPARAMS_INSERT_COLUMNS = [
   "block_number",
   "captured_at",
 ];
-
-// The columns the read path SELECTs for one netuid's row — everything except
-// netuid itself, which is already known from the WHERE clause param. Derived
-// from SUBNET_HYPERPARAMS_INSERT_COLUMNS (skip index 0) rather than a second
-// hand-maintained list, mirroring NEURON_COLUMNS' relationship to
-// NEURON_INSERT_COLUMNS in src/metagraph-neurons.mjs.
-const SUBNET_HYPERPARAMS_COLUMNS =
-  SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1).join(", ");
 
 // Same D1-cell coercion helpers as src/metagraph-neurons.mjs (each domain file
 // owns its own small copies rather than a shared util — see formatNeuron's
@@ -152,12 +144,4 @@ export function buildSubnetHyperparams(row, netuid) {
     block_number: nonNegativeInt(row?.block_number),
     hyperparameters: formatSubnetHyperparams(row),
   };
-}
-
-export async function loadSubnetHyperparams(d1, netuid) {
-  const rows = await d1(
-    `SELECT ${SUBNET_HYPERPARAMS_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
-    [netuid],
-  );
-  return buildSubnetHyperparams(rows[0] ?? null, netuid);
 }

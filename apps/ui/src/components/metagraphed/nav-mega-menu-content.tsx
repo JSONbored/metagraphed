@@ -11,15 +11,17 @@ import {
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { CopyButton } from "./copy-button";
-import { safeExternalUrl } from "./external-link";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
+  CopyButton,
+  safeExternalUrl,
+} from "@jsonbored/ui-kit";
 import {
   MEGA_PANELS,
   loadFilters,

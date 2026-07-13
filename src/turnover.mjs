@@ -272,7 +272,7 @@ export function buildTurnoverChanges(
   };
 }
 
-function turnoverChangeDetail(changes) {
+export function turnoverChangeDetail(changes) {
   return {
     validators_entered_count: changes.validators_entered_count,
     validators_exited_count: changes.validators_exited_count,

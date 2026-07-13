@@ -9,7 +9,7 @@ import {
   type RecentVisit,
 } from "@/lib/metagraphed/recent-visits";
 import { loadRecent, clearRecent } from "@/lib/metagraphed/search-history";
-import { BrandIcon } from "./brand-icon";
+import { BrandIcon } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 
 /**

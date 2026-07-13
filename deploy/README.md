@@ -142,11 +142,20 @@ Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
 3. **Serving cutover** — point the Worker at Hyperdrive→Postgres **tier by tier**
    (blocks → extrinsics → accounts → metagraph), D1 as fallback; only then delete
    the prune-and-discard logic.
-4. **Decommission** the `*/3` R2-staging drain (still fed by the manual
-   `backfill-events.yml` workflow — do not remove until this step); demote D1 to
-   a hot cache. (The GitHub `*/5` poller and the `metagraphed-streamer` Railway
-   project were already decommissioned 2026-07-04, ahead of and independent from
-   this gated cutover — see the note above.)
+4. ✅ **Decommissioned** (#4772, 2026-07-11): the chain-data `*/3` R2-staging
+   drain (`loadStagedNeurons`/`Events`/`Blocks`/`Extrinsics`), the realtime
+   ingest endpoints, the D1-side daily rollup/archive/prune crons, the manual
+   `backfill-events.yml`/`scripts/{stream,fetch,backfill}-events.py` streamer
+   cluster, and D1's `blocks`/`extrinsics`/`account_events`/`neurons`/
+   `neuron_daily` tables + prune logic are all retired — Postgres (indexer-rs
+   live-follow + sharded historical backfill) is the sole source for chain
+   data now. `account_position_daily` (no Postgres serving route yet) and the
+   health/registry-monitoring tables (`surface_checks` and friends,
+   `subnet_snapshots`, `account_events_daily`) are explicitly NOT part of
+   this — D1 stays their permanent, unrelated home. (The GitHub `*/5` poller
+   and the `metagraphed-streamer` Railway project were already decommissioned
+   2026-07-04, ahead of and independent from this gated cutover — see the
+   note above.)
 
 ### `blocks` tier verification queries (#4687)
 

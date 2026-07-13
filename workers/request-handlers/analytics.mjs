@@ -32,6 +32,7 @@ import {
   DAY_MS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
+  resolveClientIp,
 } from "../config.mjs";
 import { parseLimitParam } from "../request-params.mjs";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.mjs";
@@ -42,6 +43,7 @@ import {
   publishedAt,
 } from "../responses.mjs";
 import { d1TimeoutMs, withTimeout } from "../storage.mjs";
+import { tryPostgresTier } from "../postgres-tier.mjs";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import {
   formatGlobalIncidents,
@@ -198,6 +200,26 @@ export function canonicalHealthWindowCachePath(url) {
   const { label, error } = analyticsWindow(url);
   if (error) return `${url.pathname}${url.search}`;
   return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
+async function dataRateLimitResponse(request, env) {
+  if (!env.DATA_RATE_LIMITER?.limit) return null;
+  const { success } = await env.DATA_RATE_LIMITER.limit({
+    key: `data:${resolveClientIp(request)}`,
+  });
+  if (success) return null;
+  return errorResponse(
+    "data_rate_limited",
+    "Too many data API requests from this client; slow down.",
+    429,
+    {},
+    {
+      "retry-after": "60",
+      "x-ratelimit-limit": "60",
+      "x-ratelimit-policy": "60;w=60",
+      "x-ratelimit-remaining": "0",
+    },
+  );
 }
 
 function analyticsQueryError(error) {
@@ -476,9 +498,25 @@ export async function handleBulkHealthTrends(
 
   return withEdgeCache(request, ctx, env, "bulk-trends", async () => {
     const meta = await readHealthMetaKv(env);
-    const { data, rows } = await loadBulkHealthTrends(d1Runner(env), {
-      observedAt: meta?.last_run_at || null,
-    });
+    // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE is a NEW flag (unlike every
+    // other tier's tryPostgresTier wiring this session, which reused an
+    // already-flipped flag on an already-backfilled table) -- surface_checks/
+    // surface_uptime_daily only started accumulating from the dual-write
+    // landing (#4881/#4885), with no historical backfill. Left unset in
+    // wrangler.jsonc deliberately: an empty/short Postgres window is still a
+    // valid 200 response, so tryPostgresTier's error-only fallback can't
+    // detect "technically fine but missing D1's history" the way it detects
+    // a hard failure. Flip only once Postgres has accumulated a real 30-day
+    // window.
+    let isFallback = false;
+    let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+    if (!data) {
+      const result = await loadBulkHealthTrends(d1Runner(env), {
+        observedAt: meta?.last_run_at || null,
+      });
+      data = result.data;
+      isFallback = hasD1FallbackRows(result.rows);
+    }
     const response = await envelopeResponse(
       request,
       {
@@ -494,9 +532,7 @@ export async function handleBulkHealthTrends(
       },
       "short",
     );
-    return hasD1FallbackRows(rows)
-      ? markD1FallbackResponse(response)
-      : response;
+    return isFallback ? markD1FallbackResponse(response) : response;
   });
 }
 
@@ -512,21 +548,27 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   return withEdgeCache(request, ctx, env, "trends", async () => {
-    // Read through the shared d1All (rather than handing the loader the bare
-    // db) so a failure is still logged + marked as a D1 fallback (the
-    // dark-serve log contract) — usedFallback tracks it across the loader's
-    // parallel per-window reads since the formatted result no longer exposes
-    // the raw row arrays hasD1FallbackRows used to check.
+    // See handleBulkHealthTrends' own comment: METAGRAPH_HEALTH_SOURCE is a
+    // new, deliberately-unflipped flag pending Postgres accumulating a real
+    // history window.
     let usedFallback = false;
-    const d1 = async (sql, params) => {
-      const rows = await d1All(env, sql, params);
-      if (hasD1FallbackRows(rows)) usedFallback = true;
-      return rows;
-    };
-    const meta = await readHealthMetaKv(env);
-    const data = await loadSubnetHealthTrends(d1, netuid, {
-      observedAt: meta?.last_run_at || null,
-    });
+    let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+    if (!data) {
+      // Read through the shared d1All (rather than handing the loader the bare
+      // db) so a failure is still logged + marked as a D1 fallback (the
+      // dark-serve log contract) — usedFallback tracks it across the loader's
+      // parallel per-window reads since the formatted result no longer exposes
+      // the raw row arrays hasD1FallbackRows used to check.
+      const d1 = async (sql, params) => {
+        const rows = await d1All(env, sql, params);
+        if (hasD1FallbackRows(rows)) usedFallback = true;
+        return rows;
+      };
+      const meta = await readHealthMetaKv(env);
+      data = await loadSubnetHealthTrends(d1, netuid, {
+        observedAt: meta?.last_run_at || null,
+      });
+    }
     const response = await envelopeResponse(
       request,
       {
@@ -564,20 +606,25 @@ export async function handleHealthPercentiles(
     env,
     "percentiles",
     async () => {
-      // Wrap d1All so a failure is still logged + marked as a D1 fallback (the
-      // dark-serve contract), since the formatted result no longer exposes the
-      // raw rows hasD1FallbackRows used to check (mirrors handleHealthTrends).
+      // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
       let usedFallback = false;
-      const d1 = async (sql, params) => {
-        const rows = await d1All(env, sql, params);
-        if (hasD1FallbackRows(rows)) usedFallback = true;
-        return rows;
-      };
-      const meta = await readHealthMetaKv(env);
-      const data = await loadSubnetPercentiles(d1, netuid, {
-        window: label,
-        observedAt: meta?.last_run_at || null,
-      });
+      let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+      if (!data) {
+        // Wrap d1All so a failure is still logged + marked as a D1 fallback
+        // (the dark-serve contract), since the formatted result no longer
+        // exposes the raw rows hasD1FallbackRows used to check (mirrors
+        // handleHealthTrends).
+        const d1 = async (sql, params) => {
+          const rows = await d1All(env, sql, params);
+          if (hasD1FallbackRows(rows)) usedFallback = true;
+          return rows;
+        };
+        const meta = await readHealthMetaKv(env);
+        data = await loadSubnetPercentiles(d1, netuid, {
+          window: label,
+          observedAt: meta?.last_run_at || null,
+        });
+      }
       const response = await envelopeResponse(
         request,
         {
@@ -612,21 +659,25 @@ export async function handleHealthIncidents(
     env,
     "incidents",
     async () => {
-      // Wrap d1All so a failure in either read is still logged + marked as a D1
-      // fallback (the dark-serve contract), since the formatted result no longer
-      // exposes the raw row arrays hasD1FallbackRows used to check (mirrors
-      // handleHealthTrends / handleHealthPercentiles).
+      // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
       let usedFallback = false;
-      const d1 = async (sql, params) => {
-        const rows = await d1All(env, sql, params);
-        if (hasD1FallbackRows(rows)) usedFallback = true;
-        return rows;
-      };
-      const meta = await readHealthMetaKv(env);
-      const data = await loadSubnetIncidents(d1, netuid, {
-        window: label,
-        observedAt: meta?.last_run_at || null,
-      });
+      let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+      if (!data) {
+        // Wrap d1All so a failure in either read is still logged + marked
+        // as a D1 fallback (the dark-serve contract), since the formatted
+        // result no longer exposes the raw row arrays hasD1FallbackRows
+        // used to check (mirrors handleHealthTrends / handleHealthPercentiles).
+        const d1 = async (sql, params) => {
+          const rows = await d1All(env, sql, params);
+          if (hasD1FallbackRows(rows)) usedFallback = true;
+          return rows;
+        };
+        const meta = await readHealthMetaKv(env);
+        data = await loadSubnetIncidents(d1, netuid, {
+          window: label,
+          observedAt: meta?.last_run_at || null,
+        });
+      }
       const response = await envelopeResponse(
         request,
         {
@@ -725,10 +776,16 @@ export async function handleGlobalIncidents(request, env, url) {
   if (error) {
     return analyticsQueryError(error);
   }
-  const { data, incidentRows } = await loadGlobalIncidentsLedger(env, {
-    label,
-    days,
-  });
+  // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE. Only
+  // this REST handler is wired -- loadGlobalIncidentsLedger's other caller
+  // (a content feed, workers/api.mjs) stays D1-only, out of scope here.
+  let isFallback = false;
+  let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+  if (!data) {
+    const result = await loadGlobalIncidentsLedger(env, { label, days });
+    data = result.data;
+    isFallback = hasD1FallbackRows(result.incidentRows);
+  }
   const response = await envelopeResponse(
     request,
     {
@@ -741,9 +798,7 @@ export async function handleGlobalIncidents(request, env, url) {
     },
     "short",
   );
-  return hasD1FallbackRows(incidentRows)
-    ? markD1FallbackResponse(response)
-    : response;
+  return isFallback ? markD1FallbackResponse(response) : response;
 }
 
 // Explicit CSV column order for the chain-analytics ?format=csv exports (#2532).
@@ -904,13 +959,23 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
     "chain-activity",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const { data, extrinsicRows, blockRows } = await loadNetworkActivity(
-        d1Runner(env),
-        {
+      // A Postgres hit is never a fallback (the rows never touched
+      // hasD1FallbackRows' WeakSets, which only track D1's own degraded-
+      // empty-result bookkeeping); only the D1 branch below can set this.
+      let isFallback = false;
+      let data = await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (!data) {
+        const result = await loadNetworkActivity(d1Runner(env), {
           window: label,
           observedAt: meta?.last_run_at || null,
-        },
-      );
+        });
+        data = result.data;
+        isFallback = hasD1FallbackRows(result.extrinsicRows, result.blockRows);
+      }
       if (csv) {
         const csvRes = await csvResponse(
           data.days,
@@ -919,9 +984,7 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
           request,
           CHAIN_ACTIVITY_CSV_COLUMNS,
         );
-        return hasD1FallbackRows(extrinsicRows, blockRows)
-          ? markD1FallbackResponse(csvRes)
-          : csvRes;
+        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
       const response = await envelopeResponse(
         request,
@@ -935,9 +998,7 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return hasD1FallbackRows(extrinsicRows, blockRows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return isFallback ? markD1FallbackResponse(response) : response;
     },
     // Canonicalize the cache key on the RESOLVED window so the bare path, an
     // explicit ?window=<default>, and reordered/duplicate variants all share one
@@ -982,19 +1043,26 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
     "chain-calls",
     async () => {
       let usedFallback = false;
-      const d1 = async (sql, params) => {
-        const rows = await d1All(env, sql, params);
-        if (hasD1FallbackRows(rows)) usedFallback = true;
-        return rows;
-      };
       const meta = await readHealthMetaKv(env);
-      const data = await loadChainCalls(d1, {
-        window: label,
-        groupBy,
-        callModule,
-        limit,
-        observedAt: meta?.last_run_at || null,
-      });
+      let data = await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (!data) {
+        const d1 = async (sql, params) => {
+          const rows = await d1All(env, sql, params);
+          if (hasD1FallbackRows(rows)) usedFallback = true;
+          return rows;
+        };
+        data = await loadChainCalls(d1, {
+          window: label,
+          groupBy,
+          callModule,
+          limit,
+          observedAt: meta?.last_run_at || null,
+        });
+      }
       if (csv) {
         const csvRes = await csvResponse(
           data.calls,
@@ -1058,14 +1126,24 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
     "chain-signers",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const { data, rows } = await loadChainSigners(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        observedAt: meta?.last_run_at || null,
-        limit,
-        callModule,
-        sort,
-      });
+      let isFallback = false;
+      let data = await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (!data) {
+        const result = await loadChainSigners(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          observedAt: meta?.last_run_at || null,
+          limit,
+          callModule,
+          sort,
+        });
+        data = result.data;
+        isFallback = hasD1FallbackRows(result.rows);
+      }
       if (csv) {
         const csvRes = await csvResponse(
           data.signers,
@@ -1074,9 +1152,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
           request,
           CHAIN_SIGNERS_CSV_COLUMNS,
         );
-        return hasD1FallbackRows(rows)
-          ? markD1FallbackResponse(csvRes)
-          : csvRes;
+        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
       const response = await envelopeResponse(
         request,
@@ -1090,9 +1166,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return hasD1FallbackRows(rows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return isFallback ? markD1FallbackResponse(response) : response;
     },
     `${canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"])}${csv ? "&format=csv" : ""}`,
   );
@@ -1126,12 +1200,18 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
     "chain-transfers",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const data = await loadChainTransfers(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        observedAt: meta?.last_run_at || null,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainTransfers(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          observedAt: meta?.last_run_at || null,
+          limit,
+        }));
       return envelopeResponse(
         cacheRequest,
         {
@@ -1186,13 +1266,19 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
     "chain-transfer-pairs",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const data = await loadChainTransferPairs(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        observedAt: meta?.last_run_at || null,
-        limit,
-        sort,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainTransferPairs(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          observedAt: meta?.last_run_at || null,
+          limit,
+          sort,
+        }));
       // CSV exports the row-shaped top corridors; the totals + top_pair_share
       // rollup stay JSON-only (mirrors chain-stake-flow / chain-weights).
       if (csv) {
@@ -1252,11 +1338,17 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
     env,
     "chain-stake-flow",
     async () => {
-      const data = await loadChainStakeFlow(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeFlow(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // net_flow_distribution stay JSON-only (mirrors chain-fees' top_fee_payers).
       if (csv) {
@@ -1315,11 +1407,17 @@ export async function handleChainWeights(request, env, url, ctx = {}) {
     env,
     "chain-weights",
     async () => {
-      const data = await loadChainWeights(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainWeights(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
@@ -1380,11 +1478,17 @@ export async function handleChainWeightSetters(request, env, url, ctx = {}) {
     env,
     "chain-weight-setters",
     async () => {
-      const data = await loadChainWeightSetters(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainWeightSetters(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       if (csv) {
         return csvResponse(
           data.setters,
@@ -1441,11 +1545,17 @@ export async function handleChainServing(request, env, url, ctx = {}) {
     env,
     "chain-serving",
     async () => {
-      const data = await loadChainServing(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainServing(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-weights).
       if (csv) {
@@ -1504,11 +1614,17 @@ export async function handleChainPrometheus(request, env, url, ctx = {}) {
     env,
     "chain-prometheus",
     async () => {
-      const data = await loadChainPrometheus(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainPrometheus(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1568,11 +1684,17 @@ export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
     env,
     "chain-axon-removals",
     async () => {
-      const data = await loadChainAxonRemovals(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainAxonRemovals(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1631,11 +1753,17 @@ export async function handleChainRegistrations(request, env, url, ctx = {}) {
     env,
     "chain-registrations",
     async () => {
-      const data = await loadChainRegistrations(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainRegistrations(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1695,11 +1823,17 @@ export async function handleChainDeregistrations(request, env, url, ctx = {}) {
     env,
     "chain-deregistrations",
     async () => {
-      const data = await loadChainDeregistrations(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainDeregistrations(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -1759,11 +1893,17 @@ export async function handleChainStakeMoves(request, env, url, ctx = {}) {
     env,
     "chain-stake-moves",
     async () => {
-      const data = await loadChainStakeMoves(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeMoves(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -1823,11 +1963,17 @@ export async function handleChainStakeTransfers(request, env, url, ctx = {}) {
     env,
     "chain-stake-transfers",
     async () => {
-      const data = await loadChainStakeTransfers(d1Runner(env), {
-        windowLabel: label,
-        windowDays: days,
-        limit,
-      });
+      const data =
+        (await tryPostgresTier(
+          env,
+          cacheRequest,
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        (await loadChainStakeTransfers(d1Runner(env), {
+          windowLabel: label,
+          windowDays: days,
+          limit,
+        }));
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-moves).
       if (csv) {
@@ -1889,15 +2035,31 @@ export async function handleChainFees(request, env, url, ctx = {}) {
     "chain-fees",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const { data, dailyRows, payerRows, medianRows } = await loadChainFees(
-        d1Runner(env),
-        {
+      let isFallback = false;
+      let data = null;
+      if (env.METAGRAPH_EXTRINSICS_SOURCE === "postgres" && env.DATA_API) {
+        const limited = await dataRateLimitResponse(request, env);
+        if (limited) return limited;
+        data = await tryPostgresTier(
+          env,
+          request,
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        );
+      }
+      if (!data) {
+        const result = await loadChainFees(d1Runner(env), {
           window: label,
           limit,
           callModule,
           observedAt: meta?.last_run_at || null,
-        },
-      );
+        });
+        data = result.data;
+        isFallback = hasD1FallbackRows(
+          result.dailyRows,
+          result.payerRows,
+          result.medianRows,
+        );
+      }
       if (csv) {
         const csvRes = await csvResponse(
           data.daily,
@@ -1906,9 +2068,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
           request,
           CHAIN_FEES_CSV_COLUMNS,
         );
-        return hasD1FallbackRows(dailyRows, payerRows, medianRows)
-          ? markD1FallbackResponse(csvRes)
-          : csvRes;
+        return isFallback ? markD1FallbackResponse(csvRes) : csvRes;
       }
       const response = await envelopeResponse(
         request,
@@ -1922,9 +2082,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return hasD1FallbackRows(dailyRows, payerRows, medianRows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return isFallback ? markD1FallbackResponse(response) : response;
     },
     `${canonicalAnalyticsCacheRoute(url, ["limit", "call_module"])}${csv ? "&format=csv" : ""}`,
   );

@@ -1,8 +1,15 @@
 import { useMemo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ExternalLink, Filter } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@jsonbored/ui-kit";
 import type { Endpoint } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
 

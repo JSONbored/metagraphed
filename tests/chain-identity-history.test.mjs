@@ -315,6 +315,58 @@ describe("GET /api/v1/chain/identity-history", () => {
     const body = await res.json();
     assert.equal(body.data.count, 1);
   });
+
+  // #4832 gap-closure: METAGRAPH_SUBNET_IDENTITY_SOURCE reused (same
+  // subnet_identity_history table this route already reads, no new flag) --
+  // tryPostgresTier's own fallback contract is unit-tested in
+  // workers/postgres-tier.mjs's own tests, so these two just prove the
+  // wiring: a Postgres hit is served as-is with D1 never queried, and a
+  // Postgres failure falls back to D1.
+  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = {
+      ...identityEnv([]),
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            count: 1,
+            subnet_count: 1,
+            changes: [{ netuid: 99, subnet_name: "PgSubnet" }],
+          }),
+      },
+    };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    const res = await handleRequest(req(), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.count, 1);
+    assert.equal(body.data.changes[0].netuid, 99);
+    assert.equal(d1Called, false);
+  });
+
+  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const env = {
+      ...identityEnv([change({ id: 1, netuid: 7, subnet_name: "Alpha" })]),
+      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+    };
+    const res = await handleRequest(req(), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.count, 1);
+    assert.equal(body.data.changes[0].subnet_name, "Alpha");
+  });
 });
 
 describe("chain/identity-history edge cache", () => {

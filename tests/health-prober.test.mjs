@@ -11,6 +11,8 @@ import {
   runD1StatementBatches,
   D1_STATEMENTS_PER_BATCH,
   runHealthProber,
+  syncHealthChecksToPostgres,
+  syncHealthUptimeRollupToPostgres,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../src/health-prober.mjs";
@@ -776,16 +778,16 @@ describe("handleScheduled dispatch", () => {
     assert.equal(probeResult.reason, "no-operational-surfaces");
   });
 
-  test("non-fast-load crons never drain the staged R2 files (audit #9)", async () => {
+  test("non-fast-load crons never drain the staged R2 file (audit #9)", async () => {
     // INVARIANT: only the EVENTS_LOAD_CRON tick owns the unlocked staged
     // read-modify-write drain. Every other cron (prune/embedding/prober) must NOT
-    // call loadStagedNeurons / loadStagedEvents — running them on concurrent ticks
-    // let one invocation clobber a freshly-staged file via the delete path. We prove
-    // it by tracking R2 .get keys and asserting the two staged keys are never read.
-    const STAGED_KEYS = [
-      "metagraph/neurons-pending.json",
-      "events/account-events-pending.json",
-    ];
+    // call loadStagedAccountIdentity — running it on concurrent ticks would let one
+    // invocation clobber a freshly-staged file via the delete path. We prove it by
+    // tracking R2 .get keys and asserting the staged key is never read.
+    // (loadStagedSubnetHyperparams's own staged key is retired alongside its
+    // loader now that subnet_hyperparams is fully Postgres-served -- no cron
+    // reads it anymore, so there's nothing left to assert here for it.)
+    const STAGED_KEYS = ["metagraph/account-identity-pending.json"];
     for (const cron of [
       HEALTH_PRUNE_CRON,
       EMBEDDING_SYNC_CRON,
@@ -818,69 +820,46 @@ describe("handleScheduled dispatch", () => {
     }
   });
 
-  test("fast-load cron drains ALL FOUR staged files then returns the marker (audit #9)", async () => {
-    // REGRESSION: the EVENTS_LOAD_CRON tick must still run all four loaders (one R2
-    // .get per staged key) AND early-return the fast-load marker without falling
-    // through to the prober/prune. The loaders run concurrently (#2092) but the
-    // observable contract is unchanged: every staged key is read on this tick.
+  test("fast-load cron drains the staged file then returns the marker (audit #9)", async () => {
+    // REGRESSION: the EVENTS_LOAD_CRON tick must still run the loader (one R2
+    // .get for its staged key) AND early-return the fast-load marker without
+    // falling through to the prober/prune. #4772 D1 chain-data retirement removed
+    // the neurons/events/blocks/extrinsics loaders; subnet_hyperparams's own
+    // loader is retired the same way now that it's fully Postgres-served, leaving
+    // account_identity as the one registry-side table still drained here.
     const getKeys = [];
     const env = {
       METAGRAPH_HEALTH_DB: makeDb(),
       METAGRAPH_ARCHIVE: {
         async get(key) {
           getKeys.push(key);
-          return null; // nothing staged → each loader no-ops after its read
+          return null; // nothing staged → the loader no-ops after its read
         },
       },
       METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
     };
     const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
     assert.deepEqual(result, { ok: true, fast_load: true });
-    for (const stagedKey of [
-      "metagraph/neurons-pending.json", // loadStagedNeurons (#1303)
-      "events/account-events-pending.json", // loadStagedEvents (#1346)
-      "events/blocks-pending.json", // loadStagedBlocks (#1345)
-      "events/extrinsics-pending.json", // loadStagedExtrinsics (#1345)
-    ]) {
-      assert.ok(
-        getKeys.includes(stagedKey),
-        `the fast-load tick read staged key ${stagedKey}`,
-      );
-    }
+    assert.ok(
+      getKeys.includes("metagraph/account-identity-pending.json"),
+      "the fast-load tick read the account-identity staged key",
+    );
   });
 
-  test("fast-load cron isolates a single staged-loader failure (#2092)", async () => {
-    // The concurrent drain uses Promise.allSettled, so one loader rejecting (here
-    // the blocks loader's R2 .get throws) must NOT stop the other three or change
-    // the fast-load marker — the same isolation the serial `.catch(() => {})` gave.
-    const getKeys = [];
+  test("fast-load cron isolates a staged-loader failure from the marker (#2092)", async () => {
+    // The drain is `.catch`-isolated, so the loader rejecting (here its R2 .get
+    // throws) must NOT propagate and change the fast-load marker.
     const env = {
       METAGRAPH_HEALTH_DB: makeDb(),
       METAGRAPH_ARCHIVE: {
-        async get(key) {
-          getKeys.push(key);
-          if (key === "events/blocks-pending.json") {
-            throw new Error("R2 unavailable for blocks");
-          }
-          return null;
+        async get() {
+          throw new Error("R2 unavailable for account identity");
         },
       },
       METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
     };
     const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
-    // Marker unchanged despite the rejection.
     assert.deepEqual(result, { ok: true, fast_load: true });
-    // The three healthy loaders still read their staged keys.
-    for (const stagedKey of [
-      "metagraph/neurons-pending.json",
-      "events/account-events-pending.json",
-      "events/extrinsics-pending.json",
-    ]) {
-      assert.ok(
-        getKeys.includes(stagedKey),
-        `loader for ${stagedKey} still ran despite the blocks-loader failure`,
-      );
-    }
   });
 });
 
@@ -1442,6 +1421,155 @@ describe("persistToD1 via runHealthProber", () => {
     assert.equal(db.calls.batches.length, 2);
     assert.equal(db.calls.batches[0].length, D1_STATEMENTS_PER_BATCH);
     assert.equal(db.calls.batches[1].length, 10);
+  });
+});
+
+// #4832 gap-closure: syncHealthChecksToPostgres is a private helper (unlike
+// syncSubnetIdentityToPostgres, which lives in its own module and is tested
+// directly in tests/subnet-identity-history.test.mjs) -- exercised the same
+// way persistToD1/persistToKv above are, indirectly through runHealthProber.
+// D1+KV remain the authoritative write target throughout; these tests only
+// prove the Postgres mirror attempt fires (or safely no-ops) without ever
+// affecting runHealthProber's own `ok`/`d1_persisted` result.
+describe("syncHealthChecksToPostgres", () => {
+  // runHealthProber never calls this with an empty array (it short-circuits
+  // on zero operational surfaces before ever reaching persist/sync), so this
+  // guard is only reachable via a direct call, unlike the other tests below.
+  test("returns no_rows for an empty or non-array probed batch", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("{}") },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    assert.deepEqual(await syncHealthChecksToPostgres(env, []), {
+      synced: false,
+      reason: "no_rows",
+    });
+    assert.deepEqual(await syncHealthChecksToPostgres(env, undefined), {
+      synced: false,
+      reason: "no_rows",
+    });
+  });
+});
+
+describe("syncHealthChecksToPostgres via runHealthProber", () => {
+  test("no-ops (no DATA_API call) when DATA_API is not bound", async () => {
+    let called = false;
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(called, false);
+  });
+
+  test("no-ops (no DATA_API call) when HEALTH_CHECKS_SYNC_SECRET is not configured", async () => {
+    let called = false;
+    const result = await runHealthProber(
+      {
+        DATA_API: { fetch: async () => ((called = true), new Response("{}")) },
+      },
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(called, false);
+  });
+
+  test("posts the probed batch to health-checks-sync with the token header", async () => {
+    let request;
+    const env = {
+      DATA_API: {
+        fetch: async (req) => {
+          request = req;
+          return new Response("{}", { status: 200 });
+        },
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.ok(request);
+    assert.equal(request.method, "POST");
+    assert.equal(
+      request.headers.get("x-health-checks-sync-token"),
+      "test-secret",
+    );
+    const body = await request.json();
+    assert.ok(Array.isArray(body.probed));
+    assert.equal(body.probed.length, SURFACES.length);
+  });
+
+  test("a DATA_API failure never affects runHealthProber's own result", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.d1_persisted, true);
+  });
+
+  test("a non-2xx DATA_API response never affects runHealthProber's own result", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => new Response("nope", { status: 502 }),
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await runHealthProber(
+      env,
+      {},
+      {
+        now: () => 1,
+        db: makeDb(),
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
   });
 });
 
@@ -2019,5 +2147,140 @@ describe("rollupDailyUptime (durable daily history)", () => {
       !order.some((o) => o.includes("DELETE FROM surface_checks")),
       "raw surface_checks must not be pruned when rollup fails",
     );
+  });
+});
+
+// #4832 gap-closure: syncHealthUptimeRollupToPostgres, exercised the same
+// way syncHealthChecksToPostgres is above -- indirectly through
+// rollupDailyUptime (private helper) -- proving the Postgres mirror attempt
+// fires (or safely no-ops) without affecting rollupDailyUptime's own
+// `rolled`/`days`/`error` result either way.
+describe("syncHealthUptimeRollupToPostgres", () => {
+  // rollupDailyUptime never calls this with an empty days array (it always
+  // computes exactly [today, yesterday]), so this guard is only reachable
+  // via a direct call, unlike the other tests below.
+  test("returns no_days for an empty or non-array days argument", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("{}") },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    assert.deepEqual(await syncHealthUptimeRollupToPostgres(env, [], 1), {
+      synced: false,
+      reason: "no_days",
+    });
+    assert.deepEqual(
+      await syncHealthUptimeRollupToPostgres(env, undefined, 1),
+      { synced: false, reason: "no_days" },
+    );
+  });
+
+  test("reports the upstream status when the DATA_API response isn't ok", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("nope", { status: 502 }) },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    assert.deepEqual(
+      await syncHealthUptimeRollupToPostgres(
+        env,
+        [{ date: "2026-06-13", start: 1, end: 2 }],
+        1,
+      ),
+      { synced: false, reason: "status_502" },
+    );
+  });
+});
+
+describe("syncHealthUptimeRollupToPostgres via rollupDailyUptime", () => {
+  test("no-ops (no DATA_API call) when DATA_API is not bound", async () => {
+    const result = await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: makeDb() },
+      { now: () => Date.UTC(2026, 5, 13, 10, 0, 0) },
+    );
+    assert.equal(result.rolled, true);
+  });
+
+  test("degrades to { rolled: false, error } when the batch throws a non-Error value", async () => {
+    // Exercises the `error?.message ?? error` fallback branch: a thrown
+    // plain string has no .message, unlike the sibling "d1 unavailable"
+    // Error test above.
+    const db = {
+      prepare: () => ({ bind: () => ({}) }),
+      async batch() {
+        throw "plain string failure";
+      },
+    };
+    const result = await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => Date.UTC(2026, 5, 13, 10, 0, 0) },
+    );
+    assert.deepEqual(result, {
+      rolled: false,
+      error: "plain string failure",
+    });
+  });
+
+  test("posts the UTC day boundaries to health-uptime-rollup-sync with the token header", async () => {
+    let request;
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      DATA_API: {
+        fetch: async (req) => {
+          request = req;
+          return new Response("{}", { status: 200 });
+        },
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const fixedNow = Date.UTC(2026, 5, 13, 10, 0, 0);
+    const result = await rollupDailyUptime(env, { now: () => fixedNow });
+    assert.equal(result.rolled, true);
+    assert.ok(request);
+    assert.equal(request.method, "POST");
+    assert.equal(
+      request.headers.get("x-health-checks-sync-token"),
+      "test-secret",
+    );
+    const body = await request.json();
+    assert.equal(body.days.length, 2);
+    assert.equal(body.days[0].date, "2026-06-13");
+    assert.equal(body.updated_at, fixedNow);
+  });
+
+  test("a DATA_API failure never affects rollupDailyUptime's own result", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await rollupDailyUptime(env, {
+      now: () => Date.UTC(2026, 5, 13, 10, 0, 0),
+    });
+    assert.equal(result.rolled, true);
+  });
+
+  test("still attempts the Postgres sync when D1's own rollup fails", async () => {
+    let called = false;
+    const db = {
+      prepare: () => ({ bind: () => ({}) }),
+      async batch() {
+        throw new Error("d1 unavailable");
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      DATA_API: {
+        fetch: async () => ((called = true), new Response("{}")),
+      },
+      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
+    };
+    const result = await rollupDailyUptime(env, {
+      now: () => Date.UTC(2026, 5, 13, 10, 0, 0),
+    });
+    assert.equal(result.rolled, false);
+    assert.equal(called, true);
   });
 });

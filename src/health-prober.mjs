@@ -24,7 +24,10 @@ import {
 } from "./health-probe-core.mjs";
 import { latencyStatColumns, rankedChecksCte } from "./health-sql.mjs";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
-import { recordSubnetIdentityChanges } from "./subnet-identity-history.mjs";
+import {
+  recordSubnetIdentityChanges,
+  syncSubnetIdentityToPostgres,
+} from "./subnet-identity-history.mjs";
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -505,6 +508,7 @@ export async function runHealthProber(env, ctx, overrides = {}) {
 
   const d1Persist = await persistToD1(db, probed, runAt);
   await persistToKv(kv, probed, runAt);
+  await syncHealthChecksToPostgres(env, probed);
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of probed) counts[normalizeProbeStatus(row.status)] += 1;
@@ -687,6 +691,82 @@ async function persistToKv(kv, probed, runAt) {
   ]);
 }
 
+// #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
+// never awaited-and-thrown into the caller, mirroring
+// syncSubnetIdentityToPostgres's own header comment (subnet-identity-history.mjs)
+// for why this is a direct service-binding call rather than routing through
+// the public proxy layer. D1+KV remain the sole authoritative write target;
+// a Postgres failure here never affects live serving.
+export async function syncHealthChecksToPostgres(env, probed) {
+  if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {
+    return { synced: false, reason: "unavailable" };
+  }
+  if (!Array.isArray(probed) || probed.length === 0) {
+    return { synced: false, reason: "no_rows" };
+  }
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/health-checks-sync",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-health-checks-sync-token": env.HEALTH_CHECKS_SYNC_SECRET,
+          },
+          body: JSON.stringify({ probed }),
+        },
+      ),
+    );
+    if (!upstream.ok) {
+      return { synced: false, reason: `status_${upstream.status}` };
+    }
+    return { synced: true };
+  } catch {
+    return { synced: false, reason: "fetch_failed" };
+  }
+}
+
+// #4832 gap-closure: best-effort Postgres mirror of rollupDailyUptime below.
+// Reuses HEALTH_CHECKS_SYNC_SECRET (same conceptual sync boundary as
+// syncHealthChecksToPostgres, not a separate secret) since this fires from
+// the same hourly cron right alongside it. Unlike syncHealthChecksToPostgres
+// -- which ships the already-computed probed batch -- this only ships the
+// UTC day *boundaries*; Postgres computes its own rollup from its own
+// surface_checks (already populated by the sibling sync), using
+// PERCENTILE_CONT for the p50/p95/p99 tail instead of D1/SQLite's
+// rank-based CTE (see src/health-sql.mjs's rankedChecksCte/
+// latencyStatColumns, which this mirrors semantically, not textually).
+export async function syncHealthUptimeRollupToPostgres(env, days, updatedAt) {
+  if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {
+    return { synced: false, reason: "unavailable" };
+  }
+  if (!Array.isArray(days) || days.length === 0) {
+    return { synced: false, reason: "no_days" };
+  }
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/health-uptime-rollup-sync",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-health-checks-sync-token": env.HEALTH_CHECKS_SYNC_SECRET,
+          },
+          body: JSON.stringify({ days, updated_at: updatedAt }),
+        },
+      ),
+    );
+    if (!upstream.ok) {
+      return { synced: false, reason: `status_${upstream.status}` };
+    }
+    return { synced: true };
+  } catch {
+    return { synced: false, reason: "fetch_failed" };
+  }
+}
+
 // UTC day bounds for a given epoch-ms instant: { date: "YYYY-MM-DD", start, end }.
 function utcDayBounds(ms) {
   const d = new Date(ms);
@@ -761,18 +841,27 @@ export async function rollupDailyUptime(env, overrides = {}) {
      ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET${conflictColumns}
      ON CONFLICT(surface_id, day) DO UPDATE SET${conflictColumns}`,
   );
+  let result;
   try {
     await db.batch(
       days.map(({ date, start, end }) => stmt.bind(start, end, date, runAt)),
     );
-    return { rolled: true, days: days.map((d) => d.date) };
+    result = { rolled: true, days: days.map((d) => d.date) };
   } catch (error) {
     // Don't swallow silently: a failing INSERT here (e.g. a missing column from
     // un-applied schema migration) freezes the daily uptime rollup invisibly.
     // Surface the reason so the hourly cron's result is diagnosable.
     console.error("[rollupDailyUptime]", String(error?.message ?? error));
-    return { rolled: false, error: String(error?.message ?? error) };
+    result = { rolled: false, error: String(error?.message ?? error) };
   }
+  // #4832 gap-closure: best-effort Postgres mirror, independent of the D1
+  // outcome above -- Postgres computes its OWN rollup from its own
+  // surface_checks (already populated by syncHealthChecksToPostgres in
+  // runHealthProber), it doesn't need D1's rolled-up rows shipped to it. A
+  // D1 failure here doesn't block attempting the Postgres side, and vice
+  // versa; each store's rollup is independently best-effort.
+  await syncHealthUptimeRollupToPostgres(env, days, runAt);
+  return result;
 }
 
 // Hourly maintenance cron: prune time-series rows older than the retention
@@ -804,6 +893,67 @@ export async function pruneHealthHistory(env, overrides = {}) {
   }
 }
 
+// #4832 gap-closure: mirror writeSubnetSnapshot's D1 upsert into Postgres via
+// the DATA_API service binding, called directly from writeSubnetSnapshot
+// below -- same "in-Worker hourly cron, direct env.DATA_API.fetch() service-
+// binding call, not an external GitHub Actions workflow" shape as
+// syncSubnetIdentityToPostgres (src/subnet-identity-history.mjs), which this
+// same function already calls. Best-effort: never throws, and a failure here
+// must never block the D1 write above (the primary contract).
+export async function syncSubnetSnapshotToPostgres(
+  env,
+  { profiles, economicsByNetuid, date, capturedAt } = {},
+) {
+  if (!env?.DATA_API || !env?.SUBNET_SNAPSHOT_SYNC_SECRET) {
+    return { synced: false, reason: "unavailable" };
+  }
+  if (!Array.isArray(profiles) || profiles.length === 0) {
+    return { synced: false, reason: "no_profiles" };
+  }
+  const rows = profiles
+    .filter((profile) => Number.isInteger(profile.netuid))
+    .map((profile) => {
+      const econ = economicsByNetuid?.get(profile.netuid) || {};
+      return {
+        netuid: profile.netuid,
+        snapshot_date: date,
+        completeness_score: profile.completeness_score ?? null,
+        surface_count: profile.surface_count ?? null,
+        endpoint_count: profile.endpoint_count ?? null,
+        monitored_count: profile.monitored_endpoint_count ?? null,
+        candidate_count: profile.candidate_count ?? null,
+        validator_count: econ.validator_count ?? null,
+        miner_count: econ.miner_count ?? null,
+        total_stake_tao: econ.total_stake_tao ?? null,
+        alpha_price_tao: econ.alpha_price_tao ?? null,
+        emission_share: econ.emission_share ?? null,
+        captured_at: capturedAt,
+      };
+    });
+  if (!rows.length) return { synced: false, reason: "no_rows" };
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request(
+        "https://api.metagraph.sh/api/v1/internal/subnet-snapshot-sync",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-subnet-snapshot-sync-token": env.SUBNET_SNAPSHOT_SYNC_SECRET,
+          },
+          body: JSON.stringify(rows),
+        },
+      ),
+    );
+    if (!upstream.ok) {
+      return { synced: false, reason: `status_${upstream.status}` };
+    }
+    return { synced: true, rows: rows.length };
+  } catch {
+    return { synced: false, reason: "fetch_failed" };
+  }
+}
+
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
 // subnet_snapshots, keyed on (netuid, UTC date). Fired from the hourly cron;
 // ON CONFLICT DO NOTHING makes repeated fires within a day idempotent (the first
@@ -828,6 +978,11 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
     now: capturedAt,
     db,
   });
+  // #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
+  // never awaited-and-thrown into the caller, see syncSubnetIdentityToPostgres's
+  // own header comment for why this is a direct service-binding call rather
+  // than routing through the public proxy layer.
+  await syncSubnetIdentityToPostgres(env, { profiles });
 
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory
@@ -846,6 +1001,16 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   );
 
   const date = new Date(capturedAt).toISOString().slice(0, 10);
+  // #4832 gap-closure: best-effort Postgres mirror of the D1 upsert below --
+  // never awaited-and-thrown into the caller, see syncSubnetSnapshotToPostgres's
+  // own header comment for why this is a direct service-binding call rather
+  // than routing through the public proxy layer.
+  await syncSubnetSnapshotToPostgres(env, {
+    profiles,
+    economicsByNetuid,
+    date,
+    capturedAt,
+  });
   // The structural columns + captured_at are owned by the first same-day fire.
   // The economics columns can arrive late (economics.json is pure chain state
   // with no committed-asset fallback, unlike profiles.json), so DO NOTHING

@@ -313,6 +313,8 @@ function endpointPool(id, kind, endpoints) {
       poolEndpoints.find((endpoint) => endpoint.pool_eligible)?.id || null,
     endpoints: poolEndpoints.map((endpoint) => ({
       archive_support: endpoint.archive_support,
+      auth_required: endpoint.auth_required,
+      public_safe: endpoint.public_safe,
       id: endpoint.id,
       surface_id: endpoint.surface_id,
       surface_key: endpoint.surface_key,

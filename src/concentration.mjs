@@ -331,8 +331,8 @@ export async function loadChainConcentration(d1) {
 // bounded to a chartable range because each day needs its full per-UID
 // distribution (concentration can't be a cheap SQL GROUP BY like the structural
 // history) — a row cap then guards an unexpectedly large subnet.
-const CONCENTRATION_HISTORY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
-const DEFAULT_CONCENTRATION_HISTORY_WINDOW = "30d";
+export const CONCENTRATION_HISTORY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const DEFAULT_CONCENTRATION_HISTORY_WINDOW = "30d";
 // Safety valve on the raw per-UID read (≈256 UIDs × 90d ≈ 23k; this leaves head
 // room and the builder drops a truncated oldest day so every point is complete).
 export const CONCENTRATION_HISTORY_ROW_CAP = 50_000;

@@ -209,6 +209,14 @@
           "provider": {
             "type": "string"
           },
+          "auth_required": {
+            "type": "boolean",
+            "description": "Structural pool-eligibility input: whether the endpoint requires auth (#4979)."
+          },
+          "public_safe": {
+            "type": "boolean",
+            "description": "Structural pool-eligibility input: whether the endpoint is safe for public proxying (#4979)."
+          },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
           },

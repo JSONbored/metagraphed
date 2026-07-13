@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { reviewProfileCompletenessQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import { InfoTooltip } from "@jsonbored/ui-kit";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 const KINDS = [

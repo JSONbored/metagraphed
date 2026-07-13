@@ -276,6 +276,60 @@ describe("handleTrajectory", () => {
     const body = await res.json();
     assert.equal(body.data.point_count, 1);
   });
+
+  // #4832 gap-closure: METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is a NEW flag,
+  // deliberately left unset in wrangler.jsonc (no historical backfill --
+  // see handleTrajectory's own header comment) -- these tests only prove
+  // the wiring, not a live flip.
+  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = d1Env();
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          netuid: NETUID,
+          points: [],
+          point_count: 0,
+        }),
+    };
+    const res = await handleTrajectory(
+      req(`/api/v1/subnets/${NETUID}/trajectory`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/trajectory`),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(d1Called, false);
+  });
+
+  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const env = d1Env();
+    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const res = await handleTrajectory(
+      req(`/api/v1/subnets/${NETUID}/trajectory`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/trajectory`),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.data.points, []);
+  });
 });
 
 describe("handleEconomicsTrends", () => {
@@ -485,6 +539,51 @@ describe("handleEconomicsTrends", () => {
     const body = await res.json();
     assert.equal(body.data.day_count, 1);
   });
+
+  // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
+  // and same deliberately-unflipped rationale as handleTrajectory above.
+  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = d1Env();
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, day_count: 0, days: [] }),
+    };
+    const res = await handleEconomicsTrends(
+      req("/api/v1/economics/trends"),
+      env,
+      url("/api/v1/economics/trends"),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.day_count, 0);
+    assert.equal(d1Called, false);
+  });
+
+  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const env = d1Env();
+    env.METAGRAPH_SUBNET_SNAPSHOTS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const res = await handleEconomicsTrends(
+      req("/api/v1/economics/trends"),
+      env,
+      url("/api/v1/economics/trends"),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.data.days, []);
+  });
 });
 
 describe("handleUptime", () => {
@@ -549,6 +648,57 @@ describe("handleUptime", () => {
     assert.equal(body.data.surfaces.length, 1);
     assert.equal(body.data.surfaces[0].surface_id, "sn-7-acme-subnet-api");
     assert.equal(body.data.surfaces[0].days[0].uptime_ratio, 0.9);
+  });
+
+  // #4832 gap-closure: METAGRAPH_HEALTH_SOURCE is a NEW flag, deliberately
+  // left unset in wrangler.jsonc (see handleBulkHealthTrends' own header
+  // comment in analytics.mjs) -- these tests only prove the wiring, not a
+  // live flip.
+  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = d1Env();
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ netuid: NETUID, window: "90d", surfaces: [] }),
+    };
+    env.METAGRAPH_HEALTH_DB.prepare = () => {
+      d1Called = true;
+      throw new Error(
+        "D1 must not be queried when Postgres serves the request",
+      );
+    };
+    const body = await json(
+      await handleUptime(
+        req(`/api/v1/subnets/${NETUID}/uptime`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/uptime`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.deepEqual(body.data.surfaces, []);
+    assert.equal(d1Called, false);
+  });
+
+  test("flag=postgres falls back to D1 when DATA_API fails", async () => {
+    const env = d1Env();
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const body = await json(
+      await handleUptime(
+        req(`/api/v1/subnets/${NETUID}/uptime`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/uptime`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.deepEqual(body.data.surfaces, []);
   });
 });
 
@@ -738,6 +888,74 @@ describe("handleCompare", () => {
       await handleCompare(req("/"), env, url("/api/v1/compare?netuids=1,1,7")),
     );
     assert.deepEqual(body.data.requested_netuids, [1, 7]);
+  });
+
+  // #4832 gap-closure: handleCompare has no single D1 route to forward, so
+  // its health dimension synthesizes its own /api/v1/internal/compare-health
+  // request rather than reusing tryPostgresTier's usual "forward the caller's
+  // request unchanged" contract -- these tests prove that wiring in
+  // isolation (D1 called or not), same reused METAGRAPH_HEALTH_SOURCE flag
+  // as handleUptime above.
+  test("health dimension: flag=postgres serves the DATA_API response, D1 never queried", async () => {
+    let d1Called = false;
+    const env = createLocalArtifactEnv();
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          rows: [
+            { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 120 },
+          ],
+        }),
+    };
+    env.METAGRAPH_HEALTH_DB = {
+      prepare() {
+        d1Called = true;
+        throw new Error(
+          "D1 must not be queried when Postgres serves the request",
+        );
+      },
+    };
+    const body = await json(
+      await handleCompare(
+        req("/api/v1/compare"),
+        env,
+        url("/api/v1/compare?netuids=7&dimensions=health"),
+      ),
+    );
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(d1Called, false);
+  });
+
+  test("health dimension: flag=postgres falls back to D1 when DATA_API fails", async () => {
+    let d1Called = false;
+    const env = createLocalArtifactEnv();
+    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => {
+        throw new Error("boom");
+      },
+    };
+    const baseEnv = d1Env({
+      "FROM surface_status": [
+        { netuid: 7, surface_count: 5, ok_count: 4, avg_latency_ms: 90 },
+      ],
+    });
+    env.METAGRAPH_HEALTH_DB = {
+      prepare(sqlText) {
+        d1Called = true;
+        return baseEnv.METAGRAPH_HEALTH_DB.prepare(sqlText);
+      },
+    };
+    const body = await json(
+      await handleCompare(
+        req("/api/v1/compare"),
+        env,
+        url("/api/v1/compare?netuids=7&dimensions=health"),
+      ),
+    );
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(d1Called, true);
   });
 });
 

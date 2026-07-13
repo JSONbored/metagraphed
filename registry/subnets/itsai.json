@@ -152,6 +152,24 @@
         "submitted_by": "galuis116"
       },
       "notes": "Live SN32 miner leaderboard (UID/incentive/emission plus F1, false-positive, and average-precision scores from the Yuma validator) hosted as a public, no-auth Hugging Face Space. Explicitly named as the team's own leaderboard in docs/FAQ.md (\"Yes, we do have a leaderboard based on OTF scores\"); the app itself titles the page \"Subnet 32 Leaderboard\" and links back to github.com/It-s-AI/llm-detection. Fills the file's noted missing standalone-data-artifact gap."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-32-itsai-wandb",
+      "kind": "dashboard",
+      "name": "ItsAI validator W&B dashboard",
+      "notes": "Public Weights & Biases project for SN32 ItsAI (It's AI / LLM-detection) validator runs (entity itsai-dev, project subnet32; 119,000+ logged runs). Declared as the subnet's public W&B dashboard in the official It-s-AI/llm-detection repo — docs/FAQ.md (\"Yes, https://wandb.ai/itsai-dev/subnet32\") and detection/__init__.py (WANDB_ENTITY = 'itsai-dev', WANDB_PROJECT = 'subnet32', netuid default 32). Publicly readable, no auth; on a distinct host (wandb.ai) from the subnet's site and API.",
+      "provider": "its-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/It-s-AI/llm-detection/blob/main/docs/FAQ.md"
+      ],
+      "url": "https://wandb.ai/itsai-dev/subnet32"
     }
   ],
   "social": { "x": "https://x.com/ai_detection" },

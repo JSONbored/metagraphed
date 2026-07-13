@@ -4,9 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { fixtureDetailQuery } from "@/lib/metagraphed/queries";
 import type { FixtureIndexEntry } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { CopyButton } from "@/components/metagraphed/copy-button";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { CopyableCode, CopyButton, TimeAgo } from "@jsonbored/ui-kit";
 
 // #748: a collapsible "sample request/response" block on a surface card. A real
 // captured sample is the fastest path to a first successful call — the call
