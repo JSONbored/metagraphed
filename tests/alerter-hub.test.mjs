@@ -36,13 +36,13 @@ test("ALERTER_HUB_TRIGGER_CACHE_TTL_MS is the documented value (5 minutes)", () 
 
 // --- deliverAlertMatch (#4984 Part 3) -----------------------------------------
 
-test("deliverAlertMatch: webhook channel POSTs the built request", async () => {
+test("deliverAlertMatch: webhook channel POSTs the built request and resolves true on a confirmed 2xx", async () => {
   let received;
   const fetchFn = vi.fn(async (url, init) => {
     received = { url, init };
     return new Response(null, { status: 200 });
   });
-  await deliverAlertMatch(
+  const result = await deliverAlertMatch(
     triggerRow({ channel: "webhook", destination: "https://example.com/hook" }),
     { table: "account_events" },
     {},
@@ -51,6 +51,7 @@ test("deliverAlertMatch: webhook channel POSTs the built request", async () => {
   assert.equal(fetchFn.mock.calls.length, 1);
   assert.equal(received.url, "https://example.com/hook");
   assert.equal(JSON.parse(received.init.body).type, "metagraph.alert");
+  assert.equal(result, true);
 });
 
 test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slow target can't stall the shared broadcast() call indefinitely", async () => {
@@ -72,9 +73,9 @@ test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slo
   assert.equal(receivedSignal.aborted, false);
 });
 
-test("deliverAlertMatch: webhook channel sends nothing when the destination fails the defense-in-depth URL re-check", async () => {
+test("deliverAlertMatch: webhook channel sends nothing and resolves false when the destination fails the defense-in-depth URL re-check", async () => {
   const fetchFn = vi.fn();
-  await deliverAlertMatch(
+  const result = await deliverAlertMatch(
     triggerRow({
       channel: "webhook",
       destination: "http://not-https.example.com",
@@ -84,11 +85,12 @@ test("deliverAlertMatch: webhook channel sends nothing when the destination fail
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
+  assert.equal(result, false);
 });
 
-test("deliverAlertMatch: discord channel POSTs to the trigger's own webhook URL", async () => {
+test("deliverAlertMatch: discord channel POSTs to the trigger's own webhook URL and resolves true on a confirmed 2xx", async () => {
   const fetchFn = vi.fn(async () => new Response(null, { status: 204 }));
-  await deliverAlertMatch(
+  const result = await deliverAlertMatch(
     triggerRow({
       channel: "discord",
       destination: "https://discord.com/api/webhooks/1/token",
@@ -101,22 +103,24 @@ test("deliverAlertMatch: discord channel POSTs to the trigger's own webhook URL"
     fetchFn.mock.calls[0][0],
     "https://discord.com/api/webhooks/1/token",
   );
+  assert.equal(result, true);
 });
 
-test("deliverAlertMatch: telegram channel is a silent no-op when TELEGRAM_BOT_TOKEN is unset", async () => {
+test("deliverAlertMatch: telegram channel is a silent no-op (resolves false) when TELEGRAM_BOT_TOKEN is unset", async () => {
   const fetchFn = vi.fn();
-  await deliverAlertMatch(
+  const result = await deliverAlertMatch(
     triggerRow({ channel: "telegram", destination: "123456789" }),
     {},
     {},
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
+  assert.equal(result, false);
 });
 
-test("deliverAlertMatch: telegram channel POSTs to the bot API when the token is configured", async () => {
+test("deliverAlertMatch: telegram channel POSTs to the bot API and resolves true when the token is configured", async () => {
   const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
-  await deliverAlertMatch(
+  const result = await deliverAlertMatch(
     triggerRow({ channel: "telegram", destination: "123456789" }),
     {},
     { TELEGRAM_BOT_TOKEN: "bot-token" },
@@ -126,48 +130,59 @@ test("deliverAlertMatch: telegram channel POSTs to the bot API when the token is
     fetchFn.mock.calls[0][0],
     "https://api.telegram.org/botbot-token/sendMessage",
   );
+  assert.equal(result, true);
 });
 
-test("deliverAlertMatch: email channel is a silent no-op when RESEND_API_KEY or RESEND_FROM_ADDRESS is unset", async () => {
+test("deliverAlertMatch: email channel is a silent no-op (resolves false) when RESEND_API_KEY or RESEND_FROM_ADDRESS is unset", async () => {
   const fetchFn = vi.fn();
-  await deliverAlertMatch(triggerRow({ channel: "email" }), {}, {}, fetchFn);
+  const first = await deliverAlertMatch(
+    triggerRow({ channel: "email" }),
+    {},
+    {},
+    fetchFn,
+  );
   assert.equal(fetchFn.mock.calls.length, 0);
-  await deliverAlertMatch(
+  assert.equal(first, false);
+  const second = await deliverAlertMatch(
     triggerRow({ channel: "email" }),
     {},
     { RESEND_API_KEY: "k" }, // no from-address
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
+  assert.equal(second, false);
 });
 
-test("deliverAlertMatch: email channel POSTs to Resend when both secrets are configured", async () => {
+test("deliverAlertMatch: email channel POSTs to Resend and resolves true when both secrets are configured", async () => {
   const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
-  await deliverAlertMatch(
+  const result = await deliverAlertMatch(
     triggerRow({ channel: "email", destination: "a@b.com" }),
     {},
     { RESEND_API_KEY: "k", RESEND_FROM_ADDRESS: "alerts@metagraph.sh" },
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls[0][0], "https://api.resend.com/emails");
+  assert.equal(result, true);
 });
 
-test("deliverAlertMatch: an unrecognized channel is a silent no-op", async () => {
+test("deliverAlertMatch: an unrecognized channel is a silent no-op (resolves false)", async () => {
   const fetchFn = vi.fn();
-  await deliverAlertMatch(
+  const result = await deliverAlertMatch(
     triggerRow({ channel: "carrier-pigeon" }),
     {},
     {},
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
+  assert.equal(result, false);
 });
 
-test("deliverAlertMatch: a non-ok HTTP response is logged, not thrown", async () => {
+test("deliverAlertMatch: a non-ok HTTP response is logged, not thrown, and resolves false", async () => {
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   const fetchFn = vi.fn(async () => new Response(null, { status: 500 }));
-  await assert.doesNotReject(() =>
-    deliverAlertMatch(
+  let result;
+  await assert.doesNotReject(async () => {
+    result = await deliverAlertMatch(
       triggerRow({
         channel: "discord",
         destination: "https://discord.com/api/webhooks/1/t",
@@ -175,11 +190,31 @@ test("deliverAlertMatch: a non-ok HTTP response is logged, not thrown", async ()
       {},
       {},
       fetchFn,
-    ),
-  );
+    );
+  });
   assert.equal(errorSpy.mock.calls.length, 1);
   assert.match(errorSpy.mock.calls[0][0], /HTTP 500/);
+  assert.equal(result, false);
   errorSpy.mockRestore();
+});
+
+test("deliverAlertMatch: a rejected fetch (network error) propagates as a rejection rather than being swallowed here", async () => {
+  const fetchFn = vi.fn(async () => {
+    throw new Error("network down");
+  });
+  await assert.rejects(
+    () =>
+      deliverAlertMatch(
+        triggerRow({
+          channel: "discord",
+          destination: "https://discord.com/api/webhooks/1/t",
+        }),
+        {},
+        {},
+        fetchFn,
+      ),
+    /network down/,
+  );
 });
 
 test("deliverAlertMatch: defaults fetchFn to the global fetch when not injected", async () => {
@@ -356,6 +391,55 @@ test("refreshTriggers: keeps the stale cache and never throws when upstream.json
   assert.equal(hub.triggers[0].id, "existing");
 });
 
+// --- refreshTriggers: lastDeliveredAt pruning (#5024) -------------------------
+
+test("refreshTriggers: prunes lastDeliveredAt entries for trigger ids no longer present in the fresh triggers list", async () => {
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(
+        async () =>
+          new Response(
+            JSON.stringify({ triggers: [triggerRow({ id: "1" })] }),
+            { status: 200 },
+          ),
+      ),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  // "1" is still active after the refresh; "2" and "3" are stale (deleted
+  // or deactivated triggers whose rate-limit bookkeeping should not live
+  // forever).
+  hub.lastDeliveredAt.set("1", Date.now());
+  hub.lastDeliveredAt.set("2", Date.now());
+  hub.lastDeliveredAt.set("3", Date.now());
+  await hub.refreshTriggers();
+  assert.deepEqual([...hub.lastDeliveredAt.keys()], ["1"]);
+});
+
+test("refreshTriggers: never prunes lastDeliveredAt when the refresh fails (stale cache kept, not the trigger of a fetch that didn't happen)", async () => {
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(
+        async () =>
+          new Response(JSON.stringify({ error: "nope" }), { status: 500 }),
+      ),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  hub.lastDeliveredAt.set("stale-but-untouched", Date.now());
+  await hub.refreshTriggers();
+  assert.equal(hub.lastDeliveredAt.has("stale-but-untouched"), true);
+});
+
+test("refreshTriggers: never prunes lastDeliveredAt when DATA_API/token is unbound (refresh skipped entirely)", async () => {
+  const hub = new AlerterHub({}, {});
+  hub.lastDeliveredAt.set("untouched", Date.now());
+  await hub.refreshTriggers();
+  assert.equal(hub.lastDeliveredAt.has("untouched"), true);
+});
+
 // --- ensureTriggersLoaded -----------------------------------------------------
 
 test("ensureTriggersLoaded: refreshes when the cache is stale", async () => {
@@ -445,7 +529,7 @@ test("evaluate: returns {matched:0} and never calls deliver when nothing matches
 });
 
 test("evaluate: reports every matching trigger and calls deliver once per match", async () => {
-  const deliver = vi.fn().mockResolvedValue(undefined);
+  const deliver = vi.fn().mockResolvedValue(true);
   const hub = new AlerterHub({}, {}, { deliver });
   hub.triggers = [
     triggerRow({ id: "1", netuid: 7 }),
@@ -464,7 +548,7 @@ test("evaluate: reports every matching trigger and calls deliver once per match"
 });
 
 test("evaluate: a burst of matches for the SAME trigger within the rate-limit window delivers once and skips the rest", async () => {
-  const deliver = vi.fn().mockResolvedValue(undefined);
+  const deliver = vi.fn().mockResolvedValue(true);
   const hub = new AlerterHub({}, {}, { deliver });
   hub.triggers = [triggerRow({ netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
@@ -483,7 +567,7 @@ test("evaluate: a burst of matches for the SAME trigger within the rate-limit wi
 });
 
 test("evaluate: a DIFFERENT trigger's match is never rate-limited by another trigger's recent delivery", async () => {
-  const deliver = vi.fn().mockResolvedValue(undefined);
+  const deliver = vi.fn().mockResolvedValue(true);
   const hub = new AlerterHub({}, {}, { deliver });
   hub.triggers = [
     triggerRow({ id: "1", netuid: 7 }),
@@ -500,7 +584,7 @@ test("evaluate: a DIFFERENT trigger's match is never rate-limited by another tri
 });
 
 test("evaluate: once the rate-limit window elapses, the same trigger can deliver again", async () => {
-  const deliver = vi.fn().mockResolvedValue(undefined);
+  const deliver = vi.fn().mockResolvedValue(true);
   const hub = new AlerterHub({}, {}, { deliver });
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
@@ -515,13 +599,77 @@ test("evaluate: once the rate-limit window elapses, the same trigger can deliver
   assert.equal(deliver.mock.calls.length, 2);
 });
 
-test("evaluate: a rejecting deliver call never fails the overall evaluation", async () => {
+test("evaluate: a rejecting deliver call never fails the overall evaluation, and rolls back the rate-limit exactly like an explicit false return (#5023)", async () => {
   const deliver = vi.fn().mockRejectedValue(new Error("delivery exploded"));
   const hub = new AlerterHub({}, {}, { deliver });
-  hub.triggers = [triggerRow({ netuid: 7 })];
+  hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const result = await hub.evaluate({ table: "account_events", netuid: 7 });
   assert.equal(result.matched, 1);
+  assert.equal(result.delivered, 1); // still counted as "attempted"
+  // The optimistic set is rolled back on a rejection exactly like an
+  // explicit `false` return -- no prior entry existed, so it's deleted
+  // outright, leaving the trigger free to retry on the very next match.
+  assert.equal(hub.lastDeliveredAt.has("1"), false);
+});
+
+// --- evaluate: rate-limit rollback on failed delivery (#5023) -----------------
+
+test("evaluate: an explicit `false` return from deliver rolls back the optimistic rate-limit set (no prior entry -> deleted outright)", async () => {
+  const deliver = vi.fn().mockResolvedValue(false);
+  const hub = new AlerterHub({}, {}, { deliver });
+  hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
+  hub.triggersLoadedAt = Date.now();
+  const result = await hub.evaluate({ table: "account_events", netuid: 7 });
+  assert.equal(result.delivered, 1); // still attempted
+  assert.equal(hub.lastDeliveredAt.has("1"), false);
+});
+
+test("evaluate: a failed delivery lets the VERY NEXT matching event retry immediately instead of waiting out the rate-limit window", async () => {
+  const deliver = vi.fn().mockResolvedValue(false);
+  const hub = new AlerterHub({}, {}, { deliver });
+  hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
+  hub.triggersLoadedAt = Date.now();
+  const payload = { table: "account_events", netuid: 7 };
+
+  const first = await hub.evaluate(payload);
+  assert.equal(first.delivered, 1);
+  assert.equal(first.rate_limited, 0);
+
+  // No sleep, no clock mocking -- if the rollback hadn't happened, this
+  // second call (fired immediately after the first) would be rate-limited.
+  const second = await hub.evaluate(payload);
+  assert.equal(second.delivered, 1);
+  assert.equal(second.rate_limited, 0);
+  assert.equal(deliver.mock.calls.length, 2);
+});
+
+test("evaluate: a failed delivery rolls back to the PRIOR timestamp (not a full delete) when an earlier successful delivery already set one", async () => {
+  const deliver = vi.fn();
+  const hub = new AlerterHub({}, {}, { deliver });
+  hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
+  hub.triggersLoadedAt = Date.now();
+  const oldTimestamp = Date.now() - 10 * 60 * 1000; // well outside the window
+  hub.lastDeliveredAt.set("1", oldTimestamp);
+
+  deliver.mockResolvedValueOnce(false);
+  const result = await hub.evaluate({ table: "account_events", netuid: 7 });
+  assert.equal(result.delivered, 1); // attempted, but failed
+  // Rolled back to the exact prior value, not deleted -- the Map still
+  // reflects "last known good delivery was a while ago", which is also
+  // "not currently rate-limited", so behavior is equivalent either way,
+  // but this asserts the documented rollback mechanics precisely.
+  assert.equal(hub.lastDeliveredAt.get("1"), oldTimestamp);
+});
+
+test("evaluate: a SUCCESSFUL delivery keeps the optimistic set in place (no rollback)", async () => {
+  const deliver = vi.fn().mockResolvedValue(true);
+  const hub = new AlerterHub({}, {}, { deliver });
+  hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
+  hub.triggersLoadedAt = Date.now();
+  const before = Date.now();
+  await hub.evaluate({ table: "account_events", netuid: 7 });
+  assert.ok(hub.lastDeliveredAt.get("1") >= before);
 });
 
 test("evaluate: caps the delivery fan-out at ALERT_DELIVERY_CONCURRENCY (8) in-flight deliveries -- a broad-condition trigger set matching MANY distinct triggers on one event must not open one outbound fetch per match", async () => {
@@ -585,6 +733,187 @@ test("evaluate: triggers a refresh first when the cache is stale", async () => {
   const result = await hub.evaluate({ table: "account_events", netuid: 7 });
   assert.equal(refreshed, true);
   assert.equal(result.matched, 1);
+});
+
+// --- writeBackMatchCounts (#5022) ----------------------------------------------
+
+test("writeBackMatchCounts: no-op when DATA_API is unbound", async () => {
+  const hub = new AlerterHub(
+    {},
+    { ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN },
+  );
+  await assert.doesNotReject(() => hub.writeBackMatchCounts(["1"]));
+});
+
+test("writeBackMatchCounts: no-op when ALERT_TRIGGERS_INTERNAL_TOKEN is unset", async () => {
+  let called = false;
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async () => {
+        called = true;
+        return new Response(null, { status: 200 });
+      }),
+    },
+  );
+  await hub.writeBackMatchCounts(["1"]);
+  assert.equal(called, false);
+});
+
+test("writeBackMatchCounts: no-op when triggerIds is empty", async () => {
+  let called = false;
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async () => {
+        called = true;
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await hub.writeBackMatchCounts([]);
+  assert.equal(called, false);
+});
+
+test("writeBackMatchCounts: POSTs the matched trigger ids with the correct URL/header/body/timeout", async () => {
+  let received;
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (url, init) => {
+        received = { url: String(url), init };
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await hub.writeBackMatchCounts(["1", "2"]);
+  assert.equal(
+    received.url,
+    "https://data-api.internal/api/v1/internal/alert-triggers/matched",
+  );
+  assert.equal(received.init.method, "POST");
+  assert.equal(
+    received.init.headers["x-alert-triggers-internal-token"],
+    INTERNAL_TOKEN,
+  );
+  assert.deepEqual(JSON.parse(received.init.body), {
+    trigger_ids: ["1", "2"],
+  });
+  assert.ok(received.init.signal instanceof AbortSignal);
+});
+
+test("writeBackMatchCounts: logs but never throws on a non-ok response", async () => {
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async () => new Response(null, { status: 500 })),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await assert.doesNotReject(() => hub.writeBackMatchCounts(["1"]));
+  assert.equal(errorSpy.mock.calls.length, 1);
+  assert.match(errorSpy.mock.calls[0][0], /HTTP 500/);
+  errorSpy.mockRestore();
+});
+
+test("writeBackMatchCounts: never throws when the fetch itself rejects (network error / AbortSignal timeout)", async () => {
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async () => {
+        throw new Error("timeout");
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+  );
+  await assert.doesNotReject(() => hub.writeBackMatchCounts(["1"]));
+});
+
+// --- evaluate: write-back integration (#5022) ----------------------------------
+
+test("evaluate: writes back the FULL matched trigger id list, including a match that was rate-limited (not just the ones that clear it)", async () => {
+  let receivedBody;
+  const deliver = vi.fn().mockResolvedValue(true);
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async (_url, init) => {
+        receivedBody = JSON.parse(init.body);
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+    { deliver },
+  );
+  hub.triggers = [
+    triggerRow({ id: "1", netuid: 7 }),
+    triggerRow({ id: "2", netuid: 7 }),
+  ];
+  hub.triggersLoadedAt = Date.now();
+  hub.lastDeliveredAt.set("1", Date.now()); // "1" starts inside its rate-limit window
+  const result = await hub.evaluate({ table: "account_events", netuid: 7 });
+  assert.equal(result.rate_limited, 1);
+  assert.equal(result.delivered, 1);
+  assert.deepEqual(receivedBody.trigger_ids.sort(), ["1", "2"]);
+});
+
+test("evaluate: the delivery fan-out and the match-count write-back run CONCURRENTLY, not sequentially", async () => {
+  let resolveDelivery;
+  const deliver = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        resolveDelivery = () => resolve(true);
+      }),
+  );
+  let writebackObserved = false;
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async () => {
+        writebackObserved = true;
+        return new Response(null, { status: 200 });
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+    { deliver },
+  );
+  hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
+  hub.triggersLoadedAt = Date.now();
+  const evaluatePromise = hub.evaluate({ table: "account_events", netuid: 7 });
+  // Let every microtask-queued step run -- if the write-back were
+  // sequenced AFTER the delivery fan-out (the bug this test guards
+  // against), it could never have started yet, since delivery is
+  // deliberately held open below.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(writebackObserved, true);
+  resolveDelivery();
+  await evaluatePromise;
+});
+
+test("evaluate: a write-back failure never affects the evaluate() response shape", async () => {
+  const deliver = vi.fn().mockResolvedValue(true);
+  const hub = new AlerterHub(
+    {},
+    {
+      DATA_API: fakeDataApi(async () => {
+        throw new Error("data-api unreachable");
+      }),
+      ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+    },
+    { deliver },
+  );
+  hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
+  hub.triggersLoadedAt = Date.now();
+  const result = await hub.evaluate({ table: "account_events", netuid: 7 });
+  assert.deepEqual(result, {
+    matched: 1,
+    trigger_ids: ["1"],
+    delivered: 1,
+    rate_limited: 0,
+  });
 });
 
 // --- fetch (the /evaluate route) -----------------------------------------------

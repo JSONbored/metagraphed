@@ -34,6 +34,25 @@ vi.mock("postgres", () => ({
     }
     sql.begin = (cb) => cb(sql);
     sql.end = () => Promise.resolve();
+    // sql.unsafe(text, params) -- the #5022 match write-back's batched
+    // UPDATE builds its own placeholder text (plain scalar positional
+    // binds) rather than a bound JS array, matching workers/data-api.mjs's
+    // established neurons-sync-prune/compare-health convention (see that
+    // route's own comment for why: this Worker's Hyperdrive
+    // fetch_types:false setting breaks postgres.js's automatic
+    // ARRAY-literal serialization). Recorded into the SAME sqlCalls list
+    // so existing assertions work unchanged regardless of call form.
+    sql.unsafe = (text, params = []) => {
+      sqlCalls.push({ text, values: params });
+      if (failNextQuery.error) {
+        const err = failNextQuery.error;
+        failNextQuery.error = null;
+        return Promise.reject(err);
+      }
+      return Promise.resolve(
+        mockQueue.current.length ? mockQueue.current.shift() : [],
+      );
+    };
     return sql;
   },
 }));
@@ -626,6 +645,143 @@ test("active list: 200 with every active trigger reshaped for the evaluator, own
     sqlCalls[0].text,
     /SELECT \* FROM chain_alert_triggers WHERE active/,
   );
+});
+
+// --- POST /api/v1/internal/alert-triggers/matched (#5022 write-back) ---------
+
+test("matched writeback: 503 when ALERT_TRIGGERS_INTERNAL_TOKEN is not configured", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      body: { trigger_ids: ["1"] },
+    }),
+    { ...env, ALERT_TRIGGERS_INTERNAL_TOKEN: undefined },
+  );
+  assert.equal(res.status, 503);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("matched writeback: 401 when the internal token header is entirely absent", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      body: { trigger_ids: ["1"] },
+    }),
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("matched writeback: 401 when the internal token is present but wrong", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": "wrong" },
+      body: { trigger_ids: ["1"] },
+    }),
+  );
+  assert.equal(res.status, 401);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("matched writeback: 400 on malformed JSON body", async () => {
+  const request = new Request(
+    "https://d/api/v1/internal/alert-triggers/matched",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-alert-triggers-internal-token": INTERNAL_TOKEN,
+      },
+      body: "{not json",
+    },
+  );
+  const res = await fetch(request);
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("matched writeback: 400 when trigger_ids is missing", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: {},
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("matched writeback: 400 when trigger_ids is not an array", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: { trigger_ids: "1" },
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("matched writeback: 400 when trigger_ids is an empty array", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: { trigger_ids: [] },
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("matched writeback: 400 when every id in trigger_ids is malformed (filters to empty)", async () => {
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: { trigger_ids: ["not-an-id", "-1", "1.5", null] },
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(sqlCalls.length, 0);
+});
+
+test("matched writeback: 200, filters out malformed ids, and issues a single batched UPDATE incrementing match_count and setting last_matched_at", async () => {
+  mockQueue.current.push([{ id: "1" }, { id: "2" }]);
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: { trigger_ids: ["1", "2", "not-an-id"] },
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { updated: 2 });
+  assert.equal(sqlCalls.length, 1);
+  const call = sqlCalls[0];
+  assert.match(call.text, /UPDATE chain_alert_triggers/);
+  assert.match(call.text, /match_count = match_count \+ 1/);
+  assert.match(call.text, /last_matched_at = \$1/);
+  assert.match(call.text, /WHERE id IN \(\$2::bigint, \$3::bigint\)/);
+  // $1 is the shared `now` timestamp; $2.. are the validated ids, in
+  // order, with the malformed one already filtered out.
+  assert.equal(typeof call.values[0], "number");
+  assert.deepEqual(call.values.slice(1), ["1", "2"]);
+});
+
+test("matched writeback: 502 when the UPDATE itself fails", async () => {
+  failNextQuery.error = new Error("boom");
+  const res = await fetch(
+    req("/api/v1/internal/alert-triggers/matched", {
+      method: "POST",
+      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
+      body: { trigger_ids: ["1"] },
+    }),
+  );
+  assert.equal(res.status, 502);
 });
 
 // --- method-dispatch fallthrough -----------------------------------------------

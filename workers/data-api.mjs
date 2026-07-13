@@ -2474,6 +2474,70 @@ async function handleAlertTriggersActiveList(request, env) {
   });
 }
 
+// Internal-only: the #5022 evaluator write-back. AlerterHub.evaluate()
+// (workers/alerter-hub.mjs) POSTs the FULL matched-trigger id list for a
+// chain event here -- every id whose conditions were satisfied, regardless
+// of whether the burst rate-limiter actually let it deliver -- so
+// chain_alert_triggers.match_count/last_matched_at reflect "this trigger's
+// conditions were satisfied", independent of delivery. Gated the SAME way
+// as the active-list route above: a DIFFERENT capability from the
+// create/owner tokens (write access to every trigger's own bookkeeping
+// columns, not just its own row), so it reuses that same
+// ALERT_TRIGGERS_INTERNAL_TOKEN secret rather than minting a third one.
+async function handleAlertTriggersMatchedWriteback(request, env) {
+  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
+  if (!configured) {
+    return writeJson(
+      {
+        error:
+          "the alert-triggers match write-back is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return writeJson(
+      {
+        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  const { body, error } = await readAlertTriggerBody(request);
+  if (error) return error;
+  const ids = Array.isArray(body?.trigger_ids)
+    ? body.trigger_ids.filter(isValidAlertTriggerId).map(String)
+    : [];
+  if (ids.length === 0) {
+    return writeJson(
+      { error: "trigger_ids must be a non-empty array of trigger ids" },
+      400,
+    );
+  }
+  return withAlertTriggersSql(env, async (sql) => {
+    const now = Date.now();
+    // Plain scalar positional binds via sql.unsafe, NOT a bound JS array
+    // (`id = ANY($1)`) -- see the neurons-sync prune query's own comment
+    // (handleNeuronsSync, above) for why: this Worker's Hyperdrive
+    // fetch_types:false setting breaks postgres.js's automatic
+    // ARRAY-literal serialization, while scalar binds are unaffected.
+    // $1 is the shared `now` timestamp; $2.. are the (already
+    // isValidAlertTriggerId-validated) ids.
+    const placeholders = ids.map((_, i) => `$${i + 2}::bigint`).join(", ");
+    const updated = await sql.unsafe(
+      `UPDATE chain_alert_triggers
+       SET match_count = match_count + 1,
+           last_matched_at = $1
+       WHERE id IN (${placeholders})
+       RETURNING id`,
+      [now, ...ids],
+    );
+    return writeJson({ updated: updated.length });
+  });
+}
+
 async function handleAlertTriggersRoute(request, env, url) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "alerts", "triggers", <id?>]
@@ -2571,6 +2635,14 @@ export default {
       url.pathname === "/api/v1/internal/alert-triggers-active"
     ) {
       return handleAlertTriggersActiveList(request, env);
+    }
+    // #5022: the evaluator's own write-back for match_count/last_matched_at
+    // -- see handleAlertTriggersMatchedWriteback's own header comment.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/alert-triggers/matched"
+    ) {
+      return handleAlertTriggersMatchedWriteback(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
