@@ -16,7 +16,7 @@ indexer-rs → (writes, as it always has) → Postgres
                                               │
                                     pg_notify('chain_firehose', <payload>)
                                               │
-                          box-side relay (LISTEN, #4981) → Cloudflare Durable Object (#4982, live)
+                     box-side relay (LISTEN, #4981, live) → Cloudflare Durable Object (#4982, live)
                                                                           │
                                               SSE / WS (#4982, live) / GraphQL subs / MCP (#4983, live)
 ```
@@ -63,7 +63,7 @@ Row-level, not statement-level: simpler for a first cut, at the cost of one
 becomes a real bottleneck, the documented fast-follow is a statement-level
 trigger with a `REFERENCING NEW TABLE AS new_rows` transition table.
 
-## The relay (#4981, not yet built)
+## The relay (#4981, live)
 
 A new, small, self-hosted process on the indexer box — `LISTEN
 chain_firehose;`, forward each notification to the Durable Object over HTTP,
@@ -257,7 +257,21 @@ a Durable Object alarm.
 Both `workers/mcp-session-hub.mjs` and the `src/mcp-server.mjs` additions are
 unit-tested at effectively 100% (no `WebSocketPair`-shaped code here, unlike
 `ChainFirehoseHub` -- `state.storage` is a plain async KV API and
-`ReadableStream` is a real Web Streams API under Node/vitest).
+`ReadableStream` is a real Web Streams API under Node/vitest), and
+`scripts/validate-mcp.mjs` runs the full `subscribe -> ingest -> notify ->
+read` round trip through two real (in-memory-backed) Durable Object
+instances on every CI run.
+
+**Verified live against the deployed Worker** (same bar as #4982's SSE/WS and
+this issue's own GraphQL-subscriptions verification, both above): a real
+client completed the full `initialize` (session minted) -> `resources/
+subscribe` -> `GET` (SSE stream opens) -> `resources/read` -> `resources/
+unsubscribe` -> `DELETE` (terminate) -> `GET` (404, session gone) lifecycle
+against `https://api.metagraph.sh/mcp`, and the push itself carried a real
+chain event: block 8608870, a `Balances.Deposit` `chain_events` row --
+confirmed 2026-07-13, immediately after #5007 merged and propagated (no
+Cloudflare edge-propagation retry needed this time, unlike the graphql-ws
+verification above).
 
 ## The alerter (#4984, not yet built)
 
