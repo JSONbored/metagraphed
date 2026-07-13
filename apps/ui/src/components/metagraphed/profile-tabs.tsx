@@ -38,7 +38,7 @@ export function ProfileTabs({ tabs, defaultTab }: { tabs: ProfileTabSpec[]; defa
                   })
                 }
                 className={classNames(
-                  "relative inline-flex items-center gap-1.5 py-3 text-[13px] font-medium whitespace-nowrap transition-colors",
+                  "relative inline-flex items-center gap-1.5 py-3 text-[13px] font-medium whitespace-nowrap transition-colors mg-focus-ring",
                   isActive
                     ? "text-ink-strong after:absolute after:left-0 after:right-0 after:-bottom-px after:h-[2px] after:bg-ink-strong after:content-['']"
                     : "text-ink-muted hover:text-ink-strong",
