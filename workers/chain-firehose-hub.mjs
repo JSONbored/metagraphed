@@ -433,11 +433,14 @@ export class ChainFirehoseHub {
   // limit), so one IP could otherwise consume the entire global
   // CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS budget through just one
   // connection. `clientIp` may be undefined for callers that don't go
-  // through the real WS/graphql-ws path (e.g. existing unit tests calling
-  // this with one argument) -- treated as the same untracked/anonymous
-  // bucket handleSubscribe's SSE/WS branches already use for a missing IP
-  // (resolveClientIp can itself return undefined), so the per-IP check is
-  // simply skipped rather than crashing or double-counting under a bogus key.
+  // through the real WS/graphql-ws path -- in production, context.clientIp
+  // is always populated (resolveClientIp, workers/config.mjs, falls back to
+  // a fixed "anonymous" bucket rather than ever returning undefined), so the
+  // only real source of a falsy clientIp here is a direct programmatic call
+  // with one argument (e.g. existing unit tests) -- treated the same
+  // untracked/anonymous-bucket way handleSubscribe's SSE/WS branches already
+  // handle a missing IP, so the per-IP check is simply skipped rather than
+  // crashing or double-counting under a bogus key.
   subscribeChainEvents(topics, clientIp) {
     if (
       this.chainEventSubscribers.size >=

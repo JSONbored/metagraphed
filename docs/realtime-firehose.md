@@ -149,6 +149,25 @@ each one costing a real `execute()`+`send()` on every future `broadcast()`.
 resolver turns that into a clear `GraphQLError` rather than hanging the
 client on a stream that will never yield.
 
+**Per-IP sub-quotas (#5004):** every cap above is global, so one actor
+looping past it could otherwise lock out every other client of that
+transport. `CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP` (20, `resolveClientIp`)
+bounds SSE connections, plain-firehose WS connections, and graphql-ws
+socket upgrades per IP -- well under the global caps, tracked via
+`sseClientsByIp`/`wsClientsByIp` and released on the same
+connect/disconnect lifecycle hooks the underlying `sseClients`/
+`state.getWebSockets()` bookkeeping already uses, so the two can never
+drift apart. A WS-connection cap alone doesn't bound how many `chainEvents`
+subscriptions get multiplexed onto one already-open graphql-ws socket
+(graphql-ws itself imposes no per-socket subscription limit), so
+`CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP` (20) is a second,
+independent sub-quota on subscription count, with the connecting IP
+threaded from the WS upgrade through graphql-ws's own `opened()`/`context()`
+extension point (`ctx.extra.ip` -> `context.clientIp`) into
+`subscribeChainEvents`. All four per-IP Maps are in-memory only and reset
+to empty on every Durable Object reconstruction, the same hibernation-reset
+convention every other in-memory Map on this class already follows.
+
 Testability: this repo has no Durable Object-capable test harness (no
 `@cloudflare/vitest-pool-workers`/Miniflare). Every actual decision the hub
 makes (topic parsing/matching, ingest payload validation, SSE framing) is a
