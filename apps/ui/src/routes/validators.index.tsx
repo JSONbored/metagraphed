@@ -12,6 +12,7 @@ import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
+import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
@@ -76,6 +77,7 @@ function ValidatorsPage() {
         description="Network-wide validator directory — hotkeys ranked across all Bittensor subnets, computed live from the chain-direct metagraph."
         actions={<ShareButton />}
       />
+      <ValidatorGuide />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <ValidatorsTable
