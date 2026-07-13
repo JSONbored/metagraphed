@@ -57,6 +57,25 @@
         "https://taomarketcap.com/subnets/107"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/107"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-dashboard",
+      "kind": "dashboard",
+      "name": "Minos live subnet intelligence dashboard",
+      "notes": "Public no-auth web dashboard for SN107 Minos at theminos.ai/dashboard (page title \"Dashboard | <n>/<N> Miners Active | Minos\") showing live subnet intelligence: active miner count, network score, genomes analyzed, a top-miners leaderboard, network stats, and live activity. Linked as the \"ENTER_DASHBOARD\" action from the official theminos.ai homepage (the site named in the minos-protocol/minos_subnet README). Distinct host from the api.theminos.ai API surfaces.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
+        "https://theminos.ai/"
+      ],
+      "url": "https://theminos.ai/dashboard"
     }
   ],
   "contact": "contact@theminos.ai"
