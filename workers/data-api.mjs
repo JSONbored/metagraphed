@@ -226,6 +226,7 @@ import {
   UPTIME_WINDOWS,
   MAX_UPTIME_ROWS,
   RPC_USAGE_BUCKETS,
+  resolveClientIp,
 } from "./config.mjs";
 import {
   formatBulkTrends,
@@ -2244,15 +2245,15 @@ async function readAlertTriggerBody(request) {
   }
 }
 
+// Returns the SAME 404 a nonexistent id gets (found by adversarial review:
+// returning 403 here would let an unauthenticated caller distinguish
+// "wrong token" from "no such trigger" purely from the status code,
+// building an existence oracle over sequential ids with zero credentials --
+// exactly the "no public view" property this route is designed to have).
 function requireAlertTriggerOwner(request, storedOwnerToken) {
   const provided = request.headers.get(ALERT_TRIGGER_OWNER_TOKEN_HEADER) || "";
   if (isValidAlertOwnerToken(provided, storedOwnerToken)) return null;
-  return writeJson(
-    {
-      error: `provide the trigger's ${ALERT_TRIGGER_OWNER_TOKEN_HEADER} header`,
-    },
-    403,
-  );
+  return writeJson({ error: "no such trigger" }, 404);
 }
 
 async function handleAlertTriggerCreate(request, env) {
@@ -2271,6 +2272,24 @@ async function handleAlertTriggerCreate(request, env) {
       { error: `provide a valid ${ALERT_TRIGGER_CREATE_TOKEN_HEADER} header` },
       401,
     );
+  }
+
+  // Found by adversarial review: ALERT_TRIGGER_CREATE_TOKEN is a SHARED
+  // anti-abuse secret, not a per-user credential -- anyone holding it could
+  // otherwise script unbounded trigger creation, and every row becomes a
+  // permanent per-event cost in AlerterHub.matchingTriggers()'s O(active
+  // triggers) scan. Skipped when unbound (local dev/CI), matching every
+  // other optional rate-limiter binding's convention in this codebase.
+  if (env.ALERT_TRIGGER_CREATE_RATE_LIMITER?.limit) {
+    const { success } = await env.ALERT_TRIGGER_CREATE_RATE_LIMITER.limit({
+      key: resolveClientIp(request),
+    });
+    if (!success) {
+      return writeJson(
+        { error: "too many alert trigger creation requests; slow down" },
+        429,
+      );
+    }
   }
 
   const { body, error } = await readAlertTriggerBody(request);
@@ -2321,22 +2340,75 @@ async function handleAlertTriggerGet(request, env, id) {
   });
 }
 
+// Fields present in a PATCH body with a real (non-null) value OVERRIDE the
+// existing row; fields OMITTED keep whatever the row already has (true
+// partial-update semantics, the bug the adversarial review found: a naive
+// full-replace here silently NULLs out -- and so WIDENS the match scope of
+// -- every condition field the caller didn't resend). A field explicitly
+// sent as `null` is ALSO treated as "keep the existing value", not as "clear
+// it": validateAlertTriggerInput (shared with CREATE) only recognizes "not
+// provided" via `!== undefined` and actively REJECTS an explicit `null` for
+// most fields (e.g. `netuid: null` fails its `Number.isInteger` check), so
+// there is no way to route an intentional-clear through that validator
+// without special-casing PATCH-only null handling inside a CREATE-shared
+// function. Both the existing-row base and the incoming body have their
+// null-valued keys stripped before merging -- for the base, this turns a
+// legitimately-unset existing field (stored as SQL NULL) into "not
+// provided" so it doesn't round-trip back in and fail validation; for the
+// body, it means an explicit `null` degrades to a no-op rather than a 400.
+// There is currently no supported way to explicitly clear an optional
+// condition field back to unset via PATCH -- only DELETE + recreate.
+function omitNullValues(obj) {
+  const out = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== null) out[key] = value;
+  }
+  return out;
+}
+
 async function handleAlertTriggerUpdate(request, env, id) {
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
   const { body, error } = await readAlertTriggerBody(request);
   if (error) return error;
-  const validated = validateAlertTriggerInput(body);
-  if (!validated.ok) {
-    return writeJson({ error: validated.error }, 400);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return writeJson({ error: "Request body must be a JSON object." }, 400);
   }
   return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
-      await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
+      await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
     const authError = requireAlertTriggerOwner(request, existing.owner_token);
     if (authError) return authError;
+
+    // Found by adversarial review: validating the raw PATCH body directly
+    // (the original version of this function) meant validateAlertTriggerInput's
+    // CREATE-oriented "omitted -> null" defaulting silently NULLed out any
+    // condition field the caller didn't resend, unintentionally WIDENING a
+    // trigger's match scope on every partial edit (e.g. renaming a
+    // netuid-scoped trigger without resending netuid would drop the netuid
+    // filter entirely). Merging onto the existing row first fixes this.
+    const merged = {
+      ...omitNullValues({
+        name: existing.name,
+        table_filter: existing.table_filter,
+        netuid: existing.netuid,
+        event_kind: existing.event_kind,
+        account: existing.account,
+        min_amount_tao:
+          existing.min_amount_tao === null
+            ? null
+            : Number(existing.min_amount_tao),
+        channel: existing.channel,
+        destination: existing.destination,
+      }),
+      ...omitNullValues(body),
+    };
+    const validated = validateAlertTriggerInput(merged);
+    if (!validated.ok) {
+      return writeJson({ error: validated.error }, 400);
+    }
 
     const v = validated.value;
     const now = Date.now();
