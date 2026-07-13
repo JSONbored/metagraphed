@@ -25,10 +25,19 @@ interface Rect {
 
 const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
 
-// A tile only shows its value readout when it is large enough to fit one without
-// clipping — width/height are percentages of the map box.
-const MIN_TILE_W_FOR_VALUE = 12;
-const MIN_TILE_H_FOR_VALUE = 14;
+// Inline text is only drawn on tiles big enough to hold it without overlapping
+// or truncating — width/height are percentages of the map box. In a skewed
+// distribution (one dominant validator, several tiny tail tiles) the tail tiles
+// squash to near-zero, so an always-drawn label stacked its value on top of
+// itself into illegible text (#3937). Instead: below the label threshold a tile
+// draws no inline text at all (its full label/value/share stay available via the
+// native `title` tooltip); the value only appears once the tile is tall enough
+// to fit a second line under the label. Thresholds are tuned for the smallest
+// (mobile) map size, so a tile legible there is legible at every larger width.
+const MIN_TILE_W_FOR_LABEL = 16;
+const MIN_TILE_H_FOR_LABEL = 12;
+const MIN_TILE_W_FOR_VALUE = 16;
+const MIN_TILE_H_FOR_VALUE = 22;
 
 /** Worst (largest) aspect ratio in a row laid along `side`. */
 function worstRatio(areas: number[], side: number): number {
@@ -162,13 +171,17 @@ export function TreemapMini({
             className="flex h-full w-full flex-col justify-between rounded-sm border border-background/40 p-1.5"
             style={{ background: t.color ?? "var(--accent)" }}
           >
-            <span className="truncate font-mono text-[10px] font-medium leading-none text-accent-foreground">
-              {t.label}
-            </span>
-            {t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? (
-              <span className="truncate font-mono text-[9px] leading-none text-accent-foreground/80">
-                {formatValue(t.value)}
-              </span>
+            {t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? (
+              <>
+                <span className="truncate font-mono text-[10px] font-medium leading-none text-accent-foreground">
+                  {t.label}
+                </span>
+                {t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? (
+                  <span className="truncate font-mono text-[9px] leading-none text-accent-foreground/80">
+                    {formatValue(t.value)}
+                  </span>
+                ) : null}
+              </>
             ) : null}
           </div>
         </div>

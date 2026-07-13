@@ -38,6 +38,9 @@ export const WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION = 8;
 const MAX_FILTER_NETUIDS = 64;
 const MAX_FILTER_KINDS = 8;
 const VALID_CHANGE_KINDS = new Set(["subnets", "artifacts"]);
+const WEBHOOK_DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
+const WEBHOOK_DNS_RECORD_TYPES = ["A", "AAAA"];
+const WEBHOOK_DNS_TIMEOUT_MS = 3000;
 
 export function subscriptionStorageKey(id) {
   return `${WEBHOOK_KV_PREFIX}${id}`;
@@ -147,6 +150,58 @@ export function isPublicWebhookUrl(value) {
   // Registrable hostname: require at least one dot so bare labels ("router")
   // that may resolve to LAN hosts are rejected.
   return host.includes(".");
+}
+
+function dnsJsonAddressAnswers(body) {
+  if (!body || typeof body !== "object" || !Array.isArray(body.Answer)) {
+    return [];
+  }
+  return body.Answer.map((answer) => String(answer?.data || "").trim()).filter(
+    (data) =>
+      isIpv4Literal(normalizedHostname(data)) ||
+      normalizedHostname(data).includes(":"),
+  );
+}
+
+async function resolveWebhookDnsJson(
+  host,
+  recordType,
+  fetchImpl,
+  endpoint = WEBHOOK_DNS_JSON_ENDPOINT,
+) {
+  const query = new URL(endpoint);
+  query.searchParams.set("name", host);
+  query.searchParams.set("type", recordType);
+  try {
+    const response = await fetchImpl(query.toString(), {
+      headers: { accept: "application/dns-json" },
+      redirect: "manual",
+      signal: AbortSignal.timeout(WEBHOOK_DNS_TIMEOUT_MS),
+    });
+    if (!response?.ok) return [];
+    return dnsJsonAddressAnswers(await response.json());
+  } catch {
+    // A DoH timeout/network error/malformed-JSON parse failure for THIS
+    // record type must not sink the other record type's lookup via
+    // resolveWebhookHostnamesWithDoh's Promise.all below -- treat it as "no
+    // addresses from this lookup" so a public answer from the other record
+    // type can still be used, and so a fully-failed lookup fails closed
+    // (empty addresses -> resolvedWebhookUrlStatus's `allPublic` check on an
+    // empty array is false -> "unsafe") instead of throwing.
+    return [];
+  }
+}
+
+export async function resolveWebhookHostnamesWithDoh(
+  host,
+  { fetchImpl = fetch, dnsJsonEndpoint = WEBHOOK_DNS_JSON_ENDPOINT } = {},
+) {
+  const lookups = await Promise.all(
+    WEBHOOK_DNS_RECORD_TYPES.map((type) =>
+      resolveWebhookDnsJson(host, type, fetchImpl, dnsJsonEndpoint),
+    ),
+  );
+  return lookups.flat();
 }
 
 // Resolve + classify a webhook URL into one of three outcomes:

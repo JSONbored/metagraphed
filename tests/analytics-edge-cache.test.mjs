@@ -75,6 +75,9 @@ function rowsForSql(sql) {
       { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
     ];
   }
+  if (sql.includes("FROM neurons")) {
+    return [{ captured_at: 1_750_009_000_000 }];
+  }
   return [];
 }
 
@@ -882,6 +885,99 @@ describe("analytics edge cache", () => {
       "the per-response fallback marker must block cache.put",
     );
     assert.equal(cache.store.size, 0);
+  });
+
+  test("HEAD requests use the GET edge-cache key while returning HEAD semantics", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+    const request = new Request("https://api.metagraph.sh/api/v1/test", {
+      method: "HEAD",
+    });
+    let buildCalls = 0;
+    let buildMethod = null;
+
+    const first = await withEdgeCache(
+      request,
+      ctx,
+      env,
+      "unit",
+      async (req) => {
+        buildCalls += 1;
+        buildMethod = req.method;
+        return envelopeResponse(
+          req,
+          {
+            data: { ok: true },
+            meta: { generated_at: LAST_RUN_AT },
+          },
+          "short",
+        );
+      },
+    );
+    await Promise.resolve();
+
+    assert.equal(first.status, 200);
+    assert.equal(await first.text(), "");
+    assert.equal(buildMethod, "GET");
+    assert.equal(buildCalls, 1);
+    assert.deepEqual(cache.putKeys, [expectedKey("unit", "/api/v1/test")]);
+
+    const second = await withEdgeCache(
+      request,
+      ctx,
+      env,
+      "unit",
+      async (_req) => {
+        buildCalls += 1;
+        throw new Error("cached HEAD should not rebuild");
+      },
+    );
+
+    assert.equal(second.status, 200);
+    assert.equal(await second.text(), "");
+    assert.equal(buildCalls, 1);
+    assert.equal(cache.matchCalls, 2);
+  });
+
+  test("HEAD /api/v1/validators reuses the GET edge cache before the Postgres tier", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const dataApiMethods = [];
+    const env = {
+      ...analyticsEnv([]),
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        async fetch(request) {
+          dataApiMethods.push(request.method);
+          return Response.json({
+            schema_version: 1,
+            sort: "subnet_count",
+            limit: 20,
+            captured_at: null,
+            block_number: null,
+            validator_count: 0,
+            validators: [],
+          });
+        },
+      },
+    };
+    const request = new Request("https://api.metagraph.sh/api/v1/validators", {
+      method: "HEAD",
+    });
+
+    const first = await handleRequest(request, env, ctx);
+    await Promise.resolve();
+    const second = await handleRequest(request, env, ctx);
+
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.equal(await first.text(), "");
+    assert.equal(await second.text(), "");
+    assert.deepEqual(dataApiMethods, ["GET"]);
+    assert.equal(cache.matchCalls, 2);
   });
 
   test("NO-CACHE-ON-ERROR: a D1 failure with a snapshot stamp is served but not cached", async () => {

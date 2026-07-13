@@ -10,6 +10,19 @@ import {
   repoRoot,
 } from "../scripts/lib.mjs";
 
+// This exact path is load-bearing: scan-public-safety.mjs's own
+// mirroredFixturePatterns exempts dist/metagraph-r2/metagraph/fixtures/*.json
+// from the soft wallet/key terminology rules (legitimate third-party API docs
+// mentioning "private key"/"seed phrase" in a non-leaking context), and this
+// describe block specifically tests that exemption -- do not relocate it.
+// It is, however, also where validate-schemas.mjs's templated-artifact lookup
+// lists real artifact JSON to schema-validate, which is why this file is
+// pinned to serial execution (see package.json's test:ci exclude list): under
+// vitest's default parallel file execution, this test's transient fixture
+// write/cleanup raced validate-error-messages.test.mjs's own (concurrent)
+// validate-schemas.mjs invocation scanning the same directory, an
+// intermittent ENOENT once this test's afterEach deleted the fixture before
+// the other process finished reading it.
 const FIXTURE_DIR = path.join(repoRoot, "dist/metagraph-r2/metagraph/fixtures");
 const TEST_FIXTURE = "__public_safety_test__.json";
 const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);

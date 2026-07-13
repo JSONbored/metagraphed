@@ -4215,6 +4215,8 @@ export interface components {
                 hotkey: string | null;
                 /** Format: date-time */
                 last_set_at: string | null;
+                /** @description Subnet scope for uid-only setters; null when a network-wide hotkey identifies the setter. */
+                netuid: number | null;
                 share: number | null;
                 uid: number | null;
                 weight_sets: number;
@@ -14826,6 +14828,7 @@ export interface operations {
                      *             "first_set_at": "2026-06-01T00:00:00.000Z",
                      *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *             "last_set_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": null,
                      *             "share": 0.75,
                      *             "uid": 3,
                      *             "weight_sets": 30
@@ -14834,6 +14837,7 @@ export interface operations {
                      *             "first_set_at": "2026-06-01T00:00:00.000Z",
                      *             "hotkey": null,
                      *             "last_set_at": "2026-06-01T00:00:00.000Z",
+                     *             "netuid": 5,
                      *             "share": 0.25,
                      *             "uid": 8,
                      *             "weight_sets": 10
@@ -14872,8 +14876,8 @@ export interface operations {
                         data?: components["schemas"]["ChainWeightSettersArtifact"];
                     };
                     /**
-                     * @example hotkey,uid,weight_sets,share,first_set_at,last_set_at
-                     *     5Grw_sample,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z
+                     * @example hotkey,netuid,uid,weight_sets,share,first_set_at,last_set_at
+                     *     5Grw_sample,,3,40,0.5714,2026-06-01T00:00:00.000Z,2026-06-07T00:00:00.000Z
                      */
                     "text/csv": string;
                 };

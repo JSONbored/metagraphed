@@ -79,6 +79,24 @@ const BLOCK_MS: i64 = 12_000;
 
 type Api = OnlineClient<PolkadotConfig>;
 
+fn redact_rpc_url(url: &str) -> String {
+    let scheme_end = url.find("://").map(|idx| idx + 3).unwrap_or(0);
+    let after_scheme = &url[scheme_end..];
+    let authority_len = after_scheme
+        .find(|ch| matches!(ch, '/' | '?' | '#'))
+        .unwrap_or(after_scheme.len());
+    let (authority, rest) = after_scheme.split_at(authority_len);
+    let safe_authority = authority
+        .rsplit_once('@')
+        .map(|(_, host)| host)
+        .unwrap_or(authority);
+    let path_len = rest
+        .find(|ch| matches!(ch, '?' | '#'))
+        .unwrap_or(rest.len());
+    let safe_rest = &rest[..path_len];
+    format!("{}{}{}", &url[..scheme_end], safe_authority, safe_rest)
+}
+
 // KNOWN ISSUE fix (was "unresolved" above, 2026-07-03): subxt 0.50's per-block
 // metadata fetch depends on a chainHead_v1_follow subscription that can silently
 // stop emitting events (0% CPU, zero further websocket traffic, no error) --
@@ -1338,7 +1356,10 @@ async fn connect_chain(url: &str) -> Result<Api> {
     // half-open socket surfaces as a timed-out request within 60s rather than never).
     use subxt::backend::LegacyBackend;
     use subxt::rpcs::client::{ReconnectingRpcClient, RpcClient};
-    eprintln!("connect_chain: building reconnecting rpc client -> {url}");
+    eprintln!(
+        "connect_chain: building reconnecting rpc client -> {}",
+        redact_rpc_url(url)
+    );
     let inner = ReconnectingRpcClient::builder()
         .request_timeout(Duration::from_secs(60))
         .connection_timeout(Duration::from_secs(20))
@@ -1574,6 +1595,7 @@ async fn main() -> Result<()> {
         .init();
     let rpc_url = std::env::var("EVENTS_RPC_URL")
         .unwrap_or_else(|_| "wss://archive.chain.opentensor.ai:443".to_string());
+    let rpc_url_log = redact_rpc_url(&rpc_url);
     let client = Arc::new(ChainClient::connect(rpc_url.clone()).await?);
     eprintln!("main: connect_chain returned, api ready");
 
@@ -1637,7 +1659,7 @@ async fn main() -> Result<()> {
     };
 
     eprintln!(
-        "backfill #{from}..#{to} (head={head}, resume@#{start}, conc={concurrency}, chunk={chunk}, rpc={rpc_url})"
+        "backfill #{from}..#{to} (head={head}, resume@#{start}, conc={concurrency}, chunk={chunk}, rpc={rpc_url_log})"
     );
     let total = to.saturating_sub(from) + 1;
     let mut next = start;
@@ -1835,5 +1857,36 @@ mod type_name_tests {
         ));
         let registry = builder.finish();
         assert_eq!(type_name(tuple_id, &registry), "(Vec<u16>, Vec<u16>)");
+    }
+}
+
+#[cfg(test)]
+mod rpc_url_redaction_tests {
+    use super::*;
+
+    #[test]
+    fn redact_rpc_url_removes_userinfo_query_and_fragment() {
+        let redacted = redact_rpc_url(
+            "wss://user:pass@example.com/v1?api_key=SECRET_TOKEN_123&project=metagraphed#frag",
+        );
+
+        assert_eq!(redacted, "wss://example.com/v1");
+        assert!(!redacted.contains("user"));
+        assert!(!redacted.contains("pass"));
+        assert!(!redacted.contains("SECRET_TOKEN_123"));
+        assert!(!redacted.contains("project="));
+        assert!(!redacted.contains("frag"));
+    }
+
+    #[test]
+    fn redact_rpc_url_preserves_non_secret_connection_target() {
+        assert_eq!(
+            redact_rpc_url("wss://archive.chain.opentensor.ai:443"),
+            "wss://archive.chain.opentensor.ai:443"
+        );
+        assert_eq!(
+            redact_rpc_url("ws://127.0.0.1:9944/path"),
+            "ws://127.0.0.1:9944/path"
+        );
     }
 }

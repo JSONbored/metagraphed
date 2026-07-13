@@ -54,3 +54,36 @@ test("chain_firehose_outbox's table_name CHECK constraint matches every enqueue_
     "chain_firehose_outbox's CHECK constraint and enqueue_chain_firehose()'s TG_ARGV branches have drifted apart",
   );
 });
+
+test("enqueue_chain_firehose() bounds the pending outbox backlog before inserting", async () => {
+  const schema = await readFile(
+    path.join(repoRoot, "deploy/postgres/schema.sql"),
+    "utf8",
+  );
+  const functionMatch = schema.match(
+    /CREATE (?:OR REPLACE )?FUNCTION enqueue_chain_firehose\(\)[\s\S]*?\$\$ LANGUAGE plpgsql;/,
+  );
+  assert.ok(functionMatch, "enqueue_chain_firehose() body not found");
+  const functionBody = functionMatch[0];
+
+  assert.match(
+    functionBody,
+    /DELETE FROM chain_firehose_outbox\s+WHERE delivered_at IS NULL\s+AND created_at < now\(\) - INTERVAL '1 hour'/,
+    "enqueue_chain_firehose() must prune stale pending rows so relay downtime cannot retain them indefinitely",
+  );
+  assert.match(
+    functionBody,
+    /ORDER BY id DESC\s+OFFSET 4999\s+FOR UPDATE SKIP LOCKED/,
+    "enqueue_chain_firehose() must drop oldest pending overflow while preserving room for the new row",
+  );
+  assert.match(
+    functionBody,
+    /INSERT INTO chain_firehose_outbox \(table_name, payload\)/,
+    "enqueue_chain_firehose() must still append the current payload after pruning",
+  );
+  assert.ok(
+    functionBody.indexOf("OFFSET 4999") <
+      functionBody.indexOf("INSERT INTO chain_firehose_outbox"),
+    "pending backlog pruning must happen before inserting the next row",
+  );
+});

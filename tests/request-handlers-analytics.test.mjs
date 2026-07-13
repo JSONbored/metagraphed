@@ -27,6 +27,7 @@ import {
   canonicalAnalyticsCacheRoute,
   canonicalHealthWindowCachePath,
 } from "../workers/request-handlers/analytics.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import {
@@ -799,6 +800,29 @@ describe("withEdgeCache", () => {
       "bulk-trends",
       async () => {
         await d1All(emptyEnv(), "SELECT 1", []);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(cache.putKeys, []);
+  });
+
+  test("does not cache when Postgres-tier fallback generation changes during buildResponse", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+    const res = await withEdgeCache(
+      req("/api/v1/blocks/summary"),
+      ctx,
+      env,
+      "blocks-summary",
+      async () => {
+        await tryPostgresTier(
+          { METAGRAPH_BLOCKS_SOURCE: "postgres" },
+          req("/api/v1/blocks/summary"),
+          "METAGRAPH_BLOCKS_SOURCE",
+        );
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       },
     );

@@ -53,10 +53,10 @@ export const CHAIN_FIREHOSE_POLL_BATCH_SIZE = 200;
 // interval between every batch.
 export const CHAIN_FIREHOSE_POLL_INTERVAL_MS = 250;
 
-// How long a delivered (or dropped -- see forwardBatch's own comment) row
-// stays in the outbox before cleanup deletes it. Generous over any plausible
-// relay restart/redeploy window while still bounding table growth (the #5027
-// review's own nit: nothing else prunes this table).
+// How long a row stays in the outbox before cleanup deletes it. Delivered
+// rows are only retained for observability, while pending rows older than
+// this have exceeded the firehose's best-effort window and are pruned so a
+// wedged relay/downstream cannot accumulate unbounded durable backlog.
 export const CHAIN_FIREHOSE_OUTBOX_RETENTION_MS = 60 * 60 * 1000;
 
 // Cleanup runs on its own cadence, independent of the poll loop's busy/idle
@@ -275,7 +275,8 @@ async function main() {
     const cutoff = new Date(Date.now() - CHAIN_FIREHOSE_OUTBOX_RETENTION_MS);
     await sql`
       DELETE FROM chain_firehose_outbox
-      WHERE delivered_at IS NOT NULL AND delivered_at < ${cutoff}`;
+      WHERE (delivered_at IS NOT NULL AND delivered_at < ${cutoff})
+         OR (delivered_at IS NULL AND created_at < ${cutoff})`;
   }
 
   let lastCleanupAt = Date.now();

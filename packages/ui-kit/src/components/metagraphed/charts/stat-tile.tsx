@@ -77,7 +77,8 @@ export function StatTile({
             truncate ? "items-baseline" : "flex-wrap items-baseline",
           )}
         >
-          <span className="min-w-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl">
+          {/* #3940: shrink-0 so the hint (already truncate-clipped) absorbs constrained width instead of the value wrapping. */}
+          <span className="shrink-0 font-display text-base font-semibold tabular-nums leading-none text-ink-strong sm:text-xl md:text-2xl">
             {value}
           </span>
           {hint ? (

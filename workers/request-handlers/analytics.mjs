@@ -43,7 +43,10 @@ import {
   publishedAt,
 } from "../responses.mjs";
 import { d1TimeoutMs, withTimeout } from "../storage.mjs";
-import { tryPostgresTier } from "../postgres-tier.mjs";
+import {
+  currentPostgresTierFallbackGeneration,
+  tryPostgresTier,
+} from "../postgres-tier.mjs";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import {
   formatGlobalIncidents,
@@ -346,7 +349,17 @@ export async function withEdgeCache(
   cachePathAndSearch = null,
   resolveCacheStamp = null,
 ) {
-  const cache = request.method === "GET" ? globalThis.caches?.default : null;
+  const isHead = request.method === "HEAD";
+  // Only opt HEAD into the GET cache path for handlers that accept the
+  // normalized request. Legacy zero-arg builders may close over the original
+  // HEAD request and return a bodyless response, which must not seed the GET
+  // cache for later clients.
+  const normalizesHead = isHead && buildResponse.length > 0;
+  const cacheRequest = normalizesHead
+    ? new Request(request, { method: "GET" })
+    : request;
+  const cache =
+    cacheRequest.method === "GET" ? globalThis.caches?.default : null;
   // Cheap freshness read. On a hit this + the cache match is the whole request
   // (no D1 aggregation at all for the handler body).
   let stamp = null;
@@ -359,7 +372,7 @@ export async function withEdgeCache(
   }
   let cacheKey = null;
   if (cache && stamp) {
-    const url = new URL(request.url);
+    const url = new URL(cacheRequest.url);
     const cacheRoute = cachePathAndSearch ?? `${url.pathname}${url.search}`;
     cacheKey = new Request(
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
@@ -373,22 +386,28 @@ export async function withEdgeCache(
       if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
         return new Response(null, { status: 304, headers: hit.headers });
       }
-      return hit;
+      return normalizesHead
+        ? new Response(null, { status: hit.status, headers: hit.headers })
+        : hit;
     }
   }
   const fallbackGeneration = d1FallbackGeneration;
-  const response = await buildResponse();
+  const pgFallbackGeneration = currentPostgresTierFallbackGeneration();
+  const response = await buildResponse(cacheRequest);
   // Never cache errors / non-200s (cold-D1 still returns a 200 empty envelope;
   // a 400 bad-window or 5xx must not be persisted).
   if (
     cacheKey &&
     response.status === 200 &&
     !D1_FALLBACK_RESPONSES.has(response) &&
-    d1FallbackGeneration === fallbackGeneration
+    d1FallbackGeneration === fallbackGeneration &&
+    currentPostgresTierFallbackGeneration() === pgFallbackGeneration
   ) {
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
   }
-  return response;
+  return normalizesHead
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
 }
 
 // D1 MAX(captured_at) is INTEGER but often surfaces as a numeric string; coerce
@@ -869,6 +888,7 @@ const CHAIN_WEIGHTS_CSV_COLUMNS = [
 // CSV column order for the /api/v1/chain/weights/setters network-wide leaderboard rows.
 const CHAIN_WEIGHT_SETTERS_CSV_COLUMNS = [
   "hotkey",
+  "netuid",
   "uid",
   "weight_sets",
   "share",

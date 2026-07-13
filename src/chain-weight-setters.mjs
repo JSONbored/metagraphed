@@ -50,6 +50,10 @@ function toCount(value) {
 }
 
 // A representative uid cell -> non-negative integer, or null when absent/non-integer.
+function toNetuid(value) {
+  return toUid(value);
+}
+
 function toUid(value) {
   if (typeof value === "number") {
     return Number.isInteger(value) && value >= 0 ? value : null;
@@ -97,6 +101,7 @@ export function buildChainWeightSetters(
     const weightSets = toCount(row?.weight_sets);
     return {
       hotkey: toHotkey(row?.hotkey),
+      netuid: toHotkey(row?.hotkey) == null ? toNetuid(row?.netuid) : null,
       uid: toUid(row?.uid),
       weight_sets: weightSets,
       share: totalSets > 0 ? round(weightSets / totalSets) : null,
@@ -126,7 +131,10 @@ export async function loadChainWeightSetters(
 ) {
   const cutoff = Date.now() - windowDays * DAY_MS;
   const rows = await d1(
-    "SELECT MAX(hotkey) AS hotkey, MAX(uid) AS uid, COUNT(*) AS weight_sets, " +
+    "SELECT MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END) AS hotkey, " +
+      "CASE WHEN MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END) " +
+      "IS NULL THEN MAX(netuid) ELSE NULL END AS netuid, " +
+      "MAX(uid) AS uid, COUNT(*) AS weight_sets, " +
       "MIN(observed_at) AS first_set, MAX(observed_at) AS last_set " +
       "FROM account_events WHERE event_kind = ? AND observed_at >= ? " +
       "AND (" +

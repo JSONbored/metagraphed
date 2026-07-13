@@ -107,6 +107,7 @@ import type {
   ChainYieldDistribution,
   ChainSigners,
   ChainWeightSetters,
+  ChainWeightSetter,
   ChainSignerEntry,
   Extrinsic,
   ExtrinsicCallArg,
@@ -3526,11 +3527,13 @@ export const chainTransfersQuery = (window: ChainWindow = "7d") =>
 function normalizeChainWeightSetters(raw: unknown, window: ChainWindow): ChainWeightSetters {
   const rec = isRecord(raw) ? raw : {};
   const setters = (Array.isArray(rec.setters) ? rec.setters : [])
-    .map(normalizeSubnetWeightSetter)
-    .filter(
-      (setter): setter is NonNullable<ReturnType<typeof normalizeSubnetWeightSetter>> =>
-        setter != null,
-    )
+    .map((row) => {
+      const setter = normalizeSubnetWeightSetter(row);
+      if (!setter) return null;
+      const rec = isRecord(row) ? row : {};
+      return { ...setter, netuid: setter.hotkey ? null : (firstFiniteNumber(rec.netuid) ?? null) };
+    })
+    .filter((setter): setter is ChainWeightSetter => setter != null)
     .slice(0, MAX_CHAIN_WEIGHT_SETTERS);
   return {
     schema_version: firstFiniteNumber(rec.schema_version) ?? 1,

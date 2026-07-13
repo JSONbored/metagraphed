@@ -6605,6 +6605,14 @@
                     "null"
                   ]
                 },
+                "netuid": {
+                  "description": "Subnet scope for uid-only setters; null when a network-wide hotkey identifies the setter.",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "share": {
                   "minimum": 0,
                   "type": [
@@ -6626,6 +6634,7 @@
               },
               "required": [
                 "hotkey",
+                "netuid",
                 "uid",
                 "weight_sets",
                 "share",

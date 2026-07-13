@@ -21,7 +21,11 @@
 // triggers matched AND whether a match should actually be delivered right
 // now (burst rate-limiting), never how each channel's request is shaped.
 import { triggerMatchesEvent } from "../src/alert-triggers.mjs";
-import { mapBounded } from "../src/webhooks.mjs";
+import {
+  mapBounded,
+  resolvedWebhookUrlStatus,
+  resolveWebhookHostnamesWithDoh,
+} from "../src/webhooks.mjs";
 import {
   buildDiscordDeliveryRequest,
   buildEmailDeliveryRequest,
@@ -96,6 +100,7 @@ export async function deliverAlertMatch(
   payload,
   env,
   fetchFn = fetch,
+  { resolveHostnames } = {},
 ) {
   let request;
   switch (trigger.channel) {
@@ -127,6 +132,16 @@ export async function deliverAlertMatch(
   // buildWebhookDeliveryRequest's defense-in-depth URL re-check) --
   // nothing to send.
   if (!request) return false;
+  if (trigger.channel === "webhook") {
+    const urlStatus = await resolvedWebhookUrlStatus(
+      request.url,
+      resolveHostnames ||
+        ((host) =>
+          resolveWebhookHostnamesWithDoh(host, { fetchImpl: fetchFn })),
+    );
+    if (urlStatus !== "ok") return false;
+  }
+
   // The timeout signal is applied HERE, not baked into the pure builders in
   // src/alert-delivery.mjs -- AbortSignal.timeout() starts a real wall-clock
   // timer the moment it's constructed, which that module's own header
@@ -134,6 +149,7 @@ export async function deliverAlertMatch(
   // for tests).
   const response = await fetchFn(request.url, {
     ...request.init,
+    redirect: "manual",
     signal: AbortSignal.timeout(ALERT_DELIVERY_TIMEOUT_MS),
   });
   if (!response.ok) {

@@ -47,11 +47,39 @@ test("deliverAlertMatch: webhook channel POSTs the built request and resolves tr
     { table: "account_events" },
     {},
     fetchFn,
+    { resolveHostnames: async () => ["93.184.216.34"] },
   );
   assert.equal(fetchFn.mock.calls.length, 1);
   assert.equal(received.url, "https://example.com/hook");
   assert.equal(JSON.parse(received.init.body).type, "metagraph.alert");
   assert.equal(result, true);
+});
+
+test("deliverAlertMatch: falls back to the real DoH resolver when no resolveHostnames is injected", async () => {
+  const fetchFn = vi.fn(async (url) => {
+    const target = new URL(String(url));
+    if (target.hostname === "cloudflare-dns.com") {
+      const type = target.searchParams.get("type");
+      const data =
+        type === "A" ? "93.184.216.34" : "2606:2800:220:1:248:1893:25c8:1946";
+      return new Response(JSON.stringify({ Answer: [{ data }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(null, { status: 200 });
+  });
+  const result = await deliverAlertMatch(
+    triggerRow({ channel: "webhook", destination: "https://example.com/hook" }),
+    { table: "account_events" },
+    {},
+    fetchFn,
+  );
+  assert.equal(result, true);
+  const deliveryCall = fetchFn.mock.calls.find(
+    ([url]) => String(url) === "https://example.com/hook",
+  );
+  assert.ok(deliveryCall, "the actual webhook delivery request was sent");
 });
 
 test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slow target can't stall the shared broadcast() call indefinitely", async () => {
@@ -68,9 +96,45 @@ test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slo
     {},
     {},
     fetchFn,
+    { resolveHostnames: async () => ["93.184.216.34"] },
   );
   assert.ok(receivedSignal instanceof AbortSignal);
   assert.equal(receivedSignal.aborted, false);
+});
+
+test("deliverAlertMatch: webhook delivery uses manual redirects", async () => {
+  let receivedInit;
+  const fetchFn = vi.fn(async (_url, init) => {
+    receivedInit = init;
+    return new Response(null, { status: 200 });
+  });
+  await deliverAlertMatch(
+    triggerRow({
+      channel: "webhook",
+      destination: "https://example.com/hook",
+    }),
+    {},
+    {},
+    fetchFn,
+    { resolveHostnames: async () => ["93.184.216.34"] },
+  );
+  assert.equal(receivedInit.redirect, "manual");
+});
+
+test("deliverAlertMatch: webhook channel sends nothing and resolves false when DNS resolves private", async () => {
+  const fetchFn = vi.fn();
+  const result = await deliverAlertMatch(
+    triggerRow({
+      channel: "webhook",
+      destination: "https://example.com/hook",
+    }),
+    {},
+    {},
+    fetchFn,
+    { resolveHostnames: async () => ["10.0.0.1"] },
+  );
+  assert.equal(fetchFn.mock.calls.length, 0);
+  assert.equal(result, false);
 });
 
 test("deliverAlertMatch: webhook channel sends nothing and resolves false when the destination fails the defense-in-depth URL re-check", async () => {
