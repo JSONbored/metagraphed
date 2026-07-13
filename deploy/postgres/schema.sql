@@ -590,7 +590,10 @@ CREATE TABLE IF NOT EXISTS indexer_cursor (
 -- database failures (for example disk exhaustion) remain database failures;
 -- downstream firehose delivery state does not participate in commits. The
 -- relay claims rows from this outbox, forwards them, and may delete or mark
--- delivered rows according to its retention policy.
+-- delivered rows according to its retention policy. To keep relay downtime
+-- from turning this best-effort stream into unbounded database growth, the
+-- enqueue trigger prunes stale pending rows and keeps only the newest 5,000
+-- pending rows before appending another one.
 CREATE TABLE IF NOT EXISTS chain_firehose_outbox (
   id          BIGSERIAL PRIMARY KEY,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -679,6 +682,21 @@ BEGIN
   ELSE
     RETURN NEW;
   END IF;
+
+  DELETE FROM chain_firehose_outbox
+  WHERE delivered_at IS NULL
+    AND created_at < now() - INTERVAL '1 hour';
+
+  WITH overflow AS (
+    SELECT id
+    FROM chain_firehose_outbox
+    WHERE delivered_at IS NULL
+    ORDER BY id DESC
+    OFFSET 4999
+    FOR UPDATE SKIP LOCKED
+  )
+  DELETE FROM chain_firehose_outbox
+  WHERE id IN (SELECT id FROM overflow);
 
   INSERT INTO chain_firehose_outbox (table_name, payload)
   VALUES (TG_ARGV[0], payload);
