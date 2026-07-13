@@ -246,20 +246,22 @@ test("get: 404 when no such trigger exists", async () => {
   assert.equal(res.status, 404);
 });
 
-test("get: 403 when the owner token header is entirely absent", async () => {
+test("get: 404 when the owner token header is entirely absent", async () => {
   mockQueue.current.push([row()]);
   const res = await fetch(req("/api/v1/alerts/triggers/1"));
-  assert.equal(res.status, 403);
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: "no such trigger" });
 });
 
-test("get: 403 when the owner token is present but wrong", async () => {
+test("get: 404 when the owner token is present but wrong", async () => {
   mockQueue.current.push([row()]);
   const res = await fetch(
     req("/api/v1/alerts/triggers/1", {
       headers: { "x-alert-trigger-owner-token": "wrong" },
     }),
   );
-  assert.equal(res.status, 403);
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: "no such trigger" });
 });
 
 test("get: 200 with the owner view (owner_token stripped) when the token matches", async () => {
@@ -320,7 +322,7 @@ test("update: 404 when no such trigger exists", async () => {
   assert.equal(res.status, 404);
 });
 
-test("update: 403 when the owner token is missing or wrong", async () => {
+test("update: 404 when the owner token is missing or wrong", async () => {
   mockQueue.current.push([{ owner_token: "correct-token" }]);
   const res = await fetch(
     req("/api/v1/alerts/triggers/1", {
@@ -329,7 +331,8 @@ test("update: 403 when the owner token is missing or wrong", async () => {
       body: { channel: "email", destination: "a@b.com", netuid: 1 },
     }),
   );
-  assert.equal(res.status, 403);
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: "no such trigger" });
 });
 
 test("update: 200 on success, sends the new validated fields to the UPDATE", async () => {
@@ -378,7 +381,7 @@ test("delete: 404 when no such trigger exists", async () => {
   assert.equal(res.status, 404);
 });
 
-test("delete: 403 when the owner token is missing or wrong", async () => {
+test("delete: 404 when the owner token is missing or wrong", async () => {
   mockQueue.current.push([{ owner_token: "correct-token" }]);
   const res = await fetch(
     req("/api/v1/alerts/triggers/1", {
@@ -386,7 +389,8 @@ test("delete: 403 when the owner token is missing or wrong", async () => {
       headers: { "x-alert-trigger-owner-token": "wrong" },
     }),
   );
-  assert.equal(res.status, 403);
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { error: "no such trigger" });
 });
 
 test("delete: 200 with {id, deleted:true} on success, and actually issues the DELETE", async () => {

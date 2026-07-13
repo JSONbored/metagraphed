@@ -2244,15 +2244,19 @@ async function readAlertTriggerBody(request) {
   }
 }
 
+function alertTriggerNotFoundResponse() {
+  return writeJson({ error: "no such trigger" }, 404);
+}
+
 function requireAlertTriggerOwner(request, storedOwnerToken) {
   const provided = request.headers.get(ALERT_TRIGGER_OWNER_TOKEN_HEADER) || "";
   if (isValidAlertOwnerToken(provided, storedOwnerToken)) return null;
-  return writeJson(
-    {
-      error: `provide the trigger's ${ALERT_TRIGGER_OWNER_TOKEN_HEADER} header`,
-    },
-    403,
-  );
+  // Single-trigger routes intentionally use the same response for absent
+  // rows and failed owner-token checks. Trigger ids are sequential database
+  // ids, and the trigger body can hold capability credentials such as
+  // Discord webhook URLs, so unauthenticated callers must not be able to
+  // distinguish "missing" from "exists but private" by probing ids.
+  return alertTriggerNotFoundResponse();
 }
 
 async function handleAlertTriggerCreate(request, env) {
@@ -2314,7 +2318,7 @@ async function handleAlertTriggerGet(request, env, id) {
   return withAlertTriggersSql(env, async (sql) => {
     const [row] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
-    if (!row) return writeJson({ error: "no such trigger" }, 404);
+    if (!row) return alertTriggerNotFoundResponse();
     const authError = requireAlertTriggerOwner(request, row.owner_token);
     if (authError) return authError;
     return writeJson(ownerAlertTriggerView(row));
@@ -2334,7 +2338,7 @@ async function handleAlertTriggerUpdate(request, env, id) {
   return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
       await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
-    if (!existing) return writeJson({ error: "no such trigger" }, 404);
+    if (!existing) return alertTriggerNotFoundResponse();
     const authError = requireAlertTriggerOwner(request, existing.owner_token);
     if (authError) return authError;
 
@@ -2364,7 +2368,7 @@ async function handleAlertTriggerDelete(request, env, id) {
   return withAlertTriggersSql(env, async (sql) => {
     const [existing] =
       await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
-    if (!existing) return writeJson({ error: "no such trigger" }, 404);
+    if (!existing) return alertTriggerNotFoundResponse();
     const authError = requireAlertTriggerOwner(request, existing.owner_token);
     if (authError) return authError;
     await sql`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
