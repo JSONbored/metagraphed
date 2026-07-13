@@ -47,6 +47,7 @@ import {
   maxDepthRule,
   schema as chainEventsGraphqlSchema,
 } from "../src/graphql.mjs";
+import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.mjs";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
@@ -308,6 +309,16 @@ export class ChainFirehoseHub {
     // class's own webSocketMessage/webSocketClose, not socket-level listeners.
     this.chainEventSubscribers = new Set();
     this.graphqlWsSockets = new WeakMap();
+    // #4983 MCP half: the most recent broadcast payload, for the
+    // metagraph://chain/stream MCP resource's resources/read (a pointer/
+    // notification-only protocol -- the client always re-reads current state
+    // rather than the notification carrying it, see notifyMcpSessions).
+    // mcpSubscribedSessions holds the STRING session ids interested in that
+    // one resource (not connection objects -- MCP sessions are
+    // McpSessionHub, a SEPARATE Durable Object per session id, reached by
+    // name, not a live handle this class holds onto).
+    this.latestPayload = null;
+    this.mcpSubscribedSessions = new Set();
     this.graphqlWsServer = makeServer({
       schema: chainEventsGraphqlSchema,
       execute,
@@ -353,6 +364,18 @@ export class ChainFirehoseHub {
     }
   }
 
+  // Called by McpSessionHub (via its own /subscribe route) when a session
+  // subscribes to metagraph://chain/stream, and on unsubscribe/termination.
+  // Idempotent either way (Set semantics) -- a session double-subscribing or
+  // unsubscribing something it never subscribed to is a harmless no-op.
+  mcpSubscribeSession(sessionId) {
+    this.mcpSubscribedSessions.add(sessionId);
+  }
+
+  mcpUnsubscribeSession(sessionId) {
+    this.mcpSubscribedSessions.delete(sessionId);
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === "/ingest" && request.method === "POST") {
@@ -360,6 +383,28 @@ export class ChainFirehoseHub {
     }
     if (url.pathname === "/subscribe") {
       return this.handleSubscribe(request, url);
+    }
+    if (url.pathname === "/latest") {
+      return new Response(JSON.stringify({ payload: this.latestPayload }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (url.pathname === "/mcp-subscribe" && request.method === "POST") {
+      const { sessionId } = await request.json();
+      this.mcpSubscribeSession(sessionId);
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (url.pathname === "/mcp-unsubscribe" && request.method === "POST") {
+      const { sessionId } = await request.json();
+      this.mcpUnsubscribeSession(sessionId);
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     }
     return new Response("not found", { status: 404 });
   }
@@ -373,7 +418,7 @@ export class ChainFirehoseHub {
         headers: { "content-type": "application/json" },
       });
     }
-    this.broadcast(result.payload);
+    await this.broadcast(result.payload);
     return new Response(JSON.stringify({ ok: true }), {
       status: 202,
       headers: { "content-type": "application/json" },
@@ -547,7 +592,8 @@ export class ChainFirehoseHub {
     }
   }
 
-  broadcast(payload) {
+  async broadcast(payload) {
+    this.latestPayload = payload;
     const encoder = new TextEncoder();
     for (const entry of this.sseClients) {
       if (!chainFirehoseMatchesTopics(payload, entry.topics)) continue;
@@ -623,6 +669,34 @@ export class ChainFirehoseHub {
     for (const entry of this.chainEventSubscribers) {
       if (!chainFirehoseMatchesTopics(payload, entry.topics)) continue;
       entry.repeater.push(payload);
+    }
+
+    // #4983 MCP half: every MCP session subscribed to metagraph://chain/stream
+    // gets a pointer notification (not the payload itself -- the MCP spec's
+    // notifications/resources/updated carries only a uri; the client is
+    // expected to follow up with resources/read, which reads this.latestPayload
+    // above). One fetch per subscribed session, awaited inline like the three
+    // loops above -- handleIngest returns 202 regardless, so this is a bounded
+    // latency cost, not a correctness dependency. A session DO that's
+    // unreachable/erroring here doesn't fail the ingest; see the try/catch.
+    if (this.mcpSubscribedSessions.size > 0 && this.env.MCP_SESSION_HUB) {
+      await Promise.all(
+        [...this.mcpSubscribedSessions].map(async (sessionId) => {
+          try {
+            const stub = this.env.MCP_SESSION_HUB.get(
+              this.env.MCP_SESSION_HUB.idFromName(sessionId),
+            );
+            await stub.fetch("https://mcp-session-hub.internal/notify", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ uri: MCP_CHAIN_STREAM_RESOURCE_URI }),
+            });
+          } catch {
+            // best-effort -- a dead/unreachable session DO never blocks
+            // ingest or the other broadcast populations above
+          }
+        }),
+      );
     }
   }
 }

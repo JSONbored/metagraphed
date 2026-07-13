@@ -1,11 +1,22 @@
-// Stateless remote MCP (Model Context Protocol) server for metagraphed.
+// Remote MCP (Model Context Protocol) server for metagraphed.
 //
 // Exposes the operational registry to AI agents (Claude Desktop/Code, Cursor,
-// autonomous agents) over the MCP Streamable HTTP transport at `POST /mcp`.
-// The registry is read-only, so the server is fully stateless: no session id,
-// no Durable Object, no server-initiated streams. We hand-roll the JSON-RPC 2.0
-// envelope rather than pulling in `@modelcontextprotocol/sdk` so the Worker
-// bundle stays lean and the hot REST/RPC path is untouched.
+// autonomous agents) over the MCP Streamable HTTP transport at `/mcp`. Almost
+// the entire surface is read-only and fully stateless (POST /mcp, no session
+// id, no Durable Object) -- the one exception is described below. We hand-roll
+// the JSON-RPC 2.0 envelope rather than pulling in `@modelcontextprotocol/sdk`
+// so the Worker bundle stays lean and the hot REST/RPC path is untouched.
+//
+// The ONE stateful exception (#4983 MCP half, ADR 0015): resources/subscribe
+// on `metagraph://chain/stream`. A subscribed session gets a Durable Object
+// (McpSessionHub, one per Mcp-Session-Id, minted at `initialize`) that holds
+// a bounded-duration GET-opened SSE stream and pushes
+// notifications/resources/updated when the realtime firehose (ChainFirehoseHub,
+// #4982) broadcasts a new chain event. Every OTHER method on this server is
+// unaffected -- stateless POST, no session required. See
+// workers/mcp-session-hub.mjs's own header comment for why this is a
+// separate DO from ChainFirehoseHub, and docs/realtime-firehose.md for the
+// full architecture.
 //
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
@@ -19,6 +30,10 @@ import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import {
+  MCP_CHAIN_STREAM_RESOURCE_URI,
+  isValidMcpSessionId,
+} from "../workers/mcp-session-hub.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
@@ -10732,7 +10747,10 @@ export function listToolDefinitions() {
 // the generated server-card so the two can never drift.
 export const MCP_CAPABILITIES = {
   tools: { listChanged: false },
-  resources: { listChanged: false },
+  // subscribe: true (#4983 MCP half) -- only metagraph://chain/stream is
+  // actually subscribable (SUBSCRIBABLE_RESOURCE_URIS below); every other
+  // resource is a static R2 artifact with no change signal to subscribe to.
+  resources: { subscribe: true, listChanged: false },
   prompts: { listChanged: false },
 };
 
@@ -10803,7 +10821,30 @@ const FIXED_RESOURCES = [
     mimeType: "application/json",
     artifact: "/metagraph/schemas/index.json",
   },
+  {
+    uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    name: "chain-stream",
+    title: "Realtime chain event stream",
+    description:
+      "The latest confirmed chain event observed by the realtime firehose " +
+      "(blocks/extrinsics/chain_events). Subscribe via resources/subscribe " +
+      "to receive notifications/resources/updated when a new event lands, " +
+      `then resources/read for the latest payload. ${UNTRUSTED_DATA_NOTE}`,
+    mimeType: "application/json",
+    // Every other FIXED_RESOURCES entry has a static `artifact:` (an R2/
+    // ASSETS path); this one has `live: true` instead -- readResource below
+    // branches on it to read ChainFirehoseHub's latestPayload rather than
+    // loadArtifactData. Never both.
+    live: true,
+  },
 ];
+
+// Resources a client may actually call resources/subscribe on -- deliberately
+// NOT "any URI resourceArtifactPath resolves": every resource other than the
+// live one above is a static R2 artifact with no change signal, so
+// subscribing to one would accept silently and then never fire. Checked in
+// the resources/subscribe dispatch case below.
+const SUBSCRIBABLE_RESOURCE_URIS = new Set([MCP_CHAIN_STREAM_RESOURCE_URI]);
 
 const RESOURCE_PAGE_SIZE = 100;
 
@@ -10910,8 +10951,41 @@ function resourceArtifactPath(uri) {
   return null;
 }
 
+// The one live (non-artifact-backed) resource: reads ChainFirehoseHub's own
+// in-memory latestPayload (workers/chain-firehose-hub.mjs's broadcast())
+// directly -- there is no R2/ASSETS artifact for this resource, so
+// loadArtifactData never applies to it. Degrades to an explicit "no events
+// observed yet" placeholder rather than erroring if the firehose is cold
+// (binding absent in local/CI, or genuinely no chain event has landed since
+// the hub last cold-started) -- a subscribed client's first resources/read
+// after subscribing is a normal, expected case, not a fault.
+async function readLiveChainStreamResource(ctx) {
+  if (!ctx.env.CHAIN_FIREHOSE_HUB) {
+    return {
+      table: null,
+      message: "the realtime firehose is not bound on this deployment",
+    };
+  }
+  const stub = ctx.env.CHAIN_FIREHOSE_HUB.get(
+    ctx.env.CHAIN_FIREHOSE_HUB.idFromName("global"),
+  );
+  const upstream = await stub.fetch(
+    "https://chain-firehose-hub.internal/latest",
+  );
+  const { payload } = await upstream.json();
+  return payload ?? { table: null, message: "no chain event observed yet" };
+}
+
 async function readResource(params, ctx) {
   const uri = params?.uri;
+  if (uri === MCP_CHAIN_STREAM_RESOURCE_URI) {
+    const data = await readLiveChainStreamResource(ctx);
+    return {
+      contents: [
+        { uri, mimeType: "application/json", text: JSON.stringify(data) },
+      ],
+    };
+  }
   const artifactPath =
     typeof uri === "string" ? resourceArtifactPath(uri) : null;
   if (!artifactPath) {
@@ -10927,6 +11001,82 @@ async function readResource(params, ctx) {
       { uri, mimeType: "application/json", text: JSON.stringify(data) },
     ],
   };
+}
+
+// resources/subscribe and resources/unsubscribe (#4983 MCP half) -- both are
+// session-scoped (require ctx.sessionId, set by buildContext from the
+// Mcp-Session-Id header) and reused verbatim's-worth of validation:
+// SUBSCRIBABLE_RESOURCE_URIS is checked here rather than a second, looser
+// URI-shape check, mirroring the lesson from this session's graphql-ws fix
+// (validateChainEventsSubscribePayload) -- a hand-rolled second validation
+// path is exactly how a security guarantee quietly drifts from the first.
+async function subscribeResource(params, ctx) {
+  const uri = params?.uri;
+  if (typeof uri !== "string" || !SUBSCRIBABLE_RESOURCE_URIS.has(uri)) {
+    throw toolError(
+      "invalid_params",
+      `Resource is unknown or not subscribable: ${String(uri)}. Only ` +
+        `${[...SUBSCRIBABLE_RESOURCE_URIS].join(", ")} supports resources/subscribe.`,
+    );
+  }
+  if (!ctx.sessionId) {
+    throw toolError(
+      "invalid_params",
+      "resources/subscribe requires an Mcp-Session-Id header (obtained " +
+        "from the initialize response).",
+    );
+  }
+  if (!ctx.env.MCP_SESSION_HUB) {
+    throw toolError(
+      "resource_unavailable",
+      "MCP resource subscriptions are not provisioned on this deployment.",
+    );
+  }
+  const stub = ctx.env.MCP_SESSION_HUB.get(
+    ctx.env.MCP_SESSION_HUB.idFromName(ctx.sessionId),
+  );
+  const upstream = await stub.fetch(
+    "https://mcp-session-hub.internal/subscribe",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: ctx.sessionId, uri }),
+    },
+  );
+  if (!upstream.ok) {
+    throw toolError("invalid_params", `Could not subscribe to ${uri}.`);
+  }
+  return {};
+}
+
+async function unsubscribeResource(params, ctx) {
+  const uri = params?.uri;
+  if (typeof uri !== "string") {
+    throw toolError("invalid_params", "Missing required field: uri.");
+  }
+  if (!ctx.sessionId) {
+    throw toolError(
+      "invalid_params",
+      "resources/unsubscribe requires an Mcp-Session-Id header.",
+    );
+  }
+  if (!ctx.env.MCP_SESSION_HUB) {
+    throw toolError(
+      "resource_unavailable",
+      "MCP resource subscriptions are not provisioned on this deployment.",
+    );
+  }
+  const stub = ctx.env.MCP_SESSION_HUB.get(
+    ctx.env.MCP_SESSION_HUB.idFromName(ctx.sessionId),
+  );
+  // Unsubscribing from something never subscribed to is a harmless no-op
+  // (McpSessionHub's Set.delete semantics) -- no existence check needed.
+  await stub.fetch("https://mcp-session-hub.internal/unsubscribe", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId: ctx.sessionId, uri }),
+  });
+  return {};
 }
 
 // Pre-baked multi-tool recipes: each builds a user message telling the agent
@@ -11138,6 +11288,14 @@ async function dispatchMessage(message, ctx) {
         return isNotification
           ? null
           : rpcResult(id, await readResource(params, ctx));
+      case "resources/subscribe":
+        return isNotification
+          ? null
+          : rpcResult(id, await subscribeResource(params, ctx));
+      case "resources/unsubscribe":
+        return isNotification
+          ? null
+          : rpcResult(id, await unsubscribeResource(params, ctx));
       case "prompts/list":
         return isNotification
           ? null
@@ -11181,9 +11339,16 @@ function buildContext(request, env, deps) {
   } catch {
     domain = PRIMARY_DOMAIN;
   }
+  // Session-optional for every pre-existing method (tools/call, resources/read,
+  // etc. never required one and still don't) -- only resources/subscribe and
+  // resources/unsubscribe check for it themselves. Format validity (not just
+  // presence) is already enforced by handleMcpRequest before this is called,
+  // so a malformed header never reaches here as a truthy value.
+  const rawSessionId = request.headers.get("mcp-session-id");
   return {
     env,
     domain,
+    sessionId: isValidMcpSessionId(rawSessionId) ? rawSessionId : null,
     clientIp: mcpClientKey(request),
     readArtifact: deps.readArtifact,
     readHealthKv: deps.readHealthKv,
@@ -11239,9 +11404,143 @@ function bodyTooLargeResponse() {
   );
 }
 
-// Entry point wired into the Worker at `POST /mcp`. `deps` injects the shared
-// artifact/KV readers from workers/api.mjs.
+// MCP-Protocol-Version header (2025-06-18+): every request after the first
+// carries this; the first (`initialize`) negotiates the version in its BODY
+// instead, since the client has nothing to declare in a header yet. Per spec,
+// an absent header means "assume 2025-03-26" -- not a rejection -- so this
+// only ever produces a response for a header that IS present and unrecognized
+// (which also correctly rejects a garbage value on `initialize` itself, since
+// a compliant client would never send one there).
+function validateMcpProtocolVersionHeader(request) {
+  const header = request.headers.get("mcp-protocol-version");
+  if (!header || MCP_PROTOCOL_VERSIONS.includes(header)) return null;
+  return jsonResponse(
+    rpcError(
+      null,
+      RPC_INVALID_REQUEST,
+      `Unsupported MCP-Protocol-Version: ${header}. Supported: ` +
+        `${MCP_PROTOCOL_VERSIONS.join(", ")}.`,
+    ),
+    400,
+  );
+}
+
+// A session id is minted (not client-chosen) only off a successful,
+// non-batched `initialize` response -- the one moment a client has nothing
+// to present yet. Every other method stays session-optional (unaffected);
+// GET/DELETE and resources/subscribe are the only things that end up
+// requiring the header this mints, and all three necessarily come after an
+// initialize. Batched/legacy-array requests predate the 2025-06-18 session
+// concept and are left alone.
+function mintMcpSessionHeaderIfNeeded(body, response) {
+  if (Array.isArray(body) || body?.method !== "initialize") return {};
+  if (!response || response.error) return {};
+  return { "mcp-session-id": crypto.randomUUID() };
+}
+
+const MCP_STREAM_HUB_UNAVAILABLE_RESPONSE = new Response(null, {
+  status: 405,
+  headers: { ...MCP_HEADERS, allow: "POST, OPTIONS" },
+});
+
+// GET /mcp -- the standalone SSE push channel a client opens (with the
+// Mcp-Session-Id minted at `initialize`) after a resources/subscribe call, to
+// receive notifications/resources/updated pushes. See
+// workers/mcp-session-hub.mjs's header comment for why this is a
+// bounded-duration stream rather than an indefinite hold, and why it is a
+// separate Durable Object from the realtime chain firehose. Every other MCP
+// method is POST-only and stateless; this is the one GET route.
+async function handleMcpStreamRequest(request, env) {
+  const versionError = validateMcpProtocolVersionHeader(request);
+  if (versionError) return versionError;
+
+  const rawSessionId = request.headers.get("mcp-session-id");
+  if (!isValidMcpSessionId(rawSessionId)) {
+    return jsonResponse(
+      rpcError(
+        null,
+        RPC_INVALID_REQUEST,
+        "GET requires a valid Mcp-Session-Id header (obtained from the " +
+          "initialize response).",
+      ),
+      400,
+    );
+  }
+  if (!env.MCP_SESSION_HUB) {
+    return MCP_STREAM_HUB_UNAVAILABLE_RESPONSE;
+  }
+  const stub = env.MCP_SESSION_HUB.get(
+    env.MCP_SESSION_HUB.idFromName(rawSessionId),
+  );
+  const upstream = await stub.fetch(
+    `https://mcp-session-hub.internal/stream?sessionId=${encodeURIComponent(rawSessionId)}`,
+  );
+  if (!upstream.ok) {
+    // 404 (session unknown/already terminated) or 409 (a stream is already
+    // open for this session) from the DO -- pass the status through with a
+    // client-facing message, never the DO's own internal response body.
+    return jsonResponse(
+      rpcError(
+        null,
+        RPC_INVALID_REQUEST,
+        upstream.status === 409
+          ? "A stream is already open for this session."
+          : "No such MCP session; call initialize again.",
+      ),
+      upstream.status === 409 ? 409 : 404,
+    );
+  }
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      "content-type": "text/event-stream",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "*",
+      connection: "keep-alive",
+    },
+  });
+}
+
+// DELETE /mcp -- explicit client-initiated session termination (spec-
+// optional; supporting it lets a well-behaved client release its
+// McpSessionHub promptly instead of waiting out MCP_SESSION_IDLE_TTL_MS).
+async function handleMcpTerminateRequest(request, env) {
+  const rawSessionId = request.headers.get("mcp-session-id");
+  if (!isValidMcpSessionId(rawSessionId)) {
+    return jsonResponse(
+      rpcError(
+        null,
+        RPC_INVALID_REQUEST,
+        "DELETE requires a valid Mcp-Session-Id header.",
+      ),
+      400,
+    );
+  }
+  if (!env.MCP_SESSION_HUB) {
+    return MCP_STREAM_HUB_UNAVAILABLE_RESPONSE;
+  }
+  const stub = env.MCP_SESSION_HUB.get(
+    env.MCP_SESSION_HUB.idFromName(rawSessionId),
+  );
+  await stub.fetch("https://mcp-session-hub.internal/terminate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId: rawSessionId }),
+  });
+  return new Response(null, { status: 204, headers: MCP_HEADERS });
+}
+
+// Entry point wired into the Worker at `/mcp`. `deps` injects the shared
+// artifact/KV readers from workers/api.mjs. POST carries the stateless
+// JSON-RPC 2.0 envelope; GET opens the SSE push stream; DELETE terminates a
+// session (see the two handlers above for both).
 export async function handleMcpRequest(request, env = {}, deps = {}) {
+  if (request.method === "GET") {
+    return handleMcpStreamRequest(request, env);
+  }
+  if (request.method === "DELETE") {
+    return handleMcpTerminateRequest(request, env);
+  }
   if (request.method !== "POST") {
     return new Response(
       JSON.stringify({
@@ -11251,10 +11550,14 @@ export async function handleMcpRequest(request, env = {}, deps = {}) {
           code: RPC_INVALID_REQUEST,
           message:
             "The MCP endpoint accepts POST JSON-RPC requests over the " +
-            "Streamable HTTP transport.",
+            "Streamable HTTP transport, GET for the SSE push stream, or " +
+            "DELETE to terminate a session.",
         },
       }),
-      { status: 405, headers: { ...MCP_HEADERS, allow: "POST, OPTIONS" } },
+      {
+        status: 405,
+        headers: { ...MCP_HEADERS, allow: "GET, POST, DELETE, OPTIONS" },
+      },
     );
   }
 
@@ -11279,6 +11582,9 @@ export async function handleMcpRequest(request, env = {}, deps = {}) {
       400,
     );
   }
+
+  const versionError = validateMcpProtocolVersionHeader(request);
+  if (versionError) return versionError;
 
   const ctx = buildContext(request, env, deps);
 
@@ -11319,9 +11625,13 @@ export async function handleMcpRequest(request, env = {}, deps = {}) {
   }
 
   const response = await dispatchMessage(body, ctx);
+  const sessionHeaders = mintMcpSessionHeaderIfNeeded(body, response);
   if (!response) {
     // Notification(s) only — nothing to return.
-    return new Response(null, { status: 202, headers: MCP_HEADERS });
+    return new Response(null, {
+      status: 202,
+      headers: { ...MCP_HEADERS, ...sessionHeaders },
+    });
   }
-  return jsonResponse(response);
+  return jsonResponse(response, 200, sessionHeaders);
 }

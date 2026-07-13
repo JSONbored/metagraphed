@@ -358,17 +358,27 @@
   "durable_objects": {
     "bindings": [
       { "name": "CHAIN_FIREHOSE_HUB", "class_name": "ChainFirehoseHub" },
+      // #4983 MCP half: one instance per Mcp-Session-Id (workers/mcp-session-hub.mjs),
+      // reached only from src/mcp-server.mjs's /mcp dispatch -- see that
+      // file's own header comment for why this is a SEPARATE DO from
+      // ChainFirehoseHub rather than a fourth connection population on it.
+      { "name": "MCP_SESSION_HUB", "class_name": "McpSessionHub" },
     ],
   },
   // Durable Object class migrations are one-way and versioned: adding a new
   // class is a `new_sqlite_classes` entry (SQLite storage backend -- the
   // default for new classes; no legacy `new_classes` durable-storage class to
-  // migrate from). Renaming/deleting ChainFirehoseHub later needs its OWN
-  // migration entry appended here, never an edit to this one.
+  // migrate from). Renaming/deleting a class later needs its OWN migration
+  // entry appended here, never an edit to an existing one -- hence
+  // McpSessionHub getting its own v2 tag rather than joining v1's array.
   "migrations": [
     {
       "tag": "v1-chain-firehose-hub",
       "new_sqlite_classes": ["ChainFirehoseHub"],
+    },
+    {
+      "tag": "v2-mcp-session-hub",
+      "new_sqlite_classes": ["McpSessionHub"],
     },
   ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV

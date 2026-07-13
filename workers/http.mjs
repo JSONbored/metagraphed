@@ -35,6 +35,10 @@ const EXPOSED_RESPONSE_HEADERS = [
   "x-metagraph-rpc-endpoint-id",
   "x-metagraph-rpc-provider",
   "x-metagraph-rpc-attempts",
+  // MCP resource-subscription session id (#4983 MCP half) -- minted on
+  // initialize, must be readable by a browser-based MCP client to send back
+  // on subsequent requests.
+  "mcp-session-id",
 ];
 
 // Pre-joined value, for builders that emit plain header objects (the MCP server).

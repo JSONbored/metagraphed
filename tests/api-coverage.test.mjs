@@ -338,6 +338,35 @@ describe("handleRequest routing edges", () => {
     );
   });
 
+  test("OPTIONS preflight on /mcp advertises GET/POST/DELETE and the session headers (#4983 MCP half)", async () => {
+    const res = await handleRequest(
+      req("/mcp", { method: "OPTIONS" }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "GET, POST, DELETE, OPTIONS",
+    );
+    const allowHeaders = res.headers.get("access-control-allow-headers");
+    assert.match(allowHeaders, /mcp-session-id/);
+    assert.match(allowHeaders, /mcp-protocol-version/);
+  });
+
+  test("OPTIONS preflight on /api/v1/ask advertises POST only (unaffected by the /mcp GET/DELETE change)", async () => {
+    const res = await handleRequest(
+      req("/api/v1/ask", { method: "OPTIONS" }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "POST, OPTIONS",
+    );
+  });
+
   test("falls through to ASSETS for a non-api path", async () => {
     let assetCalled = false;
     const env = {

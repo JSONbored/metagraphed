@@ -16,6 +16,7 @@ import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
 import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
+import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -77,11 +78,11 @@ function makeDeps(artifacts = {}, kv = {}) {
 
 async function rpc(
   payload,
-  { deps = makeDeps(), env = {}, method = "POST" } = {},
+  { deps = makeDeps(), env = {}, method = "POST", headers = {} } = {},
 ) {
   const request = new Request(MCP_URL, {
     method,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
   const response = await handleMcpRequest(request, env, deps);
@@ -90,6 +91,27 @@ async function rpc(
     status: response.status,
     headers: response.headers,
     body: text ? JSON.parse(text) : null,
+  };
+}
+
+// A crypto.randomUUID()-shaped id, the only kind handleMcpRequest ever mints
+// or accepts back from a client (isValidMcpSessionId's own length/charset
+// bound is far looser, but this is what every real client will send).
+const A_SESSION_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+
+function fakeMcpSessionHubBinding(overrides = {}) {
+  const calls = [];
+  return {
+    calls,
+    idFromName: (name) => name,
+    get: () => ({
+      fetch: async (url, init) => {
+        calls.push({ url, init });
+        const path = new URL(url).pathname;
+        if (overrides[path]) return overrides[path](init);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    }),
   };
 }
 
@@ -257,7 +279,9 @@ describe("MCP JSON-RPC lifecycle", () => {
     });
     assert.deepEqual(res.body.result.capabilities, {
       tools: { listChanged: false },
-      resources: { listChanged: false },
+      // subscribe: true (#4983 MCP half) -- metagraph://chain/stream is
+      // subscribable; see resources/subscribe's own tests below.
+      resources: { subscribe: true, listChanged: false },
       prompts: { listChanged: false },
     });
   });
@@ -417,6 +441,240 @@ describe("MCP resources (#742)", () => {
       });
       assert.equal(res.body.error.code, -32602, `expected -32602 for ${uri}`);
     }
+  });
+});
+
+describe("MCP resources/subscribe + resources/unsubscribe (#4983 MCP half)", () => {
+  test("resources/read on the live chain-stream resource degrades gracefully when CHAIN_FIREHOSE_HUB is unbound", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "resources/read",
+      params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+    });
+    const data = JSON.parse(res.body.result.contents[0].text);
+    assert.equal(data.table, null);
+    assert.match(data.message, /not bound/);
+  });
+
+  test("resources/read on the live chain-stream resource returns ChainFirehoseHub's latest payload", async () => {
+    const firehose = {
+      idFromName: (name) => name,
+      get: () => ({
+        fetch: async () =>
+          new Response(
+            JSON.stringify({
+              payload: { table: "chain_events", block_number: 8608447 },
+            }),
+            { status: 200 },
+          ),
+      }),
+    };
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      { env: { CHAIN_FIREHOSE_HUB: firehose } },
+    );
+    assert.deepEqual(JSON.parse(res.body.result.contents[0].text), {
+      table: "chain_events",
+      block_number: 8608447,
+    });
+  });
+
+  test("resources/read on the live chain-stream resource reports 'no event observed yet' when the hub is cold", async () => {
+    const firehose = {
+      idFromName: (name) => name,
+      get: () => ({
+        fetch: async () =>
+          new Response(JSON.stringify({ payload: null }), { status: 200 }),
+      }),
+    };
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      { env: { CHAIN_FIREHOSE_HUB: firehose } },
+    );
+    const data = JSON.parse(res.body.result.contents[0].text);
+    assert.equal(data.table, null);
+    assert.match(data.message, /no chain event observed yet/);
+  });
+
+  test("resources/subscribe rejects an unknown/non-subscribable uri with -32602", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "resources/subscribe",
+      params: { uri: "metagraph://registry/summary" },
+    });
+    assert.equal(res.body.error.code, -32602);
+    assert.match(res.body.error.message, /not subscribable/);
+  });
+
+  test("resources/subscribe requires an Mcp-Session-Id header", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "resources/subscribe",
+      params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+    });
+    assert.equal(res.body.error.code, -32602);
+    assert.match(res.body.error.message, /Mcp-Session-Id/);
+  });
+
+  test("resources/subscribe reports resource_unavailable when MCP_SESSION_HUB is unbound", async () => {
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/subscribe",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      { headers: { "mcp-session-id": A_SESSION_ID } },
+    );
+    assert.equal(res.body.error.code, -32602);
+    assert.match(res.body.error.message, /not provisioned/);
+  });
+
+  test("resources/subscribe forwards to the session hub's /subscribe route and succeeds", async () => {
+    const hub = fakeMcpSessionHubBinding();
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/subscribe",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.deepEqual(res.body.result, {});
+    assert.equal(hub.calls.length, 1);
+    assert.match(hub.calls[0].url, /\/subscribe$/);
+    assert.deepEqual(JSON.parse(hub.calls[0].init.body), {
+      sessionId: A_SESSION_ID,
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    });
+  });
+
+  test("resources/subscribe surfaces a clear error when the session hub rejects the request", async () => {
+    const hub = fakeMcpSessionHubBinding({
+      "/subscribe": () => new Response(null, { status: 400 }),
+    });
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/subscribe",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.equal(res.body.error.code, -32602);
+    assert.match(res.body.error.message, /Could not subscribe/);
+  });
+
+  test("resources/unsubscribe requires a uri", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "resources/unsubscribe",
+      params: {},
+    });
+    assert.equal(res.body.error.code, -32602);
+    assert.match(res.body.error.message, /Missing required field: uri/);
+  });
+
+  test("resources/unsubscribe requires an Mcp-Session-Id header", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "resources/unsubscribe",
+      params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+    });
+    assert.equal(res.body.error.code, -32602);
+    assert.match(res.body.error.message, /Mcp-Session-Id/);
+  });
+
+  test("resources/unsubscribe reports resource_unavailable when MCP_SESSION_HUB is unbound", async () => {
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/unsubscribe",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      { headers: { "mcp-session-id": A_SESSION_ID } },
+    );
+    assert.equal(res.body.error.code, -32602);
+    assert.match(res.body.error.message, /not provisioned/);
+  });
+
+  test("resources/subscribe as a notification (no id) is a no-op — never calls the session hub, returns 202", async () => {
+    const hub = fakeMcpSessionHubBinding();
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        method: "resources/subscribe",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.equal(res.status, 202);
+    assert.equal(res.body, null);
+    assert.equal(hub.calls.length, 0);
+  });
+
+  test("resources/unsubscribe as a notification (no id) is a no-op — never calls the session hub, returns 202", async () => {
+    const hub = fakeMcpSessionHubBinding();
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        method: "resources/unsubscribe",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.equal(res.status, 202);
+    assert.equal(res.body, null);
+    assert.equal(hub.calls.length, 0);
+  });
+
+  test("resources/unsubscribe forwards to the session hub's /unsubscribe route and succeeds, even for a uri never subscribed to", async () => {
+    const hub = fakeMcpSessionHubBinding();
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/unsubscribe",
+        params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+      },
+      {
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: { MCP_SESSION_HUB: hub },
+      },
+    );
+    assert.deepEqual(res.body.result, {});
+    assert.equal(hub.calls.length, 1);
+    assert.match(hub.calls[0].url, /\/unsubscribe$/);
   });
 });
 
@@ -622,10 +880,10 @@ describe("MCP resources/prompts — branch coverage", () => {
 });
 
 describe("MCP transport handling", () => {
-  test("GET is rejected with 405 and an Allow header", async () => {
-    const res = await rpc(null, { method: "GET" });
+  test("an unsupported method (e.g. PUT) is rejected with 405 and an Allow header listing GET/POST/DELETE", async () => {
+    const res = await rpc(null, { method: "PUT" });
     assert.equal(res.status, 405);
-    assert.equal(res.headers.get("allow"), "POST, OPTIONS");
+    assert.equal(res.headers.get("allow"), "GET, POST, DELETE, OPTIONS");
     assert.equal(res.body.error.code, -32600);
   });
 
@@ -768,6 +1026,200 @@ describe("MCP transport handling", () => {
     });
     const response = await handleMcpRequest(request, {});
     assert.equal(response.status, 200);
+  });
+
+  describe("MCP-Protocol-Version header (#4983 MCP half)", () => {
+    test("an absent header is accepted (assumed 2025-03-26 per spec, not rejected)", async () => {
+      const res = await rpc({ jsonrpc: "2.0", id: 1, method: "ping" });
+      assert.equal(res.status, 200);
+    });
+
+    test("a recognized header value is accepted", async () => {
+      const res = await rpc(
+        { jsonrpc: "2.0", id: 1, method: "ping" },
+        { headers: { "mcp-protocol-version": MCP_PROTOCOL_VERSIONS[0] } },
+      );
+      assert.equal(res.status, 200);
+    });
+
+    test("an unrecognized header value is rejected with 400", async () => {
+      const res = await rpc(
+        { jsonrpc: "2.0", id: 1, method: "ping" },
+        { headers: { "mcp-protocol-version": "1999-01-01" } },
+      );
+      assert.equal(res.status, 400);
+      assert.equal(res.body.error.code, -32600);
+      assert.match(res.body.error.message, /Unsupported MCP-Protocol-Version/);
+    });
+  });
+
+  describe("Mcp-Session-Id minting on initialize (#4983 MCP half)", () => {
+    test("a successful initialize response mints a fresh Mcp-Session-Id response header", async () => {
+      const res = await rpc({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: { protocolVersion: MCP_PROTOCOL_VERSIONS[0] },
+      });
+      assert.equal(res.status, 200);
+      const sessionId = res.headers.get("mcp-session-id");
+      assert.match(
+        sessionId,
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+    });
+
+    test("two separate initialize calls mint two DIFFERENT session ids", async () => {
+      const first = await rpc({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {},
+      });
+      const second = await rpc({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {},
+      });
+      assert.notEqual(
+        first.headers.get("mcp-session-id"),
+        second.headers.get("mcp-session-id"),
+      );
+    });
+
+    test("a non-initialize method never mints a session id", async () => {
+      const res = await rpc({ jsonrpc: "2.0", id: 1, method: "ping" });
+      assert.equal(res.headers.get("mcp-session-id"), null);
+    });
+
+    test("initialize inside a batch never mints a session id (legacy-array path predates sessions)", async () => {
+      const res = await rpc([
+        { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+      ]);
+      assert.equal(res.headers.get("mcp-session-id"), null);
+    });
+  });
+
+  describe("GET /mcp — the SSE push stream (#4983 MCP half)", () => {
+    test("without an Mcp-Session-Id header, rejects with 400", async () => {
+      const res = await rpc(null, { method: "GET" });
+      assert.equal(res.status, 400);
+      assert.equal(res.body.error.code, -32600);
+      assert.match(res.body.error.message, /Mcp-Session-Id/);
+    });
+
+    test("with a malformed Mcp-Session-Id header, rejects with 400", async () => {
+      const res = await rpc(null, {
+        method: "GET",
+        headers: { "mcp-session-id": "has a space" },
+      });
+      assert.equal(res.status, 400);
+    });
+
+    test("with an unrecognized MCP-Protocol-Version header, rejects with 400 before checking the session", async () => {
+      const res = await rpc(null, {
+        method: "GET",
+        headers: { "mcp-protocol-version": "1999-01-01" },
+      });
+      assert.equal(res.status, 400);
+      assert.match(res.body.error.message, /Unsupported MCP-Protocol-Version/);
+    });
+
+    test("with a valid session id but MCP_SESSION_HUB unbound, degrades to 405", async () => {
+      const res = await rpc(null, {
+        method: "GET",
+        headers: { "mcp-session-id": A_SESSION_ID },
+        env: {},
+      });
+      assert.equal(res.status, 405);
+      assert.equal(res.headers.get("allow"), "POST, OPTIONS");
+    });
+
+    test("with MCP_SESSION_HUB bound, forwards to the session's /stream route and streams the response through", async () => {
+      const hub = fakeMcpSessionHubBinding();
+      const request = new Request(MCP_URL, {
+        method: "GET",
+        headers: { "mcp-session-id": A_SESSION_ID },
+      });
+      const response = await handleMcpRequest(request, {
+        MCP_SESSION_HUB: hub,
+      });
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("content-type"), "text/event-stream");
+      assert.equal(hub.calls.length, 1);
+      assert.match(hub.calls[0].url, /\/stream\?sessionId=/);
+      assert.match(
+        hub.calls[0].url,
+        new RegExp(encodeURIComponent(A_SESSION_ID)),
+      );
+    });
+
+    test("a 409 from the session hub (a stream is already open) passes through as 409", async () => {
+      const hub = fakeMcpSessionHubBinding({
+        "/stream": () => new Response(null, { status: 409 }),
+      });
+      const request = new Request(MCP_URL, {
+        method: "GET",
+        headers: { "mcp-session-id": A_SESSION_ID },
+      });
+      const response = await handleMcpRequest(request, {
+        MCP_SESSION_HUB: hub,
+      });
+      assert.equal(response.status, 409);
+      const body = await response.json();
+      assert.match(body.error.message, /already open/);
+    });
+
+    test("a 404 from the session hub (unknown/terminated session) passes through as 404", async () => {
+      const hub = fakeMcpSessionHubBinding({
+        "/stream": () => new Response(null, { status: 404 }),
+      });
+      const request = new Request(MCP_URL, {
+        method: "GET",
+        headers: { "mcp-session-id": A_SESSION_ID },
+      });
+      const response = await handleMcpRequest(request, {
+        MCP_SESSION_HUB: hub,
+      });
+      assert.equal(response.status, 404);
+      const body = await response.json();
+      assert.match(body.error.message, /No such MCP session/);
+    });
+  });
+
+  describe("DELETE /mcp — explicit session termination (#4983 MCP half)", () => {
+    test("without an Mcp-Session-Id header, rejects with 400", async () => {
+      const res = await rpc(null, { method: "DELETE" });
+      assert.equal(res.status, 400);
+      assert.match(res.body.error.message, /Mcp-Session-Id/);
+    });
+
+    test("with a valid session id but MCP_SESSION_HUB unbound, degrades to 405", async () => {
+      const res = await rpc(null, {
+        method: "DELETE",
+        headers: { "mcp-session-id": A_SESSION_ID },
+      });
+      assert.equal(res.status, 405);
+    });
+
+    test("with MCP_SESSION_HUB bound, forwards to the session's /terminate route and returns 204", async () => {
+      const hub = fakeMcpSessionHubBinding();
+      const request = new Request(MCP_URL, {
+        method: "DELETE",
+        headers: { "mcp-session-id": A_SESSION_ID },
+      });
+      const response = await handleMcpRequest(request, {
+        MCP_SESSION_HUB: hub,
+      });
+      assert.equal(response.status, 204);
+      assert.equal(hub.calls.length, 1);
+      assert.match(hub.calls[0].url, /\/terminate$/);
+      assert.equal(hub.calls[0].init.method, "POST");
+      assert.deepEqual(JSON.parse(hub.calls[0].init.body), {
+        sessionId: A_SESSION_ID,
+      });
+    });
   });
 });
 

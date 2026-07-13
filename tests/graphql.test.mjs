@@ -1512,7 +1512,7 @@ describe("graphql — resolver branch coverage", () => {
     assert.ok((await res.json()).errors[0].message.includes("query"));
   });
 
-  test("OPTIONS /mcp advertises POST, OPTIONS (the sibling CORS branch)", async () => {
+  test("OPTIONS /mcp advertises GET, POST, DELETE, OPTIONS (the sibling CORS branch, #4983 MCP half)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/mcp", { method: "OPTIONS" }),
       emptyEnv,
@@ -1521,7 +1521,7 @@ describe("graphql — resolver branch coverage", () => {
     assert.equal(res.status, 204);
     assert.equal(
       res.headers.get("access-control-allow-methods"),
-      "POST, OPTIONS",
+      "GET, POST, DELETE, OPTIONS",
     );
   });
 

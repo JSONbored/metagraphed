@@ -18,7 +18,7 @@ indexer-rs → (writes, as it always has) → Postgres
                                               │
                           box-side relay (LISTEN, #4981) → Cloudflare Durable Object (#4982, live)
                                                                           │
-                                                        SSE / WS (#4982, live) / GraphQL subs / MCP (#4983)
+                                              SSE / WS (#4982, live) / GraphQL subs / MCP (#4983, live)
 ```
 
 `indexer-rs` requires **zero code changes** and has **zero awareness** any of
@@ -208,11 +208,56 @@ merge failed with a generic connection error; that was Cloudflare's global
 edge propagation lag for the new Worker version, not a protocol bug --
 retrying a couple of minutes later succeeded cleanly.)
 
-## MCP resource subscriptions (#4983, not yet built)
+## MCP resource subscriptions (#4983, live)
 
-Exposes the firehose as an MCP resource an agent client can subscribe to per
-the MCP resource-subscription spec (`resources/subscribe` +
-`notifications/resources/updated`), reusing this same hub connection.
+Exposes the firehose as an MCP resource (`metagraph://chain/stream`) an agent
+client can subscribe to per the MCP resource-subscription spec
+(`resources/subscribe` + `notifications/resources/updated`). Unlike GraphQL
+subscriptions above, this is deliberately NOT another population on
+`ChainFirehoseHub` -- it is a separate Durable Object, `McpSessionHub`
+(`workers/mcp-session-hub.mjs`), one instance per `Mcp-Session-Id`. See that
+file's own header comment for the full reasoning; in short: MCP's
+`resources/subscribe` is a one-shot POST, while the actual push channel is a
+separate, reconnect-tolerant GET correlated by session id -- a different
+lifecycle primitive than "fan out to whoever's holding a socket right now",
+which is what `ChainFirehoseHub`'s other three populations all are.
+`ChainFirehoseHub` stays the single source of truth for "an event happened":
+a subscribed session is tracked in `mcpSubscribedSessions`, and `broadcast()`
+pings each subscribed session's `McpSessionHub` (`POST .../notify`) after the
+three existing fan-out loops, best-effort and awaited inline (an unreachable
+session DO never blocks ingest).
+
+**Transport**: MCP's ratified transport (2025-06-18 spec) is Streamable
+HTTP -- POST for JSON-RPC, plus an optional GET for a standalone SSE push
+stream -- not WebSocket (no ratified WS transport exists as of this writing).
+`handleMcpRequest` (`src/mcp-server.mjs`) now branches on method: POST is the
+pre-existing stateless JSON-RPC path (unaffected for every method other than
+`resources/subscribe`/`resources/unsubscribe`); GET forwards to the session's
+`McpSessionHub` `/stream` route; DELETE forwards to `/terminate` for explicit
+client-initiated cleanup. A session id is minted (`crypto.randomUUID()`, sent
+back as an `Mcp-Session-Id` response header) only off a successful
+`initialize` call -- every other method stays session-optional, matching the
+spec's "session is a feature a server MAY offer" framing. `MCP-Protocol-Version`
+is validated when present (absent is treated as the spec's `2025-03-26`
+default, not rejected).
+
+**Bounded stream duration, not indefinite hold**: unlike WebSocket, an
+SSE-holding Durable Object has no hibernation exemption (hibernation is a
+WebSocket-only billing mechanism) -- it stays fully resident for the life of
+the stream. The MCP spec's 2025-11-25 revision explicitly added "support
+polling SSE streams by allowing servers to disconnect at will", so
+`McpSessionHub` closes its stream after `MCP_SESSION_MAX_STREAM_DURATION_MS`
+(5 minutes) and expects the client to reconnect via GET again, coalescing any
+notification that arrived while no stream was open into one pending marker
+per uri (matches `resources/read` always returning current state regardless
+of how many events fired in between). A session with no subscribe/stream/
+touch activity for `MCP_SESSION_IDLE_TTL_MS` (30 minutes) self-terminates via
+a Durable Object alarm.
+
+Both `workers/mcp-session-hub.mjs` and the `src/mcp-server.mjs` additions are
+unit-tested at effectively 100% (no `WebSocketPair`-shaped code here, unlike
+`ChainFirehoseHub` -- `state.storage` is a plain async KV API and
+`ReadableStream` is a real Web Streams API under Node/vitest).
 
 ## The alerter (#4984, not yet built)
 

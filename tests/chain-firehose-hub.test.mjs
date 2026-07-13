@@ -28,6 +28,7 @@ import {
   validateChainEventsSubscribePayload,
   validateChainFirehoseIngestPayload,
 } from "../workers/chain-firehose-hub.mjs";
+import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.mjs";
 
 // --- validateChainEventsSubscribePayload (#4983 security fix) -------------------
 //
@@ -853,4 +854,124 @@ test("CHAIN_FIREHOSE_INGEST_TOKEN_HEADER and CHAIN_FIREHOSE_TABLES are the docum
     "chain_events",
     "extrinsics",
   ]);
+});
+
+// --- MCP resource-subscription notify loop (#4983 MCP half) ---------------------
+
+function fakeMcpSessionHubBinding(overrides = {}) {
+  const calls = [];
+  return {
+    calls,
+    idFromName: (name) => name,
+    get: (sessionId) => ({
+      fetch: async (url, init) => {
+        calls.push({ sessionId, url, init });
+        if (overrides[sessionId]) return overrides[sessionId]();
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    }),
+  };
+}
+
+test("mcpSubscribeSession / mcpUnsubscribeSession: idempotent Set add/delete", () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.mcpSubscribeSession("s1");
+  hub.mcpSubscribeSession("s1"); // double-subscribe is a no-op
+  assert.deepEqual([...hub.mcpSubscribedSessions], ["s1"]);
+  hub.mcpUnsubscribeSession("s2"); // never subscribed -- harmless no-op
+  assert.deepEqual([...hub.mcpSubscribedSessions], ["s1"]);
+  hub.mcpUnsubscribeSession("s1");
+  assert.equal(hub.mcpSubscribedSessions.size, 0);
+});
+
+test("ChainFirehoseHub.fetch: GET /latest returns the latest broadcast payload, null before any broadcast", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const before = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/latest"),
+  );
+  assert.deepEqual(await before.json(), { payload: null });
+
+  await hub.broadcast({ table: "blocks", block_number: 42 });
+  const after = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/latest"),
+  );
+  assert.deepEqual(await after.json(), {
+    payload: { table: "blocks", block_number: 42 },
+  });
+});
+
+test("ChainFirehoseHub.fetch: POST /mcp-subscribe registers the session", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  const res = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/mcp-subscribe", {
+      method: "POST",
+      body: JSON.stringify({ sessionId: "s1" }),
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true });
+  assert.equal(hub.mcpSubscribedSessions.has("s1"), true);
+});
+
+test("ChainFirehoseHub.fetch: POST /mcp-unsubscribe removes the session", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.mcpSubscribeSession("s1");
+  const res = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/mcp-unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ sessionId: "s1" }),
+    }),
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true });
+  assert.equal(hub.mcpSubscribedSessions.has("s1"), false);
+});
+
+test("broadcast: with no MCP-subscribed sessions, never calls MCP_SESSION_HUB", async () => {
+  const mcpHub = fakeMcpSessionHubBinding();
+  const hub = new ChainFirehoseHub(stubState(), { MCP_SESSION_HUB: mcpHub });
+  await hub.broadcast({ table: "blocks", block_number: 1 });
+  assert.equal(mcpHub.calls.length, 0);
+});
+
+test("broadcast: with a subscribed session but MCP_SESSION_HUB unbound, never throws and skips the loop", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  hub.mcpSubscribeSession("s1");
+  await assert.doesNotReject(() =>
+    hub.broadcast({ table: "blocks", block_number: 1 }),
+  );
+});
+
+test("broadcast: notifies every MCP-subscribed session's McpSessionHub with a pointer-only uri", async () => {
+  const mcpHub = fakeMcpSessionHubBinding();
+  const hub = new ChainFirehoseHub(stubState(), { MCP_SESSION_HUB: mcpHub });
+  hub.mcpSubscribeSession("s1");
+  hub.mcpSubscribeSession("s2");
+  await hub.broadcast({ table: "chain_events", block_number: 7 });
+  assert.equal(mcpHub.calls.length, 2);
+  const sessionIds = mcpHub.calls.map((c) => c.sessionId).sort();
+  assert.deepEqual(sessionIds, ["s1", "s2"]);
+  for (const call of mcpHub.calls) {
+    assert.match(call.url, /\/notify$/);
+    assert.equal(call.init.method, "POST");
+    assert.deepEqual(JSON.parse(call.init.body), {
+      uri: MCP_CHAIN_STREAM_RESOURCE_URI,
+    });
+  }
+});
+
+test("broadcast: an unreachable/erroring session hub is best-effort -- doesn't throw and doesn't block the other sessions", async () => {
+  const mcpHub = fakeMcpSessionHubBinding({
+    s1: () => {
+      throw new Error("session DO unreachable");
+    },
+  });
+  const hub = new ChainFirehoseHub(stubState(), { MCP_SESSION_HUB: mcpHub });
+  hub.mcpSubscribeSession("s1");
+  hub.mcpSubscribeSession("s2");
+  await assert.doesNotReject(() =>
+    hub.broadcast({ table: "blocks", block_number: 1 }),
+  );
+  const sessionIds = mcpHub.calls.map((c) => c.sessionId).sort();
+  assert.deepEqual(sessionIds, ["s1", "s2"]);
 });

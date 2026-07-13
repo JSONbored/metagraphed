@@ -259,6 +259,7 @@ import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   ChainFirehoseHub,
 } from "./chain-firehose-hub.mjs";
+import { McpSessionHub } from "./mcp-session-hub.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -433,9 +434,10 @@ export default {
 
 // Durable Object classes must be named exports of this Worker's main entry
 // module (wrangler.jsonc's "main": "workers/api.mjs") -- re-exporting the
-// class defined in chain-firehose-hub.mjs is what makes the
-// "durable_objects"/"migrations" bindings in wrangler.jsonc resolvable.
-export { ChainFirehoseHub };
+// classes defined in chain-firehose-hub.mjs/mcp-session-hub.mjs is what
+// makes the "durable_objects"/"migrations" bindings in wrangler.jsonc
+// resolvable.
+export { ChainFirehoseHub, McpSessionHub };
 
 // The staged-artifact loaders now live in request-handlers/staging.mjs (#1763).
 // Re-export it so the scheduled cron drain (handleScheduled) and the staging
@@ -1011,9 +1013,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleWebhookRequest(request, env, url);
   }
 
-  // Remote MCP server (stateless JSON-RPC over POST), for AI agents. Runs before
-  // the read-only method gate (it is POST-only) like the RPC proxy. Artifact/KV
-  // readers are injected so the MCP tools reuse the exact R2/ASSETS resolution.
+  // Remote MCP server, for AI agents: stateless JSON-RPC over POST, plus GET
+  // (the SSE resource-subscription push stream, #4983) and DELETE (explicit
+  // session termination) -- all three handled inside handleMcpRequest itself.
+  // Runs before the read-only method gate (POST/DELETE would otherwise be
+  // rejected there) like the RPC proxy. Artifact/KV readers are injected so
+  // the MCP tools reuse the exact R2/ASSETS resolution.
   if (url.pathname === "/mcp") {
     return handleMcpRequest(request, env, { readArtifact, readHealthKv });
   }
@@ -4264,13 +4269,18 @@ function corsPreflight(request) {
   } else if (url.pathname === "/api/v1/graphql") {
     // POST executes queries; GET serves the published SDL document.
     methods = "GET, POST, OPTIONS";
-  } else if (url.pathname === "/mcp" || url.pathname === "/api/v1/ask") {
+  } else if (url.pathname === "/mcp") {
+    // GET opens the bounded SSE push stream (#4983 MCP half); DELETE
+    // terminates a session explicitly; POST is the stateless JSON-RPC path.
+    methods = "GET, POST, DELETE, OPTIONS";
+  } else if (url.pathname === "/api/v1/ask") {
     methods = "POST, OPTIONS";
   }
   headers.set("access-control-allow-methods", methods);
   headers.set(
     "access-control-allow-headers",
-    `content-type, if-none-match, ${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}`,
+    `content-type, if-none-match, mcp-session-id, mcp-protocol-version, ` +
+      `${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}`,
   );
   headers.set("access-control-max-age", "86400");
   return new Response(null, { status: 204, headers });
