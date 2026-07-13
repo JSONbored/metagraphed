@@ -3612,8 +3612,10 @@ function NoDataSpark({
   ] });
 }
 var sum = (ns) => ns.reduce((a, b) => a + b, 0);
-var MIN_TILE_W_FOR_VALUE = 12;
-var MIN_TILE_H_FOR_VALUE = 14;
+var MIN_TILE_W_FOR_LABEL = 16;
+var MIN_TILE_H_FOR_LABEL = 12;
+var MIN_TILE_W_FOR_VALUE = 16;
+var MIN_TILE_H_FOR_VALUE = 22;
 function worstRatio(areas, side) {
   if (areas.length === 0 || side <= 0) return Infinity;
   const s = sum(areas);
@@ -3701,15 +3703,15 @@ function TreemapMini({
             width: `${t.w}%`,
             height: `${t.h}%`
           },
-          children: /* @__PURE__ */ jsxs(
+          children: /* @__PURE__ */ jsx(
             "div",
             {
               className: "flex h-full w-full flex-col justify-between rounded-sm border border-background/40 p-1.5",
               style: { background: t.color ?? "var(--accent)" },
-              children: [
+              children: t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? /* @__PURE__ */ jsxs(Fragment, { children: [
                 /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[10px] font-medium leading-none text-accent-foreground", children: t.label }),
                 t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[9px] leading-none text-accent-foreground/80", children: formatValue(t.value) }) : null
-              ]
+              ] }) : null
             }
           )
         },
