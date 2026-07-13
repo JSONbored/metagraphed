@@ -54,45 +54,46 @@ export function ErrorState({
   const status = isApi ? error.status : undefined;
 
   return (
-    <div role="alert" className="rounded border border-health-down/30 bg-health-down/5 p-4">
-      <div className="flex items-start gap-3">
-        <AlertCircle className="size-4 shrink-0 text-health-down" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-display text-sm font-medium text-ink-strong">
-              Couldn't load {context ?? "this data"}
-            </span>
-            {status ? (
-              <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-ink-muted">
-                HTTP {status}
-              </code>
-            ) : null}
-          </div>
-          <p className="text-xs text-ink-muted leading-relaxed mb-2">{message}</p>
-          {url ? (
-            <code className="block truncate font-mono text-[10px] text-ink-muted">{url}</code>
-          ) : null}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {onRetry ? (
-              <button
-                onClick={onRetry}
-                className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
-              >
-                <RefreshCw className="size-3" /> Retry
-              </button>
-            ) : null}
-            {safeUrl ? (
-              <a
-                href={safeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30"
-              >
-                <ExternalLinkIcon className="size-3" /> Open API URL
-              </a>
-            ) : null}
-          </div>
-        </div>
+    <div
+      role="alert"
+      className="rounded border border-health-down/30 bg-health-down/5 p-4 text-center"
+    >
+      <AlertCircle className="mx-auto size-4 text-health-down" />
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+        <span className="font-display text-sm font-medium text-ink-strong">
+          Couldn't load {context ?? "this data"}
+        </span>
+        {status ? (
+          <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-ink-muted">
+            HTTP {status}
+          </code>
+        ) : null}
+      </div>
+      <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-ink-muted">{message}</p>
+      {url ? (
+        <code className="mx-auto mt-1 block max-w-md truncate font-mono text-[10px] text-ink-muted">
+          {url}
+        </code>
+      ) : null}
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+        {onRetry ? (
+          <button
+            onClick={onRetry}
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+          >
+            <RefreshCw className="size-3" /> Retry
+          </button>
+        ) : null}
+        {safeUrl ? (
+          <a
+            href={safeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+          >
+            <ExternalLinkIcon className="size-3" /> Open API URL
+          </a>
+        ) : null}
       </div>
     </div>
   );
