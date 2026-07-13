@@ -38,6 +38,7 @@ import {
   validate,
 } from "graphql";
 import { GRAPHQL_TRANSPORT_WS_PROTOCOL, makeServer } from "graphql-ws";
+import { resolveClientIp } from "./config.mjs";
 import {
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_QUERY_BYTES,
@@ -93,6 +94,20 @@ export const CHAIN_FIREHOSE_MAX_FIELD_STRING_BYTES = 256;
 export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
 export const CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS = 1000;
 export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
+
+// #5004 item 1: the two caps above are GLOBAL -- one IP looping connection
+// attempts can legitimately consume the entire budget and lock out every
+// other client of that transport. This is a per-IP sub-quota (resolved via
+// resolveClientIp, workers/config.mjs -- the SAME cf-connecting-ip-only
+// resolution workers/data-api.mjs's rate limiters already use, not a
+// separate IP-extraction scheme) checked in ADDITION to, not instead of, the
+// global caps above. Deliberately well under them (20 vs. 1000): generous
+// enough for any real client (a browser tab or two, a reconnect race) while
+// still bounding a single actor to a small slice of the global budget rather
+// than all of it. SSE and WS share this same constant (no principled reason
+// found for the two transports to need different per-IP headroom) -- see
+// handleSubscribe's SSE branch and WS-upgrade branch below.
+export const CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP = 20;
 
 // graphql-ws multiplexes many independent `subscribe` operations over ONE
 // WebSocket connection (the library only rejects a *duplicate* operation id
@@ -312,6 +327,21 @@ export class ChainFirehoseHub {
     this.state = state;
     this.env = env;
     this.sseClients = new Set();
+    // #5004 item 1: live SSE/WS connection count per client IP, mirroring
+    // sseClients/state.getWebSockets() but keyed by resolveClientIp(request)
+    // instead of by connection -- the per-IP sub-quota above. Both WS "modes"
+    // (plain firehose and graphql-ws) share wsClientsByIp: they both accept a
+    // WebSocketPair from the SAME handleSubscribe entry point and both count
+    // against the same per-IP WS budget (see handleSubscribe's WS-upgrade
+    // branch). Like every other piece of this class's in-memory state, these
+    // reset to empty on a fresh DO reconstruction (hibernation wake, idle
+    // eviction, or a code deploy) -- see the class header comment and
+    // closeStaleGraphqlWsSocket's comment for this class's own established
+    // hibernation-survival convention; the bar here is the same one: keep
+    // increment/decrement paired within a single DO lifetime, not survive
+    // reconstruction.
+    this.sseClientsByIp = new Map();
+    this.wsClientsByIp = new Map();
     // #4983: GraphQL subscriptions over WS, negotiated via
     // Sec-WebSocket-Protocol on the SAME /subscribe path -- see the class
     // header comment. chainEventSubscribers holds active createAsyncRepeater()
@@ -356,6 +386,18 @@ export class ChainFirehoseHub {
   // Returns null (not a repeater) at CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
   // -- the resolver must throw a GraphQLError for that case, never treat
   // null as "no filter"/an empty stream.
+  //
+  // #5004 item 1 KNOWN GAP (deliberately NOT fixed by this pass): this method
+  // receives only `topics`, not the request/IP, so CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
+  // stays a GLOBAL cap with no per-IP sub-quota, unlike the SSE/WS connection
+  // caps above it. The per-IP fix added elsewhere in this file bounds how
+  // many separate graphql-ws SOCKETS one IP can open (handleSubscribe's
+  // WS-upgrade branch), but NOT how many `chainEvents` subscriptions one IP
+  // multiplexes within a single already-open socket -- that would require
+  // threading the request/IP through graphql-ws's onSubscribe/context
+  // callback chain into this method, a deeper change explicitly scoped out
+  // of #5004 item 1 (see the issue body). Left as an explicit, intentional
+  // gap rather than silently dropped -- a candidate for a follow-up issue.
   subscribeChainEvents(topics) {
     if (
       this.chainEventSubscribers.size >=
@@ -450,6 +492,20 @@ export class ChainFirehoseHub {
       ) {
         return new Response("too many connections", { status: 503 });
       }
+      // #5004 item 1: per-IP sub-quota, checked in addition to the global cap
+      // above. Applies to BOTH WS "modes" below (plain firehose and
+      // graphql-ws) -- both accept a WebSocketPair from this same branch and
+      // share wsClientsByIp, so one IP can't work around the cap by opening
+      // graphql-ws sockets instead of plain ones (or vice versa). Same 503
+      // shape as the global-cap response above; no need for a distinct error
+      // -- a client can't act on the difference and both mean "try later".
+      const clientIp = resolveClientIp(request);
+      if (
+        (this.wsClientsByIp.get(clientIp) || 0) >=
+        CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP
+      ) {
+        return new Response("too many connections", { status: 503 });
+      }
       const requestedProtocols = (
         request.headers.get("sec-websocket-protocol") || ""
       )
@@ -464,6 +520,18 @@ export class ChainFirehoseHub {
 
       if (isGraphqlWs) {
         this.state.acceptWebSocket(server, [GRAPHQL_WS_SOCKET_TAG]);
+        // #5004 item 1: stamp the accepting IP into the attachment (like the
+        // plain-firehose branch below stamps topics) so webSocketClose/
+        // webSocketError -- which only ever receive the ws, not the original
+        // request -- can look it up to release this IP's wsClientsByIp slot.
+        // graphql-ws itself never reads this attachment, and this branch
+        // never sets `topics` (that's a plain-firehose-only concept), so
+        // there's no key collision to worry about.
+        server.serializeAttachment({ ip: clientIp });
+        this.wsClientsByIp.set(
+          clientIp,
+          (this.wsClientsByIp.get(clientIp) || 0) + 1,
+        );
         const adapterSocket = {
           protocol: GRAPHQL_TRANSPORT_WS_PROTOCOL,
           send: (data) => server.send(data),
@@ -486,9 +554,17 @@ export class ChainFirehoseHub {
       }
 
       this.state.acceptWebSocket(server);
+      // #5004 item 1: `ip` alongside `topics` in the SAME attachment object
+      // -- webSocketClose/webSocketError read it back via
+      // ws.deserializeAttachment() to release this IP's wsClientsByIp slot.
       server.serializeAttachment({
         topics: topics === null ? null : [...topics],
+        ip: clientIp,
       });
+      this.wsClientsByIp.set(
+        clientIp,
+        (this.wsClientsByIp.get(clientIp) || 0) + 1,
+      );
       return new Response(null, { status: 101, webSocket: client });
     }
     /* v8 ignore stop */
@@ -497,18 +573,37 @@ export class ChainFirehoseHub {
       return new Response("too many connections", { status: 503 });
     }
 
+    // #5004 item 1: per-IP sub-quota, checked in addition to the global cap
+    // above. Same 503 shape as the global-cap response -- see the WS-upgrade
+    // branch's identical comment above for why no distinct error is used.
+    const clientIp = resolveClientIp(request);
+    if (
+      (this.sseClientsByIp.get(clientIp) || 0) >=
+      CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP
+    ) {
+      return new Response("too many connections", { status: 503 });
+    }
+
     const encoder = new TextEncoder();
-    const clients = this.sseClients;
+    // `hub`, not `this` -- start()/cancel() below are plain-function
+    // properties of the object literal passed to ReadableStream, so `this`
+    // inside them is that literal, not the ChainFirehoseHub instance; the
+    // original code worked around this the same way (a captured `clients`
+    // local). addSseClient/removeSseClient are the single add/remove path
+    // for BOTH this.sseClients and this.sseClientsByIp, so the two can never
+    // drift out of sync -- broadcast()'s own two cleanup paths below route
+    // through removeSseClient too, not a direct sseClients.delete().
+    const hub = this;
     let entry;
     const stream = new ReadableStream(
       {
         start(controller) {
-          entry = { controller, topics };
-          clients.add(entry);
+          entry = { controller, topics, ip: clientIp };
+          hub.addSseClient(entry);
           controller.enqueue(encoder.encode(": connected\n\n"));
         },
         cancel() {
-          clients.delete(entry);
+          hub.removeSseClient(entry);
         },
       },
       new CountQueuingStrategy({
@@ -524,6 +619,66 @@ export class ChainFirehoseHub {
         connection: "keep-alive",
       },
     });
+  }
+
+  // #5004 item 1: the single add path for an SSE client -- registers `entry`
+  // in BOTH this.sseClients (the existing global-cap membership set) and
+  // this.sseClientsByIp (the per-IP sub-quota), together, so the two never
+  // drift apart. `entry.ip` is set by handleSubscribe's SSE branch above.
+  addSseClient(entry) {
+    this.sseClients.add(entry);
+    this.sseClientsByIp.set(
+      entry.ip,
+      (this.sseClientsByIp.get(entry.ip) || 0) + 1,
+    );
+  }
+
+  // The single removal path for an SSE client -- used by the stream's own
+  // cancel() callback AND both of broadcast()'s cleanup paths (a stalled
+  // client past the high-water mark, and a client whose enqueue() throws),
+  // replacing what used to be three separate `sseClients.delete(entry)`
+  // call sites. Keeping this as one shared method is what guarantees
+  // sseClients and sseClientsByIp stay paired -- see addSseClient above.
+  // A no-op if `entry` was never actually a member (nothing to release).
+  removeSseClient(entry) {
+    if (!this.sseClients.delete(entry)) return;
+    const count = this.sseClientsByIp.get(entry.ip);
+    if (!count) return;
+    if (count <= 1) {
+      this.sseClientsByIp.delete(entry.ip);
+    } else {
+      this.sseClientsByIp.set(entry.ip, count - 1);
+    }
+  }
+
+  // #5004 item 1: releases a closed/errored WS connection's per-IP slot,
+  // reversing the increment made at accept time in handleSubscribe's
+  // WS-upgrade branch (both the plain-firehose and graphql-ws sub-branches
+  // stamp {ip} into the SAME serializeAttachment() call the topics filter
+  // already uses, precisely so this lookup works for either kind of
+  // socket). Called from both webSocketClose and webSocketError so every
+  // disconnect path -- clean close or the runtime reporting an error --
+  // releases the slot; an unreleased slot would let a client ratchet down
+  // its own remaining budget forever across repeated reconnects. A socket
+  // accepted by a PRIOR (now-replaced) DO instance has no entry in THIS
+  // instance's in-memory wsClientsByIp -- fresh per this class's own
+  // hibernation-survival convention (see closeStaleGraphqlWsSocket's
+  // comment) -- so this is a safe no-op for it, not an underflow.
+  releaseWsIpSlot(ws) {
+    let ip;
+    try {
+      ip = ws.deserializeAttachment()?.ip;
+    } catch {
+      return;
+    }
+    if (!ip) return;
+    const count = this.wsClientsByIp.get(ip);
+    if (!count) return;
+    if (count <= 1) {
+      this.wsClientsByIp.delete(ip);
+    } else {
+      this.wsClientsByIp.set(ip, count - 1);
+    }
   }
 
   // Bounds-check helper for the hibernation-survival bug described in
@@ -581,6 +736,9 @@ export class ChainFirehoseHub {
   }
 
   webSocketClose(ws, code, reason) {
+    // #5004 item 1: release this socket's per-IP WS slot on every close,
+    // graphql-ws or plain firehose alike -- see releaseWsIpSlot's comment.
+    this.releaseWsIpSlot(ws);
     const entry = this.graphqlWsSockets.get(ws);
     if (entry?.closedCb) {
       entry.closedCb(code, reason);
@@ -594,6 +752,10 @@ export class ChainFirehoseHub {
   }
 
   webSocketError(ws, error) {
+    // #5004 item 1: same per-IP release as webSocketClose -- an error close
+    // must free the slot too, or a flaky/dropped connection never gets its
+    // budget back. See releaseWsIpSlot's comment.
+    this.releaseWsIpSlot(ws);
     // Mirrors webSocketClose's graphql-ws cleanup -- Server.opened()'s
     // returned closed() callback must run on an error close too, not only a
     // clean one, or that connection's subscriptions leak. The hibernation
@@ -622,7 +784,10 @@ export class ChainFirehoseHub {
         } catch {
           // already closed
         }
-        this.sseClients.delete(entry);
+        // #5004 item 1: removeSseClient, not a direct sseClients.delete(),
+        // so this IP's sseClientsByIp slot is released too -- see
+        // addSseClient/removeSseClient's comments.
+        this.removeSseClient(entry);
         continue;
       }
       try {
@@ -630,7 +795,7 @@ export class ChainFirehoseHub {
           encoder.encode(formatChainFirehoseSseFrame(payload)),
         );
       } catch {
-        this.sseClients.delete(entry);
+        this.removeSseClient(entry);
       }
     }
 
