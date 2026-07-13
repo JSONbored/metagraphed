@@ -7,7 +7,7 @@
 // tiers (chain_events / deep history); this exposes them to the public API.
 //
 // Mostly read-only, parameterized (postgres.js tagged templates), one request one
-// sql.begin("read only", ...) transaction (#4686 connection-affinity). The ONE
+// sql.begin(DATA_API_READ_TRANSACTION, ...) transaction (#4686 connection-affinity). The ONE
 // exception is POST /api/v1/internal/neurons-sync (#4771): the write path into
 // this SAME Postgres instance's neurons/neuron_daily tables. It does NOT get its
 // own dedicated Worker the way registry-sync-api.mjs does -- that split is
@@ -323,6 +323,7 @@ import {
   buildChainSigners,
 } from "../src/chain-analytics.mjs";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
+const DATA_API_READ_TRANSACTION = "isolation level repeatable read read only";
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
@@ -2692,8 +2693,10 @@ export default {
       // queries, so a bare SET (no transaction) has no guarantee it applies
       // to the query that follows it (Hyperdrive's connection-lifecycle
       // docs; #4686's root cause). "read only" matches this Worker's own
-      // READ-ONLY invariant (top of file) at the database level too.
-      return await sql.begin("read only", async (sql) => {
+      // READ-ONLY invariant (top of file) at the database level too, and
+      // repeatable read keeps multi-statement analytics responses on one
+      // stable snapshot while preserving each route's bounded timeouts.
+      return await sql.begin(DATA_API_READ_TRANSACTION, async (sql) => {
         await sql`SET statement_timeout = '3000ms'`;
 
         // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
@@ -3091,7 +3094,8 @@ export default {
           let lo = null;
           const kindCounts = new Map();
           for (const row of capped) {
-            netuids.add(row.netuid);
+            const netuid = numberOrNull(row.netuid);
+            if (netuid != null) netuids.add(netuid);
             const bn = numberOrNull(row.block_number);
             if (bn != null && (fb == null || bn < fb)) fb = bn;
             if (bn != null && (lb == null || bn > lb)) lb = bn;
@@ -3285,6 +3289,7 @@ export default {
           SELECT event_kind, COUNT(*) AS coldkey_count FROM (
             SELECT coldkey, event_kind FROM account_events
             WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
+              AND coldkey IS NOT NULL
             GROUP BY 1, 2
           ) grouped GROUP BY event_kind`;
           const coldkeyCountByKind = new Map(
@@ -4439,6 +4444,7 @@ export default {
           );
           const slaRows = await sql`
           SELECT MAX(surface_id) AS surface_id,
+                 COALESCE(surface_key, surface_id) AS surface_key,
                  COUNT(*) AS total,
                  SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}

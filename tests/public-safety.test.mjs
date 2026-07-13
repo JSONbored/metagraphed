@@ -458,4 +458,92 @@ describe("captured-fixture body scan", () => {
       `a hyphenated coldkey secret attempt must still be flagged; got:\n${output}`,
     );
   });
+
+  test("allows the coldkey IS [NOT] NULL SQL comparison, same class as coldkey =", async () => {
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "WHERE netuid = ${netuid} AND coldkey IS NOT NULL",
+        "WHERE coldkey IS NULL",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `coldkey IS [NOT] NULL SQL comparisons should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("does not let 'coldkey is not' prose without the literal NULL keyword slip past", async () => {
+    // The IS [NOT] NULL exemption requires the literal SQL keyword, not just
+    // "is"/"is not" -- prose using the same words must still be flagged.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      "The coldkey is not something you should ever share.\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: Bittensor key terminology`),
+      `prose without the literal NULL keyword must still be flagged; got:\n${output}`,
+    );
+  });
+
+  test("flags hyphenated/compound wallet-key wording a literal-space regex would miss", async () => {
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "seed-phrase",
+        "seedphrase",
+        "seed_phrase",
+        "private-key",
+        "privatekey",
+        "wallet-path",
+        "walletpath",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    for (let line = 1; line <= 7; line += 1) {
+      assert.ok(
+        output.includes(`${TEST_PUBLIC_FILE}:${line}: wallet/key wording`),
+        `line ${line} should be flagged as wallet/key wording; got:\n${output}`,
+      );
+    }
+  });
+
+  test("does not flag a compound word that only shares a prefix, not the full phrase", async () => {
+    // \b after the optional separator still requires a real word boundary --
+    // continuing into more identifier characters must not match.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      ["privateKeyRef", "seedphrases", "walletpathfinder"].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `a partial/continued word must not trip wallet/key wording; got:\n${output}`,
+    );
+  });
+
+  test("flags hyphenated/compound sensitive hotkey wording a literal-space regex would miss", async () => {
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      ["wallet-hotkey", "hotkey-path", "hotkey-seed-phrase"].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    for (let line = 1; line <= 3; line += 1) {
+      assert.ok(
+        output.includes(
+          `${TEST_PUBLIC_FILE}:${line}: sensitive hotkey wording`,
+        ),
+        `line ${line} should be flagged as sensitive hotkey wording; got:\n${output}`,
+      );
+    }
+  });
 });

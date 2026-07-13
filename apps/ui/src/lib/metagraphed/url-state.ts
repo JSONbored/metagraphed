@@ -16,6 +16,7 @@ export const tableSearchSchema = z.object({
   curation: fallback(z.string(), "").default(""),
   health: fallback(z.string(), "").default(""),
   kind: fallback(z.string(), "").default(""),
+  stale: fallback(z.string(), "").default(""),
   provider: fallback(z.string(), "").default(""),
   netuid: fallback(z.string(), "").default(""),
   // #9: agent-catalog capability filters (applied client-side over joined rows).

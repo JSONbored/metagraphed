@@ -153,16 +153,19 @@ socket upgrades per IP -- well under the global caps, tracked via
 `sseClientsByIp`/`wsClientsByIp` and released on the same
 connect/disconnect lifecycle hooks the underlying `sseClients`/
 `state.getWebSockets()` bookkeeping already uses, so the two can never
-drift apart. A WS-connection cap alone doesn't bound how many `chainEvents`
+drift apart. Because hibernatable WebSockets survive Durable Object
+reconstruction while in-memory Maps do not, the WS per-IP count is rebuilt
+from each surviving socket's serialized `{ ip }` attachment before every WS
+admission check. A WS-connection cap alone doesn't bound how many `chainEvents`
 subscriptions get multiplexed onto one already-open graphql-ws socket
 (graphql-ws itself imposes no per-socket subscription limit), so
 `CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP` (20) is a second,
 independent sub-quota on subscription count, with the connecting IP
 threaded from the WS upgrade through graphql-ws's own `opened()`/`context()`
 extension point (`ctx.extra.ip` -> `context.clientIp`) into
-`subscribeChainEvents`. All four per-IP Maps are in-memory only and reset
-to empty on every Durable Object reconstruction, the same hibernation-reset
-convention every other in-memory Map on this class already follows.
+`subscribeChainEvents`. The SSE and GraphQL-subscription per-IP Maps remain
+in-memory only; unlike accepted WebSockets, those live stream/subscription
+objects do not survive Durable Object reconstruction.
 
 Testability: this repo has no Durable Object-capable test harness (no
 `@cloudflare/vitest-pool-workers`/Miniflare). Every actual decision the hub

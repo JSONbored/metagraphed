@@ -35,12 +35,18 @@ export function DownloadCsvButton({
       aria-label={label}
       title={label}
       className={classNames(
-        "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
+        // other compact header controls it commonly sits next to — a plain
+        // `rounded` rectangle reads as a mismatched shape beside a pill.
+        "inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1.5 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1",
         className,
       )}
     >
       <Download className="size-3 text-ink-muted" aria-hidden />
-      {label}
+      {/* Icon-only below `sm` — a text label is the first thing to drop when a
+          button shares a header row with other controls on a narrow viewport;
+          the icon + aria-label/title keep it identifiable either way. */}
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }

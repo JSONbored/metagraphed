@@ -126,6 +126,35 @@ describe("buildChainYield", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
   });
 
+  test("accepts epoch-millisecond string captured_at values from Postgres", () => {
+    const newest = 1_750_000_000_000;
+    const out = buildChainYield([
+      { stake_tao: 1, emission_tao: 0, captured_at: "1700000000000" },
+      { stake_tao: 1, emission_tao: 0, captured_at: String(newest) },
+    ]);
+    assert.equal(out.captured_at, new Date(newest).toISOString());
+  });
+
+  test("ignores an all-digit captured_at string outside Date's representable range", () => {
+    // A digit string so large it represents a date beyond JS Date's
+    // +/-8.64e15ms range -- Number(value) stays finite, but
+    // new Date(ms).getTime() is NaN, so this must fall through rather
+    // than return an invalid timestamp.
+    const out = buildChainYield([
+      {
+        stake_tao: 1,
+        emission_tao: 0,
+        captured_at: "100000000000000000000",
+      },
+      {
+        stake_tao: 1,
+        emission_tao: 0,
+        captured_at: "1750000000000",
+      },
+    ]);
+    assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
+  });
+
   test("ignores out-of-range numeric captured_at values", () => {
     const out = buildChainYield([
       {

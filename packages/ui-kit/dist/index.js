@@ -1536,12 +1536,15 @@ function DownloadCsvButton({
       "aria-label": label,
       title: label,
       className: classNames(
-        "inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        // rounded-full matches the pill idiom shared by SectionBadge/FilterChip/
+        // other compact header controls it commonly sits next to — a plain
+        // `rounded` rectangle reads as a mismatched shape beside a pill.
+        "inline-flex items-center gap-1.5 rounded-full border border-border bg-card p-1.5 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-2.5 sm:py-1",
         className
       ),
       children: [
         /* @__PURE__ */ jsx(Download, { className: "size-3 text-ink-muted", "aria-hidden": true }),
-        label
+        /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: label })
       ]
     }
   );
@@ -1936,12 +1939,21 @@ function ListShell({
   empty,
   isEmpty,
   isStale,
-  /** When true, the rendered table can stick its <thead> at top-sticky-offset
-   *  (just under the sticky filter bar) because outer wrappers avoid
-   *  creating a vertical scroll container. */
+  /** When true, the rendered table can stick its <thead> at `top-0` inside a
+   *  bounded-height, internally-scrolling viewport (both axes) -- the
+   *  standard sticky-header-data-table pattern. A page-scroll-relative
+   *  sticky header and native horizontal scroll cannot coexist on the same
+   *  wrapper: `overflow-x: auto` makes that wrapper the header's nearest
+   *  scroll-container ancestor per the CSS sticky-positioning spec, and
+   *  since the wrapper itself never scrolls internally (the page scrolls
+   *  past it instead), the header's "stuck" trigger never fires -- verified
+   *  directly (#5073). Bounding the wrapper's height and letting it scroll
+   *  internally makes it the header's OWN scroll reference, so both work.
+   */
   stickyHeader = true
 }) {
-  const tableScroll = stickyHeader ? "overflow-x-auto overflow-y-clip" : "overflow-x-auto";
+  const tableCard = "rounded border border-border bg-card overflow-hidden";
+  const tableScroll = stickyHeader ? "mg-table-scroll overflow-auto" : "overflow-x-auto";
   return /* @__PURE__ */ jsxs("div", { children: [
     /* @__PURE__ */ jsx(
       "div",
@@ -1958,7 +1970,7 @@ function ListShell({
     ),
     isEmpty ? empty : /* @__PURE__ */ jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
       cards ? /* @__PURE__ */ jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
-      /* @__PURE__ */ jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxs("div", { className: "rounded border border-border bg-card overflow-hidden", children: [
+      /* @__PURE__ */ jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxs("div", { className: tableCard, children: [
         /* @__PURE__ */ jsx("div", { className: tableScroll, children: table }),
         footer
       ] }) }),
@@ -2238,7 +2250,7 @@ function SectionAnchor({
         )
       ),
       children: [
-        /* @__PURE__ */ jsxs("div", { className: "mb-3 flex items-baseline gap-3", children: [
+        /* @__PURE__ */ jsxs("div", { className: "mb-3 flex items-center gap-3", children: [
           /* @__PURE__ */ jsxs("div", { className: "min-w-0 flex-1", children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1.5", children: [
               /* @__PURE__ */ jsx("h2", { className: "font-display text-sm font-semibold uppercase tracking-wider text-ink-strong", children: title }),
