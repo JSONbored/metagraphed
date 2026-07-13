@@ -493,6 +493,8 @@ const subnetIndex = mergedSubnets.map((subnet) => {
     native_name_quality: subnet.native_name_quality,
     native_slug: subnet.native_slug,
     netuid: subnet.netuid,
+    // Display/placement only (#5171) — never a trust signal like curation_level.
+    partnership: subnet.partnership,
     participant_count: subnet.participant_count,
     probed_surface_count: subnet.probed_surface_count,
     // #640: display-only freshness floor for the list's "last updated" column —
@@ -2774,6 +2776,10 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
       source_count: 0,
       gap_notes: [],
     },
+    // Display/placement only (#5171) — e.g. a featured-pilot homepage slot.
+    // Distinct from curation.level above, which is a trust signal and never
+    // drives placement (docs/adr/0008-subnet-data-model.md).
+    partnership: overlay?.partnership || null,
     links: overlay?.links || [],
     // Structured social handles (#745): curated overlay wins over on-chain
     // SubnetIdentitiesV3 `additional` extraction. Display/search-only — never

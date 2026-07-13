@@ -11303,6 +11303,33 @@
         ],
         "type": "object"
       },
+      "PartnershipMetadata": {
+        "additionalProperties": false,
+        "description": "Display/placement metadata — e.g. a featured-pilot homepage slot. Distinct from `curation` and `authority`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md).",
+        "properties": {
+          "since": {
+            "format": "date",
+            "type": "string"
+          },
+          "tier": {
+            "$ref": "#/components/schemas/PartnershipTier"
+          },
+          "validator_hotkey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "since"
+        ],
+        "type": "object"
+      },
+      "PartnershipTier": {
+        "description": "Display/placement tier for a subnet — e.g. a featured-pilot homepage slot. Distinct from Authority and CurationLevel, which are trust signals only and never drive placement.",
+        "enum": [
+          "pilot"
+        ]
+      },
       "PortfolioPosition": {
         "additionalProperties": true,
         "description": "One neuron position a wallet holds on a subnet: its economics and emission/stake yield. Score fields are null when the cell is absent; yield is null with zero stake.",
@@ -15911,6 +15938,17 @@
             "minimum": 0,
             "type": "integer"
           },
+          "partnership": {
+            "description": "Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation, which is a trust signal only.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PartnershipMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "previously_known_as": {
             "description": "Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647).",
             "items": {
@@ -17268,6 +17306,17 @@
           "participant_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "partnership": {
+            "description": "Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation_level, which is a trust signal only.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PartnershipMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "probed_surface_count": {
             "minimum": 0,

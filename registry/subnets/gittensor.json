@@ -38,6 +38,10 @@
   "name": "Gittensor",
   "netuid": 74,
   "notes": "Pilot manifest. This tracks public-safe registry concepts only; validator credential flows and private scoring internals are out of scope.",
+  "partnership": {
+    "since": "2026-07-04",
+    "tier": "pilot"
+  },
   "schema_version": 1,
   "slug": "gittensor",
   "social": {

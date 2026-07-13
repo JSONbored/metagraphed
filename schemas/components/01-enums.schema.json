@@ -85,6 +85,10 @@
           "stale"
         ]
       },
+      "PartnershipTier": {
+        "description": "Display/placement tier for a subnet — e.g. a featured-pilot homepage slot. Distinct from Authority and CurationLevel, which are trust signals only and never drive placement.",
+        "enum": ["pilot"]
+      },
       "CandidateState": {
         "enum": [
           "schema-invalid",

@@ -110,6 +110,11 @@ export interface ApiEnvelope<T> {
 // curation tier the assertion below stops compiling, forcing this to track it.
 export type CurationLevel = ApiSchema<"CurationLevel">;
 
+// Display/placement metadata (e.g. a featured-pilot homepage slot) — distinct
+// from CurationLevel above, which is a trust signal only and never drives
+// placement (docs/adr/0008-subnet-data-model.md, #5171).
+export type SubnetPartnership = ApiSchema<"PartnershipMetadata">;
+
 // CoverageLevel has no contract counterpart — it is a UI-only rollup label.
 export type CoverageLevel = "native-only" | "manifested" | "probed";
 
@@ -126,6 +131,7 @@ export type HealthState = "ok" | "warn" | "down" | "unknown";
 
 export interface Subnet {
   netuid: number;
+  slug?: string;
   name?: string;
   symbol?: string;
   type?: "root" | "application";
@@ -135,6 +141,7 @@ export interface Subnet {
   mechanism_count?: number;
   curation_level?: CurationLevel;
   coverage_level?: CoverageLevel;
+  partnership?: SubnetPartnership | null;
   surfaces_count?: number;
   candidates_count?: number;
   health?: HealthState;
