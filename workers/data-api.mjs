@@ -3141,6 +3141,7 @@ export default {
           SELECT event_kind, COUNT(*) AS coldkey_count FROM (
             SELECT coldkey, event_kind FROM account_events
             WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
+              AND coldkey IS NOT NULL
             GROUP BY 1, 2
           ) grouped GROUP BY event_kind`;
           const coldkeyCountByKind = new Map(

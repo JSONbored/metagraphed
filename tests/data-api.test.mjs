@@ -2433,6 +2433,7 @@ test("GET /api/v1/subnets/:netuid/event-summary shapes kind/category aggregates 
   expect(queryText()).toContain(
     "GROUP BY event_kind ORDER BY event_count DESC",
   );
+  expect(queryText()).toContain("AND coldkey IS NOT NULL");
 });
 
 test("GET /api/v1/subnets/:netuid/event-summary defaults the window when absent", async () => {
