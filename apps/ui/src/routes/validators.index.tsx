@@ -13,6 +13,11 @@ import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { ValidatorMetricsExplainer } from "@/components/metagraphed/validator-metrics-explainer";
+import {
+  ValidatorsCompareDrawer,
+  ValidatorCompareToggle,
+} from "@/components/metagraphed/validators-compare-drawer";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 // The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
@@ -76,6 +81,7 @@ function ValidatorsPage() {
         description="Network-wide validator directory — hotkeys ranked across all Bittensor subnets, computed live from the chain-direct metagraph."
         actions={<ShareButton />}
       />
+      <ValidatorMetricsExplainer className="mb-6" />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <ValidatorsTable
@@ -161,6 +167,9 @@ function ValidatorsTable({
           <table className="w-full text-left text-sm">
             <thead className="bg-surface/50">
               <tr>
+                <th className={`${TH} w-8`}>
+                  <span className="sr-only">Compare</span>
+                </th>
                 <th className={TH}>Hotkey</th>
                 <th className={TH}>Coldkey</th>
                 <th className={`${TH} text-right`}>Active subnets</th>
@@ -173,6 +182,9 @@ function ValidatorsTable({
             <tbody className="divide-y divide-border">
               {validators.map((v) => (
                 <tr key={v.hotkey} className="hover:bg-surface/40">
+                  <td className="px-3 py-2 align-middle">
+                    <ValidatorCompareToggle hotkey={v.hotkey} />
+                  </td>
                   <td className="px-3 py-2 font-mono text-[11px]">
                     <Link
                       to="/validators/$hotkey"
@@ -223,6 +235,8 @@ function ValidatorsTable({
           description="The global validator directory is empty for this window."
         />
       )}
+
+      <ValidatorsCompareDrawer validators={validators} />
     </div>
   );
 }
