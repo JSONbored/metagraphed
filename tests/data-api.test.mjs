@@ -39,6 +39,10 @@ const mockQueue = vi.hoisted(() => ({ current: [] }));
 // State for the neurons-sync write route's tests only (#4771) -- unused by
 // every GET-route test above.
 const neuronsSyncFailure = vi.hoisted(() => ({ error: null }));
+// State for the backfill-neuron-daily write route's tests only -- separate
+// from neuronsSyncFailure above so injecting one never affects the other's
+// tests (both match on an INSERT INTO neuron_daily-adjacent pattern).
+const neuronDailyBackfillFailure = vi.hoisted(() => ({ error: null }));
 const neuronsSyncPruneRows = vi.hoisted(() => ({ current: [] }));
 // State for the account-events-daily rollup write route's tests only (#4832).
 const rollupFailure = vi.hoisted(() => ({ error: null }));
@@ -114,6 +118,12 @@ vi.mock("postgres", () => ({
       sqlCalls.push({ text, values: boundValues });
       if (neuronsSyncFailure.error && /INSERT INTO neurons\b/.test(text)) {
         return Promise.reject(neuronsSyncFailure.error);
+      }
+      if (
+        neuronDailyBackfillFailure.error &&
+        /INSERT INTO neuron_daily\b/.test(text)
+      ) {
+        return Promise.reject(neuronDailyBackfillFailure.error);
       }
       if (
         rollupFailure.error &&
@@ -242,6 +252,7 @@ beforeEach(() => {
   sqlBeginOptions.length = 0;
   mockQueue.current = [];
   neuronsSyncFailure.error = null;
+  neuronDailyBackfillFailure.error = null;
   neuronsSyncPruneRows.current = [];
   rollupFailure.error = null;
   subnetHyperparamsSyncFailure.error = null;
@@ -2328,6 +2339,41 @@ test("backfill-neuron-daily accepts the {rows:[...]} wrapped form, not just a ba
   );
   expect(res.status).toBe(200);
   expect((await res.json()).neuron_daily_written).toBe(1);
+});
+
+test("backfill-neuron-daily rejects a body over the byte cap (413)", async () => {
+  const res = await postNeuronDailyBackfill(null, {
+    secret: NEURON_DAILY_BACKFILL_SECRET,
+    raw: "[" + "1".repeat(33_000_000) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("backfill-neuron-daily rejects rows that don't match the neuron row shape (400)", async () => {
+  const res = await postNeuronDailyBackfill(
+    [neuronSyncRow({ netuid: 70_000 })],
+    { secret: NEURON_DAILY_BACKFILL_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("backfill-neuron-daily excludes a null-hotkey row from account_position_daily", async () => {
+  const res = await postNeuronDailyBackfill([neuronSyncRow({ hotkey: null })], {
+    secret: NEURON_DAILY_BACKFILL_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.neuron_daily_written).toBe(1);
+  expect(body.account_position_daily_written).toBe(0);
+});
+
+test("backfill-neuron-daily maps a DB failure to a clean 502 instead of throwing", async () => {
+  neuronDailyBackfillFailure.error = new Error("connection reset");
+  const res = await postNeuronDailyBackfill([neuronSyncRow()], {
+    secret: NEURON_DAILY_BACKFILL_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
 });
 
 test("POST to a different path is rejected with 405 (neurons-sync route only accepts its own path)", async () => {
