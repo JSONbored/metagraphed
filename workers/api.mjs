@@ -264,6 +264,7 @@ import {
   ChainFirehoseHub,
 } from "./chain-firehose-hub.mjs";
 import { McpSessionHub } from "./mcp-session-hub.mjs";
+import { AlerterHub } from "./alerter-hub.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -441,7 +442,7 @@ export default {
 // classes defined in chain-firehose-hub.mjs/mcp-session-hub.mjs is what
 // makes the "durable_objects"/"migrations" bindings in wrangler.jsonc
 // resolvable.
-export { ChainFirehoseHub, McpSessionHub };
+export { ChainFirehoseHub, McpSessionHub, AlerterHub };
 
 // The staged-artifact loaders now live in request-handlers/staging.mjs (#1763).
 // Re-export it so the scheduled cron drain (handleScheduled) and the staging

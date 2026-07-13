@@ -702,5 +702,25 @@ export class ChainFirehoseHub {
         }),
       );
     }
+
+    // #4984 Part 2: the alerter evaluator. A SINGLETON (idFromName("global")),
+    // unlike the per-session MCP loop above -- there is exactly one
+    // evaluator, not one per subscriber, so no membership Set to check
+    // first. Best-effort: an unreachable/erroring AlerterHub never blocks
+    // ingest or any other broadcast population.
+    if (this.env.ALERTER_HUB) {
+      try {
+        const stub = this.env.ALERTER_HUB.get(
+          this.env.ALERTER_HUB.idFromName("global"),
+        );
+        await stub.fetch("https://alerter-hub.internal/evaluate", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // best-effort -- see the comment above
+      }
+    }
   }
 }

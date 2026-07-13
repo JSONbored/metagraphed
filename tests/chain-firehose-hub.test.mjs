@@ -1002,3 +1002,71 @@ test("broadcast: an unreachable/erroring session hub is best-effort -- doesn't t
   const sessionIds = mcpHub.calls.map((c) => c.sessionId).sort();
   assert.deepEqual(sessionIds, ["s1", "s2"]);
 });
+
+// --- ALERTER_HUB ping (#4984 Part 2) ---------------------------------------------
+
+function fakeAlerterHubBinding(overrides = {}) {
+  const calls = [];
+  return {
+    calls,
+    idFromName: (name) => name,
+    get: (name) => ({
+      fetch: async (url, init) => {
+        calls.push({ name, url, init });
+        if (overrides[name]) return overrides[name]();
+        return new Response(JSON.stringify({ matched: 0 }), { status: 200 });
+      },
+    }),
+  };
+}
+
+test("broadcast: with ALERTER_HUB unbound, never throws and skips the ping", async () => {
+  const hub = new ChainFirehoseHub(stubState(), {});
+  await assert.doesNotReject(() =>
+    hub.broadcast({ table: "account_events", block_number: 1 }),
+  );
+});
+
+test("broadcast: pings ALERTER_HUB's singleton /evaluate route with the full payload", async () => {
+  const alerterHub = fakeAlerterHubBinding();
+  const hub = new ChainFirehoseHub(stubState(), { ALERTER_HUB: alerterHub });
+  const payload = {
+    table: "account_events",
+    block_number: 7,
+    netuid: 7,
+    amount_tao: 12.5,
+  };
+  await hub.broadcast(payload);
+  assert.equal(alerterHub.calls.length, 1);
+  assert.equal(alerterHub.calls[0].name, "global");
+  assert.match(alerterHub.calls[0].url, /\/evaluate$/);
+  assert.equal(alerterHub.calls[0].init.method, "POST");
+  assert.deepEqual(JSON.parse(alerterHub.calls[0].init.body), payload);
+});
+
+test("broadcast: an unreachable/erroring AlerterHub is best-effort -- doesn't throw and doesn't block ingest", async () => {
+  const alerterHub = fakeAlerterHubBinding({
+    global: () => {
+      throw new Error("alerter hub unreachable");
+    },
+  });
+  const hub = new ChainFirehoseHub(stubState(), { ALERTER_HUB: alerterHub });
+  await assert.doesNotReject(() =>
+    hub.broadcast({ table: "account_events", block_number: 1 }),
+  );
+  assert.equal(alerterHub.calls.length, 1);
+});
+
+test("broadcast: pings ALERTER_HUB unconditionally, unlike the per-session MCP loop -- no subscribe step required", async () => {
+  const alerterHub = fakeAlerterHubBinding();
+  const mcpHub = fakeMcpSessionHubBinding();
+  const hub = new ChainFirehoseHub(stubState(), {
+    ALERTER_HUB: alerterHub,
+    MCP_SESSION_HUB: mcpHub,
+  });
+  // No mcpSubscribeSession call -- the MCP loop should stay silent while the
+  // alerter ping still fires.
+  await hub.broadcast({ table: "account_events", block_number: 1 });
+  assert.equal(alerterHub.calls.length, 1);
+  assert.equal(mcpHub.calls.length, 0);
+});

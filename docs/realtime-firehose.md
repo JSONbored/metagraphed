@@ -275,12 +275,43 @@ confirmed 2026-07-13, immediately after #5007 merged and propagated (no
 Cloudflare edge-propagation retry needed this time, unlike the graphql-ws
 verification above).
 
-## The alerter (#4984, not yet built)
+## The alerter (#4984, in progress)
 
 A consumer of the same hub: evaluates user-defined trigger conditions against
-the stream and delivers matches via webhook (reusing the existing
-`/api/v1/webhooks/subscriptions` infrastructure), email, Telegram, or
-Discord.
+the stream and delivers matches via webhook, email, Telegram, or Discord.
+Landing in three parts, each its own PR (matching every other piece of this
+epic):
+
+**Part 1 (live): trigger storage + CRUD.** A new `chain_alert_triggers`
+Postgres table (`deploy/postgres/schema.sql`) and public CRUD routes at
+`/api/v1/alerts/triggers` (`workers/data-api.mjs`, proxied through
+`workers/api.mjs`). Ownership is a bearer `owner_token` (returned once, at
+creation) -- matching the webhook-subscription secret model, since no
+user-account system exists here -- and unlike webhook subscriptions there is
+NO public GET: a trigger's `destination` can itself be a capability
+credential (a Discord incoming-webhook URL). Trigger conditions
+(netuid/event_kind/account/min_amount_tao) are drawn from `account_events`'
+own columns, which is exactly why that table got its own firehose-tee
+prerequisite above -- none of `blocks`/`extrinsics`/`chain_events` carry
+those fields.
+
+**Part 2 (live): the AlerterHub evaluator.** A new singleton Durable Object
+(`workers/alerter-hub.mjs`, `idFromName("global")`) that `ChainFirehoseHub`
+pings unconditionally on every `broadcast()` -- mirroring the #4983
+MCP-notify loop's shape, but without a per-session Set, since there is
+exactly one evaluator. Caches active trigger definitions (refreshed from
+Postgres via `DATA_API`'s internal-only active-list route, TTL
+`ALERTER_HUB_TRIGGER_CACHE_TTL_MS` = 5 minutes) rather than a per-event
+Postgres round-trip, since evaluation shares the same `broadcast()` call
+every other consumer (SSE/WS/GraphQL/MCP) is waiting on.
+
+**Part 3 (not yet built): delivery.** `deliverAlertMatch`
+(`workers/alerter-hub.mjs`) is currently a no-op -- the integration point
+Part 3 replaces with real webhook (reusing `src/webhooks.mjs`'s existing
+HMAC-signing/retry/SSRF-guard machinery via a new per-event entry point,
+not its publish-time batch dispatcher), email, Telegram, and Discord
+dispatch, plus rate-limiting/dedup for event bursts and
+`match_count`/`last_matched_at` bookkeeping on the trigger row.
 
 ## Verifying the trigger locally
 

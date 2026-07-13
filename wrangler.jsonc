@@ -355,6 +355,15 @@
   // #4981 relay's ingest secret is provisioned the same way every other
   // *_SYNC_SECRET is: `wrangler secret put CHAIN_FIREHOSE_SYNC_SECRET`
   // (see docs/realtime-firehose.md).
+  //
+  // #4984 Part 2: AlerterHub calls the DATA_API service binding's internal
+  // active-trigger-list route directly, so this Worker needs the SAME
+  // ALERT_TRIGGERS_INTERNAL_TOKEN value already provisioned on
+  // wrangler.data.jsonc (`wrangler secret put ALERT_TRIGGERS_INTERNAL_TOKEN`
+  // -- see that file's own comment). Not yet provisioned on any deployment;
+  // until it is, the evaluator's trigger cache just stays empty (no crash,
+  // no delivery, matching every other optional binding's degrade-gracefully
+  // convention in this codebase).
   "durable_objects": {
     "bindings": [
       { "name": "CHAIN_FIREHOSE_HUB", "class_name": "ChainFirehoseHub" },
@@ -363,6 +372,13 @@
       // file's own header comment for why this is a SEPARATE DO from
       // ChainFirehoseHub rather than a fourth connection population on it.
       { "name": "MCP_SESSION_HUB", "class_name": "McpSessionHub" },
+      // #4984 Part 2: the alerter evaluator, a SINGLETON (idFromName("global"),
+      // like ChainFirehoseHub itself) -- pinged unconditionally on every
+      // broadcast(), unlike McpSessionHub's per-session Set, since there is
+      // exactly one evaluator. See workers/alerter-hub.mjs's own header
+      // comment for why it stays a separate DO rather than in-memory state
+      // on ChainFirehoseHub.
+      { "name": "ALERTER_HUB", "class_name": "AlerterHub" },
     ],
   },
   // Durable Object class migrations are one-way and versioned: adding a new
@@ -379,6 +395,10 @@
     {
       "tag": "v2-mcp-session-hub",
       "new_sqlite_classes": ["McpSessionHub"],
+    },
+    {
+      "tag": "v3-alerter-hub",
+      "new_sqlite_classes": ["AlerterHub"],
     },
   ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV
