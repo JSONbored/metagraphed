@@ -1,11 +1,14 @@
 import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
-import { BarMini } from "@/components/metagraphed/charts/bar-mini";
-import { TreemapMini, type TreemapMiniDatum } from "@/components/metagraphed/charts/treemap-mini";
-import { TableState } from "@/components/metagraphed/table-state";
+import {
+  TableState,
+  RealtimeFreshness,
+  BarMini,
+  TreemapMini,
+  type TreemapMiniDatum,
+} from "@jsonbored/ui-kit";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
-import { FreshnessIndicator } from "@/components/metagraphed/freshness";
 
 const TOP_N = 10;
 
@@ -60,12 +63,7 @@ export function ValidatorsTableLoader({
     );
   }
 
-  const freshness = (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-      Daily rollup
-      <FreshnessIndicator at={meta?.generated_at} />
-    </span>
-  );
+  const freshness = <RealtimeFreshness at={meta?.generated_at} />;
 
   return (
     <div className="space-y-4">
@@ -75,7 +73,7 @@ export function ValidatorsTableLoader({
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
               Validator stake · top {stakeBars.length}
             </span>
-            <span className="ml-auto flex items-center gap-3">
+            <span className="ml-auto flex items-center gap-2">
               <span className="font-mono text-[10px] text-ink-muted">
                 peak {taoCompact(stakeBars[0]?.value)} τ
               </span>

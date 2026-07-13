@@ -18,6 +18,11 @@ import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
 } from "../src/agent-tool-specs.mjs";
+import { ChainFirehoseHub } from "../workers/chain-firehose-hub.mjs";
+import {
+  MCP_CHAIN_STREAM_RESOURCE_URI,
+  McpSessionHub,
+} from "../workers/mcp-session-hub.mjs";
 import {
   artifactFilePath,
   createLocalArtifactEnv,
@@ -37,15 +42,32 @@ const OUTPUT_VALIDATORS = new Map(
     .map((def) => [def.name, ajv.compile(def.outputSchema)]),
 );
 
-async function mcp(payload, { method = "POST" } = {}) {
+async function mcp(
+  payload,
+  { method = "POST", headers = {}, envOverride = env } = {},
+) {
+  const response = await mcpRaw(payload, { method, headers, envOverride });
+  const text = await response.text();
+  return {
+    status: response.status,
+    headers: response.headers,
+    body: text ? JSON.parse(text) : null,
+  };
+}
+
+// Raw-response variant for GET (an open SSE stream -- .text() would hang
+// draining it until MCP_SESSION_MAX_STREAM_DURATION_MS) and DELETE (a bare
+// 204/405, no body to parse).
+async function mcpRaw(
+  payload,
+  { method = "POST", headers = {}, envOverride = env } = {},
+) {
   const request = new Request(MCP_URL, {
     method,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
-  const response = await handleRequest(request, env, {});
-  const text = await response.text();
-  return { status: response.status, body: text ? JSON.parse(text) : null };
+  return handleRequest(request, envOverride, {});
 }
 
 async function getJson(path) {
@@ -100,6 +122,74 @@ async function callOk(name, args) {
   }
   return result.structuredContent;
 }
+
+// --- MCP resource-subscription fixtures (#4983 MCP half) -------------------
+//
+// Two real Durable Object classes (McpSessionHub + ChainFirehoseHub) wired
+// together exactly like wrangler.jsonc's two bindings, backed by in-memory
+// fakes for state.storage / state.getWebSockets -- same "fake infra, real
+// business logic" convention as createLocalArtifactEnv's ASSETS/R2/KV fakes
+// above, so the resources/subscribe -> ingest -> notifications/resources/
+// updated round trip below exercises the actual class code, not a
+// hand-rolled simulation of it.
+
+function inMemoryDoStorage() {
+  const data = new Map();
+  return {
+    async get(keys) {
+      const result = new Map();
+      for (const key of keys) {
+        if (data.has(key)) result.set(key, data.get(key));
+      }
+      return result;
+    },
+    async put(entries) {
+      for (const [key, value] of Object.entries(entries)) data.set(key, value);
+    },
+    async setAlarm() {
+      // no-op: nothing in this script waits out MCP_SESSION_IDLE_TTL_MS
+    },
+  };
+}
+
+// A minimal fake DurableObjectNamespace: the SAME id always resolves to the
+// SAME instance (required for GET /stream and POST /subscribe on one
+// session to reach the same McpSessionHub), matching real
+// idFromName()/get() semantics.
+function fakeDoNamespace(makeInstance) {
+  const instances = new Map();
+  return {
+    idFromName: (name) => name,
+    get(id) {
+      if (!instances.has(id)) instances.set(id, makeInstance(id));
+      const instance = instances.get(id);
+      return { fetch: (url, init) => instance.fetch(new Request(url, init)) };
+    },
+  };
+}
+
+// Mutually-referencing by design (McpSessionHub tells ChainFirehoseHub about
+// a subscribe/unsubscribe; ChainFirehoseHub tells McpSessionHub about a new
+// event) -- safe because fakeDoNamespace only calls its factory lazily, by
+// which point both bindings below are fully initialized.
+const mcpSessionHubNS = fakeDoNamespace(
+  () =>
+    new McpSessionHub(
+      { storage: inMemoryDoStorage() },
+      { CHAIN_FIREHOSE_HUB: chainFirehoseHubNS },
+    ),
+);
+const chainFirehoseHubNS = fakeDoNamespace(
+  () =>
+    new ChainFirehoseHub(
+      { getWebSockets: () => [] },
+      { MCP_SESSION_HUB: mcpSessionHubNS },
+    ),
+);
+const lifecycleEnv = createLocalArtifactEnv({
+  MCP_SESSION_HUB: mcpSessionHubNS,
+  CHAIN_FIREHOSE_HUB: chainFirehoseHubNS,
+});
 
 // --- Lifecycle -------------------------------------------------------------
 
@@ -1137,11 +1227,181 @@ assert.equal(
 const unknownTool = await call("not_a_real_tool", {});
 assert.equal(unknownTool.isError, true, "unknown tools must return isError");
 
-const getRejected = await mcp(null, { method: "GET" });
-assert.equal(getRejected.status, 405, "GET /mcp must be rejected with 405");
+const getWithoutSession = await mcpRaw(null, { method: "GET" });
+assert.equal(
+  getWithoutSession.status,
+  400,
+  "GET /mcp without an Mcp-Session-Id header must be rejected with 400",
+);
+
+const A_SESSION_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+const getUnprovisioned = await mcpRaw(null, {
+  method: "GET",
+  headers: { "mcp-session-id": A_SESSION_ID },
+});
+assert.equal(
+  getUnprovisioned.status,
+  405,
+  "GET /mcp on a deployment with no MCP_SESSION_HUB binding must degrade to 405",
+);
+
+const deleteWithoutSession = await mcpRaw(null, { method: "DELETE" });
+assert.equal(
+  deleteWithoutSession.status,
+  400,
+  "DELETE /mcp without an Mcp-Session-Id header must be rejected with 400",
+);
+
+const badProtocolVersion = await mcp(
+  { jsonrpc: "2.0", id: 1, method: "ping" },
+  { headers: { "mcp-protocol-version": "1999-01-01" } },
+);
+assert.equal(
+  badProtocolVersion.status,
+  400,
+  "an unrecognized MCP-Protocol-Version header must be rejected with 400",
+);
+
+// --- MCP resource-subscription lifecycle (#4983 MCP half) ------------------
+//
+// The full contract, end to end through the two real Durable Object classes
+// wired above: initialize mints a session -> resources/subscribe on the
+// chain-stream resource -> a chain event actually lands via POST /ingest
+// (the same route the box-side relay hits in production, #4981/#4982) ->
+// the open GET stream receives a pointer-only notifications/resources/
+// updated push -> resources/read returns the CURRENT payload (never the
+// push itself, which per spec carries no data) -> unsubscribe -> DELETE
+// terminates the session -> a later GET 404s. Same verification bar as
+// #4982's SSE/WS lifecycle and #4983's GraphQL subscriptions, per this
+// issue's own "extend validate:mcp to cover the subscription lifecycle"
+// deliverable.
+
+const lifecycleInit = await mcp(
+  { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+  { envOverride: lifecycleEnv },
+);
+const sessionId = lifecycleInit.headers.get("mcp-session-id");
+assert.ok(
+  sessionId,
+  "a successful initialize must mint an Mcp-Session-Id response header",
+);
+
+const subscribeRes = await mcp(
+  {
+    jsonrpc: "2.0",
+    id: 2,
+    method: "resources/subscribe",
+    params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+  },
+  { envOverride: lifecycleEnv, headers: { "mcp-session-id": sessionId } },
+);
+assert.deepEqual(
+  subscribeRes.body.result,
+  {},
+  "resources/subscribe on the chain-stream resource must succeed",
+);
+
+const streamRes = await mcpRaw(null, {
+  method: "GET",
+  headers: { "mcp-session-id": sessionId },
+  envOverride: lifecycleEnv,
+});
+assert.equal(
+  streamRes.status,
+  200,
+  "GET /mcp must open the SSE stream for a subscribed session",
+);
+assert.equal(streamRes.headers.get("content-type"), "text/event-stream");
+const reader = streamRes.body.getReader();
+
+const firehoseStub = chainFirehoseHubNS.get(
+  chainFirehoseHubNS.idFromName("global"),
+);
+const ingestRes = await firehoseStub.fetch(
+  "https://chain-firehose-hub.internal/ingest",
+  {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ table: "blocks", block_number: 8_675_309 }),
+  },
+);
+assert.equal(
+  ingestRes.status,
+  202,
+  "ChainFirehoseHub ingest must accept a valid payload",
+);
+
+const { value: frameBytes } = await reader.read();
+const frame = new TextDecoder().decode(frameBytes);
+assert.match(
+  frame,
+  /^id: \d+\ndata: /,
+  "the SSE stream must deliver an id:/data: framed notification",
+);
+const notification = JSON.parse(
+  frame.slice(frame.indexOf("data: ") + 6).trim(),
+);
+assert.deepEqual(
+  notification,
+  {
+    jsonrpc: "2.0",
+    method: "notifications/resources/updated",
+    params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+  },
+  "the push must be a pointer-only notifications/resources/updated (uri, never the payload itself)",
+);
+await reader.cancel();
+
+const readRes = await mcp(
+  {
+    jsonrpc: "2.0",
+    id: 3,
+    method: "resources/read",
+    params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+  },
+  { envOverride: lifecycleEnv },
+);
+assert.deepEqual(
+  JSON.parse(readRes.body.result.contents[0].text),
+  { table: "blocks", block_number: 8_675_309 },
+  "resources/read on the chain-stream resource must return the latest ingested payload",
+);
+
+const unsubscribeRes = await mcp(
+  {
+    jsonrpc: "2.0",
+    id: 4,
+    method: "resources/unsubscribe",
+    params: { uri: MCP_CHAIN_STREAM_RESOURCE_URI },
+  },
+  { envOverride: lifecycleEnv, headers: { "mcp-session-id": sessionId } },
+);
+assert.deepEqual(unsubscribeRes.body.result, {});
+
+const terminateRes = await mcpRaw(null, {
+  method: "DELETE",
+  headers: { "mcp-session-id": sessionId },
+  envOverride: lifecycleEnv,
+});
+assert.equal(
+  terminateRes.status,
+  204,
+  "DELETE /mcp must terminate the session",
+);
+
+const postTerminateStream = await mcpRaw(null, {
+  method: "GET",
+  headers: { "mcp-session-id": sessionId },
+  envOverride: lifecycleEnv,
+});
+assert.equal(
+  postTerminateStream.status,
+  404,
+  "GET /mcp after DELETE must find no such session",
+);
 
 console.log(
   `MCP validation passed: ${MCP_TOOLS.length} tools, lifecycle + ${
     schemaService ? "all" : "all-but-schema"
-  } tools/call.`,
+  } tools/call + the resources/subscribe -> ingest -> notify round trip.`,
 );

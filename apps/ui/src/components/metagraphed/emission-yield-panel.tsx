@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, Server, Users, Coins } from "lucide-react";
 import { chainYieldQuery } from "@/lib/metagraphed/queries";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import { StatTile } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
 import { formatNumber } from "@/lib/metagraphed/format";
 

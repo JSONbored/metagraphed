@@ -1,16 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Code2, ExternalLink as ExternalLinkIcon, Loader2, X } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useApiSourceCtx, type ApiSource } from "@/lib/metagraphed/api-source-context";
 import { apiFetch } from "@/lib/metagraphed/client";
 import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { CopyableCode } from "./copyable-code";
-import { Kbd } from "./kbd";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  CopyableCode,
+  Kbd,
+  safeExternalUrl,
+} from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
-import { safeExternalUrl } from "./external-link";
 
 /** Header trigger button. Hidden when no page has registered an API source. */
 export function ApiDrawerTrigger() {
@@ -38,7 +45,7 @@ export function ApiDrawerTrigger() {
           type="button"
           onClick={open}
           aria-label="View API source for this page"
-          className="hidden md:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+          className="hidden md:inline-flex lg:hidden xl:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
         >
           <Code2 className="size-4" />
         </button>

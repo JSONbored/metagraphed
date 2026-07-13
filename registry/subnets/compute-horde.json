@@ -132,6 +132,25 @@
         "submitted_by": "galuis116"
       },
       "notes": "Official ComputeHorde Facilitator API (the SDK's DEFAULT_FACILITATOR_URL, https://facilitator.computehorde.io/) — auth/nonce is the live, public, no-auth endpoint of the same API; job submission/listing (api/v1/jobs) then requires bittensor-hotkey-signed auth via this nonce + /auth/login."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-computehorde-collateral-abi",
+      "kind": "data-artifact",
+      "name": "ComputeHorde collateral contract ABI",
+      "notes": "Public no-auth machine-readable JSON ABI for ComputeHorde's on-chain collateral smart contract, committed in the official backend-developers-ltd/ComputeHorde source repository (whose README declares \"Subnet 12 of Bittensor\"). The contract carries a NETUID accessor plus the deposit / reclaim / finalizeReclaim / collaterals interface that SN12 miners and validators use for the subnet's economic-security collateral flow — a standalone machine-readable reference artifact the registry did not yet capture.",
+      "provider": "compute-horde",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/README.md",
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json"
+      ],
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json"
     }
   ]
 }

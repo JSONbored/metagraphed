@@ -1,0 +1,35 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "ByteLeap",
+  "netuid": 128,
+  "schema_version": 1,
+  "slug": "sn-128",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-128-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "ByteLeap TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/128 on api.taomarketcap.com returning machine-readable JSON for SN128 ByteLeap on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. ByteLeap is the distributed-compute network on Bittensor SN128 (the official byteleapai validator/miner repositories declare \"Bittensor SN128 Compute Network\"). This indexed feed is documented in the TaoMarketCap developer API.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/byteleapai/byteleap-Validator"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/128"
+    }
+  ],
+  "source_repo": "https://github.com/byteleapai/byteleap-Validator",
+  "website_url": "https://byteleap.ai"
+}

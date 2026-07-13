@@ -1184,7 +1184,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345). */
+        /** Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?call_hash= (0x-prefixed 64-hex-char decoded call hash, requires ?call_module= to keep the JSON scan scoped — matches a Multisig approval chain's linked calls, #4322), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345). */
         get: operations["extrinsicsFeed"];
         put?: never;
         post?: never;
@@ -3767,13 +3767,13 @@ export interface components {
             method: string | null;
             pallet: string | null;
         };
-        /** @description Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor (exclusive), while ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). next_cursor is the cursor for the next page (null when the page was not full); next_before is retained for legacy callers. Empty (count:0, events:[]) before the all-events backfill runs. */
+        /** @description Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless observed_at.block_number.event_index keyset cursor (exclusive), while ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). next_cursor is the cursor for the next page (null when the page was not full); next_before is retained for legacy callers. Empty (count:0, events:[]) before the all-events backfill runs. */
         ChainEventsFeedArtifact: {
             count: number;
             events: components["schemas"]["ChainEvent"][];
             /** @description Legacy block_number-only cursor for the next page. Prefer next_cursor to avoid skipping same-block events. */
             next_before?: number | null;
-            /** @description Lossless block_number.event_index cursor for the next page. Both parts are non-negative safe integers; pass it back as ?cursor=. */
+            /** @description Lossless observed_at.block_number.event_index cursor for the next page. All parts are non-negative safe integers; pass it back as ?cursor=. */
             next_cursor?: string | null;
         } & {
             [key: string]: unknown;
@@ -5957,6 +5957,8 @@ export interface components {
         };
         RpcPoolEndpoint: {
             archive_support?: boolean | null;
+            /** @description Structural pool-eligibility input: whether the endpoint requires auth (#4979). */
+            auth_required?: boolean;
             /** @enum {unknown} */
             health_source: "probe-derived" | "missing-probe" | "not-monitored";
             health_stale: boolean;
@@ -5970,6 +5972,8 @@ export interface components {
             pool_eligibility_reasons?: string[];
             pool_eligible: boolean;
             provider: string;
+            /** @description Structural pool-eligibility input: whether the endpoint is safe for public proxying (#4979). */
+            public_safe?: boolean;
             score: number;
             score_reasons?: components["schemas"]["EndpointScoreReason"][];
             status: components["schemas"]["HealthStatus"];
@@ -11966,7 +11970,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "next_before": 1,
-                     *         "next_cursor": "123.4"
+                     *         "next_cursor": "100.123.4"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -16782,6 +16786,7 @@ export interface operations {
                 signer?: string;
                 call_module?: string;
                 call_function?: string;
+                /** @description Requires call_module so the decoded call-args JSON scan stays scoped. */
                 call_hash?: string;
                 success?: "true" | "false";
                 block_start?: number;

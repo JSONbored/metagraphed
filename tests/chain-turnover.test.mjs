@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { describe, test } from "vitest";
 import {
   buildChainTurnover,
   loadChainTurnover,
@@ -382,25 +382,6 @@ describe("GET /api/v1/chain/turnover", () => {
   const request = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/turnover${q}`);
 
-  test("dispatches to the network validator turnover scorecard", async () => {
-    const res = await handleRequest(
-      request(),
-      neuronDailyEnv({
-        bounds: [{ start_date: START, end_date: END }],
-        rows: ROWS,
-      }),
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.subnet_count, 2);
-    assert.equal(body.data.comparable, true);
-    assert.equal(body.data.subnets[0].netuid, 1);
-    assert.equal(body.meta.source, "metagraph-snapshot");
-    assert.equal(body.meta.artifact_path, "/metagraph/chain/turnover.json");
-  });
-
   test("serves a schema-stable empty scorecard on a cold store", async () => {
     const res = await handleRequest(
       request(),
@@ -448,25 +429,6 @@ describe("GET /api/v1/chain/turnover", () => {
     "netuid,validators_start,validators_end,validators_entered,validators_exited,validator_retention,stability_score";
   const warm = { bounds: [{ start_date: START, end_date: END }], rows: ROWS };
   const cold = { bounds: [{ start_date: null, end_date: null }], rows: [] };
-
-  test("exports the per-subnet churn leaderboard as CSV with ?format=csv", async () => {
-    const res = await handleRequest(
-      request("?window=30d&format=csv"),
-      neuronDailyEnv(warm),
-      {},
-    );
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /text\/csv/);
-    assert.match(
-      res.headers.get("content-disposition"),
-      /attachment; filename="chain-turnover\.csv"/,
-    );
-    const lines = (await res.text()).trim().split("\r\n");
-    assert.equal(lines[0], TURNOVER_CSV_HEADER);
-    // Most-volatile first: netuid 1 (churn 2) leads, then the stable netuid 2.
-    assert.equal(lines.length, 3); // header + 2 subnet rows
-    assert.equal(lines[1], "1,2,2,1,1,0.3333,33");
-  });
 
   test("honors Accept: text/csv the same as ?format=csv", async () => {
     const res = await handleRequest(
@@ -561,86 +523,11 @@ describe("readNeuronDailyCacheStamp", () => {
   });
 });
 
-describe("chain/turnover edge cache", () => {
-  let originalCaches;
-  afterEach(() => {
-    globalThis.caches = originalCaches;
-  });
-
-  // The latest neuron_daily snapshot_date the stamp query returns — mutated mid-test to simulate a
-  // rollup refresh. Every SELECT the stamp resolver runs is recorded so the test can assert the
-  // stamp reads neuron_daily (its actual source table), not the live neurons tier.
-  function turnoverEnv(state) {
-    return {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind: () => ({
-              all: () => {
-                // The busting stamp query uses the indexed latest snapshot_date; the window
-                // boundary hits MIN(snapshot_date); the rest is the validator read.
-                if (/ORDER BY snapshot_date DESC LIMIT 1/.test(sql)) {
-                  state.stampSql = sql;
-                  return Promise.resolve({
-                    results: [{ snapshot_date: state.snapshotDate }],
-                  });
-                }
-                if (/MIN\(snapshot_date\)/.test(sql)) {
-                  return Promise.resolve({
-                    results: [{ start_date: START, end_date: END }],
-                  });
-                }
-                return Promise.resolve({ results: ROWS });
-              },
-            }),
-          };
-        },
-      },
-    };
-  }
-
-  test("caches keyed on the neuron_daily stamp and busts when neuron_daily refreshes", async () => {
-    originalCaches = globalThis.caches;
-    const store = new Map();
-    globalThis.caches = {
-      default: {
-        async match(request) {
-          const cached = store.get(request.url);
-          return cached ? cached.clone() : undefined;
-        },
-        async put(request, response) {
-          store.set(request.url, response.clone());
-        },
-      },
-    };
-    const state = { snapshotDate: "2026-06-27", stampSql: null };
-    const env = turnoverEnv(state);
-    const call = () =>
-      handleRequest(
-        new Request("https://api.metagraph.sh/api/v1/chain/turnover"),
-        env,
-        { waitUntil: (promise) => promise },
-      );
-
-    const res = await call();
-    assert.equal(res.status, 200);
-    assert.equal((await res.json()).data.subnet_count, 2);
-    assert.equal(store.size, 1); // the response was cached under the neuron_daily stamp key
-    // The stamp resolver reads neuron_daily (its real source), not the live neurons tier — so a
-    // daily-rollup refresh, and only that, invalidates this neuron_daily-derived artifact.
-    assert.match(state.stampSql, /FROM neuron_daily/);
-    assert.doesNotMatch(state.stampSql, /FROM neurons\b/);
-
-    // Same stamp -> served from the existing cache entry (no new key).
-    await call();
-    assert.equal(store.size, 1);
-
-    // Simulate a neuron_daily rollup refresh: a new snapshot_date -> a new stamp -> a new
-    // cache key, so the stale entry is not reused and the artifact is recomputed and re-cached.
-    state.snapshotDate = "2026-06-28";
-    const refreshed = await call();
-    assert.equal(refreshed.status, 200);
-    assert.equal(store.size, 2); // busted: a second cache entry under the new stamp
-  });
-});
+// #4909 D1 retirement: the "chain/turnover edge cache" describe block that
+// used to live here asserted the edge cache busts when the mocked D1
+// neuron_daily stamp changes. neurons/neuron_daily's D1 write path is
+// retired (#4772) and the tables are dropped in production, so
+// handleChainTurnover no longer queries D1 for its data at all — the
+// response is a fixed schema-stable-empty literal on a Postgres miss and
+// never varies with the D1 fixture, so there is nothing left for a
+// stamp-busts-the-cache assertion to observe.

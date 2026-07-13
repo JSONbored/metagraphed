@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { chainIdentityHistoryQuery } from "@/lib/metagraphed/queries";
 import { EmptyState } from "@/components/metagraphed/states";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { TimeAgo } from "@jsonbored/ui-kit";
 
 // #3474: homepage widget — the live network-wide feed of recent subnet-identity
 // changes (name / symbol / description / URL / logo edits observed on-chain),

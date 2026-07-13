@@ -6,11 +6,8 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { PageHero } from "@/components/metagraphed/page-hero";
-import { ListShell } from "@/components/metagraphed/list-shell";
 import {
   PageSizeSelect,
   ResetFiltersButton,
@@ -18,11 +15,17 @@ import {
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { ShareButton } from "@/components/metagraphed/share-button";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { CopyButton } from "@/components/metagraphed/copy-button";
-import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { AccountCell } from "@/components/metagraphed/account-cell";
+import {
+  TimeAgo,
+  PageHero,
+  ListShell,
+  ShareButton,
+  CopyableCode,
+  CopyButton,
+  DownloadCsvButton,
+  Sparkline,
+} from "@jsonbored/ui-kit";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { buildUrl } from "@/lib/metagraphed/client";
@@ -338,7 +341,12 @@ function ExtrinsicsTable() {
                   {extrinsicCall(x.call_module, x.call_function)}
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"}
+                  <AccountCell
+                    ss58={x.signer}
+                    fallback={
+                      x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"
+                    }
+                  />
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px]">
                   <SuccessBadge success={x.success} />

@@ -182,50 +182,18 @@ describe("buildSubnetHyperparams", () => {
 
 const ctx = { waitUntil: (p) => p };
 
-// Stub METAGRAPH_HEALTH_DB whose .all() returns the given rows and records the
-// SQL — mirrors historyEnv in tests/validator-history.test.mjs.
-function hyperparamsEnv(rows, captured = {}) {
-  return {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        captured.sql = sql;
-        return {
-          bind(...params) {
-            captured.params = params;
-            return { all: () => Promise.resolve({ results: rows }) };
-          },
-        };
-      },
-    },
-  };
-}
-
+// D1 retirement: subnet_hyperparams's D1 write/read path is retired, so this
+// route never queries D1 -- with no METAGRAPH_SUBNET_HYPERPARAMS_SOURCE=
+// postgres flag configured, it always returns the schema-stable null shape
+// (buildSubnetHyperparams(null, netuid) in workers/request-handlers/
+// entities.mjs's handleSubnetHyperparams). Postgres-hit/-failure coverage for
+// this route lives in tests/request-handlers-entities.test.mjs alongside the
+// other flag=postgres tiers.
 describe("GET /api/v1/subnets/{netuid}/hyperparameters via the Worker", () => {
-  test("returns the formatted row for a warm D1", async () => {
-    const captured = {};
-    const env = hyperparamsEnv([rawRow()], captured);
+  test("is schema-stable when Postgres is unconfigured (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/hyperparameters"),
-      env,
-      ctx,
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.netuid, 7);
-    assert.equal(body.data.hyperparameters.tempo, 360);
-    assert.equal(body.data.hyperparameters.registration_allowed, true);
-    assert.match(
-      captured.sql,
-      /FROM subnet_hyperparams WHERE netuid = \? LIMIT 1/,
-    );
-    assert.deepEqual(captured.params, [7]);
-  });
-
-  test("is schema-stable when D1 is cold (never 404)", async () => {
-    const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/subnets/7/hyperparameters"),
-      hyperparamsEnv([]),
+      createLocalArtifactEnv(),
       ctx,
     );
     assert.equal(res.status, 200);
@@ -240,7 +208,7 @@ describe("GET /api/v1/subnets/{netuid}/hyperparameters via the Worker", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/hyperparameters?foo=bar",
       ),
-      hyperparamsEnv([]),
+      createLocalArtifactEnv(),
       ctx,
     );
     assert.equal(res.status, 400);

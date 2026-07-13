@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { endpointsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import { InfoTooltip } from "@jsonbored/ui-kit";
 import { useTimeRange, RANGE_HOURS, RANGE_LABEL } from "./time-range-context";
 import type { Endpoint, HealthState } from "@/lib/metagraphed/types";
 

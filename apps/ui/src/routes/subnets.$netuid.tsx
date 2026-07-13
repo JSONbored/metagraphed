@@ -1,10 +1,15 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Waves, Activity } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Waves,
+  Activity,
+  Filter,
+} from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CandidateChip, CurationChip, ReviewChip } from "@/components/metagraphed/chips";
-import { ExternalLink } from "@/components/metagraphed/external-link";
 import {
   EmptyState,
   PageHeading,
@@ -14,11 +19,22 @@ import {
 } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
-import { SectionAnchor } from "@/components/metagraphed/section-anchor";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import {
+  CandidateChip,
+  CurationChip,
+  ReviewChip,
+  ExternalLink,
+  TimeAgo,
+  SectionAnchor,
+  TableState,
+  HealthPill,
+  CopyableCode,
+  MethodologyCallout,
+  StatTile,
+  RealtimeFreshness,
+} from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
@@ -60,9 +76,9 @@ import {
   eventKindCategory,
   eventKindCategoryLabel,
   eventKindLabel,
+  EVENT_KIND_LABELS,
   type EventKindCategory,
 } from "@/lib/metagraphed/event-kinds";
-import { TableState } from "@/components/metagraphed/table-state";
 import type {
   AccountEvent,
   Endpoint,
@@ -74,8 +90,6 @@ import type {
   AgentCatalogBlocker,
   SubnetHyperparameters,
 } from "@/lib/metagraphed/types";
-import { HealthPill } from "@/components/metagraphed/chips";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { IncidentTimeline } from "@/components/metagraphed/incident-timeline";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { SubnetMasthead } from "@/components/metagraphed/subnet-masthead";
@@ -84,13 +98,13 @@ import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
 import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-panel";
 import { SubnetPulseStrip } from "@/components/metagraphed/subnet-pulse-strip";
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
-import { MethodologyCallout } from "@/components/metagraphed/methodology-callout";
 import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-drawer";
 
 type SearchParams = {
   tab?: string;
   sev?: string;
   uid?: number;
+  ev_kind?: string;
 };
 
 export const Route = createFileRoute("/subnets/$netuid")({
@@ -100,6 +114,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
       tab: typeof s.tab === "string" ? s.tab : undefined,
       sev: typeof s.sev === "string" ? s.sev : undefined,
       uid: Number.isInteger(uidNum) && uidNum >= 0 ? uidNum : undefined,
+      ev_kind: typeof s.ev_kind === "string" && s.ev_kind ? s.ev_kind : undefined,
     };
   },
   parseParams: ({ netuid }) => {
@@ -666,20 +681,74 @@ function StakeFlowScorecard({ netuid }: { netuid: number }) {
 }
 
 function ActivityPanel({ netuid }: { netuid: number }) {
+  const { ev_kind } = Route.useSearch();
+  const navigate = Route.useNavigate();
   return (
     <SectionAnchor
       id="activity"
       title="On-chain activity"
-      subtitle="First-party chain events for this subnet, newest first."
-      info="Registrations, stake, weights, axon, delegation, lifecycle, and transfers decoded directly from finney System.Events for recent finalized blocks (the rolling first-party event window) — not Taostats."
+      info="First-party chain events for this subnet, newest first. Registrations, stake, weights, axon, delegation, lifecycle, and transfers decoded directly from finney System.Events for recent finalized blocks (the rolling first-party event window) — not Taostats."
+      right={
+        <EventKindFilterChip
+          value={ev_kind ?? ""}
+          onChange={(v) =>
+            navigate({
+              to: ".",
+              search: (prev: SearchParams) => ({ ...prev, ev_kind: v || undefined }),
+              replace: true,
+            })
+          }
+        />
+      }
     >
       <StakeFlowScorecard netuid={netuid} />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <ActivityTableLoader netuid={netuid} />
+          <ActivityTableLoader netuid={netuid} kind={ev_kind} />
         </Suspense>
       </QueryErrorBoundary>
     </SectionAnchor>
+  );
+}
+
+// Subnets have no per-subnet event_kinds summary to source filter options from
+// (unlike AccountSummary.event_kinds on the account page) — use the full
+// shared label map instead.
+const EVENT_KIND_OPTIONS = Object.entries(EVENT_KIND_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+// Pill-shaped filter chip matching the EndpointKindTabs / window-toggle idiom
+// used elsewhere for compact filters, rather than the generic bordered-box
+// label+select pattern — a native <select> still drives it for a11y and
+// mobile-native option picking, the Filter icon carries the "Kind" label so
+// the chip stays narrow enough that it never pushes the section title onto
+// multiple lines.
+function EventKindFilterChip({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-ink-muted hover:border-ink/30 transition-colors">
+      <Filter className="size-3 shrink-0" aria-hidden />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Filter by event kind"
+        className="min-w-0 max-w-[85px] truncate bg-transparent font-mono text-[11px] uppercase tracking-widest text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+      >
+        <option value="">All</option>
+        {EVENT_KIND_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -702,7 +771,7 @@ function EventKindCell({ kind }: { kind: string | null | undefined }) {
 
   return (
     <span
-      className="inline-flex flex-wrap items-center gap-1.5"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap"
       title={`${label} · ${categoryLabel}`}
     >
       <span
@@ -719,73 +788,105 @@ function EventKindCell({ kind }: { kind: string | null | undefined }) {
   );
 }
 
-function ActivityTableLoader({ netuid }: { netuid: number }) {
-  const { data } = useSuspenseQuery(subnetEventsQuery(netuid));
+function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }) {
+  const navigate = Route.useNavigate();
+  const { data } = useSuspenseQuery(subnetEventsQuery(netuid, { kind }));
   const events = (data.data.events ?? []) as AccountEvent[];
   if (events.length === 0) {
     return (
-      <TableState
-        variant="empty"
-        title="No recent on-chain activity"
-        description="No first-party chain events are indexed for this subnet in the current window — a quiet or newly-added subnet may have none yet. Registrations, stake, weights, delegation, and transfers will appear here as they're decoded."
-        generatedAt={data.meta?.generated_at}
-      />
+      <div className="space-y-3">
+        <TableState
+          variant="empty"
+          title={kind ? `No ${kind} events` : "No recent on-chain activity"}
+          description={
+            kind
+              ? "Try clearing the kind filter — this subnet may not have emitted that event recently."
+              : "No first-party chain events are indexed for this subnet in the current window — a quiet or newly-added subnet may have none yet. Registrations, stake, weights, delegation, and transfers will appear here as they're decoded."
+          }
+          generatedAt={data.meta?.generated_at}
+        />
+        {kind ? (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() =>
+                navigate({
+                  to: ".",
+                  search: (prev: SearchParams) => ({ ...prev, ev_kind: undefined }),
+                  replace: true,
+                })
+              }
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 font-mono text-[11px] text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+            >
+              Clear filter
+            </button>
+          </div>
+        ) : null}
+      </div>
     );
   }
   return (
-    <div className="overflow-x-auto rounded border border-border bg-card">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-surface/40">
-          <tr>
-            <th className="px-4 py-2.5">Block</th>
-            <th className="px-4 py-2.5">Kind</th>
-            <th className="px-4 py-2.5">Hotkey</th>
-            <th className="px-4 py-2.5 text-right">Amount</th>
-            <th className="px-4 py-2.5 text-right">Observed</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {events.map((ev, i) => (
-            <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface/40">
-              <td className="px-4 py-2.5 font-mono text-[12px]">
-                {ev.block_number != null ? (
-                  <Link
-                    to="/blocks/$ref"
-                    params={{ ref: String(ev.block_number) }}
-                    className="text-ink hover:underline"
-                  >
-                    #{formatNumber(ev.block_number)}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-2.5">
-                <EventKindCell kind={ev.event_kind} />
-              </td>
-              <td className="px-4 py-2.5 font-mono text-[11px]">
-                {ev.hotkey ? (
-                  <Link
-                    to="/accounts/$ss58"
-                    params={{ ss58: ev.hotkey }}
-                    className="text-ink-muted hover:text-ink hover:underline"
-                  >
-                    {shortHash(ev.hotkey) ?? ev.hotkey}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
-                {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
-              </td>
-              <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
-                <TimeAgo at={ev.observed_at} />
-              </td>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          {events.length} event{events.length === 1 ? "" : "s"}
+        </span>
+        <RealtimeFreshness at={data.meta?.generated_at} />
+      </div>
+      <div className="overflow-x-auto rounded border border-border bg-card">
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead className="bg-surface/40">
+            <tr>
+              <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
+              <th className="px-4 py-2.5 whitespace-nowrap">Kind</th>
+              <th className="px-4 py-2.5 whitespace-nowrap">Hotkey</th>
+              <th className="px-4 py-2.5 text-right whitespace-nowrap">Amount</th>
+              <th className="px-4 py-2.5 text-right whitespace-nowrap">Observed</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {events.map((ev, i) => (
+              <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface/40">
+                <td className="px-4 py-2.5 font-mono text-[12px] whitespace-nowrap">
+                  {ev.block_number != null ? (
+                    <Link
+                      to="/blocks/$ref"
+                      params={{ ref: String(ev.block_number) }}
+                      className="text-ink hover:underline"
+                    >
+                      #{formatNumber(ev.block_number)}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                  <EventKindCell kind={ev.event_kind} />
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[11px] whitespace-nowrap">
+                  {ev.hotkey ? (
+                    <Link
+                      to="/accounts/$ss58"
+                      params={{ ss58: ev.hotkey }}
+                      className="text-ink-muted hover:text-ink hover:underline"
+                    >
+                      {shortHash(ev.hotkey) ?? ev.hotkey}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink whitespace-nowrap">
+                  {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted whitespace-nowrap">
+                  <TimeAgo at={ev.observed_at} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1115,7 +1216,11 @@ function WeightsSummaryLoader({ netuid }: { netuid: number }) {
     },
   ];
   return (
-    <div className="mb-4 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-card">
+    // #3939: stack to a single column below `sm`, matching the breakpoint
+    // AccountWeightSettingSection (accounts.$ss58.tsx) already uses for its
+    // sibling weight-setting KPI strip -- divide-y/divide-x swap with it so
+    // the stacked cells still get a separator line at mobile.
+    <div className="mb-4 grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
       {cells.map((c) => (
         <div key={c.label} className="px-4 py-3">
           <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">

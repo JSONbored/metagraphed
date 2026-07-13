@@ -5,10 +5,14 @@ import {
   subnetStakeTransfersQuery,
   subnetTrajectoryQuery,
 } from "@/lib/metagraphed/queries";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { MiniStack } from "@/components/metagraphed/charts/stat-with-spark";
-import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { Sparkline, type SparklinePoint } from "@/components/metagraphed/charts/sparkline";
+import {
+  StatTile,
+  MiniStack,
+  SparkLegend,
+  Sparkline,
+  RealtimeFreshness,
+  type SparklinePoint,
+} from "@jsonbored/ui-kit";
 import { stakeMovesTileModel } from "@/lib/metagraphed/stake-moves-tile";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { stakeTransfersTileModel } from "@/lib/metagraphed/stake-transfers-tile";
@@ -48,7 +52,7 @@ function StakeMovesTile({ netuid }: { netuid: number }) {
       chart={
         <SparkLegend
           metric="Stake moves"
-          source={`On-chain StakeMoved (re-delegation) events for SN${netuid} over the trailing 30-day window — ${m.summary}.`}
+          source={`On-chain StakeMoved (re-delegation) events for SN${netuid} over the trailing ${card?.window ?? "30d"} window — ${m.summary}.`}
           windowLabel={card?.window ?? "30d"}
           updatedAt={card?.observed_at ?? null}
           staleness="Counts settle as the chain-events indexer catches up; the bar hides when no re-delegations occurred in the window."
@@ -87,7 +91,7 @@ function StakeTransfersTile({ netuid }: { netuid: number }) {
       chart={
         <SparkLegend
           metric="Stake transfers"
-          source={`On-chain stake-transfer events for SN${netuid} over the trailing 30-day window — ${m.summary}.`}
+          source={`On-chain stake-transfer events for SN${netuid} over the trailing ${card?.window ?? "30d"} window — ${m.summary}.`}
           windowLabel={card?.window ?? "30d"}
           updatedAt={card?.observed_at ?? null}
           staleness="Counts settle as the chain-events indexer catches up; the bar hides when no transfers occurred in the window."
@@ -126,56 +130,61 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
   if (!e) return <Notice>No on-chain economic data for this subnet.</Notice>;
 
   return (
-    // Flex-wrap (not grid) so a trailing partial row's tiles stretch to fill
-    // the row instead of leaving empty column slots — grid tracks are shared
-    // across every row, but flex lines size independently (same pattern as
-    // the stat spine in subnet-masthead.tsx / operational-panel.tsx).
-    <div className="flex flex-wrap gap-3 [&>*]:grow [&>*]:basis-[200px]">
-      <StatTile
-        eyebrow="Emission share"
-        tone="accent"
-        value={e.emission_share != null ? `${(e.emission_share * 100).toFixed(3)}%` : "—"}
-      />
-      <StatTile
-        eyebrow="Alpha price"
-        value={e.alpha_price_tao != null ? `${e.alpha_price_tao.toFixed(4)} τ` : "—"}
-        chart={
-          <Sparkline
-            values={priceValues}
-            points={pricePoints}
-            width={72}
-            height={28}
-            formatValue={(v) => `${v.toFixed(4)} τ`}
-            ariaLabel="Alpha price trend"
-          />
-        }
-      />
-      <StatTile
-        eyebrow="Validators"
-        value={
-          e.validator_count != null
-            ? `${e.validator_count}${e.max_validators ? ` / ${e.max_validators}` : ""}`
-            : "—"
-        }
-      />
-      <StatTile
-        eyebrow="Miners"
-        value={formatNumber(e.miner_count)}
-        hint={e.max_uids ? `${e.max_uids} max UIDs` : undefined}
-      />
-      <StatTile eyebrow="Total stake" value={formatTao(e.total_stake_tao)} />
-      <StatTile eyebrow="Volume" value={formatTao(e.subnet_volume_tao)} />
-      <StatTile eyebrow="Max stake" value={formatTao(e.max_stake_tao)} />
-      <StatTile eyebrow="Market cap" value={formatTao(e.alpha_market_cap_tao)} hint="proxy" />
-      <StatTile eyebrow="FDV" value={formatTao(e.alpha_fdv_tao)} hint="proxy" />
-      <StatTile
-        eyebrow="Registration"
-        tone={e.registration_allowed === false ? "down" : "default"}
-        value={e.registration_cost_tao != null ? `${e.registration_cost_tao} τ` : "—"}
-        hint={e.registration_allowed === false ? "closed" : "open"}
-      />
-      <StakeMovesTile netuid={netuid} />
-      <StakeTransfersTile netuid={netuid} />
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <RealtimeFreshness at={res?.meta?.generated_at} />
+      </div>
+      {/* Flex-wrap (not grid) so a trailing partial row's tiles stretch to fill
+          the row instead of leaving empty column slots — grid tracks are shared
+          across every row, but flex lines size independently (same pattern as
+          the stat spine in subnet-masthead.tsx / operational-panel.tsx). */}
+      <div className="flex flex-wrap gap-3 [&>*]:grow [&>*]:basis-[200px]">
+        <StatTile
+          eyebrow="Emission share"
+          tone="accent"
+          value={e.emission_share != null ? `${(e.emission_share * 100).toFixed(3)}%` : "—"}
+        />
+        <StatTile
+          eyebrow="Alpha price"
+          value={e.alpha_price_tao != null ? `${e.alpha_price_tao.toFixed(4)} τ` : "—"}
+          chart={
+            <Sparkline
+              values={priceValues}
+              points={pricePoints}
+              width={72}
+              height={28}
+              formatValue={(v) => `${v.toFixed(4)} τ`}
+              ariaLabel="Alpha price trend"
+            />
+          }
+        />
+        <StatTile
+          eyebrow="Validators"
+          value={
+            e.validator_count != null
+              ? `${e.validator_count}${e.max_validators ? ` / ${e.max_validators}` : ""}`
+              : "—"
+          }
+        />
+        <StatTile
+          eyebrow="Miners"
+          value={formatNumber(e.miner_count)}
+          hint={e.max_uids ? `${e.max_uids} max UIDs` : undefined}
+        />
+        <StatTile eyebrow="Total stake" value={formatTao(e.total_stake_tao)} />
+        <StatTile eyebrow="Volume" value={formatTao(e.subnet_volume_tao)} />
+        <StatTile eyebrow="Max stake" value={formatTao(e.max_stake_tao)} />
+        <StatTile eyebrow="Market cap" value={formatTao(e.alpha_market_cap_tao)} hint="proxy" />
+        <StatTile eyebrow="FDV" value={formatTao(e.alpha_fdv_tao)} hint="proxy" />
+        <StatTile
+          eyebrow="Registration"
+          tone={e.registration_allowed === false ? "down" : "default"}
+          value={e.registration_cost_tao != null ? `${e.registration_cost_tao} τ` : "—"}
+          hint={e.registration_allowed === false ? "closed" : "open"}
+        />
+        <StakeMovesTile netuid={netuid} />
+        <StakeTransfersTile netuid={netuid} />
+      </div>
     </div>
   );
 }

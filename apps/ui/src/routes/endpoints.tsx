@@ -6,17 +6,23 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Search, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { HealthPill, HealthDot } from "@/components/metagraphed/chips";
-import { CopyButton } from "@/components/metagraphed/copy-button";
 import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
-import { PageHero } from "@/components/metagraphed/page-hero";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
+import {
+  TimeAgo,
+  HealthPill,
+  HealthDot,
+  CopyButton,
+  BrandIcon,
+  SectionHeading,
+  PageHero,
+  ExternalLink,
+  ViewModeToggle,
+  DownloadCsvButton,
+  SparkLegend,
+  StatTile,
+} from "@jsonbored/ui-kit";
 import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { LatencyHeatmap } from "@/components/metagraphed/charts/latency-heatmap";
@@ -27,10 +33,8 @@ import {
   RANGE_LABEL,
 } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
-import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EndpointKindTabs } from "@/components/metagraphed/endpoint-kind-tabs";
-import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
-import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
+import { EndpointCardList } from "@/components/metagraphed/endpoint-card-list";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { rpcEndpointsSummaryLine } from "@/lib/metagraphed/rpc-endpoints-summary";
@@ -873,107 +877,15 @@ function EndpointsTable() {
       ) : (
         <>
           {search.view === "grid" ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {pageRows.map((e) => {
-                const provSlug = e.provider_slug;
-                const prov = provSlug ? providerById.get(provSlug) : undefined;
-                const sn = e.netuid != null ? subnetById.get(e.netuid) : undefined;
-                return (
-                  <div key={e.id} className="rounded border border-border bg-card p-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                        {e.kind ?? "endpoint"}
-                      </span>
-                      <SparkLegend
-                        metric="Endpoint health"
-                        source="/api/v1/endpoints"
-                        windowLabel={windowLabel}
-                        updatedAt={e.last_probed_at}
-                        staleness="Falls back to last known state when the probe hasn't completed."
-                      >
-                        <HealthPill state={e.health} />
-                      </SparkLegend>
-                    </div>
-                    <div className="font-mono text-[11px] break-all">
-                      {e.url ? (
-                        <div className="flex items-start gap-1.5 min-w-0">
-                          <ExternalLink href={e.url} className="break-all text-[11px]">
-                            {e.url}
-                          </ExternalLink>
-                          <CopyButton value={e.url} label="URL" />
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
-                      {e.netuid != null ? (
-                        <Link
-                          to="/subnets/$netuid"
-                          params={{ netuid: e.netuid }}
-                          className="inline-flex items-center gap-1.5 font-mono hover:text-ink-strong"
-                        >
-                          <BrandIcon
-                            url={sn?.website}
-                            iconUrl={sn?.icon_url}
-                            netuid={e.netuid}
-                            name={sn?.name}
-                            fallback={e.netuid}
-                            size={14}
-                          />
-                          sn{String(e.netuid).padStart(3, "0")}
-                        </Link>
-                      ) : null}
-                      {provSlug ? (
-                        <Link
-                          to="/providers/$slug"
-                          params={{ slug: provSlug }}
-                          className="inline-flex items-center gap-1.5 truncate max-w-[20ch] hover:underline"
-                        >
-                          <BrandIcon
-                            url={prov?.website ?? prov?.homepage}
-                            iconUrl={prov?.icon_url}
-                            repoUrl={prov?.repo}
-                            providerSlug={provSlug}
-                            name={prov?.name ?? e.provider ?? provSlug}
-                            fallback={provSlug}
-                            size={14}
-                          />
-                          <span className="truncate">{e.provider ?? prov?.name ?? provSlug}</span>
-                        </Link>
-                      ) : e.provider ? (
-                        <span className="truncate max-w-[18ch]">{e.provider}</span>
-                      ) : null}
-                      {e.region ? <span className="font-mono">{e.region}</span> : null}
-                      {e.latency_ms != null ? (
-                        <SparkLegend
-                          metric="Latency"
-                          source="/api/v1/endpoints (last probe)"
-                          windowLabel={windowLabel}
-                          updatedAt={e.last_probed_at}
-                          staleness="No new measurement is taken between probes — last measured value is shown."
-                        >
-                          <span className="font-mono ml-auto">{e.latency_ms}ms</span>
-                        </SparkLegend>
-                      ) : null}
-                    </div>
-                    <SparkLegend
-                      metric="Last probe"
-                      source="/api/v1/endpoints"
-                      windowLabel={windowLabel}
-                      updatedAt={e.last_probed_at}
-                      staleness="Rows older than the probe cycle are dimmed in tooltips elsewhere."
-                    >
-                      <span className="font-mono text-[10px] text-ink-muted">
-                        probed <TimeAgo at={e.last_probed_at} />
-                      </span>
-                    </SparkLegend>
-                  </div>
-                );
-              })}
-            </div>
+            <EndpointCardList
+              rows={pageRows}
+              providerById={providerById}
+              subnetById={subnetById}
+              windowLabel={windowLabel}
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            />
           ) : (
-            <div className="rounded border border-border bg-card overflow-x-clip">
+            <div className="hidden md:block rounded border border-border bg-card overflow-x-clip">
               <table className="w-full text-sm">
                 <thead className="sticky top-[6.75rem] z-10 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85 text-[10px] font-mono uppercase tracking-widest text-ink-muted shadow-[0_1px_0_0_var(--border)]">
                   <tr>
@@ -1142,6 +1054,16 @@ function EndpointsTable() {
               </table>
             </div>
           )}
+
+          {search.view === "table" ? (
+            <EndpointCardList
+              rows={pageRows}
+              providerById={providerById}
+              subnetById={subnetById}
+              windowLabel={windowLabel}
+              className="grid gap-3 sm:grid-cols-2 md:hidden"
+            />
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-3 px-1 py-1 text-[11px] text-ink-muted">
             <span className="font-mono">

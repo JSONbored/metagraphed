@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { subnetHistoryQuery } from "@/lib/metagraphed/queries";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { Sparkline } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
@@ -44,11 +44,17 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
     0;
 
   const windowSelector = (
-    <div className="inline-flex rounded-md border border-border bg-surface/40 p-0.5">
+    <div
+      role="tablist"
+      aria-label="History window"
+      className="inline-flex rounded-md border border-border bg-surface/40 p-0.5"
+    >
       {WINDOWS.map((w) => (
         <button
           key={w}
           type="button"
+          role="tab"
+          aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
             "px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors",

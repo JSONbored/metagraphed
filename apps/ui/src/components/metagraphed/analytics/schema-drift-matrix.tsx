@@ -12,9 +12,7 @@ import {
 import { schemasQuery, evidenceQuery } from "@/lib/metagraphed/queries";
 import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { classNames } from "@/lib/metagraphed/format";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
-import { safeExternalUrl } from "@/components/metagraphed/external-link";
+import { TimeAgo, InfoTooltip, safeExternalUrl } from "@jsonbored/ui-kit";
 import type { SchemaInfo, EvidenceItem } from "@/lib/metagraphed/types";
 
 type DriftKind = "breaking" | "additive" | "new" | "unchanged" | "unknown";

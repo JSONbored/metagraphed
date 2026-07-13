@@ -1,5 +1,5 @@
 import { Settings, Sun, Moon, Monitor, Rows3, Rows4 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@jsonbored/ui-kit";
 import { useTheme, type ThemeChoice } from "@/lib/theme";
 import { useDensity, type Density } from "@/lib/density";
 import { useHealthPalette, HEALTH_PALETTES, type HealthPaletteId } from "@/lib/health-palette";
@@ -21,10 +21,6 @@ const DENSITIES: Array<{ id: Density; label: string; Icon: typeof Rows3; hint: s
  * color preset. State persists to localStorage via the underlying hooks.
  */
 export function SettingsPopover() {
-  const { choice, setChoice } = useTheme();
-  const { density, setDensity } = useDensity();
-  const { paletteId, setPalette } = useHealthPalette();
-
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -37,61 +33,79 @@ export function SettingsPopover() {
           <Settings className="size-3.5" aria-hidden="true" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 p-3 space-y-4">
-        <Section label="Theme">
-          <SegmentedRow>
-            {THEMES.map(({ id, label, Icon }) => (
-              <SegmentBtn
-                key={id}
-                active={choice === id}
-                onClick={() => setChoice(id)}
-                label={label}
-                title={`${label} theme`}
-              >
-                <Icon className="size-3.5" aria-hidden="true" />
-                <span>{label}</span>
-              </SegmentBtn>
-            ))}
-          </SegmentedRow>
-        </Section>
-
-        <Section label="Density" sub="Affects health KPIs and list tables.">
-          <SegmentedRow>
-            {DENSITIES.map(({ id, label, Icon, hint }) => (
-              <SegmentBtn
-                key={id}
-                active={density === id}
-                onClick={() => setDensity(id)}
-                label={hint}
-                title={hint}
-              >
-                <Icon className="size-3.5" aria-hidden="true" />
-                <span>{label}</span>
-              </SegmentBtn>
-            ))}
-          </SegmentedRow>
-        </Section>
-
-        <Section label="Health colors" sub="Preset for ok / warn / down / unknown dots.">
-          <ul className="space-y-1">
-            {HEALTH_PALETTES.map((p) => (
-              <PaletteRow
-                key={p.id}
-                id={p.id}
-                label={p.label}
-                description={p.description}
-                swatches={[p.swatch.ok, p.swatch.warn, p.swatch.down, p.swatch.unknown]}
-                active={paletteId === p.id}
-                onSelect={() => setPalette(p.id)}
-              />
-            ))}
-          </ul>
-          <p className="mt-2 text-[10px] text-ink-muted">
-            All presets verified for perceptible contrast in light and dark.
-          </p>
-        </Section>
+      <PopoverContent align="end" className="w-72 p-3">
+        <SettingsPanel />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/**
+ * The theme + density + health-color controls, without the popover chrome, so
+ * they can be reused wherever settings need to be surfaced — the header gear
+ * popover on wide viewports, and the consolidated overflow menu on the mid
+ * desktop range where the standalone gear is folded away to fit the header.
+ */
+export function SettingsPanel() {
+  const { choice, setChoice } = useTheme();
+  const { density, setDensity } = useDensity();
+  const { paletteId, setPalette } = useHealthPalette();
+
+  return (
+    <div className="space-y-4">
+      <Section label="Theme">
+        <SegmentedRow>
+          {THEMES.map(({ id, label, Icon }) => (
+            <SegmentBtn
+              key={id}
+              active={choice === id}
+              onClick={() => setChoice(id)}
+              label={label}
+              title={`${label} theme`}
+            >
+              <Icon className="size-3.5" aria-hidden="true" />
+              <span>{label}</span>
+            </SegmentBtn>
+          ))}
+        </SegmentedRow>
+      </Section>
+
+      <Section label="Density" sub="Affects health KPIs and list tables.">
+        <SegmentedRow>
+          {DENSITIES.map(({ id, label, Icon, hint }) => (
+            <SegmentBtn
+              key={id}
+              active={density === id}
+              onClick={() => setDensity(id)}
+              label={hint}
+              title={hint}
+            >
+              <Icon className="size-3.5" aria-hidden="true" />
+              <span>{label}</span>
+            </SegmentBtn>
+          ))}
+        </SegmentedRow>
+      </Section>
+
+      <Section label="Health colors" sub="Preset for ok / warn / down / unknown dots.">
+        <ul className="space-y-1">
+          {HEALTH_PALETTES.map((p) => (
+            <PaletteRow
+              key={p.id}
+              id={p.id}
+              label={p.label}
+              description={p.description}
+              swatches={[p.swatch.ok, p.swatch.warn, p.swatch.down, p.swatch.unknown]}
+              active={paletteId === p.id}
+              onSelect={() => setPalette(p.id)}
+            />
+          ))}
+        </ul>
+        <p className="mt-2 text-[10px] text-ink-muted">
+          All presets verified for perceptible contrast in light and dark.
+        </p>
+      </Section>
+    </div>
   );
 }
 

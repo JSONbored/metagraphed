@@ -2,10 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   ACCOUNT_EVENT_COLUMNS,
-  EVENT_INSERT_COLUMNS,
   INDEXED_EVENT_KINDS,
   INGESTED_EVENT_KINDS,
-  EVENT_RETENTION_MS,
   formatAccountEvent,
   formatAccountActivity,
   formatAccountDay,
@@ -23,81 +21,10 @@ import {
   loadAccountSubnets,
   ACCOUNT_ACTIVITY_RECENT_LIMIT,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
-  eventInsertStatements,
-  utcDayBounds,
-  rollupAccountEventsDaily,
-  pruneAccountEvents,
-  validEventRows,
   buildAccountTransfers,
   loadAccountTransfers,
 } from "../src/account-events.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
-
-test("validEventRows enforces the strict row shape (#1371)", () => {
-  assert.deepEqual(validEventRows("not-an-array"), []);
-  assert.deepEqual(validEventRows(null), []);
-  const good = {
-    block_number: 1,
-    event_index: 0,
-    event_kind: "StakeAdded",
-    observed_at: 5,
-  };
-  assert.equal(validEventRows([good]).length, 1);
-  assert.equal(validEventRows([{ block_number: 1, event_index: 0 }]).length, 0); // no kind/observed_at
-  assert.equal(
-    validEventRows([{ ...good, event_kind: 7 }]).length,
-    0, // event_kind must be a string
-  );
-  assert.equal(
-    validEventRows([{ ...good, observed_at: "x" }]).length,
-    0, // observed_at must be an integer
-  );
-  // negative PK components — aligned with validBlockRows / validExtrinsicRows
-  assert.equal(validEventRows([{ ...good, block_number: -1 }]).length, 0);
-  assert.equal(validEventRows([{ ...good, event_index: -1 }]).length, 0);
-  assert.equal(
-    validEventRows([{ ...good, event_kind: "" }]).length,
-    0, // event_kind must be non-empty (mirrors block_hash guard)
-  );
-});
-
-test("eventInsertStatements builds chunked parameterized INSERT OR IGNORE", () => {
-  const prepared = [];
-  const db = {
-    prepare(sql) {
-      prepared.push(sql);
-      return { bind: (...v) => ({ sql, v }) };
-    },
-  };
-  const rows = Array.from({ length: 12 }, (_, i) => ({
-    block_number: i,
-    event_index: 0,
-    event_kind: "X",
-    observed_at: 1,
-  }));
-  const stmts = eventInsertStatements(db, rows);
-  assert.equal(stmts.length, 2); // 12 rows / 10 per statement
-  assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO account_events ("));
-  assert.ok(prepared[0].includes("VALUES (?"));
-});
-
-test("EVENT_INSERT_COLUMNS is the stable load contract (#1346/#1849/#1856)", () => {
-  assert.deepEqual(EVENT_INSERT_COLUMNS, [
-    "block_number",
-    "event_index",
-    "event_kind",
-    "hotkey",
-    "coldkey",
-    "netuid",
-    "uid",
-    "amount_tao",
-    "alpha_amount",
-    "observed_at",
-    "extrinsic_index",
-  ]);
-  // 11 cols x ROWS_PER_STMT(9) = 99 bound params — under D1's 100 ceiling.
-  assert.equal(EVENT_INSERT_COLUMNS.length, 11);
-});
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
   for (const k of [
@@ -381,98 +308,6 @@ test("formatAccountEvent rounds amount_tao and alpha_amount to rao precision", (
   });
   assert.equal(out.amount_tao, 1.12345679);
   assert.equal(out.alpha_amount, 2.987654321);
-});
-
-test("utcDayBounds returns the UTC day window", () => {
-  const b = utcDayBounds(Date.UTC(2026, 5, 21, 14, 30, 0));
-  assert.equal(b.date, "2026-06-21");
-  assert.equal(b.start, Date.UTC(2026, 5, 21));
-  assert.equal(b.end - b.start, 86400000);
-});
-
-test("rollupAccountEventsDaily rolls today + yesterday via upsert", async () => {
-  const binds = [];
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind: (...v) => {
-            binds.push(v);
-            return { sql, v };
-          },
-        };
-      },
-      async batch(stmts) {
-        return stmts;
-      },
-    },
-  };
-  const r = await rollupAccountEventsDaily(env, {
-    now: () => Date.UTC(2026, 5, 21, 12),
-  });
-  assert.equal(r.rolled, true);
-  assert.deepEqual(r.days, ["2026-06-21", "2026-06-20"]);
-  assert.equal(binds.length, 2);
-});
-
-test("rollupAccountEventsDaily no-ops without D1", async () => {
-  assert.equal((await rollupAccountEventsDaily({})).rolled, false);
-});
-
-test("pruneAccountEvents deletes below the retention cutoff", async () => {
-  let boundCutoff;
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return {
-          bind: (c) => {
-            boundCutoff = c;
-            return { run: async () => ({ meta: { changes: 7 } }) };
-          },
-        };
-      },
-    },
-  };
-  const now = 1_800_000_000_000;
-  const r = await pruneAccountEvents(env, { now: () => now });
-  assert.equal(r.pruned, true);
-  assert.equal(r.changes, 7);
-  assert.equal(boundCutoff, now - EVENT_RETENTION_MS);
-});
-
-test("pruneAccountEvents no-ops without D1", async () => {
-  assert.equal((await pruneAccountEvents({})).pruned, false);
-});
-
-test("rollupAccountEventsDaily returns rolled:false when D1 throws", async () => {
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return { bind: () => ({}) };
-      },
-      async batch() {
-        throw new Error("d1 down");
-      },
-    },
-  };
-  assert.equal(
-    (await rollupAccountEventsDaily(env, { now: () => 0 })).rolled,
-    false,
-  );
-});
-
-test("rollupAccountEventsDaily returns rolled:false when prepare throws", async () => {
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        throw new Error("prepare exploded");
-      },
-    },
-  };
-  assert.equal(
-    (await rollupAccountEventsDaily(env, { now: () => 0 })).rolled,
-    false,
-  );
 });
 
 test("ACCOUNT_EVENT_COLUMNS lists the served event columns", () => {
@@ -1152,23 +987,6 @@ test("buildAccountEvents + buildAccountSubnets shape their artifacts", () => {
   assert.equal(sn.subnet_count, 1);
   assert.equal(sn.subnets[0].netuid, 7);
   assert.deepEqual(buildAccountSubnets(null, "5Hk").subnets, []);
-});
-
-test("pruneAccountEvents returns pruned:false when D1 throws", async () => {
-  const env = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return {
-          bind: () => ({
-            run: async () => {
-              throw new Error("d1 down");
-            },
-          }),
-        };
-      },
-    },
-  };
-  assert.equal((await pruneAccountEvents(env, { now: () => 0 })).pruned, false);
 });
 
 test("loadAccountSummary bounds signing activity before aggregating", async () => {

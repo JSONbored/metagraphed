@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
@@ -6,14 +8,17 @@ import { Suspense, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
-import { Donut, DonutLegend } from "@/components/metagraphed/charts/donut";
-import { AnimatedNumber } from "@/components/metagraphed/animated-number";
+import {
+  CopyableCode,
+  ExternalLink,
+  SectionHeading,
+  TimeAgo,
+  AnimatedNumber,
+  Donut,
+  DonutLegend,
+} from "@jsonbored/ui-kit";
 import { healthQuery, globalIncidentsQuery, incidentsFeedQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -48,7 +53,23 @@ function isGlobalIncidentOngoing(s: GlobalIncidentSurface, observedAt?: string |
   return latest > 0 && observedMs - latest < ONGOING_MS;
 }
 
+// #3977: the probe-history drill-down's date + its nested table controls are
+// URL-backed so a picked date, kind/status filters, and sort survive a reload
+// and are shareable — the component is explicitly named as a `/health/history/
+// {date}` resource but previously kept all of this in local state. Empty `date`
+// falls back to the most-recent probe day in the component.
+const SURFACE_SORT_FIELDS = ["netuid", "provider", "kind", "status", "latency_ms"] as const;
+
+const statusSearchSchema = z.object({
+  date: fallback(z.string(), "").default(""),
+  kind: fallback(z.string(), "").default(""),
+  status: fallback(z.string(), "").default(""),
+  sort: fallback(z.enum(SURFACE_SORT_FIELDS), "status").default("status"),
+  order: fallback(z.enum(["asc", "desc"]), "asc").default("asc"),
+});
+
 export const Route = createFileRoute("/status")({
+  validateSearch: zodValidator(statusSearchSchema),
   head: () => ({
     meta: [
       { title: "Status — Metagraphed" },

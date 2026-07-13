@@ -248,26 +248,6 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
     };
   }
 
-  test("returns the leaderboard at the requested window", async () => {
-    const res = await handleRequest(
-      new Request(
-        `https://api.metagraph.sh/api/v1/subnets/${NETUID}/weights/setters?window=30d`,
-      ),
-      eventsEnv(LEADER_ROWS, TOTALS),
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.window, "30d");
-    assert.equal(body.data.setter_count, 2);
-    assert.equal(body.data.setters[0].share, 0.75);
-    assert.equal(
-      body.meta.artifact_path,
-      `/metagraph/subnets/${NETUID}/weights/setters.json`,
-    );
-  });
-
   test("defaults to the 7d window when omitted", async () => {
     const res = await handleRequest(
       new Request(

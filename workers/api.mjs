@@ -21,12 +21,10 @@ import {
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
 } from "./http.mjs";
 import {
-  d1TimeoutMs,
   latestPointer,
   logEvent,
   readArtifact,
   readHealthKv,
-  withTimeout,
 } from "./storage.mjs";
 import {
   contractStaleness,
@@ -75,14 +73,7 @@ import {
   readIdentityHistoryCacheStamp,
   readNeuronDailyCacheStamp,
 } from "./request-handlers/analytics.mjs";
-import {
-  loadStagedNeurons,
-  loadStagedEvents,
-  loadStagedBlocks,
-  loadStagedExtrinsics,
-  loadStagedSubnetHyperparams,
-  loadStagedAccountIdentity,
-} from "./request-handlers/staging.mjs";
+import { loadStagedAccountIdentity } from "./request-handlers/staging.mjs";
 import {
   handleSubnetMetagraph,
   handleNeuron,
@@ -230,6 +221,10 @@ import {
   WEBHOOK_SIGNATURE_HEADER,
 } from "../src/webhooks.mjs";
 import {
+  ALERT_TRIGGER_CREATE_TOKEN_HEADER,
+  ALERT_TRIGGER_OWNER_TOKEN_HEADER,
+} from "../src/alert-triggers.mjs";
+import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
   pruneHealthHistory,
@@ -252,43 +247,24 @@ import {
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
 import {
+  deriveNetuidGroupedAliases,
+  derivePreviouslyKnownAs,
   loadPreviouslyKnownAs,
   loadPreviouslyKnownAsForNetuids,
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.mjs";
-import {
-  rollupNeuronDaily,
-  archiveNeuronDaily,
-  archivePrunableNeuronDaily,
-  pruneNeuronDaily,
-  neuronDailyUpsertStatements,
-  validNeuronDailyRows,
-} from "../src/neuron-history.mjs";
-import {
-  rollupAccountPositionDaily,
-  pruneAccountPositionDaily,
-} from "../src/account-position-history.mjs";
-import {
-  eventInsertStatements,
-  pruneAccountEvents,
-  rollupAccountEventsDaily,
-  validEventRows,
-} from "../src/account-events.mjs";
-import {
-  blockInsertStatements,
-  pruneBlocks,
-  validBlockRows,
-} from "../src/blocks.mjs";
-import {
-  extrinsicInsertStatements,
-  pruneExtrinsics,
-  validExtrinsicRows,
-} from "../src/extrinsics.mjs";
+import { tryPostgresTier } from "./postgres-tier.mjs";
 import {
   economicsSnapshotUpsertStatements,
   validEconomicsBackfillRows,
 } from "../src/economics-backfill.mjs";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
+import {
+  CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
+  ChainFirehoseHub,
+} from "./chain-firehose-hub.mjs";
+import { McpSessionHub } from "./mcp-session-hub.mjs";
+import { AlerterHub } from "./alerter-hub.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -340,10 +316,6 @@ import {
   MAX_ASK_BODY_BYTES,
   MAX_BACKFILL_INGEST_BODY_BYTES,
   MAX_BACKFILL_INGEST_ROWS,
-  MAX_BLOCKS_INGEST_BODY_BYTES,
-  MAX_BLOCKS_INGEST_ROWS,
-  MAX_EVENTS_INGEST_BODY_BYTES,
-  MAX_EVENTS_INGEST_ROWS,
   MAX_WEBHOOK_BODY_BYTES,
   NEURON_HISTORY_ROLLUP_CRON,
   PERCENTILES_PATH_PATTERN,
@@ -465,17 +437,20 @@ export default {
   },
 };
 
+// Durable Object classes must be named exports of this Worker's main entry
+// module (wrangler.jsonc's "main": "workers/api.mjs") -- re-exporting the
+// classes defined in chain-firehose-hub.mjs/mcp-session-hub.mjs is what
+// makes the "durable_objects"/"migrations" bindings in wrangler.jsonc
+// resolvable.
+export { ChainFirehoseHub, McpSessionHub, AlerterHub };
+
 // The staged-artifact loaders now live in request-handlers/staging.mjs (#1763).
-// Re-export them so the scheduled cron drain (handleScheduled) and the staging
-// tests keep importing them from this module.
-export {
-  loadStagedNeurons,
-  loadStagedEvents,
-  loadStagedBlocks,
-  loadStagedExtrinsics,
-  loadStagedSubnetHyperparams,
-  loadStagedAccountIdentity,
-};
+// Re-export it so the scheduled cron drain (handleScheduled) and the staging
+// tests keep importing it from this module. loadStagedNeurons/Events/Blocks/
+// Extrinsics removed alongside their D1 tables (#4772 D1 chain-data
+// retirement); loadStagedSubnetHyperparams removed the same way now that
+// subnet_hyperparams/subnet_hyperparams_history are fully Postgres-served.
+export { loadStagedAccountIdentity };
 
 // The RPC-proxy subsystem now lives in request-handlers/rpc-proxy.mjs (#1763).
 // The router dispatches the handlers directly via the imports above; these
@@ -507,319 +482,10 @@ function utf8Bytes(value) {
   return new TextEncoder().encode(value);
 }
 
-// POST /api/v1/internal/events (#1360): the realtime ingest path for the
-// finalized-head streamer (#1361). Disabled (503) until METAGRAPH_EVENTS_INGEST_SECRET
-// is configured; then authenticated by a constant-time token compare. The body is
-// an array of account_events rows (or {events:[...]}), loaded with the SAME
-// parameterized INSERT OR IGNORE as the staged-batch loader — idempotent on
-// (block_number, event_index), values always bound. NOT in the public contract.
-export async function handleEventIngest(request, env) {
-  if (request.method !== "POST") {
-    return errorResponse("method_not_allowed", "POST only.", 405);
-  }
-  const configured = env.METAGRAPH_EVENTS_INGEST_SECRET;
-  if (!configured) {
-    return errorResponse(
-      "events_ingest_disabled",
-      "Realtime event ingest requires METAGRAPH_EVENTS_INGEST_SECRET to be configured.",
-      503,
-    );
-  }
-  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, configured)) {
-    return errorResponse(
-      "unauthorized",
-      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
-      401,
-    );
-  }
-  const db = env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) {
-    return errorResponse("unavailable", "Event store unavailable.", 503);
-  }
-  const raw = await request.text();
-  if (utf8Bytes(raw).length > MAX_EVENTS_INGEST_BODY_BYTES) {
-    return errorResponse(
-      "payload_too_large",
-      `Body exceeds ${MAX_EVENTS_INGEST_BODY_BYTES} bytes.`,
-      413,
-    );
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return errorResponse(
-      "invalid_body",
-      "Body must be a JSON array of event rows (or {events:[...]}).",
-      400,
-    );
-  }
-  const incoming = Array.isArray(parsed)
-    ? parsed
-    : Array.isArray(parsed?.events)
-      ? parsed.events
-      : null;
-  if (!incoming) {
-    return errorResponse(
-      "invalid_body",
-      "Body must be a JSON array of event rows (or {events:[...]}).",
-      400,
-    );
-  }
-  if (incoming.length > MAX_EVENTS_INGEST_ROWS) {
-    return errorResponse(
-      "too_many_rows",
-      `At most ${MAX_EVENTS_INGEST_ROWS} events per request.`,
-      413,
-    );
-  }
-  const rows = validEventRows(incoming);
-  // Report rows ACTUALLY inserted, not rows validated. The statements use
-  // INSERT OR IGNORE on (block_number, event_index), and the streamer/poller
-  // ingest windows overlap by design, so duplicates are the normal case and are
-  // silently dropped — `rows.length` over-reports. Sum the per-statement
-  // D1 `meta.changes` instead.
-  let inserted = 0;
-  if (rows.length) {
-    // Bounded + logged, matching d1All's read-side guard (workers/request-handlers/
-    // analytics.mjs): this D1 database now takes concurrent writes from several
-    // ingest/backfill paths, so an occasional contention timeout here is
-    // expected, not exceptional -- it must surface as a clean 500 the streamer's
-    // own retry loop already handles, never an uncaught exception (2026-07-09
-    // incident: an unguarded batch() failure here silently starved the realtime
-    // block/event feed for ~40 minutes with no server-side trace of why).
-    let results;
-    try {
-      results = await withTimeout(
-        db.batch(eventInsertStatements(db, rows)),
-        d1TimeoutMs(env),
-      );
-    } catch (error) {
-      logEvent(env, "error", "events_ingest_batch_failed", {
-        message: String(error?.message ?? error),
-        row_count: rows.length,
-      });
-      return errorResponse(
-        "ingest_write_failed",
-        "Event batch write failed; retry this payload.",
-        500,
-      );
-    }
-    for (const result of results) inserted += result?.meta?.changes ?? 0;
-  }
-  return new Response(JSON.stringify({ ok: true, inserted }), {
-    status: 200,
-    headers: { "content-type": JSON_CONTENT_TYPE },
-  });
-}
-
-// POST /api/v1/internal/blocks (#1345 Option B): the realtime block-explorer ingest
-// path for the finalized-head streamer (#1361). Same auth as /internal/events (the
-// shared METAGRAPH_EVENTS_INGEST_SECRET over EVENTS_INGEST_TOKEN_HEADER). Body is
-// {blocks:[...], extrinsics:[...]}, loaded with the SAME parameterized INSERT OR
-// IGNORE as the staged-batch loaders — idempotent on the PKs (block_number;
-// (block_number, extrinsic_index)). NOT in the public contract. Closes the
-// blocks/extrinsics realtime gap (the coalesced CI poller alone missed ~58%; #1749).
-export async function handleBlockIngest(request, env) {
-  if (request.method !== "POST") {
-    return errorResponse("method_not_allowed", "POST only.", 405);
-  }
-  const configured = env.METAGRAPH_EVENTS_INGEST_SECRET;
-  if (!configured) {
-    return errorResponse(
-      "blocks_ingest_disabled",
-      "Realtime block ingest requires METAGRAPH_EVENTS_INGEST_SECRET to be configured.",
-      503,
-    );
-  }
-  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, configured)) {
-    return errorResponse(
-      "unauthorized",
-      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
-      401,
-    );
-  }
-  const db = env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) {
-    return errorResponse("unavailable", "Block store unavailable.", 503);
-  }
-  const raw = await request.text();
-  if (utf8Bytes(raw).length > MAX_BLOCKS_INGEST_BODY_BYTES) {
-    return errorResponse(
-      "payload_too_large",
-      `Body exceeds ${MAX_BLOCKS_INGEST_BODY_BYTES} bytes.`,
-      413,
-    );
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return errorResponse(
-      "invalid_body",
-      "Body must be a JSON object {blocks:[...], extrinsics:[...]}.",
-      400,
-    );
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return errorResponse(
-      "invalid_body",
-      "Body must be a JSON object {blocks:[...], extrinsics:[...]}.",
-      400,
-    );
-  }
-  const incomingBlocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
-  const incomingExtrinsics = Array.isArray(parsed.extrinsics)
-    ? parsed.extrinsics
-    : [];
-  if (
-    incomingBlocks.length > MAX_BLOCKS_INGEST_ROWS ||
-    incomingExtrinsics.length > MAX_BLOCKS_INGEST_ROWS
-  ) {
-    return errorResponse(
-      "too_many_rows",
-      `At most ${MAX_BLOCKS_INGEST_ROWS} rows per array (blocks, extrinsics).`,
-      413,
-    );
-  }
-  // Report rows ACTUALLY inserted (INSERT OR IGNORE on the PKs drops the expected
-  // streamer/poller overlap), summing per-statement D1 meta.changes. Block
-  // statements come first in the batch, then extrinsic statements.
-  const blockStmts = blockInsertStatements(db, validBlockRows(incomingBlocks));
-  const extrinsicStmts = extrinsicInsertStatements(
-    db,
-    validExtrinsicRows(incomingExtrinsics),
-  );
-  let blocksInserted = 0;
-  let extrinsicsInserted = 0;
-  if (blockStmts.length || extrinsicStmts.length) {
-    // Bounded + logged, same reasoning as handleEventIngest's batch guard above.
-    let results;
-    try {
-      results = await withTimeout(
-        db.batch([...blockStmts, ...extrinsicStmts]),
-        d1TimeoutMs(env),
-      );
-    } catch (error) {
-      logEvent(env, "error", "blocks_ingest_batch_failed", {
-        message: String(error?.message ?? error),
-        block_count: blockStmts.length,
-        extrinsic_count: extrinsicStmts.length,
-      });
-      return errorResponse(
-        "ingest_write_failed",
-        "Block/extrinsic batch write failed; retry this payload.",
-        500,
-      );
-    }
-    results.forEach((result, i) => {
-      const changes = result?.meta?.changes ?? 0;
-      if (i < blockStmts.length) blocksInserted += changes;
-      else extrinsicsInserted += changes;
-    });
-  }
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      blocks_inserted: blocksInserted,
-      extrinsics_inserted: extrinsicsInserted,
-    }),
-    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
-  );
-}
-
-// POST /api/v1/internal/backfill-neurons (#1345 Phase 1): the historical metagraph
-// backfill ingest for scripts/backfill-neuron-history.py. Disabled (503) until the
-// dedicated METAGRAPH_BACKFILL_SECRET is configured (falls back to the events-ingest
-// secret; reuses the EVENTS_INGEST_TOKEN_HEADER header); then a constant-time token
-// compare. The body is an array of neuron_daily rows (or {rows:[...]}), each carrying
-// its own snapshot_date,
-// upserted with the SAME column set + ON CONFLICT target as the forward rollup, so a
-// backfilled row is byte-identical to a rolled one and any re-POST is idempotent on
-// (netuid,uid,snapshot_date). NOT in the public contract.
-export async function handleNeuronBackfill(request, env) {
-  if (request.method !== "POST") {
-    return errorResponse("method_not_allowed", "POST only.", 405);
-  }
-  const configured =
-    env.METAGRAPH_BACKFILL_SECRET || env.METAGRAPH_EVENTS_INGEST_SECRET;
-  if (!configured) {
-    return errorResponse(
-      "backfill_disabled",
-      "Historical backfill requires METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) to be configured.",
-      503,
-    );
-  }
-  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, configured)) {
-    return errorResponse(
-      "unauthorized",
-      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
-      401,
-    );
-  }
-  const db = env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) {
-    return errorResponse("unavailable", "History store unavailable.", 503);
-  }
-  const raw = await request.text();
-  if (utf8Bytes(raw).length > MAX_BACKFILL_INGEST_BODY_BYTES) {
-    return errorResponse(
-      "payload_too_large",
-      `Body exceeds ${MAX_BACKFILL_INGEST_BODY_BYTES} bytes.`,
-      413,
-    );
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return errorResponse(
-      "invalid_body",
-      "Body must be a JSON array of neuron_daily rows (or {rows:[...]}).",
-      400,
-    );
-  }
-  const incoming = Array.isArray(parsed)
-    ? parsed
-    : Array.isArray(parsed?.rows)
-      ? parsed.rows
-      : null;
-  if (!incoming) {
-    return errorResponse(
-      "invalid_body",
-      "Body must be a JSON array of neuron_daily rows (or {rows:[...]}).",
-      400,
-    );
-  }
-  if (incoming.length > MAX_BACKFILL_INGEST_ROWS) {
-    return errorResponse(
-      "too_many_rows",
-      `At most ${MAX_BACKFILL_INGEST_ROWS} rows per request.`,
-      413,
-    );
-  }
-  const rows = validNeuronDailyRows(incoming);
-  if (rows.length) {
-    await db.batch(neuronDailyUpsertStatements(db, rows));
-  }
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      received: incoming.length,
-      inserted: rows.length,
-    }),
-    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
-  );
-}
-
 // POST /api/v1/internal/backfill-economics (#1307, epic #1302): the per-SUBNET
-// alpha-price history backfill ingest for scripts/backfill-economics-history.py —
-// the analogue of handleNeuronBackfill, but for the economics time series. Auth +
-// caps are IDENTICAL to the neuron backfill: disabled (503) until
-// METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET) is configured,
+// alpha-price history backfill ingest for scripts/backfill-economics-history.py.
+// Disabled (503) until METAGRAPH_BACKFILL_SECRET (or METAGRAPH_EVENTS_INGEST_SECRET)
+// is configured,
 // then a constant-time token compare over the shared EVENTS_INGEST_TOKEN_HEADER.
 // The body is an array of {netuid, snapshot_date, captured_at, alpha_price_tao}
 // rows (or {rows:[...]}), upserted into subnet_snapshots on (netuid,snapshot_date)
@@ -910,57 +576,55 @@ export async function handleEconomicsBackfill(request, env) {
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
   // Fast-load cron (#1346 Option A): its whole job is to drain the R2-staged
-  // batches into D1 quickly, then return without running the heavier probe/prune so
-  // it can tick every ~3 min cheaply and keep chain-event latency at ~5 min.
+  // batch into D1 quickly, then return without running the heavier probe/prune so
+  // it can tick every ~3 min cheaply and keep the drain's own latency low.
   //
   // The drain is gated to THIS cron alone (audit #9). The four cron triggers fire as
   // separate concurrent invocations whose minutes coincide (e.g. 0/15/30/45), and
-  // each staged load is an unlocked R2 read-modify-write (read → load → delete /
-  // rewrite). Running the loaders on every tick let a concurrent invocation clobber a
-  // freshly-staged file via the delete path; owning the drain on a single cron removes
-  // the cross-cron concurrency entirely. Each loader stays isolated (`.catch`) so a
-  // load failure never affects the early-return below.
+  // the staged load is an unlocked R2 read-modify-write (read → load → delete /
+  // rewrite). Running the loader on every tick would let a concurrent invocation
+  // clobber a freshly-staged file via the delete path; owning the drain on a
+  // single cron removes the cross-cron concurrency entirely.
   if (cron === EVENTS_LOAD_CRON) {
-    // Drain the four R2-staged batches concurrently (#2092). Each loader is
-    // independent and I/O-bound (R2 GET + chunked db.batch() + delete/put) over a
-    // distinct R2 key + D1 table with no shared mutable state, so overlapping
-    // their I/O cuts the */3 tick's wall-clock from the sum of all four to the
-    // slowest single loader. allSettled preserves the per-loader isolation the
-    // serial `.catch(() => {})` gave: one rejection never stops the others or
-    // changes the marker. The cross-cron clobber rationale above is unaffected —
-    // the drain stays gated to THIS single owning cron, so there is still exactly
-    // one writer per staged key.
-    //   - loadStagedNeurons: token-free per-UID metagraph load (#1303)
-    //   - loadStagedEvents:  token-free chain-event load (#1346)
-    //   - loadStagedBlocks / loadStagedExtrinsics: block-explorer hot window (#1345)
-    //   - loadStagedSubnetHyperparams: token-free subnet hyperparams load (#4303/1.3)
-    //   - loadStagedAccountIdentity: token-free personal identity load (#4324/5.1)
-    await Promise.allSettled([
-      loadStagedNeurons(env),
-      loadStagedEvents(env),
-      loadStagedBlocks(env),
-      loadStagedExtrinsics(env),
-      loadStagedSubnetHyperparams(env),
-      loadStagedAccountIdentity(env),
-    ]);
+    // #4772 D1 chain-data retirement removed loadStagedNeurons/Events/Blocks/
+    // Extrinsics (neurons/account_events/blocks/extrinsics' D1 R2-drain)
+    // alongside their D1 tables. loadStagedSubnetHyperparams (subnet
+    // hyperparameters' own D1 R2-drain, #4303/1.3) is retired the same way now
+    // that subnet_hyperparams/subnet_hyperparams_history are fully served from
+    // Postgres (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE, #4832 gap-closure) --
+    // leaving loadStagedAccountIdentity (#4324/5.1) as the one registry-side
+    // table still written via this path. `.catch` isolates a load failure so
+    // it never affects the early-return below (the prior Promise.allSettled
+    // gave the same isolation across what used to be several loaders here).
+    await loadStagedAccountIdentity(env).catch(() => {});
     return { ok: true, fast_load: true };
   }
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
-    // deleted (PR3). Roll the chain events the same way (#1346) before their
-    // 90-day window is pruned. Skip prune when either rollup fails so raw rows
-    // are never deleted without being aggregated first.
+    // deleted (PR3). Skip prune when the rollup fails so raw rows are never
+    // deleted without being aggregated first.
+    //
+    // #4772 D1 chain-data retirement: the D1-side rollupAccountEventsDaily/
+    // pruneAccountEvents/pruneBlocks/pruneExtrinsics calls that used to run here
+    // are removed alongside their D1 tables. account_events_daily (explicitly
+    // retained, NOT part of this retirement) already has its own fully
+    // independent Postgres-side rollup — a dedicated hourly GitHub Actions
+    // workflow calling POST /api/v1/internal/rollup-account-events-daily, reading
+    // and writing Postgres directly — so it never depended on this D1 rollup for
+    // its real production data. Leaving the D1-side call in here after dropping
+    // D1's account_events would have made it fail every tick (querying a table
+    // that no longer exists) and, worse, its `!eventsRollup.rolled` gate would
+    // have silently skipped THIS cron's unrelated pruneHealthHistory
+    // (surface_checks) prune forever — a regression to fix here, not carry.
     const uptimeRollup = await rollupDailyUptime(env);
-    const eventsRollup = await rollupAccountEventsDaily(env);
     const snapshotPromise = writeSubnetSnapshot(env, { readArtifact });
-    if (!uptimeRollup.rolled || !eventsRollup.rolled) {
+    if (!uptimeRollup.rolled) {
       const snapshot = await snapshotPromise;
       return {
         pruned: false,
         rollup_skipped_prune: true,
         uptime_rolled: uptimeRollup.rolled,
-        events_rolled: eventsRollup.rolled,
         snapshot,
       };
     }
@@ -968,14 +632,6 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
       // .catch-isolated — a transient D1 error must degrade to a no-op for this
       // tick, not abort the whole Promise.all and discard the snapshot write.
       pruneHealthHistory(env).catch(() => ({ pruned: false })),
-      // D1 safety-valve: prune chain-explorer tables at a 365-day window so D1
-      // never hits the 10 GB cap before the Postgres cold tier (#1519) ships.
-      // account_events is safe here — rollupAccountEventsDaily (above) already
-      // aggregated the daily summaries. blocks + extrinsics have no daily rollup
-      // yet, so older raw rows are discarded. All three are .catch-isolated.
-      pruneAccountEvents(env).catch(() => ({ pruned: false })),
-      pruneBlocks(env).catch(() => ({ pruned: false })),
-      pruneExtrinsics(env).catch(() => ({ pruned: false })),
       snapshotPromise,
     ]);
     return pruned;
@@ -984,57 +640,35 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     return runEmbeddingSync(env, { readArtifact });
   }
   if (cron === NEURON_HISTORY_ROLLUP_CRON) {
-    // Once/day (#1345): snapshot the current `neurons` tier into the dated
-    // neuron_daily table, archive that day and any prunable backlog to the R2
-    // cold tier, then prune D1 to the 90-day hot window. Archive runs BEFORE
-    // prune and the prune is GATED on confirmed archives for every day eligible
-    // for deletion, so a day is never dropped from D1 before it exists in R2. Its
-    // own cron minute so the ~33k-row work never piles onto the probe/prune/fast
-    // crons; each step is .catch-isolated.
-    // Pin a single `now` so the backlog archive and the prune derive the SAME
-    // retention cutoff. The archive does ~33k-row R2 work and can straddle a UTC
-    // midnight; if archive and prune each called Date.now() independently, the
-    // prune's cutoff could be one day larger and delete a day from D1 that the
-    // archive never wrote to R2 — the exact gap this archive-before-prune closes.
-    const now = Date.now();
-    const rolled = await rollupNeuronDaily(env).catch(() => ({
-      rolled: false,
-    }));
-    const archived = await archiveNeuronDaily(env).catch(() => ({
-      archived: false,
-    }));
-    const archivedPrunable = await archivePrunableNeuronDaily(env, {
-      now,
-    }).catch(() => ({
-      archived: false,
-    }));
-    const pruned =
-      archived.archived && archivedPrunable.archived
-        ? await pruneNeuronDaily(env, {
-            now,
-            days: archivedPrunable.complete ? undefined : archivedPrunable.days,
-          }).catch(() => ({ pruned: false }))
-        : { pruned: false, reason: "archive-not-confirmed" };
-    // Per-account position history (#4329/6.1): same source `neurons` table and
-    // cron tick as neuron_daily, so both stay snapshot-consistent. Simple prune,
-    // no cold-archive tier (see src/account-position-history.mjs).
-    // pruneAccountPositionDaily already self-catches its own D1 errors (unlike
-    // rollupAccountPositionDaily, which has no internal try/catch), so it needs
-    // no wrapper .catch() here.
-    const accountPositionRolled = await rollupAccountPositionDaily(env).catch(
-      () => ({ rolled: false }),
-    );
-    const accountPositionPruned = await pruneAccountPositionDaily(env, {
-      now,
-    });
-    return {
-      rolled,
-      archived,
-      archivedPrunable,
-      pruned,
-      accountPositionRolled,
-      accountPositionPruned,
-    };
+    // #4772 D1 chain-data retirement: the neuron_daily rollup/archive/prune
+    // (rollupNeuronDaily/archiveNeuronDaily/archivePrunableNeuronDaily/
+    // pruneNeuronDaily) that used to run here are removed alongside D1's
+    // neuron_daily table. #4771's Postgres write path (handleNeuronsSync,
+    // called by refresh-metagraph.yml alongside the D1 stage) already populates
+    // Postgres's neuron_daily directly, and Postgres has no D1-style capacity
+    // cap forcing an archive-then-prune dance, so this cron no longer needs
+    // either step.
+    //
+    // account_position_daily's own rollupAccountPositionDaily/
+    // pruneAccountPositionDaily (src/account-position-history.mjs), previously
+    // called from here, are retired too: #4908 dropped D1's `neurons` table
+    // entirely (confirmed live: `SELECT ... FROM neurons` now errors "no such
+    // table: neurons"), so rollupAccountPositionDaily's `FROM neurons` query
+    // has been throwing -- silently swallowed by its own .catch() -- every
+    // tick since #4908 merged (2026-07-11); D1's account_position_daily table
+    // has been frozen at that same date ever since (confirmed via `wrangler
+    // d1 execute`). #4839 already gave this table its own independent
+    // Postgres write path (handleNeuronsSync, the same transaction as
+    // neurons/neuron_daily) and read route (tryPostgresTier +
+    // METAGRAPH_NEURONS_SOURCE, live in production per wrangler.jsonc), so
+    // nothing depends on the D1 side continuing to run. #4910, which asked
+    // for a Postgres read route believing none existed, was stale -- #4839
+    // already shipped it.
+    //
+    // This cron trigger (47 5 * * *, wrangler.jsonc) has no remaining work;
+    // left wired but inert rather than also retiring the schedule trigger
+    // itself, which is a separate deploy-config decision.
+    return { ok: true, retired: true };
   }
   return runHealthProber(env, ctx);
 }
@@ -1125,6 +759,44 @@ async function handleChainEventsProxy(request, env, url) {
   );
 }
 
+// Proxies /api/v1/alerts/triggers* (#4984 Part 1) to the DATA_API service
+// binding. Unlike proxyToDataApi below (POST-only), this forwards every
+// method as-is: POST/GET/PATCH/DELETE all reach
+// workers/data-api.mjs's handleAlertTriggersRoute, which owns all
+// auth (creation token / per-trigger owner token) and routing itself --
+// mirrors handleChainEventsProxy's envelope-translation shape above, just
+// generalized past GET.
+async function handleAlertTriggersProxy(request, env) {
+  if (!env.DATA_API) {
+    return errorResponse(
+      "alert_triggers_unavailable",
+      "The alert triggers tier is not bound to this deployment.",
+      503,
+    );
+  }
+  const upstream = await env.DATA_API.fetch(request);
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(
+      "alert_triggers_unavailable",
+      "The alert triggers tier returned an unreadable response.",
+      502,
+    );
+  }
+  if (!upstream.ok) {
+    return errorResponse(
+      "alert_trigger_request_failed",
+      typeof body?.error === "string"
+        ? body.error
+        : "The alert triggers tier returned an error.",
+      upstream.status,
+    );
+  }
+  return dataResponse(env, body, upstream.status);
+}
+
 // Proxies POST /api/v1/internal/registry-sync to the dedicated registry-sync
 // Worker (REGISTRY_SYNC_API service binding), the sole write path into the
 // registry Postgres instance. This function forwards the request as-is
@@ -1156,6 +828,161 @@ async function handleRegistrySyncProxy(request, env) {
     );
   }
   return new Response(JSON.stringify(body), {
+    status: upstream.status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+// Generic forwarder to the DATA_API service binding for the internal
+// write/rollup routes that live inside workers/data-api.mjs itself rather
+// than a dedicated Worker (#4771's neurons-sync pattern) -- splitting read
+// and write into two Workers for the IDENTICAL Postgres instance/Hyperdrive
+// origin data-api.mjs already reads from (the way registry-sync-api.mjs is
+// split, for a genuinely SEPARATE database) would only add a redundant
+// deploy pipeline for zero bundle-budget benefit. Forwards the request as-is
+// (including any shared-secret header) -- the auth check happens once,
+// downstream in data-api.mjs.
+async function proxyToDataApi(
+  request,
+  env,
+  { code, notBoundMessage, unreadableMessage },
+) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "Only POST is supported.", 405);
+  }
+  if (!env.DATA_API) {
+    return errorResponse(code, notBoundMessage, 503);
+  }
+  const upstream = await env.DATA_API.fetch(request);
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(code, unreadableMessage, 502);
+  }
+  return new Response(JSON.stringify(body), {
+    status: upstream.status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+// Proxies POST /api/v1/internal/neurons-sync -- the write path into the
+// chain-indexer Postgres's neurons/neuron_daily tables (#4771). Mirrors
+// handleRegistrySyncProxy's shape otherwise (forwards the request as-is,
+// including the x-neurons-sync-token header).
+async function handleNeuronsSyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "neurons_sync_unavailable",
+    notBoundMessage: "The neurons-sync tier is not bound to this deployment.",
+    unreadableMessage: "The neurons-sync tier returned an unreadable response.",
+  });
+}
+
+// Proxies POST /api/v1/internal/rollup-account-events-daily -- the write
+// path into the chain-indexer Postgres's account_events_daily rollup
+// (#4832 gap-closure). Same DATA_API service binding as neurons-sync above;
+// see proxyToDataApi's comment for why this isn't a dedicated Worker.
+async function handleRollupAccountEventsDailyProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "rollup_account_events_daily_unavailable",
+    notBoundMessage:
+      "The account-events-daily rollup tier is not bound to this deployment.",
+    unreadableMessage:
+      "The account-events-daily rollup tier returned an unreadable response.",
+  });
+}
+
+// Proxies POST /api/v1/internal/subnet-hyperparams-sync -- the write path
+// into subnet_hyperparams/subnet_hyperparams_history (#4832 gap-closure).
+// Same DATA_API service binding as neurons-sync/rollup above.
+async function handleSubnetHyperparamsSyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "subnet_hyperparams_sync_unavailable",
+    notBoundMessage:
+      "The subnet-hyperparams sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The subnet-hyperparams sync tier returned an unreadable response.",
+  });
+}
+
+// Proxies POST /api/v1/internal/account-identity-sync -- the write path into
+// account_identity/account_identity_history (#4832 gap-closure). Same
+// DATA_API service binding as the other internal sync routes above.
+async function handleAccountIdentitySyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "account_identity_sync_unavailable",
+    notBoundMessage:
+      "The account-identity sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The account-identity sync tier returned an unreadable response.",
+  });
+}
+
+// GET /api/v1/chain/stream (#4982, ADR 0015) -- the public realtime firehose
+// transport. SSE by default; a WebSocket Upgrade header on this same path
+// gets the WS transport instead. No auth: this is the same public read-only
+// data /api/v1/chain-events already serves, just pushed instead of polled.
+// ChainFirehoseHub itself decides SSE vs WS and applies the ?topics= filter
+// -- this is only the forwarding boundary into the DO.
+async function handleChainFirehoseStream(request, env, url) {
+  if (!env.CHAIN_FIREHOSE_HUB) {
+    return errorResponse(
+      "chain_firehose_unavailable",
+      "The realtime chain firehose is not bound to this deployment.",
+      503,
+    );
+  }
+  const stub = env.CHAIN_FIREHOSE_HUB.get(
+    env.CHAIN_FIREHOSE_HUB.idFromName("global"),
+  );
+  const forwardUrl = new URL("https://chain-firehose-hub.internal/subscribe");
+  forwardUrl.search = url.search;
+  return stub.fetch(new Request(forwardUrl, request));
+}
+
+// POST /api/v1/internal/chain-firehose-ingest -- the write path the #4981
+// box-side relay calls with each #4980 NOTIFY payload it forwards. Auth
+// happens HERE, not inside ChainFirehoseHub: a Durable Object is never
+// internet-addressable on its own (only reachable through this Worker's
+// binding), so this is the one place a forged request could be rejected --
+// mirrors every other /api/v1/internal/*-sync route's shared-secret
+// convention (see handleNeuronsSync in workers/data-api.mjs).
+async function handleChainFirehoseIngest(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "Only POST is supported.", 405);
+  }
+  if (!env.CHAIN_FIREHOSE_SYNC_SECRET) {
+    return errorResponse(
+      "chain_firehose_ingest_unavailable",
+      "The chain-firehose ingest tier is not provisioned on this deployment.",
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(CHAIN_FIREHOSE_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.CHAIN_FIREHOSE_SYNC_SECRET)) {
+    return errorResponse(
+      "chain_firehose_ingest_unauthorized",
+      `Provide a valid ${CHAIN_FIREHOSE_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  if (!env.CHAIN_FIREHOSE_HUB) {
+    return errorResponse(
+      "chain_firehose_unavailable",
+      "The realtime chain firehose is not bound to this deployment.",
+      503,
+    );
+  }
+  const body = await request.text();
+  const stub = env.CHAIN_FIREHOSE_HUB.get(
+    env.CHAIN_FIREHOSE_HUB.idFromName("global"),
+  );
+  const upstream = await stub.fetch(
+    "https://chain-firehose-hub.internal/ingest",
+    { method: "POST", body, headers: { "content-type": "application/json" } },
+  );
+  return new Response(await upstream.text(), {
     status: upstream.status,
     headers: { "content-type": "application/json; charset=utf-8" },
   });
@@ -1229,9 +1056,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleWebhookRequest(request, env, url);
   }
 
-  // Remote MCP server (stateless JSON-RPC over POST), for AI agents. Runs before
-  // the read-only method gate (it is POST-only) like the RPC proxy. Artifact/KV
-  // readers are injected so the MCP tools reuse the exact R2/ASSETS resolution.
+  // Chain alert triggers (#4984 Part 1): CRUD accepts POST/GET/PATCH/DELETE,
+  // so it must run before the read-only method gate below, same as webhooks
+  // above. All auth/routing/validation live in workers/data-api.mjs's
+  // handleAlertTriggersRoute -- this is only the DATA_API forwarding
+  // boundary.
+  if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
+    return handleAlertTriggersProxy(request, env);
+  }
+
+  // Remote MCP server, for AI agents: stateless JSON-RPC over POST, plus GET
+  // (the SSE resource-subscription push stream, #4983) and DELETE (explicit
+  // session termination) -- all three handled inside handleMcpRequest itself.
+  // Runs before the read-only method gate (POST/DELETE would otherwise be
+  // rejected there) like the RPC proxy. Artifact/KV readers are injected so
+  // the MCP tools reuse the exact R2/ASSETS resolution.
   if (url.pathname === "/mcp") {
     return handleMcpRequest(request, env, { readArtifact, readHealthKv });
   }
@@ -1242,17 +1081,6 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleAskRequest(request, env);
   }
 
-  // Realtime chain-event ingest (#1360): secret-gated internal write path for the
-  // finalized-head streamer (#1361). POST-only; runs before the read-only gate.
-  if (url.pathname === "/api/v1/internal/events") {
-    return handleEventIngest(request, env);
-  }
-  if (url.pathname === "/api/v1/internal/blocks") {
-    return handleBlockIngest(request, env);
-  }
-  if (url.pathname === "/api/v1/internal/backfill-neurons") {
-    return handleNeuronBackfill(request, env);
-  }
   if (url.pathname === "/api/v1/internal/backfill-economics") {
     return handleEconomicsBackfill(request, env);
   }
@@ -1266,12 +1094,66 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   if (url.pathname === "/api/v1/internal/registry-sync") {
     return handleRegistrySyncProxy(request, env);
   }
+  // The write path into the chain-indexer Postgres's neurons/neuron_daily
+  // tables (#4771) -- refresh-metagraph.yml's sign-and-stage job calls this
+  // over HTTPS alongside its existing R2-stage-to-D1 step. Proxies to
+  // workers/data-api.mjs's handleNeuronsSync via the SAME DATA_API service
+  // binding the chain_events proxy above uses (not a separate Worker -- see
+  // handleNeuronsSyncProxy's comment for why).
+  if (url.pathname === "/api/v1/internal/neurons-sync") {
+    return handleNeuronsSyncProxy(request, env);
+  }
+  // The write path into the chain-indexer Postgres's account_events_daily
+  // rollup (#4832 gap-closure) -- a dedicated hourly GitHub Actions workflow
+  // calls this (there is no daily snapshot job to piggyback on, unlike
+  // neurons-sync above). Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/rollup-account-events-daily") {
+    return handleRollupAccountEventsDailyProxy(request, env);
+  }
+  // The write path into subnet_hyperparams/subnet_hyperparams_history
+  // (#4832 gap-closure) -- refresh-subnet-hyperparams.yml's sign-and-stage
+  // job calls this the same way refresh-metagraph.yml calls neurons-sync
+  // above. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/subnet-hyperparams-sync") {
+    return handleSubnetHyperparamsSyncProxy(request, env);
+  }
+  // The write path into account_identity/account_identity_history (#4832
+  // gap-closure) -- refresh-account-identity.yml's sign-and-stage job calls
+  // this the same way. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/account-identity-sync") {
+    return handleAccountIdentitySyncProxy(request, env);
+  }
+  // The write path the #4981 box-side relay POSTs #4980's NOTIFY payloads to
+  // (#4982, ADR 0015) -- forwards into ChainFirehoseHub after its own
+  // shared-secret check. POST-only, so it must run before the read-only
+  // method gate below, like the other internal sync routes above.
+  if (url.pathname === "/api/v1/internal/chain-firehose-ingest") {
+    return handleChainFirehoseIngest(request, env);
+  }
+  // The public realtime firehose transport (#4982, ADR 0015) -- SSE by
+  // default, WebSocket on an Upgrade header, same path either way. Runs
+  // early (like /rpc/v1/ and the chain-events proxy above) since a WebSocket
+  // upgrade request must never be routed through JSON-response machinery.
+  if (url.pathname === "/api/v1/chain/stream") {
+    return handleChainFirehoseStream(request, env, url);
+  }
 
   // GraphQL read-only query layer over existing artifacts (issue #751). Runs
   // before the read-only method gate because GraphQL accepts POST requests.
   // Rate-limited up front (same binding/strategy/429 as the RPC proxy) so a
   // single client can't fan out into unbounded artifact reads + query execution.
   if (url.pathname === "/api/v1/graphql") {
+    // GraphQL subscriptions (#4983, ADR 0015) reuse this SAME path over a
+    // WebSocket upgrade (Sec-WebSocket-Protocol: graphql-transport-ws) --
+    // handleChainFirehoseStream already forwards the request as-is (headers
+    // included) to ChainFirehoseHub's /subscribe, which inspects that same
+    // header to pick graphql-ws vs plain-firehose mode; reused unchanged
+    // rather than duplicating the DO-forwarding boilerplate. Checked before
+    // the rate limiter: a long-lived WS connection isn't the same shape of
+    // load a per-request POST limiter is meant for.
+    if (request.headers.get("upgrade") === "websocket") {
+      return handleChainFirehoseStream(request, env, url);
+    }
     const limited = await graphqlRateLimited(request, env);
     if (limited) return limited;
     return handleGraphQLRequest(request, env);
@@ -2643,6 +2525,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/blocks/summary" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
+    pathname.startsWith("/api/v1/alerts/triggers") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
     PERCENTILES_PATH_PATTERN.test(pathname) ||
@@ -3258,6 +3141,46 @@ async function lookupSubnetNetuid(
   return Number.isInteger(netuid) ? netuid : null;
 }
 
+// loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids (src/subnet-identity-
+// history.mjs) are D1-fetch helpers embedded in 3 overlay call sites below
+// rather than standalone routes, so there is no single client request for
+// tryPostgresTier to forward unchanged -- these two wrappers synthesize their
+// own internal /api/v1/internal/subnet-identity-aliases request instead,
+// mirroring composeCompareData's health-dimension wiring (#4832 gap-closure).
+// Reuses METAGRAPH_SUBNET_IDENTITY_SOURCE, already flipped to postgres for
+// /identity-history. derivePreviouslyKnownAs/deriveNetuidGroupedAliases run
+// identically over rows regardless of which tier served them.
+async function loadPreviouslyKnownAsTiered(env, netuid, currentName) {
+  const pgUrl = new URL(
+    "https://data-api.internal/api/v1/internal/subnet-identity-aliases",
+  );
+  pgUrl.searchParams.set("netuids", String(netuid));
+  const pgData = await tryPostgresTier(
+    env,
+    new Request(pgUrl),
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+  );
+  if (pgData) return derivePreviouslyKnownAs(pgData.rows, currentName);
+  return loadPreviouslyKnownAs(d1Runner(env), netuid, currentName);
+}
+
+async function loadPreviouslyKnownAsForNetuidsTiered(env, entries) {
+  const netuids = entries
+    .map((entry) => entry?.netuid)
+    .filter((netuid) => Number.isInteger(netuid));
+  const pgUrl = new URL(
+    "https://data-api.internal/api/v1/internal/subnet-identity-aliases",
+  );
+  pgUrl.searchParams.set("netuids", netuids.join(","));
+  const pgData = await tryPostgresTier(
+    env,
+    new Request(pgUrl),
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+  );
+  if (pgData) return deriveNetuidGroupedAliases(pgData.rows, entries);
+  return loadPreviouslyKnownAsForNetuids(d1Runner(env), entries);
+}
+
 async function handleApiRequest(
   request,
   env,
@@ -3432,8 +3355,8 @@ async function handleApiRequest(
       baseData.subnet && typeof baseData.subnet === "object"
         ? baseData.subnet
         : baseData;
-    const aliasNames = await loadPreviouslyKnownAs(
-      d1Runner(env),
+    const aliasNames = await loadPreviouslyKnownAsTiered(
+      env,
       Number(matched.params.netuid),
       aliasTarget.native_name ?? aliasTarget.name,
     );
@@ -3454,8 +3377,8 @@ async function handleApiRequest(
     baseData &&
     typeof baseData === "object"
   ) {
-    const aliasNames = await loadPreviouslyKnownAs(
-      d1Runner(env),
+    const aliasNames = await loadPreviouslyKnownAsTiered(
+      env,
       Number(matched.params.netuid),
       baseData.name,
     );
@@ -3466,8 +3389,8 @@ async function handleApiRequest(
     matched.id === "agent-catalog" &&
     baseData?.subnets?.length
   ) {
-    const aliasMap = await loadPreviouslyKnownAsForNetuids(
-      d1Runner(env),
+    const aliasMap = await loadPreviouslyKnownAsForNetuidsTiered(
+      env,
       baseData.subnets,
     );
     baseData = {
@@ -4396,16 +4319,24 @@ function corsPreflight(request) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";
+  } else if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
+    methods = "POST, GET, PATCH, DELETE, OPTIONS";
   } else if (url.pathname === "/api/v1/graphql") {
     // POST executes queries; GET serves the published SDL document.
     methods = "GET, POST, OPTIONS";
-  } else if (url.pathname === "/mcp" || url.pathname === "/api/v1/ask") {
+  } else if (url.pathname === "/mcp") {
+    // GET opens the bounded SSE push stream (#4983 MCP half); DELETE
+    // terminates a session explicitly; POST is the stateless JSON-RPC path.
+    methods = "GET, POST, DELETE, OPTIONS";
+  } else if (url.pathname === "/api/v1/ask") {
     methods = "POST, OPTIONS";
   }
   headers.set("access-control-allow-methods", methods);
   headers.set(
     "access-control-allow-headers",
-    `content-type, if-none-match, ${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}`,
+    `content-type, if-none-match, mcp-session-id, mcp-protocol-version, ` +
+      `${WEBHOOK_SECRET_HEADER}, ${WEBHOOK_SUBSCRIPTION_TOKEN_HEADER}, ` +
+      `${ALERT_TRIGGER_CREATE_TOKEN_HEADER}, ${ALERT_TRIGGER_OWNER_TOKEN_HEADER}`,
   );
   headers.set("access-control-max-age", "86400");
   return new Response(null, { status: 204, headers });

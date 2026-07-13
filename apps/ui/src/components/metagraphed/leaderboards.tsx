@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { leaderboardsQuery } from "@/lib/metagraphed/queries";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
+import { BrandIcon } from "@jsonbored/ui-kit";
 import type { LeaderboardBoardKey, LeaderboardRow } from "@/lib/metagraphed/types";
 
 // #1111: surface the five live, D1-computed registry leaderboards

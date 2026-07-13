@@ -172,9 +172,9 @@ export default {
             !prune.source_commit
           )
             continue;
-          const keepKeys = prune.current_surfaces
+          const keepPairs = prune.current_surfaces
             .filter((surface) => surface?.kind && surface?.url)
-            .map((surface) => `${surface.kind}\u001f${surface.url}`);
+            .map((surface) => [surface.kind, surface.url]);
           // `authority_scope: "community"` (set by the merge-triggered fast path,
           // scripts/sync-registry-to-postgres.mjs) bounds this prune to ONLY the
           // community-authority rows for the subnet -- the fast path's
@@ -185,22 +185,41 @@ export default {
           // merge that touches the file. The scheduled full resync
           // (scripts/backfill-registry-postgres.mjs) computes current_surfaces
           // from the complete baseline-augmented view and omits authority_scope,
-          // so it keeps pruning across every authority as before. Passed as a
-          // plain boolean parameter (not spliced SQL) so the condition is a
-          // no-op OR branch when unscoped, rather than composing raw fragments.
+          // so it keeps pruning across every authority as before.
           const scopeToCommunity = prune.authority_scope === "community";
-          const deleted = keepKeys.length
-            ? await sql`
-              DELETE FROM surfaces
-              WHERE subnet_netuid = ${prune.subnet_netuid}
-                AND (NOT ${scopeToCommunity} OR authority = ${"community"})
-                AND NOT (kind || ${"\u001f"} || url = ANY(${keepKeys}))
-              RETURNING id, subnet_netuid, overlay`
-            : await sql`
+          let deleted;
+          if (keepPairs.length) {
+            // Plain scalar positional binds via sql.unsafe, NOT a bound JS
+            // array -- Hyperdrive's fetch_types:false breaks postgres.js's
+            // ANY($1)/array serialization (confirmed live 2026-07-10, #4771's
+            // identical fix to data-api.mjs's neurons-sync prune; this query
+            // shipped the same broken ANY(${keepKeys}) pattern in #3892 three
+            // days earlier and was never ported). A bound array here sends a
+            // malformed literal with no braces, 502'ing every write that
+            // pruned against a non-empty current_surfaces list. Matches
+            // (kind, url) pairs directly via a VALUES join instead of a
+            // synthetic separator-joined key.
+            const valuesSql = keepPairs
+              .map((_, i) => `($${i * 2 + 3}::text, $${i * 2 + 4}::text)`)
+              .join(", ");
+            deleted = await sql.unsafe(
+              `DELETE FROM surfaces
+              WHERE subnet_netuid = $2::int
+                AND (NOT $1::boolean OR authority = 'community')
+                AND NOT EXISTS (
+                  SELECT 1 FROM (VALUES ${valuesSql}) AS keep(kind, url)
+                  WHERE keep.kind = surfaces.kind AND keep.url = surfaces.url
+                )
+              RETURNING id, subnet_netuid, overlay`,
+              [scopeToCommunity, prune.subnet_netuid, ...keepPairs.flat()],
+            );
+          } else {
+            deleted = await sql`
               DELETE FROM surfaces
               WHERE subnet_netuid = ${prune.subnet_netuid}
                 AND (NOT ${scopeToCommunity} OR authority = ${"community"})
               RETURNING id, subnet_netuid, overlay`;
+          }
           for (const row of deleted) {
             await sql`
             INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit)

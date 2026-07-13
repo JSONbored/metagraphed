@@ -1,165 +1,27 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
-  rollupAccountPositionDaily,
-  pruneAccountPositionDaily,
-  ACCOUNT_POSITION_DAILY_RETENTION_DAYS,
-  ACCOUNT_POSITION_DAILY_READ_COLUMNS,
   formatAccountPosition,
   buildAccountPositionHistory,
 } from "../src/account-position-history.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { NEURON_HISTORY_ROLLUP_CRON } from "../workers/config.mjs";
-import { MAX_HISTORY_POINTS } from "../src/neuron-history.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 const ctx = { waitUntil: (p) => p };
 const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-describe("rollupAccountPositionDaily", () => {
-  test("issues a single INSERT...SELECT with a consistent captured_at snapshot + idempotent upsert", async () => {
-    const captured = {};
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          captured.sql = sql;
-          return {
-            bind(...params) {
-              captured.params = params;
-              return { run: () => Promise.resolve({ meta: { changes: 42 } }) };
-            },
-          };
-        },
-      },
-    };
-    const res = await rollupAccountPositionDaily(env, {
-      now: 1_780_000_000_001,
-    });
-    assert.deepEqual(res, { rolled: true, rows: 42 });
-    // One consistent snapshot stamp (WHERE captured_at = MAX), dated in SQL.
-    assert.match(captured.sql, /INSERT INTO account_position_daily/);
-    assert.match(captured.sql, /hotkey AS account/);
-    assert.match(captured.sql, /SELECT MAX\(captured_at\) FROM neurons/);
-    assert.match(captured.sql, /date\(captured_at \/ 1000, 'unixepoch'\)/);
-    // account is NOT NULL + part of the primary key, but neurons.hotkey is
-    // nullable — an unfiltered SELECT would abort the whole INSERT on any one
-    // null-hotkey row (see the function's own docstring).
-    assert.match(captured.sql, /AND hotkey IS NOT NULL/);
-    // Idempotent intra-day re-run.
-    assert.match(
-      captured.sql,
-      /ON CONFLICT\(account, netuid, snapshot_date\) DO UPDATE/,
-    );
-    assert.deepEqual(captured.params, [1_780_000_000_001]);
-  });
-
-  test("no-ops cleanly without a DB binding (cron isolation)", async () => {
-    assert.deepEqual(await rollupAccountPositionDaily({}), {
-      rolled: false,
-      reason: "no-db",
-    });
-  });
-
-  test("reports rows:null when the run result omits meta.changes", async () => {
+// account_position_daily's D1 rollup/prune (formerly rollupAccountPositionDaily/
+// pruneAccountPositionDaily, src/account-position-history.mjs, wired from this
+// cron) are retired: #4908 dropped D1's `neurons` table entirely, and #4839
+// already gave this table its own independent, live-verified Postgres write +
+// read path. This cron tick now has no remaining work.
+describe("handleScheduled NEURON_HISTORY_ROLLUP_CRON (retired, #4329/6.1)", () => {
+  test("is a pure no-op — never touches D1", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare() {
-          return { bind: () => ({ run: () => Promise.resolve({}) }) };
-        },
-      },
-    };
-    const res = await rollupAccountPositionDaily(env, { now: 1 });
-    assert.equal(res.rolled, true);
-    assert.equal(res.rows, null);
-  });
-});
-
-describe("pruneAccountPositionDaily", () => {
-  test("deletes below the retention cutoff", async () => {
-    let boundCutoff;
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            bind: (cutoff) => {
-              boundCutoff = cutoff;
-              return { run: async () => ({ meta: { changes: 7 } }) };
-            },
-          };
-        },
-      },
-    };
-    const now = new Date("2026-07-09T00:00:00.000Z").getTime();
-    const res = await pruneAccountPositionDaily(env, { now });
-    assert.equal(res.pruned, true);
-    assert.equal(res.changes, 7);
-    const expectedCutoff = new Date(
-      now - ACCOUNT_POSITION_DAILY_RETENTION_DAYS * 86_400_000,
-    )
-      .toISOString()
-      .slice(0, 10);
-    assert.equal(boundCutoff, expectedCutoff);
-    assert.equal(res.cutoff, expectedCutoff);
-  });
-
-  test("no-ops cleanly without a DB binding", async () => {
-    assert.deepEqual(await pruneAccountPositionDaily({}), {
-      pruned: false,
-      reason: "no-db",
-    });
-  });
-
-  test("reports changes:null when the run result omits meta.changes", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return { bind: () => ({ run: () => Promise.resolve({}) }) };
-        },
-      },
-    };
-    const res = await pruneAccountPositionDaily(env, { now: 1 });
-    assert.equal(res.pruned, true);
-    assert.equal(res.changes, null);
-  });
-
-  test("returns pruned:false when D1 throws", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            bind: () => ({
-              run: async () => {
-                throw new Error("d1 down");
-              },
-            }),
-          };
-        },
-      },
-    };
-    const res = await pruneAccountPositionDaily(env, { now: 1 });
-    assert.equal(res.pruned, false);
-  });
-});
-
-describe("handleScheduled rollup cron wiring (#4329/6.1)", () => {
-  test("isolates a rollup failure from the rest of the NEURON_HISTORY_ROLLUP_CRON tick", async () => {
-    // account_position_daily's INSERT throws; every other statement (neuron_daily's
-    // rollup/archive-read/prune) resolves emptily, so the surrounding cron tick
-    // completes and the failure stays isolated to accountPositionRolled.
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind: () => ({
-              run: () => {
-                if (sql.includes("account_position_daily")) {
-                  return Promise.reject(new Error("d1 down"));
-                }
-                return Promise.resolve({ meta: { changes: 0 } });
-              },
-              all: () => Promise.resolve({ results: [] }),
-            }),
-          };
+          throw new Error("D1 must not be queried by a retired cron branch");
         },
       },
     };
@@ -168,37 +30,7 @@ describe("handleScheduled rollup cron wiring (#4329/6.1)", () => {
       env,
       ctx,
     );
-    assert.equal(result.accountPositionRolled.rolled, false);
-  });
-
-  test("rolls up and prunes account_position_daily on the same cron tick", async () => {
-    const calls = [];
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          calls.push(sql);
-          return {
-            bind: () => ({
-              run: () => Promise.resolve({ meta: { changes: 3 } }),
-              all: () => Promise.resolve({ results: [] }),
-            }),
-          };
-        },
-      },
-    };
-    const result = await handleScheduled(
-      { cron: NEURON_HISTORY_ROLLUP_CRON },
-      env,
-      ctx,
-    );
-    assert.equal(result.accountPositionRolled.rolled, true);
-    assert.equal(result.accountPositionPruned.pruned, true);
-    assert.ok(
-      calls.some((sql) => sql.includes("INSERT INTO account_position_daily")),
-    );
-    assert.ok(
-      calls.some((sql) => sql.includes("DELETE FROM account_position_daily")),
-    );
+    assert.deepEqual(result, { ok: true, retired: true });
   });
 });
 
@@ -403,28 +235,42 @@ describe("buildAccountPositionHistory", () => {
   });
 });
 
-// Stub METAGRAPH_HEALTH_DB whose .all() returns the given rows and records the SQL.
-function positionHistoryEnv(rows, captured = {}) {
+// D1 must never be queried by this route anymore — it's Postgres-only
+// (#4839 shipped the write path + this read route; #4910's "no Postgres read
+// route" premise was stale, and D1's own rollup has been permanently broken
+// since #4908 dropped D1's `neurons` table). This stub throws if `prepare()`
+// is ever called, so any regression back to a D1 fallback fails the test
+// loudly instead of silently passing on stale/empty D1 data.
+function positionHistoryEnv(overrides = {}) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        captured.sql = sql;
-        return {
-          bind(...params) {
-            captured.params = params;
-            return { all: () => Promise.resolve({ results: rows }) };
-          },
-        };
+      prepare() {
+        throw new Error(
+          "D1 must not be queried by the Postgres-only account-position-history route",
+        );
       },
     },
+    ...overrides,
   };
 }
 
+// A Postgres-tier env: METAGRAPH_NEURONS_SOURCE=postgres + a DATA_API stub
+// returning the given account-position-history payload.
+function postgresPositionHistoryEnv(payload) {
+  return positionHistoryEnv({
+    METAGRAPH_NEURONS_SOURCE: "postgres",
+    DATA_API: { fetch: async () => Response.json(payload) },
+  });
+}
+
 describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch", () => {
-  test("returns a 200 series + applies a date cutoff", async () => {
-    const captured = {};
-    const env = positionHistoryEnv([positionRow()], captured);
+  test("Postgres tier: returns the series the DATA_API binding provides", async () => {
+    const env = postgresPositionHistoryEnv(
+      buildAccountPositionHistory([positionRow()], SS58, 7, {
+        window: "7d",
+      }),
+    );
     const res = await handleRequest(
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history?window=7d`,
@@ -437,29 +283,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
     assert.equal(body.data.ss58, SS58);
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.points[0].snapshot_date, "2026-06-20");
-    assert.match(
-      captured.sql,
-      /FROM account_position_daily WHERE account = \? AND netuid = \?/,
-    );
-    assert.match(captured.sql, /snapshot_date >= \?/);
-    assert.deepEqual(captured.params.slice(0, 2), [SS58, 7]);
-    assert.ok(captured.params.includes(MAX_HISTORY_POINTS));
     assert.match(res.headers.get("content-type"), /^application\/json/);
-  });
-
-  test("uses ACCOUNT_POSITION_DAILY_READ_COLUMNS in the SELECT list", async () => {
-    const captured = {};
-    await handleRequest(
-      new Request(
-        `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history`,
-      ),
-      positionHistoryEnv([], captured),
-      ctx,
-    );
-    assert.match(
-      captured.sql,
-      new RegExp(`SELECT ${ACCOUNT_POSITION_DAILY_READ_COLUMNS}`),
-    );
   });
 
   test("an unsupported ?window is a 400, never a silent coerce", async () => {
@@ -467,7 +291,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history?window=400d`,
       ),
-      positionHistoryEnv([]),
+      positionHistoryEnv(),
       ctx,
     );
     assert.equal(res.status, 400);
@@ -476,25 +300,30 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
     assert.equal(body.meta.parameter, "window");
   });
 
-  test("?window=all omits the cutoff (full history, still bounded by the row cap)", async () => {
-    const captured = {};
-    await handleRequest(
+  test("?window=all is accepted (forwarded to Postgres unchanged, no D1 cutoff logic left)", async () => {
+    const env = postgresPositionHistoryEnv(
+      buildAccountPositionHistory([positionRow()], SS58, 7, {
+        window: "all",
+      }),
+    );
+    const res = await handleRequest(
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history?window=all`,
       ),
-      positionHistoryEnv([positionRow()], captured),
+      env,
       ctx,
     );
-    assert.doesNotMatch(captured.sql, /snapshot_date >= \?/);
-    assert.ok(captured.params.includes(MAX_HISTORY_POINTS));
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.window, "all");
   });
 
-  test("cold/absent store returns 200 with empty points, never 404", async () => {
+  test("Postgres tier unavailable → 200 with empty points, never 404 or a D1 read", async () => {
     const res = await handleRequest(
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history`,
       ),
-      positionHistoryEnv([]),
+      positionHistoryEnv(),
       ctx,
     );
     assert.equal(res.status, 200);
@@ -508,18 +337,23 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history?bogus=1`,
       ),
-      positionHistoryEnv([]),
+      positionHistoryEnv(),
       ctx,
     );
     assert.equal(res.status, 400);
   });
 
-  test("meta.generated_at reflects the newest point's captured_at", async () => {
+  test("meta.generated_at reflects the newest point's captured_at (Postgres tier)", async () => {
+    const env = postgresPositionHistoryEnv(
+      buildAccountPositionHistory([positionRow()], SS58, 7, {
+        window: "30d",
+      }),
+    );
     const res = await handleRequest(
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history`,
       ),
-      positionHistoryEnv([positionRow()]),
+      env,
       ctx,
     );
     const body = await res.json();
@@ -530,12 +364,12 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
     assert.equal(body.meta.source, "metagraph-snapshot");
   });
 
-  test("meta.generated_at is null when the store is cold", async () => {
+  test("meta.generated_at is null when the Postgres tier is unavailable", async () => {
     const res = await handleRequest(
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history`,
       ),
-      positionHistoryEnv([]),
+      positionHistoryEnv(),
       ctx,
     );
     const body = await res.json();
@@ -547,7 +381,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         "https://api.metagraph.sh/api/v1/accounts/not-a-valid-address/subnets/7/history",
       ),
-      positionHistoryEnv([]),
+      positionHistoryEnv(),
       ctx,
     );
     assert.equal(res.status, 404);

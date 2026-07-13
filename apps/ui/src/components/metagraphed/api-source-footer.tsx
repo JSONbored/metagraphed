@@ -1,5 +1,4 @@
-import { ExternalLink } from "@/components/metagraphed/external-link";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
+import { ExternalLink, CopyableCode } from "@jsonbored/ui-kit";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { useRegisterApiSource } from "@/lib/metagraphed/api-source-context";
 

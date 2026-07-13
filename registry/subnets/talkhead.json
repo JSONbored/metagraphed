@@ -50,6 +50,24 @@
         "https://github.com/talkheadai/talkhead-subnet/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/talkheadai/talkhead-executor/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-108-talkhead-wandb",
+      "kind": "dashboard",
+      "name": "TalkHead validator W&B dashboard",
+      "notes": "Public Weights & Biases project for SN108 TalkHead validator runs (entity talkhead-ai, project talkhead-subnet; 650+ logged runs). Declared as the subnet's default W&B target in the official talkheadai/talkhead-subnet config.py (WANDB_ENTITY_DEFAULT = 'talkhead-ai', WANDB_PROJECT_NAME_DEFAULT = 'talkhead-subnet', netuid = 108). Publicly readable, no auth.",
+      "provider": "talkhead",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/talkheadai/talkhead-subnet/blob/main/config.py"
+      ],
+      "url": "https://wandb.ai/talkhead-ai/talkhead-subnet"
     }
   ],
   "source_repo": "https://github.com/talkheadai/talkhead-subnet",

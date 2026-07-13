@@ -117,15 +117,18 @@ describe("hourly maintenance cron — pruneHealthHistory isolation", () => {
     };
 
     // handleScheduled reads env.METAGRAPH_HEALTH_DB once per consumer, in order:
-    // rollupDailyUptime (1), rollupAccountEventsDaily (2), writeSubnetSnapshot (3),
-    // then pruneHealthHistory (4) — the first member of the prune Promise.all.
-    // Hand pruneHealthHistory the throwing DB so it rejects; everyone before it
-    // gets the working DB so the rollups confirm and the prune fan-out is reached.
+    // rollupDailyUptime (1), writeSubnetSnapshot (2), then pruneHealthHistory (3)
+    // — the first member of the prune Promise.all. #4772 D1 chain-data retirement
+    // removed the D1-side rollupAccountEventsDaily call that used to sit between
+    // rollupDailyUptime and writeSubnetSnapshot, shifting pruneHealthHistory's
+    // read from the 4th to the 3rd. Hand pruneHealthHistory the throwing DB so it
+    // rejects; everyone before it gets the working DB so the rollup confirms and
+    // the prune fan-out is reached.
     let dbReads = 0;
     const env = {
       get METAGRAPH_HEALTH_DB() {
         dbReads += 1;
-        return dbReads === 4 ? throwingDb : goodDb;
+        return dbReads === 3 ? throwingDb : goodDb;
       },
     };
 
@@ -134,6 +137,6 @@ describe("hourly maintenance cron — pruneHealthHistory isolation", () => {
     // The rejection was isolated to a no-op for this tick (not propagated out of
     // the Promise.all): the cron returns the .catch fallback, not a throw.
     assert.deepEqual(result, { pruned: false });
-    assert.ok(dbReads >= 4, "the prune fan-out was reached");
+    assert.ok(dbReads >= 3, "the prune fan-out was reached");
   });
 });

@@ -70,6 +70,13 @@ function captureStamp(value) {
     }
   }
   if (typeof value === "string") {
+    if (/^\d+$/.test(value)) {
+      const ms = Number(value);
+      const date = new Date(ms);
+      if (Number.isFinite(ms) && Number.isFinite(date.getTime())) {
+        return { ms, value: date.toISOString() };
+      }
+    }
     const ms = Date.parse(value);
     if (Number.isFinite(ms)) return { ms, value };
   }

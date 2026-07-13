@@ -2,21 +2,26 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CurationChip, ReviewChip } from "@/components/metagraphed/chips";
-import { ExternalLink } from "@/components/metagraphed/external-link";
 import { Skeleton } from "@/components/metagraphed/states";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
-import { PageHero } from "@/components/metagraphed/page-hero";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { SectionHeading } from "@/components/metagraphed/section-heading";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
-import { ShareButton } from "@/components/metagraphed/share-button";
-import { DownloadCsvButton } from "@/components/metagraphed/download-csv-button";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
-import { SparkLegend } from "@/components/metagraphed/charts/spark-legend";
-import { ViewModeToggle } from "@/components/metagraphed/view-mode-toggle";
+import {
+  TimeAgo,
+  CurationChip,
+  ReviewChip,
+  ExternalLink,
+  PageHero,
+  SectionHeading,
+  BrandIcon,
+  ShareButton,
+  DownloadCsvButton,
+  ViewModeToggle,
+  ListShell,
+  LoadMore,
+  SparkLegend,
+} from "@jsonbored/ui-kit";
 import {
   TimeRangeProvider,
   useTimeRange,
@@ -31,14 +36,14 @@ import {
   SelectFilter,
   SortHeader,
 } from "@/components/metagraphed/table-controls";
-import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { surfacesInfiniteQuery, providersQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
+import { sortBy } from "@/lib/metagraphed/url-state";
+import { surfacesSearchSchema, matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
 import type { Surface, Provider, Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/surfaces")({
-  validateSearch: tableSearchSchema,
+  validateSearch: surfacesSearchSchema,
   head: () => ({
     meta: [
       { title: "Surfaces — Metagraphed" },
@@ -67,6 +72,9 @@ function SurfacesPage() {
     !!search.kind ||
     !!search.provider ||
     !!search.netuid ||
+    !!search.public_safe ||
+    !!search.auth ||
+    !!search.rate_limited ||
     !!search.cursor;
   const onReset = () =>
     navigate({
@@ -219,14 +227,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
         }) as never,
     });
 
-  const filtered = all.filter((s) => {
-    if (!matchesQuery([s.name, s.url, s.provider, s.provider_slug, s.netuid], search.q))
-      return false;
-    if (search.kind && s.kind !== search.kind) return false;
-    if (search.provider && (s.provider_slug ?? s.provider) !== search.provider) return false;
-    if (search.netuid && String(s.netuid) !== search.netuid) return false;
-    return true;
-  });
+  const filtered = all.filter((s) => matchesSurfaceFilters(s, search));
   const rows = sortBy(
     filtered,
     search.sort,
@@ -263,7 +264,15 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
     </>
   );
 
-  const filtersActive = !!(search.q || search.kind || search.provider || search.netuid);
+  const filtersActive = !!(
+    search.q ||
+    search.kind ||
+    search.provider ||
+    search.netuid ||
+    search.public_safe ||
+    search.auth ||
+    search.rate_limited
+  );
 
   const emptyNode = (
     <RegistryEmpty
@@ -281,7 +290,16 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           ? [
               {
                 label: "Reset filters",
-                onClick: () => setSearch({ q: "", kind: "", provider: "", netuid: "" }),
+                onClick: () =>
+                  setSearch({
+                    q: "",
+                    kind: "",
+                    provider: "",
+                    netuid: "",
+                    public_safe: "",
+                    auth: "",
+                    rate_limited: "",
+                  }),
                 primary: true,
               },
               { label: "Open API", href: "/api/v1/surfaces", external: true },

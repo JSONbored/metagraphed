@@ -1,17 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { TimeAgo, ListShell, CopyableCode, CopyButton } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
-import { ListShell } from "@/components/metagraphed/list-shell";
 import {
   PageSizeSelect,
   ResetFiltersButton,
   SearchInput,
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
-import { CopyButton } from "@/components/metagraphed/copy-button";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { extrinsicCall } from "@/lib/metagraphed/extrinsics";

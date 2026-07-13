@@ -16,8 +16,7 @@ import {
 } from "lucide-react";
 import { searchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { Kbd } from "./kbd";
-import { safeExternalUrl } from "./external-link";
+import { Kbd, safeExternalUrl } from "@jsonbored/ui-kit";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -351,7 +350,10 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     showResults && active < flat.length ? `nav-omnibox-option-${active}` : undefined;
 
   return (
-    <div ref={wrapRef} className="relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0">
+    <div
+      ref={wrapRef}
+      className="hidden md:block relative flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl min-w-0"
+    >
       {/* Input */}
       <div
         className={classNames(

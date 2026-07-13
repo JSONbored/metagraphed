@@ -2,9 +2,7 @@ import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Boxes, Layers, ShieldCheck } from "lucide-react";
 import { subnetMetagraphQuery } from "@/lib/metagraphed/queries";
-import { StatTile } from "@/components/metagraphed/charts/stat-tile";
-import { BarMini } from "@/components/metagraphed/charts/bar-mini";
-import { TableState } from "@/components/metagraphed/table-state";
+import { TableState, RealtimeFreshness, StatTile, BarMini } from "@jsonbored/ui-kit";
 import { NeuronTable, taoCompact } from "@/components/metagraphed/neuron-table";
 import { classNames } from "@/lib/metagraphed/format";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
@@ -62,6 +60,8 @@ export function MetagraphTableLoader({
     );
   }
 
+  const freshness = <RealtimeFreshness at={meta?.generated_at} />;
+
   return (
     <div className="space-y-4">
       {/* KPI strip — neuron + validator counts and the dominant-UID stake share. */}
@@ -91,17 +91,22 @@ export function MetagraphTableLoader({
       {/* Stake distribution across the leading UIDs. */}
       {stakeBars.length > 0 ? (
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
               Stake distribution · top {stakeBars.length} UIDs
             </span>
-            <span className="font-mono text-[10px] text-ink-muted">
-              peak {taoCompact(stakeBars[0]?.value)} τ
+            <span className="ml-auto flex items-center gap-2">
+              <span className="font-mono text-[10px] text-ink-muted">
+                peak {taoCompact(stakeBars[0]?.value)} τ
+              </span>
+              {freshness}
             </span>
           </div>
           <BarMini data={stakeBars} />
         </div>
-      ) : null}
+      ) : (
+        <div className="flex items-center justify-end">{freshness}</div>
+      )}
 
       {/* Permit filter + sortable neuron table. */}
       <div className="flex items-center justify-between gap-3">

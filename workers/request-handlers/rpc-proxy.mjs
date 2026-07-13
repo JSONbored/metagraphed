@@ -52,6 +52,7 @@ import {
 import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.mjs";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.mjs";
 import { loadRpcUsage } from "../../src/rpc-usage-loader.mjs";
+import { tryPostgresTier } from "../postgres-tier.mjs";
 import {
   DENIED_RPC_PREFIXES,
   JSON_CONTENT_TYPE,
@@ -108,12 +109,36 @@ export async function readRpcPoolArtifact(env, now = Date.now()) {
   return poolArtifact;
 }
 
+// #4832 gap-closure: best-effort Postgres mirror of a single rpc_proxy_events
+// row, called alongside the D1 write below. Unlike every other #4832 sync
+// route (all cron/workflow batch writes), this fires once per live proxied
+// request -- confirmed live 2026-07-11 the real volume is trivial (69 rows
+// over ~25 days), so a plain per-request env.DATA_API.fetch() under the
+// SAME ctx.waitUntil is safe; revisit if traffic grows enough to warrant
+// batching. Never throws, never adds latency to the proxied call.
+function syncRpcUsageEventToPostgres(env, ctx, event) {
+  if (!env?.DATA_API || !env?.RPC_USAGE_SYNC_SECRET) return;
+  if (typeof ctx?.waitUntil !== "function") return;
+  const send = env.DATA_API.fetch(
+    new Request("https://api.metagraph.sh/api/v1/internal/rpc-usage-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-rpc-usage-sync-token": env.RPC_USAGE_SYNC_SECRET,
+      },
+      body: JSON.stringify(event),
+    }),
+  ).catch(() => {});
+  ctx.waitUntil(send);
+}
+
 // Best-effort, async usage telemetry for the RPC proxy (B3). A telemetry write
 // must never add latency to, or fail, a proxied call — so it runs under
 // ctx.waitUntil and swallows every error (notably "no such table" before the
 // 0004 migration is applied). When the binding/ctx is absent (tests, local dev)
 // it is a no-op. The proxy degrades to "no analytics", never to "broken".
 function recordRpcUsage(env, ctx, event) {
+  syncRpcUsageEventToPostgres(env, ctx, event);
   const db = env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare || typeof ctx?.waitUntil !== "function") return;
   try {
@@ -150,10 +175,21 @@ export async function handleRpcUsage(request, env, url) {
   const { label, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
   const meta = await readHealthMetaKv(env);
-  const data = await loadRpcUsage(d1Runner(env), {
-    window: label,
-    observedAt: meta?.last_run_at || null,
-  });
+  // #4832 gap-closure: reuses tryPostgresTier's usual "forward the caller's
+  // request unchanged" contract (a clean 1:1 route, unlike handleCompare's
+  // embedded-helper shape). METAGRAPH_RPC_USAGE_SOURCE flipped to "postgres"
+  // in wrangler.jsonc 2026-07-12 after a one-time historical backfill closed
+  // the gap (see wrangler.jsonc's inline comment for the verification
+  // details) -- unlike METAGRAPH_HEALTH_SOURCE/METAGRAPH_SUBNET_SNAPSHOTS_SOURCE,
+  // this table's reads are always window-bounded (7d/30d) and both stores
+  // only ever hold that same rolling slice, so there was no long-tail
+  // history a backfill could leave behind.
+  const data =
+    (await tryPostgresTier(env, request, "METAGRAPH_RPC_USAGE_SOURCE")) ??
+    (await loadRpcUsage(d1Runner(env), {
+      window: label,
+      observedAt: meta?.last_run_at || null,
+    }));
   return envelopeResponse(
     request,
     {
@@ -537,9 +573,13 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     provider: response.headers.get("x-metagraph-rpc-provider"),
     ok: Boolean(servedEndpointId),
     status: response.status,
+    // The exhausted-pool path (proxyWithFailover's final errorResponse) never
+    // sets x-metagraph-rpc-attempts, so this falls through to the uncapped
+    // candidate count unless clamped to the same limit proxyWithFailover
+    // itself attempts against (Math.min(orderedEndpoints.length, maxAttempts)).
     attempts:
       Number(response.headers.get("x-metagraph-rpc-attempts")) ||
-      candidates.length,
+      Math.min(candidates.length, RPC_MAX_ATTEMPTS),
     latency_ms: Date.now() - startedAt,
     cache: cacheKey ? "miss" : "bypass",
   });

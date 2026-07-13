@@ -53,14 +53,72 @@ describe("decodeBTreeSetFields", () => {
     assert.deepEqual(out.other_field, [[104, 71]]);
   });
 
-  test("is a no-op on D1's own call_args shape (an array of {name,type,value} descriptors, not an object)", () => {
-    const d1Shape = [
+  test("is a no-op on an already-correctly-shaped typed-descriptor array (the real top-level call_args shape, confirmed live 2026-07-12)", () => {
+    const descriptorShape = [
       { name: "subnets", type: "BTreeSet<NetUid>", value: [104, 71] },
     ];
     assert.deepEqual(
-      decodeBTreeSetFields("SubtensorModule", "claim_root", d1Shape),
-      d1Shape,
+      decodeBTreeSetFields("SubtensorModule", "claim_root", descriptorShape),
+      descriptorShape,
     );
+  });
+
+  test("unwraps a still-double-wrapped typed-descriptor value (real top-level call_args shape, block 8604385/23)", () => {
+    // Unlike normalizePostgresValue's OWN typed-descriptor handling (which
+    // already strips this layer when it can see the sibling `type` string),
+    // this proves decodeBTreeSetFields' independent unwrap also does the
+    // right thing if it ever received the raw, still-wrapped shape directly
+    // (e.g. if called without normalizePostgresValue having run first).
+    const descriptorShape = [
+      { name: "subnets", type: "BTreeSet<u16>", value: [[84]] },
+    ];
+    const out = decodeBTreeSetFields(
+      "SubtensorModule",
+      "claim_root",
+      descriptorShape,
+    );
+    assert.deepEqual(out[0].value, [84]);
+  });
+
+  test("unwraps a BTreeSet field nested inside a Utility.batch-wrapped call (real production fixture, block 8604111/11)", () => {
+    // The raw shape indexer-rs actually serves for a nested claim_root call
+    // -- confirmed live via direct Postgres query -- is the pallet/function
+    // enum-tree BEFORE reconstruction: {name:"SubtensorModule",
+    // values:[{name:"claim_root", values:{subnets:[[1,2,3,4,5]]}}]}, one
+    // level down from Utility.batch's own `calls` typed descriptor. This
+    // test starts from the shape AFTER decodePostgresCallArgs has already
+    // reconstructed that into {call_module,call_function,call_args} --
+    // src/postgres-call-args.test.mjs and tests/extrinsics.test.mjs cover
+    // the reconstruction step (and its own BTREESET_FIELDS exclusion fix)
+    // itself; this test is scoped to decodeBTreeSetFields' own recursive
+    // unwrap.
+    const reconstructed = [
+      {
+        name: "calls",
+        type: "Vec<RuntimeCall>",
+        value: [
+          {
+            call_module: "SubtensorModule",
+            call_function: "claim_root",
+            call_args: { subnets: [[1, 2, 3, 4, 5]] },
+          },
+        ],
+      },
+    ];
+    const out = decode("Utility", "batch", reconstructed);
+    assert.deepEqual(out[0].value[0].call_args.subnets, [1, 2, 3, 4, 5]);
+  });
+
+  test("leaves a non-allowlisted field inside a nested call untouched", () => {
+    const reconstructed = [
+      {
+        call_module: "SubtensorModule",
+        call_function: "add_stake",
+        call_args: { amount: [[1, 2, 3]] },
+      },
+    ];
+    const out = decode("Utility", "batch", reconstructed);
+    assert.deepEqual(out[0].call_args.amount, [[1, 2, 3]]);
   });
 
   test("is a no-op on null/undefined/scalar call_args", () => {

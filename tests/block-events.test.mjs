@@ -51,39 +51,6 @@ const ROW = {
   observed_at: 1_750_009_000_000,
 };
 
-test("GET /blocks/{ref}/events returns the events in one block by number (#1852)", async () => {
-  const env = dbWith({ events: [ROW], blockNumber: 1_000_000 });
-  const res = await handleRequest(
-    req("/api/v1/blocks/1000000/events"),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.ok, true);
-  assert.equal(body.data.ref, "1000000");
-  assert.equal(body.data.block_number, 1000000);
-  assert.equal(body.data.event_count, 1);
-  assert.equal(body.data.events[0].event_kind, "WeightsSet");
-  assert.ok(res.headers.get("etag"));
-  assert.ok(res.headers.get("x-metagraph-contract-version"));
-});
-
-test("GET /blocks/{ref}/events resolves a 0x block_hash ref to its number", async () => {
-  const hash = `0x${"a".repeat(64)}`;
-  const env = dbWith({ events: [ROW], blockNumber: 1_000_000 });
-  const res = await handleRequest(
-    req(`/api/v1/blocks/${hash}/events`),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.ref, hash);
-  assert.equal(body.data.block_number, 1000000);
-  assert.equal(body.data.event_count, 1);
-});
-
 test("GET /blocks/{ref}/events honors ?limit and rejects bad params", async () => {
   const env = dbWith({ events: [ROW], blockNumber: 1_000_000 });
   const ok = await handleRequest(

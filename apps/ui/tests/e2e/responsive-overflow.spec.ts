@@ -93,6 +93,18 @@ for (const route of ROUTES) {
         } catch {
           await page.waitForTimeout(2000);
         }
+        // Self-hosted brand fonts (apps/ui/src/styles.css) load via
+        // font-display: swap -- the page paints with a fallback font
+        // immediately, then reflows onto the real font whenever its woff2
+        // finishes downloading. That download is real network activity
+        // (unlike the HAR-mocked API calls above), so its timing isn't
+        // bounded by the fixed 2s fallback above -- it can still be
+        // in-flight when overflow gets measured, producing an
+        // environment/timing-dependent false positive (surfaced by #4876:
+        // reproduced non-deterministically both locally and in CI, exact
+        // same 3-element diff every time it fired, only after fonts were
+        // self-hosted). Block until the swap is guaranteed to have happened.
+        await page.evaluate(() => document.fonts.ready);
 
         const violations = await page.evaluate(findOverflowViolations, viewport.width);
         const found = new Set(violations.map(fingerprint));

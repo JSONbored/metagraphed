@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { validatorHistoryQuery } from "@/lib/metagraphed/queries";
-import { Sparkline } from "@/components/metagraphed/charts/sparkline";
+import { Sparkline } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState } from "@/components/metagraphed/states";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
