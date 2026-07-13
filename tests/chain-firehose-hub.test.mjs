@@ -914,6 +914,44 @@ test("ChainFirehoseHub.releaseWsIpSlot: a no-op when this DO instance never reco
   assert.equal(hub.wsClientsByIp.has("203.0.113.9"), false);
 });
 
+test("ChainFirehoseHub.rebuildWsClientsByIp: reconstructs per-IP counts from surviving hibernatable WebSocket attachments", () => {
+  const hub = new ChainFirehoseHub(
+    stubState([
+      { deserializeAttachment: () => ({ ip: "203.0.113.9" }) },
+      { deserializeAttachment: () => ({ ip: "203.0.113.9", topics: null }) },
+      { deserializeAttachment: () => ({ ip: "198.51.100.4" }) },
+    ]),
+    {},
+  );
+
+  hub.wsClientsByIp.set("stale-before-rebuild", 99);
+  hub.rebuildWsClientsByIp();
+
+  assert.equal(hub.wsClientsByIp.get("203.0.113.9"), 2);
+  assert.equal(hub.wsClientsByIp.get("198.51.100.4"), 1);
+  assert.equal(hub.wsClientsByIp.has("stale-before-rebuild"), false);
+});
+
+test("ChainFirehoseHub.rebuildWsClientsByIp: ignores malformed attachments while preserving valid counts", () => {
+  const hub = new ChainFirehoseHub(
+    stubState([
+      { deserializeAttachment: () => ({ ip: "203.0.113.9" }) },
+      { deserializeAttachment: () => ({ topics: null }) },
+      { deserializeAttachment: () => null },
+      {
+        deserializeAttachment: () => {
+          throw new Error("bad attachment");
+        },
+      },
+    ]),
+    {},
+  );
+
+  assert.doesNotThrow(() => hub.rebuildWsClientsByIp());
+  assert.equal(hub.wsClientsByIp.size, 1);
+  assert.equal(hub.wsClientsByIp.get("203.0.113.9"), 1);
+});
+
 // --- subscribeChainEvents / unsubscribeChainEvents / broadcast (#4983) ----------
 
 test("ChainFirehoseHub.subscribeChainEvents: broadcast delivers matching payloads to the returned repeater", async () => {

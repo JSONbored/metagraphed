@@ -347,13 +347,10 @@ export class ChainFirehoseHub {
     // (plain firehose and graphql-ws) share wsClientsByIp: they both accept a
     // WebSocketPair from the SAME handleSubscribe entry point and both count
     // against the same per-IP WS budget (see handleSubscribe's WS-upgrade
-    // branch). Like every other piece of this class's in-memory state, these
-    // reset to empty on a fresh DO reconstruction (hibernation wake, idle
-    // eviction, or a code deploy) -- see the class header comment and
-    // closeStaleGraphqlWsSocket's comment for this class's own established
-    // hibernation-survival convention; the bar here is the same one: keep
-    // increment/decrement paired within a single DO lifetime, not survive
-    // reconstruction.
+    // branch). WebSockets are hibernatable and survive fresh DO
+    // reconstruction, so wsClientsByIp must be rebuilt from
+    // state.getWebSockets() attachments before each WS admission check rather
+    // than trusting this constructor-fresh Map alone.
     this.sseClientsByIp = new Map();
     this.wsClientsByIp = new Map();
     // #4983: GraphQL subscriptions over WS, negotiated via
@@ -566,6 +563,7 @@ export class ChainFirehoseHub {
       // shape as the global-cap response above; no need for a distinct error
       // -- a client can't act on the difference and both mean "try later".
       const clientIp = resolveClientIp(request);
+      this.rebuildWsClientsByIp();
       if (
         (this.wsClientsByIp.get(clientIp) || 0) >=
         CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP
@@ -724,6 +722,28 @@ export class ChainFirehoseHub {
     }
   }
 
+  // Rebuilds the per-IP WS quota from the Durable Object runtime's durable
+  // hibernatable WebSocket list. Accepted sockets persist their IP in
+  // serializeAttachment() in both WS branches below; after a hibernation
+  // wake, idle eviction, or deploy, this in-memory Map starts empty while
+  // state.getWebSockets() still includes those sockets. Recounting from the
+  // durable socket attachments before admission keeps the per-IP quota
+  // aligned with the same socket population used by the global cap.
+  rebuildWsClientsByIp() {
+    const counts = new Map();
+    for (const ws of this.state.getWebSockets()) {
+      let ip;
+      try {
+        ip = ws.deserializeAttachment()?.ip;
+      } catch {
+        continue;
+      }
+      if (!ip) continue;
+      counts.set(ip, (counts.get(ip) || 0) + 1);
+    }
+    this.wsClientsByIp = counts;
+  }
+
   // #5004 item 1: releases a closed/errored WS connection's per-IP slot,
   // reversing the increment made at accept time in handleSubscribe's
   // WS-upgrade branch (both the plain-firehose and graphql-ws sub-branches
@@ -733,10 +753,10 @@ export class ChainFirehoseHub {
   // disconnect path -- clean close or the runtime reporting an error --
   // releases the slot; an unreleased slot would let a client ratchet down
   // its own remaining budget forever across repeated reconnects. A socket
-  // accepted by a PRIOR (now-replaced) DO instance has no entry in THIS
-  // instance's in-memory wsClientsByIp -- fresh per this class's own
-  // hibernation-survival convention (see closeStaleGraphqlWsSocket's
-  // comment) -- so this is a safe no-op for it, not an underflow.
+  // accepted by a PRIOR (now-replaced) DO instance is counted after
+  // rebuildWsClientsByIp() scans its durable attachment; if the close/error
+  // event arrives before any admission-triggered rebuild, missing counts
+  // still remain a safe no-op rather than an underflow.
   releaseWsIpSlot(ws) {
     let ip;
     try {
