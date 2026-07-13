@@ -191,6 +191,18 @@ describe("isUnsafePublicUrl", () => {
     }
   });
 
+  test("blocks 0100::/8 IPv6 discard-only (RFC 6666)", () => {
+    for (const url of [
+      "http://[100::1]/x", // 0x0100 normalized (0100::1)
+      "http://[101::1]/x", // still within 0x01xx
+      "http://[1ff::1]/x", // upper bound 0x01ff
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+    // Control: 0x1000:: is outside 0100::/8; don't block it via the discard-only check.
+    assert.equal(isUnsafePublicUrl("http://[1000::1]/x"), false);
+  });
+
   test("blocks a reserved/multicast v4 tunnelled inside an IPv6 literal host", () => {
     for (const url of [
       "http://[2002:e000:1::]/x", // 6to4 of 224.0.0.1 multicast

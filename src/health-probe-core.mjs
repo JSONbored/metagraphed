@@ -93,9 +93,21 @@ const UNSAFE_HOST_PATTERNS = [
 // prefix was missing here while the webhook guard already blocked it, so the probe
 // literal guard let ff02::1 (all-routers) and other multicast targets through.
 function isUnsafeIpv6Literal(host) {
+  // 0100::/8 discard-only (RFC 6666): first hextet 0100–01ff. The URL parser
+  // normalizes away leading zeros, so 0100::1 becomes "100::1" and 01ff::1
+  // becomes "1ff::1". Match the whole 0x100–0x1ff range without over-blocking
+  // 0x1000:: (which is outside /8).
+  const firstGroup = host.split(":")[0] || "";
+  const normalizedFirst =
+    firstGroup.replace(/^0+/g, "").toLowerCase() || "0";
+  const isDiscardOnly =
+    normalizedFirst.length === 3 &&
+    normalizedFirst.startsWith("1") &&
+    /^[0-9a-f]{3}$/.test(normalizedFirst);
   return (
     host === "::1" ||
     host === "::" ||
+    isDiscardOnly ||
     host.startsWith("fe") ||
     host.startsWith("fc") ||
     host.startsWith("fd") ||
