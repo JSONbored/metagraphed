@@ -126,6 +126,15 @@ describe("buildChainYield", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
   });
 
+  test("accepts epoch-millisecond string captured_at values from Postgres", () => {
+    const newest = 1_750_000_000_000;
+    const out = buildChainYield([
+      { stake_tao: 1, emission_tao: 0, captured_at: "1700000000000" },
+      { stake_tao: 1, emission_tao: 0, captured_at: String(newest) },
+    ]);
+    assert.equal(out.captured_at, new Date(newest).toISOString());
+  });
+
   test("ignores out-of-range numeric captured_at values", () => {
     const out = buildChainYield([
       {
