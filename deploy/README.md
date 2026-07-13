@@ -1,77 +1,77 @@
-# Deployment — the `metagraphed-core` hybrid (ADR 0013)
+# Deployment — the `metagraphed-core` self-hosted topology (ADR 0014)
 
-The architecture and rationale live in [`docs/adr/0013-hybrid-deployment-topology.md`](../docs/adr/0013-hybrid-deployment-topology.md).
-This is the **operator runbook**: what runs where, the exact provisioning
-commands, and the gated cutover steps.
+The architecture and rationale live in
+[`docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md`](../docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md)
+— it supersedes ADR 0013's Railway/D1 topology in full. The realtime firehose
+on top of this core has its own ADR
+([0015](../docs/adr/0015-realtime-firehose-architecture.md)); `indexer-rs`'s
+move from a private repo into `apps/indexer-rs/` has its own too
+([0016](../docs/adr/0016-indexer-rs-consolidation.md)). This is the
+**operator runbook**: what runs where, the exact provisioning commands, and
+the gated cutover steps.
 
 ```
-Chain → full archive subtensor-node → indexer → Postgres/Timescale
-                                              │
-                          (Cloudflare Hyperdrive, pooled + cached)
-                                              ▼
-            CF Worker (REST/GraphQL/MCP) + Durable Object firehose (SSE/WS)
-Railway crons/workers (prober · rollups · alerter · exporter · reconciler) ─ all read/write Postgres over private net
+Chain → full archive subtensor-node (syncing) ─┐
+Chain → pruned fullnode subtensor-node ────────┴→ indexer-rs (live-follow) → Postgres/Timescale
+                                                          │                        │
+                                          (AFTER INSERT trigger, ADR 0015)   Hyperdrive, pooled+cached
+                                                          ▼                        ▼
+                                          chain-firehose-relay        CF Worker (REST/GraphQL/MCP)
+                                                          │
+                                                          ▼
+                              CF Durable Object firehose (SSE/WS/GraphQL-subs) + alerter (#4984)
+Railway: wss-lb only (everything else that used to run there has moved to the boxes or Cloudflare)
 R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 ```
 
 ## Topology
 
-| Tier          | Where                                                     | Pieces                                                                                                                                                                                   |
-| ------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Edge (rented) | **Cloudflare**                                            | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy                                                          |
-| Core (owned)  | **Dedicated box** (data plane) + **Railway** (light glue) | box: `subtensor-node` (**full archive**, ~3.5 TB+ NVMe) + `postgres` + `redis` + `indexer`; Railway: `wss-lb` + crons (`health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`). |
-| Escape hatch  | **Hetzner** (later)                                       | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                                                          |
+Three dedicated bare-metal boxes (Latitude.sh, real hostnames/IPs live only in
+the private `metagraphed-infra` Ansible inventory — never in this repo), plus
+Cloudflare edge and one Railway service. Verified directly against the running
+infrastructure, not inherited from prior docs:
 
-One Railway **project**, two **environments** (`production`, `staging`), one
-private network (`<service>.railway.internal`, zero egress). The
-`metagraphed-streamer` project has already been moved off Railway (2026-07-04,
-self-hosted via the Ansible `streamer` role, verified stable) and the Railway
-project deleted. The `postgres` / `redis` / `indexer-rs` / `pg-backup`
-services described as "interim, until the box is live" in earlier revisions
-of this doc are also now gone — the box's own Postgres/Redis/indexer are the
-real, permanent core (verified: Railway's data was migrated over first, and
-the box's Postgres now has its own working backup, see "Backup job" below).
-`wss-lb` is the only Railway service left in this project.
+| Tier                 | Where                                               | Pieces                                                                                                                                                                                                                                                                                                                           |
+| -------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge (rented)        | **Cloudflare**                                      | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose + alerter (#4984), R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy. The health-prober and rollups also still run here (CF crons) — moving them to the indexer box is tracked separately (#2113), not done.                                        |
+| Indexer box (owned)  | dedicated bare-metal                                | `indexer-rs` (live-follow), `chain-firehose-relay` (the ADR 0015 box-side relay), TimescaleDB (chain data), a separate Postgres (registry data), Redis (cursor state). `indexer-rs-backfill` (sharded historical backfill) is currently **stopped** — paused deliberately so the archive node's own sync gets full I/O headroom. |
+| Archive box (owned)  | dedicated bare-metal, separate from the indexer box | `subtensor` full archive node (`--pruning=archive --sync=full`). **Still syncing** — not yet at chain tip.                                                                                                                                                                                                                       |
+| Fullnode box (owned) | dedicated bare-metal, third box                     | `subtensor` **pruned**, warp-synced node. This, not the archive node, is `indexer-rs`'s current live-follow RPC source (`EVENTS_RPC_URL`) — it reached chain tip fast and isn't competing with the archive node's own sync for I/O.                                                                                              |
+| Railway              | `wss-lb` only                                       | Everything else that previously ran on Railway (`postgres`/`redis`/`indexer-rs`, the `metagraphed-streamer` project) has moved to the boxes above or been retired; `exporter`/`reconciler` (#2115, dataset exports + drift detection) don't exist yet.                                                                           |
 
-## Railway: one project, many services
+There is no Hetzner escape hatch — ADR 0013's "Railway core, Hetzner escape
+hatch" framing described a plan overtaken by events; the team went straight to
+bare metal instead.
 
-A Railway **project** is the unit that groups cooperating services — the docs call
-it "an application stack, a service group" — so **all** of metagraphed-core's
-services (`postgres`, `redis`, `subtensor-node`, `indexer`, the crons, and the
-public `wss-lb`) live in **one project**, **not** one project each. Only
-same-project + same-environment services get the automatic **private network**
-(`<service>.railway.internal`, Wireguard-encrypted) and **reference variables**
-`${{Postgres.DATABASE_URL}}` / `${{Redis.REDIS_URL}}`; split them across projects
-and you lose internal DNS + cross-service vars and must wire public URLs by hand.
+## Railway: `wss-lb`, the only service left
 
-**Two config layers — this is the "is it all one `railway.json`?" answer: no.**
+The `metagraphed-core` Railway project once held `postgres`/`redis`/`indexer`
+too (ADR 0013's topology); all of that has since moved to the dedicated boxes
+above, leaving `wss-lb` as the project's only service — verified live via
+`railway status` (production environment, `wss-lb` online at
+`https://wss.metagraph.sh`).
 
-- **Per-service build config** (`railway.json` / `railway.toml`): each service reads
-  its OWN file. Railway does **not** auto-discover it from a subdirectory — set the
-  service's **Settings → Config-as-code → "Railway Config File"** to an **absolute**
-  repo-root path (it does **not** follow Root Directory):
-  - `wss-lb` → `/deploy/wss-lb/railway.json` (the only compute service left on Railway)
-  - `postgres` / `redis` / `indexer` are **not** Railway services anymore — they run
-    on the dedicated box (see the Bare-metal section below). The Python
-    `scripts/index-chain.py`/`backfill-chain.py` this repo used to ship a Railway
-    Dockerfile for are retired in favor of a Rust implementation, deployed
-    directly to the box (its source doesn't have a git home in this repo yet).
-
-  Each builds its Dockerfile from the **repo-root** build context (leave Root
+- **Config-as-code**: `wss-lb`'s Railway service reads `/deploy/wss-lb/railway.json`
+  (Railway does **not** auto-discover it from a subdirectory — set the
+  service's **Settings → Config-as-code → "Railway Config File"** to that
+  **absolute** repo-root path; it does **not** follow Root Directory).
+  Builds its Dockerfile from the **repo-root** build context (leave Root
   Directory unset) and scopes redeploys with `watchPatterns`, so an unrelated
   merge never triggers a pointless rebuild.
+- `wss-lb`'s own provisioning detail lives in
+  [`deploy/wss-lb/README.md`](wss-lb/README.md).
 
-- **Whole-project config** (`.railway/railway.ts`, project-as-code): defines ALL
-  services + DBs + variables + references in **one file**, applied with
-  `railway config plan` / `railway config apply`. Scaffold with `railway config init`
-  (or `railway config pull` to import the live project). This is the cleanest way to
-  define + version the entire topology as code once the service set stabilizes.
+## Bare-metal bring-up
 
-## Bare-metal bring-up (the recommended core — one command)
-
-With a dedicated server (the cost-optimal home for the storage-heavy node +
-Postgres, ADR 0013), co-locate **node + TimescaleDB + Redis + indexer** in one
-stack so every hop is localhost. The whole core comes up with:
+**Production runs across three separate boxes, provisioned via the private
+`JSONbored/metagraphed-infra` Ansible repo** (`roles/subtensor-archive`,
+`roles/subtensor-fullnode`, `roles/indexer-rust`, `roles/postgres-timescale`,
+`roles/redis`, `roles/chain-firehose-relay`) — that repo's inventory holds the
+real hostnames/IPs and is the actual source of truth for what's deployed
+where. `deploy/docker-compose.yml` below is a **single-box reference/dev
+setup** (Postgres + Redis + a subtensor node co-located, so every hop is
+localhost) — useful for local development or a from-scratch bring-up, but it
+is not how production is actually composed across the three boxes:
 
 ```bash
 cp deploy/.env.example deploy/.env     # set POSTGRES_PASSWORD
@@ -85,63 +85,76 @@ That starts:
   a public port (Cloudflare reaches it via Hyperdrive over a tunnel).
 - **`redis`** — the indexer cursor + heartbeat mirror.
 - **`subtensor`** — a **full archive** finney node (`--pruning=archive --sync=full`:
-  complete state from genesis), the head source + first-party RPC origin + the
-  indexer's self-sufficient backfill source. Needs **~8 TB+ NVMe**; the from-genesis
-  full sync takes days, so seed the volume from an opentensor archive snapshot when
-  available. (Dev: `SUBTENSOR_PRUNING=2000 SUBTENSOR_SYNC=warp` for a small pruned
-  node; deep backfill then comes from the public archive via `EVENTS_RPC_URL`.)
-- **`indexer`** — not defined in `docker-compose.yml` yet. The real implementation
-  is Rust (live-follow + sharded historical backfill in one binary, faster and
-  more capable than the retired Python `scripts/index-chain.py`/`backfill-chain.py`),
-  but its source has no git remote yet — give it one, add its service back to
-  the compose file with a real Dockerfile, then bring it up here. It follows the
-  finalized head from the durable cursor and idempotently writes `blocks` /
-  `extrinsics` / `account_events` / `chain_events` into Postgres; **verify ~100%
-  capture vs D1 before any serving cutover** (the ADR 0013 gate).
+  complete state from genesis). Needs **~8 TB+ NVMe**; the from-genesis full
+  sync takes days — production's own archive box is still mid-sync (see the
+  Topology table above). (Dev: `SUBTENSOR_PRUNING=2000 SUBTENSOR_SYNC=warp`
+  for a small pruned node instead.)
+- **`indexer`** — not defined in `docker-compose.yml`. Production's
+  `indexer-rs` (live-follow + sharded historical backfill, `apps/indexer-rs/`
+  in this repo since the ADR 0016 consolidation) is deployed to its own box
+  via the Ansible role above, built from a manually-transferred Docker image
+  rather than this compose file — repointing that build source to
+  `apps/indexer-rs/` is tracked separately (#5150), not yet done.
 
 **Managed Railway Postgres is no longer used** — it was the interim home for
-`postgres`/`redis`/`indexer-rs` before the dedicated box existed; both the data
-and the live Hyperdrive binding have since moved to the box's own Postgres
-(migrated + verified, then the Railway `postgres`/`redis`/`indexer-rs`/
-`pg-backup` services and their volumes were deleted). `wss-lb`'s own
-provisioning is documented in [`deploy/wss-lb/README.md`](wss-lb/README.md).
+`postgres`/`redis`/`indexer-rs` before the dedicated boxes existed; both the
+data and the live Hyperdrive binding have since moved to the indexer box's own
+Postgres. `wss-lb`'s own provisioning is documented in
+[`deploy/wss-lb/README.md`](wss-lb/README.md).
 
 ## Cloudflare side
 
-The full, gated **serving cutover** (D1 → Postgres via Hyperdrive over a Tunnel +
-Workers VPC, tier-by-tier with D1 fallback):
+**Serving cutover is complete** — `blocks`/`extrinsics`/`account_events`/
+`neurons`/`neuron_daily` all serve from Postgres via Hyperdrive; D1's
+write/prune/ingest code for these five tiers, and the D1 tables themselves,
+are fully retired (#4772, PR #4908, 2026-07-11). There is no D1 fallback left
+to roll back to for them. What follows is how the cutover was done, kept for
+reference if the same tier-by-tier pattern is ever needed again (e.g. for a
+future tier):
 
-- **Gate first.** Before touching serving, compare Postgres vs D1 row counts over
-  a recent window per tier (`blocks`, `extrinsics`, `account_events`) — only cut a
-  tier once Postgres ≥ D1 across the window. A shortfall here becomes a serving
-  regression; investigate before proceeding.
+- **Gate first.** Before cutting a tier, compare Postgres vs D1 row counts over
+  a recent window — only cut once Postgres ≥ D1 across the window. A shortfall
+  here becomes a serving regression; investigate before proceeding.
 - **Private DB path.** Postgres must never be public — front it with a Cloudflare
   Tunnel + Workers VPC service, then create the Hyperdrive config from the
   **Cloudflare dashboard** so the database password is entered into Cloudflare's
   credential form, never passed as a shell-expanded argument (shell history,
   process listings, CI logs all record argv). Add the `[[hyperdrive]]` binding to
   `wrangler.jsonc` and read via `env.HYPERDRIVE.connectionString`.
-- **Cut tier by tier**, D1 as fallback (`if FLAG[tier] == "postgres": try
-Postgres; on error → D1`), watching latency + correctness before the next tier.
-  Leave the indexer's Postgres writes and the D1 write/prune paths running until
-  every tier is stable (dual-write during migration). Roll back per-tier by
-  flipping the flag back to D1.
+- **Cut tier by tier**, D1 as fallback during the migration window (`if
+FLAG[tier] == "postgres": try Postgres; on error → D1`), watching latency +
+  correctness before the next tier, then delete the fallback branch and the D1
+  write path once every tier is stable.
 
-The Durable Object firehose hub is a new binding in the Worker; the `indexer`
-tees each decoded batch to it for SSE/WS/GraphQL-subscription fan-out.
+The Durable Object firehose hub is a binding in the Worker. Per ADR 0015, the
+indexer does **not** push to it directly — a Postgres outbox table (populated
+by an `AFTER INSERT` trigger) decouples the indexer's own critical live-follow
+path from Cloudflare reachability; a separate box-side relay process polls the
+outbox and forwards to the Durable Object for SSE/WS/GraphQL-subscription
+fan-out.
 
 ## Gated steps — DO NOT run unsupervised
 
-Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
+Each needs a human who can verify/roll back (ADR 0014 _Sequencing_):
 
-1. **`subtensor-node`** — **full archive** (~3.5 TB+, ~8 TB+ NVMe volume): complete
-   state from genesis, so it serves first-party archive RPC + self-sufficient
-   backfill. Seed from a snapshot to skip the multi-day from-genesis sync.
-2. **`indexer` + one-time backfill** — then **verify ~100 % capture vs D1**
-   before trusting it.
-3. **Serving cutover** — point the Worker at Hyperdrive→Postgres **tier by tier**
-   (blocks → extrinsics → accounts → metagraph), D1 as fallback; only then delete
-   the prune-and-discard logic.
+1. 🔲 **`subtensor-node`** — **full archive** (~3.5 TB+, ~8 TB+ NVMe volume):
+   complete state from genesis, so it serves first-party archive RPC +
+   self-sufficient backfill. **Still syncing as of this writing** (tracked in
+   #2111 — network path to the indexer node, Worker RPC-proxy wiring, and the
+   Ansible role are all still open sub-steps too). Seed from a snapshot to
+   skip the multi-day from-genesis sync.
+2. ✅ **Live serving cutover** — `blocks` / `extrinsics` / `account_events` /
+   `neurons` / `neuron_daily` are all flipped to Postgres via Hyperdrive,
+   D1's write/prune/ingest code for them retired (#4772, PR #4908,
+   2026-07-11 — see item 4 below).
+3. 🔲 **Full historical re-backfill** (genesis-to-tip, archive-gated) —
+   **currently paused**, not shipped: the interim single-shard backfill
+   against a rate-limited public RPC was deliberately stopped so the archive
+   node's own sync gets full I/O headroom, and the plan is to repoint the
+   sharded backfill (`BACKFILL_SHARDS`) at the archive node's own RPC once
+   item 1 finishes. Don't confuse this with item 2 above — live serving is
+   cut over and stable; it's the deep historical window that's still gated
+   on the archive node.
 4. ✅ **Decommissioned** (#4772, 2026-07-11): the chain-data `*/3` R2-staging
    drain (`loadStagedNeurons`/`Events`/`Blocks`/`Extrinsics`), the realtime
    ingest endpoints, the D1-side daily rollup/archive/prune crons, the manual
@@ -235,4 +248,4 @@ need a near-zero RPO.
   becomes painful; the `pg_dump` → R2 job above is enough.
 - The DB volume + backups are the storage-cost driver; when they outgrow the
   box's disk (TimescaleDB compression ~10–20×), that is the trigger to plan
-  additional storage — see ADR 0013.
+  additional storage — see ADR 0014.

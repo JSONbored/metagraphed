@@ -13,14 +13,16 @@
   document faster than reality changes stopped working; this ADR is a single,
   freshly-verified snapshot instead, written the way ADRs are supposed to
   work — a new record replaces an outdated one rather than growing another
-  correction on top of it. If reality moves again, write ADR 0015; don't
-  reopen this one.
+  correction on top of it. If reality moves again, write the next ADR
+  (0015 went to the realtime-firehose architecture, 0016 to the indexer-rs
+  consolidation); don't reopen this one.
 - **Relates to:** #4746 (D1 write-path reliability, the incident that
   triggered this rewrite), #4686 (Postgres-tier subrequest cancellation),
   #4695 (extrinsics parity harness), #4669 (call_args shape reconciliation
   roadmap), #4698 (a D1 coverage gap traced to this same mechanism), #4771
   (neurons/neuron_daily Postgres write path), #4772 (D1 write/prune/ingest
-  code retirement, PR #4908), the private `metagraphed-indexer-rs` repo, and
+  code retirement, PR #4908), `apps/indexer-rs/` (moved into this repo from
+  the formerly-private `metagraphed-indexer-rs`, ADR 0016), and
   JSO-2054/#2518 (archive-node hardware decision).
 
 ## Context — verified directly against running infrastructure, not inherited from prior docs
@@ -292,7 +294,8 @@ silently drift from each other.
 NOTHING`, so a backfill re-run would have silently preserved
     already-existing-but-wrong rows (e.g. pre-2026-07-10 extrinsics still
     carrying the old, type-erased `call_args` shape) instead of correcting
-    them. Fixed in the private `metagraphed-indexer-rs` repo to match
+    them. Fixed in what was then the private `metagraphed-indexer-rs` repo
+    (moved into `apps/indexer-rs/` since, ADR 0016) to match
     `blocks`' existing column-level `DO UPDATE SET` pattern on all four
     tables — a precondition for item 7 to actually be "flawless," not just
     "runs without erroring."
@@ -367,7 +370,8 @@ NOTHING`, so a backfill re-run would have silently preserved
   than a new one (same Postgres instance as its read routes)
 - #4746, #4686, #4695, #4669, #4698, #4684, #4654, #4771, #4772 — the issues
   this ADR consolidates evidence from
-- Private `JSONbored/metagraphed-indexer-rs` repo — the Rust continuous
+- `apps/indexer-rs/` (moved from the formerly-private
+  `JSONbored/metagraphed-indexer-rs`, ADR 0016) — the Rust continuous
   indexer + backfill implementation, including the `DO NOTHING` → `DO UPDATE`
   conflict-resolution fix (item 11)
 - JSO-2054/#2518 — the archive-node hardware decision
