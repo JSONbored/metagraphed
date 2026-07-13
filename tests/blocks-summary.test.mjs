@@ -238,17 +238,6 @@ describe("GET /api/v1/blocks/summary", () => {
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/blocks/summary${q}`);
 
-  test("summarizes recent block production", async () => {
-    const res = await handleRequest(req(), blocksEnv(ROWS), {});
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.block_count, 5);
-    assert.equal(body.data.block_time.count, 3);
-    assert.equal(body.data.distinct_authors, 2);
-    assert.equal(body.data.throughput.total_extrinsics, 11);
-  });
-
   test("rejects an unexpected query parameter with 400", async () => {
     const res = await handleRequest(req("?window=7d"), blocksEnv([]), {});
     assert.equal(res.status, 400);

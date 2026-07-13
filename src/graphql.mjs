@@ -324,7 +324,7 @@ export const SDL = `
   # path) -- POSTing a subscription operation to the regular query endpoint
   # returns a standard GraphQL error, same as any other GraphQL server.
   type Subscription {
-    "Live chain events as they land (blocks/extrinsics/chain_events), optionally filtered to one or more tables. Field shape mirrors the #4980 NOTIFY payload -- only the fields relevant to the event's table are populated."
+    "Live chain events as they land (blocks/extrinsics/chain_events/account_events), optionally filtered to one or more tables. Field shape mirrors the #4980 NOTIFY payload -- only the fields relevant to the event's table are populated."
     chainEvents(tables: [ChainFirehoseTable!]): ChainEvent!
   }
 
@@ -332,6 +332,7 @@ export const SDL = `
     blocks
     extrinsics
     chain_events
+    account_events
   }
 
   type ChainEvent {
@@ -354,12 +355,22 @@ export const SDL = `
     signer: String
     "extrinsics only"
     success: Boolean
-    "chain_events only"
+    "chain_events / account_events (event index within the block)"
     event_index: Int
     "chain_events only"
     pallet: String
     "chain_events only"
     method: String
+    "account_events only -- the curated kind (e.g. Transfer, StakeAdded)"
+    event_kind: String
+    "account_events only"
+    hotkey: String
+    "account_events only"
+    coldkey: String
+    "account_events only"
+    netuid: Int
+    "account_events only"
+    amount_tao: Float
   }
 `;
 
@@ -385,11 +396,31 @@ schema.getSubscriptionType().getFields().chainEvents.subscribe =
         "chainEvents is only reachable over the WebSocket transport (Sec-WebSocket-Protocol: graphql-transport-ws) at /api/v1/graphql.",
       );
     }
-    const topics = args.tables?.length ? new Set(args.tables) : null;
+    // Distinguish omitted (undefined -> null, no filter, matches everything)
+    // from an EXPLICIT empty list (tables: [] -> an empty Set, matches
+    // nothing) -- consistent with the SSE/WS firehose's own
+    // parseChainFirehoseTopics semantics (an all-unrecognized topics= string
+    // also collapses to an empty Set, never silently falling back to
+    // "everything"). Previously both cases collapsed to null.
+    const topics = args.tables === undefined ? null : new Set(args.tables);
+    // context.clientIp/context.graphqlWsConnection are set by
+    // workers/chain-firehose-hub.mjs's graphqlWsServer context() callback
+    // from ctx.extra.ip/ctx.extra.graphqlWsConnection (populated by
+    // handleSubscribe's opened(adapterSocket, { ip, graphqlWsConnection })
+    // call) -- threaded through so subscribeChainEvents can enforce its
+    // per-IP (#5004 item 2) and per-socket subscription-count caps alongside
+    // the global one.
     const repeater = hub.subscribeChainEvents(
       topics,
-      context?.graphqlWsConnection,
+      context.clientIp,
+      context.graphqlWsConnection,
     );
+    if (!repeater) {
+      throw new GraphQLError(
+        "The realtime chain firehose has reached its maximum number of " +
+          "concurrent GraphQL subscriptions; try again later.",
+      );
+    }
     try {
       for await (const payload of repeater) {
         yield { chainEvents: payload };

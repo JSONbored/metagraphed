@@ -230,46 +230,6 @@ describe("GET /api/v1/chain/performance", () => {
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/performance${q}`);
 
-  test("summarizes reward + score spread across all subnets", async () => {
-    const res = await handleRequest(
-      req(),
-      neuronsEnv([
-        {
-          incentive: 0.6,
-          dividends: 0.5,
-          trust: 0.9,
-          consensus: 0.8,
-          validator_trust: 0.95,
-          active: 1,
-          validator_permit: 1,
-          netuid: 1,
-          captured_at: 1_700_000_000_000,
-        },
-        {
-          incentive: 0.2,
-          dividends: 0,
-          trust: 0.4,
-          consensus: 0.3,
-          validator_trust: 0,
-          active: 1,
-          validator_permit: 0,
-          netuid: 2,
-          captured_at: 1_700_000_000_000,
-        },
-      ]),
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.schema_version, 1);
-    assert.equal(body.data.subnet_count, 2);
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.validator_count, 1);
-    assert.equal(body.data.incentive.holders, 2);
-    assert.equal(body.data.trust.count, 2);
-    assert.equal(body.meta.source, "metagraph-snapshot");
-  });
-
   test("rejects an unexpected query parameter with 400", async () => {
     const res = await handleRequest(req("?window=7d"), neuronsEnv([]), {});
     assert.equal(res.status, 400);

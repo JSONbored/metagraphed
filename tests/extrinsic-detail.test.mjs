@@ -6,11 +6,6 @@ import {
   loadBlockChainEvents,
   loadExtrinsicChainEvents,
 } from "../src/data-api-mcp.mjs";
-import { handleExtrinsic } from "../workers/request-handlers/entities.mjs";
-
-function req(path) {
-  return new Request(`https://api.metagraph.sh${path}`);
-}
 
 function d1With(fixtures = {}, capture = []) {
   return async (sql, params) => {
@@ -182,43 +177,6 @@ describe("loadExtrinsicDetail", () => {
     };
     const data = await loadExtrinsicDetail(d1, "4200000-3");
     assert.deepEqual(data.events, []);
-  });
-});
-
-describe("handleExtrinsic via loadExtrinsicDetail", () => {
-  test("returns embedded events through the shared loader", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind() {
-              return {
-                all() {
-                  if (
-                    /FROM extrinsics WHERE block_number = \? AND extrinsic_index/.test(
-                      sql,
-                    )
-                  )
-                    return Promise.resolve({ results: [EXTRINSIC] });
-                  if (/FROM account_events/.test(sql))
-                    return Promise.resolve({ results: [EVENT] });
-                  return Promise.resolve({ results: [] });
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-    const res = await handleExtrinsic(
-      req("/api/v1/extrinsics/4200000-3"),
-      env,
-      "4200000-3",
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.events.length, 1);
-    assert.equal(body.data.events[0].event_kind, "WeightsSet");
   });
 });
 

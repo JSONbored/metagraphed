@@ -1512,7 +1512,7 @@ describe("graphql — resolver branch coverage", () => {
     assert.ok((await res.json()).errors[0].message.includes("query"));
   });
 
-  test("OPTIONS /mcp advertises POST, OPTIONS (the sibling CORS branch)", async () => {
+  test("OPTIONS /mcp advertises GET, POST, DELETE, OPTIONS (the sibling CORS branch, #4983 MCP half)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/mcp", { method: "OPTIONS" }),
       emptyEnv,
@@ -1521,7 +1521,7 @@ describe("graphql — resolver branch coverage", () => {
     assert.equal(res.status, 204);
     assert.equal(
       res.headers.get("access-control-allow-methods"),
-      "POST, OPTIONS",
+      "GET, POST, DELETE, OPTIONS",
     );
   });
 
@@ -1814,12 +1814,12 @@ function fakeChainFirehose(pushAfterSubscribe) {
   };
 }
 
-async function subscribeChainEvents(query, hub) {
+async function subscribeChainEvents(query, hub, clientIp) {
   const document = parse(query);
   return subscribe({
     schema: chainEventsSchema,
     document,
-    contextValue: { [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: hub },
+    contextValue: { [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: hub, clientIp },
   });
 }
 
@@ -1877,7 +1877,23 @@ describe("Subscription.chainEvents", () => {
     pending.catch(() => {}); // left permanently pending; not under test here
   });
 
-  test("an empty tables argument is treated as no filter (null), not an empty Set", async () => {
+  test("an omitted tables argument means no filter (null, matches everything)", async () => {
+    let receivedTopics = "unset";
+    const hub = fakeChainFirehose();
+    const originalSubscribe = hub.subscribeChainEvents.bind(hub);
+    hub.subscribeChainEvents = (topics) => {
+      receivedTopics = topics;
+      return originalSubscribe(topics);
+    };
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+    );
+    result[Symbol.asyncIterator]().next(); // trigger the generator body
+    assert.equal(receivedTopics, null);
+  });
+
+  test("an EXPLICIT empty tables argument means an empty Set (matches nothing) -- consistent with the SSE/WS firehose's own all-unrecognized-topics semantics, not silently 'everything'", async () => {
     let receivedTopics = "unset";
     const hub = fakeChainFirehose();
     const originalSubscribe = hub.subscribeChainEvents.bind(hub);
@@ -1890,7 +1906,8 @@ describe("Subscription.chainEvents", () => {
       hub,
     );
     result[Symbol.asyncIterator]().next(); // trigger the generator body
-    assert.equal(receivedTopics, null);
+    assert.ok(receivedTopics instanceof Set);
+    assert.equal(receivedTopics.size, 0);
   });
 
   test("returns a clear GraphQLError when reached without the graphql-ws WS transport (no context.chainFirehose)", async () => {
@@ -1908,6 +1925,65 @@ describe("Subscription.chainEvents", () => {
     await assert.rejects(
       () => result[Symbol.asyncIterator]().next(),
       /graphql-transport-ws/,
+    );
+  });
+
+  test("passes context.clientIp through to subscribeChainEvents as the second argument (#5004 item 2)", async () => {
+    // context.clientIp is populated by workers/chain-firehose-hub.mjs's
+    // graphqlWsServer context() callback (from ctx.extra.ip, itself set by
+    // handleSubscribe's opened(adapterSocket, { ip: clientIp }) call) -- not
+    // Node-testable end-to-end, so this proves the resolver's half of that
+    // wiring: it reads context.clientIp and forwards it, letting
+    // ChainFirehoseHub.subscribeChainEvents enforce its per-IP cap.
+    let receivedClientIp = "unset";
+    const hub = fakeChainFirehose();
+    const originalSubscribe = hub.subscribeChainEvents.bind(hub);
+    hub.subscribeChainEvents = (topics, clientIp) => {
+      receivedClientIp = clientIp;
+      return originalSubscribe(topics);
+    };
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+      "203.0.113.9",
+    );
+    result[Symbol.asyncIterator]().next(); // trigger the generator body
+    assert.equal(receivedClientIp, "203.0.113.9");
+  });
+
+  test("an absent context.clientIp is passed through as undefined, not crashing or defaulting to a fabricated IP", async () => {
+    let receivedClientIp = "unset";
+    const hub = fakeChainFirehose();
+    const originalSubscribe = hub.subscribeChainEvents.bind(hub);
+    hub.subscribeChainEvents = (topics, clientIp) => {
+      receivedClientIp = clientIp;
+      return originalSubscribe(topics);
+    };
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+    );
+    result[Symbol.asyncIterator]().next(); // trigger the generator body
+    assert.equal(receivedClientIp, undefined);
+  });
+
+  test("returns a clear GraphQLError when subscribeChainEvents reports the hub is at capacity (CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS)", async () => {
+    // subscribeChainEvents returns null (not a repeater) once
+    // ChainFirehoseHub.chainEventSubscribers is at its cap -- the resolver
+    // must throw immediately rather than treating null as an empty stream
+    // (which would otherwise hang the client forever with no error and no
+    // events).
+    const hub = {
+      subscribeChainEvents: () => null,
+      unsubscribeChainEvents() {},
+    };
+    const result = await subscribeChainEvents(
+      "subscription { chainEvents { table } }",
+      hub,
+    );
+    await assert.rejects(
+      () => result[Symbol.asyncIterator]().next(),
+      /maximum number of concurrent GraphQL subscriptions/,
     );
   });
 

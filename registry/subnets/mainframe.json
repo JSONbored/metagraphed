@@ -101,8 +101,28 @@
         "confidence": "medium"
       },
       "notes": "Public no-auth GET returning PDB structure text from the official SN25 DigitalOcean Spaces bucket. The folding API utility route checks this host first before falling back to RCSB/PDBe mirrors."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-25-mainframe-wandb",
+      "kind": "dashboard",
+      "name": "Mainframe (folding-openmm) Weights & Biases dashboard",
+      "notes": "Public Weights & Biases project the SN25 Mainframe validators log to (wandb.ai/macrocosmos/folding-openmm) — live protein-folding validation runs and metrics (260k+ runs). Project 'folding-openmm' and entity 'macrocosmos' are the validator defaults in the official macrocosm-os/mainframe config (folding/utils/config.py), and wandb.init runs from folding/utils/logging.py. Publicly readable via the W&B API. Distinct host from the sn25 API and object storage.",
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/macrocosm-os/mainframe/blob/main/folding/utils/config.py"
+      ],
+      "url": "https://wandb.ai/macrocosmos/folding-openmm"
     }
   ],
-  "social": { "x": "https://x.com/macrocosmosai" },
+  "social": {
+    "x": "https://x.com/macrocosmosai"
+  },
   "contact": "brian@macrocosmos.ai"
 }
