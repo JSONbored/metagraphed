@@ -117,6 +117,24 @@
         "confidence": "medium"
       },
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official SN98-ForeverMoney/forever-money repository as min_compute.yml. Documents baseline CPU, memory, storage, and network bandwidth requirements for SN98 ForeverMoney miners and validators."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-98-forevermoney-dashboard",
+      "kind": "dashboard",
+      "name": "ForeverMoney analytics dashboard",
+      "notes": "Public no-auth ForeverMoney (SN98) analytics dashboard at dashboard.forevermoney.ai — a Plotly metrics UI (\"Overview — ForeverMoney\") with TVL-by-pair, APR-window, and vault-lifetime panels for the subnet's Aerodrome / Uniswap-V3 concentrated-liquidity pools on Base. Served on the official forevermoney.ai platform (README: SN98, mainnet netuid 98); distinct from the /api/vaults/tvl JSON endpoint already listed.",
+      "provider": "forevermoney",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/SN98-ForeverMoney/forever-money/blob/main/README.md"
+      ],
+      "url": "https://dashboard.forevermoney.ai/"
     }
   ],
   "social": {
