@@ -98,6 +98,26 @@ export function ErrorState({
   );
 }
 
+/**
+ * Empty-state component decision rule (#3962).
+ *
+ * The app has three empty-state primitives; use exactly one per context so a
+ * single route never shows two visually different "empty" treatments for no
+ * functional reason:
+ *
+ * - `EmptyState` (this component) — the DEFAULT for general list / card-grid /
+ *   section emptiness: a subtle dashed card with an optional last-checked line
+ *   and action link. Reach for this whenever a slice is simply empty and there
+ *   is no paginated-table retry wiring or registry-provenance story to tell.
+ * - `TableState` (`@jsonbored/ui-kit`) — paginated / query-backed TABLE
+ *   emptiness that shares empty / stale / error states and a retry CTA with the
+ *   table it belongs to (the registry tables on /endpoints, /surfaces,
+ *   /providers, subnet detail, …). Not for plain card grids or single sections.
+ * - `RegistryEmpty` (`./states/registry-empty`) — registry-PROVENANCE content
+ *   specifically: carries a variant badge, a freshness/staleness row, and an
+ *   evidence link. Keep it for surfaces/gaps-style panels where provenance is
+ *   part of the empty message; it is not a general-purpose empty state.
+ */
 export function EmptyState({
   title = "Nothing here yet",
   description,

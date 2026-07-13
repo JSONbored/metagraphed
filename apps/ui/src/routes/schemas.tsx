@@ -9,7 +9,6 @@ import {
   TimeAgo,
   CopyableCode,
   ExternalLink,
-  TableState,
   PageHero,
   PageSection,
   AnimatedNumber,
@@ -236,8 +235,7 @@ function ContractsList() {
   const rows = data.data ?? [];
   if (rows.length === 0) {
     return (
-      <TableState
-        variant="empty"
+      <EmptyState
         title="No contracts published"
         description="Versioned contracts will appear here once the registry ships its first envelope."
       />
