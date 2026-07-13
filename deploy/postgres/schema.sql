@@ -594,7 +594,7 @@ CREATE TABLE IF NOT EXISTS indexer_cursor (
 CREATE TABLE IF NOT EXISTS chain_firehose_outbox (
   id          BIGSERIAL PRIMARY KEY,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  table_name  TEXT NOT NULL CHECK (table_name IN ('blocks', 'extrinsics', 'chain_events')),
+  table_name  TEXT NOT NULL CHECK (table_name IN ('blocks', 'extrinsics', 'chain_events', 'account_events')),
   payload     JSONB NOT NULL,
   delivered_at TIMESTAMPTZ
 );
