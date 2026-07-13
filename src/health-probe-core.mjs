@@ -98,8 +98,7 @@ function isUnsafeIpv6Literal(host) {
   // becomes "1ff::1". Match the whole 0x100–0x1ff range without over-blocking
   // 0x1000:: (which is outside /8).
   const firstGroup = host.split(":")[0] || "";
-  const normalizedFirst =
-    firstGroup.replace(/^0+/g, "").toLowerCase() || "0";
+  const normalizedFirst = firstGroup.replace(/^0+/g, "").toLowerCase() || "0";
   const isDiscardOnly =
     normalizedFirst.length === 3 &&
     normalizedFirst.startsWith("1") &&
