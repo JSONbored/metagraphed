@@ -2947,7 +2947,8 @@ export default {
           let lo = null;
           const kindCounts = new Map();
           for (const row of capped) {
-            netuids.add(row.netuid);
+            const netuid = numberOrNull(row.netuid);
+            if (netuid != null) netuids.add(netuid);
             const bn = numberOrNull(row.block_number);
             if (bn != null && (fb == null || bn < fb)) fb = bn;
             if (bn != null && (lb == null || bn > lb)) lb = bn;

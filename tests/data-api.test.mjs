@@ -970,6 +970,22 @@ test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from one bounde
   expect(queryText()).toContain("OR coldkey =");
 });
 
+test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", async () => {
+  mockQueue.current = [
+    [], // SET
+    [ACCOUNT_EVENT_ROW, { ...ACCOUNT_EVENT_ROW, netuid: null }], // scanRows
+    [], // regRows
+    [], // activityRows
+    [], // moduleRows
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.event_count).toBe(2);
+  expect(body.subnet_count).toBe(1);
+  expect(body.recent_events.map((event) => event.netuid)).toEqual([4, null]);
+});
+
 test("GET /api/v1/accounts/:ss58 with no matching rows returns a schema-stable empty summary", async () => {
   mockRows.current = [];
   const res = await req(`/api/v1/accounts/${SS58}`);
