@@ -296,6 +296,15 @@ describe("resolveWebhookHostnamesWithDoh", () => {
     assert.deepEqual(addresses, []);
   });
 
+  test("a fetchImpl that resolves to a nullish value (no throw) yields no addresses", async () => {
+    const addresses = await resolveWebhookHostnamesWithDoh("example.com", {
+      fetchImpl: async () => undefined,
+      dnsJsonEndpoint: "https://dns.test/query",
+    });
+
+    assert.deepEqual(addresses, []);
+  });
+
   test("a malformed DoH response body (no Answer array) yields no addresses, not a throw", async () => {
     const fetchImpl = async () =>
       new Response(JSON.stringify({ Comment: "no records" }), {
