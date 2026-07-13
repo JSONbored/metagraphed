@@ -28,7 +28,6 @@
 // hex, or a Result<(),E>::Ok(()) down to bare "Ok"). Everything else is
 // untouched.
 import { encodeAccountId32 } from "./ss58.mjs";
-import { normalizePostgresValue } from "./scale-normalize.mjs";
 
 const ACCOUNT_KEYS = new Set([
   "who",
@@ -166,23 +165,41 @@ const ENUM_PAYLOAD_FIELDS = new Map([
   ["Sudo.Sudid.sudo_result", "unit-or-passthrough"],
 ]);
 
-// Known genuine Vec<T>/collection fields that must stay arrays regardless of
-// element count, mirroring TEXTUAL_FIELDS/HEX_BLOB_FIELDS/ENUM_PAYLOAD_FIELDS'
-// narrow-allowlist discipline for the identical reason (chain_events.args
-// has no per-field type string to consult -- see #4724's COLLECTION_TYPE_RE
-// note in scale-normalize.mjs, which explicitly scopes ITS fix to the
-// `{name,type,value}` D1/extrinsics shape only and punts this untyped side
-// to a narrow allowlist here). normalizePostgresValue's generic newtype-
-// scalar rule runs BEFORE decode() ever sees this tree and has no ctx to
-// consult, so a genuine single-element Vec (e.g. Drand.NewPulse's `rounds`
-// on a pulse carrying exactly one round -- the common case at current block
-// heights, confirmed live 2026-07-12: block 8606141 event_index 148 served
-// `"rounds": 30355357` instead of `[30355357]`, while a multi-round pulse a
-// few million blocks earlier correctly stayed an array) has already been
-// collapsed to a bare scalar by the time this file's own decode() runs.
-// Restored below in decode()'s object branch, the one place ctx + the
-// collapsed value are both in scope together.
-const COLLECTION_FIELDS = new Set(["Drand.NewPulse.rounds"]);
+function normalizeChainEventValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(normalizeChainEventValue);
+  }
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value);
+    if (
+      keys.length === 2 &&
+      keys.includes("name") &&
+      keys.includes("values") &&
+      typeof value.name === "string" &&
+      Array.isArray(value.values)
+    ) {
+      if (value.name === "Some" && value.values.length === 1) {
+        return normalizeChainEventValue(value.values[0]);
+      }
+      if (value.name === "None" && value.values.length === 0) {
+        return null;
+      }
+      if (value.values.length === 0) {
+        return value.name;
+      }
+      return {
+        name: value.name,
+        values: value.values.map(normalizeChainEventValue),
+      };
+    }
+    const out = {};
+    for (const [key, val] of Object.entries(value)) {
+      out[key] = normalizeChainEventValue(val);
+    }
+    return out;
+  }
+  return value;
+}
 
 function decodeTextualField(bytes) {
   try {
@@ -279,39 +296,19 @@ function decode(value, keyHint, ctx) {
     }
     const out = {};
     for (const [k, val] of Object.entries(value)) {
-      // Restore a COLLECTION_FIELDS field's array-ness before recursing --
-      // see that allowlist's own comment for why normalizePostgresValue can
-      // collapse a genuine single-element Vec<T> to a bare scalar upstream.
-      // Never fires on an already-multi-element array (Array.isArray(val)
-      // is already true, so there is nothing to restore).
-      const key = ctx ? `${ctx.pallet ?? ""}.${ctx.method ?? ""}.${k}` : "";
-      const restored =
-        COLLECTION_FIELDS.has(key) && !Array.isArray(val) ? [val] : val;
-      out[k] = decode(restored, k, ctx);
+      out[k] = decode(val, k, ctx);
     }
     return out;
   }
   return value;
 }
 
-/** Unwraps Option<T>/C-like unit-variant enum tags via normalizePostgresValue
- * (#4690's generic pass) FIRST, then decodes account ids and H160 addresses
- * in the result. This order (opposite of src/extrinsics.mjs's
- * formatExtrinsic, which runs its nested-call reconstruction before
- * normalizePostgresValue for an unrelated reason specific to that pass --
- * see its own header) is required here, not merely conventional: running
- * the byte-array decode FIRST turns each element of a single-entry
- * Vec<H256>-shaped field (e.g. EVM.Log's `topics` with exactly one topic)
- * into a plain hex STRING, which normalizePostgresValue's newtype-scalar
- * rule would then wrongly collapse from `["0x...hash"]` down to a bare
- * `"0x...hash"` -- silently changing the field's JSON type from array to
- * scalar (confirmed live 2026-07-12: a real single-topic EVM.Log). Running
- * normalizePostgresValue first avoids this: at that point every byte-array
- * field's elements are still raw integers (0-255), never scalar-shaped
- * wrapped values, so its newtype-scalar rule can never fire on a pristine
- * byte array or its 1-element newtype wrapper -- confirmed safe against
- * every existing fixture in this file's own test suite, including the
- * single-element Vec<AccountId32> case.
+/** Unwraps only Option<T>/C-like unit-variant enum tags first, then decodes
+ * account ids and H160 addresses in the result. This intentionally does not
+ * use normalizePostgresValue's generic scalar-newtype rule: chain_events.args
+ * has no per-field type string, so a legitimate one-element collection like
+ * `[78]` or `{uids:[1]}` is indistinguishable from a scalar newtype wrapper by
+ * shape alone and must remain an array.
  *
  * Confirmed live 2026-07-11: System.ExtrinsicSuccess's
  * `dispatch_info.class`/`pays_fee` rendered as `{"name":"Normal","values":[]}`
@@ -340,5 +337,5 @@ function decode(value, keyHint, ctx) {
  * #4693/#4915 avoid elsewhere by consulting a typed descriptor's own `type`
  * first. */
 export function decodeChainEventArgs(args, ctx = null) {
-  return decode(normalizePostgresValue(args), undefined, ctx);
+  return decode(normalizeChainEventValue(args), undefined, ctx);
 }
