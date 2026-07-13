@@ -10,6 +10,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { PageHero, ShareButton, SectionAnchor, CopyableCode, StatTile } from "@jsonbored/ui-kit";
+import { WatchValidator } from "@/components/metagraphed/watch-validator";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
 import {
   ValidatorNominatorsTable,
@@ -259,6 +260,14 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
         />
       </div>
+
+      <SectionAnchor
+        id="watch"
+        title="Watch this validator"
+        subtitle="One-step webhook or Discord alert on this validator's stake & delegation events."
+      >
+        <WatchValidator hotkey={hotkey} />
+      </SectionAnchor>
 
       <SectionAnchor id="subnets" title="Per-subnet performance" tone="accent">
         <SubnetPerformanceTable subnets={detail.subnets} />
