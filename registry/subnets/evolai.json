@@ -114,6 +114,24 @@
         "https://huggingface.co/spaces/evolai/gate"
       ],
       "url": "https://evolai-gate.hf.space/datasets"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-47-evolai-dashboard",
+      "kind": "dashboard",
+      "name": "EvolAI validator Weights & Biases dashboard",
+      "notes": "Public Weights & Biases project the SN47 EvolAI validators log to (wandb.ai/open-evolai/evol-validator) — live validator run logs and loss-eval scoring metrics. Default entity open-evolai and project evol-validator are set in the official openevolai/evolai validator CLI (evolai/cli/commands/validator.py) via wandb.init. Publicly readable via the W&B API (observed runCount 92). Distinct host from the evolai.ai website and evolai-gate.hf.space API.",
+      "provider": "evolai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/openevolai/evolai/blob/main/evolai/cli/commands/validator.py"
+      ],
+      "url": "https://wandb.ai/open-evolai/evol-validator"
     }
   ]
 }
