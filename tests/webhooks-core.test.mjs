@@ -285,6 +285,17 @@ describe("resolveWebhookHostnamesWithDoh", () => {
     assert.deepEqual(addresses, ["93.184.216.34"]);
   });
 
+  test("a non-2xx DoH response (no throw) yields no addresses for that lookup", async () => {
+    const fetchImpl = async () => new Response(null, { status: 500 });
+
+    const addresses = await resolveWebhookHostnamesWithDoh("example.com", {
+      fetchImpl,
+      dnsJsonEndpoint: "https://dns.test/query",
+    });
+
+    assert.deepEqual(addresses, []);
+  });
+
   test("a malformed DoH response body (no Answer array) yields no addresses, not a throw", async () => {
     const fetchImpl = async () =>
       new Response(JSON.stringify({ Comment: "no records" }), {
