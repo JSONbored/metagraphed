@@ -121,6 +121,20 @@ export const CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP = 20;
 // own global-not-per-IP shape) checked in subscribeChainEvents below.
 export const CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS = 1000;
 
+// #5004 item 2: the per-IP counterpart to the global cap above. The
+// WS-connection-count cap (CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP) bounds how
+// many graphql-ws SOCKETS one IP can open, but graphql-ws imposes no
+// per-socket limit on how many `chainEvents` subscriptions get multiplexed
+// onto a single already-open socket -- so a single IP, using just ONE of its
+// (now capped) connections, could still multiplex its way up to the entire
+// global CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS budget on its own. Checked
+// in subscribeChainEvents below, in ADDITION to the global cap, the same
+// "sub-quota alongside the global cap" shape CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP
+// already established for SSE/WS connections. Reuses that same 20 value --
+// no principled reason found for GraphQL-subscription headroom to differ
+// from connection headroom, and it's still generous for any real client.
+export const CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP = 20;
+
 // Hibernation tag distinguishing a graphql-ws socket from a plain firehose
 // one -- webSocketMessage/webSocketClose/webSocketError route on
 // graphqlWsSockets.has(ws) directly rather than this tag (a WeakMap lookup
@@ -352,6 +366,15 @@ export class ChainFirehoseHub {
     // value) since hibernation delivers messages/close events through this
     // class's own webSocketMessage/webSocketClose, not socket-level listeners.
     this.chainEventSubscribers = new Set();
+    // #5004 item 2: live `chainEvents` GraphQL-subscription count per client
+    // IP -- the per-IP sub-quota counterpart to sseClientsByIp/wsClientsByIp
+    // above, same Map-of-counts shape. Incremented in subscribeChainEvents,
+    // decremented in unsubscribeChainEvents (looked up via the clientIp
+    // stashed on each chainEventSubscribers entry, since unsubscribe is only
+    // ever called with the repeater, not the IP). Same hibernation-survival
+    // convention as every other in-memory Map on this class: resets to empty
+    // on a fresh DO reconstruction, not meant to survive it.
+    this.chainEventSubscribersByIp = new Map();
     this.graphqlWsSockets = new WeakMap();
     // #4983 MCP half: the most recent broadcast payload, for the
     // metagraph://chain/stream MCP resource's resources/read (a pointer/
@@ -375,7 +398,17 @@ export class ChainFirehoseHub {
       /* v8 ignore start */
       onSubscribe: (_ctx, _id, payload) =>
         validateChainEventsSubscribePayload(payload) || undefined,
-      context: () => ({ [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: this }),
+      // #5004 item 2: ctx.extra is whatever this.graphqlWsServer.opened() was
+      // called with as its second argument (graphql-ws's own Context.extra
+      // field -- confirmed against its type definitions, not guessed) --
+      // handleSubscribe's isGraphqlWs branch below passes { ip: clientIp }.
+      // Threading it into context makes it reachable as context.clientIp in
+      // src/graphql.mjs's chainEventsSubscribe resolver, which passes it on
+      // to subscribeChainEvents for the per-IP subscription-count cap.
+      context: (ctx) => ({
+        [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: this,
+        clientIp: ctx.extra.ip,
+      }),
       /* v8 ignore stop */
     });
   }
@@ -383,30 +416,50 @@ export class ChainFirehoseHub {
   // Registered as context.chainFirehose by graphqlWsServer above; called from
   // src/graphql.mjs's chainEventsSubscribe field resolver. Mirrors the SSE/WS
   // firehose's own topic-filter semantics (chainFirehoseMatchesTopics).
-  // Returns null (not a repeater) at CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
-  // -- the resolver must throw a GraphQLError for that case, never treat
-  // null as "no filter"/an empty stream.
+  // Returns null (not a repeater) at either the global cap
+  // (CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS) or the per-IP cap
+  // (CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP) -- the resolver must
+  // throw a GraphQLError for either case, never treat null as "no filter"/an
+  // empty stream.
   //
-  // #5004 item 1 KNOWN GAP (deliberately NOT fixed by this pass): this method
-  // receives only `topics`, not the request/IP, so CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
-  // stays a GLOBAL cap with no per-IP sub-quota, unlike the SSE/WS connection
-  // caps above it. The per-IP fix added elsewhere in this file bounds how
-  // many separate graphql-ws SOCKETS one IP can open (handleSubscribe's
-  // WS-upgrade branch), but NOT how many `chainEvents` subscriptions one IP
-  // multiplexes within a single already-open socket -- that would require
-  // threading the request/IP through graphql-ws's onSubscribe/context
-  // callback chain into this method, a deeper change explicitly scoped out
-  // of #5004 item 1 (see the issue body). Left as an explicit, intentional
-  // gap rather than silently dropped -- a candidate for a follow-up issue.
-  subscribeChainEvents(topics) {
+  // #5004 item 2: `clientIp` is threaded from the WS upgrade through
+  // graphql-ws's opened()/context() chain into src/graphql.mjs's
+  // chainEventsSubscribe resolver, which passes it here as context.clientIp
+  // -- see graphqlWsServer's context callback above for how ctx.extra.ip gets
+  // there. This closes the gap the WS-connection-count cap alone left open:
+  // that cap bounds how many graphql-ws SOCKETS one IP can open, but not how
+  // many `chainEvents` subscriptions get multiplexed onto a single
+  // already-open socket (graphql-ws itself imposes no per-socket subscription
+  // limit), so one IP could otherwise consume the entire global
+  // CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS budget through just one
+  // connection. `clientIp` may be undefined for callers that don't go
+  // through the real WS/graphql-ws path (e.g. existing unit tests calling
+  // this with one argument) -- treated as the same untracked/anonymous
+  // bucket handleSubscribe's SSE/WS branches already use for a missing IP
+  // (resolveClientIp can itself return undefined), so the per-IP check is
+  // simply skipped rather than crashing or double-counting under a bogus key.
+  subscribeChainEvents(topics, clientIp) {
     if (
       this.chainEventSubscribers.size >=
       CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS
     ) {
       return null;
     }
+    if (
+      clientIp &&
+      (this.chainEventSubscribersByIp.get(clientIp) || 0) >=
+        CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP
+    ) {
+      return null;
+    }
     const repeater = createAsyncRepeater();
-    this.chainEventSubscribers.add({ repeater, topics });
+    this.chainEventSubscribers.add({ repeater, topics, clientIp });
+    if (clientIp) {
+      this.chainEventSubscribersByIp.set(
+        clientIp,
+        (this.chainEventSubscribersByIp.get(clientIp) || 0) + 1,
+      );
+    }
     return repeater;
   }
 
@@ -415,6 +468,16 @@ export class ChainFirehoseHub {
       if (entry.repeater === repeater) {
         entry.repeater.end();
         this.chainEventSubscribers.delete(entry);
+        if (entry.clientIp) {
+          const count = this.chainEventSubscribersByIp.get(entry.clientIp);
+          if (count) {
+            if (count <= 1) {
+              this.chainEventSubscribersByIp.delete(entry.clientIp);
+            } else {
+              this.chainEventSubscribersByIp.set(entry.clientIp, count - 1);
+            }
+          }
+        }
         return;
       }
     }
@@ -542,7 +605,14 @@ export class ChainFirehoseHub {
             this.graphqlWsSockets.set(server, entry);
           },
         };
-        const closedCb = this.graphqlWsServer.opened(adapterSocket, {});
+        // #5004 item 2: `extra` (this call's second argument) is what
+        // graphql-ws exposes as ctx.extra to the context() callback above --
+        // passing { ip: clientIp } here is what makes context.clientIp (and
+        // therefore the per-IP GraphQL-subscription cap in
+        // subscribeChainEvents) possible at all.
+        const closedCb = this.graphqlWsServer.opened(adapterSocket, {
+          ip: clientIp,
+        });
         const entry = this.graphqlWsSockets.get(server) || {};
         entry.closedCb = closedCb;
         this.graphqlWsSockets.set(server, entry);
