@@ -1248,14 +1248,22 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
     );
   }
   const rows = d.setters.slice(0, 15);
+  const windowLabel = d.window ?? "30d";
   return (
-    <div className="mt-6">
-      <h3 className="mb-2 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
-        Weight-setters (per-validator breakdown)
-      </h3>
+    <div className="mt-6 min-w-0" data-weight-setters-leaderboard>
       <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Weight-setters · per-validator breakdown
+          </span>
+          <span className="font-mono text-[10px] text-ink-muted">
+            {formatNumber(d.setter_count)} validators · {windowLabel}
+          </span>
+        </div>
+        {/* overflow-x-auto keeps the 4-column table inside the card on narrow
+            viewports (#3942) — same inner scroll shell NeuronTable and ListShell use. */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[280px] text-sm">
             <thead className="bg-surface/50 text-ink-muted">
               <tr>
                 <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
