@@ -147,6 +147,24 @@
         "https://github.com/one-covenant/basilica/blob/1a75c1cb7c62caabe929b280931f0e074e2757f2/crates/basilica-validator/tests/fixtures/lshw/a100_sxm5_30vcpu.json"
       ],
       "url": "https://raw.githubusercontent.com/one-covenant/basilica/1a75c1cb7c62caabe929b280931f0e074e2757f2/crates/basilica-validator/tests/fixtures/lshw/a100_sxm5_30vcpu.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-39-basilica-telemetry",
+      "kind": "dashboard",
+      "name": "Basilica telemetry metrics dashboard",
+      "notes": "Public no-auth Prometheus metrics endpoint for SN39 Basilica's production cluster — an expression-browser UI at basilica-telemetry.tplr.ai/graph plus an open query API at /api/v1/query. Serves live basilica_* series (e.g. basilica_api_http_requests_total, basilica_billing_* across the basilica-ecs production cluster: api/billing/incentive/payments). Named as the subnet's telemetry backend in the official one-covenant/basilica repo — scripts/validator/telemetry/config.alloy remote-writes to basilica-telemetry.tplr.ai; netuid 39 per config/validator.toml.example. Distinct host from basilica.ai.",
+      "provider": "basilica",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/one-covenant/basilica/blob/main/scripts/validator/telemetry/config.alloy"
+      ],
+      "url": "https://basilica-telemetry.tplr.ai/graph"
     }
   ],
   "website_url": "https://www.basilica.ai/"
