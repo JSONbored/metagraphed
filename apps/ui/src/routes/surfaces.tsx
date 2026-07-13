@@ -426,6 +426,11 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
       isEmpty={rows.length === 0}
       isStale={isFetching && !isFetchingNextPage}
       empty={emptyNode}
+      // This table's <thead> isn't sticky (plain bg-surface/50, no
+      // position:sticky) -- opt out so it keeps ListShell's normal
+      // unbounded-height horizontal scroll instead of the sticky-header
+      // bounded-scroll box it doesn't use.
+      stickyHeader={false}
       cards={view === "grid" ? undefined : rows.map(cardFor)}
       table={
         view === "grid" ? (

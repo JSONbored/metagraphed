@@ -1936,13 +1936,21 @@ function ListShell({
   empty,
   isEmpty,
   isStale,
-  /** When true, the rendered table can stick its <thead> at top-sticky-offset
-   *  (just under the sticky filter bar) because outer wrappers avoid
-   *  creating a vertical scroll container. */
+  /** When true, the rendered table can stick its <thead> at `top-0` inside a
+   *  bounded-height, internally-scrolling viewport (both axes) -- the
+   *  standard sticky-header-data-table pattern. A page-scroll-relative
+   *  sticky header and native horizontal scroll cannot coexist on the same
+   *  wrapper: `overflow-x: auto` makes that wrapper the header's nearest
+   *  scroll-container ancestor per the CSS sticky-positioning spec, and
+   *  since the wrapper itself never scrolls internally (the page scrolls
+   *  past it instead), the header's "stuck" trigger never fires -- verified
+   *  directly (#5073). Bounding the wrapper's height and letting it scroll
+   *  internally makes it the header's OWN scroll reference, so both work.
+   */
   stickyHeader = true
 }) {
-  const tableCard = stickyHeader ? "rounded border border-border bg-card overflow-x-clip" : "rounded border border-border bg-card overflow-hidden";
-  const tableScroll = stickyHeader ? "overflow-x-clip" : "overflow-x-auto";
+  const tableCard = "rounded border border-border bg-card overflow-hidden";
+  const tableScroll = stickyHeader ? "mg-table-scroll overflow-auto" : "overflow-x-auto";
   return /* @__PURE__ */ jsxs("div", { children: [
     /* @__PURE__ */ jsx(
       "div",

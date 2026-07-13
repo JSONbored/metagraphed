@@ -574,7 +574,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         const monoSize = compact ? "text-[11px]" : "text-[12px]";
         return (
           <table className="w-full text-left text-sm">
-            <thead className="sticky top-sticky-offset z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
+            <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
               <tr>
                 <th className={classNames(firstPad, "w-6")} aria-label="Compare" />
                 <th

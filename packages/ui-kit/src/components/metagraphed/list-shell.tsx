@@ -22,9 +22,17 @@ export function ListShell({
   empty,
   isEmpty,
   isStale,
-  /** When true, the rendered table can stick its <thead> at top-sticky-offset
-   *  (just under the sticky filter bar) because outer wrappers avoid
-   *  creating a vertical scroll container. */
+  /** When true, the rendered table can stick its <thead> at `top-0` inside a
+   *  bounded-height, internally-scrolling viewport (both axes) -- the
+   *  standard sticky-header-data-table pattern. A page-scroll-relative
+   *  sticky header and native horizontal scroll cannot coexist on the same
+   *  wrapper: `overflow-x: auto` makes that wrapper the header's nearest
+   *  scroll-container ancestor per the CSS sticky-positioning spec, and
+   *  since the wrapper itself never scrolls internally (the page scrolls
+   *  past it instead), the header's "stuck" trigger never fires -- verified
+   *  directly (#5073). Bounding the wrapper's height and letting it scroll
+   *  internally makes it the header's OWN scroll reference, so both work.
+   */
   stickyHeader = true,
 }: {
   filters: ReactNode;
@@ -37,13 +45,15 @@ export function ListShell({
   isStale?: boolean;
   stickyHeader?: boolean;
 }) {
-  // Sticky table headers must not sit inside an overflow ancestor; otherwise
-  // browsers anchor `position: sticky` to that wrapper instead of page scroll.
-  // Non-sticky tables can still use a horizontal scroll container.
-  const tableCard = stickyHeader
-    ? "rounded border border-border bg-card overflow-x-clip"
-    : "rounded border border-border bg-card overflow-hidden";
-  const tableScroll = stickyHeader ? "overflow-x-clip" : "overflow-x-auto";
+  const tableCard = "rounded border border-border bg-card overflow-hidden";
+  // stickyHeader: bounded height + overflow-auto on both axes, so the
+  // <thead>'s `sticky top-0` sticks to this box's own scroll instead of the
+  // page's, while horizontal overflow still scrolls within the same box.
+  // !stickyHeader: unbounded height, horizontal-only scroll, table grows
+  // with the page (the previous, simpler behavior -- unchanged).
+  const tableScroll = stickyHeader
+    ? "mg-table-scroll overflow-auto"
+    : "overflow-x-auto";
   return (
     <div>
       <div

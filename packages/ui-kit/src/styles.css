@@ -178,22 +178,6 @@
 
   /* Layout geometry tokens — single source of truth for structural offsets. */
   --spacing-nav: 3.5rem; /* app header height (h-nav in app-shell) */
-  /* h-9 (2.25rem) content + 1px border-t, shared by RegistryTicker and the
-     breadcrumb row (app-shell.tsx) -- both are md:block, so this only
-     applies at the same breakpoint top-sticky-offset's consumers use. */
-  --spacing-header-row: 2.3125rem;
-  /* nav + RegistryTicker + breadcrumb + the header's own 1px border-b --
-     sticky thead anchor. Must track app-shell.tsx's <header> stack exactly:
-     it was a flat 6.5rem (nav + filter-bar) until RegistryTicker and the
-     breadcrumb row were added on top of it without updating this, so the
-     sticky thead anchored 27px too high and rendered underneath the
-     (higher z-index) header instead of below it. Expressed via calc() off
-     the shared row height above, not re-hardcoded, so the next row added to
-     the header stack only needs one number changed here, not a second
-     independently-measured one. */
-  --spacing-sticky-offset: calc(
-    var(--spacing-nav) + 2 * var(--spacing-header-row) + 0.0625rem
-  );
   --spacing-section-gap: 4rem; /* between top-level page sections */
   --spacing-shell-max: 1400px; /* page shell max width (max-w-shell-max) */
 }
@@ -1320,6 +1304,15 @@ html[data-density="compact"] .bg-card > table td {
     0 0 0 1px var(--ring),
     0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
   border-radius: 6px;
+}
+
+/* Bounded height for ListShell's sticky-header table viewport (#5073) -- a
+   plain class, not a Tailwind arbitrary-value utility (max-h-[70vh]):
+   packages/ui-kit's own Tailwind build doesn't pick up bracket-arbitrary
+   values from source (confirmed against command.tsx's pre-existing,
+   equally-silently-broken max-h-[300px] -- neither ever reaches dist/index.css). */
+.mg-table-scroll {
+  max-height: 70vh;
 }
 
 @keyframes mg-marquee {
