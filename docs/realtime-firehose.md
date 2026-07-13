@@ -139,6 +139,17 @@ for any real client. Each active `chainEvents` subscription is backed by
 feeds directly (`chainEventSubscribers`), which graphql-js's own `subscribe()`
 consumes to produce properly-framed `{type: "next", payload: {...}}` messages.
 
+**Security-reviewed and fixed before merge**: graphql-ws's wire protocol
+accepts query/mutation operations over the same `subscribe` message as
+subscriptions, not just subscriptions -- left unchecked, a WS client could
+execute the full read `Query` type over this transport, bypassing both the
+POST endpoint's rate limiter (`graphqlRateLimited`, never consulted for an
+upgraded connection) and its `maxDepthRule`/`maxComplexityRule` guards
+entirely (graphql-ws only applies bare `specifiedRules` by default).
+`makeServer`'s `onSubscribe` hook now runs `validateChainEventsSubscribePayload`
+(pure, unit-tested), which rejects any non-subscription operation outright
+and otherwise validates with the SAME rule set POST uses.
+
 Unit-tested against graphql-js's real `subscribe()` engine (not a hand-rolled
 simulation) and against a stubbed Durable Object `state`. Cloudflare has a
 [documented history](https://github.com/cloudflare/workers-sdk/issues/1767)

@@ -23,8 +23,89 @@ import {
   createAsyncRepeater,
   formatChainFirehoseSseFrame,
   parseChainFirehoseTopics,
+  validateChainEventsSubscribePayload,
   validateChainFirehoseIngestPayload,
 } from "../workers/chain-firehose-hub.mjs";
+
+// --- validateChainEventsSubscribePayload (#4983 security fix) -------------------
+//
+// graphql-ws's wire protocol accepts query/mutation operations over the same
+// `subscribe` message as subscriptions -- unchecked, a WS client could
+// execute the full read API, bypassing both the POST endpoint's rate
+// limiter (never consulted for an upgraded connection) and its complexity/
+// depth guards. This function is the actual fix: restrict the WS transport
+// to subscription operations only, validated with the SAME rules POST uses.
+
+test("validateChainEventsSubscribePayload: accepts a well-formed subscription operation", () => {
+  const errors = validateChainEventsSubscribePayload({
+    query: "subscription { chainEvents { table block_number } }",
+  });
+  assert.equal(errors, null);
+});
+
+test("validateChainEventsSubscribePayload: rejects a query operation (the actual security fix)", () => {
+  const errors = validateChainEventsSubscribePayload({
+    query: "query { subnets { total } }",
+  });
+  assert.ok(errors?.length);
+  assert.match(errors[0].message, /Only subscription operations/);
+});
+
+test("validateChainEventsSubscribePayload: rejects a mutation operation", () => {
+  const errors = validateChainEventsSubscribePayload({
+    query: "mutation { __typename }",
+  });
+  assert.ok(errors?.length);
+  assert.match(errors[0].message, /Only subscription operations/);
+});
+
+test("validateChainEventsSubscribePayload: rejects a missing/empty query", () => {
+  assert.match(
+    validateChainEventsSubscribePayload({})[0].message,
+    /Missing required field: query/,
+  );
+  assert.match(
+    validateChainEventsSubscribePayload({ query: "   " })[0].message,
+    /Missing required field: query/,
+  );
+});
+
+test("validateChainEventsSubscribePayload: rejects invalid GraphQL syntax", () => {
+  const errors = validateChainEventsSubscribePayload({
+    query: "subscription { not valid (",
+  });
+  assert.ok(errors?.length);
+  assert.match(errors[0].message, /Syntax Error/);
+});
+
+test("validateChainEventsSubscribePayload: rejects an oversized query", () => {
+  const errors = validateChainEventsSubscribePayload({
+    query: `subscription { chainEvents { table } } # ${"x".repeat(20_000)}`,
+  });
+  assert.ok(errors?.length);
+  assert.match(errors[0].message, /too large/);
+});
+
+test("validateChainEventsSubscribePayload: runs full schema validation (specifiedRules), rejecting an unknown field", () => {
+  const errors = validateChainEventsSubscribePayload({
+    query: "subscription { chainEvents { doesNotExist } }",
+  });
+  assert.ok(errors?.length);
+  assert.match(errors[0].message, /Cannot query field/);
+});
+
+// maxDepthRule/maxComplexityRule are ALSO passed to this validate() call
+// (imported from the same src/graphql.mjs as the POST endpoint's
+// handleGraphQLRequest, same GRAPHQL_MAX_DEPTH/GRAPHQL_MAX_COMPLEXITY
+// thresholds) -- not separately exercised here because ChainEvent is a
+// flat, scalar-only type with no relationship fields to nest into, and a
+// GraphQL subscription operation is restricted to exactly one root field
+// (graphql-js's own SingleFieldSubscriptionsRule, part of specifiedRules),
+// so neither rule is organically triggerable against this specific schema
+// today. Both rules' own behavior is covered directly in
+// tests/graphql.test.mjs; what matters here is that they're wired into the
+// SAME validate() call as the field-existence check above, which the
+// "rejects a query/mutation operation" tests above already prove runs.
 
 // --- createAsyncRepeater (#4983) -------------------------------------------------
 

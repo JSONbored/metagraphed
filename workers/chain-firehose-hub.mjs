@@ -28,10 +28,23 @@
 // webSocketClose's graphql-ws branches, and src/graphql.mjs's
 // GRAPHQL_SUBSCRIPTION_CONTEXT_KEY for the other half of the wiring.
 
-import { execute, subscribe } from "graphql";
+import {
+  GraphQLError,
+  execute,
+  getOperationAST,
+  parse,
+  specifiedRules,
+  subscribe,
+  validate,
+} from "graphql";
 import { GRAPHQL_TRANSPORT_WS_PROTOCOL, makeServer } from "graphql-ws";
 import {
+  GRAPHQL_MAX_COMPLEXITY,
+  GRAPHQL_MAX_QUERY_BYTES,
+  GRAPHQL_MAX_DEPTH,
   GRAPHQL_SUBSCRIPTION_CONTEXT_KEY,
+  maxComplexityRule,
+  maxDepthRule,
   schema as chainEventsGraphqlSchema,
 } from "../src/graphql.mjs";
 
@@ -158,6 +171,50 @@ export function formatChainFirehoseSseFrame(payload) {
   return `event: chain\ndata: ${JSON.stringify(payload)}\n\n`;
 }
 
+// graphql-ws's wire protocol accepts ANY operation type over the same
+// `subscribe` message -- query and mutation included, not just subscription
+// (a real client can send `subscription { __typename }`-shaped envelopes
+// carrying a query/mutation document just as easily). Left unchecked, that
+// would let a client execute the full read API over this WS transport,
+// bypassing BOTH /api/v1/graphql POST's rate limiter (graphqlRateLimited,
+// workers/api.mjs -- never consulted for an upgraded connection) and its
+// complexity/depth guards (this function reuses the SAME maxDepthRule/
+// maxComplexityRule graphql.mjs's POST handler applies, rather than
+// defaulting to graphql-ws's bare specifiedRules). Restricting this
+// transport to subscription operations only is the actual fix for both --
+// wired into makeServer's onSubscribe below. Pure and unit-tested directly
+// (no WS connection needed): returns null when the payload is valid, or a
+// non-empty GraphQLError[] describing why it was rejected.
+export function validateChainEventsSubscribePayload(payload) {
+  const query = payload?.query;
+  if (typeof query !== "string" || !query.trim()) {
+    return [new GraphQLError("Missing required field: query.")];
+  }
+  if (new TextEncoder().encode(query).length > GRAPHQL_MAX_QUERY_BYTES) {
+    return [new GraphQLError("GraphQL query is too large.")];
+  }
+  let document;
+  try {
+    document = parse(query);
+  } catch (err) {
+    return [new GraphQLError(err.message)];
+  }
+  const operation = getOperationAST(document, payload.operationName);
+  if (!operation || operation.operation !== "subscription") {
+    return [
+      new GraphQLError(
+        "Only subscription operations are supported over this WebSocket transport; use POST /api/v1/graphql for queries and mutations.",
+      ),
+    ];
+  }
+  const validationErrors = validate(chainEventsGraphqlSchema, document, [
+    ...specifiedRules,
+    maxDepthRule(GRAPHQL_MAX_DEPTH),
+    maxComplexityRule(GRAPHQL_MAX_COMPLEXITY),
+  ]);
+  return validationErrors.length > 0 ? validationErrors : null;
+}
+
 // A minimal push-based async iterator: push() delivers a value to whichever
 // `next()` call is currently pending (or buffers it if none is), end()
 // terminates the sequence. Backs the GraphQL `chainEvents` subscription field
@@ -243,10 +300,16 @@ export class ChainFirehoseHub {
       schema: chainEventsGraphqlSchema,
       execute,
       subscribe,
-      /* v8 ignore next -- graphql-ws only invokes this once a real
-         connection_init lands over an actual WebSocketPair upgrade; same
-         reachability class as handleSubscribe's own v8-ignored branch. */
+      // graphql-ws only invokes these once a real connection_init/subscribe
+      // message lands over an actual WebSocketPair upgrade; same
+      // reachability class as handleSubscribe's own v8-ignored branch.
+      // validateChainEventsSubscribePayload (the actual decision logic
+      // onSubscribe delegates to) is unit-tested directly.
+      /* v8 ignore start */
+      onSubscribe: (_ctx, _id, payload) =>
+        validateChainEventsSubscribePayload(payload) || undefined,
       context: () => ({ [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]: this }),
+      /* v8 ignore stop */
     });
   }
 
