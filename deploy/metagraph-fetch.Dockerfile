@@ -39,11 +39,11 @@
 # NOT curl|sh, which a security scan correctly flagged as an unverified
 # remote-installer execution (2026-07-13).
 FROM ghcr.io/astral-sh/uv:0.11.28@sha256:0f36cb9361a3346885ca3677e3767016687b5a170c1a6b88465ec14aefec90aa AS uv
-# python:3.12-slim is a mutable tag, not digest-pinned -- matches this repo's
-# existing convention (deploy/chain-firehose-relay.Dockerfile's node:22.23.1-
-# alpine is the same shape); not switching just this one Dockerfile to a
-# digest would be inconsistent, not more secure.
-FROM python:3.12-slim
+# Pin both the semantic Python/Debian version and the OCI index digest so the
+# fetch image has no mutable base-image input. When bumping Python, update the
+# tag and digest together (Docker Hub lists this index digest for
+# python:3.12.11-slim-bookworm).
+FROM python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
 COPY --from=uv /uv /uvx /usr/local/bin/
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
