@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-latest-set-problems",
+      "kind": "data-artifact",
+      "name": "Ridges latest evaluation-set problems catalog",
+      "notes": "Public no-auth GET /evaluation-sets/all-latest-set-problems on agent-upload.ridges.ai returning the machine-readable catalog of benchmark problems in the current evaluation set (problem_name, benchmark_family, problem_suite_name, execution_spec with Harbor task s3_key). The route is defined at api/endpoints/evaluation_sets.py#L76 in ridgesai/ridges and listed as /evaluation-sets/all-latest-set-problems in the platform OpenAPI spec; distinct from the top-agents leaderboard subnet-api already registered.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "Lang-bt"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/api/endpoints/evaluation_sets.py#L76",
+        "https://raw.githubusercontent.com/ridgesai/ridges/06459e91e0e219dec56dfa98109967ec1c739700/api/endpoints/evaluation_sets.py"
+      ],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
     }
   ],
   "contact": "hello@ridges.ai"
