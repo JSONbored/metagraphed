@@ -26,8 +26,20 @@
 // re-testing found DATA_API subrequests reporting outcome "canceled" on a
 // real fraction of requests, and there was no signal anywhere to catch it
 // before a wider live-testing pass happened to notice).
+let postgresTierFallbackGeneration = 0;
+
+function markPostgresTierFallback() {
+  postgresTierFallbackGeneration += 1;
+  return null;
+}
+
+export function currentPostgresTierFallbackGeneration() {
+  return postgresTierFallbackGeneration;
+}
+
 export async function tryPostgresTier(env, request, flagName) {
-  if (env[flagName] !== "postgres" || !env.DATA_API) return null;
+  if (env[flagName] !== "postgres") return null;
+  if (!env.DATA_API) return markPostgresTierFallback();
   const upstreamRequest =
     request.method === "HEAD"
       ? new Request(request, { method: "GET" })
@@ -40,13 +52,13 @@ export async function tryPostgresTier(env, request, flagName) {
       `tryPostgresTier(${flagName}): DATA_API fetch failed, falling back to D1:`,
       err,
     );
-    return null;
+    return markPostgresTierFallback();
   }
   if (!upstream.ok) {
     console.error(
       `tryPostgresTier(${flagName}): DATA_API returned ${upstream.status}, falling back to D1`,
     );
-    return null;
+    return markPostgresTierFallback();
   }
   let body;
   try {
@@ -56,13 +68,13 @@ export async function tryPostgresTier(env, request, flagName) {
       `tryPostgresTier(${flagName}): DATA_API response body unparseable, falling back to D1:`,
       err,
     );
-    return null;
+    return markPostgresTierFallback();
   }
   if (!body || typeof body !== "object") {
     console.error(
       `tryPostgresTier(${flagName}): DATA_API response was not a JSON object, falling back to D1`,
     );
-    return null;
+    return markPostgresTierFallback();
   }
   return body;
 }

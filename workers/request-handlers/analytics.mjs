@@ -43,7 +43,10 @@ import {
   publishedAt,
 } from "../responses.mjs";
 import { d1TimeoutMs, withTimeout } from "../storage.mjs";
-import { tryPostgresTier } from "../postgres-tier.mjs";
+import {
+  currentPostgresTierFallbackGeneration,
+  tryPostgresTier,
+} from "../postgres-tier.mjs";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import {
   formatGlobalIncidents,
@@ -377,6 +380,7 @@ export async function withEdgeCache(
     }
   }
   const fallbackGeneration = d1FallbackGeneration;
+  const pgFallbackGeneration = currentPostgresTierFallbackGeneration();
   const response = await buildResponse();
   // Never cache errors / non-200s (cold-D1 still returns a 200 empty envelope;
   // a 400 bad-window or 5xx must not be persisted).
@@ -384,7 +388,8 @@ export async function withEdgeCache(
     cacheKey &&
     response.status === 200 &&
     !D1_FALLBACK_RESPONSES.has(response) &&
-    d1FallbackGeneration === fallbackGeneration
+    d1FallbackGeneration === fallbackGeneration &&
+    currentPostgresTierFallbackGeneration() === pgFallbackGeneration
   ) {
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
   }

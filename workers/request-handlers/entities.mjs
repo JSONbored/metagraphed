@@ -40,6 +40,7 @@ import {
   analyticsQueryError,
   d1All,
   d1Runner,
+  markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.mjs";
 import {
@@ -2152,18 +2153,19 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
       message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
     });
   }
-  const { data, generatedAt } = (await tryPostgresTier(
+  const pgPayload = await tryPostgresTier(
     env,
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
+  );
+  const { data, generatedAt } = pgPayload ?? {
     data: buildStakeFlow([], netuid, { window: windowParam }),
     generatedAt: null,
   };
   // account_events-derived, so the meta reports source "chain-events" (via
   // accountMeta), not the metagraph snapshot; generated_at is the newest event in
   // the window.
-  return envelopeResponse(
+  const response = envelopeResponse(
     request,
     {
       data,
@@ -2175,6 +2177,7 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
     },
     "short",
   );
+  return pgPayload ? response : markD1FallbackResponse(response);
 }
 
 // One subnet's alpha_market_cap_tao (#4342/8.3), preferring the live economics
@@ -3542,10 +3545,9 @@ export async function handleBlocks(request, env, url) {
 export async function handleBlocksSummary(request, env, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE")) ??
-    buildBlocksSummary([]);
-  return envelopeResponse(
+  const pgData = await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE");
+  const data = pgData ?? buildBlocksSummary([]);
+  const response = envelopeResponse(
     request,
     {
       data,
@@ -3557,6 +3559,7 @@ export async function handleBlocksSummary(request, env, url) {
     },
     "short",
   );
+  return pgData ? response : markD1FallbackResponse(response);
 }
 
 // GET /api/v1/blocks/{ref}: per-block detail (#1345). ref is a numeric
