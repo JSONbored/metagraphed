@@ -69,7 +69,7 @@ export function PanelShell({
   };
 
   const headerRight = (
-    <div className="flex items-center gap-2 min-w-0">
+    <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2 min-w-0">
       {isUsableTimestamp(meta?.generatedAt) ? (
         <span
           className={
