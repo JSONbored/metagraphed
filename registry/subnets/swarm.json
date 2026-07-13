@@ -70,6 +70,25 @@
       ],
       "url": "https://api.swarm124.com/leaderboard",
       "notes": "Public no-auth GET /leaderboard — ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-dashboard",
+      "kind": "dashboard",
+      "name": "Swarm public benchmark leaderboard",
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "lourincedaging0-commits"
+      },
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm/blob/main/README.md",
+        "https://swarm124.com/benchmark"
+      ],
+      "url": "https://swarm124.com/benchmark",
+      "notes": "Public no-auth web leaderboard/benchmark view for SN124 Swarm — the drone-flight model rankings the subnet publishes at swarm124.com/benchmark (linked from the official swarm-subnet/swarm README). Renders the same data as the registered api.swarm124.com/leaderboard endpoint; distinct host from the api.swarm124.com API surfaces."
     }
   ],
   "website_url": "https://www.swarm124.com/"
