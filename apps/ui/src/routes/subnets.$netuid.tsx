@@ -1397,39 +1397,10 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
 }
 
 function GapsPanel({ netuid, compact }: { netuid: number; compact?: boolean }) {
-  const { data: gapsResult, isLoading, error } = useQuery(subnetGapsQuery(netuid));
-  const gaps = gapsResult?.data;
-  const missing = gaps?.missing_kinds ?? [];
-  const notes = gaps?.gap_notes ?? [];
-  if (isLoading) {
-    return (
-      <SectionAnchor id="gaps" title={compact ? "Known gaps" : "Gaps"}>
-        <Skeleton className="h-24 w-full" />
-      </SectionAnchor>
-    );
-  }
-  if (error) {
-    return (
-      <SectionAnchor id="gaps" title={compact ? "Known gaps" : "Gaps"}>
-        <EmptyState
-          title="Gaps unavailable"
-          description="The subnet gaps endpoint did not respond."
-          action={RECOVERY.gaps}
-        />
-      </SectionAnchor>
-    );
-  }
-  if (missing.length === 0 && notes.length === 0) {
-    return (
-      <SectionAnchor id="gaps" title="Gaps">
-        <EmptyState
-          title="No outstanding gaps"
-          description="Profile looks complete."
-          action={RECOVERY.gaps}
-        />
-      </SectionAnchor>
-    );
-  }
+  // Mirror the seven sibling tabs on this page: wrap the fetch in
+  // QueryErrorBoundary + Suspense so a genuine failure surfaces the shared
+  // red-bordered ErrorState (with Retry), instead of reusing the success-case
+  // EmptyState look for an error (#3961).
   return (
     <SectionAnchor
       id="gaps"
@@ -1437,34 +1408,59 @@ function GapsPanel({ netuid, compact }: { netuid: number; compact?: boolean }) {
       subtitle="Missing resources, profile incompleteness, and curation notes."
       info="GET /api/v1/subnets/{netuid}/gaps"
     >
-      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        {missing.length > 0 ? (
-          <div>
-            <div className="mg-label mb-1">Missing kinds</div>
-            <div className="flex flex-wrap gap-1">
-              {missing.map((k) => (
-                <span
-                  key={k}
-                  className="rounded border border-dashed border-ink-subtle bg-paper px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
-                >
-                  {k}
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        {notes.length > 0 ? (
-          <ul className="space-y-1 text-[12px] text-ink leading-relaxed">
-            {notes.map((n, i) => (
-              <li key={i}>· {n}</li>
-            ))}
-          </ul>
-        ) : null}
-        <div className="border-t border-border pt-2 text-[11px] text-ink-muted">
-          Help close these gaps by opening a PR against the public registry repo.
-        </div>
-      </div>
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+          <GapsList netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
     </SectionAnchor>
+  );
+}
+
+function GapsList({ netuid }: { netuid: number }) {
+  // Same query key/config as before, now via useSuspenseQuery so the enclosing
+  // boundary handles error/loading — no duplicate cache entry.
+  const { data: gapsResult } = useSuspenseQuery(subnetGapsQuery(netuid));
+  const gaps = gapsResult?.data;
+  const missing = gaps?.missing_kinds ?? [];
+  const notes = gaps?.gap_notes ?? [];
+  if (missing.length === 0 && notes.length === 0) {
+    return (
+      <EmptyState
+        title="No outstanding gaps"
+        description="Profile looks complete."
+        action={RECOVERY.gaps}
+      />
+    );
+  }
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+      {missing.length > 0 ? (
+        <div>
+          <div className="mg-label mb-1">Missing kinds</div>
+          <div className="flex flex-wrap gap-1">
+            {missing.map((k) => (
+              <span
+                key={k}
+                className="rounded border border-dashed border-ink-subtle bg-paper px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
+              >
+                {k}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {notes.length > 0 ? (
+        <ul className="space-y-1 text-[12px] text-ink leading-relaxed">
+          {notes.map((n, i) => (
+            <li key={i}>· {n}</li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="border-t border-border pt-2 text-[11px] text-ink-muted">
+        Help close these gaps by opening a PR against the public registry repo.
+      </div>
+    </div>
   );
 }
 
