@@ -73,7 +73,6 @@ import {
   readIdentityHistoryCacheStamp,
   readNeuronDailyCacheStamp,
 } from "./request-handlers/analytics.mjs";
-import { loadStagedAccountIdentity } from "./request-handlers/staging.mjs";
 import {
   handleSubnetMetagraph,
   handleNeuron,
@@ -308,7 +307,6 @@ import {
   BULK_TRENDS_PATH_PATTERN,
   EMBEDDING_SYNC_CRON,
   EVENTS_INGEST_TOKEN_HEADER,
-  EVENTS_LOAD_CRON,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PRUNE_CRON,
   INCIDENTS_PATH_PATTERN,
@@ -444,13 +442,14 @@ export default {
 // resolvable.
 export { ChainFirehoseHub, McpSessionHub, AlerterHub };
 
-// The staged-artifact loaders now live in request-handlers/staging.mjs (#1763).
-// Re-export it so the scheduled cron drain (handleScheduled) and the staging
-// tests keep importing it from this module. loadStagedNeurons/Events/Blocks/
-// Extrinsics removed alongside their D1 tables (#4772 D1 chain-data
-// retirement); loadStagedSubnetHyperparams removed the same way now that
-// subnet_hyperparams/subnet_hyperparams_history are fully Postgres-served.
-export { loadStagedAccountIdentity };
+// The staged-artifact loaders (request-handlers/staging.mjs, #1763) are fully
+// retired: loadStagedNeurons/Events/Blocks/Extrinsics went alongside their D1
+// tables (#4772 D1 chain-data retirement), loadStagedSubnetHyperparams went
+// once subnet_hyperparams/subnet_hyperparams_history became fully
+// Postgres-served, and loadStagedAccountIdentity (the last one) went once
+// refresh-account-identity moved to a direct-to-Postgres sync on the
+// indexer-box cron pipeline. workers/request-handlers/staging.mjs itself is
+// deleted — nothing left to re-export.
 
 // The RPC-proxy subsystem now lives in request-handlers/rpc-proxy.mjs (#1763).
 // The router dispatches the handlers directly via the imports above; these
@@ -575,30 +574,13 @@ export async function handleEconomicsBackfill(request, env) {
 
 export async function handleScheduled(controller, env = {}, ctx = {}) {
   const cron = controller?.cron || "";
-  // Fast-load cron (#1346 Option A): its whole job is to drain the R2-staged
-  // batch into D1 quickly, then return without running the heavier probe/prune so
-  // it can tick every ~3 min cheaply and keep the drain's own latency low.
-  //
-  // The drain is gated to THIS cron alone (audit #9). The four cron triggers fire as
-  // separate concurrent invocations whose minutes coincide (e.g. 0/15/30/45), and
-  // the staged load is an unlocked R2 read-modify-write (read → load → delete /
-  // rewrite). Running the loader on every tick would let a concurrent invocation
-  // clobber a freshly-staged file via the delete path; owning the drain on a
-  // single cron removes the cross-cron concurrency entirely.
-  if (cron === EVENTS_LOAD_CRON) {
-    // #4772 D1 chain-data retirement removed loadStagedNeurons/Events/Blocks/
-    // Extrinsics (neurons/account_events/blocks/extrinsics' D1 R2-drain)
-    // alongside their D1 tables. loadStagedSubnetHyperparams (subnet
-    // hyperparameters' own D1 R2-drain, #4303/1.3) is retired the same way now
-    // that subnet_hyperparams/subnet_hyperparams_history are fully served from
-    // Postgres (METAGRAPH_SUBNET_HYPERPARAMS_SOURCE, #4832 gap-closure) --
-    // leaving loadStagedAccountIdentity (#4324/5.1) as the one registry-side
-    // table still written via this path. `.catch` isolates a load failure so
-    // it never affects the early-return below (the prior Promise.allSettled
-    // gave the same isolation across what used to be several loaders here).
-    await loadStagedAccountIdentity(env).catch(() => {});
-    return { ok: true, fast_load: true };
-  }
+  // The former fast-load cron (#1346 Option A, EVENTS_LOAD_CRON, "*/3 * * * *")
+  // drained R2-staged batches into D1. Its last consumer, loadStagedAccountIdentity
+  // (#4324/5.1), was removed once refresh-account-identity moved to a
+  // direct-to-Postgres sync running on the indexer-box cron pipeline instead of
+  // GitHub Actions + R2 staging -- see workers/request-handlers/staging.mjs's
+  // deletion. The trigger itself is removed from wrangler.jsonc; nothing
+  // dispatches on it here anymore.
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are
@@ -878,6 +860,21 @@ async function handleNeuronsSyncProxy(request, env) {
   });
 }
 
+// Proxies POST /api/v1/internal/backfill-neuron-daily -- deep-history ingest
+// for scripts/backfill-neuron-history.py and scripts/backfill-stake-monthly.py
+// into neuron_daily/account_position_daily (see handleNeuronDailyBackfill's
+// own header for why this is NOT the same route/semantics as neurons-sync).
+// Same DATA_API service binding as neurons-sync above.
+async function handleNeuronDailyBackfillProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "neuron_daily_backfill_unavailable",
+    notBoundMessage:
+      "The neuron-daily backfill tier is not bound to this deployment.",
+    unreadableMessage:
+      "The neuron-daily backfill tier returned an unreadable response.",
+  });
+}
+
 // Proxies POST /api/v1/internal/rollup-account-events-daily -- the write
 // path into the chain-indexer Postgres's account_events_daily rollup
 // (#4832 gap-closure). Same DATA_API service binding as neurons-sync above;
@@ -1102,6 +1099,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // handleNeuronsSyncProxy's comment for why).
   if (url.pathname === "/api/v1/internal/neurons-sync") {
     return handleNeuronsSyncProxy(request, env);
+  }
+  // Deep-history backfill ingest for scripts/backfill-neuron-history.py and
+  // scripts/backfill-stake-monthly.py, into neuron_daily/account_position_daily
+  // ONLY (never the latest-only `neurons` table) -- see
+  // handleNeuronDailyBackfillProxy's comment for why this is a separate route
+  // from neurons-sync. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/backfill-neuron-daily") {
+    return handleNeuronDailyBackfillProxy(request, env);
   }
   // The write path into the chain-indexer Postgres's account_events_daily
   // rollup (#4832 gap-closure) -- a dedicated hourly GitHub Actions workflow

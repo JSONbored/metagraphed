@@ -3194,6 +3194,14 @@ export async function handleAccountPositionHistory(
 // account_events, so metagraphMeta not accountMeta). has_identity is false
 // for the common case (most accounts never call set_identity) — schema-stable,
 // never 404.
+//
+// D1 retirement: account_identity's D1 write path (loadStagedAccountIdentity,
+// formerly workers/request-handlers/staging.mjs, now deleted) is retired --
+// refresh-account-identity writes Postgres only now (indexer-box cron
+// pipeline). D1's copy is frozen at whatever it last held, not actively
+// wrong, and stays as the fallback below (unlike handleSubnetHyperparams,
+// which dropped its D1 fallback entirely on retirement) since Postgres
+// outages are the realistic failure mode this fallback still guards against.
 export async function handleAccountIdentity(request, env, ss58, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);

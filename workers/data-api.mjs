@@ -804,6 +804,196 @@ async function handleNeuronsSync(request, env) {
   // the request/invocation ends (Cloudflare's documented pattern).
 }
 
+// --- POST /api/v1/internal/backfill-neuron-daily ----------------------------
+//
+// Historical deep-history ingest for scripts/backfill-neuron-history.py and
+// scripts/backfill-stake-monthly.py. neuron_daily/account_position_daily had
+// NO Postgres history before handleNeuronsSync went live 2026-07-10 -- the
+// year of D1 history those scripts previously backfilled was destroyed, not
+// migrated, when #4772/#4908 dropped D1's neuron_daily table. The old ingest
+// route those scripts called (/api/v1/internal/backfill-neurons, D1-only)
+// was deleted in the same PR; this is its Postgres replacement.
+//
+// Deliberately NOT a thin wrapper around handleNeuronsSync: that function's
+// `neurons` (latest-only) INSERT and its deregistration prune both key off
+// "this batch's max captured_at is the newest state for these netuids" --
+// true for a forward daily sync, false for a backfill walking dates from a
+// year ago forward. A backfill batch must NEVER touch `neurons` or prune
+// anything; it only ever fills in specific past `snapshot_date`s in
+// neuron_daily/account_position_daily. Row shape/validation/column list
+// (NEURON_INSERT_COLUMNS, validNeuronSyncRow, coerceNeuronSyncRow) is reused
+// as-is -- both backfill scripts already send the identical row shape
+// handleNeuronsSync expects, snapshot_date included.
+//
+// Same ON CONFLICT ... WHERE captured_at <= EXCLUDED.captured_at guard as the
+// forward path, so a backfill re-POST (or a backfill overlapping a date the
+// forward sync already covered) is idempotent and can never clobber a
+// fresher row -- it can only fill a genuinely missing past snapshot_date.
+const NEURON_DAILY_BACKFILL_TOKEN_HEADER = "x-neuron-daily-backfill-token";
+
+async function handleNeuronDailyBackfill(request, env) {
+  if (!env.NEURON_DAILY_BACKFILL_SECRET) {
+    return writeJson(
+      { error: "neuron-daily backfill is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(NEURON_DAILY_BACKFILL_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.NEURON_DAILY_BACKFILL_SECRET)
+  ) {
+    return writeJson(
+      { error: `provide a valid ${NEURON_DAILY_BACKFILL_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > NEURONS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${NEURONS_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      { error: "body must be a JSON array of neuron rows (or {rows:[...]})" },
+      400,
+    );
+  }
+  if (incoming.length > NEURONS_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${NEURONS_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validNeuronSyncRow)) {
+    return writeJson({ error: "rows must match the neuron row shape" }, 400);
+  }
+
+  const rows = incoming.map(coerceNeuronSyncRow);
+  const dailyRows = rows.map((row) => ({
+    ...row,
+    snapshot_date: neuronSyncSnapshotDate(row.captured_at),
+    updated_at: Date.now(),
+  }));
+  const positionRows = dailyRows
+    .filter((row) => row.hotkey != null)
+    .map((row) => ({
+      account: row.hotkey,
+      netuid: row.netuid,
+      snapshot_date: row.snapshot_date,
+      uid: row.uid,
+      coldkey: row.coldkey,
+      active: row.active,
+      validator_permit: row.validator_permit,
+      rank: row.rank,
+      trust: row.trust,
+      incentive: row.incentive,
+      dividends: row.dividends,
+      stake_tao: row.stake_tao,
+      emission_tao: row.emission_tao,
+      captured_at: row.captured_at,
+      updated_at: row.updated_at,
+    }));
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    return await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+
+      for (
+        let i = 0;
+        i < dailyRows.length;
+        i += NEURONS_SYNC_ROWS_PER_STATEMENT
+      ) {
+        const chunk = dailyRows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
+        await sql`
+          INSERT INTO neuron_daily ${sql(chunk, ...NEURON_INSERT_COLUMNS, "snapshot_date", "updated_at")}
+          ON CONFLICT (netuid, uid, snapshot_date) DO UPDATE SET
+            hotkey = EXCLUDED.hotkey,
+            coldkey = EXCLUDED.coldkey,
+            active = EXCLUDED.active,
+            validator_permit = EXCLUDED.validator_permit,
+            rank = EXCLUDED.rank,
+            trust = EXCLUDED.trust,
+            validator_trust = EXCLUDED.validator_trust,
+            consensus = EXCLUDED.consensus,
+            incentive = EXCLUDED.incentive,
+            dividends = EXCLUDED.dividends,
+            emission_tao = EXCLUDED.emission_tao,
+            stake_tao = EXCLUDED.stake_tao,
+            registered_at_block = EXCLUDED.registered_at_block,
+            is_immunity_period = EXCLUDED.is_immunity_period,
+            axon = EXCLUDED.axon,
+            block_number = EXCLUDED.block_number,
+            captured_at = EXCLUDED.captured_at,
+            updated_at = EXCLUDED.updated_at
+          WHERE neuron_daily.captured_at <= EXCLUDED.captured_at`;
+      }
+
+      for (
+        let i = 0;
+        i < positionRows.length;
+        i += NEURONS_SYNC_ROWS_PER_STATEMENT
+      ) {
+        const chunk = positionRows.slice(
+          i,
+          i + NEURONS_SYNC_ROWS_PER_STATEMENT,
+        );
+        await sql`
+          INSERT INTO account_position_daily ${sql(chunk, "account", "netuid", "snapshot_date", "uid", "coldkey", "active", "validator_permit", "rank", "trust", "incentive", "dividends", "stake_tao", "emission_tao", "captured_at", "updated_at")}
+          ON CONFLICT (account, netuid, snapshot_date) DO UPDATE SET
+            uid = EXCLUDED.uid,
+            coldkey = EXCLUDED.coldkey,
+            active = EXCLUDED.active,
+            validator_permit = EXCLUDED.validator_permit,
+            rank = EXCLUDED.rank,
+            trust = EXCLUDED.trust,
+            incentive = EXCLUDED.incentive,
+            dividends = EXCLUDED.dividends,
+            stake_tao = EXCLUDED.stake_tao,
+            emission_tao = EXCLUDED.emission_tao,
+            captured_at = EXCLUDED.captured_at,
+            updated_at = EXCLUDED.updated_at
+          WHERE account_position_daily.captured_at <= EXCLUDED.captured_at`;
+      }
+
+      return writeJson({
+        ok: true,
+        neuron_daily_written: dailyRows.length,
+        account_position_daily_written: positionRows.length,
+      });
+    });
+  } catch (err) {
+    console.error("data-api neuron-daily-backfill write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+  // No sql.end() here: Hyperdrive automatically cleans up the connection when
+  // the request/invocation ends (Cloudflare's documented pattern).
+}
+
 // --- POST /api/v1/internal/rollup-account-events-daily (#4832 gap-closure) -
 //
 // account_events is written continuously by indexer-rs directly into this
@@ -2575,6 +2765,12 @@ export default {
       url.pathname === "/api/v1/internal/neurons-sync"
     ) {
       return handleNeuronsSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/backfill-neuron-daily"
+    ) {
+      return handleNeuronDailyBackfill(request, env);
     }
     if (
       request.method === "POST" &&

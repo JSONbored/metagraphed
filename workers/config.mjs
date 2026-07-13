@@ -6,18 +6,15 @@
 // without cycles.
 
 // Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
-// trigger prunes the D1 time-series; the fast trigger only drains staged batches
-// into D1; every other trigger runs the 15-minute probe.
+// trigger prunes the D1 time-series; every other trigger runs the 15-minute
+// probe. The former fast (*/3) staged-batch-drain trigger (#1346 Option A,
+// EVENTS_LOAD_CRON) is retired: its last consumer (loadStagedAccountIdentity)
+// was removed once refresh-account-identity moved to a direct-to-Postgres sync.
 export const HEALTH_PRUNE_CRON = "0 * * * *";
 // Daily embedding-sync trigger (Worker-runtime, since CI has no AI bindings).
 // Distinct minute (odd) so it never collides with the 15-minute probe or the
 // top-of-hour prune. Must match a wrangler.jsonc `triggers.crons` entry.
 export const EMBEDDING_SYNC_CRON = "37 3 * * *";
-// Fast event-load trigger (#1346 Option A): drains any R2-staged chain-event /
-// neuron batch into D1 within ~3 min — cutting ingestion latency from ~20 min to
-// ~5 min WITHOUT running the (heavier) health probe. Must match a wrangler.jsonc
-// `triggers.crons` entry.
-export const EVENTS_LOAD_CRON = "*/3 * * * *";
 // Daily neuron-history rollup (#1345 Tier-1): snapshots the current `neurons`
 // table into the dated neuron_daily table once a day, on its own minute (distinct
 // from the probe/prune/embed/fast crons) so the ~33k-row INSERT...SELECT runs

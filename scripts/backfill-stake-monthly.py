@@ -29,7 +29,7 @@ retains historical state. In bittensor 10.4.x the metagraph helpers live on
 `api.metagraphs` (NOT api.subnets).
 
 Run (one-time; resumable):
-  METAGRAPH_BACKFILL_SECRET=... \
+  NEURON_DAILY_BACKFILL_SECRET=... \
   uv run --with bittensor python scripts/backfill-stake-monthly.py --months 8
 """
 import argparse
@@ -46,9 +46,13 @@ NETWORK = "wss://bittensor-finney.api.onfinality.io/public-ws"
 BLOCK_MS = 12_000  # finney block time, empirically exactly 12.0s
 DAYS_PER_MONTH = 30  # month offset m = m*30 days ago (calendar-month precision n/a here)
 API_BASE = os.environ.get("METAGRAPH_API_BASE", "https://api.metagraph.sh")
-INGEST_PATH = "/api/v1/internal/backfill-neurons"
-INGEST_HEADER = "x-metagraph-events-token"  # EVENTS_INGEST_TOKEN_HEADER
-SECRET = os.environ.get("METAGRAPH_BACKFILL_SECRET") or os.environ.get(
+# /api/v1/internal/backfill-neurons (D1-only) was deleted alongside D1's
+# neuron_daily table (#4772/#4908); this writes neuron_daily/
+# account_position_daily's stake_tao in Postgres instead (workers/data-api.mjs's
+# handleNeuronDailyBackfill), same route as backfill-neuron-history.py.
+INGEST_PATH = "/api/v1/internal/backfill-neuron-daily"
+INGEST_HEADER = "x-neuron-daily-backfill-token"  # NEURON_DAILY_BACKFILL_TOKEN_HEADER
+SECRET = os.environ.get("NEURON_DAILY_BACKFILL_SECRET") or os.environ.get(
     "METAGRAPH_EVENTS_INGEST_SECRET", ""
 )
 

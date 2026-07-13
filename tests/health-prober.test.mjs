@@ -17,11 +17,6 @@ import {
   workerWebSocketConnector,
 } from "../src/health-prober.mjs";
 import { handleScheduled } from "../workers/api.mjs";
-import {
-  EMBEDDING_SYNC_CRON,
-  EVENTS_LOAD_CRON,
-  HEALTH_PRUNE_CRON,
-} from "../workers/config.mjs";
 
 describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
   // DoH JSON mock: maps host → { A: [...], AAAA: [...] }.
@@ -778,89 +773,13 @@ describe("handleScheduled dispatch", () => {
     assert.equal(probeResult.reason, "no-operational-surfaces");
   });
 
-  test("non-fast-load crons never drain the staged R2 file (audit #9)", async () => {
-    // INVARIANT: only the EVENTS_LOAD_CRON tick owns the unlocked staged
-    // read-modify-write drain. Every other cron (prune/embedding/prober) must NOT
-    // call loadStagedAccountIdentity — running it on concurrent ticks would let one
-    // invocation clobber a freshly-staged file via the delete path. We prove it by
-    // tracking R2 .get keys and asserting the staged key is never read.
-    // (loadStagedSubnetHyperparams's own staged key is retired alongside its
-    // loader now that subnet_hyperparams is fully Postgres-served -- no cron
-    // reads it anymore, so there's nothing left to assert here for it.)
-    const STAGED_KEYS = ["metagraph/account-identity-pending.json"];
-    for (const cron of [
-      HEALTH_PRUNE_CRON,
-      EMBEDDING_SYNC_CRON,
-      "*/15 * * * *", // the prober tick (any cron that is not EVENTS_LOAD_CRON)
-    ]) {
-      const getKeys = [];
-      const env = {
-        METAGRAPH_HEALTH_DB: makeDb(),
-        // A tracking bucket: any staged-key read would push it here. Incidental,
-        // non-staged reads (e.g. the prober's surface fallback) are allowed and
-        // return null so the path stays a clean no-op.
-        METAGRAPH_ARCHIVE: {
-          async get(key) {
-            getKeys.push(key);
-            return null;
-          },
-        },
-        // A signing key is REQUIRED for loadStagedNeurons to even reach its
-        // bucket.get — present here so the guard can't mask a regression where the
-        // loader is wrongly invoked on this tick.
-        METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
-      };
-      await handleScheduled({ cron }, env, {});
-      for (const stagedKey of STAGED_KEYS) {
-        assert.ok(
-          !getKeys.includes(stagedKey),
-          `cron ${cron} must not read staged key ${stagedKey}`,
-        );
-      }
-    }
-  });
-
-  test("fast-load cron drains the staged file then returns the marker (audit #9)", async () => {
-    // REGRESSION: the EVENTS_LOAD_CRON tick must still run the loader (one R2
-    // .get for its staged key) AND early-return the fast-load marker without
-    // falling through to the prober/prune. #4772 D1 chain-data retirement removed
-    // the neurons/events/blocks/extrinsics loaders; subnet_hyperparams's own
-    // loader is retired the same way now that it's fully Postgres-served, leaving
-    // account_identity as the one registry-side table still drained here.
-    const getKeys = [];
-    const env = {
-      METAGRAPH_HEALTH_DB: makeDb(),
-      METAGRAPH_ARCHIVE: {
-        async get(key) {
-          getKeys.push(key);
-          return null; // nothing staged → the loader no-ops after its read
-        },
-      },
-      METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
-    };
-    const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
-    assert.deepEqual(result, { ok: true, fast_load: true });
-    assert.ok(
-      getKeys.includes("metagraph/account-identity-pending.json"),
-      "the fast-load tick read the account-identity staged key",
-    );
-  });
-
-  test("fast-load cron isolates a staged-loader failure from the marker (#2092)", async () => {
-    // The drain is `.catch`-isolated, so the loader rejecting (here its R2 .get
-    // throws) must NOT propagate and change the fast-load marker.
-    const env = {
-      METAGRAPH_HEALTH_DB: makeDb(),
-      METAGRAPH_ARCHIVE: {
-        async get() {
-          throw new Error("R2 unavailable for account identity");
-        },
-      },
-      METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
-    };
-    const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
-    assert.deepEqual(result, { ok: true, fast_load: true });
-  });
+  // The three EVENTS_LOAD_CRON ("*/3 * * * *") tests that lived here (the
+  // non-fast-load-crons-never-drain invariant, the fast-load drain regression,
+  // and the drain-failure isolation test) are retired along with the trigger
+  // itself: loadStagedAccountIdentity (the last staged-R2-to-D1 loader) and
+  // workers/request-handlers/staging.mjs are deleted now that
+  // refresh-account-identity syncs straight to Postgres from the indexer-box
+  // cron pipeline. Nothing left to dispatch on that cron string.
 });
 
 describe("workerWebSocketConnector", () => {

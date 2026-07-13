@@ -47,7 +47,7 @@ jobs:
       - name: Backfill shard ${{ matrix.shard }}
         env:
           DAYS_PER_SHARD: ${{ inputs.days_per_shard }}
-          METAGRAPH_BACKFILL_SECRET: ${{ secrets.METAGRAPH_BACKFILL_SECRET }}
+          NEURON_DAILY_BACKFILL_SECRET: ${{ secrets.NEURON_DAILY_BACKFILL_SECRET }}
           METAGRAPH_API_BASE: https://api.metagraph.sh
         run: |
           case "$DAYS_PER_SHARD" in

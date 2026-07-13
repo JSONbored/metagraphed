@@ -48,7 +48,7 @@ jobs:
       - name: Backfill monthly stake
         env:
           MONTHS_INPUT: ${{ github.event.inputs.months }}
-          METAGRAPH_BACKFILL_SECRET: ${{ secrets.METAGRAPH_BACKFILL_SECRET }}
+          NEURON_DAILY_BACKFILL_SECRET: ${{ secrets.NEURON_DAILY_BACKFILL_SECRET }}
           METAGRAPH_API_BASE: https://api.metagraph.sh
         run: |
           MONTHS="${MONTHS_INPUT:-8}"

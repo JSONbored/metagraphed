@@ -26,7 +26,7 @@ DEFERRED (null): per-UID dTAO stake is runtime-only (childkey/TaoWeight math, no
 read); it accrues daily forward via the live rollup.
 
 Run (one-time; resumable):
-  METAGRAPH_BACKFILL_SECRET=... \
+  NEURON_DAILY_BACKFILL_SECRET=... \
   uv run --with bittensor --with xxhash==3.5.0 python scripts/backfill-neuron-history.py --days 365
 """
 import argparse
@@ -53,9 +53,15 @@ METRIC_VECTORS = (
 )
 KEY_CHUNK = 50  # >100 keys/call hits a latency cliff; 50 is the measured sweet spot
 API_BASE = os.environ.get("METAGRAPH_API_BASE", "https://api.metagraph.sh")
-INGEST_PATH = "/api/v1/internal/backfill-neurons"
-INGEST_HEADER = "x-metagraph-events-token"  # EVENTS_INGEST_TOKEN_HEADER
-SECRET = os.environ.get("METAGRAPH_BACKFILL_SECRET") or os.environ.get(
+# /api/v1/internal/backfill-neurons (D1-only) was deleted alongside D1's
+# neuron_daily table (#4772/#4908); this writes neuron_daily/
+# account_position_daily in Postgres instead (workers/data-api.mjs's
+# handleNeuronDailyBackfill) via its own dedicated secret/header -- NOT
+# neurons-sync's (that route also touches the latest-only `neurons` table and
+# runs a deregistration prune, both wrong for a historical backfill).
+INGEST_PATH = "/api/v1/internal/backfill-neuron-daily"
+INGEST_HEADER = "x-neuron-daily-backfill-token"  # NEURON_DAILY_BACKFILL_TOKEN_HEADER
+SECRET = os.environ.get("NEURON_DAILY_BACKFILL_SECRET") or os.environ.get(
     "METAGRAPH_EVENTS_INGEST_SECRET", ""
 )
 
