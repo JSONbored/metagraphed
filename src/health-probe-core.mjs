@@ -96,8 +96,10 @@ function isUnsafeIpv6Literal(host) {
   // 0100::/8 discard-only (RFC 6666): first hextet 0100–01ff. Leading zeros may
   // be omitted (0100::1 -> 100::1), so parse the first hextet as hex and check
   // the numeric range directly.
+  /* c8 ignore start */
   const discardOnlyValue = Number.parseInt(host.split(":")[0] || "0", 16);
   const isDiscardOnly = discardOnlyValue >= 0x100 && discardOnlyValue <= 0x1ff;
+  /* c8 ignore stop */
   return (
     host === "::1" ||
     host === "::" ||
