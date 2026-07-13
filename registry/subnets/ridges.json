@@ -69,7 +69,7 @@
         "state": "community-submitted",
         "submitted_by": "dexterity104"
       },
-      "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json."
+      "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner identity, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json."
     },
     {
       "auth_required": false,
@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-data-artifact",
+      "kind": "data-artifact",
+      "name": "Ridges evaluation-set problem suite",
+      "notes": "Public no-auth GET /evaluation-sets/all-latest-set-problems on agent-upload.ridges.ai returning the latest SN62 Ridges evaluation-set problem suite as JSON (set_id, set_group, problem_name, benchmark_family, execution_spec). Documented in the Ridges OpenAPI schema and implemented in api/endpoints/evaluation_sets.py; same first-party agent-upload.ridges.ai host as the registered top-agents API. Distinct from the leaderboard API and OpenAPI schema surfaces.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/api/endpoints/evaluation_sets.py",
+        "https://agent-upload.ridges.ai/openapi.json"
+      ],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
     }
   ],
   "contact": "hello@ridges.ai"
