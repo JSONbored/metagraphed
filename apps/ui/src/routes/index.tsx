@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
-import { ArrowUpRight, FileCode2 } from "lucide-react";
+import { Suspense, useState } from "react";
+import { ArrowUpRight, ChevronDown, FileCode2 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
@@ -73,6 +73,13 @@ export const Route = createFileRoute("/")({
 function OverviewPage() {
   // #1117: live registry pulse — refresh the homepage's live data on each publish.
   useRegistryEvents();
+  // #5327: the homepage stacked 15+ equal-weight sections (~14,000px tall on
+  // mobile). Keep the hero + KPIs and the "what's tracked" overview always
+  // visible; everything past it is the deeper registry dive, collapsed behind a
+  // single "show more" disclosure so it's reachable but not forced into the
+  // initial scroll. Collapsed sections don't mount, so their queries don't fire
+  // until opened.
+  const [showMore, setShowMore] = useState(false);
   return (
     <AppShell>
       <HomeHero />
@@ -103,167 +110,196 @@ function OverviewPage() {
         <TrackedGrid />
       </section>
 
-      <LivePerformance />
+      {!showMore && (
+        <div className="mt-section-gap flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowMore(true)}
+            aria-expanded={false}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+          >
+            Show more of the registry
+            <ChevronDown className="size-4" />
+          </button>
+        </div>
+      )}
+      {showMore && (
+        <>
+          <LivePerformance />
 
-      {/* #1124: live registry signal band — curation funnel + network pulse +
+          {/* #1124: live registry signal band — curation funnel + network pulse +
           what-changed feed, scoped to a shared time range. Wired to real coverage/
           health/changelog/incident data. */}
-      <ScrollReveal>
-        <section className="mt-section-gap">
-          <TimeRangeProvider>
-            <div className="mb-3 flex items-end justify-between gap-3">
-              <SectionHeader
-                inline
-                eyebrow="Signal"
-                live
-                title="Live registry signal."
-                description="Curation depth, network pulse, and the latest changes."
-              />
-              <TimeRangeScrub />
-            </div>
-            <QueryErrorBoundary>
-              <div className="grid gap-4 lg:grid-cols-12">
-                <Suspense fallback={<Skeleton className="h-72 lg:col-span-5" />}>
-                  <div className="lg:col-span-5">
-                    <CoverageFunnel />
+          <ScrollReveal>
+            <section className="mt-section-gap">
+              <TimeRangeProvider>
+                <div className="mb-3 flex items-end justify-between gap-3">
+                  <SectionHeader
+                    inline
+                    eyebrow="Signal"
+                    live
+                    title="Live registry signal."
+                    description="Curation depth, network pulse, and the latest changes."
+                  />
+                  <TimeRangeScrub />
+                </div>
+                <QueryErrorBoundary>
+                  <div className="grid gap-4 lg:grid-cols-12">
+                    <Suspense fallback={<Skeleton className="h-72 lg:col-span-5" />}>
+                      <div className="lg:col-span-5">
+                        <CoverageFunnel />
+                      </div>
+                    </Suspense>
+                    <Suspense fallback={<Skeleton className="h-72 lg:col-span-7" />}>
+                      <div className="lg:col-span-7">
+                        <NetworkPulseBand />
+                      </div>
+                    </Suspense>
+                    <Suspense fallback={<Skeleton className="h-64 lg:col-span-12" />}>
+                      <div className="lg:col-span-12">
+                        <WhatChangedFeed />
+                      </div>
+                    </Suspense>
                   </div>
-                </Suspense>
-                <Suspense fallback={<Skeleton className="h-72 lg:col-span-7" />}>
-                  <div className="lg:col-span-7">
-                    <NetworkPulseBand />
-                  </div>
-                </Suspense>
-                <Suspense fallback={<Skeleton className="h-64 lg:col-span-12" />}>
-                  <div className="lg:col-span-12">
-                    <WhatChangedFeed />
-                  </div>
-                </Suspense>
-              </div>
-            </QueryErrorBoundary>
-          </TimeRangeProvider>
-        </section>
-      </ScrollReveal>
+                </QueryErrorBoundary>
+              </TimeRangeProvider>
+            </section>
+          </ScrollReveal>
 
-      {/* #5: registry depth — completeness score distribution, surface-dimension
+          {/* #5: registry depth — completeness score distribution, surface-dimension
           coverage, and the ranked enrichment queue. Wired to /api/v1/registry/summary
           + /api/v1/coverage-depth. Each module renders inside its own error boundary
           so a single artifact gap never blanks the whole section. */}
-      <ScrollReveal>
-        <section className="mt-section-gap">
-          <SectionHeader
-            eyebrow="Registry depth"
-            title="How complete is the registry?"
-            description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
-          />
-          <div className="grid gap-4 lg:grid-cols-12">
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-64 lg:col-span-7" />}>
-                <div className="lg:col-span-7">
-                  <RegistryScoreHistogram className="h-full" />
+          <ScrollReveal>
+            <section className="mt-section-gap">
+              <SectionHeader
+                eyebrow="Registry depth"
+                title="How complete is the registry?"
+                description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
+              />
+              <div className="grid gap-4 lg:grid-cols-12">
+                <QueryErrorBoundary>
+                  <Suspense fallback={<Skeleton className="h-64 lg:col-span-7" />}>
+                    <div className="lg:col-span-7">
+                      <RegistryScoreHistogram className="h-full" />
+                    </div>
+                  </Suspense>
+                </QueryErrorBoundary>
+                <QueryErrorBoundary>
+                  <Suspense fallback={<Skeleton className="h-64 lg:col-span-5" />}>
+                    <div className="lg:col-span-5">
+                      <DimensionCoverageHeatmap className="h-full" />
+                    </div>
+                  </Suspense>
+                </QueryErrorBoundary>
+                <div className="lg:col-span-12">
+                  <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Enrichment queue
+                  </div>
+                  <QueryErrorBoundary>
+                    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                      <EnrichmentQueueTable />
+                    </Suspense>
+                  </QueryErrorBoundary>
                 </div>
-              </Suspense>
-            </QueryErrorBoundary>
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-64 lg:col-span-5" />}>
-                <div className="lg:col-span-5">
-                  <DimensionCoverageHeatmap className="h-full" />
-                </div>
-              </Suspense>
-            </QueryErrorBoundary>
-            <div className="lg:col-span-12">
-              <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-                Enrichment queue
               </div>
-              <QueryErrorBoundary>
-                <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-                  <EnrichmentQueueTable />
-                </Suspense>
-              </QueryErrorBoundary>
-            </div>
-          </div>
-        </section>
-      </ScrollReveal>
+            </section>
+          </ScrollReveal>
 
-      <LeaderboardsModule />
-      <QueryErrorBoundary fallback={() => null}>
-        <Suspense fallback={<Skeleton className="h-48 w-full mt-section-gap" />}>
-          <MoversBand />
-        </Suspense>
-      </QueryErrorBoundary>
+          <LeaderboardsModule />
+          <QueryErrorBoundary fallback={() => null}>
+            <Suspense fallback={<Skeleton className="h-48 w-full mt-section-gap" />}>
+              <MoversBand />
+            </Suspense>
+          </QueryErrorBoundary>
 
-      <QuickActionsRow />
+          <QuickActionsRow />
 
-      {/* #5171: featured pilots are schema-backed (registry `partnership.tier ===
+          {/* #5171: featured pilots are schema-backed (registry `partnership.tier ===
           "pilot"`), not a hardcoded slug/netuid list — adding or removing one is
           a registry data change. Renders null until the list resolves (and stays
           null if it's empty), so an empty/failed fetch never leaves a dangling
           "Pilots" heading. */}
-      <QueryErrorBoundary fallback={() => null}>
-        <Suspense fallback={null}>
-          <PilotsSection />
-        </Suspense>
-      </QueryErrorBoundary>
+          <QueryErrorBoundary fallback={() => null}>
+            <Suspense fallback={null}>
+              <PilotsSection />
+            </Suspense>
+          </QueryErrorBoundary>
 
-      <section className="mt-section-gap">
-        <div className="flex items-end justify-between mb-6">
-          <SectionHeader inline eyebrow="Active subnets" live title="The live registry." />
-          <Link
-            to="/subnets"
-            className="inline-flex items-center gap-1 text-xs font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-accent transition-colors group"
-          >
-            View all
-            <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </Link>
-        </div>
-        <QueryErrorBoundary>
-          <Suspense fallback={<TableSkeleton />}>
-            <SubnetPreviewTable />
-          </Suspense>
-        </QueryErrorBoundary>
-      </section>
+          <section className="mt-section-gap">
+            <div className="flex items-end justify-between mb-6">
+              <SectionHeader inline eyebrow="Active subnets" live title="The live registry." />
+              <Link
+                to="/subnets"
+                className="inline-flex items-center gap-1 text-xs font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-accent transition-colors group"
+              >
+                View all
+                <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </Link>
+            </div>
+            <QueryErrorBoundary>
+              <Suspense fallback={<TableSkeleton />}>
+                <SubnetPreviewTable />
+              </Suspense>
+            </QueryErrorBoundary>
+          </section>
 
-      {/* #3474: live network-wide feed of recent subnet-identity changes. */}
-      <section className="mt-section-gap">
-        <SectionHeader
-          eyebrow="Network activity"
-          title="Recent identity changes."
-          description="Subnet name, symbol, and profile edits observed on-chain across the network, newest first."
-        />
-        <QueryErrorBoundary>
-          <RecentIdentityChanges />
-        </QueryErrorBoundary>
-      </section>
+          {/* #3474: live network-wide feed of recent subnet-identity changes. */}
+          <section className="mt-section-gap">
+            <SectionHeader
+              eyebrow="Network activity"
+              title="Recent identity changes."
+              description="Subnet name, symbol, and profile edits observed on-chain across the network, newest first."
+            />
+            <QueryErrorBoundary>
+              <RecentIdentityChanges />
+            </QueryErrorBoundary>
+          </section>
 
-      <section className="mt-section-gap">
-        <SectionHeader
-          eyebrow="For developers"
-          title="Public, read-only, JSON-Schema canonical."
-          description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
-        />
-        <div className="rounded-xl border border-border bg-card p-6 max-w-2xl">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted mb-2">
-            Try it
-          </div>
-          <CopyableCode
-            value={`curl ${API_BASE}/api/v1/subnets`}
-            className="w-full text-[12px]"
-            truncate={false}
-          />
-          <div className="mt-3 flex gap-4 text-xs">
-            <Link to="/schemas" className="text-accent-text hover:underline">
-              API reference →
-            </Link>
-            <a
-              href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
-              className="text-ink-muted hover:text-ink-strong"
-              target="_blank"
-              rel="noreferrer"
+          <section className="mt-section-gap">
+            <SectionHeader
+              eyebrow="For developers"
+              title="Public, read-only, JSON-Schema canonical."
+              description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
+            />
+            <div className="rounded-xl border border-border bg-card p-6 max-w-2xl">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted mb-2">
+                Try it
+              </div>
+              <CopyableCode
+                value={`curl ${API_BASE}/api/v1/subnets`}
+                className="w-full text-[12px]"
+                truncate={false}
+              />
+              <div className="mt-3 flex gap-4 text-xs">
+                <Link to="/schemas" className="text-accent-text hover:underline">
+                  API reference →
+                </Link>
+                <a
+                  href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
+                  className="text-ink-muted hover:text-ink-strong"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  OpenAPI spec
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <div className="mt-section-gap flex justify-center">
+            <button
+              type="button"
+              onClick={() => setShowMore(false)}
+              aria-expanded
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-accent"
             >
-              OpenAPI spec
-            </a>
+              Show less
+              <ChevronDown className="size-4 rotate-180" />
+            </button>
           </div>
-        </div>
-      </section>
+        </>
+      )}
 
       <AccentBand pattern className="mt-20">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
