@@ -309,6 +309,25 @@
         "https://verathos.ai/docs"
       ],
       "url": "https://api.verathos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-subnet-api-verathos-ai",
+      "kind": "subnet-api",
+      "name": "Verathos dashboard API",
+      "notes": "Public no-auth GET /api/dashboard returning SN96 Verathos network dashboard JSON: proxy connectivity, epoch, miner/model status, scores, hardware metadata, and usage counters. Documented in the official Verathos OpenAPI under the dashboard tag; distinct from the existing model-list, health, circulating-supply, chain-info, and model-preset surfaces.",
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kstefanovic"
+      },
+      "source_urls": [
+        "https://verathos.ai/openapi.json",
+        "https://verathos.ai/docs"
+      ],
+      "url": "https://verathos.ai/api/dashboard"
     }
   ],
   "website_url": "https://verathos.ai/"
