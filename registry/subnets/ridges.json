@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-taomarketcap-candle-chart",
+      "kind": "data-artifact",
+      "name": "SN62 TaoMarketCap OHLCV candle-chart dataset",
+      "notes": "Public no-auth GET /public/v1/subnets/62/candle-chart on api.taomarketcap.com returning a machine-readable JSON time-series of hourly OHLCV candles for SN62 Ridges's alpha token: each record carries subnet_id, period_name, timestamp, block_number, open/high/low/close, volume, start_volume, and tao_price_usd/eur, every record scoped to subnet_id 62 (714 hourly records at time of submission). A standalone historical price/volume dataset for netuid 62 — distinct from the live agent-leaderboard subnet-api already registered — providing the machine-readable data artifact this subnet otherwise lacks. Documented in the TaoMarketCap developer API documentation; taomarketcap.com/subnets/62 is already this overlay's dashboard_url, confirming the provider indexes netuid 62.",
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "davion-knight"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://taomarketcap.com/subnets/62"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/62/candle-chart/"
     }
   ],
   "contact": "hello@ridges.ai"
