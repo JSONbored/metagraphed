@@ -1211,6 +1211,39 @@ test("GET /api/v1/accounts/:ss58/events with no matching rows returns a schema-s
   expect(body.next_cursor).toBeNull();
 });
 
+// #5474: the three events feeds document a <=1000 / default-100 profile at their
+// entities.mjs handlers, but the Postgres tier (which always wins in production
+// after the D1 retirement) used to silently re-cap them at the local 200/50 via
+// clampLimit. clampEventsLimit now applies the shared FEED_PAGINATION so the
+// effective, production-serving cap matches the documentation.
+test("GET /api/v1/accounts/:ss58/events honors the documented 1000 feed cap, not the local 200 (#5474)", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/accounts/${SS58}/events?limit=1000`);
+  expect(res.status).toBe(200);
+  expect((await res.json()).limit).toBe(1000);
+});
+
+test("GET /api/v1/subnets/:netuid/events honors the documented 1000 feed cap (#5474)", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/subnets/4/events?limit=1000");
+  expect(res.status).toBe(200);
+  expect((await res.json()).limit).toBe(1000);
+});
+
+test("GET /api/v1/blocks/:ref/events honors the documented 1000 feed cap (#5474)", async () => {
+  mockQueue.current = [[], [{ block_number: 8586300 }], []];
+  const res = await req("/api/v1/blocks/8586300/events?limit=1000");
+  expect(res.status).toBe(200);
+  expect((await res.json()).data.limit).toBe(1000);
+});
+
+test("events feeds fall back to the documented default of 100, not the local 50 (#5474)", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/accounts/${SS58}/events`);
+  expect(res.status).toBe(200);
+  expect((await res.json()).limit).toBe(100);
+});
+
 test("GET /api/v1/accounts/:ss58/extrinsics matches the signer column only, not hotkey/coldkey", async () => {
   mockRows.current = [EXTRINSIC_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/extrinsics`);

@@ -2798,6 +2798,15 @@ function clampBlockLimit(raw) {
   return clampRequestLimit(raw, BLOCK_PAGINATION);
 }
 
+// The account/block/subnet events feeds document a <=1000 / default-100 profile
+// (FEED_PAGINATION) at their entities.mjs handlers; use the shared profile here
+// too so the Postgres-tier path (which always wins in production, #4772/#4909)
+// doesn't silently re-cap them at the local clampLimit's 200 (#5474). The local
+// clampLimit still governs the non-events routes (extrinsics/transfers/chain-events).
+function clampEventsLimit(raw) {
+  return clampRequestLimit(raw, FEED_PAGINATION);
+}
+
 function clampOffset(raw) {
   return clampRequestOffset(raw);
 }
@@ -3521,7 +3530,7 @@ export default {
         );
         if (blockRefEvents) {
           const ref = decodeURIComponent(blockRefEvents[1]);
-          const limit = clampLimit(url.searchParams.get("limit"));
+          const limit = clampEventsLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
           const blockNumber = await resolveBlockNumberPg(sql, ref);
           const rows =
@@ -3844,7 +3853,7 @@ export default {
         );
         if (acctEvents) {
           const ss58 = decodeURIComponent(acctEvents[1]);
-          const limit = clampLimit(url.searchParams.get("limit"));
+          const limit = clampEventsLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
           const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
           const kind = url.searchParams.get("kind") || null;
@@ -3891,7 +3900,7 @@ export default {
         );
         if (subnetEventsRoute) {
           const netuid = Number(subnetEventsRoute[1]);
-          const limit = clampLimit(url.searchParams.get("limit"));
+          const limit = clampEventsLimit(url.searchParams.get("limit"));
           const offset = clampOffset(url.searchParams.get("offset"));
           const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
           const kind = url.searchParams.get("kind") || null;
