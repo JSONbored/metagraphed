@@ -16,3 +16,6 @@ CHANGELOG.md
 # machine-generated JSON nobody hand-edits; reformatting would just bloat
 # the diff on every re-record with no readability benefit.
 tests/e2e/har/*.har
+
+# Playwright run artifacts (gitignored); not hand-edited.
+test-results/
