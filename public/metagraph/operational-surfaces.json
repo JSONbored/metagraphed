@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 119,
+  "surface_count": 134,
   "surfaces": [
     {
       "auth_required": false,
@@ -718,6 +718,42 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-public-inference-models",
+      "surface_key": "srf-1d9e3afff1f4f5a7",
+      "url": "https://api.oroagents.com/v1/public/inference/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 15,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "subnet_name": "ORO",
+      "subnet_slug": "sn-15",
+      "surface_id": "sn-15-oro-public-top-history",
+      "surface_key": "srf-57ea439895d9faf9",
+      "url": "https://api.oroagents.com/v1/public/top/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 21,
       "probe": {
         "expect": "json",
@@ -1006,6 +1042,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
+      "netuid": 36,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eirel",
+      "public_safe": true,
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "surface_id": "sn-36-eirel-dashboard-families-api",
+      "surface_key": "srf-f10d09696922e4d4",
+      "url": "https://api.eirel.ai/api/v1/dashboard/families"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
       "netuid": 43,
       "probe": {
         "expect": "json",
@@ -1109,6 +1163,24 @@
       "surface_id": "sn-51-lium-io-machines-api",
       "surface_key": "srf-f604cb709cccadea",
       "url": "https://lium.io/api/machines"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-machines-capacity-api",
+      "surface_key": "srf-46b50638c6bdc2e3",
+      "url": "https://lium.io/api/machines/capacity"
     },
     {
       "auth_required": false,
@@ -1487,6 +1559,24 @@
       "surface_id": "sn-64-website-link-chutes-ai-data-artifact-6",
       "surface_key": "srf-dea1477f513710c8",
       "url": "https://chutes.ai/app?type=diffusion"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 68,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nova",
+      "public_safe": true,
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "surface_id": "sn-68-nova-competition-config",
+      "surface_key": "srf-f82edcb4637712d4",
+      "url": "https://raw.githubusercontent.com/metanova-labs/nova/f7a313bc7d17bbd64b42c670c5c04a62d9b4599d/config/config.yaml"
     },
     {
       "auth_required": false,
@@ -1869,6 +1959,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 94,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "subnet_name": "Bitsota",
+      "subnet_slug": "sn-94",
+      "surface_id": "sn-94-bitsota-capacitor-abi",
+      "surface_key": "srf-6b2c1d5c279405df",
+      "url": "https://raw.githubusercontent.com/AlveusLabs/SN94-BitSota/9a91af33b69a42ea9c124ea8a7ea4f05203fde04/capacitor_abi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 94,
       "probe": {
@@ -1922,6 +2030,42 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 94,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "subnet_name": "Bitsota",
+      "subnet_slug": "sn-94",
+      "surface_id": "sn-94-bitsota-problem-config",
+      "surface_key": "srf-254611a2f64dd71b",
+      "url": "https://raw.githubusercontent.com/AlveusLabs/SN94-BitSota/61f81b32054a7ed502faa319b97b90b80b897c13/problem_config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 95,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "actual-computer",
+      "public_safe": true,
+      "subnet_name": "Actual",
+      "subnet_slug": "actual",
+      "surface_id": "sn-95-actual-llms-txt",
+      "surface_key": "srf-69f92fb5a90f2a85",
+      "url": "https://actual.inc/llms.txt"
+    },
+    {
+      "auth_required": false,
       "authority": "provider-claimed",
       "kind": "data-artifact",
       "netuid": 95,
@@ -1940,6 +2084,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 95,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "actual-computer",
+      "public_safe": true,
+      "subnet_name": "Actual",
+      "subnet_slug": "actual",
+      "surface_id": "sn-95-actual-model-registry-index",
+      "surface_key": "srf-3af77cb7779cfdd7",
+      "url": "https://models.actual.inc/index.json"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "subnet-api",
       "netuid": 96,
@@ -1955,6 +2117,24 @@
       "surface_id": "sn-96-verathos-models-api",
       "surface_key": "srf-4f803cf3db704548",
       "url": "https://api.verathos.ai/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 98,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 15000
+      },
+      "provider": "forevermoney",
+      "public_safe": true,
+      "subnet_name": "ForeverMoney",
+      "subnet_slug": "sn-98",
+      "surface_id": "sn-98-forevermoney-liquidity-manager-abi",
+      "surface_key": "srf-4bf61d5128114a89",
+      "url": "https://raw.githubusercontent.com/SN98-ForeverMoney/forever-money/7acfc5422a4e1714670275bf8dc2b32c1f815756/validator/utils/abis/LiquidityManager.json"
     },
     {
       "auth_required": false,
@@ -2009,6 +2189,60 @@
       "surface_id": "sn-100-platform-network-subnet-api",
       "surface_key": "srf-196044ef4420d344",
       "url": "https://chain.joinbase.ai/v1/registry"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 101,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "eni",
+      "public_safe": true,
+      "subnet_name": "eni",
+      "subnet_slug": "eni",
+      "surface_id": "sn-101-eni-min-compute",
+      "surface_key": "srf-b3f2c86ee64bac9a",
+      "url": "https://raw.githubusercontent.com/tag101-ai/tag101/115f36da7c483d16018d4c16a14f8fb8d0433306/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 106,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "subnet_name": "Nodexo",
+      "subnet_slug": "nodexo",
+      "surface_id": "sn-106-nodexo-bundled-subnet-config",
+      "surface_key": "srf-a1a8fc559b9b9302",
+      "url": "https://raw.githubusercontent.com/nodexo-ai/nodexo/a461e3f96d3c4714d4e0311669a665086bb46f3e/common/bundled_subnet_config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 106,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "subnet_name": "Nodexo",
+      "subnet_slug": "nodexo",
+      "surface_id": "sn-106-nodexo-subnetconfig-abi",
+      "surface_key": "srf-ca591e02a0f074fe",
+      "url": "https://raw.githubusercontent.com/nodexo-ai/nodexo/f104f2fa848da6bc7d02b7ac00a2c9a7f1a5af73/abis/SubnetConfig.json"
     },
     {
       "auth_required": false,
@@ -2153,6 +2387,42 @@
       "surface_id": "sn-118-website-link-heyditto-ai-data-artifact-3",
       "surface_key": "srf-eeeec504a19120d3",
       "url": "https://heyditto.ai/ditto-vs-frontier-open-models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 121,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "subnet_name": "sundae_bar",
+      "subnet_slug": "sn-121",
+      "surface_id": "sn-121-sundae-bar-llms-txt",
+      "surface_key": "srf-6fd37fa3404ce4a1",
+      "url": "https://www.sundaebar.ai/llms.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 121,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "subnet_name": "sundae_bar",
+      "subnet_slug": "sn-121",
+      "surface_id": "sn-121-sundae-bar-products-api",
+      "surface_key": "srf-fea5a2891a302b8a",
+      "url": "https://www.sundaebar.ai/api/products"
     }
   ]
 }
