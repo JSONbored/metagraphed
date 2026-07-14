@@ -135,6 +135,30 @@ describe("economicsTrendsQuery", () => {
     });
   });
 
+  it("normalizes total_stake_tao when the API sends the new lossless rao-precision string (#2924)", async () => {
+    // The network-wide sum already exceeds a JSON number's exact-double
+    // ceiling (~9,007,199 TAO at rao precision), so the wire contract now
+    // sends a fixed 9-decimal string instead of a number -- confirm the
+    // existing defensive coercion (already tolerant of D1 numeric-string
+    // cells) parses it into a display-ready number with no code change.
+    resolveWith({
+      window: "30d",
+      day_count: 1,
+      days: [
+        {
+          snapshot_date: "2026-07-08",
+          subnet_count: 129,
+          total_stake_tao: "327838334.635978317",
+        },
+      ],
+    });
+    const res = await runQuery("30d");
+    // Number(...) here too, not a source literal -- the same 18-significant-
+    // digit value would trip eslint's no-loss-of-precision if written out,
+    // which is exactly the class of bug #2924 exists to avoid on the wire.
+    expect(res.data.days[0].total_stake_tao).toBe(Number("327838334.635978317"));
+  });
+
   it("caps the rendered rows at 31 days", async () => {
     resolveWith({
       day_count: 60,

@@ -4568,7 +4568,8 @@ export interface components {
                 registration_open_count: number;
                 subnet_count: number;
                 total_miners: number;
-                total_stake_tao: number;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. */
+                total_stake_tao: string;
                 total_validators: number;
                 with_economics_count: number;
             };
@@ -4590,7 +4591,8 @@ export interface components {
             miner_count?: number | null;
             snapshot_date: string;
             subnet_count: number;
-            total_stake_tao?: number | null;
+            /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide daily total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. Null only when no subnet reported a value that day. */
+            total_stake_tao?: string | null;
             validator_count?: number | null;
         };
         EndpointIncident: {
@@ -16052,7 +16054,7 @@ export interface operations {
                      *           "registration_open_count": 1,
                      *           "subnet_count": 1,
                      *           "total_miners": 1,
-                     *           "total_stake_tao": 0.5,
+                     *           "total_stake_tao": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
                      *         }

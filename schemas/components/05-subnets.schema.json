@@ -1377,7 +1377,11 @@
                 "properties": {
                   "subnet_count": { "type": "integer", "minimum": 0 },
                   "with_economics_count": { "type": "integer", "minimum": 0 },
-                  "total_stake_tao": { "type": "number", "minimum": 0 },
+                  "total_stake_tao": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d{9}$",
+                    "description": "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding."
+                  },
                   "total_validators": { "type": "integer", "minimum": 0 },
                   "total_miners": { "type": "integer", "minimum": 0 },
                   "registration_open_count": { "type": "integer", "minimum": 0 }
@@ -2516,7 +2520,13 @@
         "properties": {
           "snapshot_date": { "type": "string" },
           "subnet_count": { "type": "integer", "minimum": 0 },
-          "total_stake_tao": { "type": ["number", "null"] },
+          "total_stake_tao": {
+            "oneOf": [
+              { "type": "string", "pattern": "^\\d+\\.\\d{9}$" },
+              { "type": "null" }
+            ],
+            "description": "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide daily total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. Null only when no subnet reported a value that day."
+          },
           "alpha_price_tao_weighted": { "type": ["number", "null"] },
           "alpha_price_tao_median": { "type": ["number", "null"] },
           "validator_count": { "type": ["integer", "null"] },

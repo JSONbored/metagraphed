@@ -8351,7 +8351,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.window, "30d");
     assert.equal(out.day_count, 2);
     assert.equal(out.days[0].snapshot_date, "2026-06-01");
-    assert.equal(out.days[1].total_stake_tao, 1000);
+    assert.equal(out.days[1].total_stake_tao, "1000.000000000");
   });
 
   test("get_economics_trends rejects an invalid window", async () => {

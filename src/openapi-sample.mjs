@@ -34,6 +34,10 @@ function valueForPattern(pattern, name = "") {
       return "2026-06-01";
     case "^\\d+\\.\\d+$":
       return CURSOR2;
+    case "^\\d+\\.\\d{9}$":
+      // Lossless rao-precision TAO string (#2924) -- network-wide sums that
+      // already exceed a JSON number's exact-double ceiling.
+      return "327838334.635978200";
     case "^\\d+\\.\\d+\\.\\d+$":
       return CURSOR3;
     case "^[a-z0-9][a-z0-9-]*$":
