@@ -4397,7 +4397,7 @@ export const MCP_TOOLS = [
       required: ["hotkey"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const hotkey = requireHotkey(args);
       const window =
         optionalEnum(args, "window", Object.keys(NOMINATOR_WINDOWS)) ??
@@ -4417,12 +4417,25 @@ export const MCP_TOOLS = [
           "Argument `coldkey` must be a valid SS58 account address (base58, 47-48 chars).",
         );
       }
-      return buildValidatorNominators([], hotkey, {
-        window,
-        sort,
-        limit,
-        offset,
-      });
+      // The DATA_API route (workers/data-api.mjs) wraps its response as
+      // { data, generatedAt } -- unlike the flat-shaped neurons-tier routes
+      // mcpNeuronsTierRequest's other callers hit, this one needs its own
+      // .data unwrap or a live-Postgres response would violate this tool's
+      // own outputSchema (hotkey/nominator_count/nominators at the top
+      // level) the moment METAGRAPH_ACCOUNT_EVENTS_SOURCE flips to postgres.
+      return (
+        (
+          await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(
+              `/api/v1/validators/${encodeURIComponent(hotkey)}/nominators`,
+              { window, sort, limit, offset, coldkey },
+            ),
+            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )
+        )?.data ??
+        buildValidatorNominators([], hotkey, { window, sort, limit, offset })
+      );
     },
   },
   {
@@ -5128,6 +5141,19 @@ export const MCP_TOOLS = [
       return buildAccountPositionHistory([], ss58, netuid, { window: label });
     },
   },
+  // get_account_stake_flow, get_account_stake_moves, get_account_axon_removals,
+  // get_account_prometheus, get_account_registrations, get_account_weight_setters,
+  // get_account_serving, and get_account_deregistrations (this cluster) are not
+  // yet wired to Postgres -- each still calls its builder unconditionally with an
+  // empty D1 result (account_events' D1 write path is retired, #4772), taking an
+  // unused _ctx. When one of these gets wired: its DATA_API route in
+  // workers/data-api.mjs returns json({ data: builder(...), generatedAt }), the
+  // SAME wrapped shape get_validator_nominators's own DATA_API route uses (see
+  // that tool's handler, above) -- not the flat shape the neurons-tier routes
+  // mcpNeuronsTierRequest's other callers hit. Wiring one of these with a bare
+  // `tryPostgresTier(...) ?? builder(...)` (no `.data` unwrap) would violate its
+  // own outputSchema the moment the Postgres flag flips on, exactly as
+  // get_validator_nominators's own wiring had to guard against.
   {
     name: "get_account_stake_flow",
     title: "Get an account's staking flow scorecard",

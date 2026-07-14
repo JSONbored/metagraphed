@@ -14038,6 +14038,54 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.match(badColdkey.body.result.content[0].text, /coldkey/);
   });
 
+  test("get_validator_nominators: flag=postgres unwraps the DATA_API {data, generatedAt} envelope onto the top level", async () => {
+    // workers/data-api.mjs's own nominators route wraps its response as
+    // { data: buildValidatorNominators(...), generatedAt } -- unlike the
+    // flat-shaped neurons-tier routes. Assert hotkey/nominator_count/
+    // nominators land at the TOP of structuredContent (matching this tool's
+    // own outputSchema), not nested under .data, so a future regression to a
+    // bare `tryPostgresTier(...) ?? builder(...)` (no unwrap) fails loudly
+    // here instead of only violating the schema silently in production.
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: {
+              schema_version: 1,
+              hotkey: HOTKEY,
+              window: "30d",
+              sort: "net_staked",
+              limit: 20,
+              offset: 0,
+              nominator_count: 1,
+              nominators: [
+                {
+                  coldkey: "5Cold",
+                  net_staked_tao: 10,
+                  gross_staked_tao: 10,
+                  unstaked_tao: 0,
+                  event_count: 1,
+                  last_observed_at: "2026-07-01T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-01T00:00:00.000Z",
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_validator_nominators",
+      { hotkey: HOTKEY },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.data, undefined);
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.nominator_count, 1);
+    assert.equal(out.nominators[0].coldkey, "5Cold");
+  });
+
   test("get_validator_history returns a schema-stable empty point series", async () => {
     const res = await callTool("get_validator_history", { hotkey: HOTKEY });
     const out = res.body.result.structuredContent;
