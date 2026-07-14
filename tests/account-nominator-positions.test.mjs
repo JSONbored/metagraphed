@@ -98,6 +98,24 @@ describe("stakeByHotkeyNetuid", () => {
     ]);
     assert.equal(map.size, 0);
   });
+
+  test("skips a row with a negative netuid or a blank/whitespace-only string netuid/stake_tao", () => {
+    const map = stakeByHotkeyNetuid([
+      { hotkey: "5Hk1", netuid: -1, stake_tao: 1000 },
+      { hotkey: "5Hk1", netuid: "", stake_tao: 1000 },
+      { hotkey: "5Hk1", netuid: "  ", stake_tao: 1000 },
+      { hotkey: "5Hk1", netuid: 3, stake_tao: "" },
+      { hotkey: "5Hk1", netuid: 3, stake_tao: "   " },
+    ]);
+    assert.equal(map.size, 0);
+  });
+
+  test("accepts a numeric-string netuid/stake_tao (D1/Postgres text cell coercion)", () => {
+    const map = stakeByHotkeyNetuid([
+      { hotkey: "5Hk1", netuid: "3", stake_tao: "1000" },
+    ]);
+    assert.equal(map.get("5Hk1|3"), 1000);
+  });
 });
 
 describe("distinctHotkeys", () => {
@@ -210,6 +228,193 @@ describe("buildAccountPositions", () => {
       "5Cold",
     );
     assert.equal(data.position_count, 0);
+  });
+
+  test("skips a row with a negative or blank/whitespace-only string share_fraction", () => {
+    const data = buildAccountPositions(
+      [
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 3,
+          share_fraction: -0.1,
+          captured_at: 1,
+        },
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 3,
+          share_fraction: "",
+          captured_at: 1,
+        },
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 3,
+          share_fraction: "  ",
+          captured_at: 1,
+        },
+      ],
+      new Map([["5Hk1|3", 1000]]),
+      "5Cold",
+    );
+    assert.equal(data.position_count, 0);
+  });
+
+  test("accepts a numeric-string netuid/share_fraction (D1/Postgres text cell coercion)", () => {
+    const data = buildAccountPositions(
+      [
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: "3",
+          share_fraction: "0.25",
+          captured_at: 1,
+        },
+      ],
+      new Map([["5Hk1|3", 1000]]),
+      "5Cold",
+    );
+    assert.equal(data.position_count, 1);
+    assert.equal(data.positions[0].stake_tao, 250);
+  });
+
+  test("is cold-safe for a non-array positionRows or a non-Map hotkeyNetuidStake", () => {
+    const dataNonArray = buildAccountPositions(
+      "not-an-array",
+      new Map(),
+      "5Cold",
+    );
+    assert.deepEqual(dataNonArray.positions, []);
+    const dataNonMap = buildAccountPositions(
+      [{ coldkey: "5Cold", hotkey: "5Hk1", netuid: 3, share_fraction: 0.5 }],
+      { not: "a map" },
+      "5Cold",
+    );
+    assert.deepEqual(dataNonMap.positions, []);
+  });
+
+  test("skips a position whose share_fraction * stake_tao is non-finite (a crafted/corrupt stake map entry)", () => {
+    const data = buildAccountPositions(
+      [
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 3,
+          share_fraction: 0.5,
+          captured_at: 1,
+        },
+      ],
+      new Map([["5Hk1|3", Infinity]]),
+      "5Cold",
+    );
+    assert.equal(data.position_count, 0);
+    assert.equal(data.total_stake_tao, 0);
+  });
+
+  test("tie-breaks by netuid when stake AND hotkey are both equal (two subnets of the same validator)", () => {
+    const data = buildAccountPositions(
+      [
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 8,
+          share_fraction: 0.1,
+          captured_at: 1,
+        },
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 3,
+          share_fraction: 0.1,
+          captured_at: 1,
+        },
+      ],
+      new Map([
+        ["5Hk1|8", 1000],
+        ["5Hk1|3", 1000],
+      ]),
+      "5Cold",
+    );
+    assert.equal(data.positions[0].netuid, 3);
+    assert.equal(data.positions[1].netuid, 8);
+  });
+
+  test("nulls captured_at when the only captured_at is beyond Date's valid range (a corrupt/out-of-range epoch)", () => {
+    const data = buildAccountPositions(
+      [
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 3,
+          share_fraction: 0.5,
+          // Number.isSafeInteger-valid but exceeds Date's own ~8.64e15 max,
+          // producing an Invalid Date -- nonNegativeInt's safe-integer check
+          // alone doesn't guarantee a constructible Date.
+          captured_at: Number.MAX_SAFE_INTEGER,
+        },
+      ],
+      new Map([["5Hk1|3", 1000]]),
+      "5Cold",
+    );
+    assert.equal(data.captured_at, null);
+  });
+
+  test("falls back total_stake_tao to 0 when per-position stake_tao sums overflow to Infinity", () => {
+    // Each individual stakeTao is itself finite, but summing two
+    // near-MAX_VALUE positions overflows the accumulator to Infinity --
+    // roundTao(Infinity) is null, and the ?? 0 fallback catches it.
+    const data = buildAccountPositions(
+      [
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 3,
+          share_fraction: 1,
+          captured_at: 1,
+        },
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk2",
+          netuid: 8,
+          share_fraction: 1,
+          captured_at: 1,
+        },
+      ],
+      new Map([
+        ["5Hk1|3", Number.MAX_VALUE],
+        ["5Hk2|8", Number.MAX_VALUE],
+      ]),
+      "5Cold",
+    );
+    assert.equal(data.total_stake_tao, 0);
+  });
+
+  test("does not advance captured_at when a later row's captured_at is not newer", () => {
+    const data = buildAccountPositions(
+      [
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk1",
+          netuid: 3,
+          share_fraction: 0.1,
+          captured_at: 2000,
+        },
+        {
+          coldkey: "5Cold",
+          hotkey: "5Hk2",
+          netuid: 8,
+          share_fraction: 0.1,
+          captured_at: 1000,
+        },
+      ],
+      new Map([
+        ["5Hk1|3", 1000],
+        ["5Hk2|8", 1000],
+      ]),
+      "5Cold",
+    );
+    assert.equal(data.captured_at, new Date(2000).toISOString());
   });
 });
 
