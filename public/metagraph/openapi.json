@@ -19193,6 +19193,83 @@
         ],
         "type": "object"
       },
+      "SubnetStakeQuoteArtifact": {
+        "additionalProperties": false,
+        "description": "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for an ?amount=/?direction=stake|unstake swap against the subnet's live economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math -- no chain write, no custody -- mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000x the relevant reserve is rejected). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote with null pool reserves.",
+        "properties": {
+          "alpha_in_pool": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amount": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "direction": {
+            "enum": [
+              "stake",
+              "unstake"
+            ],
+            "type": "string"
+          },
+          "effective_price_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "expected_out": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "expected_out_unit": {
+            "enum": [
+              "alpha",
+              "tao"
+            ],
+            "type": "string"
+          },
+          "is_root": {
+            "type": "boolean"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "price_impact_pct": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "spot_price_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "tao_in_pool_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "direction",
+          "amount",
+          "expected_out",
+          "expected_out_unit",
+          "spot_price_tao",
+          "effective_price_tao",
+          "price_impact_pct",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "is_root"
+        ],
+        "type": "object"
+      },
       "SubnetStakeTransfersArtifact": {
         "additionalProperties": false,
         "description": "Per-subnet stake-transfer activity over a 7d/30d window: distinct senders (accounts), StakeTransferred event count, and transfers per sender for ONE subnet. The per-subnet drill-in of /api/v1/chain/stake-transfers and the between-coldkeys sibling of /api/v1/subnets/{netuid}/stake-moves — transfer_stake relocates staked alpha between accounts on the same hotkey (origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/subnets/{netuid}/stake-transfers (no static file); zeroed when the subnet has no events in the window.",
@@ -48660,6 +48737,166 @@
           }
         },
         "summary": "Fetch stake-movement (re-delegation) activity for one subnet over a 7d or 30d window: the distinct movers (accounts), the StakeMoved event count, and the average movements per mover, computed live from the account_events StakeMoved stream. The per-subnet drill-in of GET /api/v1/chain/stake-moves (which ranks only the top-N subnets and cannot be queried by netuid) and the re-delegation-churn sibling of GET /api/v1/subnets/{netuid}/stake-flow (net capital flow) — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Schema-stable zeroed card when the subnet has no StakeMoved events in the window.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/stake-quote": {
+      "get": {
+        "operationId": "subnetStakeQuote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "amount",
+            "required": false,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "enum": [
+                "stake",
+                "unstake"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "alpha_in_pool": 0.5,
+                    "amount": 0.5,
+                    "direction": "stake",
+                    "effective_price_tao": 0.5,
+                    "expected_out": 0.5,
+                    "expected_out_unit": "alpha",
+                    "is_root": false,
+                    "netuid": 7,
+                    "price_impact_pct": 0.5,
+                    "schema_version": 1,
+                    "spot_price_tao": 0.5,
+                    "tao_in_pool_tao": 0.5
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetStakeQuoteArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
         "tags": [
           "subnets",
           "analytics"

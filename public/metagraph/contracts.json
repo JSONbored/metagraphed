@@ -606,6 +606,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake, computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool) at /api/v1/subnets/{netuid}/stake-quote (no static file). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000× the relevant reserve is rejected with 422). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+      "id": "subnet-stake-quote",
+      "path": "/metagraph/subnets/{netuid}/stake-quote.json",
+      "schema_ref": "#/components/schemas/SubnetStakeQuoteArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as /api/v1/subnets/{netuid}/stake-flow (no static file). Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
       "id": "subnet-alpha-volume",
       "path": "/metagraph/subnets/{netuid}/volume.json",

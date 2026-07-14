@@ -1360,6 +1360,39 @@
         },
         "additionalProperties": false
       },
+      "SubnetStakeQuoteArtifact": {
+        "type": "object",
+        "description": "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for an ?amount=/?direction=stake|unstake swap against the subnet's live economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math -- no chain write, no custody -- mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000x the relevant reserve is rejected). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote with null pool reserves.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "direction",
+          "amount",
+          "expected_out",
+          "expected_out_unit",
+          "spot_price_tao",
+          "effective_price_tao",
+          "price_impact_pct",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "is_root"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "direction": { "type": "string", "enum": ["stake", "unstake"] },
+          "amount": { "type": "number", "exclusiveMinimum": 0 },
+          "expected_out": { "type": "number", "minimum": 0 },
+          "expected_out_unit": { "type": "string", "enum": ["alpha", "tao"] },
+          "spot_price_tao": { "type": "number", "minimum": 0 },
+          "effective_price_tao": { "type": "number", "minimum": 0 },
+          "price_impact_pct": { "type": "number", "minimum": 0 },
+          "tao_in_pool_tao": { "type": ["number", "null"] },
+          "alpha_in_pool": { "type": ["number", "null"] },
+          "is_root": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
       "SubnetAlphaVolumeArtifact": {
         "type": "object",
         "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label — plus a vol/mcap turnover ratio (#4339/8.3): total_volume_tao over the live economics tier's alpha_market_cap_tao, null when that external input is unavailable. Fixed 24h window, not OHLC/price data.",

@@ -1020,6 +1020,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetStakeFlowArtifact",
   ),
   artifact(
+    "subnet-stake-quote",
+    "/metagraph/subnets/{netuid}/stake-quote.json",
+    "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake, computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool) at /api/v1/subnets/{netuid}/stake-quote (no static file). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000× the relevant reserve is rejected with 422). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+    "SubnetStakeQuoteArtifact",
+  ),
+  artifact(
     "subnet-alpha-volume",
     "/metagraph/subnets/{netuid}/volume.json",
     "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as /api/v1/subnets/{netuid}/stake-flow (no static file). Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
@@ -2291,6 +2297,23 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-stake-quote",
+    "GET",
+    "/api/v1/subnets/{netuid}/stake-quote",
+    "/metagraph/subnets/{netuid}/stake-quote.json",
+    "Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "amount", schema: { type: "number", exclusiveMinimum: 0 } },
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["stake", "unstake"] },
+      },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

@@ -471,6 +471,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-stake-quote",
+      "path": "/metagraph/subnets/{netuid}/stake-quote.json",
+      "schema_ref": "#/components/schemas/SubnetStakeQuoteArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-alpha-volume",
       "path": "/metagraph/subnets/{netuid}/volume.json",
       "schema_ref": "#/components/schemas/SubnetAlphaVolumeArtifact",
@@ -5305,6 +5312,36 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/stake-quote.json",
+      "cache": "short",
+      "description": "Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+      "id": "subnet-stake-quote",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/stake-quote",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "amount",
+          "schema": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          }
+        },
+        {
+          "name": "direction",
+          "schema": {
+            "enum": [
+              "stake",
+              "unstake"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/movers.json",
