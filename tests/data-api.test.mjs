@@ -1546,6 +1546,15 @@ test("GET /api/v1/validators skips the identity join query when there are no val
   expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
 });
 
+test("GET /api/v1/validators skips a row with no coldkey when collecting join keys, without erroring (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7, coldkey: null }];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].coldkey_identity).toBe(null);
+  expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
+});
+
 test("GET /api/v1/validators still serves validators (has_identity:false) when the identity join query fails (#5234)", async () => {
   mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
   accountIdentityJoinQueryFailure.error = new Error(
