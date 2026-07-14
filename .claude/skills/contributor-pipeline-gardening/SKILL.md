@@ -48,9 +48,12 @@ Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo'
 
 ## Pass 2 — backlog top-up
 
-1. Compute the **combined** contributor-available count across both gittensory/loopover and
-   metagraphed before deciding how much to generate here — the 30-50/day target is a combined total,
-   not per-repo (confirmed with the maintainer 2026-07-14).
+1. Compute this repo's own contributor-available count (unassigned, no `maintainer-only`, carries a
+   `gittensor:*` label) before deciding how much to generate here — the target is **50-100+ open
+   contributor-available issues, independently per repo**. This is NOT a combined/shared pool with
+   gittensory/loopover; each repo is judged on its own backlog and must clear the bar on its own
+   merits, focused on that repo's actual goals (corrected by the maintainer 2026-07-14 — an earlier
+   version of this doc wrongly said "combined total, not per-repo").
 2. This repo's contributor-availability query needs `gittensor:priority` counted alongside
    `gittensor:feature`/`gittensor:bug` — unlike gittensory, metagraphed frequently uses
    `gittensor:priority` as a **standalone** points label (54 of 59 `gittensor:priority` issues here
