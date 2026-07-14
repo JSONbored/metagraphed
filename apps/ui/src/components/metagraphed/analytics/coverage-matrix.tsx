@@ -162,6 +162,18 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
                     <span className="font-mono text-[10px] text-ink-muted">SN{r.netuid}</span>
                     <span className="truncate max-w-[160px]">{r.name}</span>
                   </Link>
+                  {/* The kind columns scroll off-screen on narrow viewports, so a
+                      mobile user can't see the red "missing" cells that are the
+                      point of this widget. Surface the per-subnet gap count here,
+                      in the always-visible sticky column (#5310). */}
+                  <span
+                    className={classNames(
+                      "mt-0.5 block text-[10px] tabular-nums sm:hidden",
+                      r.missingCount > 0 ? "text-health-down" : "text-health-ok",
+                    )}
+                  >
+                    {r.missingCount > 0 ? `${r.missingCount} missing` : "complete"}
+                  </span>
                 </td>
                 {KINDS.map((k) => {
                   const cell = r.cells[k];
