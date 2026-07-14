@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AlertTriangle, ArrowRight, X } from "lucide-react";
@@ -25,7 +25,7 @@ function persistDismissed(set: Set<string>) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
   } catch {
-    // quota / private mode — ignore
+    // quota / private mode â€” ignore
   }
 }
 
@@ -75,8 +75,8 @@ export function IncidentStrip() {
           )}
         />
         {/* #3951 redesign: lead with the AFFECTED entity + severity as one token,
-            so the banner always reads as that subnet's status — never the current
-            page's — and the old standalone label + trailing subnet link collapse
+            so the banner always reads as that subnet's status â€” never the current
+            page's â€” and the old standalone label + trailing subnet link collapse
             into it. A net simplification (fewer elements), not another chip. */}
         <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest">
           {top.netuid != null ? (
@@ -113,7 +113,7 @@ export function IncidentStrip() {
             });
           }}
           aria-label="Dismiss incident"
-          className="shrink-0 inline-flex size-5 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface"
+          className="shrink-0 inline-flex min-h-11 min-w-11 items-center justify-center rounded text-ink-muted hover:text-ink-strong hover:bg-surface"
         >
           <X className="size-3" />
         </button>
