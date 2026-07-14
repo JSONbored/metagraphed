@@ -21,6 +21,8 @@ import {
   CopyableCode,
 } from "@jsonbored/ui-kit";
 import {
+  CollapsibleFilters,
+  FilterActionRow,
   PageSizeSelect,
   ResetFiltersButton,
   SearchInput,
@@ -224,17 +226,19 @@ function BlocksTable() {
   const goPrev = () => setSearch({ offset: Math.max(0, search.offset - search.limit) });
   const goNext = () => setSearch({ offset: search.offset + search.limit });
 
-  const filtersActive = Boolean(
-    search.author ||
-    search.spec_version ||
-    search.block_start ||
-    search.block_end ||
-    search.min_extrinsics ||
+  const filterValues = [
+    search.author,
+    search.spec_version,
+    search.block_start,
+    search.block_end,
+    search.min_extrinsics,
     search.min_events,
-  );
+  ];
+  const activeFilterCount = filterValues.filter(Boolean).length;
+  const filtersActive = activeFilterCount > 0;
 
   const filters = (
-    <>
+    <CollapsibleFilters activeCount={activeFilterCount}>
       <span
         className="font-mono text-[11px] text-ink-muted whitespace-nowrap"
         title="Blocks are listed newest first"
@@ -281,26 +285,28 @@ function BlocksTable() {
         inputMode="numeric"
         className="min-w-[120px] max-w-[140px] flex-none"
       />
-      <PageSizeSelect
-        value={search.limit}
-        onChange={(n) => setSearch({ limit: n, offset: 0 })}
-        options={[10, 25, 50, 100]}
-      />
-      <ResetFiltersButton
-        active={filtersActive}
-        onReset={() =>
-          setSearch({
-            author: "",
-            spec_version: "",
-            block_start: "",
-            block_end: "",
-            min_extrinsics: "",
-            min_events: "",
-            offset: 0,
-          })
-        }
-      />
-    </>
+      <FilterActionRow>
+        <PageSizeSelect
+          value={search.limit}
+          onChange={(n) => setSearch({ limit: n, offset: 0 })}
+          options={[10, 25, 50, 100]}
+        />
+        <ResetFiltersButton
+          active={filtersActive}
+          onReset={() =>
+            setSearch({
+              author: "",
+              spec_version: "",
+              block_start: "",
+              block_end: "",
+              min_extrinsics: "",
+              min_events: "",
+              offset: 0,
+            })
+          }
+        />
+      </FilterActionRow>
+    </CollapsibleFilters>
   );
 
   const emptyNode = (
