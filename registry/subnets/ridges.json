@@ -91,6 +91,25 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-data-artifact",
+      "kind": "data-artifact",
+      "name": "Ridges evaluation-set problems dump",
+      "notes": "Public no-auth GET /evaluation-sets/all-latest-set-problems on agent-upload.ridges.ai returning the latest evaluation-set problem list (observed live: 89 SWE-bench/Aider/infinite-swe problem records with set_id, problem_name, benchmark_family, execution_spec). Same first-party host as the registered OpenAPI schema and top-agents subnet-api; DEFAULT_API_BASE_URL in miners/cli/commands/upload.py and the FastAPI route in api/endpoints/evaluation_sets.py prove SN62 Ridges ownership.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/main/miners/cli/commands/upload.py",
+        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/evaluation_sets.py"
+      ],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
     }
   ],
   "contact": "hello@ridges.ai"
