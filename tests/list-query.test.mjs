@@ -452,6 +452,29 @@ describe("list-query numeric range filters", () => {
     assert.match(bad.error.message, /must be a number/);
   });
 
+  test("rejects a free-text filter value over the shared textSchema maxLength", () => {
+    const tooLong = "x".repeat(257);
+    const bad = applyQueryFilters(
+      { candidates: [] },
+      query(`/api/v1/candidates?provider=${tooLong}`),
+      "candidates",
+    );
+
+    assert.equal(bad.error.parameter, "provider");
+    assert.equal(bad.error.message, "provider is too long.");
+  });
+
+  test("accepts a free-text filter value at the textSchema maxLength boundary", () => {
+    const atLimit = "x".repeat(256);
+    const ok = applyQueryFilters(
+      { candidates: [] },
+      query(`/api/v1/candidates?provider=${atLimit}`),
+      "candidates",
+    );
+
+    assert.equal(ok.error, undefined);
+  });
+
   test("contradictory min_ > max_ on the same field is a query error", () => {
     const bad = applyQueryFilters(
       data,
