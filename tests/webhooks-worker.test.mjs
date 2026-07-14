@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
@@ -400,6 +400,109 @@ describe("webhook subscription routes", () => {
       res.headers.get("access-control-allow-headers"),
       /x-metagraph-webhook-secret/,
     );
+  });
+});
+
+// #5473: create + delete are gated by WEBHOOK_SUBSCRIPTION_RATE_LIMITER (a
+// no-op when the binding is absent). Mirrors the alert-trigger-create suite:
+// within-limit success, over-limit 429 with the standard header family, and
+// unbound-binding no-op.
+describe("webhook subscription rate limiting", () => {
+  const allow = () => ({ limit: vi.fn(async () => ({ success: true })) });
+  const reject = () => ({ limit: vi.fn(async () => ({ success: false })) });
+
+  test("create: 429 with the rate-limit header family when the limiter rejects, and nothing is persisted", async () => {
+    const kv = makeKv();
+    const limiter = reject();
+    const res = await postSub(
+      envWith(kv, { WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter }),
+      { url: "https://hooks.example.com/mg" },
+    );
+    assert.equal(res.status, 429);
+    assert.equal(
+      (await res.json()).error.code,
+      "webhook_subscription_rate_limited",
+    );
+    assert.equal(res.headers.get("retry-after"), "60");
+    assert.equal(res.headers.get("x-ratelimit-limit"), "10");
+    assert.equal(res.headers.get("x-ratelimit-policy"), "10;w=60");
+    assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
+    assert.equal(limiter.limit.mock.calls.length, 1);
+    // No KV row written for a rate-limited create.
+    assert.equal(kv.store.size, 0);
+  });
+
+  test("create: 201 when the limiter allows the request", async () => {
+    const kv = makeKv();
+    const limiter = allow();
+    const res = await postSub(
+      envWith(kv, { WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter }),
+      { url: "https://hooks.example.com/mg" },
+    );
+    assert.equal(res.status, 201);
+    assert.equal(limiter.limit.mock.calls.length, 1);
+  });
+
+  test("create: skips the limiter entirely when the binding is unbound (local dev/CI)", async () => {
+    const res = await postSub(envWith(makeKv()), {
+      url: "https://hooks.example.com/mg",
+    });
+    assert.equal(res.status, 201);
+  });
+
+  test("create: rejects unauthenticated callers before consulting the limiter", async () => {
+    const limiter = reject();
+    const res = await handleRequest(
+      req("/api/v1/webhooks/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
+      }),
+      envWith(makeKv(), { WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter }),
+      {},
+    );
+    assert.equal(res.status, 401);
+    assert.equal(limiter.limit.mock.calls.length, 0);
+  });
+
+  test("delete: 429 when the limiter rejects, and the subscription survives", async () => {
+    const kv = makeKv();
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    const id = created.data.id;
+    const limiter = reject();
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}`, {
+        method: "DELETE",
+        headers: { "x-metagraph-webhook-secret": created.data.secret },
+      }),
+      envWith(kv, { WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter }),
+      {},
+    );
+    assert.equal(res.status, 429);
+    assert.equal(limiter.limit.mock.calls.length, 1);
+    assert.equal(kv.store.has(`webhooks:sub:${id}`), true);
+  });
+
+  test("delete: 200 when the limiter allows the request", async () => {
+    const kv = makeKv();
+    const created = await (
+      await postSub(envWith(kv), { url: "https://hooks.example.com/mg" })
+    ).json();
+    const id = created.data.id;
+    const limiter = allow();
+    const res = await handleRequest(
+      req(`/api/v1/webhooks/subscriptions/${id}`, {
+        method: "DELETE",
+        headers: { "x-metagraph-webhook-secret": created.data.secret },
+      }),
+      envWith(kv, { WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter }),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(limiter.limit.mock.calls.length, 1);
+    assert.equal(kv.store.has(`webhooks:sub:${id}`), false);
   });
 });
 

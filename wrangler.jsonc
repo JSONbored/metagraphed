@@ -489,5 +489,20 @@
         "period": 60,
       },
     },
+    // Per-client abuse control for the webhook-subscription MUTATION routes
+    // (POST create + DELETE remove, #5473). Both authenticate with a SHARED
+    // static secret rather than a per-user credential, and each successful POST
+    // persists a KV row, so a token-holding caller could otherwise script
+    // unbounded create/delete churn. 10 requests / 60s per client IP — matching
+    // the alert-trigger-create limiter's posture for the same shared-secret
+    // shape. Skipped when the binding is absent (local dev/CI).
+    {
+      "name": "WEBHOOK_SUBSCRIPTION_RATE_LIMITER",
+      "namespace_id": "1006",
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
   ],
 }

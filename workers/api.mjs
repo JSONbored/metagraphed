@@ -3797,6 +3797,38 @@ async function handleWebhookRequest(request, env, url) {
   );
 }
 
+// Per-client abuse control for the two webhook-subscription MUTATION routes
+// (POST create, DELETE remove). Both authenticate with a SHARED static secret
+// -- the create token, or a subscription's own secret for delete -- rather than
+// a per-user credential, and each successful POST persists a KV row
+// (expirationTtl WEBHOOK_TTL_SECONDS), so a token-holding caller could otherwise
+// script unbounded create/delete churn. 10 requests / 60s per client IP, keyed
+// on a single shared bucket so create+delete together are bounded -- the same
+// posture handleAlertTriggerCreate applies to its structurally identical
+// shared-secret route. Optional-chained so it's a no-op when the binding is
+// absent (local dev/CI), matching every other rate-limiter in this codebase.
+const WEBHOOK_SUBSCRIPTION_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
+
+async function webhookSubscriptionRateLimited(request, env) {
+  if (!env.WEBHOOK_SUBSCRIPTION_RATE_LIMITER?.limit) return null;
+  const { success } = await env.WEBHOOK_SUBSCRIPTION_RATE_LIMITER.limit({
+    key: `webhook-sub:${resolveClientIp(request)}`,
+  });
+  if (success) return null;
+  return errorResponse(
+    "webhook_subscription_rate_limited",
+    "Too many webhook subscription requests from this client; slow down.",
+    429,
+    {},
+    {
+      "retry-after": String(WEBHOOK_SUBSCRIPTION_RATE_LIMIT.windowSeconds),
+      "x-ratelimit-limit": String(WEBHOOK_SUBSCRIPTION_RATE_LIMIT.limit),
+      "x-ratelimit-policy": `${WEBHOOK_SUBSCRIPTION_RATE_LIMIT.limit};w=${WEBHOOK_SUBSCRIPTION_RATE_LIMIT.windowSeconds}`,
+      "x-ratelimit-remaining": "0",
+    },
+  );
+}
+
 async function createWebhookSubscription(request, env) {
   // Authenticate BEFORE touching the request body. An unauthenticated or
   // wrong-token caller must be rejected (503 when disabled, else 401) before we
@@ -3808,6 +3840,12 @@ async function createWebhookSubscription(request, env) {
   if (!authorized.ok) {
     return authorized.response;
   }
+
+  // Abuse control sits right after auth and before we read/parse the body, so a
+  // token-holding caller can't script unbounded subscription creation -- while
+  // still rejecting unauthenticated callers first (they never reach the limiter).
+  const rateLimited = await webhookSubscriptionRateLimited(request, env);
+  if (rateLimited) return rateLimited;
 
   if (
     Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BODY_BYTES
@@ -3978,6 +4016,13 @@ async function deleteWebhookSubscription(request, env, id) {
       400,
     );
   }
+  // Share create's per-IP budget: gated before the KV lookup so a flood of
+  // delete attempts can't drive unbounded reads. Delete authenticates with the
+  // subscription's own secret (checked below), so the limiter is the only
+  // volume bound on unauthenticated attempts.
+  const rateLimited = await webhookSubscriptionRateLimited(request, env);
+  if (rateLimited) return rateLimited;
+
   const record = await readWebhookSubscription(env, id);
   if (!record) {
     return errorResponse(
