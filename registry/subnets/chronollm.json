@@ -79,6 +79,27 @@
         "https://taomarketcap.com/subnets/38"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/38"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-openapi",
+      "kind": "openapi",
+      "name": "ChronoLLM ChronoGPT backend OpenAPI schema",
+      "notes": "Public no-auth OpenAPI 3.1 schema (title \"SN38 ChronoGPT Backend\", 12 paths) for the ChronoLLM subnet backend on api.chronollm.com \u2014 rounds, submissions, benchmarks, and config. The official chronollm/sn38 miner docs document this host (curl examples for /rounds/current and /submissions, plus Swagger UI at /docs). Distinct from the existing miner docs and HuggingFace data-artifact surfaces.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.chronollm.com/openapi.json",
+      "source_urls": [
+        "https://github.com/chronollm/sn38/blob/main/docs/miner.md",
+        "https://api.chronollm.com/docs"
+      ],
+      "url": "https://api.chronollm.com/openapi.json"
     }
   ],
   "source_repo": "https://github.com/chronollm/sn38",
