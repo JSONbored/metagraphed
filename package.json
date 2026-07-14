@@ -105,6 +105,7 @@
     "worker:test": "node scripts/worker-test.mjs",
     "worker:deploy:dry-run": "node scripts/worker-deploy-dry-run.mjs",
     "worker:bundle:budget": "node scripts/worker-bundle-budget.mjs",
+    "worker:check-deploy-drift": "node scripts/check-worker-deploy-drift.mjs",
     "smoke:live": "node scripts/smoke-live-api.mjs",
     "lint": "eslint .",
     "format:check": "prettier --check .",

@@ -1,0 +1,62 @@
+name: Check Worker Deploy Drift
+
+# Detects a stuck/failed Cloudflare Workers Builds deploy (issue #5538, parent epic
+# #4651). The Worker CODE deploys via Cloudflare Workers Builds on push to main -- a
+# Cloudflare-side git integration, not a GitHub Actions step (see
+# publish-cloudflare.yml's header) -- so nothing here previously checked that a
+# Builds deploy actually landed the commit it should have. This scheduled job reads
+# back the commit Workers Builds tied to the currently-live deployment (via the
+# Cloudflare API, using the same read-only CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID
+# secrets publish-cloudflare.yml already uses) and compares it against a fresh
+# origin/main HEAD checkout, failing the job once the drift has persisted across a
+# prior scheduled run (see scripts/check-worker-deploy-drift.mjs for the exact
+# grace-window rule -- this only needs to catch a genuinely stuck build, not race a
+# normal in-flight deploy).
+on:
+  schedule:
+    - cron: "53 8 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: check-worker-deploy-drift-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    env:
+      WORKER_SCRIPT_NAME: metagraphed
+      WORKFLOW_FILENAME: check-worker-deploy-drift.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Resolve origin/main HEAD
+        id: main-head
+        run: |
+          set -euo pipefail
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "committed_at=$(git log -1 --format=%cI HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+
+      - name: Check live Worker deployment against origin/main HEAD
+        run: node scripts/check-worker-deploy-drift.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          MAIN_HEAD_SHA: ${{ steps.main-head.outputs.sha }}
+          MAIN_HEAD_COMMITTED_AT: ${{ steps.main-head.outputs.committed_at }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
