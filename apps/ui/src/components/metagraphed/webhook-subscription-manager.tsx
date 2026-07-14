@@ -1,8 +1,9 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { BellPlus, KeyRound, Search, Trash2 } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
-import { CopyableCode, SectionHeading } from "@jsonbored/ui-kit";
+import { CopyableCode, SectionHeading, StatTile } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import type {
   WebhookDeliveryStatus,
@@ -52,9 +53,68 @@ function describeApiError(error: unknown): string {
 export function WebhookSubscriptionManager() {
   return (
     <div className="space-y-8">
+      <SubscriptionActionsStrip />
       <CreateSubscriptionSection />
       <LookupSubscriptionSection />
       <DeleteSubscriptionSection />
+    </div>
+  );
+}
+
+/**
+ * Light summary strip above the forms (#5346) — mirrors the StatTile weight
+ * on sibling utility pages (`/endpoints`, …). Jump links only; forms below
+ * keep the same create/look-up/delete behavior.
+ */
+function SubscriptionActionsStrip() {
+  return (
+    <div
+      aria-label="Webhook subscription actions"
+      className="grid grid-cols-2 gap-3 md:grid-cols-4"
+    >
+      <a
+        href="#create-subscription-heading"
+        className="rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <StatTile
+          icon={BellPlus}
+          eyebrow="Create"
+          value="Register"
+          hint="webhook URL"
+          tone="accent"
+          className="h-full transition-colors hover:border-accent/60"
+        />
+      </a>
+      <a
+        href="#lookup-subscription-heading"
+        className="rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <StatTile
+          icon={Search}
+          eyebrow="Look up"
+          value="Status"
+          hint="delivery health"
+          className="h-full transition-colors hover:border-ink/30"
+        />
+      </a>
+      <a
+        href="#delete-subscription-heading"
+        className="rounded-lg outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <StatTile
+          icon={Trash2}
+          eyebrow="Delete"
+          value="Revoke"
+          hint="secret required"
+          className="h-full transition-colors hover:border-ink/30"
+        />
+      </a>
+      <StatTile
+        icon={KeyRound}
+        eyebrow="Auth model"
+        value="Token"
+        hint="operator-issued · no account"
+      />
     </div>
   );
 }
