@@ -125,7 +125,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**129 curated subnets** — 116 with a site, 44 with docs, 118 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**129 curated subnets** — 115 with a site, 43 with docs, 115 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -145,11 +145,11 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Data Universe](https://metagraph.sh/subnets/13)** `SN13` — `data` `mcp` · [site](https://datauniverse.macrocosmos.ai/) · [docs](https://docs.macrocosmos.ai/product-and-services/gravity) · [repo](https://github.com/macrocosm-os/data-universe)
 - **[Cacheon](https://metagraph.sh/subnets/14)** `SN14` — `inference` · [site](https://cacheon.ai/) · [docs](https://cacheon.ai/docs) · [repo](https://github.com/latent-to/cacheon)
 - **[ORO](https://metagraph.sh/subnets/15)** `SN15` · [site](https://oroagents.com/) · [docs](https://docs.oroagents.com/docs/miners/quick-start) · [repo](https://github.com/ORO-AI/oro)
-- **[BitAds](https://metagraph.sh/subnets/16)** `SN16` · [site](https://bitads.ai/) · [docs](https://bitads.ai/docs) · [repo](https://github.com/FirstTensorLabs/BitAds)
+- **[BitAds](https://metagraph.sh/subnets/16)** `SN16` · [repo](https://github.com/study-service/BitAds.ai)
 - **[404—GEN](https://metagraph.sh/subnets/17)** `SN17` · [site](https://www.404.xyz/) · [repo](https://github.com/404-Repo/404-gen-subnet)
 - **[Zeus](https://metagraph.sh/subnets/18)** `SN18` · [site](https://www.zeussubnet.com/) · [repo](https://github.com/Orpheus-AI/Zeus)
 - **[blockmachine](https://metagraph.sh/subnets/19)** `SN19` · [site](https://blockmachine.io/) · [docs](https://blockmachine.io/whitepaper) · [repo](https://github.com/taostat/blockmachine)
-- **[GroundLayer](https://metagraph.sh/subnets/20)** `SN20` — `capital-markets` · [site](https://www.groundlayer.xyz/) · [repo](https://github.com/RogueTensor/comingsoon)
+- **[GroundLayer](https://metagraph.sh/subnets/20)** `SN20` — `capital-markets` · [site](https://www.groundlayer.xyz/)
 - **[AdTAO](https://metagraph.sh/subnets/21)** `SN21` — `advertising` · [site](https://adtao.io/) · [repo](https://github.com/ippcteam/SN21-adtao)
 - **[Desearch](https://metagraph.sh/subnets/22)** `SN22` — `search` `social-data` · [site](https://www.desearch.ai/) · [docs](https://www.desearch.ai/docs) · [repo](https://github.com/Desearch-ai/subnet-22)
 - **[Trishool](https://metagraph.sh/subnets/23)** `SN23` — `subnet-api-observed` · [site](https://trishool.ai/) · [repo](https://github.com/TrishoolAI/trishool-phase2)
@@ -182,7 +182,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Synth](https://metagraph.sh/subnets/50)** `SN50` · [site](https://synthdata.co/) · [repo](https://github.com/mode-network/synth-subnet)
 - **[lium.io](https://metagraph.sh/subnets/51)** `SN51` · [site](https://lium.io/) · [repo](https://github.com/Datura-ai/lium-io)
 - **[Dojo](https://metagraph.sh/subnets/52)** `SN52` — `tensorplex` · [site](https://www.tensorplex.ai/) · [docs](https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism) · [repo](https://github.com/tensorplex-labs/dojo)
-- **[EfficientFrontier](https://metagraph.sh/subnets/53)** `SN53` — `defi` `financial-trading` `trading-strategies` · [site](https://www.signalplus.com/) · [repo](https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier)
+- **[EfficientFrontier](https://metagraph.sh/subnets/53)** `SN53` — `defi` `financial-trading` `trading-strategies` · [site](https://www.signalplus.com/) · [repo](https://github.com/oxylok/53-EfficientFrontier)
 - **[Yanez MIID](https://metagraph.sh/subnets/54)** `SN54` · [site](https://www.yanez.ai/) · [repo](https://github.com/yanez-compliance/MIID-subnet)
 - **[NIOME](https://metagraph.sh/subnets/55)** `SN55` · [site](https://niome.genomes.io/) · [repo](https://github.com/genomesio/subnet-niome)
 - **[Gradients](https://metagraph.sh/subnets/56)** `SN56` — `ai-training` `operational-interface` · [site](https://www.gradients.io/) · [docs](https://api.gradients.io/docs) · [repo](https://github.com/gradients-ai/G.O.D)
@@ -224,7 +224,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Tensorclaw](https://metagraph.sh/subnets/92)** `SN92` — `inference` `stale-source-restored` · [site](https://www.tensorclaw.ai/) · [repo](https://github.com/tensorclaw/tensorclaw)
 - **[Bitcast](https://metagraph.sh/subnets/93)** `SN93` · [site](https://stats.bitcast.network/) · [repo](https://github.com/bitcast-network/bitcast)
 - **[Bitsota](https://metagraph.sh/subnets/94)** `SN94` · [repo](https://github.com/AlveusLabs/SN94-BitSota)
-- **[Actual](https://metagraph.sh/subnets/95)** `SN95` — `inference` `model-registry` · [site](https://actual.inc/) · [repo](https://github.com/actual-computer/actual-subnet-95)
+- **[Actual](https://metagraph.sh/subnets/95)** `SN95` — `inference` `model-registry` · [site](https://actual.inc/)
 - **[Verathos](https://metagraph.sh/subnets/96)** `SN96` — `inference` `language-models` · [site](https://verathos.ai/) · [docs](https://verathos.ai/docs) · [repo](https://github.com/verathos-ai/verathos)
 - **[Albedo](https://metagraph.sh/subnets/97)** `SN97` · [site](https://albedo.tech) · [repo](https://github.com/unarbos/albedo)
 - **[ForeverMoney](https://metagraph.sh/subnets/98)** `SN98` — `finance` · [site](https://forevermoney.ai/) · [repo](https://github.com/SN98-ForeverMoney/forever-money)
@@ -248,7 +248,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[TaoLend](https://metagraph.sh/subnets/116)** `SN116` — `defi` `lending` · [site](https://taolend.io/)
 - **[BrainPlay](https://metagraph.sh/subnets/117)** `SN117` · [site](https://play.shiftlayer.ai/) · [repo](https://github.com/shiftlayer-llc/brainplay-subnet)
 - **[Ditto](https://metagraph.sh/subnets/118)** `SN118` — `agent-memory` · [site](https://heyditto.ai/) · [docs](https://heyditto.ai/docs/) · [repo](https://github.com/ditto-assistant/dittobench-starter-kit)
-- **[Satori](https://metagraph.sh/subnets/119)** `SN119` — `virtual-world` · [repo](https://github.com/Satori119/Satori)
+- **[Satori](https://metagraph.sh/subnets/119)** `SN119` — `virtual-world`
 - **[Affine](https://metagraph.sh/subnets/120)** `SN120` · [site](https://www.affine.io/) · [repo](https://github.com/AffineFoundation/affine-cortex)
 - **[sundae_bar](https://metagraph.sh/subnets/121)** `SN121` · [site](https://www.sundaebar.ai/) · [repo](https://github.com/sundae-bar/bittensor-subnet)
 - **[Bitrecs](https://metagraph.sh/subnets/122)** `SN122` — `recommendations` · [site](https://www.bitrecs.ai/) · [docs](https://bitrecs.gitbook.io/bitrecs-docs/) · [repo](https://github.com/bitrecs/bitrecs-subnet)
