@@ -175,6 +175,25 @@
         "submitted_by": "jimcody1995"
       },
       "notes": "Public no-auth GET competitions.json on the official SN29 dynamic-configuration repository (github.com/coldint/sn29). Validators poll this URL on COMPETITIONS_URL in constants/__init__.py via requests.get to load live competition parameters without restart."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-29-coldint-min-compute",
+      "kind": "data-artifact",
+      "name": "Coldint minimum compute requirements",
+      "notes": "Public no-auth machine-readable min_compute.yml from the official SN29 Coldint validator repository (coldint/coldint_validator), pinned to an immutable commit. Specifies the minimum and recommended CPU, GPU, memory, storage, and network requirements for running SN29 Coldint miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "provider": "coldint",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator",
+        "https://github.com/coldint/coldint_validator/blob/a5860df87847173842772a2c234dad8a4ff87727/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/coldint/coldint_validator/a5860df87847173842772a2c234dad8a4ff87727/min_compute.yml"
     }
   ],
   "social": {
