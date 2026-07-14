@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useCallback, useEffect, useMemo } from "react";
 import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
+import { ChevronLeft, FileCode, Copy, Check, Download } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
   TimeAgo,
@@ -195,7 +195,19 @@ function SchemasHero() {
       description="JSON Schema is canonical truth. Drift compares the current snapshot to the previous published version."
       caption={<>schemas / v1</>}
       actions={
-        <CopyableCode label="openapi" value={`${API_BASE}/api/v1/openapi.json`} truncate={false} />
+        <>
+          <CopyableCode label="openapi" value={`${API_BASE}/api/v1/openapi.json`} truncate={false} />
+          <a
+            href={`${API_BASE}/metagraph/openapi.json`}
+            download="openapi.json"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors"
+          >
+            <Download className="size-3" aria-hidden />
+            Download spec
+          </a>
+        </>
       }
       kpis={[
         { label: "Schemas", value: <AnimatedNumber value={schemas.length} /> },
