@@ -290,6 +290,25 @@
       },
       "source_urls": ["https://api.gradients.io/openapi.json"],
       "url": "https://api.gradients.io/auditing/tasks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-challenger-review-config",
+      "kind": "data-artifact",
+      "name": "Gradients challenger code-review config",
+      "notes": "Public no-auth machine-readable JSON config from the official SN56 Gradients (G.O.D) validator repository (gradients-ai/G.O.D), pinned to an immutable commit. Defines the forensic code-review policy the validators apply to challenger repositories in the training tournament — the system prompt and rules used to detect cheating (undeclared external datasets, benchmark leakage, external pretrained weights). Static artifact documenting the subnet's anti-cheat evaluation logic.",
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/gradients-ai/G.O.D",
+        "https://github.com/gradients-ai/G.O.D/blob/f0d3a1b790b0a34009ead27707916ae19e5e7201/validator/infrastructure/challenger_code_review_config.json"
+      ],
+      "url": "https://raw.githubusercontent.com/gradients-ai/G.O.D/f0d3a1b790b0a34009ead27707916ae19e5e7201/validator/infrastructure/challenger_code_review_config.json"
     }
   ],
   "website_url": "https://www.gradients.io/"
