@@ -114,6 +114,31 @@
         "https://huggingface.co/spaces/evolai/gate"
       ],
       "url": "https://evolai-gate.hf.space/datasets"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-47-evolai-validator-config",
+      "kind": "data-artifact",
+      "name": "EvolAI validator configuration",
+      "notes": "Public no-auth machine-readable validator-configuration module (evolai/validator/config.py) committed in the official openevolai/evolai repository, defining the SN47 EvolAI evaluation parameters the validator runs against: reference tokenizer/model, per-stage generation token budgets (think/KL/side-quest max-new-tokens), fast-transformer and Mamba2 evaluation toggles, and CUDA memory settings. Pinned to an immutable commit. Verified 200, SS58-clean and contains no secret values (the one API-key field reads an env var with a locally-generated default). Distinct from the universal_qa dataset already registered.",
+      "provider": "evolai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "source_urls": [
+        "https://github.com/openevolai/evolai/blob/4cc0040eca74e3541178661ce8b5dd29fa2d343a/evolai/validator/config.py",
+        "https://github.com/openevolai/evolai"
+      ],
+      "url": "https://raw.githubusercontent.com/openevolai/evolai/4cc0040eca74e3541178661ce8b5dd29fa2d343a/evolai/validator/config.py"
     }
   ]
 }
