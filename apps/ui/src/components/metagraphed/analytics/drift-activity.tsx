@@ -12,6 +12,12 @@ interface Props {
   fromPath: string;
 }
 
+// #5314: the schema-drift matrix below is the primary, complete view, so this
+// list is a "recent changes" digest — show only the top handful of drifting
+// schemas by default (highest change-weight, most recent) with an opt-in to
+// reveal the rest, rather than dumping every drifting row.
+const DRIFT_DIGEST_LIMIT = 10;
+
 /**
  * Compact, scannable list of schema drift activity. Replaces the pill-row
  * ribbon — drifting schemas sit on top with a change-weight bar, additive /
@@ -22,6 +28,7 @@ interface Props {
 export function DriftActivity({ schemas, fromPath }: Props) {
   const navigate = useNavigate({ from: fromPath as "/schemas" });
   const [scope, setScope] = useState<"drifting" | "all">("drifting");
+  const [showAllDrift, setShowAllDrift] = useState(false);
 
   const { drifting, stable } = useMemo(() => {
     const drifting = schemas
@@ -34,6 +41,8 @@ export function DriftActivity({ schemas, fromPath }: Props) {
   }, [schemas]);
 
   const visibleStable = scope === "all" ? stable : [];
+  const visibleDrifting = showAllDrift ? drifting : drifting.slice(0, DRIFT_DIGEST_LIMIT);
+  const hiddenDriftCount = drifting.length - visibleDrifting.length;
   const total = schemas.length;
 
   if (total === 0) {
@@ -116,11 +125,22 @@ export function DriftActivity({ schemas, fromPath }: Props) {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-border/60">
-          {drifting.map((s) => (
-            <DriftRow key={s.id} schema={s} onClick={() => openDrift(s.id)} />
-          ))}
-        </ul>
+        <>
+          <ul className="divide-y divide-border/60">
+            {visibleDrifting.map((s) => (
+              <DriftRow key={s.id} schema={s} onClick={() => openDrift(s.id)} />
+            ))}
+          </ul>
+          {drifting.length > DRIFT_DIGEST_LIMIT ? (
+            <button
+              type="button"
+              onClick={() => setShowAllDrift((v) => !v)}
+              className="flex w-full items-center justify-center gap-1 border-t border-border/60 px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:bg-surface hover:text-ink-strong"
+            >
+              {showAllDrift ? "Show recent only" : `Show all ${drifting.length} drifting`}
+            </button>
+          ) : null}
+        </>
       )}
 
       {/* Stable list (toggled) */}
@@ -164,7 +184,7 @@ function DriftRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => void
         <WeightBar weight={w} tone="warn" />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="truncate font-display text-[13px] font-medium text-ink-strong">
+            <span className="min-w-0 break-words font-display text-[13px] font-medium text-ink-strong">
               {label}
             </span>
             {schema.netuid != null ? (
