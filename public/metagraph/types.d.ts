@@ -7324,6 +7324,7 @@ export interface components {
         SubnetStatus: "active" | "inactive" | "unknown";
         SubnetSurfacesArtifact: components["schemas"]["SurfacesArtifact"];
         SubnetTrajectoryArtifact: {
+            /** @description Windowed deltas (7d/30d) between the latest point and the point at or before that many days prior. tao_in_pool_tao/alpha_in_pool/alpha_out_pool deltas are the net TAO/alpha flow into or out of the pool over the window (#2552) — positive means net inflow. */
             deltas: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -7332,13 +7333,21 @@ export interface components {
             netuid: number;
             point_count: number;
             points: ({
+                /** @description Alpha reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative. */
+                alpha_in_pool?: number | null;
+                /** @description Alpha issued/staked out of the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative. */
+                alpha_out_pool?: number | null;
                 alpha_price_tao?: number | null;
                 completeness_score?: number | null;
                 date: string;
                 emission_share?: number | null;
                 endpoint_count?: number | null;
                 miner_count?: number | null;
+                /** @description Cumulative subnet trading volume in TAO as reported by the chain at this snapshot (#2552). */
+                subnet_volume_tao?: number | null;
                 surface_count?: number | null;
+                /** @description TAO reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative — see deltas for net flow. */
+                tao_in_pool_tao?: number | null;
                 total_stake_tao?: number | null;
                 validator_count?: number | null;
             } & {
@@ -27083,8 +27092,8 @@ export interface operations {
                         data?: components["schemas"]["SubnetTrajectoryArtifact"];
                     };
                     /**
-                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share
-                     *     2026-06-01,35,1,1,8,60,90,0.01,0.02
+                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao
+                     *     2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45
                      */
                     "text/csv": string;
                 };

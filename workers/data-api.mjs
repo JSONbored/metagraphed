@@ -2416,6 +2416,18 @@ async function handleSubnetSnapshotSync(request, env) {
     emission_share: Number.isFinite(row.emission_share)
       ? row.emission_share
       : null,
+    tao_in_pool_tao: Number.isFinite(row.tao_in_pool_tao)
+      ? row.tao_in_pool_tao
+      : null,
+    alpha_in_pool: Number.isFinite(row.alpha_in_pool)
+      ? row.alpha_in_pool
+      : null,
+    alpha_out_pool: Number.isFinite(row.alpha_out_pool)
+      ? row.alpha_out_pool
+      : null,
+    subnet_volume_tao: Number.isFinite(row.subnet_volume_tao)
+      ? row.subnet_volume_tao
+      : null,
     captured_at: row.captured_at,
   }));
 
@@ -2437,6 +2449,10 @@ async function handleSubnetSnapshotSync(request, env) {
           "total_stake_tao",
           "alpha_price_tao",
           "emission_share",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "alpha_out_pool",
+          "subnet_volume_tao",
           "captured_at",
         )}
         ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
@@ -2444,7 +2460,11 @@ async function handleSubnetSnapshotSync(request, env) {
           miner_count = COALESCE(subnet_snapshots.miner_count, excluded.miner_count),
           total_stake_tao = COALESCE(subnet_snapshots.total_stake_tao, excluded.total_stake_tao),
           alpha_price_tao = COALESCE(subnet_snapshots.alpha_price_tao, excluded.alpha_price_tao),
-          emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share)`;
+          emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share),
+          tao_in_pool_tao = COALESCE(subnet_snapshots.tao_in_pool_tao, excluded.tao_in_pool_tao),
+          alpha_in_pool = COALESCE(subnet_snapshots.alpha_in_pool, excluded.alpha_in_pool),
+          alpha_out_pool = COALESCE(subnet_snapshots.alpha_out_pool, excluded.alpha_out_pool),
+          subnet_volume_tao = COALESCE(subnet_snapshots.subnet_volume_tao, excluded.subnet_volume_tao)`;
       return writeJson({ ok: true, rows_written: snapshotRows.length });
     });
   } catch (err) {
@@ -5347,7 +5367,8 @@ export default {
           const rows = await sql`
           SELECT snapshot_date::text AS snapshot_date, completeness_score,
                  surface_count, endpoint_count, validator_count, miner_count,
-                 total_stake_tao, alpha_price_tao, emission_share
+                 total_stake_tao, alpha_price_tao, emission_share,
+                 tao_in_pool_tao, alpha_in_pool, alpha_out_pool, subnet_volume_tao
           FROM subnet_snapshots
           WHERE netuid = ${netuid}
           ORDER BY snapshot_date DESC

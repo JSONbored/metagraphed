@@ -71,6 +71,10 @@ const TRAJECTORY_CSV_COLUMNS = [
   "total_stake_tao",
   "alpha_price_tao",
   "emission_share",
+  "tao_in_pool_tao",
+  "alpha_in_pool",
+  "alpha_out_pool",
+  "subnet_volume_tao",
 ];
 
 function validateFormatParam(url) {
@@ -141,7 +145,8 @@ export async function handleTrajectory(request, env, netuid, url) {
       env,
       `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
               validator_count, miner_count, total_stake_tao, alpha_price_tao,
-              emission_share
+              emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool,
+              subnet_volume_tao
        FROM subnet_snapshots
        WHERE netuid = ?
        ORDER BY snapshot_date DESC

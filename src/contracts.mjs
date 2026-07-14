@@ -4355,8 +4355,8 @@ function csvExampleForRoute(entry) {
   }
   if (entry.id === "subnet-trajectory") {
     return [
-      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
-      "2026-06-01,35,1,1,8,60,90,0.01,0.02",
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
+      "2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45",
     ].join("\r\n");
   }
   if (entry.id === "extrinsics-feed") {

@@ -34,6 +34,10 @@ const SAMPLE_ROW = {
   total_stake_tao: 123.456,
   alpha_price_tao: 0.789,
   emission_share: 0.0123,
+  tao_in_pool_tao: 26707.57,
+  alpha_in_pool: 2956464.98,
+  alpha_out_pool: 2257199.02,
+  subnet_volume_tao: 798027.45,
 };
 
 test("parseArgs returns defaults with no arguments", () => {
@@ -140,7 +144,7 @@ test("rowTuple renders every column in declared order", () => {
   const tuple = rowTuple(SAMPLE_ROW);
   assert.equal(
     tuple,
-    "(43, '2025-06-23', 80, 3, 2, 1, 0, 1750643200000, 64, 192, 123.456, 0.789, 0.0123)",
+    "(43, '2025-06-23', 80, 3, 2, 1, 0, 1750643200000, 64, 192, 123.456, 0.789, 0.0123, 26707.57, 2956464.98, 2257199.02, 798027.45)",
   );
 });
 
@@ -153,7 +157,20 @@ test("rowTuple carries NULLs through for missing economics columns", () => {
     alpha_price_tao: null,
     emission_share: null,
   });
-  assert.match(tuple, /NULL, NULL, NULL, NULL, NULL\)$/);
+  assert.match(tuple, /NULL, NULL, NULL, NULL, NULL, 26707\.57/);
+});
+
+// #2552: pool liquidity + volume carry NULL through the same as the other
+// economics columns when D1 has yet to backfill a snapshot row.
+test("rowTuple carries NULLs through for missing pool liquidity + volume columns", () => {
+  const tuple = rowTuple({
+    ...SAMPLE_ROW,
+    tao_in_pool_tao: null,
+    alpha_in_pool: null,
+    alpha_out_pool: null,
+    subnet_volume_tao: null,
+  });
+  assert.match(tuple, /NULL, NULL, NULL, NULL\)$/);
 });
 
 test("chunkRows splits into fixed-size chunks with a final remainder", () => {
@@ -186,6 +203,10 @@ test("insertStatement emits an upsert that overwrites every non-key column", () 
     "total_stake_tao",
     "alpha_price_tao",
     "emission_share",
+    "tao_in_pool_tao",
+    "alpha_in_pool",
+    "alpha_out_pool",
+    "subnet_volume_tao",
   ]) {
     assert.match(
       statement,

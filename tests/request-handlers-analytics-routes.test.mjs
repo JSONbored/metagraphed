@@ -177,10 +177,10 @@ describe("handleTrajectory", () => {
     const lines = text.split("\r\n");
     assert.equal(
       lines[0],
-      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
     );
-    assert.equal(lines[1], "2026-06-01,35,1,1,8,60,90,0.01,0.02");
-    assert.equal(lines[2], "2026-06-02,40,2,1,8,64,100,0.01,0.02");
+    assert.equal(lines[1], "2026-06-01,35,1,1,8,60,90,0.01,0.02,,,,");
+    assert.equal(lines[2], "2026-06-02,40,2,1,8,64,100,0.01,0.02,,,,");
   });
 
   test("returns CSV response when Accept: text/csv header is present", async () => {
@@ -207,7 +207,7 @@ describe("handleTrajectory", () => {
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
     const text = await res.text();
     const lines = text.split("\r\n");
-    assert.equal(lines[1], "2026-06-01,35,1,1,8,60,90,0.01,0.02");
+    assert.equal(lines[1], "2026-06-01,35,1,1,8,60,90,0.01,0.02,,,,");
   });
 
   test("returns header-only CSV when D1 is cold", async () => {
@@ -222,7 +222,7 @@ describe("handleTrajectory", () => {
     const lines = text.split("\r\n");
     assert.equal(
       lines[0],
-      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
     );
     assert.equal(lines.length, 1);
   });

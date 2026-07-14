@@ -261,6 +261,12 @@ CREATE TABLE IF NOT EXISTS subnet_snapshots (
   total_stake_tao    NUMERIC,
   alpha_price_tao    NUMERIC,
   emission_share     NUMERIC,
+  -- Pool liquidity + volume (#2552) — point-in-time AMM reserves/cumulative
+  -- volume, NUMERIC like the other TAO-precision economics columns above.
+  tao_in_pool_tao    NUMERIC,
+  alpha_in_pool      NUMERIC,
+  alpha_out_pool     NUMERIC,
+  subnet_volume_tao  NUMERIC,
   PRIMARY KEY (netuid, snapshot_date)
 );
 CREATE INDEX IF NOT EXISTS idx_subnet_snapshots_date

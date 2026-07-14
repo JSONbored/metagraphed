@@ -6222,6 +6222,10 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
       total_stake_tao: 90,
       alpha_price_tao: 0.01,
       emission_share: 0.02,
+      tao_in_pool_tao: 26707.57,
+      alpha_in_pool: 2956464.98,
+      alpha_out_pool: 2257199.02,
+      subnet_volume_tao: 798027.45,
     },
   ];
   const res = await req("/api/v1/subnets/7/trajectory");
@@ -6230,6 +6234,11 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
   expect(body.netuid).toBe(7);
   expect(body.points[0].date).toBe("2026-06-01");
   expect(body.points[0].completeness_score).toBe(90);
+  // #2552: pool liquidity + volume flow through the Postgres trajectory path.
+  expect(body.points[0].tao_in_pool_tao).toBe(26707.57);
+  expect(body.points[0].alpha_in_pool).toBe(2956464.98);
+  expect(body.points[0].alpha_out_pool).toBe(2257199.02);
+  expect(body.points[0].subnet_volume_tao).toBe(798027.45);
 });
 
 test("GET /api/v1/economics/trends: aggregates daily rows network-wide", async () => {
@@ -6273,6 +6282,10 @@ function snapshotRow(overrides = {}) {
     total_stake_tao: 90,
     alpha_price_tao: 0.01,
     emission_share: 0.02,
+    tao_in_pool_tao: 26707.57,
+    alpha_in_pool: 2956464.98,
+    alpha_out_pool: 2257199.02,
+    subnet_volume_tao: 798027.45,
     captured_at: 1780000000000,
     ...overrides,
   };
@@ -6397,6 +6410,21 @@ test("subnet-snapshot-sync upserts subnet_snapshots with the COALESCE-on-economi
   expect(queryText()).toMatch(
     /validator_count = COALESCE\(subnet_snapshots\.validator_count, excluded\.validator_count\)/,
   );
+  // #2552: pool liquidity + volume columns follow the same COALESCE-on-conflict
+  // semantics as the other economics columns (a later NULL never wipes an
+  // earlier fire's good value).
+  for (const column of [
+    "tao_in_pool_tao",
+    "alpha_in_pool",
+    "alpha_out_pool",
+    "subnet_volume_tao",
+  ]) {
+    expect(queryText()).toMatch(
+      new RegExp(
+        `${column} = COALESCE\\(subnet_snapshots\\.${column}, excluded\\.${column}\\)`,
+      ),
+    );
+  }
 });
 
 test("subnet-snapshot-sync defaults every optional field to null when absent", async () => {

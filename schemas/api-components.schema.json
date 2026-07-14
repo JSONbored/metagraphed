@@ -19519,6 +19519,7 @@
                 "null"
               ]
             },
+            "description": "Windowed deltas (7d/30d) between the latest point and the point at or before that many days prior. tao_in_pool_tao/alpha_in_pool/alpha_out_pool deltas are the net TAO/alpha flow into or out of the pool over the window (#2552) — positive means net inflow.",
             "type": "object"
           },
           "netuid": {
@@ -19533,6 +19534,20 @@
             "items": {
               "additionalProperties": true,
               "properties": {
+                "alpha_in_pool": {
+                  "description": "Alpha reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "alpha_out_pool": {
+                  "description": "Alpha issued/staked out of the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
                 "alpha_price_tao": {
                   "type": [
                     "number",
@@ -19566,9 +19581,23 @@
                     "null"
                   ]
                 },
+                "subnet_volume_tao": {
+                  "description": "Cumulative subnet trading volume in TAO as reported by the chain at this snapshot (#2552).",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
                 "surface_count": {
                   "type": [
                     "integer",
+                    "null"
+                  ]
+                },
+                "tao_in_pool_tao": {
+                  "description": "TAO reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative — see deltas for net flow.",
+                  "type": [
+                    "number",
                     "null"
                   ]
                 },
