@@ -138,6 +138,25 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/53"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-53-efficientfrontier-min-compute",
+      "kind": "data-artifact",
+      "name": "EfficientFrontier minimum compute requirements",
+      "notes": "Public no-auth machine-readable min_compute.yml from the SN53 EfficientFrontier subnet repository (oxylok/53-EfficientFrontier — the repo the file's existing surfaces already cite), pinned to an immutable commit. Specifies the minimum and recommended CPU, GPU, memory, storage, and network requirements for running SN53 miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "provider": "signalplus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/oxylok/53-EfficientFrontier",
+        "https://github.com/oxylok/53-EfficientFrontier/blob/be5d620ced30b34b41c0e33b6a8a76121747d005/_sdk/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/oxylok/53-EfficientFrontier/be5d620ced30b34b41c0e33b6a8a76121747d005/_sdk/min_compute.yml"
     }
   ],
   "website_url": "https://www.signalplus.com/"
