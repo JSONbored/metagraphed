@@ -79,6 +79,27 @@
         "https://taomarketcap.com/subnets/38"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/38"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-chronogpt-backend-openapi",
+      "kind": "openapi",
+      "name": "SN38 ChronoGPT Backend OpenAPI schema",
+      "notes": "Public no-auth OpenAPI 3.1.0 schema (info.title \"SN38 ChronoGPT Backend\", 12 paths) auto-served by the ChronoLLM (SN38) backend at api.chronollm.com (FastAPI /openapi.json; Swagger UI at /docs). The official chronollm/sn38 miner docs reference this same host and endpoints (api.chronollm.com/docs, /rounds/current, /submissions/{round}/{uid}), tying it to the subnet. The spec declares no securitySchemes and documents the public round/submission/eval read endpoints. Distinct from the existing miner-docs and data-artifact surfaces on this manifest.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "reyanthony062001-ops"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.chronollm.com/openapi.json",
+      "source_urls": [
+        "https://github.com/chronollm/sn38/blob/main/docs/miner.md",
+        "https://api.chronollm.com/openapi.json"
+      ],
+      "url": "https://api.chronollm.com/openapi.json"
     }
   ],
   "source_repo": "https://github.com/chronollm/sn38",
