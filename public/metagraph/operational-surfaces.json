@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 140,
+  "surface_count": 141,
   "surfaces": [
     {
       "auth_required": false,
@@ -1163,6 +1163,24 @@
       "surface_id": "sn-47-evolai-universal-qa-dataset",
       "surface_key": "srf-aa5d5d31a0f78307",
       "url": "https://huggingface.co/datasets/evolai/universal_qa"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 47,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "evolai",
+      "public_safe": true,
+      "subnet_name": "EvolAI",
+      "subnet_slug": "sn-47",
+      "surface_id": "sn-47-evolai-validator-config",
+      "surface_key": "srf-a9a24073adcde815",
+      "url": "https://raw.githubusercontent.com/openevolai/evolai/4cc0040eca74e3541178661ce8b5dd29fa2d343a/evolai/validator/config.py"
     },
     {
       "auth_required": false,
