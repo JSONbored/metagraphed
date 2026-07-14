@@ -13,6 +13,7 @@
 const OPTIONAL_DEPTH = 3;
 const MAX_DEPTH = 8;
 const ISO = "2026-06-01T00:00:00.000Z";
+const DATE_ONLY = "2026-06-01";
 const CURSOR2 = "123.4";
 const CURSOR3 = "100.123.4";
 const HEX64 = "a3f1".repeat(16); // 64 hex chars, matches ^[a-f0-9]{64}$
@@ -995,6 +996,7 @@ export function sampleFromSchema(
     if (schema.pattern) return valueForPattern(schema.pattern, name);
     if (schema.format === "uri") return "https://api.metagraph.sh/example";
     if (schema.format === "date-time") return ISO;
+    if (schema.format === "date") return DATE_ONLY;
     return seededString(name);
   }
   if (type === "integer" || type === "number")

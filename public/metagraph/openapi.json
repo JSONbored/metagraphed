@@ -42402,7 +42402,7 @@
                       "notes": "Example description.",
                       "participant_count": 1,
                       "partnership": {
-                        "since": "example",
+                        "since": "2026-06-01",
                         "tier": "pilot"
                       },
                       "previously_known_as": [
@@ -47589,7 +47589,7 @@
                       "notes": "Example description.",
                       "participant_count": 1,
                       "partnership": {
-                        "since": "example",
+                        "since": "2026-06-01",
                         "tier": "pilot"
                       },
                       "previously_known_as": [

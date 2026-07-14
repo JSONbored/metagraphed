@@ -21923,7 +21923,7 @@ export interface operations {
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
                      *           "partnership": {
-                     *             "since": "example",
+                     *             "since": "2026-06-01",
                      *             "tier": "pilot"
                      *           },
                      *           "previously_known_as": [
@@ -25652,7 +25652,7 @@ export interface operations {
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
                      *           "partnership": {
-                     *             "since": "example",
+                     *             "since": "2026-06-01",
                      *             "tier": "pilot"
                      *           },
                      *           "previously_known_as": [
