@@ -12,6 +12,16 @@ const TONE: Record<HealthState, string> = {
   unknown: "bg-ink-subtle/30 hover:bg-ink-subtle/60",
 };
 
+// Netuid-label contrast per tone, mirroring the latency-heatmap convention:
+// light text on the saturated health fills, dark text on the amber warn fill
+// and the pale "unknown" fill.
+const TONE_TEXT: Record<HealthState, string> = {
+  ok: "text-paper",
+  warn: "text-ink-strong",
+  down: "text-paper",
+  unknown: "text-ink-strong",
+};
+
 /**
  * Heatmap of every active application subnet colored by health. Clicking a
  * cell deep-links to that subnet. Renders a tooltip with the subnet name +
@@ -46,11 +56,16 @@ export function SubnetHealthMatrix() {
                     to="/subnets/$netuid"
                     params={{ netuid: s.netuid }}
                     className={classNames(
-                      "group aspect-square rounded-sm transition-all duration-150 ring-0 hover:ring-2 hover:ring-accent/40 hover:scale-110",
+                      "group flex aspect-square items-center justify-center rounded-sm transition-all duration-150 ring-0 hover:ring-2 hover:ring-accent/40 hover:scale-110",
                       tone,
+                      TONE_TEXT[s.health ?? "unknown"],
                     )}
                     aria-label={`SN${s.netuid}${s.name ? ` — ${s.name}` : ""} — ${s.health ?? "unknown"}`}
-                  />
+                  >
+                    <span className="font-mono text-[9px] font-semibold leading-none tabular-nums tracking-tight">
+                      {s.netuid}
+                    </span>
+                  </Link>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-[11px]">
                   <div className="font-display font-semibold text-ink-strong">
