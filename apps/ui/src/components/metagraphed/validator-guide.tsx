@@ -22,6 +22,18 @@ const METRICS: Array<{ term: string; def: string }> = [
     def: "The total neuron slots the hotkey holds across those subnets — one registration is one UID.",
   },
   {
+    term: "Operator",
+    def: "The coldkey's self-declared on-chain identity (name, logo, links) joined server-side (#5234). It belongs to the operator's coldkey, not the hotkey — the same operator can run multiple validators.",
+  },
+  {
+    term: "Take",
+    def: "The validator's commission (#2548): the fraction of delegator rewards the validator keeps (0–100%). Lower take means nominators keep more of the emission flow.",
+  },
+  {
+    term: "Est. APY",
+    def: "Annualized delegator yield estimated from emission÷stake, net of take. On the directory this uses the latest metagraph snapshot; on a validator detail page, 7d/30d/90d windows use daily neuron_daily history. Server-side modelling (#2551) will supersede these client estimates.",
+  },
+  {
     term: "Nominators",
     def: "How many distinct coldkeys currently have stake delegated to this hotkey, network-wide (#2549). Sourced from a lower-frequency chain scan than the other columns, so it can lag them briefly — a dash means no count has been captured for this hotkey yet, not zero nominators.",
   },

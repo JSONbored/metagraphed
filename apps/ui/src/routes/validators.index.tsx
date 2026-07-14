@@ -14,6 +14,12 @@ import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
+import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
+import {
+  annualizedDelegatorApyPct,
+  formatApyPct,
+  formatTakePct,
+} from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 // The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
@@ -163,8 +169,11 @@ function ValidatorsTable({
           <table className="w-full text-left text-sm">
             <thead className="bg-surface/50">
               <tr>
+                <th className={TH}>Operator</th>
                 <th className={TH}>Hotkey</th>
                 <th className={TH}>Coldkey</th>
+                <th className={`${TH} text-right`}>Take</th>
+                <th className={`${TH} text-right`}>Est. APY</th>
                 <th className={`${TH} text-right`}>Active subnets</th>
                 <th className={`${TH} text-right`}>UIDs</th>
                 <th className={`${TH} text-right`}>Nominators</th>
@@ -174,8 +183,17 @@ function ValidatorsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {validators.map((v) => (
+              {validators.map((v) => {
+                const apy = annualizedDelegatorApyPct(
+                  v.total_emission_tao,
+                  v.total_stake_tao,
+                  v.take,
+                );
+                return (
                 <tr key={v.hotkey} className="hover:bg-surface/40">
+                  <td className="px-3 py-2 max-w-[10rem]">
+                    <ValidatorIdentityChip hotkey={v.hotkey} identity={v.coldkey_identity} />
+                  </td>
                   <td className="px-3 py-2 font-mono text-[11px]">
                     <div className="flex items-center gap-1.5">
                       {v.featured ? <FeaturedBadge /> : null}
@@ -203,6 +221,15 @@ function ValidatorsTable({
                       "—"
                     )}
                   </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatTakePct(v.take)}
+                  </td>
+                  <td
+                    className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink"
+                    title="Annualized from snapshot emission÷stake, net of take"
+                  >
+                    {formatApyPct(apy)}
+                  </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                     {formatNumber(v.subnet_count)}
                   </td>
@@ -222,7 +249,8 @@ function ValidatorsTable({
                     {taoCompact(v.total_emission_tao)}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
