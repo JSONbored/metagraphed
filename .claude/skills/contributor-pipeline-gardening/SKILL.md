@@ -32,13 +32,14 @@ grep confirming the described code/route/page exists); leave partial work open, 
 scope-clarifying comment.
 
 **metagraphed-specific things to check while doing this:**
+
 - Milestone **#9 "Wave 3 — Frontend (post-consolidation)"** is marked `open` but currently shows 0
   open / 480 closed issues — check whether this is simply drained (in which case close the milestone
   itself) or whether it's silently missing new work that should be filed under it.
 - **74 of 142 open issues (as of 2026-07-14) have no milestone at all** — a much bigger gap than
   gittensory's equivalent. Before generating new issues, spend part of a sweep folding orphaned
   issues into the milestone they actually belong to (`Foundations & Infra`, `Wave 4 — Docs & Dev
-  Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo's issue hygiene needs
+Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo's issue hygiene needs
   more of this than gittensory's does.
 - The **native-staking feature work** (`gittensor:feature`/`maintainer-only` issues in the low-5200s
   numbering, "take/commission management," "move/re-delegate stake flow," "risk disclosure copy") is

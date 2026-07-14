@@ -10,13 +10,13 @@ skill only covers issue-pipeline hygiene, not PR review mechanics.
 
 ## Milestone taxonomy (as of 2026-07-14 — re-check, this repo's hygiene drifts faster than gittensory's)
 
-| Milestone | Open | Nature |
-|---|---|---|
-| `Foundations & Infra` (#11) | ~39-41 | General backend/infra work, mixed maintainer/contributor |
-| `Wave 4 — Docs & Dev Surface` (#10) | ~25 | Docs pages for shipped API surfaces — mostly currently `maintainer-only` but low-risk to unlock, see SKILL.md |
-| `Partner Flywheel Hardening` (#13) | ~4 | Small, check individually |
-| `Wave 3 — Frontend (post-consolidation)` (#9) | 0 open / 480 closed, still marked `open` | Likely fully drained — verify and close the milestone if so, or find out why it's still open |
-| Unmilestoned | ~74 (over half of all open issues) | Real hygiene gap — fold into the closest fit rather than leaving orphaned |
+| Milestone                                     | Open                                     | Nature                                                                                                        |
+| --------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `Foundations & Infra` (#11)                   | ~39-41                                   | General backend/infra work, mixed maintainer/contributor                                                      |
+| `Wave 4 — Docs & Dev Surface` (#10)           | ~25                                      | Docs pages for shipped API surfaces — mostly currently `maintainer-only` but low-risk to unlock, see SKILL.md |
+| `Partner Flywheel Hardening` (#13)            | ~4                                       | Small, check individually                                                                                     |
+| `Wave 3 — Frontend (post-consolidation)` (#9) | 0 open / 480 closed, still marked `open` | Likely fully drained — verify and close the milestone if so, or find out why it's still open                  |
+| Unmilestoned                                  | ~74 (over half of all open issues)       | Real hygiene gap — fold into the closest fit rather than leaving orphaned                                     |
 
 ## Labels — this repo's own convention, don't force gittensory's onto it
 
@@ -54,19 +54,24 @@ doesn't require access a contributor can't have). metagraphed-specific instances
 
 ```md
 ## Context
+
 <what exists today, cite real file/schema/route paths, why this matters>
 
 ## Requirements
+
 <concrete, testable requirements>
 
 ## Deliverables
+
 - [ ] <concrete artifact 1>
 - [ ] <concrete artifact 2>
 
 ## Expected Outcome
+
 <what's true after this ships that wasn't true before>
 
 ## Links & Resources
+
 <related issues, files to anchor on>
 ```
 
@@ -77,8 +82,24 @@ code-issue template above for that kind of ask.
 ## Native relationship linking (GraphQL — confirmed available on this repo, 2026-07-14)
 
 ```graphql
-mutation { addSubIssue(input: { issueId: "<parent node id>", subIssueId: "<child node id>" }) { issue { number } } }
-mutation { addBlockedBy(input: { issueId: "<blocked node id>", blockedById: "<blocker node id>" }) { issue { number } } }
+mutation {
+  addSubIssue(
+    input: { issueId: "<parent node id>", subIssueId: "<child node id>" }
+  ) {
+    issue {
+      number
+    }
+  }
+}
+mutation {
+  addBlockedBy(
+    input: { issueId: "<blocked node id>", blockedById: "<blocker node id>" }
+  ) {
+    issue {
+      number
+    }
+  }
+}
 ```
 
 Get a node ID: `gh api graphql -f query='query { repository(owner:"JSONbored", name:"metagraphed") { issue(number: N) { id } } }'`.
