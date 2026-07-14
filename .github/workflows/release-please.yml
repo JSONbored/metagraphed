@@ -44,13 +44,18 @@ jobs:
         with:
           persist-credentials: false
 
+      # Authenticates as a real account (via RELEASE_PLEASE_TOKEN, a fine-grained PAT) rather than the
+      # default GITHUB_TOKEN. GitHub Apps like github-actions[bot] aren't tracked as repo collaborators,
+      # so PRs/commits it authors were repeatedly re-flagged as needing manual workflow-run approval on
+      # every push, even with the least-restrictive fork-PR-approval setting -- a real collaborator
+      # identity doesn't hit that gate.
       - name: Run release-please
         id: release
         uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
       # release-please creates the component tag + GitHub Release with GITHUB_TOKEN,
       # which (by GitHub's recursion-prevention rule) does NOT fire push/tag-based
