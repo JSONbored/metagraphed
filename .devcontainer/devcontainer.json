@@ -1,11 +1,12 @@
 {
   "name": "metagraphed",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
-  // Pinned (not @latest): postCreateCommand runs unattended on every container
-  // create, so an unpinned version would auto-execute whatever a compromised
-  // upstream publish contained. When #3769 lands Playwright as a real devDependency
-  // in apps/ui/package.json, re-pin this to match that version.
-  "postCreateCommand": "npm install && npx --yes playwright@1.61.1 install --with-deps chromium",
+  // Runs unattended on every container create -- `npm install` first resolves
+  // Playwright to the exact, lockfile-pinned version already vetted in
+  // apps/ui/package.json's devDependencies (#3769), then the local `npx
+  // playwright` (no version pin, no remote fetch) installs its browser
+  // binaries to match.
+  "postCreateCommand": "npm install && npx playwright install --with-deps chromium",
   "forwardPorts": [8080],
   "portsAttributes": {
     "8080": {

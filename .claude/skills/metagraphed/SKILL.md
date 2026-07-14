@@ -338,9 +338,28 @@ one PR.
 ### Phase C2 — Screenshot contract (required for any visual change)
 
 **Non-negotiable for any PR that changes rendered output.** PRs without it are auto-closed — no
-exceptions. Follow the steps below exactly — a real PR (#3757) shipped 10 of its 12 screenshots at
-115,000–142,000px tall (a full-page capture bug, not a display issue) and sat unreviewable until
-recaptured. Don't repeat that.
+exceptions. A real PR (#3757) shipped 10 of its 12 screenshots at 115,000–142,000px tall (a
+full-page capture bug, not a display issue) and sat unreviewable until recaptured. Don't repeat
+that.
+
+**Recommended: automated capture (#3769).** `apps/ui/tests/e2e/capture-pr-screenshots.mjs`
+automates everything below — the two-worktree orchestration, fixed-viewport-only capture, explicit
+theme toggling, the 12-image matrix, and (with `--push`) hosting + the ready-to-paste markdown
+table:
+
+```sh
+npm run screenshots --workspace=apps/ui -- --route /subnets/1 --section volume-24h --prefix 5483-volume --push
+```
+
+Add `--section <id>` for a below-the-fold section anchor (omit to capture the page top), and
+`--fallback-section <id>` when `before` doesn't have that anchor yet (the common case for a new
+section — point it at the existing anchor the new one attaches after). Already have two dev
+servers running (e.g. mid-session in an AI coding tool)? Skip the orchestration and point at them
+directly: `--before-url http://localhost:8081 --after-url http://localhost:8080`. Run
+`npm run screenshots --workspace=apps/ui -- --help` for the full flag list.
+
+If the tool doesn't fit your case (a capture step needs manual intervention, or you're debugging
+the tool itself), the equivalent manual steps are below — same contract, same output.
 
 **1. Two dev servers — one for `before`, one for `after`.** Don't reuse a single server for both; run
 the `before` state from a separate worktree so nothing needs stashing/restoring mid-capture:
@@ -421,9 +440,7 @@ A PR confined to `apps/ui/src/lib/**` / `apps/ui/src/hooks/**` / test files, wit
 skips this entirely — it isn't rendering anything different.
 
 > The devcontainer (`.devcontainer/devcontainer.json`) preinstalls Node 22 + Playwright's Chromium, so
-> setup for the steps above is zero-config there. A scripted capture pipeline that automates the
-> screenshot-taking itself (tracked in #3769) doesn't exist yet — until it lands, follow the steps
-> manually.
+> setup for the steps above (manual or via the automated tool) is zero-config there.
 
 **Animated evidence (#4825) — for effects no static screenshot can show.** Required whenever the
 changed behavior is only visible in motion: a hover-triggered popover, a scroll-linked effect, a CSS
