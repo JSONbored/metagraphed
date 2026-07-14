@@ -106,3 +106,68 @@ test("returns 502 when the upstream response body is unreadable", async () => {
   assert.equal(res.status, 502);
   assert.equal((await res.json()).error.code, "neurons_sync_unavailable");
 });
+
+// #5549: proxyToDataApi (shared by all six internal-sync proxies, exercised
+// here via neurons-sync) is gated by INTERNAL_SYNC_RATE_LIMITER, a no-op when
+// the binding is absent. Mirrors the webhook-subscription/alert-trigger-create
+// suites: within-limit success, over-limit 429 with the standard header
+// family, and unbound-binding no-op (already covered by every test above).
+const baseDataApi = () => ({
+  fetch() {
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  },
+});
+
+test("rate limiting: 429 with the rate-limit header family when the limiter rejects, and DATA_API is never reached", async () => {
+  let calls = 0;
+  const res = await handleRequest(
+    post([{ netuid: 8 }]),
+    {
+      DATA_API: {
+        fetch() {
+          calls += 1;
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+      },
+      INTERNAL_SYNC_RATE_LIMITER: {
+        limit: async () => ({ success: false }),
+      },
+    },
+    {},
+  );
+  assert.equal(res.status, 429);
+  assert.equal((await res.json()).error.code, "internal_sync_rate_limited");
+  assert.equal(res.headers.get("retry-after"), "60");
+  assert.equal(res.headers.get("x-ratelimit-limit"), "30");
+  assert.equal(res.headers.get("x-ratelimit-policy"), "30;w=60");
+  assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
+  assert.equal(calls, 0);
+});
+
+test("rate limiting: proceeds normally when the limiter allows the request", async () => {
+  let limiterCalls = 0;
+  const res = await handleRequest(
+    post([{ netuid: 8 }]),
+    {
+      DATA_API: baseDataApi(),
+      INTERNAL_SYNC_RATE_LIMITER: {
+        limit: async () => {
+          limiterCalls += 1;
+          return { success: true };
+        },
+      },
+    },
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.equal(limiterCalls, 1);
+});
+
+test("rate limiting: skips the limiter entirely when the binding is unbound (local dev/CI)", async () => {
+  const res = await handleRequest(
+    post([{ netuid: 8 }]),
+    { DATA_API: baseDataApi() },
+    {},
+  );
+  assert.equal(res.status, 200);
+});

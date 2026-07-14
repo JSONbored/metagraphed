@@ -856,6 +856,45 @@ async function handleRegistrySyncProxy(request, env) {
   });
 }
 
+// Per-client abuse control for the six internal sync routes proxied through
+// proxyToDataApi below (neurons-sync, backfill-neuron-daily, rollup-account-
+// events-daily, subnet-hyperparams-sync, account-identity-sync, validator-
+// nominator-counts-sync, nominator-positions-sync, #5549). Each authenticates
+// with its OWN shared static secret downstream in data-api.mjs -- this proxy
+// has no auth of its own, so a leaked secret could otherwise script unbounded
+// write volume against the chain-indexer Postgres, the same shape
+// handleAlertTriggerCreate guards against. Looser than that route's 10/60s
+// posture: legitimate callers include chunked historical backfills
+// (scripts/backfill-neuron-history.py, scripts/backfill-stake-monthly.py)
+// that POST many sequential chunks in one run -- 30/60s still firmly bounds
+// abuse while tolerating that pattern. Keyed on a single shared bucket across
+// all six routes (one leaked secret can't just switch routes to dodge the
+// limit). Bound here in wrangler.jsonc (not wrangler.data.jsonc) because
+// ratelimit namespaces are scoped to the Worker script that checks them, and
+// this check runs in api.mjs, not data-api.mjs. Optional-chained so it's a
+// no-op when the binding is absent (local dev/CI).
+const INTERNAL_SYNC_RATE_LIMIT = { limit: 30, windowSeconds: 60 };
+
+async function internalSyncRateLimited(request, env) {
+  if (!env.INTERNAL_SYNC_RATE_LIMITER?.limit) return null;
+  const { success } = await env.INTERNAL_SYNC_RATE_LIMITER.limit({
+    key: `internal-sync:${resolveClientIp(request)}`,
+  });
+  if (success) return null;
+  return errorResponse(
+    "internal_sync_rate_limited",
+    "Too many internal sync requests from this client; slow down.",
+    429,
+    {},
+    {
+      "retry-after": String(INTERNAL_SYNC_RATE_LIMIT.windowSeconds),
+      "x-ratelimit-limit": String(INTERNAL_SYNC_RATE_LIMIT.limit),
+      "x-ratelimit-policy": `${INTERNAL_SYNC_RATE_LIMIT.limit};w=${INTERNAL_SYNC_RATE_LIMIT.windowSeconds}`,
+      "x-ratelimit-remaining": "0",
+    },
+  );
+}
+
 // Generic forwarder to the DATA_API service binding for the internal
 // write/rollup routes that live inside workers/data-api.mjs itself rather
 // than a dedicated Worker (#4771's neurons-sync pattern) -- splitting read
@@ -876,6 +915,8 @@ async function proxyToDataApi(
   if (!env.DATA_API) {
     return errorResponse(code, notBoundMessage, 503);
   }
+  const rateLimited = await internalSyncRateLimited(request, env);
+  if (rateLimited) return rateLimited;
   const upstream = await env.DATA_API.fetch(request);
   let body;
   try {

@@ -504,5 +504,24 @@
         "period": 60,
       },
     },
+    // Per-client abuse control for the six proxyToDataApi internal-sync write
+    // routes (#5549: neurons-sync, backfill-neuron-daily, rollup-account-
+    // events-daily, subnet-hyperparams-sync, account-identity-sync,
+    // validator-nominator-counts-sync, nominator-positions-sync). Each
+    // authenticates with its OWN shared static secret downstream in
+    // data-api.mjs -- this proxy has no auth of its own, so a leaked secret
+    // could otherwise script unbounded write volume. 30 requests / 60s per
+    // client IP -- looser than the 10/60s webhook/alert-trigger posture to
+    // tolerate legitimate chunked historical-backfill scripts (see
+    // proxyToDataApi's own comment in workers/api.mjs). Skipped when the
+    // binding is absent (local dev/CI).
+    {
+      "name": "INTERNAL_SYNC_RATE_LIMITER",
+      "namespace_id": "1007",
+      "simple": {
+        "limit": 30,
+        "period": 60,
+      },
+    },
   ],
 }
