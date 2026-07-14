@@ -24,7 +24,7 @@ export function CopyButton({
       aria-label={copied ? "Copied" : `Copy ${label ?? "value"}`}
       title={copied ? "Copied!" : `Copy ${label ?? "value"}`}
       className={classNames(
-        "shrink-0 inline-flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong transition-colors",
+        "shrink-0 inline-flex items-center justify-center rounded p-1 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong transition-colors",
         className,
       )}
     >
