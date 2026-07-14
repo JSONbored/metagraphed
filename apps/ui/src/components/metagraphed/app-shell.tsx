@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Compass, Github, Menu, Rss, Webhook } from "lucide-react";
+import { ChevronLeft, ChevronRight, Compass, Github, Menu, Rss, Webhook } from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -41,23 +41,13 @@ import { HeaderActionsMenu } from "./header-actions-menu";
 import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
 import { IncidentStrip } from "./incident-strip";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
+import { buildCrumbs, parentCrumb } from "./breadcrumb-nav";
 
 // Brand links resolve from build-time env constants, but still run them through
 // the external-URL guard (with a known-good fallback) so a misconfigured
 // override can't inject an unsafe href — the same treatment the API links get.
 const GITHUB_HREF = safeExternalUrl(GITHUB_REPO) ?? DEFAULT_GITHUB_REPO;
 const DISCORD_HREF = safeExternalUrl(DISCORD_URL) ?? DEFAULT_DISCORD_URL;
-
-function buildCrumbs(pathname: string) {
-  const parts = pathname.split("/").filter(Boolean);
-  const crumbs: Array<{ label: string; to: string }> = [{ label: "Registry", to: "/" }];
-  let acc = "";
-  for (const p of parts) {
-    acc += "/" + p;
-    crumbs.push({ label: decodeURIComponent(p), to: acc });
-  }
-  return crumbs;
-}
 
 function Brand({ onNavigate }: { onNavigate?: () => void }) {
   return (
@@ -80,6 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
+  const parent = useMemo(() => parentCrumb(crumbs), [crumbs]);
 
   // Close mobile sheet on route change
   useEffect(() => {
@@ -180,31 +171,46 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <RegistryTicker />
-            {/* Secondary breadcrumb row (desktop only, hidden on home) */}
+            {/* Secondary breadcrumb row (desktop) / compact back affordance (mobile), hidden on home */}
             {crumbs.length > 1 ? (
-              <div className="hidden md:block border-t border-border/70 bg-paper/60">
-                <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center">
-                  <nav
-                    aria-label="Breadcrumb"
-                    className="flex items-center gap-1.5 text-xs text-ink-muted min-w-0"
-                  >
-                    {crumbs.map((c, i) => (
-                      <span key={c.to} className="flex items-center gap-1.5 min-w-0">
-                        {i > 0 ? <ChevronRight className="size-3 opacity-50" /> : null}
-                        <Link
-                          to={c.to}
-                          className={classNames(
-                            "truncate hover:text-ink-strong transition-colors font-mono uppercase tracking-widest text-[10px]",
-                            i === crumbs.length - 1 && "text-ink-strong",
-                          )}
-                        >
-                          {c.label}
-                        </Link>
-                      </span>
-                    ))}
-                  </nav>
+              <>
+                {parent ? (
+                  <div className="md:hidden border-t border-border/70 bg-paper/60">
+                    <div className="max-w-shell-max mx-auto px-4 h-9 flex items-center">
+                      <Link
+                        to={parent.to}
+                        className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink-strong transition-colors font-mono uppercase tracking-widest text-[10px]"
+                      >
+                        <ChevronLeft className="size-3" />
+                        {parent.label}
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="hidden md:block border-t border-border/70 bg-paper/60">
+                  <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center">
+                    <nav
+                      aria-label="Breadcrumb"
+                      className="flex items-center gap-1.5 text-xs text-ink-muted min-w-0"
+                    >
+                      {crumbs.map((c, i) => (
+                        <span key={c.to} className="flex items-center gap-1.5 min-w-0">
+                          {i > 0 ? <ChevronRight className="size-3 opacity-50" /> : null}
+                          <Link
+                            to={c.to}
+                            className={classNames(
+                              "truncate hover:text-ink-strong transition-colors font-mono uppercase tracking-widest text-[10px]",
+                              i === crumbs.length - 1 && "text-ink-strong",
+                            )}
+                          >
+                            {c.label}
+                          </Link>
+                        </span>
+                      ))}
+                    </nav>
+                  </div>
                 </div>
-              </div>
+              </>
             ) : null}
           </header>
 
