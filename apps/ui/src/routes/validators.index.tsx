@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero, ShareButton } from "@jsonbored/ui-kit";
+import { CopyButton, PageHero, ShareButton } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -198,18 +198,22 @@ function ValidatorsTable({
                       >
                         {shortHash(v.hotkey) ?? v.hotkey}
                       </Link>
+                      <CopyButton value={v.hotkey} label="hotkey" />
                     </div>
                   </td>
                   <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
                     {v.coldkey ? (
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: v.coldkey }}
-                        className="hover:text-accent hover:underline"
-                        title={v.coldkey}
-                      >
-                        {shortHash(v.coldkey) ?? v.coldkey}
-                      </Link>
+                      <span className="flex items-center gap-1.5">
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: v.coldkey }}
+                          className="hover:text-accent hover:underline"
+                          title={v.coldkey}
+                        >
+                          {shortHash(v.coldkey) ?? v.coldkey}
+                        </Link>
+                        <CopyButton value={v.coldkey} label="coldkey" />
+                      </span>
                     ) : (
                       "—"
                     )}
