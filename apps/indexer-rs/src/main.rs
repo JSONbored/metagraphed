@@ -521,6 +521,24 @@ fn idx_of(v: &Value<()>) -> Option<i64> {
     int_of(v).filter(|n| *n <= 65535).map(|n| n as i64)
 }
 
+/// metagraphed#5347: since block ~8460018, the chain's automatic weight-reveal
+/// hook occasionally emits WeightsSet / TimelockedWeights{Committed,Revealed} /
+/// CRV3Weights{Committed,Revealed} with a garbage `netuid` field (observed values
+/// 4100-4200+, no such subnet has ever been registered -- confirmed via
+/// NetworkAdded/NetworkRemoved history, max netuid ever 99, and via the event's
+/// own hotkey/uid fields, which decode correctly and cross-reference to a real
+/// neuron on a real, much lower netuid). hotkey (32 raw bytes, byte-perfect SS58)
+/// decoding correctly while the preceding u16 netuid field is corrupted rules out
+/// a byte-alignment/decode bug on our side -- this is upstream chain-side
+/// corruption in that one field, isolated to the reveal-hook code path. Bound-check
+/// and drop the field (NULL, not a guess) rather than write/serve it: 1024 is far
+/// above today's ~129 active subnets and far below the observed garbage range.
+const MAX_PLAUSIBLE_NETUID: i64 = 1024;
+
+fn plausible_netuid(n: Option<i64>) -> Option<i64> {
+    n.filter(|v| *v < MAX_PLAUSIBLE_NETUID)
+}
+
 /// py `_tao`: rao rendered as an EXACT TAO decimal string for Postgres NUMERIC.
 /// Never routes through f64 (the old `n as f64 / RAO` here was the same precision-
 /// loss shape as metagraphed#2588's "Mechanism B" -- an exact rao integer discarded
@@ -625,7 +643,7 @@ fn extract(kind: &str, f: &[&Value<()>]) -> Option<Ext> {
                 return None;
             }
             Some(Ext {
-                netuid: idx_of(f[0]),
+                netuid: plausible_netuid(idx_of(f[0])),
                 uid: idx_of(f[1]),
                 ..none
             })
@@ -676,7 +694,7 @@ fn extract(kind: &str, f: &[&Value<()>]) -> Option<Ext> {
             }
             Some(Ext {
                 hotkey: acct(f[0]),
-                netuid: idx_of(f[1]),
+                netuid: plausible_netuid(idx_of(f[1])),
                 ..none
             })
         }
@@ -687,7 +705,7 @@ fn extract(kind: &str, f: &[&Value<()>]) -> Option<Ext> {
                 return None;
             }
             Some(Ext {
-                netuid: idx_of(f[0]),
+                netuid: plausible_netuid(idx_of(f[0])),
                 hotkey: acct(f[1]),
                 ..none
             })
@@ -701,7 +719,7 @@ fn extract(kind: &str, f: &[&Value<()>]) -> Option<Ext> {
             }
             Some(Ext {
                 hotkey: acct(f[0]),
-                netuid: idx_of(f[1]),
+                netuid: plausible_netuid(idx_of(f[1])),
                 ..none
             })
         }
@@ -712,7 +730,7 @@ fn extract(kind: &str, f: &[&Value<()>]) -> Option<Ext> {
                 return None;
             }
             Some(Ext {
-                netuid: idx_of(f[0]),
+                netuid: plausible_netuid(idx_of(f[0])),
                 hotkey: acct(f[1]),
                 ..none
             })
@@ -1888,5 +1906,97 @@ mod rpc_url_redaction_tests {
             redact_rpc_url("ws://127.0.0.1:9944/path"),
             "ws://127.0.0.1:9944/path"
         );
+    }
+}
+
+#[cfg(test)]
+mod netuid_plausibility_tests {
+    use super::*;
+
+    fn prim_u128(n: u128) -> Value<()> {
+        Value {
+            value: ValueDef::Primitive(Primitive::U128(n)),
+            context: (),
+        }
+    }
+
+    // AccountId32 = newtype over [u8;32] -> Unnamed([ Unnamed([u8;32]) ]),
+    // per collect_bytes' own doc comment.
+    fn account_value(byte0: u8) -> Value<()> {
+        let mut bytes = vec![prim_u128(byte0 as u128)];
+        bytes.extend((1..32).map(|_| prim_u128(0)));
+        Value {
+            value: ValueDef::Composite(Composite::Unnamed(vec![Value {
+                value: ValueDef::Composite(Composite::Unnamed(bytes)),
+                context: (),
+            }])),
+            context: (),
+        }
+    }
+
+    // metagraphed#5347: since block ~8460018, the chain's automatic weight-reveal
+    // hook occasionally emits WeightsSet / TimelockedWeights{Committed,Revealed} /
+    // CRV3Weights{Committed,Revealed} with a garbage netuid field (observed
+    // 4100-4200+; confirmed via NetworkAdded/NetworkRemoved history that no
+    // netuid above 99 has ever been registered, and via the event's own
+    // hotkey/uid fields cross-referencing to a real, much lower netuid).
+    // plausible_netuid() bound-checks and drops the field rather than
+    // propagating the garbage value; these lock that behavior in.
+
+    #[test]
+    fn weights_set_drops_implausible_netuid_but_keeps_uid() {
+        let netuid = prim_u128(4209);
+        let uid = prim_u128(13);
+        let fields: Vec<&Value<()>> = vec![&netuid, &uid];
+        let ext = extract("WeightsSet", &fields).expect("WeightsSet always decodes with 2 fields");
+        assert_eq!(ext.netuid, None);
+        assert_eq!(ext.uid, Some(13));
+    }
+
+    #[test]
+    fn weights_set_keeps_plausible_netuid() {
+        let netuid = prim_u128(128);
+        let uid = prim_u128(174);
+        let fields: Vec<&Value<()>> = vec![&netuid, &uid];
+        let ext = extract("WeightsSet", &fields).expect("WeightsSet always decodes with 2 fields");
+        assert_eq!(ext.netuid, Some(128));
+        assert_eq!(ext.uid, Some(174));
+    }
+
+    #[test]
+    fn timelocked_weights_revealed_drops_implausible_netuid_but_keeps_hotkey() {
+        let netuid = prim_u128(4209);
+        let who = account_value(0xAB);
+        let fields: Vec<&Value<()>> = vec![&netuid, &who];
+        let ext = extract("TimelockedWeightsRevealed", &fields)
+            .expect("TimelockedWeightsRevealed always decodes with 2 fields");
+        assert_eq!(ext.netuid, None);
+        assert!(ext.hotkey.is_some());
+    }
+
+    #[test]
+    fn timelocked_weights_committed_drops_implausible_netuid_but_keeps_hotkey() {
+        let who = account_value(0xCD);
+        let netuid = prim_u128(4189);
+        let fields: Vec<&Value<()>> = vec![&who, &netuid];
+        let ext = extract("TimelockedWeightsCommitted", &fields)
+            .expect("TimelockedWeightsCommitted always decodes with >= 2 fields");
+        assert_eq!(ext.netuid, None);
+        assert!(ext.hotkey.is_some());
+    }
+
+    #[test]
+    fn crv3_weights_committed_and_revealed_drop_implausible_netuid() {
+        let who = account_value(0xEF);
+        let netuid = prim_u128(4183);
+        let committed_fields: Vec<&Value<()>> = vec![&who, &netuid];
+        let committed = extract("CRV3WeightsCommitted", &committed_fields)
+            .expect("CRV3WeightsCommitted always decodes with >= 2 fields");
+        assert_eq!(committed.netuid, None);
+
+        let revealed_fields: Vec<&Value<()>> = vec![&netuid, &who];
+        let revealed = extract("CRV3WeightsRevealed", &revealed_fields)
+            .expect("CRV3WeightsRevealed always decodes with >= 2 fields");
+        assert_eq!(revealed.netuid, None);
     }
 }
