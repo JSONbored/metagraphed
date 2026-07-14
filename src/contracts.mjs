@@ -130,7 +130,11 @@ export const QUERY_ENUMS = {
 };
 
 const integerSchema = { type: "integer", minimum: 0 };
-const textSchema = { type: "string" };
+// Shared schema for free-text filters (provider, id, review_state, reason_codes, q). A maxLength cap
+// mirrors every other validated string param (pallet/method 64, call_module 100, netuids 767) so these
+// filters can't be sent an unbounded value; validateListQuery enforces it. 256 is well above any real
+// provider slug, id, review-state, reason-code list, or search term.
+const textSchema = { type: "string", maxLength: 256 };
 const fieldListSchema = {
   type: "string",
   pattern: "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
