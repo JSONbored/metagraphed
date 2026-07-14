@@ -175,6 +175,24 @@
         "submitted_by": "jimcody1995"
       },
       "notes": "Public no-auth GET competitions.json on the official SN29 dynamic-configuration repository (github.com/coldint/sn29). Validators poll this URL on COMPETITIONS_URL in constants/__init__.py via requests.get to load live competition parameters without restart."
+    },
+    {
+      "id": "sn-29-coldint-wandb-dashboard",
+      "name": "Coldint SN29 validator W&B dashboard",
+      "kind": "dashboard",
+      "url": "https://wandb.ai/coldint/sn29",
+      "provider": "coldint",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator/blob/main/constants/__init__.py"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "notes": "Public no-auth Weights & Biases project every SN29 Coldint validator logs to — live distributed-training validator runs and scoring metrics. The official coldint_validator neurons/validator.py calls wandb.init(project=WANDB_PROJECT, entity=WANDB_ENTITY), and constants/__init__.py hard-codes WANDB_ENTITY='coldint' / WANDB_PROJECT='sn29', so this resolves to exactly wandb.ai/coldint/sn29. Publicly readable without login. Distinct from the generic taostats explorer dashboard already registered."
     }
   ],
   "social": {
