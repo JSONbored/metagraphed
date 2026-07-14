@@ -14,7 +14,7 @@ import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
-import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
+import type { ColdkeyIdentity, GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 // The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
 // Stake / emission / dominance / trust get their own columns in #3359; this
@@ -39,6 +39,18 @@ const SORT_LABELS: Record<GlobalValidatorSort, string> = {
   avg_validator_trust: "Avg trust",
   max_validator_trust: "Max trust",
 };
+
+/** Format take/commission (0..1) as a percentage; dash when unset (#2548 / #5245). */
+function formatTake(take: number | null | undefined): string {
+  if (take == null || !Number.isFinite(take)) return "—";
+  return `${(take * 100).toFixed(1)}%`;
+}
+
+function identityLabel(identity: ColdkeyIdentity | null | undefined): string | null {
+  if (!identity?.has_identity) return null;
+  const name = identity.name?.trim();
+  return name || null;
+}
 
 const validatorsSearchSchema = z.object({
   sort: fallback(z.enum(validatorSortKeys), "subnet_count").default("subnet_count"),
@@ -165,6 +177,7 @@ function ValidatorsTable({
               <tr>
                 <th className={TH}>Hotkey</th>
                 <th className={TH}>Coldkey</th>
+                <th className={`${TH} text-right`}>Take</th>
                 <th className={`${TH} text-right`}>Active subnets</th>
                 <th className={`${TH} text-right`}>UIDs</th>
                 <th className={`${TH} text-right`}>Nominators</th>
@@ -175,58 +188,80 @@ function ValidatorsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {validators.map((v) => (
-                <tr key={v.hotkey} className="hover:bg-surface/40">
-                  <td className="px-3 py-2 font-mono text-[11px]">
-                    <div className="flex items-center gap-1.5">
-                      {v.featured ? <FeaturedBadge /> : null}
-                      <Link
-                        to="/validators/$hotkey"
-                        params={{ hotkey: v.hotkey }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={v.hotkey}
-                      >
-                        {shortHash(v.hotkey) ?? v.hotkey}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                    {v.coldkey ? (
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: v.coldkey }}
-                        className="hover:text-accent hover:underline"
-                        title={v.coldkey}
-                      >
-                        {shortHash(v.coldkey) ?? v.coldkey}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {formatNumber(v.subnet_count)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {formatNumber(v.uid_count)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {v.nominator_count != null ? formatNumber(v.nominator_count) : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {taoCompact(v.total_stake_tao)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {taoCompact(v.total_emission_tao)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {v.apy_estimate != null ? `${(v.apy_estimate * 100).toFixed(1)}%` : "—"}
-                  </td>
-                </tr>
-              ))}
+              {validators.map((v) => {
+                const label = identityLabel(v.coldkey_identity);
+                return (
+                  <tr key={v.hotkey} className="hover:bg-surface/40">
+                    <td className="px-3 py-2 font-mono text-[11px]">
+                      <div className="flex items-center gap-1.5">
+                        {v.featured ? <FeaturedBadge /> : null}
+                        {v.coldkey_identity?.has_identity && v.coldkey_identity.image ? (
+                          <img
+                            src={v.coldkey_identity.image}
+                            alt=""
+                            className="size-4 shrink-0 rounded-sm object-cover"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : null}
+                        <Link
+                          to="/validators/$hotkey"
+                          params={{ hotkey: v.hotkey }}
+                          className="min-w-0 text-ink-strong hover:text-accent hover:underline"
+                          title={v.hotkey}
+                        >
+                          {label ? (
+                            <span className="block truncate font-sans text-[12px] font-medium">
+                              {label}
+                            </span>
+                          ) : null}
+                          <span className={label ? "block text-ink-muted" : undefined}>
+                            {shortHash(v.hotkey) ?? v.hotkey}
+                          </span>
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
+                      {v.coldkey ? (
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: v.coldkey }}
+                          className="hover:text-accent hover:underline"
+                          title={v.coldkey}
+                        >
+                          {shortHash(v.coldkey) ?? v.coldkey}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatTake(v.take)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {formatNumber(v.subnet_count)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {formatNumber(v.uid_count)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {v.nominator_count != null ? formatNumber(v.nominator_count) : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {taoCompact(v.total_stake_tao)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {taoCompact(v.total_emission_tao)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      {v.apy_estimate != null ? `${(v.apy_estimate * 100).toFixed(1)}%` : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

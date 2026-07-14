@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeGlobalValidators, validatorsQuery } from "./queries";
+import {
+  normalizeColdkeyIdentity,
+  normalizeGlobalValidators,
+  normalizeValidatorDetail,
+  validatorsQuery,
+} from "./queries";
 
 describe("normalizeGlobalValidators", () => {
   it("normalizes a representative global validators payload", () => {
@@ -15,11 +20,18 @@ describe("normalizeGlobalValidators", () => {
         {
           hotkey: "5Hotkey",
           coldkey: "5Coldkey",
+          coldkey_identity: {
+            has_identity: true,
+            name: "Acme Ops",
+            image: "https://example.com/logo.png",
+          },
           coldkey_count: 1,
           subnet_count: 2,
           uid_count: 3,
           total_stake_tao: 100.5,
           total_emission_tao: 1.25,
+          nominator_count: 12,
+          take: 0.18,
           avg_validator_trust: 0.99,
           max_validator_trust: 1,
           stake_dominance: 0.05,
@@ -50,10 +62,29 @@ describe("normalizeGlobalValidators", () => {
     expect(out.validators[0]).toMatchObject({
       hotkey: "5Hotkey",
       coldkey: "5Coldkey",
+      take: 0.18,
+      nominator_count: 12,
+      coldkey_identity: {
+        has_identity: true,
+        name: "Acme Ops",
+        image: "https://example.com/logo.png",
+      },
       subnet_count: 2,
       uid_count: 3,
       subnets: [{ netuid: 1, uid: 0, stake_tao: 50, emission_tao: 0.5, validator_trust: 1 }],
     });
+  });
+
+  it("defaults take and coldkey_identity when the wire omits them (#5245)", () => {
+    const out = normalizeGlobalValidators({
+      sort: "subnet_count",
+      limit: 5,
+      validators: [{ hotkey: "hk", subnet_count: 1, uid_count: 1, subnets: [] }],
+    });
+
+    expect(out.validators[0].take).toBeNull();
+    expect(out.validators[0].coldkey_identity).toBeNull();
+    expect(out.validators[0].nominator_count).toBeNull();
   });
 
   it("drops validator rows with a missing hotkey", () => {
@@ -106,6 +137,59 @@ describe("normalizeGlobalValidators", () => {
     expect(out.validator_count).toBe(1);
     expect(out.validators[0].subnet_count).toBe(2);
     expect(out.validators[0].subnets[0].netuid).toBe(7);
+  });
+});
+
+describe("normalizeColdkeyIdentity", () => {
+  it("returns null for a null wire value", () => {
+    expect(normalizeColdkeyIdentity(null)).toBeNull();
+  });
+
+  it("preserves has_identity:false for an empty identity object", () => {
+    expect(normalizeColdkeyIdentity({ has_identity: false })).toMatchObject({
+      has_identity: false,
+      name: null,
+    });
+  });
+});
+
+describe("normalizeValidatorDetail", () => {
+  it("carries take, nominator_count, and coldkey_identity (#5245)", () => {
+    const out = normalizeValidatorDetail(
+      {
+        hotkey: "5Hotkey",
+        coldkey: "5Coldkey",
+        coldkey_identity: { has_identity: true, name: "Acme Ops" },
+        coldkey_count: 1,
+        subnet_count: 2,
+        total_stake_tao: 100,
+        root_stake_tao: 40,
+        alpha_stake_tao: 60,
+        total_emission_tao: 1,
+        nominator_count: 7,
+        take: 0.09,
+        avg_validator_trust: 0.5,
+        max_validator_trust: 0.8,
+        subnets: [],
+      },
+      "fallback",
+    );
+
+    expect(out).toMatchObject({
+      hotkey: "5Hotkey",
+      take: 0.09,
+      nominator_count: 7,
+      coldkey_identity: { has_identity: true, name: "Acme Ops" },
+      root_stake_tao: 40,
+      alpha_stake_tao: 60,
+    });
+  });
+
+  it("nulls take and nominator_count when absent", () => {
+    const out = normalizeValidatorDetail({ hotkey: "hk", subnets: [] }, "hk");
+    expect(out.take).toBeNull();
+    expect(out.nominator_count).toBeNull();
+    expect(out.coldkey_identity).toBeNull();
   });
 });
 

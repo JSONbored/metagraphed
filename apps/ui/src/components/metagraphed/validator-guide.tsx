@@ -14,6 +14,14 @@ import { classNames } from "@/lib/metagraphed/format";
  */
 const METRICS: Array<{ term: string; def: string }> = [
   {
+    term: "Identity",
+    def: "The coldkey's self-declared on-chain name and logo (SubtensorModule::set_identity), joined server-side. It is not hotkey-specific — one coldkey can run many hotkeys, so the same identity may appear on more than one row and says nothing about how any one hotkey brands itself.",
+  },
+  {
+    term: "Take",
+    def: "The validator's commission: the fraction (shown as a percent) of delegator rewards the operator keeps. Global per hotkey. A dash means no Delegates entry was captured yet — not a zero take.",
+  },
+  {
     term: "Active subnets",
     def: "How many subnets this hotkey is registered and validating on. A validator may operate broadly across many subnets or concentrate on a few.",
   },

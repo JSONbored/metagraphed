@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Boxes, Coins, Gauge, Zap } from "lucide-react";
+import { Boxes, Coins, Gauge, Percent, Users, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -200,16 +200,26 @@ function NominatorsSection({ hotkey }: { hotkey: string }) {
   );
 }
 
+function formatTake(take: number | null | undefined): string {
+  if (take == null || !Number.isFinite(take)) return "—";
+  return `${(take * 100).toFixed(1)}%`;
+}
+
 function ValidatorDetail({ hotkey }: { hotkey: string }) {
   const sourceRef = ss58PathSegment(hotkey);
   const detail = useSuspenseQuery(validatorDetailQuery(hotkey)).data.data;
+  const identityName =
+    detail.coldkey_identity?.has_identity && detail.coldkey_identity.name?.trim()
+      ? detail.coldkey_identity.name.trim()
+      : null;
+  const title = identityName ?? shortHash(hotkey, 8) ?? "Validator";
 
   return (
     <>
       <PageHero
         eyebrow="Explorer · validator"
         live
-        title={shortHash(hotkey, 8) ?? "Validator"}
+        title={title}
         description={
           // PageHero renders `description` inside a <p> — block elements (div/p)
           // are invalid HTML there (triggers a hydration mismatch), so this uses
@@ -217,9 +227,21 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           // use for the same "blurb + copyable chip" shape.
           <span className="block space-y-4">
             <span className="block max-w-2xl">
-              Cross-subnet performance, nominators, and staking history for one Bittensor validator
-              hotkey.
+              {identityName
+                ? `Cross-subnet performance, nominators, and staking history for ${identityName} (coldkey on-chain identity — not hotkey-specific).`
+                : "Cross-subnet performance, nominators, and staking history for one Bittensor validator hotkey."}
             </span>
+            {detail.coldkey_identity?.has_identity && detail.coldkey_identity.image ? (
+              <span className="inline-flex items-center gap-2">
+                <img
+                  src={detail.coldkey_identity.image}
+                  alt=""
+                  className="size-8 rounded-md object-cover"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              </span>
+            ) : null}
             <span className="inline-flex max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
               <CopyableCode value={hotkey} truncate={false} />
             </span>
@@ -229,7 +251,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         caption="explorer / v1"
       />
 
-      <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatTile
           icon={Coins}
           eyebrow="Total stake"
@@ -246,6 +268,20 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           eyebrow="Total emission"
           value={taoCompact(detail.total_emission_tao)}
           hint="across all subnets"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
+          icon={Percent}
+          eyebrow="Take"
+          value={formatTake(detail.take)}
+          hint="delegator commission kept"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
+          icon={Users}
+          eyebrow="Nominators"
+          value={detail.nominator_count != null ? formatNumber(detail.nominator_count) : "—"}
+          hint="distinct coldkeys staking"
           className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
         />
         <StatTile

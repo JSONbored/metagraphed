@@ -194,6 +194,7 @@ import type {
   MetagraphNeuron,
   SubnetMetagraph,
   SubnetValidators,
+  ColdkeyIdentity,
   GlobalValidator,
   GlobalValidators,
   GlobalValidatorSort,
@@ -5342,6 +5343,35 @@ function normalizeGlobalValidatorSubnet(raw: unknown): GlobalValidatorSubnet | n
   };
 }
 
+/** Always-present ColdkeyIdentity shape (#5234); null only when the wire value is null. */
+export function normalizeColdkeyIdentity(raw: unknown): ColdkeyIdentity | null {
+  if (raw == null) return null;
+  if (!isRecord(raw)) {
+    return {
+      has_identity: false,
+      name: null,
+      image: null,
+      url: null,
+      description: null,
+      discord: null,
+      github: null,
+      additional: null,
+      captured_at: null,
+    };
+  }
+  return {
+    has_identity: booleanValue(raw.has_identity) ?? false,
+    name: typeof raw.name === "string" ? raw.name : null,
+    image: typeof raw.image === "string" ? raw.image : null,
+    url: typeof raw.url === "string" ? raw.url : null,
+    description: typeof raw.description === "string" ? raw.description : null,
+    discord: typeof raw.discord === "string" ? raw.discord : null,
+    github: typeof raw.github === "string" ? raw.github : null,
+    additional: typeof raw.additional === "string" ? raw.additional : null,
+    captured_at: typeof raw.captured_at === "string" ? raw.captured_at : null,
+  };
+}
+
 function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
   if (!isRecord(raw)) return null;
   const hotkey = coerceString(raw.hotkey);
@@ -5360,12 +5390,15 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     // spread, so it must be listed explicitly or it silently vanishes.
     featured: booleanValue(raw.featured) ?? false,
     coldkey: typeof raw.coldkey === "string" ? raw.coldkey : null,
+    // Joined server-side (#5234); listed explicitly for the same no-spread reason.
+    coldkey_identity: normalizeColdkeyIdentity(raw.coldkey_identity),
     coldkey_count: coerceFiniteNumber(raw.coldkey_count) ?? 0,
     subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,
     uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
     total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
     nominator_count: nullableNum(raw.nominator_count),
+    take: nullableNum(raw.take),
     apy_estimate: nullableNum(raw.apy_estimate),
     apy_estimate_eligible_subnet_count:
       coerceFiniteNumber(raw.apy_estimate_eligible_subnet_count) ?? 0,
@@ -5645,6 +5678,35 @@ function normalizeValidatorDetailSubnet(raw: unknown): ValidatorDetailSubnet | n
 /** Cross-subnet validator detail — a validator's rows joined across every subnet
  * they operate in (#4335/7.1). Schema-stable: a cold/unknown hotkey resolves to
  * a zeroed aggregate rather than an error, so this never throws on a bad hotkey. */
+export function normalizeValidatorDetail(raw: unknown, fallbackHotkey = ""): ValidatorDetail {
+  const d = isRecord(raw) ? raw : {};
+  const subnets = Array.isArray(d.subnets)
+    ? d.subnets.flatMap((row) => {
+        const s = normalizeValidatorDetailSubnet(row);
+        return s ? [s] : [];
+      })
+    : [];
+  return {
+    hotkey: firstString(d.hotkey) ?? fallbackHotkey,
+    coldkey: firstString(d.coldkey) ?? null,
+    coldkey_identity: normalizeColdkeyIdentity(d.coldkey_identity),
+    coldkey_count: firstFiniteNumber(d.coldkey_count) ?? 0,
+    subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+    total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
+    root_stake_tao: firstFiniteNumber(d.root_stake_tao) ?? 0,
+    alpha_stake_tao: firstFiniteNumber(d.alpha_stake_tao) ?? 0,
+    total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
+    nominator_count:
+      d.nominator_count == null ? null : (firstFiniteNumber(d.nominator_count) ?? null),
+    take: d.take == null ? null : (firstFiniteNumber(d.take) ?? null),
+    avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
+    max_validator_trust: firstFiniteNumber(d.max_validator_trust) ?? null,
+    captured_at: firstString(d.captured_at) ?? null,
+    block_number: firstFiniteNumber(d.block_number) ?? null,
+    subnets,
+  };
+}
+
 export const validatorDetailQuery = (hotkey: string) =>
   queryOptions({
     queryKey: k("validator-detail", hotkey),
@@ -5652,29 +5714,8 @@ export const validatorDetailQuery = (hotkey: string) =>
       const res = await apiFetch<unknown>(`/api/v1/validators/${ss58PathSegment(hotkey)}`, {
         signal,
       });
-      const d = isRecord(res.data) ? res.data : {};
-      const subnets = Array.isArray(d.subnets)
-        ? d.subnets.flatMap((row) => {
-            const s = normalizeValidatorDetailSubnet(row);
-            return s ? [s] : [];
-          })
-        : [];
       return {
-        data: {
-          hotkey: firstString(d.hotkey) ?? hotkey,
-          coldkey: firstString(d.coldkey) ?? null,
-          coldkey_count: firstFiniteNumber(d.coldkey_count) ?? 0,
-          subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
-          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
-          root_stake_tao: firstFiniteNumber(d.root_stake_tao) ?? 0,
-          alpha_stake_tao: firstFiniteNumber(d.alpha_stake_tao) ?? 0,
-          total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
-          avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
-          max_validator_trust: firstFiniteNumber(d.max_validator_trust) ?? null,
-          captured_at: firstString(d.captured_at) ?? null,
-          block_number: firstFiniteNumber(d.block_number) ?? null,
-          subnets,
-        } as ValidatorDetail,
+        data: normalizeValidatorDetail(res.data, hotkey),
         meta: res.meta,
         url: res.url,
       } as ApiResult<ValidatorDetail>;
