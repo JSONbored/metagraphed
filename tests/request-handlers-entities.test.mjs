@@ -39,6 +39,7 @@ import {
   handleChainPerformance,
   handleChainYield,
   handleAccountPortfolio,
+  handleAccountPositions,
   handleAccountsList,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
@@ -5348,6 +5349,42 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPositions: flag=postgres uses Postgres data, D1 never queried", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          schema_version: 1,
+          marker: "pg",
+          position_count: 0,
+          positions: [],
+        }),
+    };
+    const body = await json(
+      await handleAccountPositions(
+        req(`/api/v1/accounts/${SS58}/positions`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountPositions: cold store returns a schema-stable empty card", async () => {
+    const { env } = dbWith({});
+    const body = await json(
+      await handleAccountPositions(
+        req(`/api/v1/accounts/${SS58}/positions`),
+        env,
+        SS58,
+      ),
+    );
+    assert.equal(body.data.position_count, 0);
+    assert.deepEqual(body.data.positions, []);
   });
 
   test("handleAccountsList: flag=postgres uses Postgres data, D1 never queried", async () => {

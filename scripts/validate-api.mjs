@@ -686,7 +686,6 @@ const checks = [
   ],
   [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/portfolio",
-    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/positions",
     (body) => {
       assert.equal(body.data.schema_version, 1);
       assert.equal(Array.isArray(body.data.positions), true);
@@ -695,6 +694,16 @@ const checks = [
         body.data.stake_concentration === null ||
           typeof body.data.stake_concentration === "object",
       );
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/positions",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(Array.isArray(body.data.positions), true);
+      assert.equal(typeof body.data.position_count, "number");
+      assert.equal(typeof body.data.total_spot_mark_tao, "number");
+      assert.equal(typeof body.data.total_exit_value_tao, "number");
     },
   ],
   [

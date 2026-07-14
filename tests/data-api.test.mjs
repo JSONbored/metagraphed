@@ -1566,6 +1566,43 @@ test("GET /api/v1/accounts/:ss58/portfolio shapes one wallet's cross-subnet neur
   expect(queryText()).toContain("FROM neurons WHERE hotkey =");
 });
 
+test("GET /api/v1/accounts/:ss58/positions merges validator-own and nominator holdings with valuation fields", async () => {
+  mockQueue.current = [
+    [],
+    [{ ...NEURON_ROW, netuid: 4 }],
+    [
+      {
+        netuid: 3,
+        hotkey: "5Val",
+        net_stake_tao: "5",
+        net_alpha_amount: "2",
+      },
+    ],
+    [
+      { netuid: 4, alpha_price_tao: "2" },
+      { netuid: 3, alpha_price_tao: "2" },
+    ],
+  ];
+  const res = await req(`/api/v1/accounts/${SS58}/positions`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.ss58).toBe(SS58);
+  expect(body.position_count).toBe(2);
+  expect(body.positions.some((p) => p.position_kind === "nominator")).toBe(true);
+  expect(queryText()).toContain("FROM neurons WHERE hotkey =");
+  expect(queryText()).toContain("FROM account_events");
+  expect(queryText()).toContain("FROM subnet_snapshots");
+});
+
+test("GET /api/v1/accounts/:ss58/positions with no holdings skips the price lookup", async () => {
+  mockQueue.current = [[], [], []];
+  const res = await req(`/api/v1/accounts/${SS58}/positions`);
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.position_count).toBe(0);
+  expect(queryText()).not.toContain("FROM subnet_snapshots");
+});
+
 test("GET /api/v1/accounts returns the global accounts leaderboard", async () => {
   mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
   const res = await req("/api/v1/accounts");
