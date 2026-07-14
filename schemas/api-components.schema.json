@@ -19159,6 +19159,62 @@
         ],
         "type": "object"
       },
+      "SubnetStakeQuoteArtifact": {
+        "additionalProperties": false,
+        "description": "Constant-product AMM slippage/price-impact estimate for staking into or unstaking out of one subnet's pool (#5235, epic #5229), computed purely from economics.json's live tao_in_pool_tao/alpha_in_pool reserves -- a read-only quote, never a signed extrinsic. direction=stake takes amount_in in TAO and returns amount_out in alpha; direction=unstake takes amount_in in alpha and returns amount_out in TAO. Root (netuid 0) has no AMM -- stake there is TAO-denominated 1:1 with no swap fee and no price impact -- so it always returns a fixed 1:1, zero-impact quote rather than running the formula against nonexistent root pool reserves.",
+        "properties": {
+          "amount_in": {
+            "description": "The requested trade size: TAO for direction=stake, alpha for direction=unstake.",
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "amount_out": {
+            "description": "The quoted output: alpha for direction=stake, TAO for direction=unstake.",
+            "minimum": 0,
+            "type": "number"
+          },
+          "direction": {
+            "enum": [
+              "stake",
+              "unstake"
+            ],
+            "type": "string"
+          },
+          "effective_price_tao": {
+            "description": "This trade's realized TAO-per-alpha rate (amount_in/amount_out for stake, amount_out/amount_in for unstake), inclusive of the price impact below. 1 on root.",
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "price_impact_pct": {
+            "description": "abs(effective_price_tao - spot_price_tao) / spot_price_tao * 100. 0 on root (no AMM, no impact).",
+            "minimum": 0,
+            "type": "number"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "spot_price_tao": {
+            "description": "Pre-trade marginal price, TAO per alpha (tao_in_pool_tao / alpha_in_pool). 1 on root.",
+            "exclusiveMinimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "direction",
+          "amount_in",
+          "amount_out",
+          "spot_price_tao",
+          "effective_price_tao",
+          "price_impact_pct"
+        ],
+        "type": "object"
+      },
       "SubnetStakeTransfersArtifact": {
         "additionalProperties": false,
         "description": "Per-subnet stake-transfer activity over a 7d/30d window: distinct senders (accounts), StakeTransferred event count, and transfers per sender for ONE subnet. The per-subnet drill-in of /api/v1/chain/stake-transfers and the between-coldkeys sibling of /api/v1/subnets/{netuid}/stake-moves — transfer_stake relocates staked alpha between accounts on the same hotkey (origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/subnets/{netuid}/stake-transfers (no static file); zeroed when the subnet has no events in the window.",

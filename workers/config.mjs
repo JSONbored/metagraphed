@@ -73,6 +73,10 @@ export const SUBNET_ALPHA_VOLUME_PATH_PATTERN =
 // request time — not a D1/account_events tier, no static file.
 export const SUBNET_RECYCLED_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/recycled$/;
+// Constant-product AMM slippage/price-impact quote (#5235, epic #5229) —
+// pure math over economics.json's pool reserves, no chain-write/custody risk.
+export const SUBNET_STAKE_QUOTE_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/stake-quote$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;

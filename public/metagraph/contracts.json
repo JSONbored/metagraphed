@@ -615,6 +615,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Constant-product AMM slippage/price-impact estimate for staking into or unstaking out of one subnet's pool (#5235, epic #5229), computed purely from economics.json's live pool reserves at /api/v1/subnets/{netuid}/stake-quote (no static file). Root (netuid 0) has no AMM and always returns a fixed 1:1, zero-impact quote.",
+      "id": "subnet-stake-quote",
+      "path": "/metagraph/subnets/{netuid}/stake-quote.json",
+      "schema_ref": "#/components/schemas/SubnetStakeQuoteArtifact",
+      "storage_tier": "git"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
       "id": "subnet-movers",
       "path": "/metagraph/subnets/movers.json",

@@ -272,6 +272,18 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/stake-quote?amount=10",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.direction, "stake");
+      assert.equal(body.data.amount_in, 10);
+      assert.equal(typeof body.data.amount_out, "number");
+      assert.equal(typeof body.data.spot_price_tao, "number");
+      assert.equal(typeof body.data.effective_price_tao, "number");
+      assert.equal(typeof body.data.price_impact_pct, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/weights?window=30d",
     (body) => {
       assert.equal(body.data.netuid, 7);

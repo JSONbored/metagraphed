@@ -1026,6 +1026,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetAlphaVolumeArtifact",
   ),
   artifact(
+    "subnet-stake-quote",
+    "/metagraph/subnets/{netuid}/stake-quote.json",
+    "Constant-product AMM slippage/price-impact estimate for staking into or unstaking out of one subnet's pool (#5235, epic #5229), computed purely from economics.json's live pool reserves at /api/v1/subnets/{netuid}/stake-quote (no static file). Root (netuid 0) has no AMM and always returns a fixed 1:1, zero-impact quote.",
+    "SubnetStakeQuoteArtifact",
+  ),
+  artifact(
     "subnet-movers",
     "/metagraph/subnets/movers.json",
     "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
@@ -2291,6 +2297,23 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-stake-quote",
+    "GET",
+    "/api/v1/subnets/{netuid}/stake-quote",
+    "/metagraph/subnets/{netuid}/stake-quote.json",
+    "Fetch a constant-product AMM slippage/price-impact estimate for staking into or unstaking out of one subnet's pool, computed purely from economics.json's live tao_in_pool_tao/alpha_in_pool reserves — a read-only quote, never a signed extrinsic. ?amount= (required, positive number) is TAO for direction=stake or alpha for direction=unstake (default stake); returns the quoted amount_out, the pre-trade spot_price_tao, this trade's effective_price_tao, and price_impact_pct. Root (netuid 0) has no AMM and always returns a fixed 1:1, zero-impact quote. An amount exceeding 1000x the pool's own reserve is rejected (mirrors the chain's own InsufficientLiquidity guard).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "amount", schema: { type: "number", exclusiveMinimum: 0 } },
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["stake", "unstake"] },
+      },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

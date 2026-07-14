@@ -191,6 +191,11 @@ import {
   STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.mjs";
 import { buildAlphaVolume } from "../../src/alpha-volume.mjs";
+import {
+  buildStakeQuote,
+  STAKE_QUOTE_DIRECTIONS,
+  DEFAULT_STAKE_QUOTE_DIRECTION,
+} from "../../src/stake-quote.mjs";
 import { resolveLiveEconomics } from "../../src/health-serving.mjs";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.mjs";
 import { readArtifact, readHealthKv } from "../storage.mjs";
@@ -2249,6 +2254,72 @@ export async function handleSubnetAlphaVolume(request, env, netuid, url) {
         `/metagraph/subnets/${netuid}/volume.json`,
         generatedAt,
       ),
+    },
+    "short",
+  );
+}
+
+// Full per-subnet economics row (pool reserves + everything else), same live
+// KV -> R2 fallback shape as resolveSubnetMarketCapTao just above -- this one
+// is used by handleStakeQuote, which needs the raw pool reserves rather than
+// just the derived market cap. Returns { row, generatedAt }; row is null when
+// neither tier has this subnet.
+async function resolveSubnetEconomicsRow(env, netuid) {
+  const live = await resolveLiveEconomics({
+    readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
+    env,
+    contractVersion: contractVersion(env),
+  });
+  let rows = Array.isArray(live?.data?.subnets) ? live.data.subnets : null;
+  let generatedAt = live?.data?.captured_at ?? null;
+  if (!rows) {
+    const artifact = await readArtifact(env, "/metagraph/economics.json");
+    rows =
+      artifact.ok && Array.isArray(artifact.data?.subnets)
+        ? artifact.data.subnets
+        : [];
+    generatedAt = artifact.ok ? (artifact.data?.captured_at ?? null) : null;
+  }
+  const row = rows.find((entry) => entry?.netuid === netuid) ?? null;
+  return { row, generatedAt };
+}
+
+// GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake
+// (#5235, epic #5229): constant-product AMM slippage/price-impact estimate
+// for one subnet's stake pool, computed purely from economics.json's pool
+// reserves -- a read-only, pure-math route with no chain-write/custody risk.
+// Root (netuid 0) is exempt from the formula -- see buildStakeQuote's own
+// header for why.
+export async function handleStakeQuote(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["amount", "direction"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const direction =
+    url.searchParams.get("direction") || DEFAULT_STAKE_QUOTE_DIRECTION;
+  if (!STAKE_QUOTE_DIRECTIONS.includes(direction)) {
+    return analyticsQueryError({
+      parameter: "direction",
+      message: `"${direction}" is not a valid direction. Supported: ${STAKE_QUOTE_DIRECTIONS.join(", ")}.`,
+    });
+  }
+  const amountRaw = url.searchParams.get("amount");
+  const amount = Number(amountRaw);
+  if (!amountRaw || !Number.isFinite(amount) || amount <= 0) {
+    return analyticsQueryError({
+      parameter: "amount",
+      message: "amount is required and must be a positive number.",
+    });
+  }
+
+  const { row, generatedAt } = await resolveSubnetEconomicsRow(env, netuid);
+  const quote = buildStakeQuote(row, netuid, { amount, direction });
+  if (quote.error) return analyticsQueryError(quote.error);
+
+  return envelopeResponse(
+    request,
+    {
+      data: quote,
+      meta: await metagraphMeta(env, "/metagraph/economics.json", generatedAt),
     },
     "short",
   );

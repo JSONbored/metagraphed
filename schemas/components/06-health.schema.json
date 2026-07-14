@@ -1405,6 +1405,51 @@
         },
         "additionalProperties": false
       },
+      "SubnetStakeQuoteArtifact": {
+        "type": "object",
+        "description": "Constant-product AMM slippage/price-impact estimate for staking into or unstaking out of one subnet's pool (#5235, epic #5229), computed purely from economics.json's live tao_in_pool_tao/alpha_in_pool reserves -- a read-only quote, never a signed extrinsic. direction=stake takes amount_in in TAO and returns amount_out in alpha; direction=unstake takes amount_in in alpha and returns amount_out in TAO. Root (netuid 0) has no AMM -- stake there is TAO-denominated 1:1 with no swap fee and no price impact -- so it always returns a fixed 1:1, zero-impact quote rather than running the formula against nonexistent root pool reserves.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "direction",
+          "amount_in",
+          "amount_out",
+          "spot_price_tao",
+          "effective_price_tao",
+          "price_impact_pct"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "direction": { "type": "string", "enum": ["stake", "unstake"] },
+          "amount_in": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "The requested trade size: TAO for direction=stake, alpha for direction=unstake."
+          },
+          "amount_out": {
+            "type": "number",
+            "minimum": 0,
+            "description": "The quoted output: alpha for direction=stake, TAO for direction=unstake."
+          },
+          "spot_price_tao": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Pre-trade marginal price, TAO per alpha (tao_in_pool_tao / alpha_in_pool). 1 on root."
+          },
+          "effective_price_tao": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "This trade's realized TAO-per-alpha rate (amount_in/amount_out for stake, amount_out/amount_in for unstake), inclusive of the price impact below. 1 on root."
+          },
+          "price_impact_pct": {
+            "type": "number",
+            "minimum": 0,
+            "description": "abs(effective_price_tao - spot_price_tao) / spot_price_tao * 100. 0 on root (no AMM, no impact)."
+          }
+        },
+        "additionalProperties": false
+      },
       "SubnetMoversArtifact": {
         "type": "object",
         "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots.",

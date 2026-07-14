@@ -478,6 +478,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-stake-quote",
+      "path": "/metagraph/subnets/{netuid}/stake-quote.json",
+      "schema_ref": "#/components/schemas/SubnetStakeQuoteArtifact",
+      "storage_tier": "git"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-movers",
       "path": "/metagraph/subnets/movers.json",
       "schema_ref": "#/components/schemas/SubnetMoversArtifact",
@@ -5305,6 +5312,36 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/stake-quote.json",
+      "cache": "short",
+      "description": "Fetch a constant-product AMM slippage/price-impact estimate for staking into or unstaking out of one subnet's pool, computed purely from economics.json's live tao_in_pool_tao/alpha_in_pool reserves — a read-only quote, never a signed extrinsic. ?amount= (required, positive number) is TAO for direction=stake or alpha for direction=unstake (default stake); returns the quoted amount_out, the pre-trade spot_price_tao, this trade's effective_price_tao, and price_impact_pct. Root (netuid 0) has no AMM and always returns a fixed 1:1, zero-impact quote. An amount exceeding 1000x the pool's own reserve is rejected (mirrors the chain's own InsufficientLiquidity guard).",
+      "id": "subnet-stake-quote",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/stake-quote",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "amount",
+          "schema": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          }
+        },
+        {
+          "name": "direction",
+          "schema": {
+            "enum": [
+              "stake",
+              "unstake"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/movers.json",

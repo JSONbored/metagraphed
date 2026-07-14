@@ -12,6 +12,7 @@ import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { MOVERS_WINDOWS } from "../src/movers.mjs";
 import { unsupportedWindowMessage } from "../src/neuron-history.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import {
   handleSubnetMetagraph,
   handleSubnetYield,
@@ -48,6 +49,7 @@ import {
   handleSubnetStakeFlow,
   handleSubnetWeights,
   handleSubnetAlphaVolume,
+  handleStakeQuote,
   handleSubnetServing,
   handleSubnetPrometheus,
   handleSubnetStakeMoves,
@@ -5141,6 +5143,115 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleStakeQuote computes a quote for a real subnet from the built economics.json artifact (#5235)", async () => {
+    const env = createLocalArtifactEnv();
+    const body = await json(
+      await handleStakeQuote(
+        req(`/api/v1/subnets/${NETUID}/stake-quote?amount=10`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-quote?amount=10`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.direction, "stake");
+    assert.equal(body.data.amount_in, 10);
+    assert.equal(typeof body.data.amount_out, "number");
+    assert.equal(typeof body.data.spot_price_tao, "number");
+    assert.equal(typeof body.data.price_impact_pct, "number");
+  });
+
+  test("handleStakeQuote defaults direction to stake and accepts an explicit unstake", async () => {
+    const env = createLocalArtifactEnv();
+    const unstakeBody = await json(
+      await handleStakeQuote(
+        req(
+          `/api/v1/subnets/${NETUID}/stake-quote?amount=10&direction=unstake`,
+        ),
+        env,
+        NETUID,
+        url(
+          `/api/v1/subnets/${NETUID}/stake-quote?amount=10&direction=unstake`,
+        ),
+      ),
+    );
+    assert.equal(unstakeBody.data.direction, "unstake");
+  });
+
+  test("handleStakeQuote: root subnet (netuid 0) always returns a 1:1 zero-impact quote", async () => {
+    const env = createLocalArtifactEnv();
+    const body = await json(
+      await handleStakeQuote(
+        req("/api/v1/subnets/0/stake-quote?amount=5"),
+        env,
+        0,
+        url("/api/v1/subnets/0/stake-quote?amount=5"),
+      ),
+    );
+    assert.equal(body.data.amount_out, 5);
+    assert.equal(body.data.price_impact_pct, 0);
+  });
+
+  test("handleStakeQuote rejects a missing amount", async () => {
+    const env = createLocalArtifactEnv();
+    await errorJson(
+      await handleStakeQuote(
+        req(`/api/v1/subnets/${NETUID}/stake-quote`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-quote`),
+      ),
+    );
+  });
+
+  test("handleStakeQuote rejects a non-positive amount", async () => {
+    const env = createLocalArtifactEnv();
+    await errorJson(
+      await handleStakeQuote(
+        req(`/api/v1/subnets/${NETUID}/stake-quote?amount=0`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-quote?amount=0`),
+      ),
+    );
+  });
+
+  test("handleStakeQuote rejects an unsupported direction", async () => {
+    const env = createLocalArtifactEnv();
+    await errorJson(
+      await handleStakeQuote(
+        req(`/api/v1/subnets/${NETUID}/stake-quote?amount=10&direction=bogus`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-quote?amount=10&direction=bogus`),
+      ),
+    );
+  });
+
+  test("handleStakeQuote rejects an unsupported query param", async () => {
+    const env = createLocalArtifactEnv();
+    await errorJson(
+      await handleStakeQuote(
+        req(`/api/v1/subnets/${NETUID}/stake-quote?amount=10&bogus=1`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-quote?amount=10&bogus=1`),
+      ),
+    );
+  });
+
+  test("handleStakeQuote: cold/unbound artifact store has no pool data to quote against", async () => {
+    const env = emptyEnv();
+    await errorJson(
+      await handleStakeQuote(
+        req(`/api/v1/subnets/${NETUID}/stake-quote?amount=10`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-quote?amount=10`),
+      ),
+    );
   });
 
   test("handleSubnetEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
