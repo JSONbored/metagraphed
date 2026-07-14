@@ -151,17 +151,26 @@ const subnetSchema = await readJson(
 const candidateSchema = await readJson(
   path.join(repoRoot, "schemas/candidate-surface.schema.json"),
 );
+const providerSubmissionSchema = await readJson(
+  path.join(repoRoot, "schemas/provider-submission.schema.json"),
+);
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
 );
 
-for (const schema of [providerSchema, subnetSchema, candidateSchema]) {
+for (const schema of [
+  providerSchema,
+  subnetSchema,
+  candidateSchema,
+  providerSubmissionSchema,
+]) {
   ajv.addSchema(schema, schema.$id);
 }
 const explicitlyRegisteredSchemaIds = new Set([
   providerSchema.$id,
   subnetSchema.$id,
   candidateSchema.$id,
+  providerSubmissionSchema.$id,
 ]);
 for (const schemaPath of await listJsonFiles(path.join(repoRoot, "schemas"))) {
   const schema = await readJson(schemaPath);
@@ -183,6 +192,7 @@ const validators = {
   provider: ajv.getSchema(providerSchema.$id),
   subnet: ajv.getSchema(subnetSchema.$id),
   candidate: ajv.getSchema(candidateSchema.$id),
+  providerSubmission: ajv.getSchema(providerSubmissionSchema.$id),
 };
 
 const errors = [];
@@ -198,6 +208,19 @@ for (const subnet of await loadSubnets()) {
 for (const candidate of await loadCandidates()) {
   validate(validators.candidate, candidate, `candidate:${candidate.id}`);
 }
+
+// #5476: enforce the direct-provider-profile intake fixture against its actual
+// schema (patterns, additionalProperties:false, the nested provider sub-schema)
+// rather than validate-intake.mjs's weaker presence-only checks. The authority
+// narrowing to community/provider-claimed stays enforced there, on top of this.
+const providerSubmissionExample = await readJson(
+  path.join(repoRoot, "docs/examples/submissions/direct-provider-profile.json"),
+);
+validate(
+  validators.providerSubmission,
+  providerSubmissionExample,
+  "direct-provider-profile example",
+);
 
 for (const artifact of await artifactValidationTargets()) {
   const validator = compileComponentValidator(artifact.schema_ref);
