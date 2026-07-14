@@ -306,6 +306,7 @@ import {
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
   nominatorCountsByHotkey,
 } from "../src/validator-nominator-summary.mjs";
+import { tempoByNetuid as buildTempoByNetuid } from "../src/subnet-tempo.mjs";
 import {
   identityHash,
   buildAccountIdentityHistory,
@@ -2509,6 +2510,23 @@ async function loadValidatorNominatorCounts(sql) {
     return nominatorCountsByHotkey(rows);
   } catch (err) {
     console.error("validator_nominator_counts query failed:", err);
+    return new Map();
+  }
+}
+
+// Same savepoint-isolated-failure shape as loadValidatorNominatorCounts just
+// above (#2551): a subnet_hyperparams read failure degrades apy_estimate to
+// null everywhere (accumulateApyRow's tempoByNetuid.get(...) == null branch)
+// rather than failing /api/v1/validators or /api/v1/validators/:hotkey, or
+// rolling back the enclosing transaction's other queries.
+async function loadSubnetTempos(sql) {
+  try {
+    const rows = await sql.savepoint(
+      (sql) => sql`SELECT netuid, tempo FROM subnet_hyperparams`,
+    );
+    return buildTempoByNetuid(rows);
+  } catch (err) {
+    console.error("subnet_hyperparams tempo query failed:", err);
     return new Map();
   }
 }
@@ -5910,14 +5928,16 @@ export default {
             limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
               ? limitParam
               : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-          const [rows, featuredHotkeys, nominatorCounts] = await Promise.all([
-            sql`
+          const [rows, featuredHotkeys, nominatorCounts, tempoByNetuid] =
+            await Promise.all([
+              sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-            loadFeaturedHotkeys(sql),
-            loadValidatorNominatorCounts(sql),
-          ]);
+              loadFeaturedHotkeys(sql),
+              loadValidatorNominatorCounts(sql),
+              loadSubnetTempos(sql),
+            ]);
           // Identity join (#5234): needs `rows` resolved first to know which
           // coldkeys to look up, so it can't join the Promise.all above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
@@ -5931,6 +5951,7 @@ export default {
               featuredHotkeys,
               identityByColdkey,
               nominatorCounts,
+              tempoByNetuid,
             }),
           );
         }
@@ -5942,12 +5963,13 @@ export default {
         );
         if (validatorDetail) {
           const hotkey = decodeURIComponent(validatorDetail[1]);
-          const [rows, nominatorCounts] = await Promise.all([
+          const [rows, nominatorCounts, tempoByNetuid] = await Promise.all([
             sql`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`,
             loadValidatorNominatorCounts(sql),
+            loadSubnetTempos(sql),
           ]);
           // Identity join (#5234): see the /api/v1/validators comment above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
@@ -5958,6 +5980,7 @@ export default {
             buildValidatorDetail(rows, hotkey, {
               identityByColdkey,
               nominatorCount: nominatorCounts.get(hotkey) ?? null,
+              tempoByNetuid,
             }),
           );
         }

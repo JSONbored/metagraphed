@@ -38,6 +38,10 @@ const METRICS: Array<{ term: string; def: string }> = [
     def: "The TAO the validator earned over the window. Emission is split between the validator and its nominators via commission — it reflects reward flow, not profit.",
   },
   {
+    term: "Est. APY",
+    def: "An estimated annualized yield (#2551): projects the validator's most recently captured epoch payout across a full year, using each subnet's own epoch length. It's a snapshot-based estimate, not a forecast or a guarantee — it can swing between refreshes, especially for validators concentrated on short-epoch subnets. A dash means none of the validator's subnets have a captured epoch length yet.",
+  },
+  {
     term: "Validator trust (Sort)",
     def: "Available from the Sort control: how consistently a subnet's consensus scores the validator as trustworthy. Steadier trust points to reliable participation.",
   },

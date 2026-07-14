@@ -1993,6 +1993,10 @@ export interface GlobalValidator {
   total_emission_tao: number;
   /** Distinct coldkeys currently staking to this hotkey, network-wide (#2549). Null when the low-frequency source table has no row for this hotkey yet. */
   nominator_count: number | null;
+  /** Estimated annualized yield (#2551) — a stake-weighted blend across every subnet membership with a known tempo. See apy_estimate_eligible_subnet_count. Null when no membership resolved a tempo. */
+  apy_estimate: number | null;
+  /** Count of subnet memberships that contributed to apy_estimate, out of subnet_count total (#2551). */
+  apy_estimate_eligible_subnet_count: number;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;
   stake_dominance: number | null;

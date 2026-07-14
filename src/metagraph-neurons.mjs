@@ -54,6 +54,22 @@ export const GLOBAL_VALIDATOR_LIMIT_MAX = 100;
 const GLOBAL_VALIDATOR_SUBNET_LIMIT = 10;
 const RAO_PER_TAO = 1e9;
 
+// Bittensor's network-wide block time is a long-stable EXTERNAL protocol
+// parameter (~12s) that this repo does not measure per-request -- distinct
+// from any live-computed block-time distribution elsewhere in this repo
+// (e.g. blocks-summary.mjs's blockTimeDistribution), which would make the
+// same emission_tao annualize differently on every request purely from
+// block-production jitter. If a future chain upgrade changes Bittensor's
+// consensus block time, this constant needs a matching update; it is a
+// documented assumption apy_estimate depends on, not something this route
+// verifies (#2551).
+const APY_SECONDS_PER_BLOCK = 12;
+// Calendar year, no leap-day adjustment -- a documented convention, not a
+// protocol-derived figure. No prior art for "a year" exists elsewhere in
+// this repo (src/chain-yield.mjs / src/subnet-yield.mjs are explicitly
+// snapshot-only, never annualized) -- apy_estimate is the new precedent.
+const APY_SECONDS_PER_YEAR = 365 * 24 * 60 * 60; // 31,536,000
+
 function toIso(ms) {
   // D1 can return the INTEGER captured_at as a numeric string; a bare
   // Number.isFinite(ms) is false for a string, so the old form dropped a real
@@ -114,6 +130,16 @@ function round(value, dp = 6) {
   if (value == null || !Number.isFinite(value)) return null;
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
+}
+
+// 1 TAO = 1e9 rao; round yield-shaped outputs to that precision to shed
+// IEEE-754 noise below the rao floor while keeping small ratios meaningful.
+// Matches src/chain-yield.mjs / src/subnet-yield.mjs's own round9 exactly
+// (apy_estimate is a sibling yield-shaped field, not a trust/take value, so
+// it uses this precision convention rather than round()'s 6dp default).
+function round9(value) {
+  if (value == null || !Number.isFinite(value)) return null;
+  return Math.round(Number(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
 // Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
@@ -273,6 +299,51 @@ function coldkeyIdentity(coldkey, identityByColdkey) {
   return identity;
 }
 
+// Estimated annualized yield (#2551): mutates `acc` (either a
+// buildGlobalValidators per-hotkey entry or buildValidatorDetail's local
+// accumulator) with one subnet-membership row's contribution to
+// apy_estimate. `tempoByNetuid` is a netuid -> tempo(blocks) Map (loaded by
+// the caller from subnet_hyperparams); a membership whose netuid has no
+// resolvable tempo, or that holds no positive stake, is EXCLUDED from both
+// the numerator and denominator -- never defaulted to an assumed tempo,
+// mirroring this codebase's null-never-fabricated convention (see
+// nominator_count above). stake/emission are already-coerced
+// numberOrZero() results, matching every other call site in this file.
+//
+// Each eligible row's emission_tao (a single most-recently-captured
+// per-epoch reading, see NEURON_COLUMNS) is annualized using that row's own
+// subnet's tempo and projected across a full year, then accumulated in
+// rao-BigInt space alongside its stake so the final ratio (finalizeApy) is
+// algebraically a stake-weighted blend across every eligible membership,
+// computed as one sum-of-emission / sum-of-stake division rather than an
+// average of per-row ratios -- mirrors stakeTotalRao/emissionTotalRao's own
+// accumulate-then-convert-once pattern.
+function accumulateApyRow(acc, netuid, stake, emission, tempoByNetuid) {
+  const tempo = tempoByNetuid.get(netuid);
+  if (tempo == null) return; // unresolved tempo -- excluded, never defaulted
+  if (!(stake > 0)) return; // zero/negative-impossible stake -- excluded
+  const epochsPerYear = APY_SECONDS_PER_YEAR / (tempo * APY_SECONDS_PER_BLOCK);
+  const annualizedEmission = emission * epochsPerYear;
+  acc.apyNumeratorRao += toRaoBig(annualizedEmission);
+  acc.apyDenominatorRao += toRaoBig(stake);
+  acc.apyEligibleCount += 1;
+}
+
+// Reads the three fields accumulateApyRow above populates and produces the
+// two apy_estimate* output fields. Null (never 0) when no membership had a
+// resolvable tempo -- "no APY opinion" rather than "confirmed zero yield".
+function finalizeApy(acc) {
+  if (acc.apyEligibleCount === 0 || acc.apyDenominatorRao <= 0n) {
+    return { apy_estimate: null, apy_estimate_eligible_subnet_count: 0 };
+  }
+  const apy =
+    raoBigToTao(acc.apyNumeratorRao) / raoBigToTao(acc.apyDenominatorRao);
+  return {
+    apy_estimate: round9(apy),
+    apy_estimate_eligible_subnet_count: acc.apyEligibleCount,
+  };
+}
+
 function buildGlobalValidatorEntry(
   entry,
   identityByColdkey,
@@ -321,6 +392,7 @@ function buildGlobalValidatorEntry(
     // never fabricated as 0, which would misreport "confirmed zero
     // nominators" as opposed to "unknown."
     nominator_count: nominatorCounts.get(entry.hotkey) ?? null,
+    ...finalizeApy(entry),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
     latest_captured_at: toIso(entry.latestCapturedAt),
@@ -364,6 +436,11 @@ export function buildGlobalValidators(
     // map (e.g. the D1-retired fallback below, which never has one) leaves
     // every entry's nominator_count null, never throws.
     nominatorCounts = new Map(),
+    // netuid -> tempo(blocks) (#2551), sourced from subnet_hyperparams --
+    // see accumulateApyRow's own comment for why an unresolved netuid is
+    // excluded rather than defaulted. A cold/absent map leaves every entry's
+    // apy_estimate null, never throws.
+    tempoByNetuid = new Map(),
   } = {},
 ) {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -404,6 +481,9 @@ export function buildGlobalValidators(
         uidCount: 0,
         stakeTotalRao: 0n,
         emissionTotalRao: 0n,
+        apyNumeratorRao: 0n,
+        apyDenominatorRao: 0n,
+        apyEligibleCount: 0,
         validatorTrustTotal: 0,
         validatorTrustCount: 0,
         maxValidatorTrust: null,
@@ -430,6 +510,7 @@ export function buildGlobalValidators(
     entry.uidCount += 1;
     entry.stakeTotalRao += toRaoBig(stake);
     entry.emissionTotalRao += toRaoBig(emission);
+    accumulateApyRow(entry, netuid, stake, emission, tempoByNetuid);
     if (trust != null) {
       entry.validatorTrustTotal += trust;
       entry.validatorTrustCount += 1;
@@ -621,6 +702,10 @@ export function buildValidatorDetail(
     // Null when that table has no row for this hotkey yet -- never fabricated
     // as 0.
     nominatorCount = null,
+    // netuid -> tempo(blocks) (#2551), sourced from subnet_hyperparams. See
+    // accumulateApyRow's own comment. A cold/absent map leaves apy_estimate
+    // null, never throws.
+    tempoByNetuid = new Map(),
   } = {},
 ) {
   const coldkeys = new Map();
@@ -631,6 +716,14 @@ export function buildValidatorDetail(
   // already one of `rows`, no new ingestion needed.
   let rootStakeRao = 0n;
   let emissionTotalRao = 0n;
+  // Plain object (not three separate `let`s) so it can be passed directly to
+  // the shared accumulateApyRow/finalizeApy helpers buildGlobalValidators
+  // also uses (#2551) -- one accumulation implementation, not duplicated.
+  const apyAcc = {
+    apyNumeratorRao: 0n,
+    apyDenominatorRao: 0n,
+    apyEligibleCount: 0,
+  };
   let validatorTrustTotal = 0;
   let validatorTrustCount = 0;
   let maxValidatorTrust = null;
@@ -657,10 +750,13 @@ export function buildValidatorDetail(
       const rowTake = nullableNumber(row?.take);
       if (rowTake != null) take = rowTake;
     }
-    const rowStakeRao = toRaoBig(numberOrZero(row?.stake_tao));
+    const stake = numberOrZero(row?.stake_tao);
+    const emission = numberOrZero(row?.emission_tao);
+    const rowStakeRao = toRaoBig(stake);
     stakeTotalRao += rowStakeRao;
     if (netuid === 0) rootStakeRao += rowStakeRao;
-    emissionTotalRao += toRaoBig(numberOrZero(row?.emission_tao));
+    emissionTotalRao += toRaoBig(emission);
+    accumulateApyRow(apyAcc, netuid, stake, emission, tempoByNetuid);
     const trust = nullableNumber(row?.validator_trust);
     if (trust != null) {
       validatorTrustTotal += trust;
@@ -702,6 +798,7 @@ export function buildValidatorDetail(
     alpha_stake_tao: roundTao(raoBigToTao(stakeTotalRao - rootStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
     nominator_count: nominatorCount,
+    ...finalizeApy(apyAcc),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(maxValidatorTrust),
     captured_at: toIso(latestCapturedAt),

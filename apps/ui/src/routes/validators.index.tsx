@@ -171,6 +171,7 @@ function ValidatorsTable({
                 <th className={`${TH} text-right`}>Dominance</th>
                 <th className={`${TH} text-right`}>Total stake</th>
                 <th className={`${TH} text-right`}>Total emission</th>
+                <th className={`${TH} text-right`}>Est. APY</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -220,6 +221,9 @@ function ValidatorsTable({
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                     {taoCompact(v.total_emission_tao)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {v.apy_estimate != null ? `${(v.apy_estimate * 100).toFixed(1)}%` : "—"}
                   </td>
                 </tr>
               ))}
