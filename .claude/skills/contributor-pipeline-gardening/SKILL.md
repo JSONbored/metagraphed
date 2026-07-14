@@ -53,7 +53,15 @@ Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo'
    contributor-available issues, independently per repo**. This is NOT a combined/shared pool with
    gittensory/loopover; each repo is judged on its own backlog and must clear the bar on its own
    merits, focused on that repo's actual goals (corrected by the maintainer 2026-07-14 — an earlier
-   version of this doc wrongly said "combined total, not per-repo").
+   version of this doc wrongly said "combined total, not per-repo"). **Exclude the "Enrich SNxxx"
+   family (see below) from this count** — it's a separately-automated queue, not this skill's backlog.
+1a. **The "Enrich SN<netuid> ..." family (tracked via #427, ~20-30 issues at any time) is handled by
+   a separate automation, not this skill.** Don't count them toward the 50-100 top-up target (filter
+   out any issue whose title matches "Enrich SN" before comparing against the target), and don't
+   generate more of them yourselves — that automation owns that queue. Pass 1's stale-sweep/hygiene
+   work (closing genuinely-done ones, fixing stale checkboxes) still applies to them like any other
+   issue; the exclusion is specifically about Pass 2's top-up math (confirmed by the maintainer
+   2026-07-14).
 2. This repo's contributor-availability query needs `gittensor:priority` counted alongside
    `gittensor:feature`/`gittensor:bug` — unlike gittensory, metagraphed frequently uses
    `gittensor:priority` as a **standalone** points label (54 of 59 `gittensor:priority` issues here
