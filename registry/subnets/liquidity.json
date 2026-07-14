@@ -45,6 +45,31 @@
         "https://github.com/creativebuilds/sn77/blob/master/README.md"
       ],
       "url": "https://77.creativebuilds.io/weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-77-liquidity-api-index",
+      "kind": "subnet-api",
+      "name": "Liquidity API index",
+      "notes": "Public no-auth GET / on 77.creativebuilds.io returning a machine-readable JSON index of the SN77 Liquidity validator REST API — a self-documenting endpoint catalog ({message, endpoints:[{path, method, description, ...}]}) covering the voting (/updateVotes), pools, positions, weights, miners, and holders routes. This is the live counterpart of the repository's validator/api-server-docs.json and the closest machine-readable API description the subnet publishes. Distinct from the registered /pools and /weights data surfaces. Verified 200 application/json, no auth, SS58-clean.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "liquidity",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/creativebuilds/sn77/blob/master/validator/api-server-docs.json",
+        "https://github.com/creativebuilds/sn77/blob/master/README.md"
+      ],
+      "url": "https://77.creativebuilds.io/"
     }
   ],
   "source_repo": "https://github.com/creativebuilds/sn77",
