@@ -22,13 +22,7 @@
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
-import {
-  DAY_PATTERN,
-  FEED_PAGINATION,
-  BLOCK_PAGINATION,
-  clampLimit as clampFeedLimit,
-  clampOffset as clampFeedOffset,
-} from "../workers/request-params.mjs";
+import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
@@ -372,10 +366,10 @@ import {
   buildAccountEvents,
   buildSubnetEvents,
   buildAccountSubnets,
-  buildAccountHistory,
+  loadAccountHistory,
   buildAccountTransfers,
-  buildBlockEvents,
   buildSubnetEventSummary,
+  buildBlockEvents,
   SUBNET_EVENT_SUMMARY_WINDOWS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
@@ -509,12 +503,12 @@ import {
   MOVERS_LIMIT_MAX,
 } from "./movers.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
-import { buildBlock, buildBlockFeed } from "./blocks.mjs";
+import { buildBlockFeed, buildBlock } from "./blocks.mjs";
 import {
   buildExtrinsic,
   buildExtrinsicFeed,
-  buildBlockExtrinsics,
   buildAccountExtrinsics,
+  buildBlockExtrinsics,
 } from "./extrinsics.mjs";
 import {
   dataApiFetchJson,
@@ -1199,20 +1193,19 @@ async function mcpObservedAt(ctx) {
 
 // Resolve + validate a history window arg (7d|30d|90d|1y|all) the way the REST
 // /history routes do, mapping a bad value to a clean tool error. Returns the
-// parsed {label} (the REST routes drop `days` the same way, #5047 below).
+// parsed {label, days} (days is null for the unbounded `all` window).
 function requireHistoryWindow(args) {
-  const { label, error } = parseHistoryWindow(args?.window);
+  const { label, days, error } = parseHistoryWindow(args?.window);
   if (error) {
     throw toolError("invalid_params", error.message);
   }
-  return { label };
+  return { label, days };
 }
 
-// One subnet's per-day aggregate history — mirrors handleSubnetHistory. #5047 D1
-// retirement: neuron_daily's D1 write path is retired (#4772) and the table is
-// dropped in production, so a D1 query here would always miss; buildSubnetHistory
-// with no rows yields the schema-stable point_count:0 payload (never throws).
-function loadSubnetHistory(netuid, { label }) {
+// One subnet's per-day aggregate history — mirrors handleSubnetHistory. The
+// neuron_daily D1 table was retired (#4772); buildSubnetHistory([]) yields the
+// schema-stable point_count:0 payload the same way a cold/absent D1 used to.
+async function loadSubnetHistory(ctx, netuid, { label }) {
   return buildSubnetHistory([], netuid, { window: label });
 }
 
@@ -1240,11 +1233,10 @@ async function loadSubnetIdentityHistoryTool(
   );
 }
 
-// One UID's per-day time series — mirrors handleNeuronHistory. #5047 D1
-// retirement: neuron_daily's D1 write path is retired (#4772) and the table is
-// dropped in production, so a D1 query here would always miss; buildNeuronHistory
-// with no rows yields the schema-stable point_count:0 payload (never throws).
-function loadNeuronHistory(netuid, uid, { label }) {
+// One UID's per-day time series — mirrors handleNeuronHistory. The
+// neuron_daily D1 table was retired (#4772); buildNeuronHistory([]) yields the
+// schema-stable point_count:0 payload the same way a cold/absent D1 used to.
+async function loadNeuronHistory(ctx, netuid, uid, { label }) {
   return buildNeuronHistory([], netuid, uid, { window: label });
 }
 
@@ -2482,10 +2474,8 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
       return buildConcentration([], netuid);
     },
   },
@@ -2509,10 +2499,8 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
       return buildSubnetPerformance([], netuid);
     },
   },
@@ -2532,9 +2520,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler() {
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
+    async handler(_args, _ctx) {
       return buildChainConcentration([]);
     },
   },
@@ -2555,9 +2541,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler() {
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
+    async handler(_args, _ctx) {
       return buildChainPerformance([]);
     },
   },
@@ -2620,9 +2604,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler() {
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
+    async handler(_args, _ctx) {
       return buildChainYield([]);
     },
   },
@@ -2656,7 +2638,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
       if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)) {
@@ -2670,8 +2652,6 @@ export const MCP_TOOLS = [
         CHAIN_TURNOVER_LIMIT_DEFAULT,
         CHAIN_TURNOVER_LIMIT_MAX,
       );
-      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-      // the table is dropped in production, so a D1 query here would always miss.
       return buildChainTurnover([], {
         window,
         startDate: null,
@@ -3108,9 +3088,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler() {
-      // #5047 D1 retirement: blocks' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
+    async handler(_args, _ctx) {
       return buildBlocksSummary([]);
     },
   },
@@ -3136,14 +3114,12 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseConcentrationHistoryWindow(args?.window);
       if (parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-      // the table is dropped in production, so a D1 query here would always miss.
       return buildConcentrationHistory([], netuid, {
         window: parsed.label,
         capped: false,
@@ -3181,20 +3157,19 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const { label } = requireHistoryWindow(args);
-      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-      // the table is dropped in production, so a D1 query here would always miss.
       const turnoverOptions = { window: label, startDate: null, endDate: null };
-      return optionalBoolean(args, "changes")
-        ? {
-            ...buildTurnover([], netuid, turnoverOptions),
-            changes: turnoverChangeDetail(
-              buildTurnoverChanges([], netuid, turnoverOptions),
-            ),
-          }
-        : buildTurnover([], netuid, turnoverOptions);
+      if (!optionalBoolean(args, "changes")) {
+        return buildTurnover([], netuid, turnoverOptions);
+      }
+      return {
+        ...buildTurnover([], netuid, turnoverOptions),
+        changes: turnoverChangeDetail(
+          buildTurnoverChanges([], netuid, turnoverOptions),
+        ),
+      };
     },
   },
   {
@@ -3216,10 +3191,8 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
       return buildSubnetYield([], netuid);
     },
   },
@@ -3246,16 +3219,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetYieldHistoryWindow(args?.window);
       if (args?.window !== undefined && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-      // the table is dropped in production, so a D1 query here would always miss.
+      const { label } = parsed;
       return buildSubnetYieldHistory([], netuid, {
-        window: parsed.label,
+        window: label,
         capped: false,
       });
     },
@@ -3289,7 +3261,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
@@ -3299,8 +3271,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // direction is still validated (bad input still errors) even though an
-      // empty event stream makes the filter itself moot.
       const direction =
         optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
       if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
@@ -3309,9 +3279,6 @@ export const MCP_TOOLS = [
           `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildStakeFlow([], netuid, { window });
     },
   },
@@ -3348,7 +3315,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
@@ -3363,10 +3330,10 @@ export const MCP_TOOLS = [
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
       );
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
-      return buildSubnetEventSummary([], [], netuid, { window, limit });
+      return buildSubnetEventSummary([], [], netuid, {
+        window,
+        limit,
+      });
     },
   },
   {
@@ -3392,7 +3359,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -3402,9 +3369,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_WEIGHTS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetWeights(null, netuid, { window });
     },
   },
@@ -3432,7 +3396,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
@@ -3442,9 +3406,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetWeightSetters([], null, netuid, { window });
     },
   },
@@ -3471,7 +3432,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
@@ -3481,9 +3442,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${Object.keys(SUBNET_REGISTRATIONS_WINDOWS).join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetRegistrations(null, netuid, { window });
     },
   },
@@ -3510,7 +3468,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
@@ -3520,9 +3478,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetStakeMoves(null, netuid, { window });
     },
   },
@@ -3550,7 +3505,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
@@ -3560,9 +3515,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetStakeTransfers(null, netuid, { window });
     },
   },
@@ -3590,7 +3542,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
@@ -3600,9 +3552,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetAxonRemovals(null, netuid, { window });
     },
   },
@@ -3631,7 +3580,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_SERVING_WINDOW;
@@ -3641,9 +3590,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_SERVING_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetServing(null, netuid, { window });
     },
   },
@@ -3672,7 +3618,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_PROMETHEUS_WINDOW;
@@ -3682,9 +3628,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetPrometheus(null, netuid, { window });
     },
   },
@@ -3711,7 +3654,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
@@ -3721,9 +3664,6 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
-      // and the table is dropped in production, so a D1 query here would
-      // always miss.
       return buildSubnetDeregistrations(null, netuid, { window });
     },
   },
@@ -3749,16 +3689,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetPerformanceHistoryWindow(args?.window);
       if (args?.window !== undefined && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-      // the table is dropped in production, so a D1 query here would always miss.
+      const { label } = parsed;
       return buildSubnetPerformanceHistory([], netuid, {
-        window: parsed.label,
+        window: label,
         capped: false,
       });
     },
@@ -3795,7 +3734,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const window = optionalString(args, "window") ?? DEFAULT_MOVERS_WINDOW;
       if (!Object.hasOwn(MOVERS_WINDOWS, window)) {
         throw toolError(
@@ -4048,12 +3987,11 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
-      // validator_permit is still validated (bad input still errors) even
-      // though an empty snapshot makes the filter itself moot.
+      // validator_permit is validated for REST-parity but, like the D1 filter it
+      // used to bound, has nothing left to filter now that neurons is retired
+      // (#4772) -- buildSubnetMetagraph([]) below never sees it.
       optionalBoolean(args, "validator_permit");
       return buildSubnetMetagraph([], netuid);
     },
@@ -4089,12 +4027,10 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
       const limit = optionalPositiveInt(args, "limit");
       const minStakeTao = optionalNonNegativeNumber(args, "min_stake_tao");
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
       const data = buildSubnetValidators([], netuid);
       if (limit === null && minStakeTao === null) {
         return data;
@@ -4142,7 +4078,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const sort =
         optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
         DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -4151,8 +4087,6 @@ export const MCP_TOOLS = [
         GLOBAL_VALIDATOR_LIMIT_DEFAULT,
         GLOBAL_VALIDATOR_LIMIT_MAX,
       );
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
       return buildGlobalValidators([], { sort, limit });
     },
   },
@@ -4177,12 +4111,11 @@ export const MCP_TOOLS = [
       required: ["netuid", "uid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
-      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-      // table is dropped in production, so a D1 query here would always miss.
-      // uid is still validated even though buildNeuronDetail's null-row miss
-      // doesn't depend on it.
+      // uid is validated for REST-parity but, like the D1 filter it used to
+      // bound, has nothing left to look up now that neurons is retired
+      // (#4772) -- buildNeuronDetail(null, ...) below never sees it.
       requireNonNegativeInt(args, "uid");
       return buildNeuronDetail(null, netuid);
     },
@@ -4209,9 +4142,9 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadSubnetHistory(netuid, requireHistoryWindow(args));
+      return loadSubnetHistory(ctx, netuid, requireHistoryWindow(args));
     },
   },
   {
@@ -4285,10 +4218,10 @@ export const MCP_TOOLS = [
       required: ["netuid", "uid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const uid = requireNonNegativeInt(args, "uid");
-      return loadNeuronHistory(netuid, uid, requireHistoryWindow(args));
+      return loadNeuronHistory(ctx, netuid, uid, requireHistoryWindow(args));
     },
   },
   {
@@ -4346,18 +4279,21 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const netuid = requireNetuid(args);
-      // kind/block_start/block_end are still validated below (bad input
-      // still errors) even though an empty event stream makes every filter
-      // moot.
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
+      // block_start/block_end are validated for REST-parity but, like the D1 filters
+      // they used to bound, have nothing left to filter now that account_events is
+      // retired (#4772) -- buildSubnetEvents([]) below never sees them either.
       optionalNonNegativeInt(args, "block_start");
       optionalNonNegativeInt(args, "block_end");
+      optionalString(args, "cursor");
       return buildSubnetEvents([], netuid, {
-        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
-        offset: clampFeedOffset(args?.offset),
+        limit: clampLimit(args?.limit, 100, 1000),
+        offset: Number.isFinite(args?.offset)
+          ? Math.max(0, Math.floor(args.offset))
+          : 0,
         nextCursor: null,
       });
     },
@@ -4387,7 +4323,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       return buildAccountSummary(ss58, {});
     },
@@ -4503,19 +4439,22 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
-      // netuid/block_start/block_end/kind are still validated below (bad
-      // input still errors) even though an empty event stream makes every
-      // filter moot.
+      const kind = optionalString(args, "kind");
+      requireKnownEventKind(kind);
+      // netuid/block_start/block_end/cursor are validated for REST-parity but, like
+      // the D1 filters they used to bound, have nothing left to filter now that
+      // account_events is retired (#4772) -- buildAccountEvents([]) never sees them.
       optionalNonNegativeInt(args, "netuid");
       optionalNonNegativeInt(args, "block_start");
       optionalNonNegativeInt(args, "block_end");
-      const kind = optionalString(args, "kind");
-      requireKnownEventKind(kind);
+      optionalString(args, "cursor");
       return buildAccountEvents([], ss58, {
-        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
-        offset: clampFeedOffset(args?.offset),
+        limit: clampLimit(args?.limit, 100, 1000),
+        offset: Number.isFinite(args?.offset)
+          ? Math.max(0, Math.floor(args.offset))
+          : 0,
         nextCursor: null,
       });
     },
@@ -4542,7 +4481,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       return buildAccountSubnets([], ss58);
     },
@@ -4570,7 +4509,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       return buildAccountPortfolio([], ss58);
     },
@@ -4608,7 +4547,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
@@ -4618,8 +4557,9 @@ export const MCP_TOOLS = [
           `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      // direction is still validated (bad input still errors) even though an
-      // empty event stream makes the filter itself moot.
+      // direction is validated for REST-parity but, like the D1 filter it used to
+      // bound, has nothing left to filter now that account_events is retired
+      // (#4772) -- buildAccountStakeFlow([]) below never sees it.
       const direction =
         optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
       if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
@@ -4661,7 +4601,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
@@ -4704,7 +4644,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_AXON_REMOVAL_WINDOW;
@@ -4748,7 +4688,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_PROMETHEUS_WINDOW;
@@ -4791,7 +4731,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_REGISTRATION_WINDOW;
@@ -4833,7 +4773,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
@@ -4877,7 +4817,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const window = optionalString(args, "window") ?? DEFAULT_SERVING_WINDOW;
       if (!Object.hasOwn(SERVING_WINDOWS, window)) {
@@ -4920,7 +4860,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW;
@@ -4991,18 +4931,19 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      // netuid/from/to/cursor are still validated below (bad input still
-      // errors) even though an empty day stream makes every filter moot.
-      optionalNonNegativeInt(args, "netuid");
-      optionalDayArg(args, "from");
-      optionalDayArg(args, "to");
-      optionalString(args, "cursor");
-      return buildAccountHistory([], ss58, {
-        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
-        offset: clampFeedOffset(args?.offset),
-        nextCursor: null,
+      const netuid = optionalNonNegativeInt(args, "netuid") ?? undefined;
+      const from = optionalDayArg(args, "from");
+      const to = optionalDayArg(args, "to");
+      const cursor = optionalString(args, "cursor");
+      return loadAccountHistory(mcpD1Runner(ctx), ss58, {
+        netuid,
+        from: from ?? undefined,
+        to: to ?? undefined,
+        limit: args?.limit,
+        offset: args?.offset,
+        cursor: cursor ?? undefined,
       });
     },
   },
@@ -5059,17 +5000,19 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
-      // block_start/block_end/cursor are still validated below (bad input
-      // still errors) even though an empty extrinsic stream makes every
-      // filter moot.
+      // block_start/block_end/cursor are validated for REST-parity but, like the D1
+      // filters they used to bound, have nothing left to filter now that extrinsics
+      // is retired (#4772) -- buildAccountExtrinsics([]) below never sees them.
       optionalNonNegativeInt(args, "block_start");
       optionalNonNegativeInt(args, "block_end");
       optionalString(args, "cursor");
       return buildAccountExtrinsics([], ss58, {
-        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
-        offset: clampFeedOffset(args?.offset),
+        limit: clampLimit(args?.limit, 100, 1000),
+        offset: Number.isFinite(args?.offset)
+          ? Math.max(0, Math.floor(args.offset))
+          : 0,
         nextCursor: null,
       });
     },
@@ -5134,20 +5077,23 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
-      // direction/block_start/block_end/cursor are still validated below
-      // (bad input still errors) even though an empty transfer stream makes
-      // every filter moot.
-      optionalString(args, "direction");
+      const direction = optionalString(args, "direction");
+      // block_start/block_end/cursor are validated for REST-parity but, like the D1
+      // filters they used to bound, have nothing left to filter now that
+      // account_events is retired (#4772) -- buildAccountTransfers([]) never sees
+      // them.
       optionalNonNegativeInt(args, "block_start");
       optionalNonNegativeInt(args, "block_end");
       optionalString(args, "cursor");
       return buildAccountTransfers([], ss58, {
-        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
-        offset: clampFeedOffset(args?.offset),
+        direction: direction ?? undefined,
+        limit: clampLimit(args?.limit, 100, 1000),
+        offset: Number.isFinite(args?.offset)
+          ? Math.max(0, Math.floor(args.offset))
+          : 0,
         nextCursor: null,
-        direction: undefined,
       });
     },
   },
@@ -5192,7 +5138,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       const counterparty = optionalString(args, "counterparty");
       if (counterparty != null) {
@@ -5208,12 +5154,11 @@ export const MCP_TOOLS = [
             "Argument `counterparty` must differ from `ss58`.",
           );
         }
-        // #4909 D1 retirement: account_events' D1 write path is retired
-        // (#4772) and the table is dropped in production, so a D1 query
-        // here would always miss. Mirrors REST's handleAccountCounterparties
-        // cold path: wrap the always-empty relationship in the same
-        // composite envelope loadCounterpartyRelationship used to build.
-        const relationship = buildCounterpartyRelationship(
+        // account_events is retired (#4772) -- an empty rows input always yields
+        // transfer_count: 0, so this mirrors loadCounterpartyRelationship's
+        // composite shape with an always-empty counterparties list, without
+        // querying D1 at all.
+        const emptyRelationship = buildCounterpartyRelationship(
           [],
           ss58,
           counterparty,
@@ -5223,12 +5168,12 @@ export const MCP_TOOLS = [
           schema_version: 1,
           ss58,
           counterparty_count: 0,
-          transfers_scanned: relationship.transfers_scanned,
-          scan_capped: relationship.scan_capped,
-          total_sent_tao: relationship.total_sent_tao,
-          total_received_tao: relationship.total_received_tao,
+          transfers_scanned: emptyRelationship.transfers_scanned,
+          scan_capped: emptyRelationship.scan_capped,
+          total_sent_tao: emptyRelationship.total_sent_tao,
+          total_received_tao: emptyRelationship.total_received_tao,
           counterparties: [],
-          relationship,
+          relationship: emptyRelationship,
         };
       }
       return buildCounterparties([], ss58, { limit: args?.limit });
@@ -5315,10 +5260,24 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
+      // Every filter below is validated for REST-parity but, like the D1 filters
+      // they used to bound, has nothing left to filter now that blocks is retired
+      // (#4772) -- buildBlockFeed([]) below never sees them.
+      optionalString(args, "cursor");
+      optionalString(args, "author");
+      optionalNonNegativeInt(args, "spec_version");
+      optionalNonNegativeInt(args, "block_start");
+      optionalNonNegativeInt(args, "block_end");
+      optionalNonNegativeInt(args, "from");
+      optionalNonNegativeInt(args, "to");
+      optionalNonNegativeInt(args, "min_extrinsics");
+      optionalNonNegativeInt(args, "min_events");
       return buildBlockFeed([], {
-        limit: clampFeedLimit(args?.limit, BLOCK_PAGINATION),
-        offset: clampFeedOffset(args?.offset),
+        limit: clampLimit(args?.limit, 50, 100),
+        offset: Number.isFinite(args?.offset)
+          ? Math.max(0, Math.floor(args.offset))
+          : 0,
         nextCursor: null,
       });
     },
@@ -5344,7 +5303,7 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ref = requireString(args, "ref");
       return buildBlock(undefined, ref);
     },
@@ -5382,11 +5341,13 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ref = requireString(args, "ref");
       return buildBlockExtrinsics([], ref, null, {
-        limit: clampFeedLimit(args?.limit, BLOCK_PAGINATION),
-        offset: clampFeedOffset(args?.offset),
+        limit: clampLimit(args?.limit, 50, 100),
+        offset: Number.isFinite(args?.offset)
+          ? Math.max(0, Math.floor(args.offset))
+          : 0,
       });
     },
   },
@@ -5423,11 +5384,13 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args) {
+    async handler(args, _ctx) {
       const ref = requireString(args, "ref");
       return buildBlockEvents([], ref, null, {
-        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
-        offset: clampFeedOffset(args?.offset),
+        limit: clampLimit(args?.limit, 100, 1000),
+        offset: Number.isFinite(args?.offset)
+          ? Math.max(0, Math.floor(args.offset))
+          : 0,
       });
     },
   },
@@ -5518,9 +5481,24 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      // Mirrors REST's handleExtrinsics: try Postgres first (#4694); D1's
-      // extrinsics table is retired (#4772) so a miss here is a
-      // schema-stable-empty literal, not a second query.
+      // Validated for REST-parity but, like the D1 filters they used to bound, have
+      // nothing left to filter now that extrinsics is retired (#4772) --
+      // buildExtrinsicFeed([]) below never sees them.
+      optionalString(args, "signer");
+      optionalString(args, "call_module");
+      optionalString(args, "call_function");
+      optionalString(args, "cursor");
+      optionalNonNegativeInt(args, "block");
+      optionalSuccessFilter(args);
+      optionalNonNegativeInt(args, "block_start");
+      optionalNonNegativeInt(args, "block_end");
+      optionalNonNegativeInt(args, "from");
+      optionalNonNegativeInt(args, "to");
+      // Mirrors REST's handleExtrinsics: try Postgres first (#4694), fall back to
+      // the schema-stable empty feed now that extrinsics' D1 write path is
+      // retired (#4772) and the table is dropped in production -- same
+      // tryPostgresTier contract, same METAGRAPH_EXTRINSICS_SOURCE flag, so this
+      // tool and GET /api/v1/extrinsics never diverge on which tier answered.
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -5528,8 +5506,10 @@ export const MCP_TOOLS = [
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ??
         buildExtrinsicFeed([], {
-          limit: clampFeedLimit(args?.limit, BLOCK_PAGINATION),
-          offset: clampFeedOffset(args?.offset),
+          limit: clampLimit(args?.limit, 50, 100),
+          offset: Number.isFinite(args?.offset)
+            ? Math.max(0, Math.floor(args.offset))
+            : 0,
           nextCursor: null,
         })
       );
@@ -5561,9 +5541,9 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      // Mirrors REST's handleExtrinsic: try Postgres first (#4694); D1's
-      // extrinsics table is retired (#4772) so a miss here is a
-      // schema-stable-empty literal, not a second query.
+      // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall back to
+      // the schema-stable empty detail now that extrinsics' D1 write path is
+      // retired (#4772) and the table is dropped in production.
       return (
         (await tryPostgresTier(
           ctx.env,
