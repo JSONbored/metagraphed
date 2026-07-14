@@ -4409,6 +4409,48 @@ test("validator-nominator-counts-sync maps a DB failure to a clean 502 instead o
   expect((await res.json()).error).toBe("write failed");
 });
 
+// #5352 live incident: a real 112,550-row sync (762,577-row Alpha scan
+// output) hit Postgres' hard 65535-bound-parameters-per-statement ceiling
+// (112,550 rows x 3 columns = 337,650 params) inside a single INSERT,
+// failing every real-world sync at production scale even though every
+// smaller test above passed. batchedUpsert (workers/data-api.mjs) splits
+// into VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH-sized statements inside
+// one sql.begin() transaction -- this proves more than one INSERT actually
+// gets issued for a payload over that threshold, not just that the response
+// still reports the right total.
+test("validator-nominator-counts-sync splits a payload over the per-statement param cap into multiple INSERT statements (#5352)", async () => {
+  const MAX_ROWS_PER_BATCH = 20_000; // must match workers/data-api.mjs's own constant
+  const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
+    validatorNominatorCountRow({ hotkey: `5Hk${i}`, nominator_count: i }),
+  );
+  const res = await postValidatorNominatorCounts(rows, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  expect((await res.json()).validator_nominator_counts_written).toBe(
+    rows.length,
+  );
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO validator_nominator_counts"),
+  );
+  expect(insertCalls.length).toBe(2);
+});
+
+test("validator-nominator-counts-sync issues a single INSERT for a payload at or under the per-statement batch size", async () => {
+  const rows = [
+    validatorNominatorCountRow({ hotkey: "5Hk1" }),
+    validatorNominatorCountRow({ hotkey: "5Hk2" }),
+  ];
+  const res = await postValidatorNominatorCounts(rows, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO validator_nominator_counts"),
+  );
+  expect(insertCalls.length).toBe(1);
+});
+
 // #5233: POST /api/v1/internal/nominator-positions-sync -- the write path
 // into nominator_positions (see workers/data-api.mjs's
 // handleNominatorPositionsSync). Same latest-only-upsert shape as
@@ -4538,6 +4580,43 @@ test("nominator-positions-sync maps a DB failure to a clean 502 instead of throw
   });
   expect(res.status).toBe(502);
   expect((await res.json()).error).toBe("write failed");
+});
+
+// #5352 live incident (same root cause as validator-nominator-counts-sync's
+// own batching test above): a real 132,505-row sync hit Postgres' 65535
+// bound-parameters-per-statement ceiling even harder here (5 columns vs 3 --
+// 132,505 x 5 = 662,525 params). batchedUpsert applies identically; this
+// proves nominator-positions-sync actually issues multiple INSERT
+// statements for a payload over its own (smaller, 5-column) batch size.
+test("nominator-positions-sync splits a payload over the per-statement param cap into multiple INSERT statements (#5352)", async () => {
+  const MAX_ROWS_PER_BATCH = 10_000; // must match workers/data-api.mjs's own constant
+  const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
+    nominatorPositionRow({ hotkey: `5Hk${i}`, netuid: i % 128 }),
+  );
+  const res = await postNominatorPositions(rows, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  expect((await res.json()).nominator_positions_written).toBe(rows.length);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO nominator_positions"),
+  );
+  expect(insertCalls.length).toBe(2);
+});
+
+test("nominator-positions-sync issues a single INSERT for a payload at or under the per-statement batch size", async () => {
+  const rows = [
+    nominatorPositionRow({ hotkey: "5Hk1" }),
+    nominatorPositionRow({ hotkey: "5Hk2" }),
+  ];
+  const res = await postNominatorPositions(rows, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO nominator_positions"),
+  );
+  expect(insertCalls.length).toBe(1);
 });
 
 test("GET /api/v1/accounts/:ss58/positions joins share_fraction against live neurons stake_tao (#5233)", async () => {

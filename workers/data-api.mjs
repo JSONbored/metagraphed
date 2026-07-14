@@ -1565,6 +1565,29 @@ async function handleAccountIdentitySync(request, env) {
   }
 }
 
+// Postgres hard-caps a single statement at 65535 bound parameters -- a bulk
+// `INSERT ... ${sql(rows, ...columns)}` blows past that the moment
+// rows.length * columns.length exceeds it, which the ROW-count ceilings
+// alone (*_SYNC_MAX_ROWS above/below) don't prevent, since those bound the
+// PAYLOAD, not any single statement. Found live 2026-07-14 exercising
+// validator-nominator-counts-sync for the first time at real production
+// scale (#5352): 112,550 hotkey rows x 3 columns = 337,650 params, and the
+// paired nominator-positions-sync payload (132,505 rows x 5 columns =
+// 662,525 params) hits the exact same wall -- both single-batch INSERTs
+// failed the request with a Postgres protocol error, surfaced to the caller
+// as a bare 502 with no detail. batchedUpsert splits `rows` into
+// PARAMS_PER_ROW-sized chunks (each well under the 65535 ceiling) and runs
+// them as sequential statements inside ONE transaction (`sql.begin`), same
+// atomicity as every other sync handler's single-statement writes -- a
+// mid-batch failure still rolls back the whole sync rather than leaving a
+// partial write, and both these tables are latest-only/REPLACE-on-conflict
+// so a subsequent retry is safe either way.
+async function batchedUpsert(sql, rows, insertFn, maxRowsPerBatch) {
+  for (let i = 0; i < rows.length; i += maxRowsPerBatch) {
+    await insertFn(sql, rows.slice(i, i + maxRowsPerBatch));
+  }
+}
+
 // --- POST /api/v1/internal/validator-nominator-counts-sync (#2549) --------
 //
 // The write path into validator_nominator_counts (migration 0043) --
@@ -1577,6 +1600,10 @@ async function handleAccountIdentitySync(request, env) {
 // neurons snapshot's cadence.
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER =
   "x-validator-nominator-counts-sync-token";
+// floor(65535 / 3 columns) = 21845 -- batchedUpsert's per-statement row cap,
+// rounded down for headroom (see batchedUpsert's own header comment for why
+// this exists at all).
+const VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH = 20_000;
 // A ceiling on distinct hotkeys ever seen holding stake, NOT on
 // validator-permit hotkeys (~1-2k) -- this table isn't validator-scoped by
 // design (see the fetch script). A live full-scan probe 2026-07-14 found
@@ -1678,13 +1705,20 @@ async function handleValidatorNominatorCountsSync(request, env) {
   });
 
   try {
-    await sql`SET statement_timeout = '20000ms'`;
-    await sql`
-      INSERT INTO validator_nominator_counts ${sql(incoming, ...VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS)}
-      ON CONFLICT (hotkey) DO UPDATE SET
-        nominator_count = EXCLUDED.nominator_count,
-        captured_at = EXCLUDED.captured_at
-      WHERE validator_nominator_counts.captured_at <= EXCLUDED.captured_at`;
+    await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+      await batchedUpsert(
+        sql,
+        incoming,
+        (sql, batch) => sql`
+          INSERT INTO validator_nominator_counts ${sql(batch, ...VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS)}
+          ON CONFLICT (hotkey) DO UPDATE SET
+            nominator_count = EXCLUDED.nominator_count,
+            captured_at = EXCLUDED.captured_at
+          WHERE validator_nominator_counts.captured_at <= EXCLUDED.captured_at`,
+        VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH,
+      );
+    });
     return writeJson({
       ok: true,
       validator_nominator_counts_written: incoming.length,
@@ -1700,6 +1734,10 @@ async function handleValidatorNominatorCountsSync(request, env) {
 
 const NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER =
   "x-nominator-positions-sync-token";
+// floor(65535 / 5 columns) = 13107 -- batchedUpsert's per-statement row cap,
+// rounded down for headroom (see batchedUpsert's own header comment, above
+// validator-nominator-counts-sync, for the live incident this fixes).
+const NOMINATOR_POSITIONS_MAX_ROWS_PER_BATCH = 10_000;
 // Same headroom rationale as VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS above --
 // this is one row per (coldkey, hotkey, netuid) triple, not per hotkey, so
 // it carries generous headroom over the 762,577 total Alpha rows observed
@@ -1799,13 +1837,20 @@ async function handleNominatorPositionsSync(request, env) {
   });
 
   try {
-    await sql`SET statement_timeout = '20000ms'`;
-    await sql`
-      INSERT INTO nominator_positions ${sql(incoming, ...NOMINATOR_POSITION_INSERT_COLUMNS)}
-      ON CONFLICT (coldkey, hotkey, netuid) DO UPDATE SET
-        share_fraction = EXCLUDED.share_fraction,
-        captured_at = EXCLUDED.captured_at
-      WHERE nominator_positions.captured_at <= EXCLUDED.captured_at`;
+    await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+      await batchedUpsert(
+        sql,
+        incoming,
+        (sql, batch) => sql`
+          INSERT INTO nominator_positions ${sql(batch, ...NOMINATOR_POSITION_INSERT_COLUMNS)}
+          ON CONFLICT (coldkey, hotkey, netuid) DO UPDATE SET
+            share_fraction = EXCLUDED.share_fraction,
+            captured_at = EXCLUDED.captured_at
+          WHERE nominator_positions.captured_at <= EXCLUDED.captured_at`,
+        NOMINATOR_POSITIONS_MAX_ROWS_PER_BATCH,
+      );
+    });
     return writeJson({
       ok: true,
       nominator_positions_written: incoming.length,
