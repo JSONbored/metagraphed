@@ -4,6 +4,7 @@ import { Code2, MoreHorizontal, Webhook } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@jsonbored/ui-kit";
 import { useApiSourceCtx } from "@/lib/metagraphed/api-source-context";
 import { SettingsPanel } from "./settings-popover";
+import { WalletConnectPanel } from "./wallet-connect";
 
 /**
  * Consolidated header actions for the mid-desktop range (lg–xl). Once the
@@ -53,6 +54,10 @@ export function HeaderActionsMenu() {
             <Webhook className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
             <span>Developer settings</span>
           </Link>
+        </div>
+        <div>
+          <div className="mg-label mb-1.5">Wallet</div>
+          <WalletConnectPanel />
         </div>
         <SettingsPanel />
       </PopoverContent>

@@ -29,6 +29,7 @@ import {
   SheetTitle,
 } from "@jsonbored/ui-kit";
 import { SettingsPopover } from "./settings-popover";
+import { WalletConnectButton } from "./wallet-connect";
 import { classNames } from "@/lib/metagraphed/format";
 import { freshnessQuery, buildQuery } from "@/lib/metagraphed/queries";
 import { NavMegaMenu, MobileMegaMenu } from "./nav-mega-menu";
@@ -162,6 +163,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="hidden md:inline-flex lg:hidden xl:inline-flex">
                   <SettingsPopover />
                 </div>
+                {/* Wallet-connect (#5236) is a secondary action for now (read-only,
+                    no signing yet) — same responsive treatment as the developer-
+                    settings link/SettingsPopover above, not a fourth unconditional
+                    icon alongside ApiDrawerTrigger/NetworkSwitcher. */}
+                <div className="hidden md:inline-flex lg:hidden xl:inline-flex">
+                  <WalletConnectButton />
+                </div>
                 {/* At lg the mega-menu appears and the trailing icons no longer
                     fit; fold the secondary actions into one popover until xl
                     restores the room (#3985). */}
@@ -240,6 +248,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Webhook className="size-3.5" aria-hidden="true" /> Developer settings
                 </Link>
                 <SettingsPopover />
+                {/* #5236: mobile has no other wallet-connect entry point (the
+                    header trigger is `hidden` below `md`, and folding it into
+                    HeaderActionsMenu doesn't help either -- that's ALSO
+                    `hidden` below `lg`) -- without this it would be
+                    unreachable below `md` entirely. */}
+                <WalletConnectButton />
               </div>
               <div className="mt-auto border-t border-border pt-3">
                 <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">
