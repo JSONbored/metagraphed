@@ -246,7 +246,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             </span>
           </FieldRow>
           <FieldRow label="Call">
-            <span className="font-mono text-sm text-ink-strong">
+            <span className="font-mono text-sm text-ink-strong break-all">
               {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
             </span>
           </FieldRow>
