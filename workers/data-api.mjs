@@ -2605,6 +2605,59 @@ async function handleRpcUsageEventSync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/rpc-usage-prune (#5497 gap-closure) -----------
+//
+// The Postgres mirror of rpc_proxy_events written by handleRpcUsageEventSync
+// above has no retention of its own (D1's copy is pruned to a 30-day hot
+// window on the hourly maintenance cron; Postgres just grew unbounded).
+// Called from src/health-prober.mjs's pruneHealthHistory
+// (syncRpcProxyEventsPruneToPostgres), on the same cron, right after the D1
+// prune -- reuses the rpc-usage-sync token/secret (same trust boundary: both
+// routes write to the same table, no reason for a second secret).
+async function handleRpcUsageEventPrune(request, env) {
+  if (!env.RPC_USAGE_SYNC_SECRET) {
+    return writeJson(
+      { error: "rpc-usage sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(RPC_USAGE_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.RPC_USAGE_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${RPC_USAGE_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  let body;
+  try {
+    body = JSON.parse(await request.text());
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  if (!body || typeof body !== "object" || !Number.isFinite(body.cutoff)) {
+    return writeJson({ error: "cutoff must be a finite number" }, 400);
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    const result = await sql`
+      DELETE FROM rpc_proxy_events WHERE observed_at < ${body.cutoff}`;
+    return writeJson({ ok: true, rows_deleted: result.count });
+  } catch (err) {
+    console.error("data-api rpc-usage-prune write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -3333,6 +3386,12 @@ export default {
       url.pathname === "/api/v1/internal/rpc-usage-sync"
     ) {
       return handleRpcUsageEventSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/rpc-usage-prune"
+    ) {
+      return handleRpcUsageEventPrune(request, env);
     }
     // #4984 Part 1: multi-method (POST/GET/PATCH/DELETE), so it can't join
     // the exact-path-and-method checks above -- handleAlertTriggersRoute

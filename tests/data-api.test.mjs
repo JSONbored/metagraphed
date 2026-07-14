@@ -81,6 +81,12 @@ const healthChecksSyncFailure = vi.hoisted(() => ({ error: null }));
 const healthUptimeRollupSyncFailure = vi.hoisted(() => ({ error: null }));
 const subnetSnapshotSyncFailure = vi.hoisted(() => ({ error: null }));
 const rpcUsageSyncFailure = vi.hoisted(() => ({ error: null }));
+// State for the rpc-usage-prune write route's tests only (#5497
+// gap-closure) -- a failure hook mirroring rpcUsageSyncFailure above, plus
+// a controllable row count since this route's DELETE has no RETURNING
+// clause (a plain array's mockRows.current wouldn't simulate `.count`).
+const rpcUsagePruneFailure = vi.hoisted(() => ({ error: null }));
+const rpcUsagePruneCount = vi.hoisted(() => ({ current: 0 }));
 // State for the featured_validators read (#5166) tests only -- lets a test
 // simulate the table not existing yet (pre-migration) without touching any
 // other query's mock plumbing.
@@ -209,6 +215,12 @@ vi.mock("postgres", () => ({
         return Promise.reject(rpcUsageSyncFailure.error);
       }
       if (
+        rpcUsagePruneFailure.error &&
+        /DELETE FROM rpc_proxy_events\b/.test(text)
+      ) {
+        return Promise.reject(rpcUsagePruneFailure.error);
+      }
+      if (
         subnetIdentitySyncFailure.error &&
         /INSERT INTO subnet_identity_history\b/.test(text)
       ) {
@@ -246,6 +258,9 @@ vi.mock("postgres", () => ({
       }
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
+      }
+      if (/DELETE FROM rpc_proxy_events\b/.test(text)) {
+        return Promise.resolve({ count: rpcUsagePruneCount.current });
       }
       if (/SELECT DISTINCT ON \(netuid\) netuid, hyperparams_hash/.test(text)) {
         return Promise.resolve(subnetHyperparamsLatestHashes.current);
@@ -377,6 +392,8 @@ beforeEach(() => {
   subnetSnapshotSyncFailure.error = null;
   healthUptimeRollupSyncFailure.error = null;
   rpcUsageSyncFailure.error = null;
+  rpcUsagePruneFailure.error = null;
+  rpcUsagePruneCount.current = 0;
   featuredValidatorsQueryFailure.error = null;
   accountIdentityJoinRows.current = [];
   accountIdentityJoinQueryFailure.error = null;
@@ -6763,5 +6780,107 @@ test("rpc-usage-sync maps a DB failure to a clean 502 instead of throwing", asyn
   const res = await postRpcUsageEvent(rpcUsageEvent(), {
     secret: RPC_USAGE_SYNC_SECRET,
   });
+  expect(res.status).toBe(502);
+});
+
+function postRpcUsagePrune(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined) headers["x-rpc-usage-sync-token"] = secret;
+  return req("/api/v1/internal/rpc-usage-prune", {
+    method: "POST",
+    headers,
+    body:
+      raw !== undefined
+        ? raw
+        : JSON.stringify(body ?? { cutoff: 1_718_000_000_000 }),
+  });
+}
+
+test("rpc-usage-prune rejects a missing or wrong token (401)", async () => {
+  const wrong = await postRpcUsagePrune(undefined, { secret: "wrong" });
+  expect(wrong.status).toBe(401);
+  const missing = await postRpcUsagePrune();
+  expect(missing.status).toBe(401);
+});
+
+test("rpc-usage-prune is disabled (503) when RPC_USAGE_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/rpc-usage-prune", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-rpc-usage-sync-token": RPC_USAGE_SYNC_SECRET,
+      },
+      body: JSON.stringify({ cutoff: 1_718_000_000_000 }),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rpc-usage-prune returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/rpc-usage-prune", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-rpc-usage-sync-token": RPC_USAGE_SYNC_SECRET,
+      },
+      body: JSON.stringify({ cutoff: 1_718_000_000_000 }),
+    }),
+    { RPC_USAGE_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rpc-usage-prune rejects malformed JSON (400)", async () => {
+  const res = await postRpcUsagePrune(null, {
+    secret: RPC_USAGE_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("rpc-usage-prune rejects a body missing a finite cutoff (400)", async () => {
+  const missing = await postRpcUsagePrune(
+    {},
+    { secret: RPC_USAGE_SYNC_SECRET },
+  );
+  expect(missing.status).toBe(400);
+  const nonNumeric = await postRpcUsagePrune(
+    { cutoff: "not-a-number" },
+    { secret: RPC_USAGE_SYNC_SECRET },
+  );
+  expect(nonNumeric.status).toBe(400);
+  const array = await postRpcUsagePrune([1_718_000_000_000], {
+    secret: RPC_USAGE_SYNC_SECRET,
+  });
+  expect(array.status).toBe(400);
+});
+
+test("rpc-usage-prune deletes rows older than cutoff and reports rows_deleted", async () => {
+  rpcUsagePruneCount.current = 5;
+  const res = await postRpcUsagePrune(
+    { cutoff: 1_718_000_000_000 },
+    { secret: RPC_USAGE_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, rows_deleted: 5 });
+  expect(queryText()).toMatch(
+    /DELETE FROM rpc_proxy_events WHERE observed_at < /,
+  );
+  const call = sqlCalls.at(-1);
+  expect(call.values).toEqual([1_718_000_000_000]);
+});
+
+test("rpc-usage-prune maps a DB failure to a clean 502 instead of throwing", async () => {
+  rpcUsagePruneFailure.error = new Error("connection reset");
+  const res = await postRpcUsagePrune(
+    { cutoff: 1_718_000_000_000 },
+    { secret: RPC_USAGE_SYNC_SECRET },
+  );
   expect(res.status).toBe(502);
 });

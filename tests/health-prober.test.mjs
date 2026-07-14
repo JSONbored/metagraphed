@@ -13,6 +13,7 @@ import {
   runHealthProber,
   syncHealthChecksToPostgres,
   syncHealthUptimeRollupToPostgres,
+  syncRpcProxyEventsPruneToPostgres,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../src/health-prober.mjs";
@@ -1917,6 +1918,139 @@ describe("pruneHealthHistory edge paths", () => {
     const result = await pruneHealthHistory({}, { now: () => 0, db });
     assert.equal(result.pruned, true);
     assert.equal(result.changes, null);
+  });
+});
+
+describe("syncRpcProxyEventsPruneToPostgres", () => {
+  test("returns unavailable when DATA_API is not bound", async () => {
+    assert.deepEqual(await syncRpcProxyEventsPruneToPostgres({}, 1), {
+      synced: false,
+      reason: "unavailable",
+    });
+  });
+
+  test("returns unavailable when RPC_USAGE_SYNC_SECRET is not configured", async () => {
+    const env = { DATA_API: { fetch: async () => new Response("{}") } };
+    assert.deepEqual(await syncRpcProxyEventsPruneToPostgres(env, 1), {
+      synced: false,
+      reason: "unavailable",
+    });
+  });
+
+  test("reports the upstream status when the DATA_API response isn't ok", async () => {
+    const env = {
+      DATA_API: { fetch: async () => new Response("nope", { status: 502 }) },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
+    };
+    assert.deepEqual(await syncRpcProxyEventsPruneToPostgres(env, 1), {
+      synced: false,
+      reason: "status_502",
+    });
+  });
+
+  test("returns fetch_failed when DATA_API.fetch throws", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
+    };
+    assert.deepEqual(await syncRpcProxyEventsPruneToPostgres(env, 1), {
+      synced: false,
+      reason: "fetch_failed",
+    });
+  });
+
+  test("posts the cutoff to rpc-usage-prune with the token header on success", async () => {
+    let request;
+    const env = {
+      DATA_API: {
+        fetch: async (req) => {
+          request = req;
+          return new Response("{}", { status: 200 });
+        },
+      },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
+    };
+    const result = await syncRpcProxyEventsPruneToPostgres(env, 12_345);
+    assert.deepEqual(result, { synced: true });
+    assert.ok(request);
+    assert.equal(request.method, "POST");
+    assert.equal(
+      request.url,
+      "https://api.metagraph.sh/api/v1/internal/rpc-usage-prune",
+    );
+    assert.equal(request.headers.get("x-rpc-usage-sync-token"), "test-secret");
+    const body = await request.json();
+    assert.equal(body.cutoff, 12_345);
+  });
+});
+
+describe("syncRpcProxyEventsPruneToPostgres via pruneHealthHistory", () => {
+  test("no-ops (no DATA_API call) when DATA_API is not bound", async () => {
+    const result = await pruneHealthHistory(
+      { METAGRAPH_HEALTH_DB: makeDb() },
+      { now: () => 5_000 },
+    );
+    assert.equal(result.pruned, true);
+  });
+
+  test("posts the cutoff to rpc-usage-prune with the token header", async () => {
+    let request;
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      DATA_API: {
+        fetch: async (req) => {
+          request = req;
+          return new Response("{}", { status: 200 });
+        },
+      },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
+    };
+    const result = await pruneHealthHistory(env, {
+      now: () => 100_000_000,
+      retentionMs: 1000,
+    });
+    assert.equal(result.pruned, true);
+    assert.ok(request);
+    assert.equal(request.headers.get("x-rpc-usage-sync-token"), "test-secret");
+    const body = await request.json();
+    assert.equal(body.cutoff, 100_000_000 - 1000);
+  });
+
+  test("a DATA_API failure never affects pruneHealthHistory's own result", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      DATA_API: {
+        fetch: async () => {
+          throw new Error("boom");
+        },
+      },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
+    };
+    const result = await pruneHealthHistory(env, { now: () => 5_000 });
+    assert.equal(result.pruned, true);
+  });
+
+  test("still attempts the Postgres prune when D1's own prune fails", async () => {
+    let called = false;
+    const db = {
+      prepare() {
+        throw new Error("d1 unavailable");
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      DATA_API: {
+        fetch: async () => ((called = true), new Response("{}")),
+      },
+      RPC_USAGE_SYNC_SECRET: "test-secret",
+    };
+    const result = await pruneHealthHistory(env, { now: () => 5_000 });
+    assert.equal(result.pruned, false);
+    assert.equal(called, true);
   });
 });
 

@@ -869,8 +869,20 @@ export async function rollupDailyUptime(env, overrides = {}) {
 export async function pruneHealthHistory(env, overrides = {}) {
   const now = overrides.now || (() => Date.now());
   const db = overrides.db || env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return { pruned: false };
   const cutoff = now() - (overrides.retentionMs || HISTORY_RETENTION_MS);
+  const result = await pruneD1HealthHistory(db, cutoff);
+  // #5497 gap-closure: the Postgres mirror of rpc_proxy_events (#4832) has no
+  // equivalent retention -- best-effort and independent of the D1 outcome
+  // above (unconditional, not nested inside the try/catch below), same
+  // "each store's prune is its own best-effort" shape as rollupDailyUptime's
+  // Postgres mirror further down, whose own tests assert the Postgres sync
+  // still fires even when the D1 side threw.
+  await syncRpcProxyEventsPruneToPostgres(env, cutoff);
+  return result;
+}
+
+async function pruneD1HealthHistory(db, cutoff) {
+  if (!db?.prepare) return { pruned: false };
   try {
     const result = await db
       .prepare(`DELETE FROM surface_checks WHERE checked_at < ?`)
@@ -890,6 +902,35 @@ export async function pruneHealthHistory(env, overrides = {}) {
     return { pruned: true, cutoff, changes: result?.meta?.changes ?? null };
   } catch {
     return { pruned: false };
+  }
+}
+
+// #5497: mirrors pruneHealthHistory's D1 rpc_proxy_events delete into the
+// Postgres copy (#4832's read-resilience gap-closure), via the DATA_API
+// service binding -- same shape as syncSubnetSnapshotToPostgres below.
+// Best-effort: never throws, and a failure here must never block the D1
+// prune above (the primary contract).
+export async function syncRpcProxyEventsPruneToPostgres(env, cutoff) {
+  if (!env?.DATA_API || !env?.RPC_USAGE_SYNC_SECRET) {
+    return { synced: false, reason: "unavailable" };
+  }
+  try {
+    const upstream = await env.DATA_API.fetch(
+      new Request("https://api.metagraph.sh/api/v1/internal/rpc-usage-prune", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-rpc-usage-sync-token": env.RPC_USAGE_SYNC_SECRET,
+        },
+        body: JSON.stringify({ cutoff }),
+      }),
+    );
+    if (!upstream.ok) {
+      return { synced: false, reason: `status_${upstream.status}` };
+    }
+    return { synced: true };
+  } catch {
+    return { synced: false, reason: "fetch_failed" };
   }
 }
 
