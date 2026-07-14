@@ -11444,11 +11444,13 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     const res = await callTool("list_blocks", {
       cursor: "4200000",
       limit: 50,
+      offset: 10,
     });
     const out = res.body.result.structuredContent;
     assert.equal(out.block_count, 0);
     assert.deepEqual(out.blocks, []);
     assert.equal(out.next_cursor, null);
+    assert.equal(out.offset, 10);
   });
 
   test("list_blocks degrades to empty payload on cold D1", async () => {
@@ -11522,17 +11524,25 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
   // payload for unknown ref" below for each tool.
 
   test("list_block_extrinsics returns empty payload for unknown ref", async () => {
-    const res = await callTool("list_block_extrinsics", { ref: "9999999" });
+    const res = await callTool("list_block_extrinsics", {
+      ref: "9999999",
+      offset: 5,
+    });
     const out = res.body.result.structuredContent;
     assert.equal(out.block_number, null);
     assert.deepEqual(out.extrinsics, []);
+    assert.equal(out.offset, 5);
   });
 
   test("get_block_events returns empty payload for unknown ref", async () => {
-    const res = await callTool("get_block_events", { ref: "9999999" });
+    const res = await callTool("get_block_events", {
+      ref: "9999999",
+      offset: 5,
+    });
     const out = res.body.result.structuredContent;
     assert.equal(out.block_number, null);
     assert.deepEqual(out.events, []);
+    assert.equal(out.offset, 5);
   });
 
   // extrinsics' D1 write path is retired (#4772) and the table is dropped in
@@ -11558,10 +11568,12 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       from: fromMs,
       to: toMs,
       cursor: "4200000.3",
+      offset: 15,
     });
     const out = res.body.result.structuredContent;
     assert.equal(out.extrinsic_count, 0);
     assert.deepEqual(out.extrinsics, []);
+    assert.equal(out.offset, 15);
   });
 
   test("list_extrinsics degrades to empty payload on cold D1", async () => {
