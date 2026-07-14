@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { CopyButton } from "@jsonbored/ui-kit";
 
 import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
@@ -37,18 +38,22 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
               >
                 {f.hotkeyShort}
               </Link>
+              <CopyButton value={v.hotkey} label="hotkey" />
             </div>
-            <div className="font-mono text-[11px] text-ink-muted">
+            <div className="flex items-center gap-1 font-mono text-[11px] text-ink-muted">
               <span className="uppercase tracking-widest text-[10px]">coldkey </span>
               {v.coldkey ? (
-                <Link
-                  to="/accounts/$ss58"
-                  params={{ ss58: v.coldkey }}
-                  title={v.coldkey}
-                  className="hover:text-accent hover:underline"
-                >
-                  {f.coldkeyShort}
-                </Link>
+                <>
+                  <Link
+                    to="/accounts/$ss58"
+                    params={{ ss58: v.coldkey }}
+                    title={v.coldkey}
+                    className="hover:text-accent hover:underline"
+                  >
+                    {f.coldkeyShort}
+                  </Link>
+                  <CopyButton value={v.coldkey} label="coldkey" />
+                </>
               ) : (
                 "—"
               )}
