@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { reviewProfileCompletenessQuery, subnetsQuery } from "@/lib/metagraphed/queries";
@@ -89,6 +89,33 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
     return t;
   }, [rows]);
 
+  // Mobile scroll affordance (#5310): the matrix's real gaps are the right-hand
+  // columns (dashboard/data/sdk/example/rpc), which scroll off-screen at narrow
+  // widths while the first ~4 all-green columns stay visible -- so a mobile user
+  // reads "all present" without realizing more columns exist. Surface a right-edge
+  // fade + scroll cue whenever the grid is still horizontally scrollable. The 9
+  // columns are fixed, so the measurement only needs a mount pass plus a
+  // ResizeObserver for viewport changes -- no dependency on the row data.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      // 1px tolerance absorbs sub-pixel rounding at fractional zoom levels.
+      setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 1);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, []);
+
   return (
     <section className="rounded-xl border border-border bg-card overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper/30">
@@ -127,70 +154,86 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
         </div>
       </header>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[11px] font-mono">
-          <thead>
-            <tr className="bg-paper/30">
-              <th className="sticky left-0 z-10 bg-paper/30 text-left px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
-                Subnet
-              </th>
-              {KINDS.map((k) => (
-                <th
-                  key={k}
-                  className="px-2 py-2 text-center text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border"
-                >
-                  {k}
+      <div className="relative">
+        <div ref={scrollRef} className="overflow-x-auto">
+          <table className="w-full border-collapse text-[11px] font-mono">
+            <thead>
+              <tr className="bg-paper/30">
+                <th className="sticky left-0 z-10 bg-paper/30 text-left px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
+                  Subnet
                 </th>
-              ))}
-              <th className="px-2 py-2 text-right text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
-                Comp
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.netuid}
-                className="border-b border-border last:border-b-0 hover:bg-paper/30"
-              >
-                <td className="sticky left-0 z-10 bg-card px-3 py-1.5 border-r border-border text-ink-strong">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: r.netuid }}
-                    className="inline-flex items-center gap-1.5 hover:text-accent"
+                {KINDS.map((k) => (
+                  <th
+                    key={k}
+                    className="px-2 py-2 text-center text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border"
                   >
-                    <span className="font-mono text-[10px] text-ink-muted">SN{r.netuid}</span>
-                    <span className="truncate max-w-[160px]">{r.name}</span>
-                  </Link>
-                </td>
-                {KINDS.map((k) => {
-                  const cell = r.cells[k];
-                  const tone = CELL_TONE[cell];
-                  return (
-                    <td key={k} className="p-1 align-middle">
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: r.netuid }}
-                        search={{ tab: "surfaces" }}
-                        className={classNames(
-                          "block h-6 w-full rounded transition-all hover:ring-2",
-                          tone.bg,
-                          tone.ring,
-                        )}
-                        title={`${tone.label} · ${k} · SN${r.netuid}`}
-                      >
-                        <span className="sr-only">{`${k} ${tone.label}`}</span>
-                      </Link>
-                    </td>
-                  );
-                })}
-                <td className="px-2 py-1.5 text-right tabular-nums text-ink-strong">
-                  {Math.round(r.completeness * 100)}%
-                </td>
+                    {k}
+                  </th>
+                ))}
+                <th className="px-2 py-2 text-right text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
+                  Comp
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr
+                  key={r.netuid}
+                  className="border-b border-border last:border-b-0 hover:bg-paper/30"
+                >
+                  <td className="sticky left-0 z-10 bg-card px-3 py-1.5 border-r border-border text-ink-strong">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: r.netuid }}
+                      className="inline-flex items-center gap-1.5 hover:text-accent"
+                    >
+                      <span className="font-mono text-[10px] text-ink-muted">SN{r.netuid}</span>
+                      <span className="truncate max-w-[160px]">{r.name}</span>
+                    </Link>
+                  </td>
+                  {KINDS.map((k) => {
+                    const cell = r.cells[k];
+                    const tone = CELL_TONE[cell];
+                    return (
+                      <td key={k} className="p-1 align-middle">
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: r.netuid }}
+                          search={{ tab: "surfaces" }}
+                          className={classNames(
+                            "block h-6 w-full rounded transition-all hover:ring-2",
+                            tone.bg,
+                            tone.ring,
+                          )}
+                          title={`${tone.label} · ${k} · SN${r.netuid}`}
+                        >
+                          <span className="sr-only">{`${k} ${tone.label}`}</span>
+                        </Link>
+                      </td>
+                    );
+                  })}
+                  <td className="px-2 py-1.5 text-right tabular-nums text-ink-strong">
+                    {Math.round(r.completeness * 100)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {canScrollRight ? (
+          <>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 z-20 w-12 bg-gradient-to-l from-card to-transparent"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute right-2 top-1/2 z-20 flex -translate-y-1/2 items-center gap-1 rounded-full border border-border bg-card/95 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted shadow-sm"
+            >
+              scroll<span aria-hidden>→</span>
+            </div>
+          </>
+        ) : null}
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-paper/30 px-4 py-2 font-mono text-[10px] text-ink-muted">
