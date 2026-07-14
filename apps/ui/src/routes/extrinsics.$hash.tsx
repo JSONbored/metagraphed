@@ -218,7 +218,11 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
         <dl className="rounded border border-border bg-card divide-y divide-border">
           <FieldRow label="Extrinsic hash">
             {extrinsic.extrinsic_hash ? (
-              <CopyableCode value={extrinsic.extrinsic_hash} truncate={false} />
+              <CopyableCode
+                value={extrinsic.extrinsic_hash}
+                truncate={false}
+                className="max-w-full"
+              />
             ) : (
               <span className="text-ink-muted">—</span>
             )}
@@ -248,7 +252,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           </FieldRow>
           <FieldRow label="Signer">
             {extrinsic.signer ? (
-              <CopyableCode value={extrinsic.signer} truncate={false} />
+              <CopyableCode value={extrinsic.signer} truncate={false} className="max-w-full" />
             ) : (
               <span className="text-ink-muted">—</span>
             )}

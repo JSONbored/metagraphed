@@ -261,7 +261,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           </FieldRow>
           <FieldRow label="Author">
             {block.author ? (
-              <CopyableCode value={block.author} truncate={false} />
+              <CopyableCode value={block.author} truncate={false} className="max-w-full" />
             ) : (
               <span className="text-ink-muted">—</span>
             )}
