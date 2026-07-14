@@ -5637,10 +5637,10 @@ export default {
             url.searchParams.get("validator_permit") === "true";
           const rows = validatorsOnly
             ? await sql`
-              SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+              SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
               FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE ORDER BY uid`
             : await sql`
-              SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+              SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
               FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
           return json(buildSubnetMetagraph(rows, netuid));
         }
@@ -5655,7 +5655,7 @@ export default {
           const netuid = Number(neuronDetail[1]);
           const uid = Number(neuronDetail[2]);
           const rows = await sql`
-          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
           FROM neurons WHERE netuid = ${netuid} AND uid = ${uid} LIMIT 1`;
           return json(buildNeuronDetail(rows[0] ?? null, netuid));
         }
@@ -5669,7 +5669,7 @@ export default {
           const netuid = Number(subnetValidators[1]);
           const [rows, featuredHotkeys] = await Promise.all([
             sql`
-          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
           FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE
           ORDER BY stake_tao DESC, uid ASC`,
             loadFeaturedHotkeys(sql),
@@ -5695,7 +5695,7 @@ export default {
               : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
           const [rows, featuredHotkeys] = await Promise.all([
             sql`
-          SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at
+          SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
             loadFeaturedHotkeys(sql),
@@ -5713,7 +5713,7 @@ export default {
         if (validatorDetail) {
           const hotkey = decodeURIComponent(validatorDetail[1]);
           const rows = await sql`
-          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, netuid
+          SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`;
           return json(buildValidatorDetail(rows, hotkey));
