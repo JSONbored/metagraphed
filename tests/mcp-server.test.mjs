@@ -14715,3 +14715,145 @@ describe("MCP endpoint tools — live overlay staleness fix (#5225)", () => {
     assert.equal(out.endpoints[0].status, "ok");
   });
 });
+
+// All twelve of these tools previously called their builder with []
+// unconditionally -- #4909's D1 retirement left no D1 path to route to
+// (neurons/neuron_daily are dropped), so they always served zeroed/empty
+// data in production while their REST siblings (entities.mjs's
+// handleSubnetConcentration et al.) served real Postgres data via
+// tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE"). This block
+// confirms the same wiring now reaches DATA_API at REST's exact path +
+// query params, and degrades safely to the schema-stable empty shape (never
+// isError) on any Postgres failure -- same contract as the pre-existing
+// get_subnet_identity_history/list_extrinsics Postgres-cutover blocks above.
+describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => {
+  const CASES = [
+    {
+      tool: "get_subnet_concentration",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/concentration",
+    },
+    {
+      tool: "get_subnet_performance",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/performance",
+    },
+    {
+      tool: "get_chain_concentration",
+      args: {},
+      path: "/api/v1/chain/concentration",
+    },
+    {
+      tool: "get_chain_performance",
+      args: {},
+      path: "/api/v1/chain/performance",
+    },
+    {
+      tool: "get_chain_yield",
+      args: {},
+      path: "/api/v1/chain/yield",
+    },
+    {
+      tool: "get_subnet_yield",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/yield",
+    },
+    {
+      tool: "get_subnet_concentration_history",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/concentration/history?window=30d",
+    },
+    {
+      tool: "get_subnet_performance_history",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/performance/history?window=30d",
+    },
+    {
+      tool: "get_subnet_yield_history",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/yield/history?window=30d",
+    },
+    {
+      tool: "get_subnet_turnover",
+      args: { netuid: 7, window: "30d" },
+      path: "/api/v1/subnets/7/turnover?window=30d",
+    },
+    {
+      tool: "get_subnet_turnover",
+      args: { netuid: 7, window: "30d", changes: true },
+      path: "/api/v1/subnets/7/turnover?window=30d&changes=true",
+    },
+    {
+      tool: "get_chain_turnover",
+      args: { window: "30d" },
+      path: "/api/v1/chain/turnover?window=30d&limit=20",
+    },
+    {
+      tool: "get_subnet_movers",
+      args: {},
+      path: "/api/v1/subnets/movers?window=30d&sort=stake&limit=20",
+    },
+  ];
+
+  for (const { tool, args, path } of CASES) {
+    const label = path.includes("changes=true")
+      ? `${tool} (changes=true)`
+      : tool;
+
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_NEURONS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
+    });
+
+    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
+      const env = {
+        METAGRAPH_NEURONS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
+      assert.equal(res.body.result.isError, false, label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+    });
+  }
+
+  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
+    const env = {
+      DATA_API: {
+        fetch: async () =>
+          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
+      },
+    };
+    for (const { tool, args } of CASES) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        undefined,
+        `${tool} should not reach DATA_API without the flag`,
+      );
+    }
+  });
+});

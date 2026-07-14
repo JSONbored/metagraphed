@@ -1097,6 +1097,21 @@ function mcpAccountIdentityRequest(ss58) {
   );
 }
 
+// Synthetic GET request for the neurons-tier chain-*/subnet-* analytics
+// family (concentration, performance, yield, turnover, movers + their
+// history variants) -- every one of these routes is gated on the SAME
+// METAGRAPH_NEURONS_SOURCE flag (entities.mjs's handleSubnetConcentration
+// et al. all call tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")),
+// so one shared pathname+params builder covers all of them.
+function mcpNeuronsTierRequest(pathname, params = {}) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) qs.set(key, String(value));
+  }
+  const q = qs.toString();
+  return new Request(`https://d${pathname}${q ? `?${q}` : ""}`);
+}
+
 // Synthetic GET /api/v1/accounts/{ss58}/identity-history{...} request, same
 // limit/offset/cursor contract as mcpSubnetIdentityHistoryRequest above --
 // mirrors REST's handleAccountIdentityHistory, same
@@ -2600,9 +2615,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return buildConcentration([], netuid);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/concentration`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildConcentration([], netuid)
+      );
     },
   },
   {
@@ -2625,9 +2646,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return buildSubnetPerformance([], netuid);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/performance`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildSubnetPerformance([], netuid)
+      );
     },
   },
   {
@@ -2646,8 +2673,14 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, _ctx) {
-      return buildChainConcentration([]);
+    async handler(_args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/concentration"),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildChainConcentration([])
+      );
     },
   },
   {
@@ -2667,8 +2700,14 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, _ctx) {
-      return buildChainPerformance([]);
+    async handler(_args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/performance"),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildChainPerformance([])
+      );
     },
   },
   {
@@ -2730,8 +2769,14 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, _ctx) {
-      return buildChainYield([]);
+    async handler(_args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/yield"),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildChainYield([])
+      );
     },
   },
   {
@@ -2764,7 +2809,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
       if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)) {
@@ -2778,12 +2823,19 @@ export const MCP_TOOLS = [
         CHAIN_TURNOVER_LIMIT_DEFAULT,
         CHAIN_TURNOVER_LIMIT_MAX,
       );
-      return buildChainTurnover([], {
-        window,
-        startDate: null,
-        endDate: null,
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/chain/turnover", { window, limit }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildChainTurnover([], {
+          window,
+          startDate: null,
+          endDate: null,
+          limit,
+        })
+      );
     },
   },
   {
@@ -3240,16 +3292,26 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseConcentrationHistoryWindow(args?.window);
       if (parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      return buildConcentrationHistory([], netuid, {
-        window: parsed.label,
-        capped: false,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/subnets/${netuid}/concentration/history`,
+            { window: parsed.label },
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildConcentrationHistory([], netuid, {
+          window: parsed.label,
+          capped: false,
+        })
+      );
     },
   },
   {
@@ -3283,11 +3345,21 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const { label } = requireHistoryWindow(args);
+      const changes = optionalBoolean(args, "changes");
       const turnoverOptions = { window: label, startDate: null, endDate: null };
-      if (!optionalBoolean(args, "changes")) {
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/turnover`, {
+          window: label,
+          changes: changes ? "true" : undefined,
+        }),
+        "METAGRAPH_NEURONS_SOURCE",
+      );
+      if (postgres) return postgres;
+      if (!changes) {
         return buildTurnover([], netuid, turnoverOptions);
       }
       return {
@@ -3317,9 +3389,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return buildSubnetYield([], netuid);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/yield`),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ?? buildSubnetYield([], netuid)
+      );
     },
   },
   {
@@ -3345,17 +3423,26 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetYieldHistoryWindow(args?.window);
       if (args?.window !== undefined && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
       const { label } = parsed;
-      return buildSubnetYieldHistory([], netuid, {
-        window: label,
-        capped: false,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/yield/history`, {
+            window: label,
+          }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildSubnetYieldHistory([], netuid, {
+          window: label,
+          capped: false,
+        })
+      );
     },
   },
   {
@@ -3815,17 +3902,27 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetPerformanceHistoryWindow(args?.window);
       if (args?.window !== undefined && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
       const { label } = parsed;
-      return buildSubnetPerformanceHistory([], netuid, {
-        window: label,
-        capped: false,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/subnets/${netuid}/performance/history`,
+            { window: label },
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildSubnetPerformanceHistory([], netuid, {
+          window: label,
+          capped: false,
+        })
+      );
     },
   },
   {
@@ -3860,7 +3957,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, _ctx) {
+    async handler(args, ctx) {
       const window = optionalString(args, "window") ?? DEFAULT_MOVERS_WINDOW;
       if (!Object.hasOwn(MOVERS_WINDOWS, window)) {
         throw toolError(
@@ -3880,13 +3977,24 @@ export const MCP_TOOLS = [
         MOVERS_LIMIT_DEFAULT,
         MOVERS_LIMIT_MAX,
       );
-      return buildMovers([], [], {
-        window,
-        startDate: null,
-        endDate: null,
-        sort,
-        limit,
-      });
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest("/api/v1/subnets/movers", {
+            window,
+            sort,
+            limit,
+          }),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        buildMovers([], [], {
+          window,
+          startDate: null,
+          endDate: null,
+          sort,
+          limit,
+        })
+      );
     },
   },
   {
