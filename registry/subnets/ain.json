@@ -65,6 +65,25 @@
         "https://github.com/HeraldMedia/herald/blob/4de1577e82b74807d4081c3f61edffaee9ed718a/README.md"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/69"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-69-ain-min-compute",
+      "kind": "data-artifact",
+      "name": "ain minimum compute requirements",
+      "notes": "Public no-auth machine-readable min_compute.yml from the official SN69 ain (Herald) repository (HeraldMedia/herald), pinned to an immutable commit. Specifies the minimum CPU and RAM requirements for running SN69 miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "provider": "herald",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/HeraldMedia/herald",
+        "https://github.com/HeraldMedia/herald/blob/4de1577e82b74807d4081c3f61edffaee9ed718a/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/HeraldMedia/herald/4de1577e82b74807d4081c3f61edffaee9ed718a/min_compute.yml"
     }
   ]
 }
