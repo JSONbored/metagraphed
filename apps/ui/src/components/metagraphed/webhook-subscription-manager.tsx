@@ -1,8 +1,9 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { KeyRound, Repeat2, Tags, UserX } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
-import { CopyableCode, SectionHeading } from "@jsonbored/ui-kit";
+import { CopyableCode, SectionHeading, StatTile } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import type {
   WebhookDeliveryStatus,
@@ -52,9 +53,44 @@ function describeApiError(error: unknown): string {
 export function WebhookSubscriptionManager() {
   return (
     <div className="space-y-8">
+      <WebhookSummaryStrip />
       <CreateSubscriptionSection />
       <LookupSubscriptionSection />
       <DeleteSubscriptionSection />
+    </div>
+  );
+}
+
+/**
+ * There's no list-subscriptions endpoint (subscriptions are addressable only
+ * by id + secret, not enumerable — an intentional privacy boundary), so this
+ * can't summarize existing subscriptions the way sibling pages summarize live
+ * probe data. It instead surfaces the fixed facts about the subscription
+ * contract itself, giving this page the same KPI-strip visual weight as
+ * health/status/endpoints without inventing per-user metrics.
+ */
+function WebhookSummaryStrip() {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <StatTile
+        icon={Tags}
+        eyebrow="Change kinds"
+        value={String(CHANGE_KINDS.length)}
+        hint={CHANGE_KINDS.join(", ")}
+      />
+      <StatTile
+        icon={Repeat2}
+        eyebrow="Delivery"
+        value="At-least-once"
+        hint="idempotency-keyed retries"
+      />
+      <StatTile icon={KeyRound} eyebrow="Signing" value="HMAC-SHA256" hint="over the raw body" />
+      <StatTile
+        icon={UserX}
+        eyebrow="Account model"
+        value="None"
+        hint="secret-scoped, self-service"
+      />
     </div>
   );
 }
