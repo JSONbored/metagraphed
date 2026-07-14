@@ -735,6 +735,13 @@ describe("handleLeaderboards", () => {
     assert.match(body.error.message, /limit must be an integer/);
   });
 
+  test("rejects a leading-zero limit, matching parseLimitParam elsewhere", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleLeaderboards(req("/"), env, url("/?limit=007"));
+    const body = await errorJson(res);
+    assert.match(body.error.message, /limit must be an integer/);
+  });
+
   test("filters to a single board when requested", async () => {
     const env = createLocalArtifactEnv();
     const body = await json(
@@ -1232,6 +1239,11 @@ describe("canonicalLeaderboardsCachePath", () => {
 
   test("falls back to raw search on invalid limit", () => {
     const raw = "/api/v1/registry/leaderboards?limit=0";
+    assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on a leading-zero limit", () => {
+    const raw = "/api/v1/registry/leaderboards?limit=007";
     assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
   });
 

@@ -26,7 +26,10 @@ import {
   dailyLatencyColumns,
   surfaceStatusAvgLatencySql,
 } from "../../src/health-sql.mjs";
-import { parseNonNegativeIntParam } from "../request-params.mjs";
+import {
+  parseLimitParam,
+  parseNonNegativeIntParam,
+} from "../request-params.mjs";
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,
@@ -374,19 +377,16 @@ export function canonicalTrajectoryCachePath(url, request = null) {
 export function canonicalLeaderboardsCachePath(url) {
   const validationError = validateQueryParams(url, ["board", "limit"]);
   if (validationError) return `${url.pathname}${url.search}`;
-  const limit = url.searchParams.get("limit");
-  if (
-    limit !== null &&
-    (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 100)
-  ) {
-    return `${url.pathname}${url.search}`;
-  }
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 20,
+    maxLimit: 100,
+  });
+  if (limitError) return `${url.pathname}${url.search}`;
   const board = url.searchParams.get("board");
   if (board && !LEADERBOARD_BOARDS.includes(board)) {
     return `${url.pathname}${url.search}`;
   }
-  const cap = Math.max(1, Math.min(100, Number(limit) || 20));
-  const params = [`limit=${cap}`];
+  const params = [`limit=${limit}`];
   if (board) params.unshift(`board=${encodeURIComponent(board)}`);
   return `${url.pathname}?${params.join("&")}`;
 }
@@ -448,17 +448,11 @@ export async function handleLeaderboards(request, env, url) {
       400,
     );
   }
-  const limit = url.searchParams.get("limit");
-  if (
-    limit !== null &&
-    (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 100)
-  ) {
-    return errorResponse(
-      "invalid_query",
-      "limit must be an integer between 1 and 100.",
-      400,
-    );
-  }
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 20,
+    maxLimit: 100,
+  });
+  if (limitError) return analyticsQueryError(limitError);
 
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
 
