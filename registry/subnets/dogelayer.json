@@ -66,6 +66,25 @@
         "https://github.com/dogelayer-ai/dogelayer"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/80"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-80-dogelayer-chain-types",
+      "kind": "data-artifact",
+      "name": "dogelayer chain type registry",
+      "notes": "Public no-auth machine-readable chain type registry (types.json) from the official SN80 dogelayer repository (dogelayer-ai/dogelayer), pinned to an immutable commit. Defines the SCALE-encoded type definitions the subnet's core uses to decode on-chain data. Static JSON artifact useful for agents decoding SN80 chain state.",
+      "provider": "dogelayer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer",
+        "https://github.com/dogelayer-ai/dogelayer/blob/2d29e575c50c5328787405a46080e827e0cff33d/dogelayer/core/chain_data/types.json"
+      ],
+      "url": "https://raw.githubusercontent.com/dogelayer-ai/dogelayer/2d29e575c50c5328787405a46080e827e0cff33d/dogelayer/core/chain_data/types.json"
     }
   ]
 }
