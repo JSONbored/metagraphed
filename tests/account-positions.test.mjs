@@ -57,7 +57,12 @@ describe("buildNominatorPositions", () => {
       { netuid: 3.5, hotkey: "5Hot3", net_stake_tao: 1, net_alpha_amount: 0 },
       { netuid: -1, hotkey: "5Hot4", net_stake_tao: 1, net_alpha_amount: 0 },
       { netuid: 4, hotkey: 123, net_stake_tao: 1, net_alpha_amount: 0 },
-      { netuid: 5, hotkey: "5Hot5", net_stake_tao: "nope", net_alpha_amount: 0 },
+      {
+        netuid: 5,
+        hotkey: "5Hot5",
+        net_stake_tao: "nope",
+        net_alpha_amount: 0,
+      },
     ]);
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({
@@ -302,7 +307,12 @@ describe("buildAccountPositions", () => {
         },
         nominatorRows: [
           { netuid: 5, hotkey: "5A", net_stake_tao: null, net_alpha_amount: 4 },
-          { netuid: 3, hotkey: "5B", net_stake_tao: 10, net_alpha_amount: null },
+          {
+            netuid: 3,
+            hotkey: "5B",
+            net_stake_tao: 10,
+            net_alpha_amount: null,
+          },
         ],
         priceByNetuid: new Map([[3, 1]]),
       },

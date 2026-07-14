@@ -1588,7 +1588,9 @@ test("GET /api/v1/accounts/:ss58/positions merges validator-own and nominator ho
   const body = await res.json();
   expect(body.ss58).toBe(SS58);
   expect(body.position_count).toBe(2);
-  expect(body.positions.some((p) => p.position_kind === "nominator")).toBe(true);
+  expect(body.positions.some((p) => p.position_kind === "nominator")).toBe(
+    true,
+  );
   expect(queryText()).toContain("FROM neurons WHERE hotkey =");
   expect(queryText()).toContain("FROM account_events");
   expect(queryText()).toContain("FROM subnet_snapshots");
