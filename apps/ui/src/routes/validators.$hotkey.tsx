@@ -305,7 +305,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           icon={Zap}
           eyebrow="Est. APY"
           value={formatApyPct(snapshotApy)}
-          hint="snapshot · net of take"
+          hint="latest snapshot · net of take"
           truncate={false}
           className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
         />

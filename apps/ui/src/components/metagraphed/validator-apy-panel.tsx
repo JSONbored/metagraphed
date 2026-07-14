@@ -74,7 +74,11 @@ export function ValidatorApyPanel({
           exist for this validator.
         </p>
       ) : null}
-      <MethodologyCallout generatedAt={generatedAt ?? undefined} windowLabel="history windows" />
+      <MethodologyCallout
+        generatedAt={generatedAt ?? undefined}
+        windowLabel="history windows"
+        stakeRisk
+      />
       <p className="text-[11px] leading-relaxed text-ink-muted">
         Delegator APY annualizes the latest daily rewards-per-1k-τ rate from neuron_daily, net of
         validator take. Snapshot-tier emission can lag; server-side modelling (#2551) will replace

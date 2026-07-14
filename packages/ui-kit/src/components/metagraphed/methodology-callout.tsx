@@ -15,9 +15,12 @@ import {
 export function MethodologyCallout({
   generatedAt,
   windowLabel,
+  stakeRisk,
 }: {
   generatedAt?: string;
   windowLabel?: string;
+  /** Adds the root-vs-alpha risk section — pass on any panel that surfaces a yield/APY figure. */
+  stakeRisk?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const freshLine = formatFreshness(generatedAt, windowLabel);
@@ -101,6 +104,20 @@ export function MethodologyCallout({
               health, completeness, or pool ratios.
             </p>
           </div>
+          {stakeRisk ? (
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-strong">
+                Root vs. alpha risk
+              </div>
+              <p className="mt-1">
+                Root stake (netuid 0) is TAO-denominated with no principal risk
+                — what you stake is what you can unstake. Alpha stake is
+                price-exposed: it's held in the subnet's own token, so a
+                positive nominal APY can still net-lose TAO if the alpha price
+                falls faster than the yield accrues.
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </aside>

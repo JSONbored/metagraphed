@@ -31,7 +31,7 @@ const METRICS: Array<{ term: string; def: string }> = [
   },
   {
     term: "Est. APY",
-    def: "Annualized delegator yield estimated from emission÷stake, net of take. On the directory this uses the latest metagraph snapshot; on a validator detail page, 7d/30d/90d windows use daily neuron_daily history. Server-side modelling (#2551) will supersede these client estimates.",
+    def: "Annualized delegator yield estimated from emission÷stake, net of take — the latest captured rate scaled to a year, not a forecast of future returns. On the directory this uses the latest metagraph snapshot; on a validator detail page, 7d/30d/90d windows use daily neuron_daily history. Root stake (netuid 0) is TAO-denominated with no principal risk; alpha stake is price-exposed, so a positive nominal APY here can still net-lose TAO if the alpha token's price falls faster than the yield accrues. Server-side modelling (#2551) will supersede these client estimates.",
   },
   {
     term: "Nominators",
@@ -48,10 +48,6 @@ const METRICS: Array<{ term: string; def: string }> = [
   {
     term: "Total emission",
     def: "The TAO the validator earned over the window. Emission is split between the validator and its nominators via commission — it reflects reward flow, not profit.",
-  },
-  {
-    term: "Est. APY",
-    def: "An estimated annualized yield (#2551): projects the validator's most recently captured epoch payout across a full year, using each subnet's own epoch length. It's a snapshot-based estimate, not a forecast or a guarantee — it can swing between refreshes, especially for validators concentrated on short-epoch subnets. A dash means none of the validator's subnets have a captured epoch length yet.",
   },
   {
     term: "Validator trust (Sort)",

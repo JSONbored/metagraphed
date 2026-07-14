@@ -2968,7 +2968,8 @@ function PrimaryLinksRail({
 }
 function MethodologyCallout({
   generatedAt,
-  windowLabel
+  windowLabel,
+  stakeRisk
 }) {
   const [open, setOpen] = React3.useState(false);
   const freshLine = formatFreshness(generatedAt, windowLabel);
@@ -3035,7 +3036,11 @@ function MethodologyCallout({
           /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntime.jsx("div", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-strong", children: "Verified vs. candidate" }),
             /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1", children: "Only curated surfaces feed donuts and the topology breakdown. Unverified leads live in the Candidates tab and never count toward health, completeness, or pool ratios." })
-          ] })
+          ] }),
+          stakeRisk ? /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-strong", children: "Root vs. alpha risk" }),
+            /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1", children: "Root stake (netuid 0) is TAO-denominated with no principal risk \u2014 what you stake is what you can unstake. Alpha stake is price-exposed: it's held in the subnet's own token, so a positive nominal APY can still net-lose TAO if the alpha price falls faster than the yield accrues." })
+          ] }) : null
         ] }) : null
       ]
     }
