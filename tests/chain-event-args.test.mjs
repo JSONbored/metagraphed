@@ -195,6 +195,18 @@ describe("decodeChainEventArgs", () => {
     );
   });
 
+  test("tolerates a ctx object missing pallet/method when checking POSITIONAL_FIELD_NAMES for array args", () => {
+    // ctx is truthy (so the array/POSITIONAL_FIELD_NAMES branch runs) but
+    // pallet/method are both absent -- the `?? ""` fallbacks must produce
+    // "." rather than throwing, and that key correctly isn't in the map, so
+    // this falls through to the same hex result as no ctx at all.
+    const bytes = new Array(32).fill(5);
+    assert.deepEqual(decodeChainEventArgs([1, [bytes]], {}), [
+      1,
+      "0x" + "05".repeat(32),
+    ]);
+  });
+
   test("decodes new_coldkey/old_coldkey to SS58 (real SubtensorModule.ColdkeySwapped, previously missing from ACCOUNT_KEYS despite arriving as a named object, #5359/#61)", () => {
     const newColdkey = new Array(32).fill(6);
     const oldColdkey = new Array(32).fill(7);
