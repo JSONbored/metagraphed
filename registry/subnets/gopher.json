@@ -184,6 +184,25 @@
         "submitted_by": "davion-knight"
       },
       "notes": "Public Gopher-Lab HuggingFace dataset of X/Twitter trending-topics scraped by the SN42 Gopher data network, not gated. The subnet-42 repo (source) declares the Bittensor subnet and the Gopher-Lab HF org matches the operator's gopher-lab GitHub org. Distinct from the subnet's registered web-scrape example dataset."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-42-gopher-docs-llms-full-txt",
+      "kind": "data-artifact",
+      "name": "Gopher Data API docs llms-full.txt index",
+      "notes": "Public no-auth machine-readable llms-full.txt full-text index of the official SN42 Gopher (Gopher AI) developer documentation, served at developers.gopher-ai.com (the same domain as the registered Gopher website and docs surfaces). A ~104 KB agent-consumable Markdown map of the Gopher Data API — endpoints, data access, and integration guides — distinct from the HTML docs pages already registered. Self-identifies the Gopher subnet in its contents.",
+      "provider": "gopher-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/gopher-lab/subnet-42",
+        "https://developers.gopher-ai.com/"
+      ],
+      "url": "https://developers.gopher-ai.com/llms-full.txt"
     }
   ]
 }
