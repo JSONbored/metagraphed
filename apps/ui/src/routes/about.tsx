@@ -62,7 +62,11 @@ function AboutPage() {
           </Section>
           <Section title="What this is not">
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>Not a block explorer, wallet app, validator dashboard, or operator console.</li>
+              <li>Not a block explorer, validator dashboard, or operator console.</li>
+              <li>
+                Not a custodial wallet or exchange — non-custodial by design: your keys and funds
+                never leave your own wallet, and any signing stays local, never on our servers.
+              </li>
               <li>Not an OpenTensor/Bittensor product. Unofficial registry only.</li>
               <li>No private keys, PATs, or token-gated data are ever requested or displayed.</li>
               <li>Endpoint pool eligibility is metadata only — proxy routing is future-scoped.</li>
