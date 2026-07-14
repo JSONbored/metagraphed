@@ -103,6 +103,31 @@
         "https://github.com/qbittensor-labs/enigma"
       ],
       "url": "https://raw.githubusercontent.com/qbittensor-labs/enigma/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-63-enigma-validator-constants",
+      "kind": "data-artifact",
+      "name": "Enigma subnet operational constants",
+      "notes": "Public no-auth machine-readable constants module (qbittensor/constants.py) published in the official qbittensor-labs/enigma repository, defining the SN63 Enigma validator/miner operational parameters: cross-check timeout and max batch size, solution-container manager scheduling, max concurrent solutions, and related tuning values the subnet software runs against. Pinned to an immutable commit. Verified 200, SS58-clean (no keys or secrets). Distinct from the min_compute hardware spec already registered.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/qbittensor-labs/enigma/blob/c4f9082ea09d5bb3e834e856501a92ee47a65632/qbittensor/constants.py",
+        "https://github.com/qbittensor-labs/enigma"
+      ],
+      "url": "https://raw.githubusercontent.com/qbittensor-labs/enigma/c4f9082ea09d5bb3e834e856501a92ee47a65632/qbittensor/constants.py"
     }
   ],
   "social": {
