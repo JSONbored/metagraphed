@@ -100,6 +100,10 @@ const accountIdentityJoinQueryFailure = vi.hoisted(() => ({ error: null }));
 const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
   error: null,
 }));
+// State for the subnet_hyperparams tempo READ (#2551) tests only -- same
+// isolation purpose as validatorNominatorCountsQueryFailure above, but for
+// loadSubnetTempos' own SELECT.
+const subnetTemposQueryFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -209,6 +213,12 @@ vi.mock("postgres", () => ({
         /FROM validator_nominator_counts\b/.test(text)
       ) {
         return Promise.reject(validatorNominatorCountsQueryFailure.error);
+      }
+      if (
+        subnetTemposQueryFailure.error &&
+        /FROM subnet_hyperparams\b/.test(text)
+      ) {
+        return Promise.reject(subnetTemposQueryFailure.error);
       }
       if (
         healthUptimeRollupSyncFailure.error &&
@@ -338,6 +348,7 @@ beforeEach(() => {
   accountIdentityLatestHashes.current = [];
   validatorNominatorCountsSyncFailure.error = null;
   validatorNominatorCountsQueryFailure.error = null;
+  subnetTemposQueryFailure.error = null;
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
   healthChecksSyncFailure.error = null;
@@ -1713,6 +1724,71 @@ test("GET /api/v1/validators/:hotkey joins nominator_count from validator_nomina
   const res = await req("/api/v1/validators/5Hot");
   const body = await res.json();
   expect(body.nominator_count).toBe(9);
+});
+
+test("GET /api/v1/validators computes apy_estimate from a subnet_hyperparams tempo join (#2551)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        ...NEURON_ROW,
+        hotkey: "5Hot",
+        netuid: 3,
+        stake_tao: "1000",
+        emission_tao: "0.85",
+      },
+    ],
+    [], // loadFeaturedHotkeys
+    [], // loadValidatorNominatorCounts
+    [{ netuid: 3, tempo: 360 }],
+  ];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(queryText()).toMatch(/FROM subnet_hyperparams/);
+  // epochsPerYear = 31,536,000/(360*12) = 7,300; annualized = 0.85*7,300 =
+  // 6,205; apy = 6,205/1,000 = 6.205 -- same worked example as the builder
+  // unit tests (tests/metagraph-neurons.test.mjs).
+  expect(body.validators[0].apy_estimate).toBe(6.205);
+  expect(body.validators[0].apy_estimate_eligible_subnet_count).toBe(1);
+});
+
+test("GET /api/v1/validators still serves the primary rows when the subnet_hyperparams tempo read fails (#2551)", async () => {
+  subnetTemposQueryFailure.error = new Error(
+    'relation "subnet_hyperparams" does not exist',
+  );
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, netuid: 7, hotkey: "5Hot" }],
+    [], // loadFeaturedHotkeys
+    [], // loadValidatorNominatorCounts
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].apy_estimate).toBe(null);
+  expect(body.validators[0].apy_estimate_eligible_subnet_count).toBe(0);
+});
+
+test("GET /api/v1/validators/:hotkey computes apy_estimate from a subnet_hyperparams tempo join (#2551)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        ...NEURON_ROW,
+        hotkey: "5Hot",
+        netuid: 3,
+        stake_tao: "1000",
+        emission_tao: "0.85",
+      },
+    ],
+    [], // loadValidatorNominatorCounts
+    [{ netuid: 3, tempo: 360 }],
+  ];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.apy_estimate).toBe(6.205);
+  expect(body.apy_estimate_eligible_subnet_count).toBe(1);
 });
 
 // #4832 Tier 2: the live-`neurons` routes with no shared D1 loader (the

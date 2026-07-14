@@ -42,7 +42,7 @@ const NEURON_CSV_HEADER =
 const MOVERS_CSV_HEADER =
   "netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta";
 const GLOBAL_VALIDATOR_CSV_HEADER =
-  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,nominator_count,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
+  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,nominator_count,apy_estimate,apy_estimate_eligible_subnet_count,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
 
 describe("metagraph-neurons builders", () => {
   test("formatNeuron coerces 0/1 INTEGER flags to real booleans", () => {
@@ -534,6 +534,151 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.validators[0].nominator_count, null);
   });
 
+  test("buildGlobalValidators computes apy_estimate for a single eligible membership (#2551)", () => {
+    // tempo=360 -> epochsPerYear = 31,536,000/(360*12) = 7,300 exactly;
+    // annualized = 0.85*7,300 = 6,205 TAO/yr; apy = 6,205/1,000 = 6.205.
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 1000,
+          emission_tao: 0.85,
+        },
+      ],
+      { tempoByNetuid: new Map([[3, 360]]) },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.apy_estimate, 6.205);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
+  });
+
+  test("buildGlobalValidators blends apy_estimate stake-weighted across memberships, excluding one with no resolvable tempo (#2551)", () => {
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 1000,
+          emission_tao: 0.85,
+        },
+        {
+          ...ROW,
+          netuid: 8,
+          uid: 1,
+          hotkey: "hk-a",
+          stake_tao: 500,
+          emission_tao: 0.1,
+        },
+        // netuid 21 has no entry in tempoByNetuid -- excluded from both the
+        // numerator and denominator, its 200 TAO stake never diluting apy.
+        {
+          ...ROW,
+          netuid: 21,
+          uid: 2,
+          hotkey: "hk-a",
+          stake_tao: 200,
+          emission_tao: 5,
+        },
+      ],
+      {
+        tempoByNetuid: new Map([
+          [3, 360],
+          [8, 100],
+        ]),
+      },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    // numerator = 0.85*7,300 + 0.10*26,280 = 6,205 + 2,628 = 8,833
+    // denominator = 1,000 + 500 = 1,500 (netuid 21's 200 excluded)
+    assert.equal(entry.apy_estimate, Math.round((8833 / 1500) * 1e9) / 1e9);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 2);
+    assert.equal(entry.subnet_count, 3); // all 3 memberships still counted
+  });
+
+  test("buildGlobalValidators excludes a membership with non-positive stake from apy_estimate even when tempo is known (#2551)", () => {
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 0,
+          emission_tao: 1,
+        },
+      ],
+      { tempoByNetuid: new Map([[3, 360]]) },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.apy_estimate, null);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+  });
+
+  test("buildGlobalValidators nulls apy_estimate AND reports 0 eligible when the only eligible stake rounds to exactly 0 rao (#2551)", () => {
+    // 4e-10 TAO is > 0 in JS float terms, so accumulateApyRow's stake > 0
+    // guard passes and its own local apyEligibleCount reaches 1 -- but
+    // toRaoBig(4e-10) rounds to 0n (sub-rao precision), leaving
+    // apyDenominatorRao at 0n. finalizeApy's apyDenominatorRao <= 0n guard
+    // catches exactly this: it must report eligible_count 0 (not the raw 1
+    // accumulateApyRow counted), never 1, to preserve the field's own
+    // documented invariant ("apy_estimate is null iff eligible_count is 0")
+    // and avoid a 0/0 division producing NaN instead of a clean null.
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 4e-10,
+          emission_tao: 1,
+        },
+      ],
+      { tempoByNetuid: new Map([[3, 360]]) },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.apy_estimate, null);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+  });
+
+  test("buildGlobalValidators defaults apy_estimate to null on every entry when no tempoByNetuid map is passed", () => {
+    const data = buildGlobalValidators([
+      { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a" },
+    ]);
+    assert.equal(data.validators[0].apy_estimate, null);
+    assert.equal(data.validators[0].apy_estimate_eligible_subnet_count, 0);
+  });
+
+  test("buildGlobalValidators counts apy-eligible subnets beyond the top-10 subnets[] cap, not leaking the cap into apy_estimate (#2551)", () => {
+    // 15 memberships, every one eligible (known tempo, positive stake) --
+    // subnets[] on the returned entry is capped to GLOBAL_VALIDATOR_SUBNET_LIMIT
+    // (10), but apy_estimate_eligible_subnet_count must reflect all 15: the
+    // apy accumulation happens in the row loop, before that cap is applied.
+    const tempoByNetuid = new Map();
+    const rows = [];
+    for (let netuid = 0; netuid < 15; netuid += 1) {
+      tempoByNetuid.set(netuid, 360);
+      rows.push({
+        ...ROW,
+        netuid,
+        uid: netuid,
+        hotkey: "hk-a",
+        stake_tao: 100 + netuid, // distinct stakes so the top-10 sort is deterministic
+        emission_tao: 1,
+      });
+    }
+    const data = buildGlobalValidators(rows, { tempoByNetuid });
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.subnets.length, 10);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 15);
+    assert.ok(entry.apy_estimate > 0);
+  });
+
   test("buildGlobalValidators takes the first non-null take per hotkey and ignores later rows (#2548)", () => {
     const data = buildGlobalValidators([
       { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", take: 0.18 },
@@ -868,6 +1013,95 @@ describe("metagraph-neurons builders", () => {
       "hk-a",
     );
     assert.equal(withoutCount.nominator_count, null);
+  });
+
+  test("buildValidatorDetail blends apy_estimate stake-weighted across memberships, excluding one with no resolvable tempo (#2551)", () => {
+    const data = buildValidatorDetail(
+      [
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 1000,
+          emission_tao: 0.85,
+        },
+        {
+          ...ROW,
+          netuid: 8,
+          uid: 1,
+          hotkey: "hk-a",
+          stake_tao: 500,
+          emission_tao: 0.1,
+        },
+        {
+          ...ROW,
+          netuid: 21,
+          uid: 2,
+          hotkey: "hk-a",
+          stake_tao: 200,
+          emission_tao: 5,
+        },
+      ],
+      "hk-a",
+      {
+        tempoByNetuid: new Map([
+          [3, 360],
+          [8, 100],
+        ]),
+      },
+    );
+    assert.equal(data.apy_estimate, Math.round((8833 / 1500) * 1e9) / 1e9);
+    assert.equal(data.apy_estimate_eligible_subnet_count, 2);
+    assert.equal(data.subnet_count, 3);
+  });
+
+  test("buildValidatorDetail excludes a non-positive-stake membership from apy_estimate even when tempo is known (#2551)", () => {
+    const data = buildValidatorDetail(
+      [
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 0,
+          emission_tao: 1,
+        },
+      ],
+      "hk-a",
+      { tempoByNetuid: new Map([[3, 360]]) },
+    );
+    assert.equal(data.apy_estimate, null);
+    assert.equal(data.apy_estimate_eligible_subnet_count, 0);
+  });
+
+  test("buildValidatorDetail defaults apy_estimate to null when no tempoByNetuid map is passed", () => {
+    const data = buildValidatorDetail(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a" }],
+      "hk-a",
+    );
+    assert.equal(data.apy_estimate, null);
+    assert.equal(data.apy_estimate_eligible_subnet_count, 0);
+  });
+
+  test("buildValidatorDetail's apy_estimate is never capped -- its subnets[] is already uncapped, unlike the leaderboard's top-10 (#2551)", () => {
+    const tempoByNetuid = new Map();
+    const rows = [];
+    for (let netuid = 0; netuid < 15; netuid += 1) {
+      tempoByNetuid.set(netuid, 360);
+      rows.push({
+        ...ROW,
+        netuid,
+        uid: netuid,
+        hotkey: "hk-a",
+        stake_tao: 100 + netuid,
+        emission_tao: 1,
+      });
+    }
+    const data = buildValidatorDetail(rows, "hk-a", { tempoByNetuid });
+    assert.equal(data.subnets.length, 15);
+    assert.equal(data.apy_estimate_eligible_subnet_count, 15);
+    assert.ok(data.apy_estimate > 0);
   });
 
   test("buildValidatorDetail: a null latest block_number is beaten by a real one on a captured_at tie, and a null incoming block_number never wins one", () => {

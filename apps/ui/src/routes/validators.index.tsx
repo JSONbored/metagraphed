@@ -180,77 +180,62 @@ function ValidatorsTable({
                 <th className={`${TH} text-right`}>Dominance</th>
                 <th className={`${TH} text-right`}>Total stake</th>
                 <th className={`${TH} text-right`}>Total emission</th>
+                <th className={`${TH} text-right`}>Est. APY</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {validators.map((v) => {
-                const apy = annualizedDelegatorApyPct(
-                  v.total_emission_tao,
-                  v.total_stake_tao,
-                  v.take,
-                );
-                return (
-                  <tr key={v.hotkey} className="hover:bg-surface/40">
-                    <td className="px-3 py-2 max-w-[10rem]">
-                      <ValidatorIdentityChip hotkey={v.hotkey} identity={v.coldkey_identity} />
-                    </td>
-                    <td className="px-3 py-2 font-mono text-[11px]">
-                      <div className="flex items-center gap-1.5">
-                        {v.featured ? <FeaturedBadge /> : null}
-                        <Link
-                          to="/validators/$hotkey"
-                          params={{ hotkey: v.hotkey }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={v.hotkey}
-                        >
-                          {shortHash(v.hotkey) ?? v.hotkey}
-                        </Link>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                      {v.coldkey ? (
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: v.coldkey }}
-                          className="hover:text-accent hover:underline"
-                          title={v.coldkey}
-                        >
-                          {shortHash(v.coldkey) ?? v.coldkey}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatTakePct(v.take)}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink"
-                      title="Annualized from snapshot emission÷stake, net of take"
-                    >
-                      {formatApyPct(apy)}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatNumber(v.subnet_count)}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatNumber(v.uid_count)}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {v.nominator_count != null ? formatNumber(v.nominator_count) : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {taoCompact(v.total_stake_tao)}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {taoCompact(v.total_emission_tao)}
-                    </td>
-                  </tr>
-                );
-              })}
+              {validators.map((v) => (
+                <tr key={v.hotkey} className="hover:bg-surface/40">
+                  <td className="px-3 py-2 font-mono text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      {v.featured ? <FeaturedBadge /> : null}
+                      <Link
+                        to="/validators/$hotkey"
+                        params={{ hotkey: v.hotkey }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                        title={v.hotkey}
+                      >
+                        {shortHash(v.hotkey) ?? v.hotkey}
+                      </Link>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
+                    {v.coldkey ? (
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: v.coldkey }}
+                        className="hover:text-accent hover:underline"
+                        title={v.coldkey}
+                      >
+                        {shortHash(v.coldkey) ?? v.coldkey}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {formatNumber(v.subnet_count)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {formatNumber(v.uid_count)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {v.nominator_count != null ? formatNumber(v.nominator_count) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {taoCompact(v.total_stake_tao)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {taoCompact(v.total_emission_tao)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {v.apy_estimate != null ? `${(v.apy_estimate * 100).toFixed(1)}%` : "—"}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -915,6 +915,8 @@ describe("handleGlobalValidators", () => {
       alpha_stake_tao: 0,
       total_emission_tao: 0,
       nominator_count: null,
+      apy_estimate: null,
+      apy_estimate_eligible_subnet_count: 0,
       stake_dominance: null,
       avg_validator_trust: null,
       max_validator_trust: null,

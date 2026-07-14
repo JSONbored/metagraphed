@@ -4964,6 +4964,10 @@ export interface components {
         GlobalValidatorEntry: {
             /** @description total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao. */
             alpha_stake_tao: number;
+            /** @description Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0. */
+            apy_estimate: number | null;
+            /** @description Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0. */
+            apy_estimate_eligible_subnet_count: number;
             avg_validator_trust: number | null;
             coldkey: string | null;
             coldkey_count: number;
@@ -6886,12 +6890,18 @@ export interface components {
             network: {
                 gainers: number;
                 losers: number;
-                total_emission_delta_tao: number;
-                total_emission_end_tao: number;
-                total_emission_start_tao: number;
-                total_stake_delta_tao: number;
-                total_stake_end_tao: number;
-                total_stake_start_tao: number;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string: total_emission_end_tao minus total_emission_start_tao, computed in exact rao-integer space. May be negative. */
+                total_emission_delta_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's end snapshot. See total_stake_start_tao. */
+                total_emission_end_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's start snapshot. See total_stake_start_tao. */
+                total_emission_start_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string: total_stake_end_tao minus total_stake_start_tao, computed in exact rao-integer space (not as a difference of two already-lossy floats). May be negative (a leading '-') when network stake net-decreased over the window. */
+                total_stake_delta_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's end snapshot. See total_stake_start_tao. */
+                total_stake_end_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's start snapshot -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#5290, mirrors #2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. */
+                total_stake_start_tao: string;
                 total_validators_delta: number;
                 total_validators_end: number;
                 total_validators_start: number;
@@ -7655,6 +7665,10 @@ export interface components {
         ValidatorDetailArtifact: {
             /** @description total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao. */
             alpha_stake_tao: number;
+            /** @description Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0. */
+            apy_estimate: number | null;
+            /** @description Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0. */
+            apy_estimate_eligible_subnet_count: number;
             avg_validator_trust: number | null;
             block_number: number | null;
             /** Format: date-time */
@@ -28022,12 +28036,12 @@ export interface operations {
                      *         "network": {
                      *           "gainers": 1,
                      *           "losers": 1,
-                     *           "total_emission_delta_tao": 0.5,
-                     *           "total_emission_end_tao": 0.5,
-                     *           "total_emission_start_tao": 0.5,
-                     *           "total_stake_delta_tao": 0.5,
-                     *           "total_stake_end_tao": 0.5,
-                     *           "total_stake_start_tao": 0.5,
+                     *           "total_emission_delta_tao": "-1234567.891234500",
+                     *           "total_emission_end_tao": "327838334.635978200",
+                     *           "total_emission_start_tao": "327838334.635978200",
+                     *           "total_stake_delta_tao": "-1234567.891234500",
+                     *           "total_stake_end_tao": "327838334.635978200",
+                     *           "total_stake_start_tao": "327838334.635978200",
                      *           "total_validators_delta": 1,
                      *           "total_validators_end": 1,
                      *           "total_validators_start": 1,
@@ -28515,6 +28529,8 @@ export interface operations {
                      *         "validators": [
                      *           {
                      *             "alpha_stake_tao": 0.5,
+                     *             "apy_estimate": 0.5,
+                     *             "apy_estimate_eligible_subnet_count": 1,
                      *             "avg_validator_trust": 0.5,
                      *             "coldkey": "example",
                      *             "coldkey_count": 1,
@@ -28651,6 +28667,8 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "alpha_stake_tao": 0.5,
+                     *         "apy_estimate": 0.5,
+                     *         "apy_estimate_eligible_subnet_count": 1,
                      *         "avg_validator_trust": 0.5,
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",

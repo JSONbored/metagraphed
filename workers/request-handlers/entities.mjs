@@ -303,6 +303,8 @@ const GLOBAL_VALIDATOR_CSV_COLUMNS = [
   "alpha_stake_tao",
   "total_emission_tao",
   "nominator_count",
+  "apy_estimate",
+  "apy_estimate_eligible_subnet_count",
   "stake_dominance",
   "avg_validator_trust",
   "max_validator_trust",

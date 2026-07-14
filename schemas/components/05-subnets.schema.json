@@ -2031,6 +2031,8 @@
           "alpha_stake_tao",
           "total_emission_tao",
           "nominator_count",
+          "apy_estimate",
+          "apy_estimate_eligible_subnet_count",
           "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
@@ -2072,6 +2074,16 @@
             "type": ["integer", "null"],
             "minimum": 0,
             "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0."
+          },
+          "apy_estimate": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0."
+          },
+          "apy_estimate_eligible_subnet_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0."
           },
           "stake_dominance": {
             "type": ["number", "null"],
@@ -2273,6 +2285,8 @@
           "alpha_stake_tao",
           "total_emission_tao",
           "nominator_count",
+          "apy_estimate",
+          "apy_estimate_eligible_subnet_count",
           "avg_validator_trust",
           "max_validator_trust",
           "captured_at",
@@ -2312,6 +2326,16 @@
             "type": ["integer", "null"],
             "minimum": 0,
             "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0."
+          },
+          "apy_estimate": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Estimated annualized yield (#2551): a stake-weighted, rao-exact blend of (emission_tao * (31,536,000 / (tempo_blocks * 12))) / stake_tao across every subnet membership where subnet_hyperparams.tempo is known and the membership holds positive stake. Each membership's emission_tao is a single most-recently-captured per-epoch snapshot (see total_emission_tao), not a multi-day average -- this is a naive 'if the last captured epoch's rate held for a year' projection, not a compounding forecast, and it can swing between refreshes, especially for validators concentrated on short-tempo subnets where the annualization multiplier is largest. Expressed as a decimal fraction (0.365 = 36.5%/yr). Memberships with an unresolved tempo, tempo=0, or non-positive stake are excluded from both the numerator and denominator, never defaulted. Null when apy_estimate_eligible_subnet_count is 0."
+          },
+          "apy_estimate_eligible_subnet_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Count of this validator's subnet memberships that contributed to apy_estimate (resolvable tempo + positive stake), out of subnet_count total (#2551). apy_estimate is null iff this is 0."
           },
           "avg_validator_trust": { "type": ["number", "null"] },
           "max_validator_trust": { "type": ["number", "null"] },
