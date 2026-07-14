@@ -1195,6 +1195,14 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
   );
 }
 
+type ExplorerTab = "activity" | "fees" | "stake" | "governance";
+const EXPLORER_TABS: { id: ExplorerTab; label: string }[] = [
+  { id: "activity", label: "Activity" },
+  { id: "fees", label: "Fees" },
+  { id: "stake", label: "Stake" },
+  { id: "governance", label: "Governance" },
+];
+
 function ExplorerDashboard() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -1275,6 +1283,10 @@ function ExplorerDashboard() {
   const totalFees = sum(fees.daily.map((d) => d.total_fee_tao));
   const totalTips = sum(fees.daily.map((d) => d.total_tip_tao));
 
+  // #5328: group the ~20 chain-analytics panels into tabs so the page is no
+  // longer one ~24,000px vertical feed. Only the active tab's panels mount; the
+  // queries above are batched once, so switching tabs never re-suspends.
+  const [tab, setTab] = useState<ExplorerTab>("activity");
   return (
     <div className="space-y-10">
       {/* window toggle */}
@@ -1296,7 +1308,7 @@ function ExplorerDashboard() {
       </div>
 
       {/* KPI tiles */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
         <StatTile
           icon={Zap}
           eyebrow="Extrinsics"
@@ -1332,404 +1344,432 @@ function ExplorerDashboard() {
         />
       </div>
 
-      {/* daily activity series */}
-      <section className="min-w-0 rounded-lg border border-border bg-card p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            Daily activity
-          </h2>
-          <span className="font-mono text-[11px] text-ink-muted">{activity.day_count} days</span>
-        </div>
-        {chrono.length > 0 ? (
-          <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
-            <MiniSeries
-              label="Extrinsics"
-              days={chrono.map((d) => d.day)}
-              values={chrono.map((d) => d.extrinsic_count)}
-              color="var(--accent)"
-              formatValue={(v) => formatNumber(v)}
-            />
-            <MiniSeries
-              label="Blocks"
-              days={chrono.map((d) => d.day)}
-              values={chrono.map((d) => d.block_count)}
-              color="var(--chart-1)"
-              formatValue={(v) => formatNumber(v)}
-            />
-            <MiniSeries
-              label="Events"
-              days={chrono.map((d) => d.day)}
-              values={chrono.map((d) => d.event_count)}
-              color="var(--chart-3)"
-              formatValue={(v) => formatNumber(v)}
-            />
-            <MiniSeries
-              label="Success rate"
-              days={chrono.map((d) => d.day)}
-              values={chrono.map((d) => d.success_rate ?? 0)}
-              color="var(--chart-6)"
-              formatValue={(v) => `${(v * 100).toFixed(1)}%`}
-            />
-            <MiniSeries
-              label="Unique signers"
-              days={chrono.map((d) => d.day)}
-              values={chrono.map((d) => d.unique_signers)}
-              color="var(--chart-1)"
-              formatValue={(v) => formatNumber(v)}
-            />
-          </div>
-        ) : (
-          <EmptyState title="No activity indexed yet — the chain poller fills this every few minutes." />
-        )}
-      </section>
+      <div
+        className="flex flex-wrap gap-2 border-b border-border pb-3"
+        role="tablist"
+        aria-label="Explorer sections"
+      >
+        {EXPLORER_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={
+              tab === t.id
+                ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent"
+                : "rounded-full border border-border bg-card px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {/* fees: daily series + tip series + top payers */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-              Daily fees &amp; tips
-            </h2>
-            <span className="font-mono text-[11px] text-ink-muted">{fees.day_count} days</span>
-          </div>
-          {feeChrono.length > 0 ? (
-            <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-              <MiniSeries
-                label="Total fees"
-                days={feeChrono.map((d) => d.day)}
-                values={feeChrono.map((d) => d.total_fee_tao)}
-                color="var(--accent)"
-                formatValue={formatTao}
-              />
-              <MiniSeries
-                label="Avg fee"
-                days={feeChrono.map((d) => d.day)}
-                values={feeChrono.map((d) => d.avg_fee_tao ?? 0)}
-                color="var(--chart-3)"
-                formatValue={formatTao}
-              />
-              <MiniSeries
-                label="Total tips"
-                days={feeChrono.map((d) => d.day)}
-                values={feeChrono.map((d) => d.total_tip_tao)}
-                color="var(--chart-6)"
-                formatValue={formatTao}
-              />
-              <MiniSeries
-                label="Avg tip"
-                days={feeChrono.map((d) => d.day)}
-                values={feeChrono.map((d) => d.avg_tip_tao ?? 0)}
-                color="var(--chart-1)"
-                formatValue={formatTao}
-              />
+      {tab === "activity" && (
+        <>
+          {/* daily activity series */}
+          <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Daily activity
+              </h2>
+              <span className="font-mono text-[11px] text-ink-muted">
+                {activity.day_count} days
+              </span>
             </div>
-          ) : (
-            <EmptyState title="No fees in this window yet." />
-          )}
-        </section>
+            {chrono.length > 0 ? (
+              <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
+                <MiniSeries
+                  label="Extrinsics"
+                  days={chrono.map((d) => d.day)}
+                  values={chrono.map((d) => d.extrinsic_count)}
+                  color="var(--accent)"
+                  formatValue={(v) => formatNumber(v)}
+                />
+                <MiniSeries
+                  label="Blocks"
+                  days={chrono.map((d) => d.day)}
+                  values={chrono.map((d) => d.block_count)}
+                  color="var(--chart-1)"
+                  formatValue={(v) => formatNumber(v)}
+                />
+                <MiniSeries
+                  label="Events"
+                  days={chrono.map((d) => d.day)}
+                  values={chrono.map((d) => d.event_count)}
+                  color="var(--chart-3)"
+                  formatValue={(v) => formatNumber(v)}
+                />
+                <MiniSeries
+                  label="Success rate"
+                  days={chrono.map((d) => d.day)}
+                  values={chrono.map((d) => d.success_rate ?? 0)}
+                  color="var(--chart-6)"
+                  formatValue={(v) => `${(v * 100).toFixed(1)}%`}
+                />
+                <MiniSeries
+                  label="Unique signers"
+                  days={chrono.map((d) => d.day)}
+                  values={chrono.map((d) => d.unique_signers)}
+                  color="var(--chart-1)"
+                  formatValue={(v) => formatNumber(v)}
+                />
+              </div>
+            ) : (
+              <EmptyState title="No activity indexed yet — the chain poller fills this every few minutes." />
+            )}
+          </section>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* call mix */}
+            <CallMixSection calls={calls} />
 
-        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-              Top fee payers
-            </h2>
-            <span className="font-mono text-[11px] text-ink-muted">
-              {fees.top_fee_payers.length} accounts
-            </span>
-          </div>
-          {fees.top_fee_payers.length > 0 ? (
-            <>
-              <BarMini
-                className="mb-4"
-                data={[...fees.top_fee_payers]
-                  .sort((a, b) => b.total_fee_tao - a.total_fee_tao)
-                  .slice(0, 8)
-                  .map((p) => ({
-                    label: shortHash(p.signer) ?? p.signer,
-                    value: p.total_fee_tao,
-                  }))}
-                formatValue={formatTao}
-                ariaLabel="Top fee payers ranked by total fees paid this window"
-              />
-              <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
-                <thead>
-                  <tr>
-                    <th className={TH}>Account</th>
-                    <th className={`${TH} text-right`}>Fees</th>
-                    <th className={`${TH} text-right`}>Tips</th>
-                    <th className={`${TH} text-right`}>Txs</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {fees.top_fee_payers.map((p) => (
-                    <tr key={p.signer} className="hover:bg-surface/40">
-                      <td className="px-4 py-2 font-mono text-[11px]">
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: p.signer }}
-                          className="text-ink-strong hover:text-accent hover:underline"
-                          title={p.signer}
-                        >
-                          {shortHash(p.signer) ?? p.signer}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                        {formatTao(p.total_fee_tao)}
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                        {formatTao(p.total_tip_tao)}
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                        {formatNumber(p.extrinsic_count)}
-                      </td>
+            {/* top signers */}
+            <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+              <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Most active accounts
+              </h2>
+              {signers.signers.length > 0 ? (
+                <ExplorerLeaderboardTableShell
+                  leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}
+                >
+                  <thead>
+                    <tr>
+                      <th className={TH}>Account</th>
+                      <th className={`${TH} text-right`}>Txs</th>
+                      <th className={`${TH} text-right`}>Fees</th>
+                      <th className={`${TH} text-right`}>Tips</th>
+                      <th className={`${TH} text-right`}>Last block</th>
                     </tr>
-                  ))}
-                </tbody>
-              </ExplorerLeaderboardTableShell>
-            </>
-          ) : (
-            <EmptyState title="No fee payers in this window yet." />
-          )}
-        </section>
-
-        <section className="min-w-0 rounded-lg border border-border bg-card p-5 lg:col-span-2">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-              Network weight-setters
-            </h2>
-            <span className="font-mono text-[11px] text-ink-muted">
-              {formatNumber(weightSetters.distinct_setters)} validators
-            </span>
-          </div>
-          {weightSetters.setters.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr>
-                    <th className={TH}>Validator</th>
-                    <th className={`${TH} text-right`}>WeightsSet</th>
-                    <th className={`${TH} text-right`}>Share</th>
-                    <th className={`${TH} text-right`}>Last set</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {weightSetters.setters.map((setter) => (
-                    <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
-                      <td className="px-4 py-2 font-mono text-[11px]">
-                        {setter.hotkey ? (
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {signers.signers.slice(0, 12).map((s) => (
+                      <tr key={s.signer} className="hover:bg-surface/40">
+                        <td className="px-4 py-2 font-mono text-[11px]">
                           <Link
                             to="/accounts/$ss58"
-                            params={{ ss58: setter.hotkey }}
+                            params={{ ss58: s.signer }}
                             className="text-ink-strong hover:text-accent hover:underline"
-                            title={setter.hotkey}
+                            title={s.signer}
                           >
-                            {shortHash(setter.hotkey) ?? setter.hotkey}
+                            {shortHash(s.signer) ?? s.signer}
                           </Link>
-                        ) : (
-                          <span
-                            className="text-ink-muted"
-                            title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
-                          >
-                            {weightSetterLabel(setter)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                        {formatNumber(setter.weight_sets)}
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                        {fmtShare(setter.share)}
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                        {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <EmptyState title="No weight-setters in this window yet." />
-          )}
-        </section>
-      </div>
-
-      {/* network-wide economics trend (#3365) — subnet_snapshots rollup, a
-          different data source from the chain-indexer sections above/below */}
-      <EconomicsTrendsSection trends={trends} />
-
-      {/* network-wide native-TAO transfer-volume leaderboard (#3475) */}
-      <TransfersLeaderboardSection transfers={transfers} />
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* call mix */}
-        <CallMixSection calls={calls} />
-
-        {/* top signers */}
-        <section className="min-w-0 rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            Most active accounts
-          </h2>
-          {signers.signers.length > 0 ? (
-            <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}>
-              <thead>
-                <tr>
-                  <th className={TH}>Account</th>
-                  <th className={`${TH} text-right`}>Txs</th>
-                  <th className={`${TH} text-right`}>Fees</th>
-                  <th className={`${TH} text-right`}>Tips</th>
-                  <th className={`${TH} text-right`}>Last block</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {signers.signers.slice(0, 12).map((s) => (
-                  <tr key={s.signer} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: s.signer }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={s.signer}
-                      >
-                        {shortHash(s.signer) ?? s.signer}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatNumber(s.tx_count)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatTao(s.total_fee_tao)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatTao(s.total_tip_tao)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {s.last_tx_block != null ? (
-                        <Link
-                          to="/blocks/$ref"
-                          params={{ ref: String(s.last_tx_block) }}
-                          className="hover:text-accent hover:underline"
-                        >
-                          #{formatNumber(s.last_tx_block)}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </ExplorerLeaderboardTableShell>
-          ) : (
-            <EmptyState title="No signers in this window yet." />
-          )}
-        </section>
-      </div>
-
-      <NetworkOperationsSection serving={serving} prometheus={prometheus} />
-
-      <TransferPairsSection win={win} />
-
-      <StakeFlowSection flow={stakeFlow} />
-
-      <StakeMovesSection moves={stakeMoves} />
-
-      <ValidatorTurnoverSection turnover={turnover} />
-
-      <NetworkRegistrationsSection registrations={registrations} />
-
-      {/* stake-transfer leaderboard */}
-      <section className="min-w-0 rounded-lg border border-border bg-card p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-          <div>
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-              Stake-transfer leaderboard
-            </h2>
-            <p className="mt-1 font-mono text-[11px] text-ink-muted">
-              {formatNumber(stakeTransfers.network.transfers)} transfers across{" "}
-              {formatNumber(stakeTransfers.network.distinct_senders)} senders network-wide
-            </p>
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                          {formatNumber(s.tx_count)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {formatTao(s.total_fee_tao)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {formatTao(s.total_tip_tao)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {s.last_tx_block != null ? (
+                            <Link
+                              to="/blocks/$ref"
+                              params={{ ref: String(s.last_tx_block) }}
+                              className="hover:text-accent hover:underline"
+                            >
+                              #{formatNumber(s.last_tx_block)}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ExplorerLeaderboardTableShell>
+              ) : (
+                <EmptyState title="No signers in this window yet." />
+              )}
+            </section>
           </div>
-          <span className="font-mono text-[11px] text-ink-muted">
-            {stakeTransfers.subnets.length} subnets
-          </span>
+          <NetworkOperationsSection serving={serving} prometheus={prometheus} />
+          <AxonChurnSection churn={axonChurn} />
+          <PalletEventMixSection stats={eventMix} />
+        </>
+      )}
+
+      {tab === "fees" && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Daily fees &amp; tips
+              </h2>
+              <span className="font-mono text-[11px] text-ink-muted">{fees.day_count} days</span>
+            </div>
+            {feeChrono.length > 0 ? (
+              <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+                <MiniSeries
+                  label="Total fees"
+                  days={feeChrono.map((d) => d.day)}
+                  values={feeChrono.map((d) => d.total_fee_tao)}
+                  color="var(--accent)"
+                  formatValue={formatTao}
+                />
+                <MiniSeries
+                  label="Avg fee"
+                  days={feeChrono.map((d) => d.day)}
+                  values={feeChrono.map((d) => d.avg_fee_tao ?? 0)}
+                  color="var(--chart-3)"
+                  formatValue={formatTao}
+                />
+                <MiniSeries
+                  label="Total tips"
+                  days={feeChrono.map((d) => d.day)}
+                  values={feeChrono.map((d) => d.total_tip_tao)}
+                  color="var(--chart-6)"
+                  formatValue={formatTao}
+                />
+                <MiniSeries
+                  label="Avg tip"
+                  days={feeChrono.map((d) => d.day)}
+                  values={feeChrono.map((d) => d.avg_tip_tao ?? 0)}
+                  color="var(--chart-1)"
+                  formatValue={formatTao}
+                />
+              </div>
+            ) : (
+              <EmptyState title="No fees in this window yet." />
+            )}
+          </section>
+          <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Top fee payers
+              </h2>
+              <span className="font-mono text-[11px] text-ink-muted">
+                {fees.top_fee_payers.length} accounts
+              </span>
+            </div>
+            {fees.top_fee_payers.length > 0 ? (
+              <>
+                <BarMini
+                  className="mb-4"
+                  data={[...fees.top_fee_payers]
+                    .sort((a, b) => b.total_fee_tao - a.total_fee_tao)
+                    .slice(0, 8)
+                    .map((p) => ({
+                      label: shortHash(p.signer) ?? p.signer,
+                      value: p.total_fee_tao,
+                    }))}
+                  formatValue={formatTao}
+                  ariaLabel="Top fee payers ranked by total fees paid this window"
+                />
+                <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
+                  <thead>
+                    <tr>
+                      <th className={TH}>Account</th>
+                      <th className={`${TH} text-right`}>Fees</th>
+                      <th className={`${TH} text-right`}>Tips</th>
+                      <th className={`${TH} text-right`}>Txs</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {fees.top_fee_payers.map((p) => (
+                      <tr key={p.signer} className="hover:bg-surface/40">
+                        <td className="px-4 py-2 font-mono text-[11px]">
+                          <Link
+                            to="/accounts/$ss58"
+                            params={{ ss58: p.signer }}
+                            className="text-ink-strong hover:text-accent hover:underline"
+                            title={p.signer}
+                          >
+                            {shortHash(p.signer) ?? p.signer}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                          {formatTao(p.total_fee_tao)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {formatTao(p.total_tip_tao)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {formatNumber(p.extrinsic_count)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ExplorerLeaderboardTableShell>
+              </>
+            ) : (
+              <EmptyState title="No fee payers in this window yet." />
+            )}
+          </section>
         </div>
-        {stakeTransfers.subnets.length > 0 ? (
-          <>
-            {/* < md: a squeezed 4-column table either clips its last column or
+      )}
+
+      {tab === "stake" && (
+        <>
+          {/* network-wide economics trend (#3365) — subnet_snapshots rollup, a
+          different data source from the chain-indexer sections above/below */}
+          <EconomicsTrendsSection trends={trends} />
+          {/* network-wide native-TAO transfer-volume leaderboard (#3475) */}
+          <TransfersLeaderboardSection transfers={transfers} />
+          <TransferPairsSection win={win} />
+          <StakeFlowSection flow={stakeFlow} />
+          <StakeMovesSection moves={stakeMoves} />
+          {/* stake-transfer leaderboard */}
+          <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+              <div>
+                <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                  Stake-transfer leaderboard
+                </h2>
+                <p className="mt-1 font-mono text-[11px] text-ink-muted">
+                  {formatNumber(stakeTransfers.network.transfers)} transfers across{" "}
+                  {formatNumber(stakeTransfers.network.distinct_senders)} senders network-wide
+                </p>
+              </div>
+              <span className="font-mono text-[11px] text-ink-muted">
+                {stakeTransfers.subnets.length} subnets
+              </span>
+            </div>
+            {stakeTransfers.subnets.length > 0 ? (
+              <>
+                {/* < md: a squeezed 4-column table either clips its last column or
                 requires an undiscoverable horizontal scroll, so narrow
                 viewports get a stacked card per subnet instead (mirrors the
                 cards/table split ListShell uses for paginated lists). */}
-            <div className="md:hidden space-y-2">
-              {stakeTransfers.subnets.map((s) => (
-                <div key={s.netuid} className="rounded border border-border bg-card p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <Link
-                      to="/subnets/$netuid"
-                      params={{ netuid: s.netuid }}
-                      className="font-mono text-[12px] font-medium text-ink-strong hover:text-accent hover:underline"
-                    >
-                      SN{s.netuid}
-                    </Link>
-                    <span className="font-mono text-[11px] tabular-nums text-ink-muted">
-                      {s.transfers_per_sender != null
-                        ? `${s.transfers_per_sender.toFixed(2)} / sender`
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
-                    <span>{formatNumber(s.transfers)} transfers</span>
-                    <span>{formatNumber(s.distinct_senders)} senders</span>
-                  </div>
+                <div className="md:hidden space-y-2">
+                  {stakeTransfers.subnets.map((s) => (
+                    <div key={s.netuid} className="rounded border border-border bg-card p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: s.netuid }}
+                          className="font-mono text-[12px] font-medium text-ink-strong hover:text-accent hover:underline"
+                        >
+                          SN{s.netuid}
+                        </Link>
+                        <span className="font-mono text-[11px] tabular-nums text-ink-muted">
+                          {s.transfers_per_sender != null
+                            ? `${s.transfers_per_sender.toFixed(2)} / sender`
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                        <span>{formatNumber(s.transfers)} transfers</span>
+                        <span>{formatNumber(s.distinct_senders)} senders</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                <ExplorerLeaderboardTableShell
+                  leaderboardId={EXPLORER_LEADERBOARD_IDS.stakeTransfers}
+                  visibility="desktop-only"
+                >
+                  <thead>
+                    <tr>
+                      <th className={TH}>Subnet</th>
+                      <th className={`${TH} text-right`}>Transfers</th>
+                      <th className={`${TH} text-right`}>Distinct senders</th>
+                      <th className={`${TH} text-right`}>Transfers per sender</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {stakeTransfers.subnets.map((s) => (
+                      <tr key={s.netuid} className="hover:bg-surface/40">
+                        <td className="px-4 py-2 font-mono text-[11px]">
+                          <Link
+                            to="/subnets/$netuid"
+                            params={{ netuid: s.netuid }}
+                            className="text-ink-strong hover:text-accent hover:underline"
+                          >
+                            SN{s.netuid}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                          {formatNumber(s.transfers)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {formatNumber(s.distinct_senders)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ExplorerLeaderboardTableShell>
+              </>
+            ) : (
+              <EmptyState title="No stake transfers in this window yet." />
+            )}
+          </section>
+        </>
+      )}
+
+      {tab === "governance" && (
+        <>
+          <section className="min-w-0 rounded-lg border border-border bg-card p-5 lg:col-span-2">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Network weight-setters
+              </h2>
+              <span className="font-mono text-[11px] text-ink-muted">
+                {formatNumber(weightSetters.distinct_setters)} validators
+              </span>
             </div>
-            <ExplorerLeaderboardTableShell
-              leaderboardId={EXPLORER_LEADERBOARD_IDS.stakeTransfers}
-              visibility="desktop-only"
-            >
-              <thead>
-                <tr>
-                  <th className={TH}>Subnet</th>
-                  <th className={`${TH} text-right`}>Transfers</th>
-                  <th className={`${TH} text-right`}>Distinct senders</th>
-                  <th className={`${TH} text-right`}>Transfers per sender</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {stakeTransfers.subnets.map((s) => (
-                  <tr key={s.netuid} className="hover:bg-surface/40">
-                    <td className="px-4 py-2 font-mono text-[11px]">
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: s.netuid }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                      >
-                        SN{s.netuid}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                      {formatNumber(s.transfers)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {formatNumber(s.distinct_senders)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                      {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </ExplorerLeaderboardTableShell>
-          </>
-        ) : (
-          <EmptyState title="No stake transfers in this window yet." />
-        )}
-      </section>
-
-      <AxonChurnSection churn={axonChurn} />
-
-      <PalletEventMixSection stats={eventMix} />
+            {weightSetters.setters.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th className={TH}>Validator</th>
+                      <th className={`${TH} text-right`}>WeightsSet</th>
+                      <th className={`${TH} text-right`}>Share</th>
+                      <th className={`${TH} text-right`}>Last set</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {weightSetters.setters.map((setter) => (
+                      <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
+                        <td className="px-4 py-2 font-mono text-[11px]">
+                          {setter.hotkey ? (
+                            <Link
+                              to="/accounts/$ss58"
+                              params={{ ss58: setter.hotkey }}
+                              className="text-ink-strong hover:text-accent hover:underline"
+                              title={setter.hotkey}
+                            >
+                              {shortHash(setter.hotkey) ?? setter.hotkey}
+                            </Link>
+                          ) : (
+                            <span
+                              className="text-ink-muted"
+                              title="Uid-only setter scoped to a subnet (no network-wide hotkey)"
+                            >
+                              {weightSetterLabel(setter)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                          {formatNumber(setter.weight_sets)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {fmtShare(setter.share)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                          {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState title="No weight-setters in this window yet." />
+            )}
+          </section>
+          <ValidatorTurnoverSection turnover={turnover} />
+          <NetworkRegistrationsSection registrations={registrations} />
+        </>
+      )}
     </div>
   );
 }
