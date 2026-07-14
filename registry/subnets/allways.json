@@ -35,6 +35,10 @@
   "name": "Allways",
   "netuid": 7,
   "notes": "Pilot manifest. Registry observations are external status data, not Allways protocol authority.",
+  "partnership": {
+    "since": "2026-07-04",
+    "tier": "pilot"
+  },
   "schema_version": 1,
   "slug": "allways",
   "source_repo": "https://github.com/entrius/allways",

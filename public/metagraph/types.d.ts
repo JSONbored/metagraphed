@@ -5358,6 +5358,18 @@ export interface components {
             sort?: string | null;
             total: number;
         };
+        /** @description Display/placement metadata — e.g. a featured-pilot homepage slot. Distinct from `curation` and `authority`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md). */
+        PartnershipMetadata: {
+            /** Format: date */
+            since: string;
+            tier: components["schemas"]["PartnershipTier"];
+            validator_hotkey?: string;
+        };
+        /**
+         * @description Display/placement tier for a subnet — e.g. a featured-pilot homepage slot. Distinct from Authority and CurationLevel, which are trust signals only and never drive placement.
+         * @enum {unknown}
+         */
+        PartnershipTier: "pilot";
         /** @description One neuron position a wallet holds on a subnet: its economics and emission/stake yield. Score fields are null when the cell is absent; yield is null with zero stake. */
         PortfolioPosition: {
             active: boolean;
@@ -6440,6 +6452,8 @@ export interface components {
             netuid: number;
             notes?: string | null;
             participant_count?: number;
+            /** @description Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation, which is a trust signal only. */
+            partnership?: components["schemas"]["PartnershipMetadata"] | null;
             /** @description Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647). */
             previously_known_as?: string[];
             probed_surface_count?: number;
@@ -6753,6 +6767,8 @@ export interface components {
             /** @description Count of operator-official (first-party) curated surfaces for this subnet. */
             official_surface_count?: number;
             participant_count?: number;
+            /** @description Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation_level, which is a trust signal only. */
+            partnership?: components["schemas"]["PartnershipMetadata"] | null;
             probed_surface_count?: number;
             registered_at_block?: number;
             /** @description Count of low-trust registry-observed (harvested) surfaces for this subnet. */
@@ -21906,6 +21922,10 @@ export interface operations {
                      *           "netuid": 7,
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
+                     *           "partnership": {
+                     *             "since": "2026-06-01",
+                     *             "tier": "pilot"
+                     *           },
                      *           "previously_known_as": [
                      *             "example"
                      *           ],
@@ -25631,6 +25651,10 @@ export interface operations {
                      *           "netuid": 7,
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
+                     *           "partnership": {
+                     *             "since": "2026-06-01",
+                     *             "tier": "pilot"
+                     *           },
                      *           "previously_known_as": [
                      *             "example"
                      *           ],

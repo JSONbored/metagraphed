@@ -109,4 +109,36 @@ describe("validate-schemas.mjs enum error messages", () => {
     assert.match(output, /data-artifact/);
     assert.match(output, /got "totally-invalid-kind"/);
   });
+
+  // #5171: partnership.tier is a deliberately closed enum (just "pilot" today)
+  // — a subnet claiming any other tier must be rejected the same way an
+  // invalid surface kind is, with the allowed-values list surfaced.
+  test("lists the allowed partnership.tier values and the offending value on an invalid tier", async () => {
+    const subnetFiles = await listJsonFiles(
+      path.join(repoRoot, "registry/subnets"),
+    );
+    let targetFile;
+    let targetDocument;
+    for (const file of subnetFiles) {
+      const document = await readJson(file);
+      if (document.partnership) {
+        targetFile = file;
+        targetDocument = document;
+        break;
+      }
+    }
+    assert.ok(targetFile, "at least one subnet file must have a partnership");
+
+    mutatedFile = targetFile;
+    originalContents = readFileSync(mutatedFile, "utf8");
+    targetDocument.partnership.tier = "sponsor";
+    writeFileSync(mutatedFile, JSON.stringify(targetDocument, null, 2));
+
+    const { status, output } = runNode(["scripts/validate-schemas.mjs"]);
+
+    assert.equal(status, 1);
+    assert.match(output, /must be equal to one of the allowed values/);
+    assert.match(output, /pilot/);
+    assert.match(output, /got "sponsor"/);
+  });
 });

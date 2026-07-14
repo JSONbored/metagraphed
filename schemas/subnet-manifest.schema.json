@@ -61,6 +61,9 @@
     "curation": {
       "$ref": "#/$defs/curation"
     },
+    "partnership": {
+      "$ref": "#/$defs/partnership"
+    },
     "links": {
       "type": "array",
       "items": {
@@ -376,6 +379,24 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "partnership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "since"],
+      "description": "Display/placement metadata — e.g. a featured-pilot slot on the homepage. Distinct from `authority` and `curation.level`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md).",
+      "properties": {
+        "tier": {
+          "enum": ["pilot"]
+        },
+        "since": {
+          "type": "string",
+          "format": "date"
+        },
+        "validator_hotkey": {
+          "type": "string"
         }
       }
     },

@@ -193,29 +193,16 @@ function OverviewPage() {
 
       <QuickActionsRow />
 
-      <section className="mt-section-gap">
-        <SectionHeader
-          eyebrow="Pilots"
-          title="Adapter-backed subnets"
-          description="Subnets with live machine-verified data pulled directly through a maintained adapter."
-        />
-        <div className="grid gap-4 md:grid-cols-2">
-          <QueryErrorBoundary
-            fallback={() => <PilotCardFallback netuid={7} title="Allways" subtitle="SN7" />}
-          >
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <PilotCard slug="allways" netuid={7} title="Allways" subtitle="SN7" />
-            </Suspense>
-          </QueryErrorBoundary>
-          <QueryErrorBoundary
-            fallback={() => <PilotCardFallback netuid={74} title="Gittensor" subtitle="SN74" />}
-          >
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <PilotCard slug="gittensor" netuid={74} title="Gittensor" subtitle="SN74" />
-            </Suspense>
-          </QueryErrorBoundary>
-        </div>
-      </section>
+      {/* #5171: featured pilots are schema-backed (registry `partnership.tier ===
+          "pilot"`), not a hardcoded slug/netuid list — adding or removing one is
+          a registry data change. Renders null until the list resolves (and stays
+          null if it's empty), so an empty/failed fetch never leaves a dangling
+          "Pilots" heading. */}
+      <QueryErrorBoundary fallback={() => null}>
+        <Suspense fallback={null}>
+          <PilotsSection />
+        </Suspense>
+      </QueryErrorBoundary>
 
       <section className="mt-section-gap">
         <div className="flex items-end justify-between mb-6">
@@ -835,8 +822,61 @@ function PerfCard({
 /* ----------------------------- pilot ----------------------------- */
 
 /**
+ * Data-driven "Pilots" homepage section (#5171): the featured list comes from
+ * the registry (`partnership.tier === "pilot"`) instead of a hardcoded
+ * slug/netuid list, so adding or removing a pilot is a registry data change,
+ * not a source edit. `limit: 200` covers the full registry (well above the
+ * known subnet count) since a pilot can sit anywhere in netuid order; each
+ * card still owns its own QueryErrorBoundary/Suspense pair (unchanged from
+ * before) so one pilot's adapter failing never takes down the others. Renders
+ * null when the filtered list is empty so the section never leaves a dangling
+ * heading over an empty grid.
+ */
+function PilotsSection() {
+  const { data } = useSuspenseQuery(subnetsQuery({ limit: 200 }));
+  const subnets = (data.data ?? []) as Subnet[];
+  const pilots = subnets
+    .filter((subnet) => subnet.partnership?.tier === "pilot")
+    .sort((a, b) => {
+      const bySince = (a.partnership?.since ?? "").localeCompare(b.partnership?.since ?? "");
+      return bySince !== 0 ? bySince : a.netuid - b.netuid;
+    });
+
+  if (pilots.length === 0) return null;
+
+  return (
+    <section className="mt-section-gap">
+      <SectionHeader
+        eyebrow="Pilots"
+        title="Adapter-backed subnets"
+        description="Subnets with live machine-verified data pulled directly through a maintained adapter."
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        {pilots.map((subnet) => {
+          const title = subnet.name ?? `Subnet ${subnet.netuid}`;
+          const subtitle = `SN${subnet.netuid}`;
+          const slug = subnet.slug ?? `sn-${subnet.netuid}`;
+          return (
+            <QueryErrorBoundary
+              key={subnet.netuid}
+              fallback={() => (
+                <PilotCardFallback netuid={subnet.netuid} title={title} subtitle={subtitle} />
+              )}
+            >
+              <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+                <PilotCard slug={slug} netuid={subnet.netuid} title={title} subtitle={subtitle} />
+              </Suspense>
+            </QueryErrorBoundary>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/**
  * Error fallback for PilotCard, rendered by the QueryErrorBoundary in
- * OverviewPage when the adapter snapshot fails to load. Kept separate so
+ * PilotsSection when the adapter snapshot fails to load. Kept separate so
  * PilotCard can call useSuspenseQuery unconditionally (a try/catch around the
  * hook breaks the Rules of Hooks).
  */

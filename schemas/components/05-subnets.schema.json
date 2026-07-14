@@ -98,6 +98,24 @@
         },
         "additionalProperties": false
       },
+      "PartnershipMetadata": {
+        "type": "object",
+        "required": ["tier", "since"],
+        "description": "Display/placement metadata — e.g. a featured-pilot homepage slot. Distinct from `curation` and `authority`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md).",
+        "properties": {
+          "tier": {
+            "$ref": "#/components/schemas/PartnershipTier"
+          },
+          "since": {
+            "type": "string",
+            "format": "date"
+          },
+          "validator_hotkey": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "Gaps": {
         "type": "object",
         "required": ["missing_kinds", "supported_kinds", "gap_notes"],
@@ -319,6 +337,13 @@
             "type": ["string", "null"],
             "format": "uri",
             "description": "Normalized Discord URL when the on-chain contact is an explicit URL (scheme allowlist + SSRF/credential guards); null when the contact is a plain handle. Operator-controlled untrusted data."
+          },
+          "partnership": {
+            "description": "Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation_level, which is a trust signal only.",
+            "oneOf": [
+              { "$ref": "#/components/schemas/PartnershipMetadata" },
+              { "type": "null" }
+            ]
           }
         },
         "additionalProperties": false
@@ -449,6 +474,13 @@
           },
           "curation": {
             "$ref": "#/components/schemas/CurationMetadata"
+          },
+          "partnership": {
+            "description": "Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation, which is a trust signal only.",
+            "oneOf": [
+              { "$ref": "#/components/schemas/PartnershipMetadata" },
+              { "type": "null" }
+            ]
           },
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
