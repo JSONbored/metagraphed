@@ -70,6 +70,25 @@
       ],
       "url": "https://api.swarm124.com/leaderboard",
       "notes": "Public no-auth GET /leaderboard — ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-min-compute",
+      "kind": "data-artifact",
+      "name": "Swarm minimum compute requirements",
+      "notes": "Public no-auth machine-readable min_compute.yml from the official SN124 Swarm repository (swarm-subnet/swarm), pinned to an immutable commit. Specifies the minimum and recommended CPU, memory, storage, and network requirements for running SN124 Swarm miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm",
+        "https://github.com/swarm-subnet/swarm/blob/d4bef9321e427b62d09cca88502f5b1b6c9abe74/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/swarm-subnet/swarm/d4bef9321e427b62d09cca88502f5b1b6c9abe74/min_compute.yml"
     }
   ],
   "website_url": "https://www.swarm124.com/"
