@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -112,6 +112,14 @@ export const Route = createFileRoute("/endpoints")({
   component: EndpointsPage,
 });
 
+type EndpointsTab = "proxy" | "endpoints" | "advanced" | "incidents";
+const ENDPOINTS_TABS: { id: EndpointsTab; label: string }[] = [
+  { id: "proxy", label: "Proxy" },
+  { id: "endpoints", label: "Endpoints" },
+  { id: "advanced", label: "Advanced" },
+  { id: "incidents", label: "Incidents" },
+];
+
 function EndpointsPage() {
   const hash = useRouterState({ select: (s) => s.location.hash });
   useEffect(() => {
@@ -126,6 +134,10 @@ function EndpointsPage() {
     return () => window.clearTimeout(t);
   }, [hash]);
 
+  // #5329: the page stacked ~9 full-width panels into one ~95,000px feed on
+  // mobile. Split its distinct concerns into tabs; each section fetches its own
+  // data, so only the active tab's panels mount (and query) at a time.
+  const [tab, setTab] = useState<EndpointsTab>("proxy");
   return (
     <AppShell>
       <PageHero
@@ -135,87 +147,127 @@ function EndpointsPage() {
         description="A load-balanced reverse proxy for Bittensor RPC, plus the registry of callable Subtensor and subnet endpoints behind it."
       />
       <div className="space-y-section">
-        {/* The headline feature: the live reverse proxy + its usage analytics. */}
-        <section>
-          <ProxyHero />
-        </section>
-        <section>
-          <SectionHeading title="Proxy usage" />
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-              <ProxyUsagePanel />
-            </Suspense>
-          </QueryErrorBoundary>
-        </section>
+        <div
+          className="flex flex-wrap gap-2 border-b border-border pb-3"
+          role="tablist"
+          aria-label="Endpoints sections"
+        >
+          {ENDPOINTS_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={
+                tab === t.id
+                  ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent"
+                  : "rounded-full border border-border bg-card px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        <QueryErrorBoundary>
-          <Suspense
-            fallback={
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Skeleton className="h-20" />
-                <Skeleton className="h-20" />
-                <Skeleton className="h-20" />
-                <Skeleton className="h-20" />
-              </div>
-            }
-          >
-            <EndpointsStatStrip />
-          </Suspense>
-        </QueryErrorBoundary>
+        {tab === "proxy" && (
+          <>
+            {/* The headline feature: the live reverse proxy + its usage analytics. */}
+            <section>
+              <ProxyHero />
+            </section>
+            <section>
+              <SectionHeading title="Proxy usage" />
+              <QueryErrorBoundary>
+                <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+                  <ProxyUsagePanel />
+                </Suspense>
+              </QueryErrorBoundary>
+            </section>
+            <QueryErrorBoundary>
+              <Suspense
+                fallback={
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Skeleton className="h-20" />
+                    <Skeleton className="h-20" />
+                    <Skeleton className="h-20" />
+                    <Skeleton className="h-20" />
+                  </div>
+                }
+              >
+                <EndpointsStatStrip />
+              </Suspense>
+            </QueryErrorBoundary>
+          </>
+        )}
 
-        <TimeRangeProvider>
-          <section>
-            <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-              <SectionHeading title="Latency & severity heatmap" />
-              <TimeRangeScrub />
-            </div>
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-                <LatencyHeatmapSection />
-              </Suspense>
-            </QueryErrorBoundary>
-          </section>
-          <section>
-            <SectionHeading title="RPC pools" />
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-                <PoolsTable />
-              </Suspense>
-            </QueryErrorBoundary>
-          </section>
-          <section>
-            <SectionHeading title="Endpoint pools" />
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-                <EndpointPoolsTable />
-              </Suspense>
-            </QueryErrorBoundary>
-          </section>
-          <section>
-            <SectionHeading title="Root RPC/WSS endpoints" />
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-                <RpcEndpointsTable />
-              </Suspense>
-            </QueryErrorBoundary>
-          </section>
-          <section>
-            <SectionHeading title="Callable endpoints" />
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-                <EndpointsTable />
-              </Suspense>
-            </QueryErrorBoundary>
-          </section>
-          <section>
-            <SectionHeading title="Incidents timeline" />
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-                <IncidentsTimeline />
-              </Suspense>
-            </QueryErrorBoundary>
-          </section>
-        </TimeRangeProvider>
+        {tab === "endpoints" && (
+          <>
+            <TimeRangeProvider>
+              <section>
+                <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
+                  <SectionHeading title="Latency & severity heatmap" />
+                  <TimeRangeScrub />
+                </div>
+                <QueryErrorBoundary>
+                  <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+                    <LatencyHeatmapSection />
+                  </Suspense>
+                </QueryErrorBoundary>
+              </section>
+            </TimeRangeProvider>
+            <section>
+              <SectionHeading title="Callable endpoints" />
+              <QueryErrorBoundary>
+                <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+                  <EndpointsTable />
+                </Suspense>
+              </QueryErrorBoundary>
+            </section>
+          </>
+        )}
+
+        {tab === "advanced" && (
+          <>
+            <section>
+              <SectionHeading title="RPC pools" />
+              <QueryErrorBoundary>
+                <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+                  <PoolsTable />
+                </Suspense>
+              </QueryErrorBoundary>
+            </section>
+            <section>
+              <SectionHeading title="Endpoint pools" />
+              <QueryErrorBoundary>
+                <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+                  <EndpointPoolsTable />
+                </Suspense>
+              </QueryErrorBoundary>
+            </section>
+            <section>
+              <SectionHeading title="Root RPC/WSS endpoints" />
+              <QueryErrorBoundary>
+                <Suspense fallback={<Skeleton className="h-24 w-full" />}>
+                  <RpcEndpointsTable />
+                </Suspense>
+              </QueryErrorBoundary>
+            </section>
+          </>
+        )}
+
+        {tab === "incidents" && (
+          <>
+            <section>
+              <SectionHeading title="Incidents timeline" />
+              <QueryErrorBoundary>
+                <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+                  <IncidentsTimeline />
+                </Suspense>
+              </QueryErrorBoundary>
+            </section>
+          </>
+        )}
       </div>
       <ApiSourceFooter
         paths={[
