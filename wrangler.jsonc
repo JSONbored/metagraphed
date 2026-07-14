@@ -105,14 +105,18 @@
     // Utility.batch/batch_all, Multisig.as_multi wrapping Sudo/AdminUtils --
     // confirmed to arbitrary depth against real production extrinsics), are
     // now reconstructed server-side into D1's {call_module, call_function,
-    // call_args} shape, with AccountId32/MultiAddress/byte-blob fields WITHIN
-    // each reconstructed nested call decoded to SS58/hex. Multisig.as_multi's
-    // nested call_hash stays permanently absent (indexer-rs has no equivalent
-    // of fetch-events.py's Python-side re-encode-and-hash step) -- accepted,
-    // not a bug. Still open: a TOP-LEVEL (non-nested) call's own AccountId32/
-    // byte-blob fields -- e.g. a bare Balances.transfer's dest, or Multisig's
-    // own other_signatories/max_weight siblings -- are not yet decoded at
-    // that outer layer, only within a reconstructed nested call.
+    // call_args} shape, with AccountId32/MultiAddress/byte-blob fields decoded
+    // to SS58/hex EVERYWHERE -- both at the TOP LEVEL of the extrinsic's own
+    // call_args and within each reconstructed nested call's args (fixed
+    // 2026-07-12, #4915/#4916 -- the top-level case was previously left
+    // undecoded, e.g. SubtensorModule.add_stake's top-level `hotkey` served as
+    // a raw byte array instead of an SS58 string; see src/postgres-call-args.mjs's
+    // formatCallArgs docstring for the full writeup. Live-verified 2026-07-14:
+    // GET /api/v1/extrinsics?call_module=SubtensorModule&call_function=add_stake
+    // serves hotkey as a decoded SS58 string). Multisig.as_multi's nested
+    // call_hash stays permanently absent (indexer-rs has no equivalent of
+    // fetch-events.py's Python-side re-encode-and-hash step) -- accepted, not
+    // a bug.
     //
     // #4692 (src/indexer-rs-ethereum-decode.mjs, chained last in
     // formatExtrinsic): Ethereum.transact's U256 fields (nonce/value/
