@@ -33,9 +33,7 @@ describe("entity hover placement tokens (#5337)", () => {
   });
 
   it("can merge onto mega-menu defaults for nested callers", () => {
-    expect(
-      resolveEntityHoverPlacement({ openDelayMs: 90 }, MEGA_MENU_HOVER_DEFAULTS),
-    ).toEqual({
+    expect(resolveEntityHoverPlacement({ openDelayMs: 90 }, MEGA_MENU_HOVER_DEFAULTS)).toEqual({
       ...MEGA_MENU_HOVER_DEFAULTS,
       openDelayMs: 90,
     });

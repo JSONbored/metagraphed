@@ -12,10 +12,7 @@ import {
 import { useCoarsePointer } from "@/hooks/use-coarse-pointer";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { subnetQuery, providerQuery, accountQuery } from "@/lib/metagraphed/queries";
-import {
-  resolveEntityHoverPlacement,
-  type EntityHoverPlacement,
-} from "./entity-hover-placement";
+import { resolveEntityHoverPlacement, type EntityHoverPlacement } from "./entity-hover-placement";
 
 interface SubnetHoverProps {
   kind: "subnet";

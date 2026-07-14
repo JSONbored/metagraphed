@@ -49,7 +49,10 @@ async function openSubnetsMega(page) {
 
   // Prefer after-hook marker; fall back to subnet match links.
   const liveRow = page.locator("[data-mega-live-preview='subnet']").first();
-  const fallbackRow = page.locator("a[href*='/subnets/']").filter({ hasText: /SN|Root|subnet/i }).first();
+  const fallbackRow = page
+    .locator("a[href*='/subnets/']")
+    .filter({ hasText: /SN|Root|subnet/i })
+    .first();
   return { trigger, liveRow, fallbackRow };
 }
 

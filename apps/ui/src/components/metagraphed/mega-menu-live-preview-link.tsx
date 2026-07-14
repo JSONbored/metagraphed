@@ -31,12 +31,7 @@ type MegaMenuLivePreviewLinkProps = {
 const LIVE_LINK_CLASS =
   "flex items-center justify-between rounded-md px-2 py-1.5 -mx-2 hover:bg-surface/70 focus:bg-surface/70 focus:outline-none transition-colors";
 
-function LiveRowLink({
-  item,
-  onNavigate,
-  registerItem,
-  itemIndex,
-}: MegaMenuLivePreviewLinkProps) {
+function LiveRowLink({ item, onNavigate, registerItem, itemIndex }: MegaMenuLivePreviewLinkProps) {
   return (
     <Link
       to={item.to}

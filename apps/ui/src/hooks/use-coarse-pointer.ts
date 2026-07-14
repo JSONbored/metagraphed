@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  getCoarsePointerMediaQuery,
-  matchesCoarsePointer,
-} from "@/lib/metagraphed/coarse-pointer";
+import { getCoarsePointerMediaQuery, matchesCoarsePointer } from "@/lib/metagraphed/coarse-pointer";
 
 /**
  * True when the viewport is touch-primary (`(hover: none), (pointer: coarse)`).
