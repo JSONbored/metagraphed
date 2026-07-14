@@ -5620,6 +5620,16 @@ describe("MCP call_rpc", () => {
     assert.match(res.body.result.content[0].text, /invalid_params/);
   });
 
+  test("rejects a non-string network as invalid_params", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", network: 123 },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
   test("propagates the REST route's rpc_method_blocked error verbatim for a denied method", async () => {
     const res = await callTool(
       "call_rpc",
@@ -5696,6 +5706,30 @@ describe("MCP call_rpc", () => {
       assert.equal(out.error, null);
       assert.equal(out.endpoint_id, "fx");
       assert.equal(out.provider, "fx");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("defaults jsonrpc to 2.0 and result to null when the upstream body omits them", async () => {
+    const originalFetch = globalThis.fetch;
+    // A real JSON-RPC 2.0 upstream always includes both fields; this exercises
+    // the defensive fallback for a hypothetical malformed/truncated upstream
+    // body, not a shape the proxy is known to ever actually produce.
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ id: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.jsonrpc, "2.0");
+      assert.equal(out.result, null);
     } finally {
       globalThis.fetch = originalFetch;
     }

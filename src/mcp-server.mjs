@@ -8730,11 +8730,10 @@ export const MCP_TOOLS = [
         );
       }
       if (!response.ok) {
-        throw toolError(
-          payload?.error?.code || "rpc_error",
-          payload?.error?.message ||
-            `RPC proxy returned status ${response.status}.`,
-        );
+        // handleRpcProxyRequest's every error path goes through workers/http.mjs's
+        // errorResponse(), which always populates error.code/error.message -- no
+        // "malformed error body" case exists to guess a fallback for.
+        throw toolError(payload.error.code, payload.error.message);
       }
       return {
         network,
