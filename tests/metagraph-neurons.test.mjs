@@ -794,6 +794,7 @@ describe("metagraph-neurons builders", () => {
     const empty = buildValidatorDetail(null, "hk-cold");
     assert.equal(empty.hotkey, "hk-cold");
     assert.equal(empty.coldkey, null);
+    assert.equal(empty.coldkey_identity, null);
     assert.equal(empty.coldkey_count, 0);
     assert.equal(empty.subnet_count, 0);
     assert.equal(empty.total_stake_tao, 0);
@@ -976,6 +977,100 @@ describe("metagraph-neurons builders", () => {
   test("buildNeuronDetail returns neuron:null for a cold/absent row", () => {
     assert.equal(buildNeuronDetail(null, 7).neuron, null);
     assert.equal(buildNeuronDetail(ROW, 7).neuron.uid, 0);
+  });
+
+  // #5234: server-side coldkey -> account_identity join, exposed as
+  // coldkey_identity on both GlobalValidatorEntry and ValidatorDetailArtifact.
+  const IDENTITY_ROW = {
+    name: "Acme Validators",
+    url: "https://acme-validators.io",
+    github: "https://github.com/acme-validators",
+    image: "https://acme-validators.io/logo.png",
+    discord: "acme#1234",
+    description: "Professional validator operator",
+    additional: "Est. 2023",
+    captured_at: 1750000000000,
+  };
+
+  test("buildGlobalValidators joins coldkey_identity by coldkey, not hotkey -- shared across two hotkeys (#5234)", () => {
+    const identityByColdkey = new Map([["ck-shared", IDENTITY_ROW]]);
+    const data = buildGlobalValidators(
+      [
+        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", coldkey: "ck-shared" },
+        { ...ROW, netuid: 2, uid: 0, hotkey: "hk-b", coldkey: "ck-shared" },
+      ],
+      { identityByColdkey },
+    );
+    const byHotkey = Object.fromEntries(
+      data.validators.map((v) => [v.hotkey, v.coldkey_identity]),
+    );
+    for (const hotkey of ["hk-a", "hk-b"]) {
+      assert.equal(byHotkey[hotkey].has_identity, true);
+      assert.equal(byHotkey[hotkey].name, "Acme Validators");
+      assert.equal(byHotkey[hotkey].url, "https://acme-validators.io/");
+      assert.equal(byHotkey[hotkey].discord, "acme#1234");
+      assert.equal(
+        byHotkey[hotkey].captured_at,
+        new Date(1750000000000).toISOString(),
+      );
+      // schema_version/account are AccountIdentityArtifact-only -- redundant
+      // once nested under a row that already states its own coldkey.
+      assert.equal(byHotkey[hotkey].schema_version, undefined);
+      assert.equal(byHotkey[hotkey].account, undefined);
+    }
+  });
+
+  test("buildGlobalValidators reports a has_identity:false shape (never omitted) when the coldkey has no identity row (#5234)", () => {
+    const data = buildGlobalValidators([
+      { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", coldkey: "ck-no-identity" },
+    ]);
+    const identity = data.validators[0].coldkey_identity;
+    assert.equal(identity.has_identity, false);
+    assert.equal(identity.name, null);
+    assert.equal(identity.url, null);
+    assert.equal(identity.github, null);
+    assert.equal(identity.image, null);
+    assert.equal(identity.discord, null);
+    assert.equal(identity.description, null);
+    assert.equal(identity.additional, null);
+    assert.equal(identity.captured_at, null);
+  });
+
+  test("buildGlobalValidators sets coldkey_identity null only when coldkey itself is null (#5234)", () => {
+    const identityByColdkey = new Map([["ck-shared", IDENTITY_ROW]]);
+    const data = buildGlobalValidators(
+      [{ ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", coldkey: "" }],
+      { identityByColdkey },
+    );
+    assert.equal(data.validators[0].coldkey, null);
+    assert.equal(data.validators[0].coldkey_identity, null);
+  });
+
+  test("buildValidatorDetail joins coldkey_identity for its primary coldkey (#5234)", () => {
+    const identityByColdkey = new Map([["ck-a", IDENTITY_ROW]]);
+    const data = buildValidatorDetail(
+      [{ ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", coldkey: "ck-a" }],
+      "hk-a",
+      { identityByColdkey },
+    );
+    assert.equal(data.coldkey, "ck-a");
+    assert.equal(data.coldkey_identity.has_identity, true);
+    assert.equal(data.coldkey_identity.name, "Acme Validators");
+    assert.equal(
+      data.coldkey_identity.description,
+      "Professional validator operator",
+    );
+  });
+
+  test("buildValidatorDetail reports has_identity:false when identityByColdkey has no row for the coldkey (#5234)", () => {
+    const data = buildValidatorDetail(
+      [{ ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", coldkey: "ck-a" }],
+      "hk-a",
+      { identityByColdkey: new Map([["ck-other", IDENTITY_ROW]]) },
+    );
+    assert.equal(data.coldkey, "ck-a");
+    assert.equal(data.coldkey_identity.has_identity, false);
+    assert.equal(data.coldkey_identity.name, null);
   });
 });
 

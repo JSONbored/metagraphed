@@ -905,6 +905,7 @@ describe("handleGlobalValidators", () => {
       hotkey: "hk-a",
       featured: false,
       coldkey: null,
+      coldkey_identity: null,
       coldkey_count: 0,
       subnet_count: 1,
       uid_count: 1,

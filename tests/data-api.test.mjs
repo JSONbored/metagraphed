@@ -79,6 +79,13 @@ const rpcUsageSyncFailure = vi.hoisted(() => ({ error: null }));
 // simulate the table not existing yet (pre-migration) without touching any
 // other query's mock plumbing.
 const featuredValidatorsQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the /api/v1/validators + /api/v1/validators/:hotkey
+// account_identity join (#5234) tests only. Dispatched by its own text match
+// (like the DELETE FROM neurons / DELETE FROM subnet_hyperparams sql.unsafe
+// branches below) rather than the shared mockQueue, so priming it never
+// shifts any existing validators test's mockQueue-ordering assumptions.
+const accountIdentityJoinRows = vi.hoisted(() => ({ current: [] }));
+const accountIdentityJoinQueryFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -215,6 +222,12 @@ vi.mock("postgres", () => ({
       if (/DELETE FROM subnet_hyperparams\b/.test(text)) {
         return Promise.resolve(subnetHyperparamsPruneRows.current);
       }
+      if (/FROM account_identity WHERE account IN/.test(text)) {
+        if (accountIdentityJoinQueryFailure.error) {
+          return Promise.reject(accountIdentityJoinQueryFailure.error);
+        }
+        return Promise.resolve(accountIdentityJoinRows.current);
+      }
       return Promise.resolve(mockRows.current);
     };
     // sql.begin(["read only",] cb) reserves a connection for cb in real
@@ -301,6 +314,8 @@ beforeEach(() => {
   healthUptimeRollupSyncFailure.error = null;
   rpcUsageSyncFailure.error = null;
   featuredValidatorsQueryFailure.error = null;
+  accountIdentityJoinRows.current = [];
+  accountIdentityJoinQueryFailure.error = null;
   mockRows.current = [
     {
       block_number: "123",
@@ -1485,6 +1500,64 @@ test("GET /api/v1/validators falls back to the default sort/limit on invalid val
   expect(body.limit).toBe(20);
 });
 
+const IDENTITY_ROW = {
+  account: "5Cold",
+  name: "Acme Validators",
+  url: "https://acme-validators.io",
+  github: "https://github.com/acme-validators",
+  image: "https://acme-validators.io/logo.png",
+  discord: "acme#1234",
+  description: "Professional validator operator",
+  additional: "Est. 2023",
+  captured_at: "1750000000000",
+};
+
+test("GET /api/v1/validators joins coldkey_identity from account_identity by coldkey (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  accountIdentityJoinRows.current = [IDENTITY_ROW];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].coldkey).toBe("5Cold");
+  expect(body.validators[0].coldkey_identity.has_identity).toBe(true);
+  expect(body.validators[0].coldkey_identity.name).toBe("Acme Validators");
+  expect(queryText()).toMatch(
+    /FROM account_identity WHERE account IN \(\$1::text\)/,
+  );
+  const joinCall = sqlCalls.find((call) =>
+    /FROM account_identity WHERE account IN/.test(call.text),
+  );
+  expect(joinCall.values).toEqual(["5Cold"]);
+});
+
+test("GET /api/v1/validators reports has_identity:false when no account_identity row matches the coldkey (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  accountIdentityJoinRows.current = [];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(body.validators[0].coldkey_identity.has_identity).toBe(false);
+  expect(body.validators[0].coldkey_identity.name).toBe(null);
+});
+
+test("GET /api/v1/validators skips the identity join query when there are no validator rows (#5234)", async () => {
+  mockRows.current = [];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
+});
+
+test("GET /api/v1/validators still serves validators (has_identity:false) when the identity join query fails (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  accountIdentityJoinQueryFailure.error = new Error(
+    'relation "account_identity" does not exist',
+  );
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].coldkey_identity.has_identity).toBe(false);
+});
+
 test("GET /api/v1/validators/:hotkey resolves cross-subnet validator detail", async () => {
   mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
   const res = await req("/api/v1/validators/5Hot");
@@ -1495,6 +1568,44 @@ test("GET /api/v1/validators/:hotkey resolves cross-subnet validator detail", as
   expect(body.subnets[0].netuid).toBe(7);
   expect(queryText()).toMatch(/WHERE hotkey = /);
   expect(queryText()).toMatch(/validator_permit = TRUE/);
+});
+
+test("GET /api/v1/validators/:hotkey joins coldkey_identity for its primary coldkey (#5234)", async () => {
+  mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
+  accountIdentityJoinRows.current = [IDENTITY_ROW];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.coldkey).toBe("5Cold");
+  expect(body.coldkey_identity.has_identity).toBe(true);
+  expect(body.coldkey_identity.description).toBe(
+    "Professional validator operator",
+  );
+});
+
+test("GET /api/v1/validators/:hotkey sends one deduped identity lookup when every subnet row shares the same coldkey (#5234)", async () => {
+  mockRows.current = [
+    { ...NEURON_ROW, netuid: 7 },
+    { ...NEURON_ROW, netuid: 12 },
+  ];
+  accountIdentityJoinRows.current = [IDENTITY_ROW];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.subnet_count).toBe(2);
+  expect(body.coldkey_identity.has_identity).toBe(true);
+  const joinCalls = sqlCalls.filter((call) =>
+    /FROM account_identity WHERE account IN/.test(call.text),
+  );
+  expect(joinCalls.length).toBe(1);
+  expect(joinCalls[0].values).toEqual(["5Cold"]);
+});
+
+test("GET /api/v1/validators/:hotkey for an absent hotkey has coldkey_identity:null (no coldkey to look up) and skips the join query (#5234)", async () => {
+  mockRows.current = [];
+  const res = await req(`/api/v1/validators/${SS58}`);
+  const body = await res.json();
+  expect(body.coldkey).toBe(null);
+  expect(body.coldkey_identity).toBe(null);
+  expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
 });
 
 // #4832 Tier 2: the live-`neurons` routes with no shared D1 loader (the

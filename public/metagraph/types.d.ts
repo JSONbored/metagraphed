@@ -4273,6 +4273,21 @@ export interface components {
         });
         /** @enum {unknown} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
+        /** @description Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data. */
+        ColdkeyIdentity: {
+            additional?: string | null;
+            /** Format: date-time */
+            captured_at?: string | null;
+            description?: string | null;
+            discord?: string | null;
+            github?: string | null;
+            has_identity: boolean;
+            /** Format: uri */
+            image?: string | null;
+            name?: string | null;
+            /** Format: uri */
+            url?: string | null;
+        };
         CompareArtifact: {
             dimensions?: string[];
             observed_at?: string | null;
@@ -4931,6 +4946,8 @@ export interface components {
             avg_validator_trust: number | null;
             coldkey: string | null;
             coldkey_count: number;
+            /** @description The row's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat. */
+            coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
             featured: boolean;
             hotkey: string;
             latest_block_number: number | null;
@@ -7600,6 +7617,8 @@ export interface components {
             captured_at: string | null;
             coldkey: string | null;
             coldkey_count: number;
+            /** @description The validator's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat. */
+            coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
             hotkey: string;
             max_validator_trust: number | null;
             schema_version: number;
@@ -28335,6 +28354,9 @@ export interface operations {
                      *             "avg_validator_trust": 0.5,
                      *             "coldkey": "example",
                      *             "coldkey_count": 1,
+                     *             "coldkey_identity": {
+                     *               "has_identity": false
+                     *             },
                      *             "featured": false,
                      *             "hotkey": "example",
                      *             "latest_block_number": 5000000,
@@ -28467,6 +28489,17 @@ export interface operations {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "coldkey": "example",
                      *         "coldkey_count": 1,
+                     *         "coldkey_identity": {
+                     *           "additional": "example",
+                     *           "captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "description": "Example description.",
+                     *           "discord": "example",
+                     *           "github": "example",
+                     *           "has_identity": false,
+                     *           "image": "https://api.metagraph.sh/example",
+                     *           "name": "Example Subnet",
+                     *           "url": "https://api.metagraph.sh/example"
+                     *         },
                      *         "hotkey": "example",
                      *         "max_validator_trust": 0.5,
                      *         "schema_version": 1,

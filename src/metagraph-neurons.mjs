@@ -5,6 +5,8 @@
 // Pure + exported for tests; the Worker handlers run the D1 or Postgres query
 // and call these builders.
 
+import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.mjs";
+
 // The columns the handlers SELECT for a neuron row.
 export const NEURON_COLUMNS =
   "uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, " +
@@ -250,7 +252,28 @@ function primaryColdkey(coldkeys) {
   return ranked[0]?.[0] ?? null;
 }
 
-function buildGlobalValidatorEntry(entry) {
+// The coldkey's own self-declared identity (#5234), joined by `coldkey` --
+// NOT the hotkey's. `identityByColdkey` is a coldkey -> account_identity row
+// Map built by the caller (empty by default, so every existing D1 call site
+// below that never passes one gets a stable "no identity" shape rather than
+// an omitted field). Reuses buildAccountIdentity's own has_identity/sanitize
+// logic and IDENTITY_FIELDS's field list (single source of truth with the
+// /accounts/{ss58}/identity artifact) rather than re-deriving it, dropping
+// only that artifact's own schema_version/account (redundant here -- the
+// caller already knows which coldkey this is).
+function coldkeyIdentity(coldkey, identityByColdkey) {
+  if (!coldkey) return null;
+  const full = buildAccountIdentity(
+    identityByColdkey.get(coldkey) ?? null,
+    coldkey,
+  );
+  const identity = { has_identity: full.has_identity };
+  for (const field of IDENTITY_FIELDS) identity[field] = full[field];
+  identity.captured_at = full.captured_at;
+  return identity;
+}
+
+function buildGlobalValidatorEntry(entry, identityByColdkey) {
   const avgTrust =
     entry.validatorTrustCount > 0
       ? entry.validatorTrustTotal / entry.validatorTrustCount
@@ -264,10 +287,12 @@ function buildGlobalValidatorEntry(entry) {
         a.uid - b.uid,
     )
     .slice(0, GLOBAL_VALIDATOR_SUBNET_LIMIT);
+  const coldkey = primaryColdkey(entry.coldkeys);
   return {
     hotkey: entry.hotkey,
     featured: entry.featured === true,
-    coldkey: primaryColdkey(entry.coldkeys),
+    coldkey,
+    coldkey_identity: coldkeyIdentity(coldkey, identityByColdkey),
     coldkey_count: entry.coldkeys.size,
     subnet_count: entry.netuids.size,
     uid_count: entry.uidCount,
@@ -310,6 +335,7 @@ export function buildGlobalValidators(
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
     featuredHotkeys = new Set(),
+    identityByColdkey = new Map(),
   } = {},
 ) {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -417,7 +443,12 @@ export function buildGlobalValidators(
   }
 
   const validators = applyStakeDominance(
-    [...validatorsByHotkey.values()].map(buildGlobalValidatorEntry),
+    // Wrapped (not a bare `.map(buildGlobalValidatorEntry)`) so Array#map's
+    // index arg never lands in buildGlobalValidatorEntry's identityByColdkey
+    // parameter -- same landmine formatNeuron's own header comment documents.
+    [...validatorsByHotkey.values()].map((entry) =>
+      buildGlobalValidatorEntry(entry, identityByColdkey),
+    ),
   ).sort(
     (a, b) =>
       validatorSortValue(b, normalizedSort) -
@@ -513,6 +544,12 @@ export async function loadSubnetValidators(d1, netuid) {
   return buildSubnetValidators(rows, netuid);
 }
 
+// No identityByColdkey passed here (#5234): account_identity's D1 write path
+// is retired -- Postgres is the only actively-written copy -- so this D1
+// fallback deliberately serves a stable coldkey_identity:{has_identity:false,
+// ...} shape rather than joining a frozen/stale D1 copy. The live route
+// (workers/data-api.mjs's /api/v1/validators, Postgres-backed) is what
+// actually joins.
 export async function loadGlobalValidators(
   d1,
   {
@@ -546,7 +583,11 @@ export async function loadNeuron(d1, netuid, uid) {
 // full per-subnet Neuron detail (not the leaderboard's 5-field/top-10-capped
 // GlobalValidatorSubnet slice) since a detail page's whole point is the full
 // per-subnet performance table.
-export function buildValidatorDetail(rows, hotkey) {
+export function buildValidatorDetail(
+  rows,
+  hotkey,
+  { identityByColdkey = new Map() } = {},
+) {
   const coldkeys = new Map();
   let stakeTotalRao = 0n;
   let emissionTotalRao = 0n;
@@ -604,11 +645,13 @@ export function buildValidatorDetail(rows, hotkey) {
   const avgTrust =
     validatorTrustCount > 0 ? validatorTrustTotal / validatorTrustCount : null;
   subnets.sort((a, b) => a.netuid - b.netuid || a.uid - b.uid);
+  const coldkey = primaryColdkey(coldkeys);
 
   return {
     schema_version: 1,
     hotkey,
-    coldkey: primaryColdkey(coldkeys),
+    coldkey,
+    coldkey_identity: coldkeyIdentity(coldkey, identityByColdkey),
     coldkey_count: coldkeys.size,
     subnet_count: subnets.length,
     take: round(take),
@@ -622,6 +665,7 @@ export function buildValidatorDetail(rows, hotkey) {
   };
 }
 
+// No identityByColdkey passed here either -- see loadGlobalValidators' comment.
 export async function loadValidatorDetail(d1, hotkey) {
   const rows = await d1(
     `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,

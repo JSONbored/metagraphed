@@ -2321,6 +2321,43 @@ async function loadFeaturedHotkeys(sql) {
   }
 }
 
+// account_identity rows keyed by coldkey, for the /api/v1/validators and
+// /api/v1/validators/:hotkey identity join (#5234). Same sql.savepoint
+// resilience as loadFeaturedHotkeys just above (enrichment data; its own
+// failure must never sink the primary validator response) and the same
+// scalar-positional-bind sql.unsafe shape as the /api/v1/internal/
+// compare-health route's coldkeys IN (...) query above -- this Worker's
+// Hyperdrive fetch_types:false setting breaks postgres.js's automatic
+// ARRAY-literal serialization for a bound JS array (ANY($1)), so every IN
+// clause here builds its own scalar placeholder list instead.
+async function loadAccountIdentitiesByColdkey(sql, coldkeys) {
+  if (coldkeys.length === 0) return new Map();
+  try {
+    const placeholders = coldkeys.map((_, i) => `$${i + 1}::text`).join(", ");
+    const rows = await sql.savepoint((sql) =>
+      sql.unsafe(
+        `SELECT ${ACCOUNT_IDENTITY_INSERT_COLUMNS.join(", ")}
+         FROM account_identity WHERE account IN (${placeholders})`,
+        coldkeys,
+      ),
+    );
+    return new Map(rows.map((row) => [row.account, row]));
+  } catch (err) {
+    console.error("account_identity join query failed:", err);
+    return new Map();
+  }
+}
+
+// Distinct, order-stable, non-empty coldkeys from a validators/validator-detail
+// result set -- the input to loadAccountIdentitiesByColdkey above.
+function distinctColdkeys(rows) {
+  const seen = new Set();
+  for (const row of rows) {
+    if (row?.coldkey?.length > 0) seen.add(row.coldkey);
+  }
+  return [...seen];
+}
+
 function clampLimit(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
@@ -5719,8 +5756,19 @@ export default {
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
             loadFeaturedHotkeys(sql),
           ]);
+          // Identity join (#5234): needs `rows` resolved first to know which
+          // coldkeys to look up, so it can't join the Promise.all above.
+          const identityByColdkey = await loadAccountIdentitiesByColdkey(
+            sql,
+            distinctColdkeys(rows),
+          );
           return json(
-            buildGlobalValidators(rows, { sort, limit, featuredHotkeys }),
+            buildGlobalValidators(rows, {
+              sort,
+              limit,
+              featuredHotkeys,
+              identityByColdkey,
+            }),
           );
         }
 
@@ -5735,7 +5783,14 @@ export default {
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`;
-          return json(buildValidatorDetail(rows, hotkey));
+          // Identity join (#5234): see the /api/v1/validators comment above.
+          const identityByColdkey = await loadAccountIdentitiesByColdkey(
+            sql,
+            distinctColdkeys(rows),
+          );
+          return json(
+            buildValidatorDetail(rows, hotkey, { identityByColdkey }),
+          );
         }
 
         // GET /api/v1/subnets/:netuid/concentration (#4832 Tier 2): stake &

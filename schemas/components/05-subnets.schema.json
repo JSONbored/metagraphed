@@ -1992,6 +1992,23 @@
           "validator_trust": { "type": ["number", "null"] }
         }
       },
+      "ColdkeyIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data.",
+        "required": ["has_identity"],
+        "properties": {
+          "has_identity": { "type": "boolean" },
+          "name": { "type": ["string", "null"] },
+          "url": { "type": ["string", "null"], "format": "uri" },
+          "github": { "type": ["string", "null"] },
+          "image": { "type": ["string", "null"], "format": "uri" },
+          "discord": { "type": ["string", "null"], "maxLength": 200 },
+          "description": { "type": ["string", "null"] },
+          "additional": { "type": ["string", "null"] },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "GlobalValidatorEntry": {
         "type": "object",
         "additionalProperties": false,
@@ -2000,6 +2017,7 @@
           "hotkey",
           "featured",
           "coldkey",
+          "coldkey_identity",
           "coldkey_count",
           "subnet_count",
           "uid_count",
@@ -2017,6 +2035,13 @@
           "hotkey": { "type": "string" },
           "featured": { "type": "boolean" },
           "coldkey": { "type": ["string", "null"] },
+          "coldkey_identity": {
+            "description": "The row's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat.",
+            "oneOf": [
+              { "$ref": "#/components/schemas/ColdkeyIdentity" },
+              { "type": "null" }
+            ]
+          },
           "coldkey_count": { "type": "integer", "minimum": 0 },
           "subnet_count": { "type": "integer", "minimum": 0 },
           "uid_count": { "type": "integer", "minimum": 0 },
@@ -2217,6 +2242,7 @@
           "schema_version",
           "hotkey",
           "coldkey",
+          "coldkey_identity",
           "coldkey_count",
           "subnet_count",
           "take",
@@ -2232,6 +2258,13 @@
           "schema_version": { "type": "integer" },
           "hotkey": { "type": "string" },
           "coldkey": { "type": ["string", "null"] },
+          "coldkey_identity": {
+            "description": "The validator's primary `coldkey`'s self-declared identity, joined server-side from account_identity; null only when `coldkey` is null. See ColdkeyIdentity for the hotkey/coldkey caveat.",
+            "oneOf": [
+              { "$ref": "#/components/schemas/ColdkeyIdentity" },
+              { "type": "null" }
+            ]
+          },
           "coldkey_count": { "type": "integer", "minimum": 0 },
           "subnet_count": { "type": "integer", "minimum": 0 },
           "take": {
