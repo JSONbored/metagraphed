@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { repoRoot } from "./lib.mjs";
 
 const targetRoots = [
@@ -404,84 +405,96 @@ async function* walk(target) {
   }
 }
 
-for (const root of targetRoots) {
-  for await (const filePath of walk(root)) {
-    const relative = path.relative(repoRoot, filePath);
-    if (isBinaryOrIgnored(relative)) {
-      continue;
-    }
-    let content;
-    try {
-      content = await fs.readFile(filePath, "utf8");
-    } catch (err) {
-      // A file that existed when walk() listed its directory can vanish
-      // before this read (e.g. a concurrent rebuild replacing the tree it's
-      // walking) -- that's nothing to scan, not a scan failure, so skip it
-      // rather than crashing the whole run on an ENOENT race. Any other
-      // error (permissions, etc.) is a real problem and still propagates.
-      if (err.code === "ENOENT") {
+// Guarded behind the CLI-entrypoint check below so importing this module (as
+// tests/public-safety.test.mjs does, to exercise it in-process) never
+// side-effects a live repo-wide scan + process.exit -- that previously made
+// the import's outcome depend on whatever transient state happened to be on
+// disk the first time any test in the run imported this module.
+async function runScan() {
+  findings.length = 0;
+  for (const root of targetRoots) {
+    for await (const filePath of walk(root)) {
+      const relative = path.relative(repoRoot, filePath);
+      if (isBinaryOrIgnored(relative)) {
         continue;
       }
-      throw err;
-    }
-    const lines = content.split(/\r?\n/);
-    const skipSoft =
-      isMirroredExternalSpec(relative) ||
-      isSelfReferential(relative) ||
-      isProseHeavy(relative);
+      let content;
+      try {
+        content = await fs.readFile(filePath, "utf8");
+      } catch (err) {
+        // A file that existed when walk() listed its directory can vanish
+        // before this read (e.g. a concurrent rebuild replacing the tree it's
+        // walking) -- that's nothing to scan, not a scan failure, so skip it
+        // rather than crashing the whole run on an ENOENT race. Any other
+        // error (permissions, etc.) is a real problem and still propagates.
+        if (err.code === "ENOENT") {
+          continue;
+        }
+        throw err;
+      }
+      const lines = content.split(/\r?\n/);
+      const skipSoft =
+        isMirroredExternalSpec(relative) ||
+        isSelfReferential(relative) ||
+        isProseHeavy(relative);
 
-    if (isMirroredExternalFixture(relative)) {
-      scanCapturedFixtureBody(relative, content);
-    }
+      if (isMirroredExternalFixture(relative)) {
+        scanCapturedFixtureBody(relative, content);
+      }
 
-    for (const [index, line] of lines.entries()) {
-      for (const pattern of patterns) {
-        if (pattern.soft && skipSoft) {
-          continue;
-        }
-        if (
-          pattern.name === "private or loopback URL" &&
-          isUnsafeUrlRejectionFixture(relative)
-        ) {
-          continue;
-        }
-        // "local absolute path"'s own regex source literally contains the
-        // /Users/ and /home/ substrings it's written to detect, and this
-        // file's comments explain the "private or loopback URL" and
-        // "internal box or container identifier" rules using literal example
-        // URLs/identifiers of the exact shape those rules match -- same
-        // self-referential class as the soft patterns above, but these are
-        // hard patterns, so they need an explicit skip here rather than
-        // folding into skipSoft.
-        if (
-          isSelfReferential(relative) &&
-          (pattern.name === "local absolute path" ||
-            pattern.name === "private or loopback URL" ||
-            pattern.name === "internal box or container identifier")
-        ) {
-          continue;
-        }
-        // Strip allowlisted spans (e.g. the documented local subtensor RPC
-        // endpoint) before testing, so a real leak elsewhere on the same line
-        // is still caught.
-        const probe = pattern.allow ? line.replace(pattern.allow, "") : line;
-        if (pattern.regex.test(probe)) {
-          findings.push(`${relative}:${index + 1}: ${pattern.name}`);
+      for (const [index, line] of lines.entries()) {
+        for (const pattern of patterns) {
+          if (pattern.soft && skipSoft) {
+            continue;
+          }
+          if (
+            pattern.name === "private or loopback URL" &&
+            isUnsafeUrlRejectionFixture(relative)
+          ) {
+            continue;
+          }
+          // "local absolute path"'s own regex source literally contains the
+          // /Users/ and /home/ substrings it's written to detect, and this
+          // file's comments explain the "private or loopback URL" and
+          // "internal box or container identifier" rules using literal example
+          // URLs/identifiers of the exact shape those rules match -- same
+          // self-referential class as the soft patterns above, but these are
+          // hard patterns, so they need an explicit skip here rather than
+          // folding into skipSoft.
+          if (
+            isSelfReferential(relative) &&
+            (pattern.name === "local absolute path" ||
+              pattern.name === "private or loopback URL" ||
+              pattern.name === "internal box or container identifier")
+          ) {
+            continue;
+          }
+          // Strip allowlisted spans (e.g. the documented local subtensor RPC
+          // endpoint) before testing, so a real leak elsewhere on the same line
+          // is still caught.
+          const probe = pattern.allow ? line.replace(pattern.allow, "") : line;
+          if (pattern.regex.test(probe)) {
+            findings.push(`${relative}:${index + 1}: ${pattern.name}`);
+          }
         }
       }
     }
   }
-}
 
-if (findings.length > 0) {
-  console.error(`Public-safety scan found ${findings.length} issue(s):`);
-  for (const finding of findings) {
-    console.error(`- ${finding}`);
+  if (findings.length > 0) {
+    console.error(`Public-safety scan found ${findings.length} issue(s):`);
+    for (const finding of findings) {
+      console.error(`- ${finding}`);
+    }
+    process.exit(1);
   }
-  process.exit(1);
+
+  console.log("Public-safety scan passed.");
 }
 
-console.log("Public-safety scan passed.");
+if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
+  await runScan();
+}
 
 function scanCapturedFixtureBody(relativePath, content) {
   let fixture;
