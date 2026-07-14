@@ -117,6 +117,31 @@
         "confidence": "medium"
       },
       "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official SN98-ForeverMoney/forever-money repository as min_compute.yml. Documents baseline CPU, memory, storage, and network bandwidth requirements for SN98 ForeverMoney miners and validators."
+    },
+    {
+      "id": "sn-98-forevermoney-liquidity-manager-abi",
+      "name": "ForeverMoney LiquidityManager contract ABI",
+      "kind": "data-artifact",
+      "url": "https://raw.githubusercontent.com/SN98-ForeverMoney/forever-money/7acfc5422a4e1714670275bf8dc2b32c1f815756/validator/utils/abis/LiquidityManager.json",
+      "provider": "forevermoney",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/SN98-ForeverMoney/forever-money/blob/7acfc5422a4e1714670275bf8dc2b32c1f815756/validator/utils/abis/LiquidityManager.json",
+        "https://github.com/SN98-ForeverMoney/forever-money"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "notes": "Public no-auth machine-readable JSON ABI for the on-chain LiquidityManager smart contract loaded by the SN98 ForeverMoney validator, committed in the official SN98-ForeverMoney/forever-money repository at validator/utils/abis/LiquidityManager.json. Describes the constructor, functions, and events of the core liquidity-management contract the subnet's validator interacts with. Pinned to an immutable commit. Distinct from the min_compute hardware spec already registered."
     }
   ],
   "social": {
