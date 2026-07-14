@@ -110,6 +110,25 @@
         "https://github.com/shiftlayer-llc/brainplay-subnet/blob/main/deploy/miner.py"
       ],
       "url": "https://raw.githubusercontent.com/shiftlayer-llc/brainplay-subnet/main/deploy/profiles/codenames.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-117-brainplay-leaderboard-dashboard",
+      "kind": "dashboard",
+      "name": "BrainPlay leaderboard dashboard",
+      "notes": "Public no-auth web dashboard at play.shiftlayer.ai/leaderboard — the SN117 BrainPlay competition leaderboard (server-rendered ranked table of players with ELO ratings; page title \"BrainPlay Leaderboard\"). Served on the same play.shiftlayer.ai host as the subnet's registered public app (website) and /api/health API surfaces. Human-viewable dashboard page, distinct in kind and path from the JSON health endpoint.",
+      "provider": "shiftlayer",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "lourincedaging0-commits"
+      },
+      "source_urls": [
+        "https://github.com/shiftlayer-llc/brainplay-subnet",
+        "https://play.shiftlayer.ai/leaderboard"
+      ],
+      "url": "https://play.shiftlayer.ai/leaderboard"
     }
   ]
 }
