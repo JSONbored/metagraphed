@@ -5365,6 +5365,7 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     uid_count: coerceFiniteNumber(raw.uid_count) ?? 0,
     total_stake_tao: coerceFiniteNumber(raw.total_stake_tao) ?? 0,
     total_emission_tao: coerceFiniteNumber(raw.total_emission_tao) ?? 0,
+    nominator_count: nullableNum(raw.nominator_count),
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),
     stake_dominance: nullableNum(raw.stake_dominance),

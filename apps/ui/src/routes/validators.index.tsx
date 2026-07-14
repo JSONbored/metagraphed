@@ -167,6 +167,7 @@ function ValidatorsTable({
                 <th className={TH}>Coldkey</th>
                 <th className={`${TH} text-right`}>Active subnets</th>
                 <th className={`${TH} text-right`}>UIDs</th>
+                <th className={`${TH} text-right`}>Nominators</th>
                 <th className={`${TH} text-right`}>Dominance</th>
                 <th className={`${TH} text-right`}>Total stake</th>
                 <th className={`${TH} text-right`}>Total emission</th>
@@ -207,6 +208,9 @@ function ValidatorsTable({
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                     {formatNumber(v.uid_count)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    {v.nominator_count != null ? formatNumber(v.nominator_count) : "—"}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
                     {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}

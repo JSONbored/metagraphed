@@ -22,6 +22,10 @@ const METRICS: Array<{ term: string; def: string }> = [
     def: "The total neuron slots the hotkey holds across those subnets — one registration is one UID.",
   },
   {
+    term: "Nominators",
+    def: "How many distinct coldkeys currently have stake delegated to this hotkey, network-wide (#2549). Sourced from a lower-frequency chain scan than the other columns, so it can lag them briefly — a dash means no count has been captured for this hotkey yet, not zero nominators.",
+  },
+  {
     term: "Dominance",
     def: "The validator's share of total network stake, as a percentage. Higher dominance means more influence over consensus and emission — and more of that influence concentrated in one operator.",
   },
@@ -40,7 +44,7 @@ const METRICS: Array<{ term: string; def: string }> = [
 ];
 
 const GUIDANCE =
-  "Read these signals together, not in isolation — a large validator concentrates stake and influence, while a smaller one spreads it. Commission and nominator counts (coming in #2548/#2549) will add to this picture. This directory describes the on-chain data; it does not rank or recommend any validator.";
+  "Read these signals together, not in isolation — a large validator concentrates stake and influence, while a smaller one spreads it. This directory describes the on-chain data; it does not rank or recommend any validator.";
 
 const HEADING = "How to evaluate a validator";
 const SUBHEADING = "What each column means and how to read them together";

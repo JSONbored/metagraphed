@@ -4973,6 +4973,8 @@ export interface components {
             /** Format: date-time */
             latest_captured_at: string | null;
             max_validator_trust: number | null;
+            /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
+            nominator_count: number | null;
             /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
             root_stake_tao: number;
             stake_dominance: number | null;
@@ -7661,6 +7663,8 @@ export interface components {
             coldkey_identity: components["schemas"]["ColdkeyIdentity"] | null;
             hotkey: string;
             max_validator_trust: number | null;
+            /** @description Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0. */
+            nominator_count: number | null;
             /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
             root_stake_tao: number;
             schema_version: number;
@@ -28520,6 +28524,7 @@ export interface operations {
                      *             "latest_block_number": 5000000,
                      *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
                      *             "max_validator_trust": 0.5,
+                     *             "nominator_count": 1,
                      *             "root_stake_tao": 0.5,
                      *             "stake_dominance": 0.5,
                      *             "subnet_count": 1,
@@ -28662,6 +28667,7 @@ export interface operations {
                      *         },
                      *         "hotkey": "example",
                      *         "max_validator_trust": 0.5,
+                     *         "nominator_count": 1,
                      *         "root_stake_tao": 0.5,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,

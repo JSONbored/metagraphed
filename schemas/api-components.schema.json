@@ -9759,6 +9759,14 @@
               "null"
             ]
           },
+          "nominator_count": {
+            "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0.",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "root_stake_tao": {
             "description": "Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao.",
             "minimum": 0,
@@ -9816,6 +9824,7 @@
           "root_stake_tao",
           "alpha_stake_tao",
           "total_emission_tao",
+          "nominator_count",
           "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
@@ -20940,6 +20949,14 @@
               "null"
             ]
           },
+          "nominator_count": {
+            "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0.",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "root_stake_tao": {
             "description": "Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao.",
             "minimum": 0,
@@ -20986,6 +21003,7 @@
           "root_stake_tao",
           "alpha_stake_tao",
           "total_emission_tao",
+          "nominator_count",
           "avg_validator_trust",
           "max_validator_trust",
           "captured_at",

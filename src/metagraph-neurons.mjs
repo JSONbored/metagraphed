@@ -273,7 +273,11 @@ function coldkeyIdentity(coldkey, identityByColdkey) {
   return identity;
 }
 
-function buildGlobalValidatorEntry(entry, identityByColdkey) {
+function buildGlobalValidatorEntry(
+  entry,
+  identityByColdkey,
+  nominatorCounts = new Map(),
+) {
   const avgTrust =
     entry.validatorTrustCount > 0
       ? entry.validatorTrustTotal / entry.validatorTrustCount
@@ -311,6 +315,12 @@ function buildGlobalValidatorEntry(entry, identityByColdkey) {
     root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
     alpha_stake_tao: roundTao(raoBigToTao(alphaStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
+    // #2549: from the separate validator_nominator_counts side table, joined
+    // by hotkey. Null when that table has no row for this hotkey yet (cold
+    // table, or a hotkey the last low-frequency scan hasn't covered) --
+    // never fabricated as 0, which would misreport "confirmed zero
+    // nominators" as opposed to "unknown."
+    nominator_count: nominatorCounts.get(entry.hotkey) ?? null,
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
     latest_captured_at: toIso(entry.latestCapturedAt),
@@ -348,6 +358,12 @@ export function buildGlobalValidators(
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
     featuredHotkeys = new Set(),
     identityByColdkey = new Map(),
+    // hotkey -> nominator_count (#2549), sourced from the separate
+    // validator_nominator_counts side table -- see that migration's own
+    // comment for why this can't be a neurons-tier column. A cold/absent
+    // map (e.g. the D1-retired fallback below, which never has one) leaves
+    // every entry's nominator_count null, never throws.
+    nominatorCounts = new Map(),
   } = {},
 ) {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -459,7 +475,7 @@ export function buildGlobalValidators(
     // index arg never lands in buildGlobalValidatorEntry's identityByColdkey
     // parameter -- same landmine formatNeuron's own header comment documents.
     [...validatorsByHotkey.values()].map((entry) =>
-      buildGlobalValidatorEntry(entry, identityByColdkey),
+      buildGlobalValidatorEntry(entry, identityByColdkey, nominatorCounts),
     ),
   ).sort(
     (a, b) =>
@@ -598,7 +614,14 @@ export async function loadNeuron(d1, netuid, uid) {
 export function buildValidatorDetail(
   rows,
   hotkey,
-  { identityByColdkey = new Map() } = {},
+  {
+    identityByColdkey = new Map(),
+    // #2549: from the separate validator_nominator_counts side table (looked
+    // up by the caller, since this function has no DB access of its own).
+    // Null when that table has no row for this hotkey yet -- never fabricated
+    // as 0.
+    nominatorCount = null,
+  } = {},
 ) {
   const coldkeys = new Map();
   let stakeTotalRao = 0n;
@@ -678,6 +701,7 @@ export function buildValidatorDetail(
     root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
     alpha_stake_tao: roundTao(raoBigToTao(stakeTotalRao - rootStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
+    nominator_count: nominatorCount,
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(maxValidatorTrust),
     captured_at: toIso(latestCapturedAt),

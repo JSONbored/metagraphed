@@ -917,6 +917,19 @@ async function handleAccountIdentitySyncProxy(request, env) {
   });
 }
 
+// Proxies POST /api/v1/internal/validator-nominator-counts-sync -- the write
+// path into validator_nominator_counts (#2549). Same DATA_API service
+// binding as the other internal sync routes above.
+async function handleValidatorNominatorCountsSyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "validator_nominator_counts_sync_unavailable",
+    notBoundMessage:
+      "The validator-nominator-counts sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The validator-nominator-counts sync tier returned an unreadable response.",
+  });
+}
+
 // GET /api/v1/chain/stream (#4982, ADR 0015) -- the public realtime firehose
 // transport. SSE by default; a WebSocket Upgrade header on this same path
 // gets the WS transport instead. No auth: this is the same public read-only
@@ -1129,6 +1142,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // this the same way. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/account-identity-sync") {
     return handleAccountIdentitySyncProxy(request, env);
+  }
+  // The write path into validator_nominator_counts (#2549) --
+  // refresh-validator-nominator-counts's own low-frequency cron calls this,
+  // decoupled from refresh-metagraph.yml (see migrations/0043's own comment
+  // for why). Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/validator-nominator-counts-sync") {
+    return handleValidatorNominatorCountsSyncProxy(request, env);
   }
   // The write path the #4981 box-side relay POSTs #4980's NOTIFY payloads to
   // (#4982, ADR 0015) -- forwards into ChainFirehoseHub after its own

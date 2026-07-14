@@ -1991,6 +1991,8 @@ export interface GlobalValidator {
   uid_count: number;
   total_stake_tao: number;
   total_emission_tao: number;
+  /** Distinct coldkeys currently staking to this hotkey, network-wide (#2549). Null when the low-frequency source table has no row for this hotkey yet. */
+  nominator_count: number | null;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;
   stake_dominance: number | null;

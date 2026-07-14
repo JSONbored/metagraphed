@@ -2026,6 +2026,7 @@
           "root_stake_tao",
           "alpha_stake_tao",
           "total_emission_tao",
+          "nominator_count",
           "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
@@ -2063,6 +2064,11 @@
             "description": "total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao."
           },
           "total_emission_tao": { "type": "number", "minimum": 0 },
+          "nominator_count": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan (see validator_nominator_counts) than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0."
+          },
           "stake_dominance": {
             "type": ["number", "null"],
             "minimum": 0,
@@ -2262,6 +2268,7 @@
           "root_stake_tao",
           "alpha_stake_tao",
           "total_emission_tao",
+          "nominator_count",
           "avg_validator_trust",
           "max_validator_trust",
           "captured_at",
@@ -2297,6 +2304,11 @@
             "description": "total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao."
           },
           "total_emission_tao": { "type": "number", "minimum": 0 },
+          "nominator_count": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Distinct coldkeys currently holding a nonzero stake position on this hotkey, network-wide, across every subnet (#2549). Sourced from a separate, lower-frequency full-chain scan than the rest of this artifact -- null when that table has no row for this hotkey yet, never fabricated as 0."
+          },
           "avg_validator_trust": { "type": ["number", "null"] },
           "max_validator_trust": { "type": ["number", "null"] },
           "captured_at": { "type": ["string", "null"], "format": "date-time" },

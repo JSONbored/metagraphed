@@ -59,6 +59,12 @@ const subnetHyperparamsLatestHashes = vi.hoisted(() => ({ current: [] }));
 // has no purge step (see handleAccountIdentitySync's own header comment).
 const accountIdentitySyncFailure = vi.hoisted(() => ({ error: null }));
 const accountIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
+// State for the validator-nominator-counts-sync write route's tests only
+// (#2549). No prune/history hooks -- a single latest-only upsert, like
+// health-checks-sync below, not a diff-and-append table.
+const validatorNominatorCountsSyncFailure = vi.hoisted(() => ({
+  error: null,
+}));
 // State for the subnet-identity-sync write route's tests only (#4832
 // gap-closure). No prune-rows hook -- like account_identity, this table has
 // no purge step. Its "latest hash per netuid" query shares subnet_hyperparams'
@@ -86,6 +92,14 @@ const featuredValidatorsQueryFailure = vi.hoisted(() => ({ error: null }));
 // shifts any existing validators test's mockQueue-ordering assumptions.
 const accountIdentityJoinRows = vi.hoisted(() => ({ current: [] }));
 const accountIdentityJoinQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the validator_nominator_counts READ (#2549) tests only -- same
+// isolation purpose as featuredValidatorsQueryFailure above, but for the
+// SELECT loadValidatorNominatorCounts issues (distinct from
+// validatorNominatorCountsSyncFailure, which only matches the sync route's
+// own INSERT).
+const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
+  error: null,
+}));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -155,6 +169,12 @@ vi.mock("postgres", () => ({
         return Promise.reject(accountIdentitySyncFailure.error);
       }
       if (
+        validatorNominatorCountsSyncFailure.error &&
+        /INSERT INTO validator_nominator_counts\b/.test(text)
+      ) {
+        return Promise.reject(validatorNominatorCountsSyncFailure.error);
+      }
+      if (
         subnetSnapshotSyncFailure.error &&
         /INSERT INTO subnet_snapshots\b/.test(text)
       ) {
@@ -183,6 +203,12 @@ vi.mock("postgres", () => ({
         /FROM featured_validators\b/.test(text)
       ) {
         return Promise.reject(featuredValidatorsQueryFailure.error);
+      }
+      if (
+        validatorNominatorCountsQueryFailure.error &&
+        /FROM validator_nominator_counts\b/.test(text)
+      ) {
+        return Promise.reject(validatorNominatorCountsQueryFailure.error);
       }
       if (
         healthUptimeRollupSyncFailure.error &&
@@ -273,6 +299,8 @@ const NEURON_DAILY_BACKFILL_SECRET = "test-neuron-daily-backfill-secret";
 const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
 const SUBNET_HYPERPARAMS_SYNC_SECRET = "test-subnet-hyperparams-sync-secret";
 const ACCOUNT_IDENTITY_SYNC_SECRET = "test-account-identity-sync-secret";
+const VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET =
+  "test-validator-nominator-counts-sync-secret";
 const SUBNET_IDENTITY_SYNC_SECRET = "test-subnet-identity-sync-secret";
 const HEALTH_CHECKS_SYNC_SECRET = "test-health-checks-sync-secret";
 const SUBNET_SNAPSHOT_SYNC_SECRET = "test-subnet-snapshot-sync-secret";
@@ -284,6 +312,7 @@ const env = {
   ROLLUP_SYNC_SECRET,
   SUBNET_HYPERPARAMS_SYNC_SECRET,
   ACCOUNT_IDENTITY_SYNC_SECRET,
+  VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
   SUBNET_IDENTITY_SYNC_SECRET,
   HEALTH_CHECKS_SYNC_SECRET,
   SUBNET_SNAPSHOT_SYNC_SECRET,
@@ -307,6 +336,8 @@ beforeEach(() => {
   subnetHyperparamsLatestHashes.current = [];
   accountIdentitySyncFailure.error = null;
   accountIdentityLatestHashes.current = [];
+  validatorNominatorCountsSyncFailure.error = null;
+  validatorNominatorCountsQueryFailure.error = null;
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
   healthChecksSyncFailure.error = null;
@@ -1615,6 +1646,73 @@ test("GET /api/v1/validators/:hotkey for an absent hotkey has coldkey_identity:n
   expect(body.coldkey).toBe(null);
   expect(body.coldkey_identity).toBe(null);
   expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
+});
+
+test("GET /api/v1/validators joins nominator_count by hotkey from validator_nominator_counts (#2549)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        netuid: 1,
+        uid: 0,
+        hotkey: "hk-a",
+        coldkey: "ck-a",
+        validator_trust: "0.5",
+        emission_tao: "1",
+        stake_tao: "100",
+        block_number: "10",
+        captured_at: "1780000000000",
+      },
+      {
+        netuid: 2,
+        uid: 0,
+        hotkey: "hk-b",
+        coldkey: "ck-b",
+        validator_trust: "0.9",
+        emission_tao: "5",
+        stake_tao: "9000",
+        block_number: "10",
+        captured_at: "1780000000000",
+      },
+    ],
+    [], // loadFeaturedHotkeys
+    [{ hotkey: "hk-a", nominator_count: 17 }],
+  ];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(queryText()).toMatch(/FROM validator_nominator_counts/);
+  const byHotkey = Object.fromEntries(
+    body.validators.map((v) => [v.hotkey, v.nominator_count]),
+  );
+  expect(byHotkey["hk-a"]).toBe(17);
+  expect(byHotkey["hk-b"]).toBe(null);
+});
+
+test("GET /api/v1/validators still serves the primary rows when the validator_nominator_counts read fails", async () => {
+  validatorNominatorCountsQueryFailure.error = new Error(
+    'relation "validator_nominator_counts" does not exist',
+  );
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, netuid: 7, hotkey: "5Hot" }],
+    [], // loadFeaturedHotkeys
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validators[0].hotkey).toBe("5Hot");
+  expect(body.validators[0].nominator_count).toBe(null);
+});
+
+test("GET /api/v1/validators/:hotkey joins nominator_count from validator_nominator_counts (#2549)", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [{ ...NEURON_ROW, hotkey: "5Hot", netuid: 7 }],
+    [{ hotkey: "5Hot", nominator_count: 9 }],
+  ];
+  const res = await req("/api/v1/validators/5Hot");
+  const body = await res.json();
+  expect(body.nominator_count).toBe(9);
 });
 
 // #4832 Tier 2: the live-`neurons` routes with no shared D1 loader (the
@@ -4012,6 +4110,203 @@ test("account-identity-sync maps a DB failure to a clean 502 instead of throwing
   const res = await postAccountIdentity([accountIdentitySyncRow()], {
     secret: ACCOUNT_IDENTITY_SYNC_SECRET,
   });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+// #2549: POST /api/v1/internal/validator-nominator-counts-sync -- the write
+// path into validator_nominator_counts (see workers/data-api.mjs's
+// handleValidatorNominatorCountsSync). Simpler than account-identity-sync
+// above: latest-only upsert, no history/hash-diff table.
+function validatorNominatorCountRow(overrides = {}) {
+  return {
+    hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    nominator_count: 42,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postValidatorNominatorCounts(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined)
+    headers["x-validator-nominator-counts-sync-token"] = secret;
+  return req("/api/v1/internal/validator-nominator-counts-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("validator-nominator-counts-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow()],
+    { secret: "wrong" },
+  );
+  expect(wrong.status).toBe(401);
+  const missing = await postValidatorNominatorCounts([
+    validatorNominatorCountRow(),
+  ]);
+  expect(missing.status).toBe(401);
+});
+
+test("validator-nominator-counts-sync is disabled (503) when VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/validator-nominator-counts-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-validator-nominator-counts-sync-token":
+          VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+      },
+      body: JSON.stringify([validatorNominatorCountRow()]),
+    }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("validator-nominator-counts-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/validator-nominator-counts-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-validator-nominator-counts-sync-token":
+          VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+      },
+      body: JSON.stringify([validatorNominatorCountRow()]),
+    }),
+    { VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("validator-nominator-counts-sync rejects a body over the byte cap (413)", async () => {
+  const res = await postValidatorNominatorCounts(null, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+    raw: "[" + "1".repeat(100_000_001) + "]",
+  });
+  expect(res.status).toBe(413);
+});
+
+test("validator-nominator-counts-sync rejects malformed JSON (400)", async () => {
+  const res = await postValidatorNominatorCounts(null, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a body that isn't an array or {rows:[...]} (400)", async () => {
+  const res = await postValidatorNominatorCounts(
+    { not: "an array" },
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync accepts the {rows:[...]} wrapped form, not just a bare array", async () => {
+  const res = await postValidatorNominatorCounts(
+    { rows: [validatorNominatorCountRow()] },
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validator_nominator_counts_written).toBe(1);
+});
+
+test("validator-nominator-counts-sync rejects more than the row cap (413)", async () => {
+  // MAX_ROWS is 1,000,000 (headroom above the real ~112k-hotkey scan, see
+  // migrations/0043_validator_nominator_counts.sql) -- building/serializing
+  // a cap+1 array this large routinely exceeds vitest's 5s default, unlike
+  // the other sync endpoints' much smaller caps (e.g. account-identity's
+  // 20,000), so this one test gets a raised timeout.
+  const many = Array.from({ length: 1_000_001 }, (_, i) => ({
+    hotkey: `5X${i}`,
+    nominator_count: 0,
+    captured_at: 1_780_000_000_000,
+  }));
+  const res = await postValidatorNominatorCounts(many, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(413);
+}, 15_000);
+
+test("validator-nominator-counts-sync rejects a row with a missing/empty hotkey (400)", async () => {
+  const res = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ hotkey: "" })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a non-object row (400)", async () => {
+  const res = await postValidatorNominatorCounts(["not-an-object"], {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a row carrying an unknown column (400)", async () => {
+  const res = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ unexpected_field: "nope" })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a negative or non-integer nominator_count (400)", async () => {
+  const negative = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ nominator_count: -1 })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(negative.status).toBe(400);
+  const fractional = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ nominator_count: 1.5 })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(fractional.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects a row missing a finite captured_at (400)", async () => {
+  const res = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow({ captured_at: "not-a-number" })],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync rejects an empty array (400)", async () => {
+  const res = await postValidatorNominatorCounts([], {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("validator-nominator-counts-sync writes a batch and reports the count written", async () => {
+  const rows = [
+    validatorNominatorCountRow({ hotkey: "5Hk1", nominator_count: 5 }),
+    validatorNominatorCountRow({ hotkey: "5Hk2", nominator_count: 0 }),
+  ];
+  const res = await postValidatorNominatorCounts(rows, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, validator_nominator_counts_written: 2 });
+  expect(queryText()).toMatch(/INSERT INTO validator_nominator_counts/);
+  expect(queryText()).toMatch(/ON CONFLICT \(hotkey\) DO UPDATE SET/);
+});
+
+test("validator-nominator-counts-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  validatorNominatorCountsSyncFailure.error = new Error("connection reset");
+  const res = await postValidatorNominatorCounts(
+    [validatorNominatorCountRow()],
+    { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+  );
   expect(res.status).toBe(502);
   expect((await res.json()).error).toBe("write failed");
 });

@@ -42,7 +42,7 @@ const NEURON_CSV_HEADER =
 const MOVERS_CSV_HEADER =
   "netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta";
 const GLOBAL_VALIDATOR_CSV_HEADER =
-  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
+  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,nominator_count,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
 
 describe("metagraph-neurons builders", () => {
   test("formatNeuron coerces 0/1 INTEGER flags to real booleans", () => {
@@ -513,6 +513,27 @@ describe("metagraph-neurons builders", () => {
     assert.equal(entry.alpha_stake_tao, 99.5); // 50.25 + 49.25, exact
   });
 
+  test("buildGlobalValidators joins nominator_count by hotkey, nulls a hotkey with no row (#2549)", () => {
+    const data = buildGlobalValidators(
+      [
+        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-known" },
+        { ...ROW, netuid: 1, uid: 1, hotkey: "hk-unknown" },
+      ],
+      { nominatorCounts: new Map([["hk-known", 42]]) },
+    );
+    const known = data.validators.find((v) => v.hotkey === "hk-known");
+    const unknown = data.validators.find((v) => v.hotkey === "hk-unknown");
+    assert.equal(known.nominator_count, 42);
+    assert.equal(unknown.nominator_count, null);
+  });
+
+  test("buildGlobalValidators defaults nominator_count to null on every entry when no map is passed", () => {
+    const data = buildGlobalValidators([
+      { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a" },
+    ]);
+    assert.equal(data.validators[0].nominator_count, null);
+  });
+
   test("buildGlobalValidators takes the first non-null take per hotkey and ignores later rows (#2548)", () => {
     const data = buildGlobalValidators([
       { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", take: 0.18 },
@@ -834,6 +855,21 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.alpha_stake_tao, 99.5); // 50.25 + 49.25, exact
   });
 
+  test("buildValidatorDetail passes through the given nominatorCount option (#2549)", () => {
+    const withCount = buildValidatorDetail(
+      [{ ...ROW, netuid: 1, uid: 0, hotkey: "hk-a" }],
+      "hk-a",
+      { nominatorCount: 17 },
+    );
+    assert.equal(withCount.nominator_count, 17);
+
+    const withoutCount = buildValidatorDetail(
+      [{ ...ROW, netuid: 1, uid: 0, hotkey: "hk-a" }],
+      "hk-a",
+    );
+    assert.equal(withoutCount.nominator_count, null);
+  });
+
   test("buildValidatorDetail: a null latest block_number is beaten by a real one on a captured_at tie, and a null incoming block_number never wins one", () => {
     const data = buildValidatorDetail(
       [
@@ -876,6 +912,7 @@ describe("metagraph-neurons builders", () => {
     assert.equal(empty.root_stake_tao, 0);
     assert.equal(empty.alpha_stake_tao, 0);
     assert.equal(empty.total_emission_tao, 0);
+    assert.equal(empty.nominator_count, null);
     assert.equal(empty.avg_validator_trust, null);
     assert.equal(empty.max_validator_trust, null);
     assert.equal(empty.captured_at, null);

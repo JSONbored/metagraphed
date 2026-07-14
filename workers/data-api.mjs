@@ -303,6 +303,10 @@ import {
   buildAccountIdentity,
 } from "../src/account-identity.mjs";
 import {
+  VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
+  nominatorCountsByHotkey,
+} from "../src/validator-nominator-summary.mjs";
+import {
   identityHash,
   buildAccountIdentityHistory,
 } from "../src/account-identity-history.mjs";
@@ -1554,6 +1558,139 @@ async function handleAccountIdentitySync(request, env) {
   }
 }
 
+// --- POST /api/v1/internal/validator-nominator-counts-sync (#2549) --------
+//
+// The write path into validator_nominator_counts (migration 0043) --
+// simpler than account-identity-sync above: latest-only, no history table
+// (a nominator count is a live gauge, not a fact worth diffing over time
+// yet). Populated by its own low-frequency job
+// (scripts/fetch-validator-nominator-counts.py), decoupled from the fast
+// refresh-metagraph cron -- see that script's and the migration's own header
+// comments for why a full SubtensorModule::Alpha scan can't share the
+// neurons snapshot's cadence.
+const VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER =
+  "x-validator-nominator-counts-sync-token";
+// A ceiling on distinct hotkeys ever seen holding stake, NOT on
+// validator-permit hotkeys (~1-2k) -- this table isn't validator-scoped by
+// design (see the fetch script). A live full-scan probe 2026-07-14 found
+// 112,552 distinct hotkeys network-wide; these caps sit at roughly 9x that
+// observed figure as headroom for network growth, not a tight bound.
+const VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_BODY_BYTES = 100_000_000;
+const VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS = 1_000_000;
+
+function validValidatorNominatorCountsSyncRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (typeof row.hotkey !== "string" || row.hotkey.length === 0) return false;
+  if (!Number.isInteger(row.nominator_count) || row.nominator_count < 0)
+    return false;
+  if (!Number.isFinite(row.captured_at)) return false;
+  for (const key of Object.keys(row)) {
+    if (!VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS.includes(key)) return false;
+  }
+  return true;
+}
+
+async function handleValidatorNominatorCountsSync(request, env) {
+  if (!env.VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET) {
+    return writeJson(
+      {
+        error:
+          "validator-nominator-counts sync is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET)
+  ) {
+    return writeJson(
+      {
+        error: `provide a valid ${VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      {
+        error: `body exceeds ${VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_BODY_BYTES} bytes`,
+      },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of validator-nominator-count rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS) {
+    return writeJson(
+      {
+        error: `at most ${VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS} rows per request`,
+      },
+      413,
+    );
+  }
+  if (
+    !incoming.length ||
+    !incoming.every(validValidatorNominatorCountsSyncRow)
+  ) {
+    return writeJson(
+      { error: "rows must match the validator-nominator-count row shape" },
+      400,
+    );
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    await sql`SET statement_timeout = '20000ms'`;
+    await sql`
+      INSERT INTO validator_nominator_counts ${sql(incoming, ...VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS)}
+      ON CONFLICT (hotkey) DO UPDATE SET
+        nominator_count = EXCLUDED.nominator_count,
+        captured_at = EXCLUDED.captured_at
+      WHERE validator_nominator_counts.captured_at <= EXCLUDED.captured_at`;
+    return writeJson({
+      ok: true,
+      validator_nominator_counts_written: incoming.length,
+    });
+  } catch (err) {
+    console.error(
+      "data-api validator-nominator-counts-sync write failed:",
+      err,
+    );
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 // --- POST /api/v1/internal/subnet-identity-sync (#4832 gap-closure) -------
 //
 // The write path into subnet_identity_history -- architecturally different
@@ -2358,6 +2495,24 @@ function distinctColdkeys(rows) {
   return [...seen];
 }
 
+// Same savepoint-isolated-failure shape as loadFeaturedHotkeys above (#2549):
+// a validator_nominator_counts read failure degrades the whole
+// /api/v1/validators response to nominator_count: null everywhere rather
+// than failing the request or rolling back the enclosing transaction's other
+// queries.
+async function loadValidatorNominatorCounts(sql) {
+  try {
+    const rows = await sql.savepoint(
+      (sql) =>
+        sql`SELECT hotkey, nominator_count FROM validator_nominator_counts`,
+    );
+    return nominatorCountsByHotkey(rows);
+  } catch (err) {
+    console.error("validator_nominator_counts query failed:", err);
+    return new Map();
+  }
+}
+
 function clampLimit(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
@@ -2864,6 +3019,12 @@ export default {
       url.pathname === "/api/v1/internal/account-identity-sync"
     ) {
       return handleAccountIdentitySync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/validator-nominator-counts-sync"
+    ) {
+      return handleValidatorNominatorCountsSync(request, env);
     }
     if (
       request.method === "POST" &&
@@ -5749,12 +5910,13 @@ export default {
             limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
               ? limitParam
               : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-          const [rows, featuredHotkeys] = await Promise.all([
+          const [rows, featuredHotkeys, nominatorCounts] = await Promise.all([
             sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
             loadFeaturedHotkeys(sql),
+            loadValidatorNominatorCounts(sql),
           ]);
           // Identity join (#5234): needs `rows` resolved first to know which
           // coldkeys to look up, so it can't join the Promise.all above.
@@ -5768,6 +5930,7 @@ export default {
               limit,
               featuredHotkeys,
               identityByColdkey,
+              nominatorCounts,
             }),
           );
         }
@@ -5779,17 +5942,23 @@ export default {
         );
         if (validatorDetail) {
           const hotkey = decodeURIComponent(validatorDetail[1]);
-          const rows = await sql`
+          const [rows, nominatorCounts] = await Promise.all([
+            sql`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
-          ORDER BY netuid ASC, uid ASC`;
+          ORDER BY netuid ASC, uid ASC`,
+            loadValidatorNominatorCounts(sql),
+          ]);
           // Identity join (#5234): see the /api/v1/validators comment above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
             sql,
             distinctColdkeys(rows),
           );
           return json(
-            buildValidatorDetail(rows, hotkey, { identityByColdkey }),
+            buildValidatorDetail(rows, hotkey, {
+              identityByColdkey,
+              nominatorCount: nominatorCounts.get(hotkey) ?? null,
+            }),
           );
         }
 
