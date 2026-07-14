@@ -472,11 +472,10 @@ function OverviewSummaryStrip({ netuid }: { netuid: number }) {
         {typeof health?.status === "string" ? <HealthPill state={health.status} /> : null}
         {typeof curation?.level === "string" ? <CurationChip level={curation.level} /> : null}
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <StatTile eyebrow="Surfaces" value={formatNumber(overview.counts?.surfaces ?? 0)} />
-        <StatTile eyebrow="Endpoints" value={formatNumber(overview.counts?.endpoints ?? 0)} />
-        <StatTile eyebrow="Candidates" value={formatNumber(overview.counts?.candidates ?? 0)} />
-      </div>
+      {/* Surface / endpoint / candidate counts are already shown (and stay
+          visible while scrolling) in the tab-bar badges above, so they're not
+          restated as StatTiles here — the strip keeps only the status/curation
+          chips and the top-gap hint the badges don't cover (#5316). */}
       {topGapHint ? (
         <p className="font-mono text-[11px] text-ink-muted">Top gap: {topGapHint}</p>
       ) : null}
