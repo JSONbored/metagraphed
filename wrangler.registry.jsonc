@@ -49,4 +49,27 @@
       "localConnectionString": "postgresql://metagraphed_registry:postgres@localhost:5433/metagraphed_registry",
     },
   ],
+  // Per-caller abuse control for this Worker's only route (#5548) -- the
+  // shared-secret check above authenticates the CALLER, not the REQUEST
+  // VOLUME, so anyone holding REGISTRY_SYNC_SECRET could otherwise script
+  // unbounded write/delete cycles (including full-table DELETEs, see
+  // MAX_ROWS_PER_KIND in workers/registry-sync-api.mjs) against the live
+  // registry. Mirrors ALERT_TRIGGER_CREATE_RATE_LIMITER's posture
+  // (wrangler.data.jsonc) for the same shared-secret-write shape, but looser
+  // than its 10/60s to tolerate scripts/backfill-registry-postgres.mjs's
+  // legitimate chunked full-resync POSTs. Namespace id is local to THIS
+  // Worker's own bindings -- reusing an id already used elsewhere doesn't
+  // collide (ratelimit namespaces are scoped per Worker script). Skipped
+  // when unbound (local dev/CI), matching every other optional rate-limiter
+  // binding's convention in this codebase.
+  "ratelimits": [
+    {
+      "name": "REGISTRY_SYNC_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 30,
+        "period": 60,
+      },
+    },
+  ],
 }

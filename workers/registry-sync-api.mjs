@@ -21,15 +21,23 @@
 // + Workers VPC Service + Hyperdrive path already proven for reads).
 import postgres from "postgres";
 import { timingSafeEqual } from "../src/webhooks.mjs";
+import { resolveClientIp } from "./config.mjs";
 
 const TOKEN_HEADER = "x-registry-sync-token";
 const MAX_BODY_BYTES = 4_194_304; // 4 MiB -- the full registry is ~1.5k surfaces, comfortably under this
 const MAX_ROWS_PER_KIND = 5_000;
+// Per-caller abuse control (#5548) -- see wrangler.registry.jsonc's
+// REGISTRY_SYNC_RATE_LIMITER comment for why 30/60s rather than the tighter
+// 10/60s used by other shared-secret write routes.
+const RATE_LIMIT = { limit: 30, windowSeconds: 60 };
 
-function json(data, status = 200) {
+function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      ...extraHeaders,
+    },
   });
 }
 
@@ -51,6 +59,26 @@ export default {
     const provided = request.headers.get(TOKEN_HEADER) || "";
     if (!provided || !timingSafeEqual(provided, env.REGISTRY_SYNC_SECRET)) {
       return json({ error: `provide a valid ${TOKEN_HEADER} header` }, 401);
+    }
+    // Rate-limit AFTER auth so an unauthenticated caller is rejected without
+    // consuming limiter budget. Optional-chained so it's a no-op when the
+    // binding is absent (local dev/CI).
+    if (env.REGISTRY_SYNC_RATE_LIMITER?.limit) {
+      const { success } = await env.REGISTRY_SYNC_RATE_LIMITER.limit({
+        key: resolveClientIp(request),
+      });
+      if (!success) {
+        return json(
+          { error: "too many registry sync requests; slow down" },
+          429,
+          {
+            "retry-after": String(RATE_LIMIT.windowSeconds),
+            "x-ratelimit-limit": String(RATE_LIMIT.limit),
+            "x-ratelimit-policy": `${RATE_LIMIT.limit};w=${RATE_LIMIT.windowSeconds}`,
+            "x-ratelimit-remaining": "0",
+          },
+        );
+      }
     }
     if (!env.HYPERDRIVE?.connectionString) {
       return json({ error: "hyperdrive binding unavailable" }, 503);
