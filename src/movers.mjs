@@ -26,6 +26,39 @@ function roundTao(value) {
   return Math.round(toNumber(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
+const RAO_PER_TAO_BIG = 1_000_000_000n;
+
+// Exact rao-integer BigInt for one subnet's TAO value, for summation across every subnet
+// (#5290, mirrors toRaoBig/raoBigToTao in chain-yield.mjs and stake_sum_rao in
+// neuron-history.mjs). Summing ~130 subnets' total_stake_tao with plain float `+=`
+// compounds error past the point a JSON number can represent exactly at network scale.
+function toRaoBig(tao) {
+  return BigInt(Math.round(tao * RAO_PER_TAO));
+}
+
+// A display-rounded Number from an exact rao BigInt. Safe ONLY for a value that's about to
+// be rounded again anyway (pctShare's 2dp percentage denominator below) -- the ~1e-16
+// relative error from Number(bigint) is immaterial there, unlike the lossless string totals
+// raoToTaoString produces, which must stay exact.
+function raoToTaoNumber(rao) {
+  return Number(rao) / RAO_PER_TAO;
+}
+
+// Lossless fixed 9-decimal (rao-precision) TAO string -- a JSON number (double) is only
+// exact up to 2^53-1, ~9,007,199 TAO at rao precision, and the network-wide total_stake_tao
+// sum this feeds already exceeds that ceiling at current network scale (#5290, mirrors
+// #2924/#5287's identical fix in neuron-history.mjs and economics-artifacts.mjs). Unlike
+// those siblings' cumulative totals, a boundary DELTA (end - start) is genuinely signed --
+// network stake/emission can net-decrease over a window -- so this keeps the negative-sign
+// handling those siblings dropped as unreachable dead code; here it's live and reachable.
+function raoToTaoString(rao) {
+  const negative = rao < 0n;
+  const abs = negative ? -rao : rao;
+  const whole = abs / RAO_PER_TAO_BIG;
+  const frac = abs % RAO_PER_TAO_BIG;
+  return `${negative ? "-" : ""}${whole}.${frac.toString().padStart(9, "0")}`;
+}
+
 // Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number,
 // defaulting to 0.
 function toNumber(value) {
@@ -88,17 +121,21 @@ const ZERO = { neurons: 0, validators: 0, stake: 0, emission: 0 };
 
 // Sum a boundary map's stake, emission, and validator counts across every subnet — the
 // single source the dominance-share denominator and the network summary totals derive
-// from, so both stay consistent as more network-level fields are added.
+// from, so both stay consistent as more network-level fields are added. stake/emission
+// accumulate as exact rao-integer BigInts (#5290): this is the same network-wide "sum of
+// total_stake_tao across every subnet" quantity that #2924/#5287 already fixed at two other
+// call sites (neuron-history.mjs, economics-artifacts.mjs) — movers hits the identical
+// precision ceiling at the identical live network magnitude.
 function sumBoundary(map) {
-  let stake = 0;
-  let emission = 0;
+  let stakeRao = 0n;
+  let emissionRao = 0n;
   let validators = 0;
   for (const v of map.values()) {
-    stake += v.stake;
-    emission += v.emission;
+    stakeRao += toRaoBig(v.stake);
+    emissionRao += toRaoBig(v.emission);
     validators += v.validators;
   }
-  return { stake, emission, validators };
+  return { stakeRao, emissionRao, validators };
 }
 
 const SORT_KEY = {
@@ -148,12 +185,15 @@ export function computeMovers(
       stake_delta_tao: roundTao(e.stake - s.stake),
       stake_pct_change: pctChange(s.stake, e.stake),
       // Dominance: this subnet's share of network stake at the end snapshot.
-      stake_share_pct: pctShare(e.stake, endTotals.stake),
+      stake_share_pct: pctShare(e.stake, raoToTaoNumber(endTotals.stakeRao)),
       emission_start_tao: roundTao(s.emission),
       emission_end_tao: roundTao(e.emission),
       emission_delta_tao: roundTao(e.emission - s.emission),
       emission_pct_change: pctChange(s.emission, e.emission),
-      emission_share_pct: pctShare(e.emission, endTotals.emission),
+      emission_share_pct: pctShare(
+        e.emission,
+        raoToTaoNumber(endTotals.emissionRao),
+      ),
       validators_start: s.validators,
       validators_end: e.validators,
       validators_delta: e.validators - s.validators,
@@ -187,12 +227,14 @@ function buildNetworkSummary(ranked, sortDeltaKey, startRows, endRows) {
     else unchanged += 1;
   }
   return {
-    total_stake_start_tao: roundTao(start.stake),
-    total_stake_end_tao: roundTao(end.stake),
-    total_stake_delta_tao: roundTao(end.stake - start.stake),
-    total_emission_start_tao: roundTao(start.emission),
-    total_emission_end_tao: roundTao(end.emission),
-    total_emission_delta_tao: roundTao(end.emission - start.emission),
+    total_stake_start_tao: raoToTaoString(start.stakeRao),
+    total_stake_end_tao: raoToTaoString(end.stakeRao),
+    total_stake_delta_tao: raoToTaoString(end.stakeRao - start.stakeRao),
+    total_emission_start_tao: raoToTaoString(start.emissionRao),
+    total_emission_end_tao: raoToTaoString(end.emissionRao),
+    total_emission_delta_tao: raoToTaoString(
+      end.emissionRao - start.emissionRao,
+    ),
     total_validators_start: start.validators,
     total_validators_end: end.validators,
     total_validators_delta: end.validators - start.validators,

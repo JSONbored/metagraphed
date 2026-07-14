@@ -6886,12 +6886,18 @@ export interface components {
             network: {
                 gainers: number;
                 losers: number;
-                total_emission_delta_tao: number;
-                total_emission_end_tao: number;
-                total_emission_start_tao: number;
-                total_stake_delta_tao: number;
-                total_stake_end_tao: number;
-                total_stake_start_tao: number;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string: total_emission_end_tao minus total_emission_start_tao, computed in exact rao-integer space. May be negative. */
+                total_emission_delta_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's end snapshot. See total_stake_start_tao. */
+                total_emission_end_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's start snapshot. See total_stake_start_tao. */
+                total_emission_start_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string: total_stake_end_tao minus total_stake_start_tao, computed in exact rao-integer space (not as a difference of two already-lossy floats). May be negative (a leading '-') when network stake net-decreased over the window. */
+                total_stake_delta_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's end snapshot. See total_stake_start_tao. */
+                total_stake_end_tao: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet at the window's start snapshot -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#5290, mirrors #2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. */
+                total_stake_start_tao: string;
                 total_validators_delta: number;
                 total_validators_end: number;
                 total_validators_start: number;
@@ -28022,12 +28028,12 @@ export interface operations {
                      *         "network": {
                      *           "gainers": 1,
                      *           "losers": 1,
-                     *           "total_emission_delta_tao": 0.5,
-                     *           "total_emission_end_tao": 0.5,
-                     *           "total_emission_start_tao": 0.5,
-                     *           "total_stake_delta_tao": 0.5,
-                     *           "total_stake_end_tao": 0.5,
-                     *           "total_stake_start_tao": 0.5,
+                     *           "total_emission_delta_tao": "-1234567.891234500",
+                     *           "total_emission_end_tao": "327838334.635978200",
+                     *           "total_emission_start_tao": "327838334.635978200",
+                     *           "total_stake_delta_tao": "-1234567.891234500",
+                     *           "total_stake_end_tao": "327838334.635978200",
+                     *           "total_stake_start_tao": "327838334.635978200",
                      *           "total_validators_delta": 1,
                      *           "total_validators_end": 1,
                      *           "total_validators_start": 1,
