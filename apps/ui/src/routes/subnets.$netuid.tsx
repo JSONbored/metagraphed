@@ -34,7 +34,9 @@ import {
   MethodologyCallout,
   StatTile,
   RealtimeFreshness,
+  ShareButton,
 } from "@jsonbored/ui-kit";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
@@ -259,6 +261,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
           generatedAt={meta?.generated_at}
           stale={stale}
           evidenceCount={evidenceCount}
+          actions={<ShareButton />}
           banner={
             stale ? (
               <StaleBanner
@@ -315,6 +318,14 @@ function ProfileShell({ netuid }: { netuid: number }) {
           ) : null}
           {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
         </div>
+
+        <ApiSourceFooter
+          paths={[
+            `/api/v1/subnets/${netuid}/profile`,
+            `/api/v1/subnets/${netuid}/surfaces`,
+            `/api/v1/subnets/${netuid}/endpoints`,
+          ]}
+        />
       </SubnetFilterProvider>
     </TimeRangeProvider>
   );
