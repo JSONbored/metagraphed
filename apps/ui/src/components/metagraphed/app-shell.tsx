@@ -135,7 +135,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
               <button
-                className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-10 min-w-10 inline-flex items-center justify-center"
+                className="lg:hidden rounded-md p-2 text-ink hover:bg-surface min-h-11 min-w-11 inline-flex items-center justify-center"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open menu"
               >
@@ -220,7 +220,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <button
                     onClick={() => setMobileOpen(false)}
                     aria-label="Close menu"
-                    className="rounded-md p-2 text-ink-muted hover:bg-surface min-h-10 min-w-10 inline-flex items-center justify-center"
+                    className="rounded-md p-2 text-ink-muted hover:bg-surface min-h-11 min-w-11 inline-flex items-center justify-center"
                   >
                     <X className="size-4" />
                   </button>
