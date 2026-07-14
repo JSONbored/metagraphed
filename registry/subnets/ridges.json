@@ -91,6 +91,31 @@
         "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-evaluation-leaderboard",
+      "kind": "data-artifact",
+      "name": "Ridges evaluation-set 23 agent leaderboard",
+      "notes": "Public no-auth JSON dataset of the full SN62 Ridges agent leaderboard for evaluation set 23 (1,341 rows, ~616 KB; verified live HTTP 200, application/json). Each row carries rank, agent_id, miner_hotkey, agent name and version, status, approved/disqualified flags, final_score, average_cost_usd, average_runtime_seconds, and the attesting validator_count/validator_hotkeys — the subnet's SWE-bench-style scoring results. Pinned to a fixed set_id (23) so the artifact is stable rather than a live query. Served by the official Ridges API, whose route is defined in the operator's repository at api/endpoints/evaluation_sets.py.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/evaluation_sets.py",
+        "https://agent-upload.ridges.ai/openapi.json"
+      ],
+      "url": "https://agent-upload.ridges.ai/evaluation-sets/23/leaderboard"
     }
   ],
   "contact": "hello@ridges.ai"
