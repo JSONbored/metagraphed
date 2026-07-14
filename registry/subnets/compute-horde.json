@@ -151,6 +151,35 @@
         "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json"
       ],
       "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-compute-horde-grafana-openapi",
+      "kind": "openapi",
+      "name": "Compute Horde Grafana HTTP API OpenAPI",
+      "notes": "Public no-auth OpenAPI 3.0.3 schema (title \"Grafana HTTP API.\", 215 paths) at grafana.bittensor.church/public/openapi3.json. Served on the same Grafana host already registered as this file's dashboard surface (metagraph subnet dashboard for var-subnet=12; bactensor.io redirects here). Same publish convention already accepted for Templar (SN3) and Grail (SN81) Grafana OpenAPI surfaces. Sibling public/api-merged.json is also reachable on this host.",
+      "provider": "compute-horde",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://grafana.bittensor.church/public/openapi3.json",
+      "source_urls": [
+        "https://grafana.bittensor.church/d/subnet/metagraph-subnet?var-subnet=12",
+        "https://github.com/backend-developers-ltd/ComputeHorde",
+        "https://grafana.bittensor.church/public/api-merged.json"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "bohdansolovie",
+        "confidence": "medium"
+      },
+      "url": "https://grafana.bittensor.church/public/openapi3.json"
     }
   ]
 }
