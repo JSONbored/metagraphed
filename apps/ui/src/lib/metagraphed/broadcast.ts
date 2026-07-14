@@ -23,6 +23,7 @@
 import type { ApiPromise } from "@polkadot/api";
 import type { SubmittableExtrinsic } from "@polkadot/api/types";
 import type { Signer } from "@polkadot/api/types";
+import type { DispatchError } from "@polkadot/types/interfaces";
 import type { StakeCallParams } from "./chain-connection";
 
 /** ~a few minutes at Bittensor's block time -- short enough that a stuck/abandoned signature can't be replayed much later (see the account-reap/nonce-reset risk in this module's references), long enough to comfortably survive normal signing latency. */
@@ -45,6 +46,16 @@ export interface BroadcastEvent {
   status: BroadcastStatus;
   txHash: string;
   blockHash?: string;
+  /**
+   * The raw on-chain DispatchError, present once the extrinsic reaches
+   * in-block/finalized AND the call itself failed (a failed call is still
+   * mined -- the transaction succeeded at the transaction-pool/block-
+   * inclusion layer, only the pallet logic inside it reverted). Passed
+   * through untouched -- decoding this into human copy is tx-errors.ts's
+   * job (#5240), not this file's; this module only reports what the chain
+   * said, verbatim.
+   */
+  dispatchError?: DispatchError;
 }
 
 /**
@@ -153,6 +164,7 @@ export async function submitStakeExtrinsic(
           : result.status.isFinalized
             ? result.status.asFinalized.toHex()
             : undefined,
+        dispatchError: result.dispatchError,
       });
     },
   );

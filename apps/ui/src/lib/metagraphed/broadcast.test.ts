@@ -67,21 +67,22 @@ describe("hasAlreadySubmitted", () => {
 });
 
 function makeFakeExtrinsic() {
-  const listeners: Array<(result: { status: unknown }) => void> = [];
+  const listeners: Array<(result: { status: unknown; dispatchError?: unknown }) => void> = [];
   let capturedOptions: unknown;
   const unsubscribe = vi.fn();
   const extrinsic = {
     hash: { toHex: () => "0xdeadbeef" },
     signAndSend: vi.fn(async (_address: string, options: unknown, cb: (r: unknown) => void) => {
       capturedOptions = options;
-      listeners.push(cb as (result: { status: unknown }) => void);
+      listeners.push(cb as (result: { status: unknown; dispatchError?: unknown }) => void);
       return unsubscribe;
     }),
   } as unknown as SubmittableExtrinsic<"promise">;
   return {
     extrinsic,
     unsubscribe,
-    emit: (status: unknown) => listeners.forEach((cb) => cb({ status })),
+    emit: (status: unknown, dispatchError?: unknown) =>
+      listeners.forEach((cb) => cb({ status, dispatchError })),
     getCapturedOptions: () => capturedOptions,
   };
 }
@@ -192,5 +193,28 @@ describe("submitStakeExtrinsic", () => {
     });
     expect(result.txHash).toBe("0xdeadbeef");
     expect(result.unsubscribe).toBe(unsubscribe);
+  });
+
+  it("passes the raw dispatchError through untouched -- decoding it is tx-errors.ts's job, not this module's", async () => {
+    const { extrinsic, emit } = makeFakeExtrinsic();
+    const key = computeIdempotencyKey(sampleParams, 6, "dispatch-error-passthrough-test");
+    const events: BroadcastEvent[] = [];
+    await submitStakeExtrinsic(fakeApi, extrinsic, {
+      signerAddress: HOTKEY,
+      signer: fakeSigner,
+      idempotencyKey: key,
+      onStatus: (e) => events.push(e),
+    });
+
+    const fakeDispatchError = { isModule: true, asModule: { toU8a: () => new Uint8Array() } };
+    emit(
+      makeStatus({ isInBlock: true, asInBlock: { toHex: () => "0xblock1" } }),
+      fakeDispatchError,
+    );
+    // A successful status update carries no dispatchError at all.
+    emit(makeStatus({ isFinalized: true, asFinalized: { toHex: () => "0xblock1" } }));
+
+    expect(events[0].dispatchError).toBe(fakeDispatchError);
+    expect(events[1].dispatchError).toBeUndefined();
   });
 });
