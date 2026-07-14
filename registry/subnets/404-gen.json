@@ -68,6 +68,31 @@
         "https://gen.404.xyz/api/health"
       ],
       "url": "https://gen.404.xyz/api/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-17-404-gen-competition-config",
+      "kind": "data-artifact",
+      "name": "404-GEN competition config schema",
+      "notes": "Public no-auth machine-readable competition-configuration module (shared/subnet_common/competition/config.py) published in the official 404-Repo/404-gen-subnet repository. Defines the SN17 404-GEN text-to-3D competition schema and defaults that miners and validators run against: competition schedule (first/last dates, daily round start time, round duration), generation-stage minutes, win margin, weight decay/floor, prompts-per-round and carryover, and audit repeats. Pinned to an immutable commit. Verified 200, SS58-clean, no keys or secrets. Distinct from the 404mini Hugging Face dataset already registered.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/404-Repo/404-gen-subnet/blob/92cee1043741edf5f76ba86f9d8e6a10aca6e84e/shared/subnet_common/competition/config.py",
+        "https://github.com/404-Repo/404-gen-subnet"
+      ],
+      "url": "https://raw.githubusercontent.com/404-Repo/404-gen-subnet/92cee1043741edf5f76ba86f9d8e6a10aca6e84e/shared/subnet_common/competition/config.py"
     }
   ],
   "website_url": "https://www.404.xyz/"
