@@ -308,6 +308,12 @@ import {
 } from "../src/validator-nominator-summary.mjs";
 import { tempoByNetuid as buildTempoByNetuid } from "../src/subnet-tempo.mjs";
 import {
+  NOMINATOR_POSITION_INSERT_COLUMNS,
+  buildAccountPositions,
+  distinctHotkeys,
+  stakeByHotkeyNetuid,
+} from "../src/account-nominator-positions.mjs";
+import {
   identityHash,
   buildAccountIdentityHistory,
 } from "../src/account-identity-history.mjs";
@@ -1692,6 +1698,124 @@ async function handleValidatorNominatorCountsSync(request, env) {
   }
 }
 
+const NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER =
+  "x-nominator-positions-sync-token";
+// Same headroom rationale as VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS above --
+// this is one row per (coldkey, hotkey, netuid) triple, not per hotkey, so
+// it carries generous headroom over the 762,577 total Alpha rows observed
+// in the live full-scan probe (#2549/#5233), not a tight bound.
+const NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES = 200_000_000;
+const NOMINATOR_POSITIONS_SYNC_MAX_ROWS = 1_000_000;
+
+function validNominatorPositionSyncRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (typeof row.coldkey !== "string" || row.coldkey?.length === 0)
+    return false;
+  if (typeof row.hotkey !== "string" || row.hotkey.length === 0) return false;
+  if (!Number.isInteger(row.netuid) || row.netuid < 0) return false;
+  if (!Number.isFinite(row.share_fraction) || row.share_fraction < 0)
+    return false;
+  if (!Number.isFinite(row.captured_at)) return false;
+  for (const key of Object.keys(row)) {
+    if (!NOMINATOR_POSITION_INSERT_COLUMNS.includes(key)) return false;
+  }
+  return true;
+}
+
+async function handleNominatorPositionsSync(request, env) {
+  if (!env.NOMINATOR_POSITIONS_SYNC_SECRET) {
+    return writeJson(
+      {
+        error: "nominator-positions sync is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.NOMINATOR_POSITIONS_SYNC_SECRET)
+  ) {
+    return writeJson(
+      {
+        error: `provide a valid ${NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      {
+        error: `body exceeds ${NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES} bytes`,
+      },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of nominator-position rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > NOMINATOR_POSITIONS_SYNC_MAX_ROWS) {
+    return writeJson(
+      {
+        error: `at most ${NOMINATOR_POSITIONS_SYNC_MAX_ROWS} rows per request`,
+      },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validNominatorPositionSyncRow)) {
+    return writeJson(
+      { error: "rows must match the nominator-position row shape" },
+      400,
+    );
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    await sql`SET statement_timeout = '20000ms'`;
+    await sql`
+      INSERT INTO nominator_positions ${sql(incoming, ...NOMINATOR_POSITION_INSERT_COLUMNS)}
+      ON CONFLICT (coldkey, hotkey, netuid) DO UPDATE SET
+        share_fraction = EXCLUDED.share_fraction,
+        captured_at = EXCLUDED.captured_at
+      WHERE nominator_positions.captured_at <= EXCLUDED.captured_at`;
+    return writeJson({
+      ok: true,
+      nominator_positions_written: incoming.length,
+    });
+  } catch (err) {
+    console.error("data-api nominator-positions-sync write failed:", err);
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
 // --- POST /api/v1/internal/subnet-identity-sync (#4832 gap-closure) -------
 //
 // The write path into subnet_identity_history -- architecturally different
@@ -2531,6 +2655,45 @@ async function loadSubnetTempos(sql) {
   }
 }
 
+// Raw nominator_positions rows for one coldkey (#5233) -- savepoint-isolated
+// like the loaders above, so a cold/absent table degrades this specific
+// route to an empty positions card rather than failing the request.
+async function loadNominatorPositions(sql, ss58) {
+  try {
+    return await sql.savepoint(
+      (sql) => sql`
+        SELECT coldkey, hotkey, netuid, share_fraction, captured_at
+        FROM nominator_positions WHERE coldkey = ${ss58}`,
+    );
+  } catch (err) {
+    console.error("nominator_positions query failed:", err);
+    return [];
+  }
+}
+
+// neurons.stake_tao for every (hotkey, netuid) referenced by one account's
+// position rows -- the join input buildAccountPositions needs to turn a
+// dimensionless share_fraction into an actual stake_tao figure. Same
+// scalar-placeholder IN-list shape as loadAccountIdentitiesByColdkey above
+// (this Worker's Hyperdrive fetch_types:false setting breaks automatic
+// ARRAY-literal binding for a JS array).
+async function loadNeuronStakeByHotkeys(sql, hotkeys) {
+  if (hotkeys.length === 0) return new Map();
+  try {
+    const placeholders = hotkeys.map((_, i) => `$${i + 1}::text`).join(", ");
+    const rows = await sql.savepoint((sql) =>
+      sql.unsafe(
+        `SELECT hotkey, netuid, stake_tao FROM neurons WHERE hotkey IN (${placeholders})`,
+        hotkeys,
+      ),
+    );
+    return stakeByHotkeyNetuid(rows);
+  } catch (err) {
+    console.error("neurons stake-by-hotkey join query failed:", err);
+    return new Map();
+  }
+}
+
 function clampLimit(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
@@ -3043,6 +3206,12 @@ export default {
       url.pathname === "/api/v1/internal/validator-nominator-counts-sync"
     ) {
       return handleValidatorNominatorCountsSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/nominator-positions-sync"
+    ) {
+      return handleNominatorPositionsSync(request, env);
     }
     if (
       request.method === "POST" &&
@@ -6188,6 +6357,28 @@ export default {
           SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
           FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
           return json(buildAccountPortfolio(rows, ss58));
+        }
+
+        // GET /api/v1/accounts/:ss58/positions (#5233): the nominator-scoped
+        // counterpart to /portfolio above -- what this account holds across
+        // every hotkey/subnet it delegates to, reconstructed from
+        // nominator_positions (a share_fraction ledger) joined against the
+        // live neurons stake_tao for each referenced (hotkey, netuid). See
+        // src/account-nominator-positions.mjs's header comment for the
+        // root-stake (netuid 0) scope limitation.
+        const acctPositions = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/positions$/,
+        );
+        if (acctPositions) {
+          const ss58 = decodeURIComponent(acctPositions[1]);
+          const positionRows = await loadNominatorPositions(sql, ss58);
+          const hotkeyNetuidStake = await loadNeuronStakeByHotkeys(
+            sql,
+            distinctHotkeys(positionRows),
+          );
+          return json(
+            buildAccountPositions(positionRows, hotkeyNetuidStake, ss58),
+          );
         }
 
         // GET /api/v1/accounts/:ss58/identity (#4832 gap-closure, Phase B):

@@ -723,6 +723,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "account-positions",
+      "path": "/metagraph/accounts/{ss58}/positions.json",
+      "schema_ref": "#/components/schemas/AccountPositionsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "account-subnet-position-history",
       "path": "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
       "schema_ref": "#/components/schemas/AccountPositionHistoryArtifact",
@@ -6450,6 +6457,18 @@
       "id": "account-portfolio",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/portfolio",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/positions.json",
+      "cache": "short",
+      "description": "Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons D1 tier. Root (netuid 0) stake is not covered.",
+      "id": "account-positions",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/positions",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

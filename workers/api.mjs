@@ -930,6 +930,19 @@ async function handleValidatorNominatorCountsSyncProxy(request, env) {
   });
 }
 
+// Proxies POST /api/v1/internal/nominator-positions-sync -- the write path
+// into nominator_positions (#5233). Same DATA_API service binding as the
+// other internal sync routes above.
+async function handleNominatorPositionsSyncProxy(request, env) {
+  return proxyToDataApi(request, env, {
+    code: "nominator_positions_sync_unavailable",
+    notBoundMessage:
+      "The nominator-positions sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The nominator-positions sync tier returned an unreadable response.",
+  });
+}
+
 // GET /api/v1/chain/stream (#4982, ADR 0015) -- the public realtime firehose
 // transport. SSE by default; a WebSocket Upgrade header on this same path
 // gets the WS transport instead. No auth: this is the same public read-only
@@ -1149,6 +1162,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // for why). Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/validator-nominator-counts-sync") {
     return handleValidatorNominatorCountsSyncProxy(request, env);
+  }
+  // The write path into nominator_positions (#5233) -- same low-frequency
+  // Alpha-scan cron that populates validator_nominator_counts also emits
+  // this table (see the fetch script's own header comment). Same DATA_API
+  // service binding.
+  if (url.pathname === "/api/v1/internal/nominator-positions-sync") {
+    return handleNominatorPositionsSyncProxy(request, env);
   }
   // The write path the #4981 box-side relay POSTs #4980's NOTIFY payloads to
   // (#4982, ADR 0015) -- forwards into ChainFirehoseHub after its own
