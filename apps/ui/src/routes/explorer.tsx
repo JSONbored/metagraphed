@@ -1547,55 +1547,43 @@ function ExplorerDashboard() {
               </span>
             </div>
             {fees.top_fee_payers.length > 0 ? (
-              <>
-                <BarMini
-                  className="mb-4"
-                  data={[...fees.top_fee_payers]
-                    .sort((a, b) => b.total_fee_tao - a.total_fee_tao)
-                    .slice(0, 8)
-                    .map((p) => ({
-                      label: shortHash(p.signer) ?? p.signer,
-                      value: p.total_fee_tao,
-                    }))}
-                  formatValue={formatTao}
-                  ariaLabel="Top fee payers ranked by total fees paid this window"
-                />
-                <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
-                  <thead>
-                    <tr>
-                      <th className={TH}>Account</th>
-                      <th className={`${TH} text-right`}>Fees</th>
-                      <th className={`${TH} text-right`}>Tips</th>
-                      <th className={`${TH} text-right`}>Txs</th>
+              // Table alone — the former BarMini restated the same ranked fee
+              // list with no distinct cut of the data (#5313).
+              <ExplorerLeaderboardTableShell leaderboardId={EXPLORER_LEADERBOARD_IDS.feePayers}>
+                <thead>
+                  <tr>
+                    <th className={TH}>Account</th>
+                    <th className={`${TH} text-right`}>Fees</th>
+                    <th className={`${TH} text-right`}>Tips</th>
+                    <th className={`${TH} text-right`}>Txs</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {fees.top_fee_payers.map((p) => (
+                    <tr key={p.signer} className="hover:bg-surface/40">
+                      <td className="px-4 py-2 font-mono text-[11px]">
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: p.signer }}
+                          className="text-ink-strong hover:text-accent hover:underline"
+                          title={p.signer}
+                        >
+                          {shortHash(p.signer) ?? p.signer}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {formatTao(p.total_fee_tao)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatTao(p.total_tip_tao)}
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        {formatNumber(p.extrinsic_count)}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {fees.top_fee_payers.map((p) => (
-                      <tr key={p.signer} className="hover:bg-surface/40">
-                        <td className="px-4 py-2 font-mono text-[11px]">
-                          <Link
-                            to="/accounts/$ss58"
-                            params={{ ss58: p.signer }}
-                            className="text-ink-strong hover:text-accent hover:underline"
-                            title={p.signer}
-                          >
-                            {shortHash(p.signer) ?? p.signer}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                          {formatTao(p.total_fee_tao)}
-                        </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                          {formatTao(p.total_tip_tao)}
-                        </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                          {formatNumber(p.extrinsic_count)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </ExplorerLeaderboardTableShell>
-              </>
+                  ))}
+                </tbody>
+              </ExplorerLeaderboardTableShell>
             ) : (
               <EmptyState title="No fee payers in this window yet." />
             )}
