@@ -7462,6 +7462,117 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /not_found/);
   });
 
+  // Realistic reserves (SN64 from the live economics.json artifact), matching
+  // the fixture in tests/subnet-stake-quote-api.test.mjs.
+  const STAKE_QUOTE_POOL_ROW = {
+    netuid: 64,
+    tao_in_pool_tao: 201959.938748425,
+    alpha_in_pool: 2730860.150574127,
+  };
+  const STAKE_QUOTE_BLOB = { subnets: [STAKE_QUOTE_POOL_ROW] };
+
+  test("get_subnet_stake_quote quotes a stake against the live pool reserves", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 1000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, 64);
+    assert.equal(out.direction, "stake");
+    assert.equal(out.expected_out_unit, "alpha");
+    assert.equal(out.is_root, false);
+    assert.ok(out.expected_out > 0);
+    assert.ok(out.price_impact_pct > 0);
+    assert.equal(out.tao_in_pool_tao, STAKE_QUOTE_POOL_ROW.tao_in_pool_tao);
+  });
+
+  test("get_subnet_stake_quote quotes an unstake against the live pool reserves", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 500, direction: "unstake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.direction, "unstake");
+    assert.equal(out.expected_out_unit, "tao");
+    assert.ok(out.expected_out > 0);
+  });
+
+  test("get_subnet_stake_quote defaults direction to stake when omitted", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 10 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.structuredContent.direction, "stake");
+  });
+
+  test("get_subnet_stake_quote returns a 1:1 zero-impact quote for root (netuid 0)", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 0, amount: 42, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.is_root, true);
+    assert.equal(out.expected_out, 42);
+    assert.equal(out.price_impact_pct, 0);
+    assert.equal(out.tao_in_pool_tao, null);
+  });
+
+  test("get_subnet_stake_quote rejects a non-positive amount as invalid_amount", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: -5, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_amount/);
+  });
+
+  test("get_subnet_stake_quote rejects an unknown direction as invalid_direction", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 10, direction: "swap" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_direction/);
+  });
+
+  test("get_subnet_stake_quote surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 999, amount: 10, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /insufficient_liquidity/);
+  });
+
   test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
     const blob = {
       ...ECON_BLOB,
@@ -11746,6 +11857,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       signer: EXTRINSIC_ROW.signer,
       call_module: "SubtensorModule",
       call_function: "set_weights",
+      call_hash: "0x" + "a".repeat(64),
       success: true,
       block_start: 100,
       block_end: 200,
@@ -11882,6 +11994,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
           });
         },
       };
+      const callHash = "0x" + "b".repeat(64);
       await callTool(
         "list_extrinsics",
         {
@@ -11889,6 +12002,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
           signer: SS58,
           call_module: "SubtensorModule",
           call_function: "set_weights",
+          call_hash: callHash,
           success: true,
           limit: 10,
           offset: 20,
@@ -11901,6 +12015,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(seenUrl.searchParams.get("signer"), SS58);
       assert.equal(seenUrl.searchParams.get("call_module"), "SubtensorModule");
       assert.equal(seenUrl.searchParams.get("call_function"), "set_weights");
+      assert.equal(seenUrl.searchParams.get("call_hash"), callHash);
       assert.equal(seenUrl.searchParams.get("success"), "true");
       assert.equal(seenUrl.searchParams.get("limit"), "10");
     });
