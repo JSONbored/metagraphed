@@ -5492,13 +5492,22 @@ export interface components {
             authority: components["schemas"]["Authority"];
             /** @description Shared-team cluster id (registrable domain of team_url/website_url, else the provider id) grouping providers run by the same team (issue #347). */
             cluster_id?: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @example https://example.com/contact
+             */
             contact_url?: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @example https://docs.example.com
+             */
             docs_url?: string;
             /** @description Number of live endpoints attributed to this provider. */
             endpoint_count?: number;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @example https://github.com/example
+             */
             github_url?: string;
             id: string;
             kind: components["schemas"]["ProviderKind"];
@@ -5517,22 +5526,40 @@ export interface components {
             schema_version: 1;
             /** @description Structured social links: a curated provider override, else borrowed from the single subnet this provider operates. Display-only; never feeds completeness. */
             social?: {
-                /** Format: uri */
+                /**
+                 * Format: uri
+                 * @example https://reddit.com/r/example
+                 */
                 reddit?: string;
-                /** Format: uri */
+                /**
+                 * Format: uri
+                 * @example https://t.me/example
+                 */
                 telegram?: string;
-                /** Format: uri */
+                /**
+                 * Format: uri
+                 * @example https://x.com/example
+                 */
                 x?: string;
-                /** Format: uri */
+                /**
+                 * Format: uri
+                 * @example https://youtube.com/@example
+                 */
                 youtube?: string;
             };
             /** @description Number of distinct subnets this provider operates (netuids.length). */
             subnet_count?: number;
             /** @description Number of curated surfaces attributed to this provider. */
             surface_count?: number;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @example https://example.com/team
+             */
             team_url?: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @example https://example.com
+             */
             website_url: string;
         };
         ProviderArtifact: components["schemas"]["ArtifactBase"] & ({

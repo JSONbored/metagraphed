@@ -35,15 +35,18 @@
     },
     "website_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "examples": ["https://example.com"]
     },
     "docs_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "examples": ["https://docs.example.com"]
     },
     "github_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "examples": ["https://github.com/example"]
     },
     "logo_url": {
       "type": "string",
@@ -60,32 +63,38 @@
         "x": {
           "type": "string",
           "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+          "examples": ["https://x.com/example"]
         },
         "telegram": {
           "type": "string",
           "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+          "examples": ["https://t.me/example"]
         },
         "reddit": {
           "type": "string",
           "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+          "examples": ["https://reddit.com/r/example"]
         },
         "youtube": {
           "type": "string",
           "format": "uri",
-          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+          "examples": ["https://youtube.com/@example"]
         }
       }
     },
     "team_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "examples": ["https://example.com/team"]
     },
     "contact_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "examples": ["https://example.com/contact"]
     },
     "authority": {
       "enum": ["official", "provider-claimed", "community", "registry-observed"]

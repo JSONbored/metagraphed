@@ -11690,10 +11690,16 @@
             "type": "string"
           },
           "contact_url": {
+            "examples": [
+              "https://example.com/contact"
+            ],
             "format": "uri",
             "type": "string"
           },
           "docs_url": {
+            "examples": [
+              "https://docs.example.com"
+            ],
             "format": "uri",
             "type": "string"
           },
@@ -11703,6 +11709,9 @@
             "type": "integer"
           },
           "github_url": {
+            "examples": [
+              "https://github.com/example"
+            ],
             "format": "uri",
             "type": "string"
           },
@@ -11748,21 +11757,33 @@
             "description": "Structured social links: a curated provider override, else borrowed from the single subnet this provider operates. Display-only; never feeds completeness.",
             "properties": {
               "reddit": {
+                "examples": [
+                  "https://reddit.com/r/example"
+                ],
                 "format": "uri",
                 "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
                 "type": "string"
               },
               "telegram": {
+                "examples": [
+                  "https://t.me/example"
+                ],
                 "format": "uri",
                 "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
                 "type": "string"
               },
               "x": {
+                "examples": [
+                  "https://x.com/example"
+                ],
                 "format": "uri",
                 "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
                 "type": "string"
               },
               "youtube": {
+                "examples": [
+                  "https://youtube.com/@example"
+                ],
                 "format": "uri",
                 "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
                 "type": "string"
@@ -11781,10 +11802,16 @@
             "type": "integer"
           },
           "team_url": {
+            "examples": [
+              "https://example.com/team"
+            ],
             "format": "uri",
             "type": "string"
           },
           "website_url": {
+            "examples": [
+              "https://example.com"
+            ],
             "format": "uri",
             "type": "string"
           }
