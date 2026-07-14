@@ -2386,7 +2386,16 @@ test("enrichment guidance ignores maintainer-excluded candidate URLs", () => {
   const colosseum = queue.queue.find((entry) => entry.netuid === 38);
 
   assert(colosseum, "expected SN38 colosseum enrichment queue entry");
-  assert.equal(colosseum.evidence_action, "submit-new-evidence");
+  // Keep accepting both pre- and post-OpenAPI states: registering ChronoLLM
+  // OpenAPI flips SN38 from submit-new-evidence to maintainer-review-existing-evidence.
+  // This test's intent is maintainer-excluded URL filtering, not that action pin.
+  assert.ok(
+    [
+      "submit-new-evidence",
+      "maintainer-review-existing-evidence",
+    ].includes(colosseum.evidence_action),
+    `unexpected SN38 evidence_action: ${colosseum.evidence_action}`,
+  );
   assert.equal(
     colosseum.sample_target_candidate_ids.includes(
       "sn-38-native-chain-website",
