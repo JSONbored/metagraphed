@@ -37,6 +37,7 @@ import {
   subnetTrajectoryQuery,
   subnetUptimeQuery,
 } from "@/lib/metagraphed/queries";
+import { useSubnetProbeHealth } from "@/hooks/use-subnet-probe-health";
 import type {
   Endpoint,
   SubnetProfile,
@@ -187,6 +188,9 @@ export function SubnetMasthead({
   const { data: regRes } = useQuery(subnetRegistrationsQuery(netuid));
   const { data: deregRes } = useQuery(subnetDeregistrationsQuery(netuid));
   const { data: eventsRes } = useQuery(subnetEventSummaryQuery(netuid));
+  // Canonical probe health (#5332) — same source as the /subnets table join,
+  // never profile/chain lifecycle status.
+  const probeHealth = useSubnetProbeHealth(netuid);
   const reg = regRes?.data;
   const dereg = deregRes?.data;
 
@@ -265,8 +269,8 @@ export function SubnetMasthead({
     { label: "Dashboard", href: profile?.dashboard, icon: LayoutDashboard },
   ].filter((l) => !!l.href) as LinkChip[];
 
-  // Health-derived accent for the top rail.
-  const health = profile?.health ?? "unknown";
+  // Health-derived accent for the top rail — probe health, not profile.status.
+  const health = probeHealth;
   const accentColor =
     health === "ok"
       ? "var(--health-ok)"
@@ -436,8 +440,11 @@ export function SubnetMasthead({
             </div>
           ) : null}
         </div>
-        <div className="hidden md:flex shrink-0 flex-col items-end gap-1.5">
-          <HealthPill state={profile?.health} />
+        {/* HealthPill is the sole on-page health signal (#5332) — keep it visible
+            on mobile too; previously `hidden md:flex` left only the incident strip
+            + readiness pill to disagree. */}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <HealthPill state={probeHealth} />
           <CurationChip level={profile?.curation_level} />
         </div>
       </div>

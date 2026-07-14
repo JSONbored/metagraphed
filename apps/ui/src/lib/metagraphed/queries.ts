@@ -4318,7 +4318,11 @@ export function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProf
   const repo = pickStr(links.source_repo, subnet.source_repo);
   const dashboard = pickStr(links.dashboard_url, subnet.dashboard_url);
 
-  const status = statusToHealth((subnet.status as string) ?? (profile.status as string));
+  // Probe health is overlay-only (`subnetHealthMapQuery` / `subnetHealthQuery`).
+  // Never map chain lifecycle `status` ("active") through statusToHealth — that
+  // collides with HealthState and left page pills stuck on "unknown" (#5332).
+  const probeHealth =
+    statusToHealth(subnet.health) ?? statusToHealth(profile.health) ?? statusToHealth(root.health);
 
   return {
     netuid: (subnet.netuid as number) ?? (profile.netuid as number) ?? netuid,
@@ -4377,7 +4381,9 @@ export function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProf
     surfaces: (root.surfaces as Surface[]) ?? [],
     endpoints: (root.endpoints as Endpoint[]) ?? [],
     candidate_surfaces: (root.candidate_surfaces as Candidate[]) ?? [],
-    health: status,
+    // Optional only when the profile payload itself carries probe health; page
+    // chrome should prefer useSubnetProbeHealth / resolveSubnetProbeHealth.
+    health: probeHealth,
   } as SubnetProfile;
 }
 
@@ -6642,10 +6648,18 @@ function normalizeIncident(raw: unknown): EndpointIncident {
     (isHealthState(i.state) ? i.state : undefined) ??
     "unknown";
   const ended = i.state === "resolved" || i.resolved_at;
+  const netuidRaw = i.netuid;
+  const netuid =
+    typeof netuidRaw === "number" && Number.isInteger(netuidRaw)
+      ? netuidRaw
+      : typeof netuidRaw === "string" && /^\d+$/.test(netuidRaw)
+        ? Number(netuidRaw)
+        : undefined;
   return {
     ...(i as object),
     id: asString(i.id) ?? "",
     endpoint_id: asString(i.endpoint_id),
+    netuid,
     state: stateHealth,
     message: asString(i.message) ?? asString(i.reason),
     started_at: asString(i.started_at) ?? asString(i.detected_at) ?? asString(i.observed_at),

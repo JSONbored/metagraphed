@@ -447,6 +447,22 @@ describe("normalizeSubnetProfile", () => {
     expect(out.endpoints).toEqual([]);
     expect(out.candidate_surfaces).toEqual([]);
   });
+
+  it("does not invent HealthState from chain lifecycle status (#5332)", () => {
+    // Real profile payloads carry subnet.status = "active" (chain), not probe
+    // health. Mapping that through statusToHealth used to pin the masthead
+    // HealthPill on "unknown" while the incident strip correctly showed degraded.
+    const out = normalizeSubnetProfile(profilePayload, 7);
+    expect(out.health).toBeUndefined();
+  });
+
+  it("preserves probe health when the profile payload carries it (#5332)", () => {
+    const payload = {
+      ...profilePayload,
+      subnet: { ...profilePayload.subnet, health: "degraded" },
+    };
+    expect(normalizeSubnetProfile(payload, 7).health).toBe("warn");
+  });
 });
 
 describe("normalizeGap", () => {

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AlertTriangle, ArrowRight, X } from "lucide-react";
 import { endpointIncidentsQuery } from "@/lib/metagraphed/queries";
+import { netuidFromPathname, sameNetuid } from "@/lib/metagraphed/subnet-probe-health";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
 
@@ -35,11 +36,21 @@ function isActive(i: EndpointIncident): boolean {
   return state === "down" || state === "warn" || state === "degraded";
 }
 
+/**
+ * Site-wide active-incident banner for operational routes.
+ *
+ * On a subnet detail page the masthead HealthPill is the sole health signal for
+ * *that* subnet (#5332). Incidents scoped to the viewed netuid are therefore
+ * omitted here so "SN1 DEGRADED" cannot disagree with a masthead pill that was
+ * previously stuck on profile/chain "Unknown". Other subnets' incidents still
+ * surface (and the strip still leads on /endpoints).
+ */
 export function IncidentStrip() {
   // The degraded/incident bar is only contextually relevant on the operational
   // surfaces (endpoints + subnets); on home/about/schemas/etc. it's noise, so we
   // gate it to those routes rather than showing it site-wide.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const viewedNetuid = netuidFromPathname(pathname);
   const { data, error } = useQuery({ ...endpointIncidentsQuery(), retry: 0 });
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   // Hydrate after mount to avoid SSR mismatch.
@@ -47,8 +58,15 @@ export function IncidentStrip() {
 
   const active = useMemo(() => {
     if (error || !data) return [];
-    return (data.data as EndpointIncident[]).filter(isActive).filter((i) => !dismissed.has(i.id));
-  }, [data, error, dismissed]);
+    return (
+      (data.data as EndpointIncident[])
+        .filter(isActive)
+        .filter((i) => !dismissed.has(i.id))
+        // Masthead owns health for the currently viewed subnet (coerce netuid
+        // so string/number API values never leave "SN1 DEGRADED" stuck on /subnets/1).
+        .filter((i) => viewedNetuid == null || !sameNetuid(i.netuid, viewedNetuid))
+    );
+  }, [data, error, dismissed, viewedNetuid]);
 
   const onOperationalRoute = pathname.startsWith("/endpoints") || pathname.startsWith("/subnets");
   if (!onOperationalRoute || active.length === 0) return null;
