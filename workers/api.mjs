@@ -43,7 +43,6 @@ import {
 } from "./request-handlers/discovery.mjs";
 import {
   configureAnalytics,
-  d1All,
   d1Runner,
   handleBulkHealthTrends,
   handleChainActivity,
@@ -3093,9 +3092,16 @@ export async function readEconomicsCurrentKv(env, now = Date.now()) {
 }
 
 // Chain-events index heartbeat read. Memoized per-isolate at a short TTL so
-// repeated /health probes on warm isolates don't issue a billed D1 query per
-// request. Null results are not cached (cold/unbound store stays re-queried).
-// Keyed on env so tests / multi-binding callers never cross-read.
+// repeated /health probes on warm isolates don't issue a billed Postgres query
+// (via the DATA_API service binding) per request. Null results are not cached
+// (cold/unbound store stays re-queried). Keyed on env so tests / multi-binding
+// callers never cross-read.
+//
+// This used to query D1's `account_events` table directly, but that table was
+// fully dropped by #4772 (D1 chain-data write-path retirement) — the live
+// chain_events tier now lives in Postgres, reached through the DATA_API
+// service binding, the same way handleChainEventsProxy (above) and
+// dataApiFetchJson (src/data-api-mcp.mjs) already read it (#5357).
 export const CHAIN_EVENTS_DB_TTL_MS = 30_000;
 let chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
 
@@ -3103,14 +3109,25 @@ export async function readChainEventsDb(env, now = Date.now()) {
   if (chainEventsDbMemo.env === env && now < chainEventsDbMemo.expiresAt) {
     return chainEventsDbMemo.value;
   }
-  if (!env?.METAGRAPH_HEALTH_DB?.prepare) return null;
-  const rows = await d1All(
-    env,
-    "SELECT block_number AS block, observed_at AS at FROM account_events " +
-      "ORDER BY observed_at DESC LIMIT 1",
-    [],
-  );
-  const value = rows[0] || null;
+  if (!env?.DATA_API?.fetch) return null;
+  let value = null;
+  try {
+    const response = await env.DATA_API.fetch(
+      new Request("https://d/api/v1/chain-events?limit=1"),
+    );
+    if (response.ok) {
+      const body = await response.json();
+      const row = Array.isArray(body?.events) ? body.events[0] : null;
+      if (row) {
+        value = {
+          block: row.block_number ?? null,
+          at: row.observed_at ?? null,
+        };
+      }
+    }
+  } catch {
+    value = null;
+  }
   if (value !== null) {
     chainEventsDbMemo = { env, value, expiresAt: now + CHAIN_EVENTS_DB_TTL_MS };
   }
@@ -3677,6 +3694,7 @@ async function handleHealthRequest(request, env) {
     r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
     kv: Boolean(env.METAGRAPH_CONTROL?.get),
     health_db: Boolean(env.METAGRAPH_HEALTH_DB?.prepare),
+    data_api: Boolean(env.DATA_API?.fetch),
   };
 
   // Data freshness — the event-driven data publish (ADR 0007) advances the KV
@@ -3720,7 +3738,7 @@ async function handleHealthRequest(request, env) {
   // observability (does NOT gate the HTTP status, like operational_health);
   // best-effort + null on a cold/unbound store.
   let chainEvents = null;
-  if (bindings.health_db) {
+  if (bindings.data_api) {
     const chainEventsRow = await readChainEventsDb(env);
     const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
     // Blank/zero observed_at cells coerce via Number("") → 0; treat as absent
