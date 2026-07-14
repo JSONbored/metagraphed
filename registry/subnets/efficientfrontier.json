@@ -12,8 +12,8 @@
     "gap_notes": [
       "SignalPlus website is live and is tracked as the team/project website.",
       "The subnet mining app currently returns a 403/auth-challenge response to simple probes and is expected to appear degraded rather than healthy.",
-      "Previously discovered GitHub source repository currently returns 404.",
-      "No verified live source repository yet.",
+      "Previously discovered EfficientFrontier-SignalPlus/EfficientFrontier repository currently returns 404.",
+      "Top-level source_repo now points at the live oxylok/53-EfficientFrontier successor (also registered as sn-53-signalplus-source-repo).",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
@@ -28,10 +28,10 @@
   "dashboard_url": "https://t.signalplus.com/mining",
   "name": "EfficientFrontier",
   "netuid": 53,
-  "notes": "Reviewed overlay for SN53 EfficientFrontier by SignalPlus. The SignalPlus company website is live; the mining app surface returns an auth/challenge-style response to simple probes. The previously discovered EfficientFrontier source repository currently returns 404 and is not promoted.",
+  "notes": "Reviewed overlay for SN53 EfficientFrontier by SignalPlus. The SignalPlus company website is live; the mining app surface returns an auth/challenge-style response to simple probes. The previously discovered EfficientFrontier-SignalPlus/EfficientFrontier repository returns 404; top-level source_repo now points at the live oxylok/53-EfficientFrontier successor.",
   "schema_version": 1,
   "slug": "efficientfrontier",
-  "source_repo": "https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier",
+  "source_repo": "https://github.com/oxylok/53-EfficientFrontier",
   "status": "active",
   "surfaces": [
     {

@@ -11,9 +11,9 @@
     "official-source-repo",
     "official-website"
   ],
-  "website_url": "https://bitads.ai/",
-  "docs_url": "https://bitads.ai/docs",
-  "source_repo": "https://github.com/FirstTensorLabs/BitAds",
+  "website_url": null,
+  "docs_url": null,
+  "source_repo": "https://github.com/study-service/BitAds.ai",
   "dashboard_url": "https://taomarketcap.com/subnets/16",
   "baseline_excluded_surface_ids": [
     "sn-16-taomarketcap-source-repo",
@@ -25,7 +25,7 @@
     "sn-16-website-common-swagger",
     "sn-16-website-common-swagger-json"
   ],
-  "notes": "Reviewed overlay for SN16 BitAds using the official BitAds website, docs page, and source repository. Common API/OpenAPI/Swagger paths currently return website HTML instead of machine-readable API/schema responses, so they are excluded as content mismatches.",
+  "notes": "Reviewed overlay for SN16 BitAds. Top-level source_repo now points at the live study-service/BitAds.ai successor (FirstTensorLabs/BitAds returns 404). The bitads.ai website/docs domain no longer resolves (DNS dead), so website_url and docs_url are nulled. Common API/OpenAPI/Swagger paths previously returned website HTML instead of machine-readable API/schema responses and remain excluded.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -33,12 +33,12 @@
     "verified_at": "2026-06-08T20:25:00.000Z",
     "source_count": 5,
     "gap_notes": [
-      "Official website, docs page, and source repository are verified live.",
-      "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths return marketing-site HTML rather than API/schema payloads.",
+      "Live source repository is study-service/BitAds.ai; FirstTensorLabs/BitAds returns 404.",
+      "bitads.ai website and docs domain currently do not resolve (DNS dead); website_url and docs_url nulled.",
+      "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths previously returned marketing-site HTML rather than API/schema payloads.",
       "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "No verified SSE/event stream yet."
     ]
   },
   "surfaces": [

@@ -25,7 +25,7 @@
   "notes": "Reviewed overlay for SN119 Satori. Public directories describe the subnet, but the previously listed Satori119/Satori repository currently returns 404 and no official website, API, OpenAPI schema, or docs site is verified.",
   "schema_version": 1,
   "slug": "satori",
-  "source_repo": "https://github.com/Satori119/Satori",
+  "source_repo": null,
   "status": "active",
   "surfaces": [
     {

@@ -14,7 +14,7 @@
   "website_url": "https://actual.inc/",
   "docs_url": null,
   "dashboard_url": "https://backprop.finance/dtao/subnets/95-actual",
-  "source_repo": "https://github.com/actual-computer/actual-subnet-95",
+  "source_repo": null,
   "baseline_excluded_surface_ids": [
     "sn-95-taomarketcap-source-repo",
     "sn-95-taomarketcap-website",

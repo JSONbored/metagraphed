@@ -5,7 +5,7 @@
   "slug": "sn-20",
   "status": "active",
   "categories": ["baseline-curated", "capital-markets", "identity-reviewed"],
-  "source_repo": "https://github.com/RogueTensor/comingsoon",
+  "source_repo": null,
   "dashboard_url": "https://taomarketcap.com/subnets/20",
   "website_url": "https://www.groundlayer.xyz/",
   "baseline_excluded_surface_ids": [
