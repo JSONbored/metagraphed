@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { reviewProfileCompletenessQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
+import { coverageMissingSummary } from "@/lib/metagraphed/coverage-summary";
 import { InfoTooltip } from "@jsonbored/ui-kit";
 import type { Subnet } from "@/lib/metagraphed/types";
 
@@ -148,47 +149,62 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.netuid}
-                className="border-b border-border last:border-b-0 hover:bg-paper/30"
-              >
-                <td className="sticky left-0 z-10 bg-card px-3 py-1.5 border-r border-border text-ink-strong">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: r.netuid }}
-                    className="inline-flex items-center gap-1.5 hover:text-accent"
-                  >
-                    <span className="font-mono text-[10px] text-ink-muted">SN{r.netuid}</span>
-                    <span className="truncate max-w-[160px]">{r.name}</span>
-                  </Link>
-                </td>
-                {KINDS.map((k) => {
-                  const cell = r.cells[k];
-                  const tone = CELL_TONE[cell];
-                  return (
-                    <td key={k} className="p-1 align-middle">
-                      <Link
-                        to="/subnets/$netuid"
-                        params={{ netuid: r.netuid }}
-                        search={{ tab: "surfaces" }}
-                        className={classNames(
-                          "block h-6 w-full rounded transition-all hover:ring-2",
-                          tone.bg,
-                          tone.ring,
-                        )}
-                        title={`${tone.label} · ${k} · SN${r.netuid}`}
-                      >
-                        <span className="sr-only">{`${k} ${tone.label}`}</span>
-                      </Link>
-                    </td>
-                  );
-                })}
-                <td className="px-2 py-1.5 text-right tabular-nums text-ink-strong">
-                  {Math.round(r.completeness * 100)}%
-                </td>
-              </tr>
-            ))}
+            {rows.map((r) => {
+              const summary = coverageMissingSummary(r.missingCount);
+              return (
+                <tr
+                  key={r.netuid}
+                  className="border-b border-border last:border-b-0 hover:bg-paper/30"
+                >
+                  <td className="sticky left-0 z-10 bg-card px-3 py-1.5 border-r border-border text-ink-strong">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: r.netuid }}
+                      className="inline-flex items-center gap-1.5 hover:text-accent"
+                    >
+                      <span className="font-mono text-[10px] text-ink-muted">SN{r.netuid}</span>
+                      <span className="truncate max-w-[160px]">{r.name}</span>
+                    </Link>
+                    {/* Below lg the kind columns (the real gaps) scroll off-screen
+                      and every on-screen cell reads "present", so a mobile user
+                      sees false full coverage. Surface the missing count here in
+                      the sticky first column, where it's always visible (#5310). */}
+                    <span
+                      className={classNames(
+                        "mt-0.5 block text-[9px] uppercase tracking-[0.12em] lg:hidden",
+                        summary.complete ? "text-health-ok" : "text-health-down",
+                      )}
+                    >
+                      {summary.label}
+                    </span>
+                  </td>
+                  {KINDS.map((k) => {
+                    const cell = r.cells[k];
+                    const tone = CELL_TONE[cell];
+                    return (
+                      <td key={k} className="p-1 align-middle">
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: r.netuid }}
+                          search={{ tab: "surfaces" }}
+                          className={classNames(
+                            "block h-6 w-full rounded transition-all hover:ring-2",
+                            tone.bg,
+                            tone.ring,
+                          )}
+                          title={`${tone.label} · ${k} · SN${r.netuid}`}
+                        >
+                          <span className="sr-only">{`${k} ${tone.label}`}</span>
+                        </Link>
+                      </td>
+                    );
+                  })}
+                  <td className="px-2 py-1.5 text-right tabular-nums text-ink-strong">
+                    {Math.round(r.completeness * 100)}%
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
