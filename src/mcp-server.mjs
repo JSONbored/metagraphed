@@ -22,7 +22,13 @@
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
-import { DAY_PATTERN } from "../workers/request-params.mjs";
+import {
+  DAY_PATTERN,
+  FEED_PAGINATION,
+  BLOCK_PAGINATION,
+  clampLimit as clampFeedLimit,
+  clampOffset as clampFeedOffset,
+} from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
@@ -270,8 +276,8 @@ import {
   parseEconomicsTrendsWindow,
 } from "./economics-trends.mjs";
 import {
-  loadCounterparties,
-  loadCounterpartyRelationship,
+  buildCounterparties,
+  buildCounterpartyRelationship,
 } from "./counterparties.mjs";
 import {
   loadCompareSubnets,
@@ -362,13 +368,13 @@ import {
 } from "./metagraph-neurons.mjs";
 import {
   INGESTED_EVENT_KINDS,
-  loadAccountSummary,
-  loadAccountEvents,
-  loadSubnetEvents,
-  loadAccountSubnets,
-  loadAccountHistory,
-  loadAccountExtrinsics,
-  loadAccountTransfers,
+  buildAccountSummary,
+  buildAccountEvents,
+  buildSubnetEvents,
+  buildAccountSubnets,
+  buildAccountHistory,
+  buildAccountTransfers,
+  buildBlockEvents,
   buildSubnetEventSummary,
   SUBNET_EVENT_SUMMARY_WINDOWS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
@@ -420,7 +426,7 @@ import {
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "./subnet-deregistrations.mjs";
-import { loadAccountPortfolio } from "./account-portfolio.mjs";
+import { buildAccountPortfolio } from "./account-portfolio.mjs";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -457,44 +463,44 @@ import {
   STAKE_FLOW_DIRECTIONS,
   DEFAULT_STAKE_FLOW_DIRECTION,
 } from "./stake-flow.mjs";
-import { loadAccountStakeFlow } from "./account-stake-flow.mjs";
+import { buildAccountStakeFlow } from "./account-stake-flow.mjs";
 import {
-  loadAccountStakeMoves,
+  buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "./account-stake-moves.mjs";
 import {
-  loadAccountAxonRemovals,
+  buildAccountAxonRemovals,
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
 } from "./account-axon-removals.mjs";
 import {
-  loadAccountPrometheus,
+  buildAccountPrometheus,
   PROMETHEUS_WINDOWS,
   DEFAULT_PROMETHEUS_WINDOW,
 } from "./account-prometheus.mjs";
 import {
-  loadAccountRegistrations,
+  buildAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
 } from "./account-registrations.mjs";
 import {
-  loadAccountWeightSetters,
+  buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
 } from "./account-weight-setters.mjs";
 import {
-  loadAccountServing,
+  buildAccountServing,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
 } from "./account-serving.mjs";
 import {
-  loadAccountDeregistrations,
+  buildAccountDeregistrations,
   DEREGISTRATION_WINDOWS as ACCOUNT_DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW as DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW,
 } from "./account-deregistrations.mjs";
 import {
-  loadSubnetMovers,
+  buildMovers,
   MOVERS_WINDOWS,
   MOVERS_SORTS,
   DEFAULT_MOVERS_WINDOW,
@@ -503,10 +509,13 @@ import {
   MOVERS_LIMIT_MAX,
 } from "./movers.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
-import { loadBlocks, loadBlock } from "./blocks.mjs";
-import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
-import { loadExtrinsics } from "./extrinsics.mjs";
-import { loadExtrinsicDetail } from "./extrinsic-detail.mjs";
+import { buildBlock, buildBlockFeed } from "./blocks.mjs";
+import {
+  buildExtrinsic,
+  buildExtrinsicFeed,
+  buildBlockExtrinsics,
+  buildAccountExtrinsics,
+} from "./extrinsics.mjs";
 import {
   dataApiFetchJson,
   loadBlockChainEvents,
@@ -3786,7 +3795,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const window = optionalString(args, "window") ?? DEFAULT_MOVERS_WINDOW;
       if (!Object.hasOwn(MOVERS_WINDOWS, window)) {
         throw toolError(
@@ -3806,8 +3815,10 @@ export const MCP_TOOLS = [
         MOVERS_LIMIT_DEFAULT,
         MOVERS_LIMIT_MAX,
       );
-      return loadSubnetMovers(mcpD1Runner(ctx), {
-        windowLabel: window,
+      return buildMovers([], [], {
+        window,
+        startDate: null,
+        endDate: null,
         sort,
         limit,
       });
@@ -4335,18 +4346,19 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
+      // kind/block_start/block_end are still validated below (bad input
+      // still errors) even though an empty event stream makes every filter
+      // moot.
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
-      const cursor = optionalString(args, "cursor");
-      return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
-        kind,
-        blockStart: optionalNonNegativeInt(args, "block_start"),
-        blockEnd: optionalNonNegativeInt(args, "block_end"),
-        limit: args?.limit,
-        offset: args?.offset,
-        cursor,
+      optionalNonNegativeInt(args, "block_start");
+      optionalNonNegativeInt(args, "block_end");
+      return buildSubnetEvents([], netuid, {
+        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
+        offset: clampFeedOffset(args?.offset),
+        nextCursor: null,
       });
     },
   },
@@ -4375,9 +4387,9 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
-      return loadAccountSummary(mcpD1Runner(ctx), ss58);
+      return buildAccountSummary(ss58, {});
     },
   },
   {
@@ -4491,19 +4503,20 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
+      // netuid/block_start/block_end/kind are still validated below (bad
+      // input still errors) even though an empty event stream makes every
+      // filter moot.
+      optionalNonNegativeInt(args, "netuid");
+      optionalNonNegativeInt(args, "block_start");
+      optionalNonNegativeInt(args, "block_end");
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
-      const cursor = optionalString(args, "cursor");
-      return loadAccountEvents(mcpD1Runner(ctx), ss58, {
-        netuid: optionalNonNegativeInt(args, "netuid"),
-        blockStart: optionalNonNegativeInt(args, "block_start"),
-        blockEnd: optionalNonNegativeInt(args, "block_end"),
-        limit: args?.limit,
-        offset: args?.offset,
-        kind,
-        cursor,
+      return buildAccountEvents([], ss58, {
+        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
+        offset: clampFeedOffset(args?.offset),
+        nextCursor: null,
       });
     },
   },
@@ -4529,9 +4542,9 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
-      return loadAccountSubnets(mcpD1Runner(ctx), ss58);
+      return buildAccountSubnets([], ss58);
     },
   },
   {
@@ -4557,9 +4570,9 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
-      return loadAccountPortfolio(mcpD1Runner(ctx), ss58);
+      return buildAccountPortfolio([], ss58);
     },
   },
   {
@@ -4595,7 +4608,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
@@ -4605,6 +4618,8 @@ export const MCP_TOOLS = [
           `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
+      // direction is still validated (bad input still errors) even though an
+      // empty event stream makes the filter itself moot.
       const direction =
         optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
       if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
@@ -4613,11 +4628,7 @@ export const MCP_TOOLS = [
           `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
         );
       }
-      const { data } = await loadAccountStakeFlow(mcpD1Runner(ctx), ss58, {
-        windowLabel: window,
-        direction,
-      });
-      return data;
+      return buildAccountStakeFlow([], ss58, { window });
     },
   },
   {
@@ -4650,7 +4661,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
@@ -4660,10 +4671,7 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const { data } = await loadAccountStakeMoves(mcpD1Runner(ctx), ss58, {
-        windowLabel: window,
-      });
-      return data;
+      return buildAccountStakeMoves([], ss58, { window });
     },
   },
   {
@@ -4696,7 +4704,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_AXON_REMOVAL_WINDOW;
@@ -4706,10 +4714,7 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const { data } = await loadAccountAxonRemovals(mcpD1Runner(ctx), ss58, {
-        windowLabel: window,
-      });
-      return data;
+      return buildAccountAxonRemovals([], ss58, { window });
     },
   },
   {
@@ -4743,7 +4748,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_PROMETHEUS_WINDOW;
@@ -4753,10 +4758,7 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const { data } = await loadAccountPrometheus(mcpD1Runner(ctx), ss58, {
-        windowLabel: window,
-      });
-      return data;
+      return buildAccountPrometheus([], ss58, { window });
     },
   },
   {
@@ -4789,7 +4791,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_REGISTRATION_WINDOW;
@@ -4799,10 +4801,7 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_REGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const { data } = await loadAccountRegistrations(mcpD1Runner(ctx), ss58, {
-        windowLabel: window,
-      });
-      return data;
+      return buildAccountRegistrations([], ss58, { window });
     },
   },
   {
@@ -4834,7 +4833,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
@@ -4844,10 +4843,7 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const { data } = await loadAccountWeightSetters(mcpD1Runner(ctx), ss58, {
-        windowLabel: window,
-      });
-      return data;
+      return buildAccountWeightSetters([], ss58, { window });
     },
   },
   {
@@ -4881,7 +4877,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const window = optionalString(args, "window") ?? DEFAULT_SERVING_WINDOW;
       if (!Object.hasOwn(SERVING_WINDOWS, window)) {
@@ -4890,10 +4886,7 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_SERVING_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const { data } = await loadAccountServing(mcpD1Runner(ctx), ss58, {
-        windowLabel: window,
-      });
-      return data;
+      return buildAccountServing([], ss58, { window });
     },
   },
   {
@@ -4927,7 +4920,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW;
@@ -4937,12 +4930,7 @@ export const MCP_TOOLS = [
           `window must be one of: ${ACCOUNT_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const { data } = await loadAccountDeregistrations(
-        mcpD1Runner(ctx),
-        ss58,
-        { windowLabel: window },
-      );
-      return data;
+      return buildAccountDeregistrations([], ss58, { window });
     },
   },
   {
@@ -5003,19 +4991,18 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
-      const netuid = optionalNonNegativeInt(args, "netuid") ?? undefined;
-      const from = optionalDayArg(args, "from");
-      const to = optionalDayArg(args, "to");
-      const cursor = optionalString(args, "cursor");
-      return loadAccountHistory(mcpD1Runner(ctx), ss58, {
-        netuid,
-        from: from ?? undefined,
-        to: to ?? undefined,
-        limit: args?.limit,
-        offset: args?.offset,
-        cursor: cursor ?? undefined,
+      // netuid/from/to/cursor are still validated below (bad input still
+      // errors) even though an empty day stream makes every filter moot.
+      optionalNonNegativeInt(args, "netuid");
+      optionalDayArg(args, "from");
+      optionalDayArg(args, "to");
+      optionalString(args, "cursor");
+      return buildAccountHistory([], ss58, {
+        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
+        offset: clampFeedOffset(args?.offset),
+        nextCursor: null,
       });
     },
   },
@@ -5072,15 +5059,18 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
-      const cursor = optionalString(args, "cursor");
-      return loadAccountExtrinsics(mcpD1Runner(ctx), ss58, {
-        blockStart: optionalNonNegativeInt(args, "block_start"),
-        blockEnd: optionalNonNegativeInt(args, "block_end"),
-        limit: args?.limit,
-        offset: args?.offset,
-        cursor: cursor ?? undefined,
+      // block_start/block_end/cursor are still validated below (bad input
+      // still errors) even though an empty extrinsic stream makes every
+      // filter moot.
+      optionalNonNegativeInt(args, "block_start");
+      optionalNonNegativeInt(args, "block_end");
+      optionalString(args, "cursor");
+      return buildAccountExtrinsics([], ss58, {
+        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
+        offset: clampFeedOffset(args?.offset),
+        nextCursor: null,
       });
     },
   },
@@ -5144,17 +5134,20 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
-      const direction = optionalString(args, "direction");
-      const cursor = optionalString(args, "cursor");
-      return loadAccountTransfers(mcpD1Runner(ctx), ss58, {
-        direction: direction ?? undefined,
-        blockStart: optionalNonNegativeInt(args, "block_start"),
-        blockEnd: optionalNonNegativeInt(args, "block_end"),
-        limit: args?.limit,
-        offset: args?.offset,
-        cursor: cursor ?? undefined,
+      // direction/block_start/block_end/cursor are still validated below
+      // (bad input still errors) even though an empty transfer stream makes
+      // every filter moot.
+      optionalString(args, "direction");
+      optionalNonNegativeInt(args, "block_start");
+      optionalNonNegativeInt(args, "block_end");
+      optionalString(args, "cursor");
+      return buildAccountTransfers([], ss58, {
+        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
+        offset: clampFeedOffset(args?.offset),
+        nextCursor: null,
+        direction: undefined,
       });
     },
   },
@@ -5199,7 +5192,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ss58 = requireSs58(args);
       const counterparty = optionalString(args, "counterparty");
       if (counterparty != null) {
@@ -5215,14 +5208,30 @@ export const MCP_TOOLS = [
             "Argument `counterparty` must differ from `ss58`.",
           );
         }
-        return loadCounterpartyRelationship(
-          mcpD1Runner(ctx),
+        // #4909 D1 retirement: account_events' D1 write path is retired
+        // (#4772) and the table is dropped in production, so a D1 query
+        // here would always miss. Mirrors REST's handleAccountCounterparties
+        // cold path: wrap the always-empty relationship in the same
+        // composite envelope loadCounterpartyRelationship used to build.
+        const relationship = buildCounterpartyRelationship(
+          [],
           ss58,
           counterparty,
           { limit: args?.limit },
         );
+        return {
+          schema_version: 1,
+          ss58,
+          counterparty_count: 0,
+          transfers_scanned: relationship.transfers_scanned,
+          scan_capped: relationship.scan_capped,
+          total_sent_tao: relationship.total_sent_tao,
+          total_received_tao: relationship.total_received_tao,
+          counterparties: [],
+          relationship,
+        };
       }
-      return loadCounterparties(mcpD1Runner(ctx), ss58, { limit: args?.limit });
+      return buildCounterparties([], ss58, { limit: args?.limit });
     },
   },
   {
@@ -5306,22 +5315,11 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
-      const cursor = optionalString(args, "cursor");
-      const author = optionalString(args, "author");
-      return loadBlocks(mcpD1Runner(ctx), {
-        author: author ?? undefined,
-        specVersion: optionalNonNegativeInt(args, "spec_version") ?? undefined,
-        blockStart: optionalNonNegativeInt(args, "block_start") ?? undefined,
-        blockEnd: optionalNonNegativeInt(args, "block_end") ?? undefined,
-        from: optionalNonNegativeInt(args, "from") ?? undefined,
-        to: optionalNonNegativeInt(args, "to") ?? undefined,
-        minExtrinsics:
-          optionalNonNegativeInt(args, "min_extrinsics") ?? undefined,
-        minEvents: optionalNonNegativeInt(args, "min_events") ?? undefined,
-        limit: args?.limit,
-        offset: args?.offset,
-        cursor: cursor ?? undefined,
+    async handler(args) {
+      return buildBlockFeed([], {
+        limit: clampFeedLimit(args?.limit, BLOCK_PAGINATION),
+        offset: clampFeedOffset(args?.offset),
+        nextCursor: null,
       });
     },
   },
@@ -5346,9 +5344,9 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ref = requireString(args, "ref");
-      return loadBlock(mcpD1Runner(ctx), ref);
+      return buildBlock(undefined, ref);
     },
   },
   {
@@ -5384,13 +5382,12 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ref = requireString(args, "ref");
-      const { data } = await loadBlockExtrinsics(mcpD1Runner(ctx), ref, {
-        limit: args?.limit,
-        offset: args?.offset,
+      return buildBlockExtrinsics([], ref, null, {
+        limit: clampFeedLimit(args?.limit, BLOCK_PAGINATION),
+        offset: clampFeedOffset(args?.offset),
       });
-      return data;
     },
   },
   {
@@ -5426,13 +5423,12 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const ref = requireString(args, "ref");
-      const { data } = await loadBlockEvents(mcpD1Runner(ctx), ref, {
-        limit: args?.limit,
-        offset: args?.offset,
+      return buildBlockEvents([], ref, null, {
+        limit: clampFeedLimit(args?.limit, FEED_PAGINATION),
+        offset: clampFeedOffset(args?.offset),
       });
-      return data;
     },
   },
   {
@@ -5522,34 +5518,20 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      const signer = optionalString(args, "signer");
-      const callModule = optionalString(args, "call_module");
-      const callFunction = optionalString(args, "call_function");
-      const cursor = optionalString(args, "cursor");
-      // Mirrors REST's handleExtrinsics: try Postgres first (#4694), fall
-      // back to D1 on any failure -- same tryPostgresTier contract, same
-      // METAGRAPH_EXTRINSICS_SOURCE flag, so this tool and GET
-      // /api/v1/extrinsics never diverge on which tier answered.
+      // Mirrors REST's handleExtrinsics: try Postgres first (#4694); D1's
+      // extrinsics table is retired (#4772) so a miss here is a
+      // schema-stable-empty literal, not a second query.
       return (
         (await tryPostgresTier(
           ctx.env,
           mcpExtrinsicsListRequest(args),
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ??
-        (await loadExtrinsics(mcpD1Runner(ctx), {
-          block: optionalNonNegativeInt(args, "block") ?? undefined,
-          signer: signer ?? undefined,
-          callModule: callModule ?? undefined,
-          callFunction: callFunction ?? undefined,
-          success: optionalSuccessFilter(args),
-          blockStart: optionalNonNegativeInt(args, "block_start") ?? undefined,
-          blockEnd: optionalNonNegativeInt(args, "block_end") ?? undefined,
-          from: optionalNonNegativeInt(args, "from") ?? undefined,
-          to: optionalNonNegativeInt(args, "to") ?? undefined,
-          limit: args?.limit,
-          offset: args?.offset,
-          cursor: cursor ?? undefined,
-        }))
+        buildExtrinsicFeed([], {
+          limit: clampFeedLimit(args?.limit, BLOCK_PAGINATION),
+          offset: clampFeedOffset(args?.offset),
+          nextCursor: null,
+        })
       );
     },
   },
@@ -5579,14 +5561,15 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall
-      // back to D1 on any failure.
+      // Mirrors REST's handleExtrinsic: try Postgres first (#4694); D1's
+      // extrinsics table is retired (#4772) so a miss here is a
+      // schema-stable-empty literal, not a second query.
       return (
         (await tryPostgresTier(
           ctx.env,
           mcpExtrinsicDetailRequest(ref),
           "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ?? (await loadExtrinsicDetail(mcpD1Runner(ctx), ref))
+        )) ?? buildExtrinsic(undefined, ref)
       );
     },
   },

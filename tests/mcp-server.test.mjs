@@ -3908,43 +3908,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.equal(out.stake_events, 0);
   });
 
-  test("get_account_stake_flow shapes per-subnet direction labels", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_stake_flow",
-        { ss58: SS58, window: "7d" },
-        {
-          env: stakeFlowD1([
-            {
-              netuid: 7,
-              event_kind: "StakeAdded",
-              total_tao: 100,
-              event_count: 2,
-              last_observed: 1_717_000_000_000,
-            },
-            {
-              netuid: 9,
-              event_kind: "StakeRemoved",
-              total_tao: 40,
-              event_count: 1,
-              last_observed: 1_717_000_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].direction, "accumulating");
-      assert.equal(out.direction, "accumulating");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("get_account_stake_flow rejects a missing ss58", async () => {
     const res = await callTool("get_account_stake_flow", {});
     assert.equal(res.body.result.isError, true);
@@ -3958,34 +3921,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window must be one of/);
-  });
-
-  test("get_account_stake_flow narrows to one side with direction=in", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_account_stake_flow",
-      { ss58: SS58, window: "30d", direction: "in" },
-      {
-        env: stakeFlowD1(
-          [
-            {
-              netuid: 7,
-              event_kind: "StakeAdded",
-              total_tao: 200,
-              event_count: 4,
-              last_observed: 1_717_000_000_000,
-            },
-          ],
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.total_staked_tao, 200);
-    assert.equal(out.total_unstaked_tao, 0);
-    // direction=in binds only the StakeAdded kind, not StakeRemoved.
-    assert.ok(capture[0].params.includes("StakeAdded"));
-    assert.ok(!capture[0].params.includes("StakeRemoved"));
   });
 
   test("get_account_stake_flow rejects an unsupported direction", async () => {
@@ -4030,48 +3965,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
-
-  test("get_account_stake_moves shapes per-subnet movement counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_stake_moves",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountStakeMovesD1([
-            {
-              netuid: 7,
-              movements: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              movements: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_movements, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].movements, 3);
-      assert.equal(
-        out.subnets[0].first_moved_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 
   test("get_account_stake_moves rejects a missing ss58", async () => {
     const res = await callTool("get_account_stake_moves", {});
@@ -4146,48 +4039,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
-
-  test("get_account_axon_removals shapes per-subnet removal counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_axon_removals",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountAxonRemovalsD1([
-            {
-              netuid: 7,
-              removals: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              removals: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_removals, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].removals, 3);
-      assert.equal(
-        out.subnets[0].first_removed_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 
   test("get_account_axon_removals rejects a missing ss58", async () => {
     const res = await callTool("get_account_axon_removals", {});
@@ -4265,48 +4116,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  test("get_account_prometheus shapes per-subnet announcement counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_prometheus",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountPrometheusD1([
-            {
-              netuid: 7,
-              announcements: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              announcements: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_announcements, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].announcements, 3);
-      assert.equal(
-        out.subnets[0].first_announced_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("get_account_prometheus rejects a missing ss58", async () => {
     const res = await callTool("get_account_prometheus", {});
     assert.equal(res.body.result.isError, true);
@@ -4381,48 +4190,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
-
-  test("get_account_registrations shapes per-subnet registration counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_registrations",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountRegistrationsD1([
-            {
-              netuid: 7,
-              registrations: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              registrations: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_registrations, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].registrations, 3);
-      assert.equal(
-        out.subnets[0].first_registered_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 
   test("get_account_registrations rejects a missing ss58", async () => {
     const res = await callTool("get_account_registrations", {});
@@ -4499,48 +4266,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
-
-  test("get_account_serving shapes per-subnet announcement counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_serving",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountServingD1([
-            {
-              netuid: 7,
-              announcements: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              announcements: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_announcements, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].announcements, 3);
-      assert.equal(
-        out.subnets[0].first_served_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 
   test("get_account_serving rejects a missing ss58", async () => {
     const res = await callTool("get_account_serving", {});
@@ -4647,48 +4372,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  test("get_account_deregistrations shapes per-subnet deregistration counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_deregistrations",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountDeregistrationsD1([
-            {
-              netuid: 7,
-              deregistrations: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              deregistrations: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_deregistrations, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].deregistrations, 3);
-      assert.equal(
-        out.subnets[0].first_deregistered_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("get_account_deregistrations rejects a missing ss58", async () => {
     const res = await callTool("get_account_deregistrations", {});
     assert.equal(res.body.result.isError, true);
@@ -4736,48 +4419,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     );
     const validate = new Ajv2020().compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
-  });
-
-  test("get_account_weight_setters shapes per-subnet weight-set counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_weight_setters",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountWeightSettersD1([
-            {
-              netuid: 7,
-              weight_sets: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              weight_sets: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_weight_sets, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].weight_sets, 3);
-      assert.equal(
-        out.subnets[0].first_set_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   test("get_account_weight_setters rejects a missing ss58", async () => {
@@ -4829,47 +4470,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  test("get_subnet_movers ranks subnets by stake delta", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_subnet_movers",
-        { window: "30d", sort: "stake", limit: 5 },
-        {
-          env: moversD1({
-            bounds: [{ start_date: "2026-05-31", end_date: "2026-06-30" }],
-            aggregateRows: [
-              {
-                netuid: 7,
-                snapshot_date: "2026-05-31",
-                neuron_count: 10,
-                validator_count: 3,
-                total_stake_tao: 100,
-                total_emission_tao: 5,
-              },
-              {
-                netuid: 7,
-                snapshot_date: "2026-06-30",
-                neuron_count: 12,
-                validator_count: 4,
-                total_stake_tao: 250,
-                total_emission_tao: 9,
-              },
-            ],
-          }),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.window, "30d");
-      assert.equal(out.sort, "stake");
-      assert.equal(out.movers[0].netuid, 7);
-      assert.equal(out.movers[0].stake_delta_tao, 150);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("get_subnet_movers rejects an invalid sort", async () => {
     const res = await callTool("get_subnet_movers", { sort: "liquidity" });
     assert.equal(res.body.result.isError, true);
@@ -4880,45 +4480,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     const res = await callTool("get_subnet_movers", { window: "1y" });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window must be one of/);
-  });
-
-  test("get_subnet_movers ranks subnets by emission delta", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_subnet_movers",
-        { window: "7d", sort: "emission", limit: 10 },
-        {
-          env: moversD1({
-            bounds: [{ start_date: "2026-06-23", end_date: "2026-06-30" }],
-            aggregateRows: [
-              {
-                netuid: 3,
-                snapshot_date: "2026-06-23",
-                neuron_count: 5,
-                validator_count: 2,
-                total_stake_tao: 50,
-                total_emission_tao: 1,
-              },
-              {
-                netuid: 3,
-                snapshot_date: "2026-06-30",
-                neuron_count: 5,
-                validator_count: 2,
-                total_stake_tao: 50,
-                total_emission_tao: 4,
-              },
-            ],
-          }),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.sort, "emission");
-      assert.equal(out.movers[0].emission_delta_tao, 3);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   test("get_subnet_movers degrades to an empty leaderboard on cold D1", async () => {
@@ -5780,88 +5341,6 @@ describe("MCP get_rpc_usage", () => {
 
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-  const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
-
-  // Returns the canned rows for the Transfer-tier read; records every query.
-  function cpD1(rows = [], capture = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                all() {
-                  return Promise.resolve({
-                    results: /event_kind = 'Transfer'/.test(sql) ? rows : [],
-                  });
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("ranks counterparties by transfer volume from D1", async () => {
-    const capture = [];
-    const env = cpD1(
-      [
-        { hotkey: SS58, coldkey: "A", amount_tao: 100, block_number: 10 },
-        { hotkey: "C", coldkey: SS58, amount_tao: 200, block_number: 7 },
-      ],
-      capture,
-    );
-    const res = await callTool(
-      "get_account_counterparties",
-      { ss58: SS58, limit: 10 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.counterparty_count, 2);
-    assert.equal(out.counterparties[0].address, "C"); // highest volume (200)
-    // The single read is the bounded two-side union, never a hotkey/coldkey OR.
-    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
-    assert.match(q.sql, /UNION ALL/);
-    assert.equal(q.sql.includes(" OR "), false);
-    assert.deepEqual(q.params.slice(0, 3), [SS58, SS58, SS58]);
-  });
-
-  test("counterparty=<ss58> drills into the nested relationship detail", async () => {
-    const env = cpD1([
-      {
-        block_number: 20,
-        event_index: 2,
-        hotkey: SS58,
-        coldkey: CP,
-        netuid: 1,
-        amount_tao: 40,
-        observed_at: 1700,
-      },
-      {
-        block_number: 18,
-        event_index: 1,
-        hotkey: CP,
-        coldkey: SS58,
-        netuid: 1,
-        amount_tao: 10,
-        observed_at: 1600,
-      },
-    ]);
-    const res = await callTool(
-      "get_account_counterparties",
-      { ss58: SS58, counterparty: CP },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.counterparty_count, 1);
-    assert.equal(out.counterparties[0].address, CP);
-    assert.equal(out.relationship.counterparty, CP);
-    assert.equal(out.relationship.transfer_count, 2);
-    assert.equal(out.relationship.net_tao, -30); // 10 received - 40 sent
-  });
 
   test("rejects a malformed counterparty before any D1 work", async () => {
     const res = await callTool(
@@ -5899,6 +5378,25 @@ describe("MCP get_account_counterparties", () => {
     assert.equal(res.body.result.isError, false);
     assert.equal(out.counterparty_count, 0);
     assert.deepEqual(out.counterparties, []);
+  });
+
+  // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+  // and the table is dropped in production, so the counterparty=<ss58>
+  // drilldown always builds from an empty rowset now.
+  test("counterparty=<ss58> degrades to an empty relationship on cold D1", async () => {
+    const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
+    const res = await callTool("get_account_counterparties", {
+      ss58: SS58,
+      counterparty: CP,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.counterparty_count, 0);
+    assert.deepEqual(out.counterparties, []);
+    assert.equal(out.relationship.counterparty, CP);
+    assert.equal(out.relationship.transfer_count, 0);
+    assert.deepEqual(out.relationship.transfers, []);
   });
 });
 
@@ -8589,6 +8087,21 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.emission, null);
   });
 
+  // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+  // table is dropped in production, so this always builds from an empty
+  // rowset now.
+  test("get_subnet_performance returns schema-stable null blocks on cold D1", async () => {
+    const res = await callTool("get_subnet_performance", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.validator_count, 0);
+    assert.equal(out.active_count, 0);
+    assert.equal(out.captured_at, null);
+    assert.equal(out.incentive, null);
+    assert.equal(out.dividends, null);
+  });
+
   test("get_chain_concentration returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_concentration", {});
     const out = res.body.result.structuredContent;
@@ -10957,47 +10470,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     };
   }
 
-  test("get_account returns a cross-subnet summary with booleans coerced", async () => {
-    const env = accountD1({
-      agg: {
-        c: 12,
-        sc: 3,
-        fb: 100,
-        lb: 200,
-        fo: 1750000000000,
-        lo: 1750009000000,
-      },
-      kinds: [
-        { kind: "StakeAdded", count: 7 },
-        { kind: "WeightsSet", count: 5 },
-      ],
-      registrations: [
-        { netuid: 7, uid: 3, stake_tao: 100, validator_permit: 1, active: 1 },
-      ],
-      events: [
-        {
-          block_number: 200,
-          event_index: 1,
-          event_kind: "StakeAdded",
-          hotkey: SS58,
-          coldkey: null,
-          netuid: 7,
-          uid: 3,
-          amount_tao: 1.5,
-          observed_at: 1750009000000,
-        },
-      ],
-    });
-    const res = await callTool("get_account", { ss58: SS58 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.event_count, 12);
-    assert.equal(out.subnet_count, 3);
-    assert.equal(out.event_kinds[0].kind, "StakeAdded");
-    assert.equal(out.registrations[0].validator_permit, true);
-    assert.equal(out.recent_events[0].event_kind, "StakeAdded");
-  });
-
   test("get_account_balance returns balance_tao from finney RPC", async () => {
     const orig = globalThis.fetch;
     globalThis.fetch = async () => ({
@@ -11079,83 +10551,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
-  test("get_account_events filters by kind and echoes the limit", async () => {
-    const capture = [];
-    const env = accountD1(
-      {
-        events: [
-          {
-            block_number: 200,
-            event_index: 1,
-            event_kind: "StakeRemoved",
-            hotkey: SS58,
-            coldkey: null,
-            netuid: 7,
-            uid: 3,
-            amount_tao: 2.0,
-            observed_at: 1750009000000,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, kind: "StakeRemoved", limit: 50 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.events[0].event_kind, "StakeRemoved");
-    assert.equal(out.limit, 50);
-    assert.equal(out.offset, 0);
-    // The kind filter must reach the SQL as a bound param (never interpolated).
-    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
-    assert.ok(/AND event_kind = \?/.test(eventsQuery.sql));
-    assert.ok(eventsQuery.params.includes("StakeRemoved"));
-  });
-
-  test("get_account_events scopes to one subnet with netuid (#2585 parity)", async () => {
-    const capture = [];
-    const env = accountD1(
-      {
-        events: [
-          {
-            block_number: 210,
-            event_index: 0,
-            event_kind: "StakeAdded",
-            hotkey: SS58,
-            coldkey: null,
-            netuid: 74,
-            uid: 5,
-            amount_tao: 1.0,
-            observed_at: 1750009100000,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, netuid: 74 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.events[0].netuid, 74);
-    // The netuid filter must reach the SQL as a bound param inside each indexed
-    // branch of the hotkey/coldkey union (never interpolated).
-    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
-    assert.equal((eventsQuery.sql.match(/AND netuid = \?/g) || []).length, 2);
-    assert.ok(eventsQuery.params.includes(74));
-  });
-
-  test("get_account_events without netuid is unscoped (no netuid predicate)", async () => {
-    const capture = [];
-    const env = accountD1({ events: [] }, capture);
-    await callTool("get_account_events", { ss58: SS58 }, { env });
-    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
-    assert.doesNotMatch(eventsQuery.sql, /AND netuid = \?/);
-  });
-
   test("get_account_events rejects a malformed netuid", async () => {
     const env = accountD1({ events: [] });
     const res = await callTool(
@@ -11165,80 +10560,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /invalid_params/);
-  });
-
-  test("get_account_events clamps an over-range limit the same way the REST route does", async () => {
-    const capture = [];
-    const env = accountD1({ events: [] }, capture);
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, limit: 5000 },
-      { env },
-    );
-    // clampInt(5000, 100, 1, 1000) → 1000, in both the payload and the bound LIMIT.
-    assert.equal(res.body.result.structuredContent.limit, 1000);
-    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
-    assert.ok(eventsQuery.params.includes(1000));
-  });
-
-  test("get_account_events falls back to the default limit for a non-numeric limit", async () => {
-    const env = accountD1({ events: [] });
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, limit: "abc" },
-      { env },
-    );
-    // clampInt(NaN) → default 100.
-    assert.equal(res.body.result.structuredContent.limit, 100);
-  });
-
-  test("get_account_subnets returns the cross-subnet footprint", async () => {
-    const env = accountD1({
-      registrations: [
-        { netuid: 7, uid: 3, stake_tao: 100, validator_permit: 0, active: 1 },
-        { netuid: 64, uid: 12, stake_tao: 5, validator_permit: 1, active: 1 },
-      ],
-    });
-    const res = await callTool("get_account_subnets", { ss58: SS58 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.subnets[1].netuid, 64);
-    assert.equal(out.subnets[1].validator_permit, true);
-  });
-
-  test("get_account_portfolio returns positions + aggregates", async () => {
-    const env = accountD1({
-      registrations: [
-        {
-          netuid: 7,
-          uid: 3,
-          stake_tao: 1000,
-          emission_tao: 50,
-          validator_permit: 1,
-          active: 1,
-        },
-        {
-          netuid: 64,
-          uid: 12,
-          stake_tao: 200,
-          emission_tao: 30,
-          validator_permit: 0,
-          active: 1,
-        },
-      ],
-    });
-    const res = await callTool(
-      "get_account_portfolio",
-      { ss58: SS58 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.position_count, 2);
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.validator_count, 1);
-    assert.equal(out.total_stake_tao, 1200);
-    assert.equal(out.positions[0].netuid, 7); // biggest stake first
-    assert.equal(out.positions[0].yield, 0.05);
   });
 
   test("get_account_portfolio returns an empty portfolio on cold D1", async () => {
@@ -11348,77 +10669,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
-  test("get_account_events seeks by keyset cursor instead of offset", async () => {
-    const capture = [];
-    const env = accountD1({ events: [] }, capture);
-    await callTool(
-      "get_account_events",
-      { ss58: SS58, cursor: "200.1", limit: 50 },
-      { env },
-    );
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    // A valid cursor switches the page to a row-value seek and drops OFFSET.
-    assert.ok(/AND \(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.ok(q.params.includes(200) && q.params.includes(1));
-  });
-
-  test("get_account_events applies block_start/block_end and cursor pagination", async () => {
-    const capture = [];
-    const env = accountD1(
-      {
-        events: [
-          {
-            block_number: 150,
-            event_index: 4,
-            event_kind: "StakeAdded",
-            hotkey: SS58,
-            coldkey: null,
-            netuid: 7,
-            uid: 3,
-            amount_tao: 1.5,
-            observed_at: 1750009000000,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_events",
-      {
-        ss58: SS58,
-        block_start: 100,
-        block_end: 900,
-        cursor: "200.2",
-        limit: 1,
-        offset: 99,
-      },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.event_count, 1);
-    assert.equal(out.next_cursor, "150.4");
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/block_number <= \?/.test(q.sql));
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.deepEqual(q.params, [
-      SS58,
-      100,
-      900,
-      200,
-      2,
-      SS58,
-      SS58,
-      100,
-      900,
-      200,
-      2,
-      1,
-    ]);
-  });
-
   test("get_account_events rejects a non-integer block_start", async () => {
     const res = await callTool(
       "get_account_events",
@@ -11451,31 +10701,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /supported event kind/i);
     assert.equal(called, false);
-  });
-
-  test("get_account_events emits next_cursor for a full page", async () => {
-    const env = accountD1({
-      events: [
-        {
-          block_number: 200,
-          event_index: 1,
-          event_kind: "StakeAdded",
-          hotkey: SS58,
-          coldkey: null,
-          netuid: 7,
-          uid: 3,
-          amount_tao: 1.5,
-          observed_at: 1750009000000,
-        },
-      ],
-    });
-    // limit:1 with exactly one row is a full page → a keyset token for the next.
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, limit: 1 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.next_cursor, "200.1");
   });
 });
 
@@ -11516,54 +10741,6 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     };
   }
 
-  test("get_account_history returns daily series with fields correctly shaped", async () => {
-    const env = tailD1({
-      days: [
-        {
-          day: "2025-06-24",
-          netuid: 7,
-          event_count: 3,
-          event_kinds: "StakeAdded,WeightsSet",
-          first_block: 100,
-          last_block: 200,
-        },
-      ],
-    });
-    const res = await callTool("get_account_history", { ss58: SS58 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.day_count, 1);
-    assert.equal(out.days[0].day, "2025-06-24");
-    assert.equal(out.days[0].netuid, 7);
-    assert.deepEqual(out.days[0].event_kinds, ["StakeAdded", "WeightsSet"]);
-    assert.equal(out.days[0].first_block, 100);
-  });
-
-  test("get_account_history passes netuid and date bounds to the SQL query", async () => {
-    const capture = [];
-    const env = tailD1({ days: [] }, capture);
-    await callTool(
-      "get_account_history",
-      {
-        ss58: SS58,
-        netuid: 7,
-        from: "2025-01-01",
-        to: "2025-06-30",
-        limit: 10,
-      },
-      { env },
-    );
-    const q = capture.find((c) => /FROM account_events_daily/.test(c.sql));
-    assert.ok(q, "daily query must be executed");
-    assert.ok(/AND netuid = \?/.test(q.sql), "netuid filter must be applied");
-    assert.ok(/AND day >= \?/.test(q.sql), "from filter must be applied");
-    assert.ok(/AND day <= \?/.test(q.sql), "to filter must be applied");
-    assert.ok(q.params.includes(7));
-    assert.ok(q.params.includes("2025-01-01"));
-    assert.ok(q.params.includes("2025-06-30"));
-    assert.ok(q.params.includes(10));
-  });
-
   test("get_account_history degrades to empty payload on cold D1", async () => {
     const res = await callTool("get_account_history", { ss58: SS58 });
     assert.equal(res.body.result.isError, false);
@@ -11589,87 +10766,11 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.match(res.body.result.content[0].text, /netuid/i);
   });
 
-  test("get_account_extrinsics returns signed extrinsics with correct fields", async () => {
-    const env = tailD1({
-      extrinsics: [
-        {
-          block_number: 500,
-          extrinsic_index: 2,
-          extrinsic_hash: "0xabc",
-          signer: SS58,
-          call_module: "SubtensorModule",
-          call_function: "set_weights",
-          call_args: null,
-          success: 1,
-          fee_tao: 0.001,
-          tip_tao: null,
-          observed_at: 1750009000000,
-        },
-      ],
-    });
-    const res = await callTool(
-      "get_account_extrinsics",
-      { ss58: SS58, limit: 50 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.extrinsic_count, 1);
-    assert.equal(out.limit, 50);
-    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
-    assert.equal(out.extrinsics[0].success, true);
-  });
-
   test("get_account_extrinsics degrades to empty payload on cold D1", async () => {
     const res = await callTool("get_account_extrinsics", { ss58: SS58 });
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
-  });
-
-  test("get_account_extrinsics applies block_start/block_end and cursor pagination", async () => {
-    const capture = [];
-    const env = tailD1(
-      {
-        extrinsics: [
-          {
-            block_number: 150,
-            extrinsic_index: 4,
-            extrinsic_hash: "0xabc",
-            signer: SS58,
-            call_module: "Balances",
-            call_function: "transfer",
-            call_args: null,
-            success: 1,
-            fee_tao: 0.001,
-            tip_tao: null,
-            observed_at: 1750009000000,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_extrinsics",
-      {
-        ss58: SS58,
-        block_start: 100,
-        block_end: 900,
-        cursor: "200.2",
-        limit: 1,
-        offset: 99,
-      },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.extrinsic_count, 1);
-    assert.equal(out.next_cursor, "150.4");
-    const q = capture.find((c) => /FROM extrinsics WHERE signer/.test(c.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/block_number <= \?/.test(q.sql));
-    assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.deepEqual(q.params, [SS58, 100, 900, 200, 2, 1]);
   });
 
   test("get_account_extrinsics rejects a non-integer block_start", async () => {
@@ -11680,91 +10781,6 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /block_start/i);
-  });
-
-  test("get_account_transfers returns transfers with direction field", async () => {
-    const env = tailD1({
-      transfers: [
-        {
-          block_number: 300,
-          event_index: 1,
-          event_kind: "Transfer",
-          hotkey: SS58,
-          coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-          amount_tao: 10.5,
-          alpha_amount: null,
-          observed_at: 1750009000000,
-          extrinsic_index: null,
-        },
-      ],
-    });
-    const res = await callTool(
-      "get_account_transfers",
-      { ss58: SS58 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.transfer_count, 1);
-    assert.equal(out.transfers[0].direction, "sent");
-    assert.equal(out.transfers[0].amount_tao, 10.5);
-  });
-
-  test("get_account_transfers filters by direction=received", async () => {
-    const capture = [];
-    const env = tailD1({ transfers: [] }, capture);
-    await callTool(
-      "get_account_transfers",
-      { ss58: SS58, direction: "received" },
-      { env },
-    );
-    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
-    assert.ok(q, "transfer query must be executed");
-    assert.ok(/coldkey = \?/.test(q.sql), "received side uses coldkey match");
-    assert.ok(!/hotkey = \?/.test(q.sql), "received must not match hotkey");
-  });
-
-  test("get_account_transfers applies block_start/block_end and cursor pagination", async () => {
-    const capture = [];
-    const env = tailD1(
-      {
-        transfers: [
-          {
-            block_number: 150,
-            event_index: 4,
-            event_kind: "Transfer",
-            hotkey: SS58,
-            coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-            amount_tao: 10.5,
-            observed_at: 1750009000000,
-            extrinsic_index: null,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_transfers",
-      {
-        ss58: SS58,
-        direction: "sent",
-        block_start: 100,
-        block_end: 900,
-        cursor: "200.2",
-        limit: 1,
-        offset: 99,
-      },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.transfer_count, 1);
-    assert.equal(out.next_cursor, "150.4");
-    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/block_number <= \?/.test(q.sql));
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.deepEqual(q.params, [SS58, 100, 900, 200, 2, 1]);
   });
 
   test("get_account_transfers rejects a non-integer block_end", async () => {
@@ -11978,68 +10994,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     observed_at: 1750009000000,
   };
 
-  test("list_blocks returns block feed with block_count and correct fields", async () => {
-    const env = chainD1({ blocks: [BLOCK_ROW] });
-    const res = await callTool("list_blocks", {}, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.block_count, 1);
-    assert.equal(out.blocks[0].block_number, 4200000);
-    assert.equal(out.blocks[0].extrinsic_count, 5);
-    assert.equal(out.blocks[0].spec_version, 207);
-  });
-
-  test("list_blocks emits next_cursor for a full page", async () => {
-    const blocks = Array.from({ length: 50 }, (_, i) => ({
-      ...BLOCK_ROW,
-      block_number: 4200000 - i,
-    }));
-    const env = chainD1({ blocks });
-    const res = await callTool("list_blocks", { limit: 50 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.ok(out.next_cursor, "full page must emit a keyset cursor");
-    assert.equal(out.block_count, 50);
-  });
-
-  test("list_blocks uses cursor WHERE clause instead of OFFSET", async () => {
-    const capture = [];
-    const env = chainD1({ blocks: [] }, capture);
-    await callTool("list_blocks", { cursor: "4200000" }, { env });
-    const q = capture.find((c) => /FROM blocks/.test(c.sql));
-    assert.ok(/WHERE block_number < \?/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.ok(q.params.includes(4200000));
-  });
-
   test("list_blocks degrades to empty payload on cold D1", async () => {
     const res = await callTool("list_blocks", {});
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.block_count, 0);
     assert.deepEqual(res.body.result.structuredContent.blocks, []);
-  });
-
-  test("list_blocks applies REST filter parity (author, ranges, count floors)", async () => {
-    const capture = [];
-    const env = chainD1({ blocks: [] }, capture);
-    await callTool(
-      "list_blocks",
-      {
-        author: BLOCK_ROW.author,
-        spec_version: 207,
-        block_start: 100,
-        block_end: 200,
-        from: 1_000,
-        to: 2_000,
-        min_extrinsics: 1,
-        min_events: 5,
-      },
-      { env },
-    );
-    const q = capture.find((c) => /FROM blocks/.test(c.sql));
-    assert.ok(/author = \?/.test(q.sql));
-    assert.ok(/spec_version = \?/.test(q.sql));
-    assert.ok(/extrinsic_count >= \?/.test(q.sql));
-    assert.ok(/event_count >= \?/.test(q.sql));
-    assert.ok(q.params.includes(BLOCK_ROW.author));
   });
 
   test("list_blocks short-circuits impossible count floors without querying D1", async () => {
@@ -12054,51 +11013,6 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.equal(capture.filter((c) => /FROM blocks/.test(c.sql)).length, 0);
   });
 
-  test("list_blocks ANDs cursor with filters", async () => {
-    const capture = [];
-    const env = chainD1({ blocks: [] }, capture);
-    await callTool(
-      "list_blocks",
-      { author: BLOCK_ROW.author, cursor: "4200000" },
-      { env },
-    );
-    const q = capture.find((c) => /FROM blocks/.test(c.sql));
-    assert.ok(/author = \? AND block_number < \?/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-  });
-
-  test("get_block returns block detail with prev/next neighbors", async () => {
-    const capture = [];
-    const env = chainD1(
-      { block: BLOCK_ROW, prev: 4199999, next: 4200001 },
-      capture,
-    );
-    const res = await callTool("get_block", { ref: "4200000" }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ref, "4200000");
-    assert.equal(out.block.block_number, 4200000);
-    assert.equal(out.prev_block_number, 4199999);
-    assert.equal(out.next_block_number, 4200001);
-    const neighborQuery = capture.find(
-      (c) => /AS prev/.test(c.sql) && /AS next/.test(c.sql),
-    );
-    assert.ok(neighborQuery, "get_block must query nearest stored neighbors");
-    assert.ok(/WHERE block_number < \?/.test(neighborQuery.sql));
-    assert.ok(/WHERE block_number > \?/.test(neighborQuery.sql));
-    assert.ok(!/CASE WHEN block_number/.test(neighborQuery.sql));
-    assert.deepEqual(neighborQuery.params, [4200000, 4200000]);
-  });
-
-  test("get_block accepts a 0x hash ref", async () => {
-    const capture = [];
-    const env = chainD1({ block: BLOCK_ROW }, capture);
-    const hash = "0x" + "a".repeat(64);
-    await callTool("get_block", { ref: hash }, { env });
-    const q = capture.find((c) => /block_hash = \?/.test(c.sql));
-    assert.ok(q, "hash ref must query by block_hash");
-    assert.ok(q.params.includes(hash));
-  });
-
   test("get_block returns block:null for an unknown ref (cold store)", async () => {
     const res = await callTool("get_block", { ref: "9999999" });
     assert.equal(res.body.result.isError, false);
@@ -12111,69 +11025,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.match(res.body.result.content[0].text, /ref/);
   });
 
-  test("list_block_extrinsics returns per-block extrinsics in read order", async () => {
-    const capture = [];
-    const env = chainD1(
-      { block: BLOCK_ROW, blockExtrinsics: [EXTRINSIC_ROW] },
-      capture,
-    );
-    const res = await callTool(
-      "list_block_extrinsics",
-      { ref: "4200000" },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ref, "4200000");
-    assert.equal(out.block_number, 4200000);
-    assert.equal(out.extrinsic_count, 1);
-    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
-    const q = capture.find((c) =>
-      /FROM extrinsics WHERE block_number = \? ORDER BY extrinsic_index/.test(
-        c.sql,
-      ),
-    );
-    assert.ok(q, "must query extrinsics by resolved block_number");
-    assert.deepEqual(q.params.slice(0, 3), [4200000, 50, 0]);
-  });
-
-  test("list_block_extrinsics accepts a 0x hash ref", async () => {
-    const capture = [];
-    const env = chainD1(
-      { block: BLOCK_ROW, blockExtrinsics: [EXTRINSIC_ROW] },
-      capture,
-    );
-    const hash = "0x" + "a".repeat(64);
-    await callTool("list_block_extrinsics", { ref: hash }, { env });
-    const q = capture.find((c) => /block_hash = \?/.test(c.sql));
-    assert.ok(q, "hash ref must resolve via blocks.block_hash");
-  });
-
   test("list_block_extrinsics returns empty payload for unknown ref", async () => {
     const res = await callTool("list_block_extrinsics", { ref: "9999999" });
     const out = res.body.result.structuredContent;
     assert.equal(out.block_number, null);
     assert.deepEqual(out.extrinsics, []);
-  });
-
-  test("get_block_events returns per-block events in read order", async () => {
-    const capture = [];
-    const env = chainD1(
-      { block: BLOCK_ROW, blockEvents: [EVENT_ROW] },
-      capture,
-    );
-    const res = await callTool("get_block_events", { ref: "4200000" }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ref, "4200000");
-    assert.equal(out.block_number, 4200000);
-    assert.equal(out.event_count, 1);
-    assert.equal(out.events[0].event_kind, "WeightsSet");
-    const q = capture.find((c) =>
-      /FROM account_events WHERE block_number = \? ORDER BY event_index/.test(
-        c.sql,
-      ),
-    );
-    assert.ok(q, "must query account_events by resolved block_number");
-    assert.deepEqual(q.params.slice(0, 3), [4200000, 100, 0]);
   });
 
   test("get_block_events returns empty payload for unknown ref", async () => {
@@ -12183,83 +11039,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.deepEqual(out.events, []);
   });
 
-  test("list_extrinsics returns extrinsic feed with correct fields", async () => {
-    const env = chainD1({ extrinsics: [EXTRINSIC_ROW] });
-    const res = await callTool("list_extrinsics", {}, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.extrinsic_count, 1);
-    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
-    assert.equal(out.extrinsics[0].success, true);
-  });
-
-  test("list_extrinsics filters by signer, call_module, call_function", async () => {
-    const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-    const capture = [];
-    const env = chainD1({ extrinsics: [] }, capture);
-    await callTool(
-      "list_extrinsics",
-      {
-        signer: SS58,
-        call_module: "SubtensorModule",
-        call_function: "set_weights",
-      },
-      { env },
-    );
-    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
-    assert.ok(/signer = \?/.test(q.sql));
-    assert.ok(/call_module = \?/.test(q.sql));
-    assert.ok(/call_function = \?/.test(q.sql));
-    assert.ok(q.params.includes(SS58));
-    assert.ok(q.params.includes("SubtensorModule"));
-    assert.ok(q.params.includes("set_weights"));
-  });
-
-  test("list_extrinsics uses cursor row-value seek instead of OFFSET", async () => {
-    const capture = [];
-    const env = chainD1({ extrinsics: [] }, capture);
-    await callTool("list_extrinsics", { cursor: "4200000.3" }, { env });
-    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
-    assert.ok(
-      /\(block_number, extrinsic_index\) < \(\?, \?\)/.test(q.sql),
-      "cursor must use row-value seek",
-    );
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.ok(q.params.includes(4200000) && q.params.includes(3));
-  });
-
   test("list_extrinsics degrades to empty payload on cold D1", async () => {
     const res = await callTool("list_extrinsics", {});
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
-  });
-
-  test("list_extrinsics applies REST filter parity (block, success, ranges)", async () => {
-    const capture = [];
-    const env = chainD1({ extrinsics: [] }, capture);
-    const toMs = Date.now();
-    const fromMs = toMs - 60_000;
-    await callTool(
-      "list_extrinsics",
-      {
-        block: 4200000,
-        signer: EXTRINSIC_ROW.signer,
-        call_module: "SubtensorModule",
-        call_function: "set_weights",
-        success: true,
-        block_start: 100,
-        block_end: 200,
-        from: fromMs,
-        to: toMs,
-      },
-      { env },
-    );
-    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
-    assert.ok(/block_number = \?/.test(q.sql));
-    assert.ok(/success = \?/.test(q.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/observed_at >= \?/.test(q.sql));
-    assert.ok(q.params.includes(1));
   });
 
   test("list_extrinsics short-circuits impossible time ranges without querying D1", async () => {
@@ -12281,50 +11065,6 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     const res = await callTool("list_extrinsics", { success: "maybe" });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /success/);
-  });
-
-  test("list_extrinsics binds success=false as 0", async () => {
-    const capture = [];
-    const env = chainD1({ extrinsics: [] }, capture);
-    await callTool("list_extrinsics", { success: false }, { env });
-    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
-    assert.ok(/success = \?/.test(q.sql));
-    assert.ok(q.params.includes(0));
-  });
-
-  test("get_extrinsic returns extrinsic detail by 0x hash", async () => {
-    const hash = "0x" + "c".repeat(64);
-    const env = chainD1({ extrinsic: EXTRINSIC_ROW });
-    const res = await callTool("get_extrinsic", { ref: hash }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ref, hash);
-    assert.equal(out.extrinsic.block_number, 4200000);
-    assert.equal(out.extrinsic.call_function, "set_weights");
-  });
-
-  test("get_extrinsic returns extrinsic detail by composite block-index ref", async () => {
-    const capture = [];
-    const env = chainD1({ extrinsic: EXTRINSIC_ROW }, capture);
-    await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
-    const q = capture.find((c) =>
-      /block_number = \? AND extrinsic_index = \?/.test(c.sql),
-    );
-    assert.ok(
-      q,
-      "composite ref must use block_number + extrinsic_index PK hit",
-    );
-    assert.ok(q.params.includes(4200000) && q.params.includes(3));
-  });
-
-  test("get_extrinsic embeds emitted account_events (#1849)", async () => {
-    const env = chainD1({
-      extrinsic: EXTRINSIC_ROW,
-      extrinsicEvents: [EVENT_ROW],
-    });
-    const res = await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.events.length, 1);
-    assert.equal(out.events[0].event_kind, "WeightsSet");
   });
 
   test("get_extrinsic returns extrinsic:null for an unknown ref (cold store)", async () => {
@@ -12368,7 +11108,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.deepEqual(capture, []);
     });
 
-    test("list_extrinsics: flag=postgres falls back to D1 on failure", async () => {
+    // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
+    // the table is dropped in production, so the fallback below Postgres is
+    // now a schema-stable-empty literal, not a second (D1) query.
+    test("list_extrinsics: flag=postgres falls back to a zeroed feed on failure (D1 retired)", async () => {
       const env = chainD1({ extrinsics: [EXTRINSIC_ROW] });
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = {
@@ -12377,10 +11120,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         },
       };
       const res = await callTool("list_extrinsics", {}, { env });
-      assert.equal(res.body.result.structuredContent.extrinsic_count, 1);
+      assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     });
 
-    test("list_extrinsics: flag absent uses D1 even when DATA_API is bound (zero regression, unflipped)", async () => {
+    test("list_extrinsics: flag absent never queries D1 (D1 retired, #4772)", async () => {
       const capture = [];
       const env = chainD1({ extrinsics: [EXTRINSIC_ROW] }, capture);
       env.DATA_API = dataApi(
@@ -12391,8 +11134,8 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         }),
       );
       const res = await callTool("list_extrinsics", {}, { env });
-      assert.equal(res.body.result.structuredContent.extrinsic_count, 1);
-      assert.ok(capture.length > 0, "D1 must actually be queried");
+      assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
+      assert.deepEqual(capture, []);
     });
 
     test("list_extrinsics: flag=postgres forwards filters as REST-equivalent query params", async () => {
@@ -12454,7 +11197,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.deepEqual(capture, []);
     });
 
-    test("get_extrinsic: flag=postgres falls back to D1 on failure", async () => {
+    // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
+    // the table is dropped in production, so the fallback below Postgres is
+    // now a schema-stable extrinsic:null, not a second (D1) query.
+    test("get_extrinsic: flag=postgres falls back to extrinsic:null on failure (D1 retired)", async () => {
       const hash = "0x" + "c".repeat(64);
       const env = chainD1({ extrinsic: EXTRINSIC_ROW });
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
@@ -12462,10 +11208,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         fetch: async () => new Response("err", { status: 500 }),
       };
       const res = await callTool("get_extrinsic", { ref: hash }, { env });
-      assert.equal(
-        res.body.result.structuredContent.extrinsic.extrinsic_hash,
-        hash,
-      );
+      assert.equal(res.body.result.structuredContent.extrinsic, null);
     });
 
     test("get_extrinsic: flag=postgres forwards the ref in the request path", async () => {
@@ -13174,44 +11917,22 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
-  test("get_subnet_events filters by kind and paginates with a cursor", async () => {
-    const capture = [];
-    const env = parityD1(
-      {
-        events: [
-          {
-            block_number: 8502402,
-            event_index: 1,
-            event_kind: "WeightsSet",
-            hotkey: null,
-            coldkey: null,
-            netuid: 1,
-            uid: 226,
-            amount_tao: null,
-            alpha_amount: null,
-            observed_at: 1751081952000,
-            extrinsic_index: null,
-          },
-        ],
-      },
-      capture,
-    );
+  // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+  // the table is dropped in production, so get_subnet_events always builds
+  // from an empty rowset now regardless of kind/limit/cursor.
+  test("returns a schema-stable empty feed (account_events retired, #4772)", async () => {
     const res = await callTool(
       "get_subnet_events",
-      { netuid: 1, kind: "WeightsSet", limit: 1 },
-      { env },
+      { netuid: 1, kind: "WeightsSet", limit: 5000 },
+      {},
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 1);
-    assert.equal(out.event_count, 1);
-    assert.equal(out.limit, 1);
-    assert.equal(out.events[0].event_kind, "WeightsSet");
-    // A full page yields a non-null keyset cursor.
-    assert.equal(typeof out.next_cursor, "string");
-    // The kind filter reaches the SQL as a bound param (never interpolated).
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(/AND event_kind = \?/.test(q.sql));
-    assert.ok(q.params.includes("WeightsSet"));
+    assert.equal(out.event_count, 0);
+    assert.deepEqual(out.events, []);
+    assert.equal(out.next_cursor, null);
+    // clampInt(5000, 100, 1, 1000) -> 1000, same as the REST route.
+    assert.equal(out.limit, 1000);
   });
 
   test("get_subnet_events rejects an unknown event kind before D1", async () => {
@@ -13238,85 +11959,6 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.equal(called, false);
   });
 
-  test("get_subnet_events accepts an ingested non-indexed kind (Transfer)", async () => {
-    const capture = [];
-    const env = parityD1(
-      {
-        events: [
-          {
-            block_number: 100,
-            event_index: 1,
-            event_kind: "Transfer",
-            hotkey: "5Hk",
-            coldkey: "5Ck",
-            netuid: 1,
-            uid: null,
-            amount_tao: 1,
-            observed_at: 1750009000000,
-            extrinsic_index: null,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_subnet_events",
-      { netuid: 1, kind: "Transfer" },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(
-      res.body.result.structuredContent.events[0].event_kind,
-      "Transfer",
-    );
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(/event_kind = \?/.test(q.sql));
-  });
-
-  test("get_subnet_events applies block_start/block_end and cursor pagination", async () => {
-    const capture = [];
-    const env = parityD1(
-      {
-        events: [
-          {
-            block_number: 150,
-            event_index: 4,
-            event_kind: "StakeAdded",
-            hotkey: "5Hk",
-            coldkey: null,
-            netuid: 1,
-            uid: 3,
-            amount_tao: 1.5,
-            observed_at: 1750009000000,
-            extrinsic_index: null,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_subnet_events",
-      {
-        netuid: 1,
-        block_start: 100,
-        block_end: 900,
-        cursor: "200.2",
-        limit: 1,
-        offset: 99,
-      },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.event_count, 1);
-    assert.equal(out.next_cursor, "150.4");
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/block_number <= \?/.test(q.sql));
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.deepEqual(q.params, [1, 100, 900, 200, 2, 1]);
-  });
-
   test("get_subnet_events rejects a non-integer block_start", async () => {
     const res = await callTool(
       "get_subnet_events",
@@ -13325,19 +11967,6 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /block_start/i);
-  });
-
-  test("get_subnet_events clamps an over-range limit like the REST route", async () => {
-    const capture = [];
-    const env = parityD1({ events: [] }, capture);
-    const res = await callTool(
-      "get_subnet_events",
-      { netuid: 1, limit: 5000 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.limit, 1000);
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(q.params.includes(1000));
   });
 
   test("the parity history/events tools degrade to empty payloads on cold D1", async () => {
