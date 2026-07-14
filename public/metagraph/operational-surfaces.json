@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 134,
+  "surface_count": 140,
   "surfaces": [
     {
       "auth_required": false,
@@ -753,6 +753,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 17,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "404-gen",
+      "public_safe": true,
+      "subnet_name": "404—GEN",
+      "subnet_slug": "sn-17",
+      "surface_id": "sn-17-404-gen-competition-config",
+      "surface_key": "srf-d208df0264b87eed",
+      "url": "https://raw.githubusercontent.com/404-Repo/404-gen-subnet/92cee1043741edf5f76ba86f9d8e6a10aca6e84e/shared/subnet_common/competition/config.py"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "subnet-api",
       "netuid": 21,
       "probe": {
@@ -803,6 +821,24 @@
       "surface_id": "sn-24-quasar-base-model",
       "surface_key": "srf-2e8a77e8b3404e86",
       "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 24,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "surface_id": "sn-24-quasar-incentive-protocol",
+      "surface_key": "srf-41daf7799c5bf044",
+      "url": "https://raw.githubusercontent.com/SILX-LABS/QUASAR-SUBNET/f95c1a995c1ef559ae365fc5ea518c11faf2110f/incentive/core/protocol.py"
     },
     {
       "auth_required": false,
@@ -1055,6 +1091,24 @@
       "surface_id": "sn-36-eirel-dashboard-families-api",
       "surface_key": "srf-f10d09696922e4d4",
       "url": "https://api.eirel.ai/api/v1/dashboard/families"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 40,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vectorchat",
+      "public_safe": true,
+      "subnet_name": "Chunking",
+      "subnet_slug": "chunking",
+      "surface_id": "sn-40-chunking-protocol",
+      "surface_key": "srf-62dd8475aa1ceec8",
+      "url": "https://raw.githubusercontent.com/salahawk/chunking_subnet/29ed38c60aac356717d3e1dfc3e7c3627158bff4/chunking/protocol.py"
     },
     {
       "auth_required": false,
@@ -1433,6 +1487,24 @@
       "surface_id": "sn-58-handshake58-subnet-api",
       "surface_key": "srf-a13272815c6137f4",
       "url": "https://handshake58.com/api/agent"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 63,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "qbittensor-labs",
+      "public_safe": true,
+      "subnet_name": "Enigma",
+      "subnet_slug": "sn-63",
+      "surface_id": "sn-63-enigma-validator-constants",
+      "surface_key": "srf-8a5502d9d1d7c4ee",
+      "url": "https://raw.githubusercontent.com/qbittensor-labs/enigma/c4f9082ea09d5bb3e834e856501a92ee47a65632/qbittensor/constants.py"
     },
     {
       "auth_required": false,
@@ -1852,6 +1924,24 @@
       "auth_required": false,
       "authority": "community",
       "kind": "data-artifact",
+      "netuid": 83,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cliqueai",
+      "public_safe": true,
+      "subnet_name": "CliqueAI",
+      "subnet_slug": "sn-83",
+      "surface_id": "sn-83-cliqueai-protocol",
+      "surface_key": "srf-a7a6dadfef6395d5",
+      "url": "https://raw.githubusercontent.com/toptensor/CliqueAI/18f979dbc5777fde45ec2b1cf532c5e3f8b047fd/CliqueAI/protocol.py"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
       "netuid": 85,
       "probe": {
         "expect": "any",
@@ -1919,6 +2009,24 @@
       "surface_id": "sn-88-investing-ratio",
       "surface_key": "srf-e606f94442e24006",
       "url": "https://api.investing88.ai/ratio"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 89,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "infinitehash",
+      "public_safe": true,
+      "subnet_name": "InfiniteHash",
+      "subnet_slug": "sn-89",
+      "surface_id": "sn-89-infinitehash-miner-constants",
+      "surface_key": "srf-1a754077aa3ddc48",
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/InfiniteHash/b0313ed2edc8c07c8312effb108e9cadd580e314/app/src/infinite_hashes/aps_miner/constants.py"
     },
     {
       "auth_required": false,
