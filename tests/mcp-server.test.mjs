@@ -7120,6 +7120,71 @@ describe("list_subnets", () => {
       );
     }
   });
+
+  test("filters by coverage_level and curation_level (and their not_ exclusions)", async () => {
+    const covDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          {
+            netuid: 1,
+            name: "A",
+            coverage_level: "probed",
+            curation_level: "maintainer-reviewed",
+          },
+          {
+            netuid: 2,
+            name: "B",
+            coverage_level: "manifested",
+            curation_level: "community-seeded",
+          },
+          {
+            netuid: 3,
+            name: "C",
+            coverage_level: "native-only",
+            curation_level: "native",
+          },
+        ],
+      },
+    });
+    const rangeNetuids = (out) =>
+      out.subnets.map((s) => s.netuid).sort((a, b) => a - b);
+
+    const byCoverage = (
+      await callTool(
+        "list_subnets",
+        { coverage_level: "probed" },
+        { deps: covDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(byCoverage), [1]);
+
+    const byCuration = (
+      await callTool(
+        "list_subnets",
+        { curation_level: "community-seeded" },
+        { deps: covDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(byCuration), [2]);
+
+    const notCoverage = (
+      await callTool(
+        "list_subnets",
+        { not_coverage_level: "native-only" },
+        { deps: covDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notCoverage), [1, 2]);
+
+    const notCuration = (
+      await callTool(
+        "list_subnets",
+        { not_curation_level: "native" },
+        { deps: covDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notCuration), [1, 2]);
+  });
 });
 
 // The keyword search tools share the list_subnets pagination contract: page
@@ -13882,5 +13947,771 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     const res = await callTool("get_freshness", {}, { deps });
     const out = res.body.result.structuredContent;
     assert.equal(out.sources[0].status, "stale");
+  });
+});
+
+// MCP feature-parity tools (#5225): validator detail/nominators/history, subnet
+// hyperparameters/volume/recycled, account identity/position-history,
+// sudo/governance-config feeds, the runtime spec-version timeline, and the
+// site-wide accounts leaderboard. Each mirrors an existing REST route the MCP
+// surface was previously missing.
+describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
+  const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so all three tools always rank over a schema-stable empty
+  // base (buildValidatorDetail/buildValidatorNominators/buildValidatorHistory
+  // called with []) -- row-shaping over real rows is covered directly against
+  // the pure builders in tests/validator-nominators.test.mjs and
+  // tests/validator-history.test.mjs; this only proves the MCP wiring.
+  test("get_validator_detail returns a schema-stable zeroed aggregate", async () => {
+    const res = await callTool("get_validator_detail", { hotkey: HOTKEY });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.coldkey, null);
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.take, null);
+  });
+
+  test("get_validator_detail rejects a missing/invalid hotkey", async () => {
+    const missing = await callTool("get_validator_detail", {});
+    assert.equal(missing.body.result.isError, true);
+
+    const bad = await callTool("get_validator_detail", { hotkey: "not-ss58" });
+    assert.equal(bad.body.result.isError, true);
+    assert.match(bad.body.result.content[0].text, /ss58/i);
+  });
+
+  test("get_validator_nominators returns a schema-stable empty ranked list with defaults", async () => {
+    const res = await callTool("get_validator_nominators", { hotkey: HOTKEY });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.window, "30d");
+    assert.equal(out.sort, "net_staked");
+    assert.equal(out.limit, 20);
+    assert.equal(out.offset, 0);
+    assert.equal(out.nominator_count, 0);
+    assert.deepEqual(out.nominators, []);
+  });
+
+  test("get_validator_nominators accepts each window/sort and an explicit coldkey", async () => {
+    for (const window of ["7d", "30d", "90d"]) {
+      const res = await callTool("get_validator_nominators", {
+        hotkey: HOTKEY,
+        window,
+      });
+      assert.equal(res.body.result.structuredContent.window, window);
+    }
+    for (const sort of ["net_staked", "gross_staked", "last_activity"]) {
+      const res = await callTool("get_validator_nominators", {
+        hotkey: HOTKEY,
+        sort,
+      });
+      assert.equal(res.body.result.structuredContent.sort, sort);
+    }
+    const withColdkey = await callTool("get_validator_nominators", {
+      hotkey: HOTKEY,
+      coldkey: HOTKEY,
+    });
+    assert.equal(withColdkey.body.result.isError, false);
+  });
+
+  test("get_validator_nominators rejects an invalid window/sort/coldkey", async () => {
+    const badWindow = await callTool("get_validator_nominators", {
+      hotkey: HOTKEY,
+      window: "5d",
+    });
+    assert.equal(badWindow.body.result.isError, true);
+
+    const badSort = await callTool("get_validator_nominators", {
+      hotkey: HOTKEY,
+      sort: "bogus",
+    });
+    assert.equal(badSort.body.result.isError, true);
+
+    const badColdkey = await callTool("get_validator_nominators", {
+      hotkey: HOTKEY,
+      coldkey: "not-ss58",
+    });
+    assert.equal(badColdkey.body.result.isError, true);
+    assert.match(badColdkey.body.result.content[0].text, /coldkey/);
+  });
+
+  test("get_validator_history returns a schema-stable empty point series", async () => {
+    const res = await callTool("get_validator_history", { hotkey: HOTKEY });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.hotkey, HOTKEY);
+    assert.equal(out.window, "30d");
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
+  });
+
+  test("get_validator_history accepts every REST-supported window", async () => {
+    for (const window of ["7d", "30d", "90d", "1y", "all"]) {
+      const res = await callTool("get_validator_history", {
+        hotkey: HOTKEY,
+        window,
+      });
+      assert.equal(res.body.result.structuredContent.window, window);
+    }
+  });
+
+  test("get_validator_history rejects an unknown window", async () => {
+    const res = await callTool("get_validator_history", {
+      hotkey: HOTKEY,
+      window: "5d",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+});
+
+describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
+  test("get_subnet_hyperparams returns hyperparameters:null when never captured", async () => {
+    const res = await callTool("get_subnet_hyperparams", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.hyperparameters, null);
+    assert.equal(out.captured_at, null);
+    assert.equal(out.block_number, null);
+  });
+
+  test("get_subnet_hyperparams rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_hyperparams", {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_hyperparams_history returns a schema-stable empty timeline", async () => {
+    const res = await callTool("get_subnet_hyperparams_history", {
+      netuid: 7,
+      limit: 10,
+      offset: 5,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.entry_count, 0);
+    assert.deepEqual(out.entries, []);
+    assert.equal(out.limit, 10);
+    assert.equal(out.offset, 5);
+  });
+
+  test("get_subnet_hyperparams_history rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_hyperparams_history", {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_volume reports zeroed 24h volume with a null vol_mcap_ratio when market cap is absent", async () => {
+    const deps = makeDeps({
+      "/metagraph/economics.json": {
+        captured_at: "2026-01-01T00:00:00Z",
+        summary: {},
+        subnets: [{ netuid: 7 }],
+      },
+    });
+    const res = await callTool("get_subnet_volume", { netuid: 7 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "24h");
+    assert.equal(out.buy_volume_alpha, 0);
+    assert.equal(out.sell_volume_alpha, 0);
+    assert.equal(out.total_volume_tao, 0);
+    assert.equal(out.buy_count, 0);
+    assert.equal(out.sentiment, "neutral");
+    assert.equal(out.vol_mcap_ratio, null);
+  });
+
+  test("get_subnet_volume surfaces not_found when the economics artifact is absent", async () => {
+    const res = await callTool("get_subnet_volume", { netuid: 7 }, {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_volume rejects a missing netuid", async () => {
+    const deps = makeDeps({
+      "/metagraph/economics.json": { subnets: [] },
+    });
+    const res = await callTool("get_subnet_volume", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_subnet_recycled returns recycled_tao:0 for genuinely unset storage", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+    });
+    try {
+      const res = await callTool("get_subnet_recycled", { netuid: 7 }, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.netuid, 7);
+      assert.equal(out.recycled_tao, 0);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_subnet_recycled returns recycled_tao:null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_subnet_recycled", { netuid: 7 }, {});
+      assert.equal(res.body.result.structuredContent.recycled_tao, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_subnet_recycled rejects a netuid outside the u16 range", async () => {
+    const res = await callTool("get_subnet_recycled", { netuid: 70000 }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /u16/);
+  });
+
+  test("get_subnet_recycled applies the RPC rate limiter before the finney fetch", async () => {
+    let limiterKey;
+    let fetchCalled = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetchCalled = true;
+      throw new Error("should not fetch");
+    };
+    const env = {
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    };
+    try {
+      const res = await callTool("get_subnet_recycled", { netuid: 7 }, { env });
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(limiterKey, "recycled:mcp:anonymous");
+      assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+});
+
+describe("MCP account identity/position-history tools (#5225 parity)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function accountIdentityD1({ identity, identityHistory } = {}, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  if (/FROM account_identity_history/.test(sql))
+                    return Promise.resolve({ results: identityHistory || [] });
+                  if (/FROM account_identity WHERE/.test(sql))
+                    return Promise.resolve({ results: identity || [] });
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_account_identity returns has_identity:false on cold D1", async () => {
+    const res = await callTool("get_account_identity", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.account, SS58);
+    assert.equal(out.has_identity, false);
+    assert.equal(out.name, null);
+    assert.equal(out.captured_at, null);
+  });
+
+  test("get_account_identity returns the real identity from D1", async () => {
+    const env = accountIdentityD1({
+      identity: [
+        {
+          account: SS58,
+          name: "Alice",
+          url: "https://alice.example",
+          github: "https://github.com/alice",
+          image: null,
+          discord: "alice#0001",
+          description: "validator",
+          additional: null,
+          captured_at: 1_700_000_000_000,
+        },
+      ],
+    });
+    const res = await callTool("get_account_identity", { ss58: SS58 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.has_identity, true);
+    assert.equal(out.name, "Alice");
+    assert.equal(out.github, "https://github.com/alice");
+    assert.ok(out.captured_at);
+  });
+
+  test("get_account_identity rejects an invalid ss58", async () => {
+    const res = await callTool("get_account_identity", { ss58: "not-ss58" });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  describe("get_account_identity D1 -> Postgres serving cutover", () => {
+    test("flag=postgres uses Postgres data, D1 never queried", async () => {
+      const capture = [];
+      const env = {
+        ...accountIdentityD1({ identity: [] }, capture),
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              account: SS58,
+              has_identity: true,
+              name: "PgAlice",
+            }),
+        },
+      };
+      const res = await callTool(
+        "get_account_identity",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.structuredContent.name, "PgAlice");
+      assert.deepEqual(capture, []);
+    });
+
+    test("flag=postgres falls back to D1 on failure", async () => {
+      const env = {
+        ...accountIdentityD1({
+          identity: [{ account: SS58, name: "D1Alice", captured_at: 1 }],
+        }),
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () => {
+            throw new Error("boom");
+          },
+        },
+      };
+      const res = await callTool(
+        "get_account_identity",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.structuredContent.name, "D1Alice");
+    });
+  });
+
+  test("get_account_identity_history returns an empty timeline on cold D1", async () => {
+    const res = await callTool("get_account_identity_history", {
+      ss58: SS58,
+      limit: 10,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.account, SS58);
+    assert.equal(out.entry_count, 0);
+    assert.deepEqual(out.entries, []);
+    assert.equal(out.limit, 10);
+  });
+
+  test("get_account_identity_history returns the real timeline from D1", async () => {
+    const env = accountIdentityD1({
+      identityHistory: [
+        {
+          id: 2,
+          observed_at: 1_700_000_000_000,
+          name: "Alice",
+          url: null,
+          github: null,
+          image: null,
+          discord: null,
+          description: null,
+          additional: null,
+          identity_hash: "hash-1",
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_account_identity_history",
+      { ss58: SS58 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.entry_count, 1);
+    assert.equal(out.entries[0].identity_hash, "hash-1");
+    assert.equal(out.entries[0].name, "Alice");
+  });
+
+  describe("get_account_identity_history D1 -> Postgres serving cutover", () => {
+    test("flag=postgres uses Postgres data, D1 never queried", async () => {
+      const capture = [];
+      const env = {
+        ...accountIdentityD1({ identityHistory: [] }, capture),
+        METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async () =>
+            Response.json({
+              schema_version: 1,
+              account: SS58,
+              entry_count: 1,
+              entries: [{ identity_hash: "pg-hash" }],
+            }),
+        },
+      };
+      const res = await callTool(
+        "get_account_identity_history",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(
+        res.body.result.structuredContent.entries[0].identity_hash,
+        "pg-hash",
+      );
+      assert.deepEqual(capture, []);
+    });
+  });
+
+  test("get_account_position_history returns a schema-stable empty point series", async () => {
+    const res = await callTool("get_account_position_history", {
+      ss58: SS58,
+      netuid: 7,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "30d");
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
+  });
+
+  test("get_account_position_history accepts every REST-supported window", async () => {
+    for (const window of ["7d", "30d", "90d", "1y", "all"]) {
+      const res = await callTool("get_account_position_history", {
+        ss58: SS58,
+        netuid: 7,
+        window,
+      });
+      assert.equal(res.body.result.structuredContent.window, window);
+    }
+  });
+
+  test("get_account_position_history rejects a missing netuid or unknown window", async () => {
+    const missingNetuid = await callTool("get_account_position_history", {
+      ss58: SS58,
+    });
+    assert.equal(missingNetuid.body.result.isError, true);
+
+    const badWindow = await callTool("get_account_position_history", {
+      ss58: SS58,
+      netuid: 7,
+      window: "5d",
+    });
+    assert.equal(badWindow.body.result.isError, true);
+  });
+});
+
+describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () => {
+  test("get_sudo degrades to an empty feed on cold D1", async () => {
+    const res = await callTool("get_sudo", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 0);
+    assert.deepEqual(out.extrinsics, []);
+  });
+
+  test("get_sudo: flag=postgres forwards to /api/v1/sudo, D1 never queried", async () => {
+    let capturedPath;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedPath = new URL(req.url).pathname;
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 1,
+            extrinsics: [{ call_module: "Sudo" }],
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "get_sudo",
+      { call_function: "sudo_set_weights_set_rate_limit" },
+      { env },
+    );
+    assert.equal(capturedPath, "/api/v1/sudo");
+    assert.equal(
+      res.body.result.structuredContent.extrinsics[0].call_module,
+      "Sudo",
+    );
+  });
+
+  test("get_sudo rejects a non-boolean success filter", async () => {
+    const res = await callTool("get_sudo", { success: "maybe" });
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_governance_config_changes degrades to an empty feed on cold D1", async () => {
+    const res = await callTool("get_governance_config_changes", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 0);
+    assert.deepEqual(out.extrinsics, []);
+  });
+
+  test("get_governance_config_changes: flag=postgres forwards to /api/v1/governance/config-changes", async () => {
+    let capturedPath;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedPath = new URL(req.url).pathname;
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await callTool("get_governance_config_changes", {}, { env });
+    assert.equal(capturedPath, "/api/v1/governance/config-changes");
+  });
+
+  test("get_sudo_key returns hotkey:null for genuinely unset storage", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+    });
+    try {
+      const res = await callTool("get_sudo_key", {}, {});
+      const out = res.body.result.structuredContent;
+      assert.equal(out.hotkey, null);
+      assert.ok(out.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_sudo_key returns hotkey:null on RPC failure", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("rpc down");
+    };
+    try {
+      const res = await callTool("get_sudo_key", {}, {});
+      assert.equal(res.body.result.structuredContent.hotkey, null);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("get_sudo_key rejects an unexpected argument", async () => {
+    const res = await callTool("get_sudo_key", { netuid: 7 }, {});
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("get_runtime returns a schema-stable empty transition timeline (D1 write path retired)", async () => {
+    const res = await callTool("get_runtime", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.transition_count, 0);
+    assert.deepEqual(out.transitions, []);
+    assert.equal(out.current_spec_version, null);
+    assert.equal(out.coverage_from_block, null);
+  });
+
+  test("get_runtime: flag=postgres uses Postgres data", async () => {
+    const env = {
+      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          assert.equal(new URL(req.url).pathname, "/api/v1/runtime");
+          return Response.json({
+            schema_version: 1,
+            transition_count: 1,
+            current_spec_version: 300,
+            coverage_from_block: 100,
+            coverage_from_at: null,
+            transitions: [
+              { spec_version: 300, block_number: 100, observed_at: null },
+            ],
+          });
+        },
+      },
+    };
+    const res = await callTool("get_runtime", {}, { env });
+    assert.equal(res.body.result.structuredContent.current_spec_version, 300);
+  });
+
+  test("list_accounts returns a schema-stable empty leaderboard (neurons D1 write path retired)", async () => {
+    const res = await callTool("list_accounts", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "total_stake");
+    assert.equal(out.limit, 20);
+    assert.equal(out.account_count, 0);
+    assert.deepEqual(out.accounts, []);
+  });
+
+  test("list_accounts accepts each REST-supported sort key with an empty leaderboard", async () => {
+    for (const sort of [
+      "total_stake",
+      "total_emission",
+      "subnet_count",
+      "uid_count",
+      "validator_count",
+      "stake_dominance",
+      "last_active",
+    ]) {
+      const res = await callTool("list_accounts", { sort, limit: 1 });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, sort);
+      assert.equal(out.limit, 1);
+    }
+  });
+
+  test("list_accounts rejects an invalid sort", async () => {
+    const res = await callTool("list_accounts", { sort: "bogus" });
+    assert.equal(res.body.result.isError, true);
+  });
+});
+
+describe("MCP endpoint tools — live overlay staleness fix (#5225)", () => {
+  const liveKv = {
+    last_run_at: FRESH_RUN,
+    surfaces: [
+      {
+        surface_id: "sn-7-example-api",
+        netuid: 7,
+        status: "failed",
+        classification: "down",
+        latency_ms: null,
+        last_ok: "2026-06-12T00:00:00.000Z",
+        last_checked: "2026-06-13T00:00:00.000Z",
+      },
+    ],
+  };
+
+  test("list_endpoints overlays live health onto endpoints carrying a surface_id", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/endpoints.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          endpoints: [
+            {
+              surface_id: "sn-7-example-api",
+              netuid: 7,
+              kind: "subnet-api",
+              status: "ok",
+              pool_eligible: true,
+            },
+          ],
+        },
+      },
+      { "health:current": liveKv },
+    );
+    const res = await callTool("list_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].status, "failed");
+  });
+
+  test("list_endpoints skips the overlay when no endpoint carries a surface_id (unchanged)", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/endpoints.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          endpoints: [{ netuid: 7, kind: "rest", status: "ok" }],
+        },
+      },
+      { "health:current": liveKv },
+    );
+    const res = await callTool("list_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].status, "ok");
+  });
+
+  test("get_subnet_endpoints overlays live health onto its endpoints", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/endpoints/7.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          netuid: 7,
+          endpoints: [
+            {
+              surface_id: "sn-7-example-api",
+              kind: "subnet-api",
+              status: "ok",
+            },
+          ],
+        },
+      },
+      { "health:current": liveKv },
+    );
+    const res = await callTool("get_subnet_endpoints", { netuid: 7 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].status, "failed");
+  });
+
+  test("list_rpc_endpoints overlays live RPC pool health onto matching endpoint ids", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/rpc-endpoints.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          endpoints: [
+            {
+              id: "fullnode",
+              url: "wss://rpc.example",
+              network: "finney",
+              status: "ok",
+            },
+          ],
+        },
+      },
+      {
+        [KV_HEALTH_RPC_POOL]: {
+          last_run_at: FRESH_RUN,
+          endpoints: [
+            {
+              id: "fullnode",
+              status: "degraded",
+              classification: "slow",
+              latency_ms: 900,
+            },
+          ],
+        },
+      },
+    );
+    const res = await callTool("list_rpc_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].latency_ms, 900);
+    assert.equal(out.endpoints[0].health_source, "probe-derived");
+  });
+
+  test("list_rpc_endpoints falls back to the static artifact when no pool KV is present", async () => {
+    const deps = makeDeps({
+      "/metagraph/rpc-endpoints.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        endpoints: [
+          {
+            id: "fullnode",
+            url: "wss://rpc.example",
+            network: "finney",
+            status: "ok",
+          },
+        ],
+      },
+    });
+    const res = await callTool("list_rpc_endpoints", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints[0].status, "ok");
   });
 });

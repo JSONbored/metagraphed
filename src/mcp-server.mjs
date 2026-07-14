@@ -342,6 +342,8 @@ import {
   loadSubnetReliability,
   loadSubnetTrajectory,
   mergeFreshness,
+  mergeRpcEndpoints,
+  overlayArtifactEndpoints,
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
@@ -355,6 +357,7 @@ import {
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildGlobalValidators,
+  buildValidatorDetail,
   GLOBAL_VALIDATOR_SORTS,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -524,6 +527,32 @@ import {
 } from "./ai-search.mjs";
 import { keywordScore, queryTerms } from "./keyword-search.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
+import {
+  buildAccountsList,
+  ACCOUNTS_LIST_SORTS,
+  DEFAULT_ACCOUNTS_LIST_SORT,
+  ACCOUNTS_LIST_LIMIT_DEFAULT,
+  ACCOUNTS_LIST_LIMIT_MAX,
+} from "./accounts-list.mjs";
+import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
+import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
+import { buildAlphaVolume } from "./alpha-volume.mjs";
+import { buildAccountPositionHistory } from "./account-position-history.mjs";
+import { loadAccountIdentity } from "./account-identity.mjs";
+import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
+import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
+import { loadSudoKey } from "./sudo-key.mjs";
+import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
+import {
+  buildValidatorNominators,
+  NOMINATOR_WINDOWS,
+  DEFAULT_NOMINATOR_WINDOW,
+  NOMINATOR_SORTS,
+  DEFAULT_NOMINATOR_SORT,
+  NOMINATOR_LIMIT_DEFAULT,
+  NOMINATOR_LIMIT_MAX,
+} from "./validator-nominators.mjs";
+import { buildValidatorHistory } from "./validator-history.mjs";
 
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet
@@ -991,6 +1020,38 @@ function mcpExtrinsicsListRequest(args) {
   return new Request(`https://d/api/v1/extrinsics?${params.toString()}`);
 }
 
+// Synthetic GET {pathname}{...} request for the two fixed-call_module
+// extrinsics-feed variants (get_sudo -> /api/v1/sudo, call_module=Sudo;
+// get_governance_config_changes -> /api/v1/governance/config-changes,
+// call_module=AdminUtils) -- same query-string shape as
+// mcpExtrinsicsListRequest MINUS signer/call_module (workers/data-api.mjs
+// derives call_module from the pathname itself for these two routes, not a
+// query param -- see its PATH_TO_CALL_MODULE-style mapping), so passing the
+// correct fixed pathname is what selects the filter, nothing else needed.
+function mcpFixedCallModuleFeedRequest(pathname, args) {
+  const params = new URLSearchParams();
+  const block = optionalNonNegativeInt(args, "block");
+  if (block != null) params.set("block", String(block));
+  const callFunction = optionalString(args, "call_function");
+  if (callFunction) params.set("call_function", callFunction);
+  const success = optionalSuccessFilter(args);
+  if (success !== undefined) params.set("success", String(success));
+  const blockStart = optionalNonNegativeInt(args, "block_start");
+  if (blockStart != null) params.set("block_start", String(blockStart));
+  const blockEnd = optionalNonNegativeInt(args, "block_end");
+  if (blockEnd != null) params.set("block_end", String(blockEnd));
+  const from = optionalNonNegativeInt(args, "from");
+  if (from != null) params.set("from", String(from));
+  const to = optionalNonNegativeInt(args, "to");
+  if (to != null) params.set("to", String(to));
+  if (args?.limit != null) params.set("limit", String(args.limit));
+  if (args?.offset != null) params.set("offset", String(args.offset));
+  const cursor = optionalString(args, "cursor");
+  if (cursor) params.set("cursor", cursor);
+  const qs = params.toString();
+  return new Request(`https://d${pathname}${qs ? `?${qs}` : ""}`);
+}
+
 function mcpExtrinsicDetailRequest(ref) {
   return new Request(`https://d/api/v1/extrinsics/${encodeURIComponent(ref)}`);
 }
@@ -1024,6 +1085,30 @@ function mcpChainIdentityHistoryRequest({ limit }) {
   const qs = params.toString();
   return new Request(
     `https://d/api/v1/chain/identity-history${qs ? `?${qs}` : ""}`,
+  );
+}
+
+// Synthetic GET /api/v1/accounts/{ss58}/identity request, forwarded UNCHANGED
+// to DATA_API via tryPostgresTier -- mirrors REST's handleAccountIdentity,
+// same METAGRAPH_ACCOUNT_IDENTITY_SOURCE flag, no query params.
+function mcpAccountIdentityRequest(ss58) {
+  return new Request(
+    `https://d/api/v1/accounts/${encodeURIComponent(ss58)}/identity`,
+  );
+}
+
+// Synthetic GET /api/v1/accounts/{ss58}/identity-history{...} request, same
+// limit/offset/cursor contract as mcpSubnetIdentityHistoryRequest above --
+// mirrors REST's handleAccountIdentityHistory, same
+// METAGRAPH_ACCOUNT_IDENTITY_SOURCE flag as get_account_identity.
+function mcpAccountIdentityHistoryRequest(ss58, { limit, offset, cursor }) {
+  const params = new URLSearchParams();
+  if (limit != null) params.set("limit", String(limit));
+  if (offset != null) params.set("offset", String(offset));
+  if (cursor) params.set("cursor", cursor);
+  const qs = params.toString();
+  return new Request(
+    `https://d/api/v1/accounts/${encodeURIComponent(ss58)}/identity-history${qs ? `?${qs}` : ""}`,
   );
 }
 
@@ -1566,6 +1651,20 @@ function requireSs58(args) {
 // derived from the single pattern source so it can't drift.
 const SS58_PATTERN_SOURCE = SS58_ADDRESS_PATTERN.source;
 
+// A validator identity is the same SS58 shape as an account, just a different
+// argument name (a hotkey the caller already knows, not one they're looking
+// up) -- same runtime pattern check as requireSs58, distinct error text.
+function requireHotkey(args) {
+  const value = requireString(args, "hotkey");
+  if (!SS58_ADDRESS_PATTERN.test(value)) {
+    throw toolError(
+      "invalid_params",
+      "Argument `hotkey` must be a valid SS58 account address (base58, 47-48 chars).",
+    );
+  }
+  return value;
+}
+
 // The optional `blocks` window for get_chain_activity: a missing value defaults
 // to 1000; a provided value must be a positive integer and is clamped to the
 // data Worker's 1-5000 bound so a stray large value is silently capped (the data
@@ -1729,7 +1828,13 @@ function rangeFilterSubnets(rows, args) {
 
 // Categorical args list_subnets filters on, each available as inclusion (`arg`)
 // and exclusion (`not_arg`).
-const LIST_SUBNETS_CATEGORICAL = ["status", "subnet_type", "domain"];
+const LIST_SUBNETS_CATEGORICAL = [
+  "status",
+  "subnet_type",
+  "domain",
+  "coverage_level",
+  "curation_level",
+];
 
 // Does `subnet` match categorical filter `field` = `value` (already lowercased)?
 // `domain` tests the union of curated + derived categories; the rest are scalar.
@@ -1975,6 +2080,27 @@ export const MCP_TOOLS = [
         not_domain: {
           type: "string",
           description: "Exclude subnets tagged with this domain/category.",
+        },
+        coverage_level: {
+          type: "string",
+          enum: QUERY_ENUMS.coverageLevel,
+          description: "Filter by how the registry sourced this subnet's data.",
+        },
+        not_coverage_level: {
+          type: "string",
+          enum: QUERY_ENUMS.coverageLevel,
+          description: "Exclude subnets with this coverage_level.",
+        },
+        curation_level: {
+          type: "string",
+          enum: QUERY_ENUMS.curationLevel,
+          description:
+            "Filter by how this subnet's listing was curated/trusted.",
+        },
+        not_curation_level: {
+          type: "string",
+          enum: QUERY_ENUMS.curationLevel,
+          description: "Exclude subnets with this curation_level.",
         },
         min_readiness: {
           type: "integer",
@@ -4091,6 +4217,138 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_validator_detail",
+    title: "Get one validator's cross-subnet detail",
+    description:
+      "Fetch a single validator identity's validator_permit rows aggregated " +
+      "across every subnet it operates in: coldkey, cross-subnet stake/emission " +
+      "totals, avg/max validator trust, and the full per-subnet membership list. " +
+      "The single-entity drill-in of list_global_validators. Returns a zeroed " +
+      "aggregate with an empty subnets list for a cold/absent hotkey, never an " +
+      "error. Mirrors GET /api/v1/validators/{hotkey}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkey: {
+          type: "string",
+          description: "Validator hotkey (SS58 address).",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    async handler(args, _ctx) {
+      const hotkey = requireHotkey(args);
+      return buildValidatorDetail([], hotkey);
+    },
+  },
+  {
+    name: "get_validator_nominators",
+    title: "Get who has staked to a validator",
+    description:
+      "Fetch the nominators (stakers) of one validator across every subnet it " +
+      "operates in, over a window (7d, 30d, default 90d), ranked by net_staked " +
+      "(default), gross_staked, or last_activity. Optional coldkey narrows to " +
+      "one nominator's own flow. Mirrors GET /api/v1/validators/{hotkey}/nominators.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkey: {
+          type: "string",
+          description: "Validator hotkey (SS58 address).",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: Object.keys(NOMINATOR_WINDOWS),
+          description: "History window (default 90d).",
+        },
+        sort: {
+          type: "string",
+          enum: NOMINATOR_SORTS,
+          description: "Ranking key (default net_staked).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max nominators to return (1-100, default 20).",
+          minimum: 1,
+          maximum: NOMINATOR_LIMIT_MAX,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset (default 0).",
+          minimum: 0,
+        },
+        coldkey: {
+          type: "string",
+          description: "Narrow to one nominator's own flow (SS58 address).",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    async handler(args, _ctx) {
+      const hotkey = requireHotkey(args);
+      const window =
+        optionalEnum(args, "window", Object.keys(NOMINATOR_WINDOWS)) ??
+        DEFAULT_NOMINATOR_WINDOW;
+      const sort =
+        optionalEnum(args, "sort", NOMINATOR_SORTS) ?? DEFAULT_NOMINATOR_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        NOMINATOR_LIMIT_DEFAULT,
+        NOMINATOR_LIMIT_MAX,
+      );
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const coldkey = optionalString(args, "coldkey");
+      if (coldkey && !SS58_ADDRESS_PATTERN.test(coldkey)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `coldkey` must be a valid SS58 account address (base58, 47-48 chars).",
+        );
+      }
+      return buildValidatorNominators([], hotkey, {
+        window,
+        sort,
+        limit,
+        offset,
+      });
+    },
+  },
+  {
+    name: "get_validator_history",
+    title: "Get a validator's staked-over-time history",
+    description:
+      "Fetch one validator's cross-subnet staked-over-time history: one point " +
+      "per day, summed across every subnet it validates in, plus a rewards-per-" +
+      "1000-TAO rate. Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
+      "Mirrors GET /api/v1/validators/{hotkey}/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        hotkey: {
+          type: "string",
+          description: "Validator hotkey (SS58 address).",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["hotkey"],
+      additionalProperties: false,
+    },
+    async handler(args, _ctx) {
+      const hotkey = requireHotkey(args);
+      const { label } = requireHistoryWindow(args);
+      return buildValidatorHistory([], hotkey, { window: label });
+    },
+  },
+  {
     name: "get_neuron",
     title: "Get one neuron by UID",
     description:
@@ -4296,6 +4554,135 @@ export const MCP_TOOLS = [
           : 0,
         nextCursor: null,
       });
+    },
+  },
+  {
+    name: "get_subnet_hyperparams",
+    title: "Get a subnet's current hyperparameters",
+    description:
+      "Fetch one subnet's current on-chain hyperparameters (tempo, weight " +
+      "limits, activity cutoff, immunity period, registration allowed, and the " +
+      "rest of the SubtensorModule hyperparameter set). hyperparameters:null " +
+      "when the subnet has never been captured. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/hyperparameters.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, _ctx) {
+      const netuid = requireNetuid(args);
+      return buildSubnetHyperparams(null, netuid);
+    },
+  },
+  {
+    name: "get_subnet_hyperparams_history",
+    title: "Get a subnet's hyperparameter change history",
+    description:
+      "Fetch the append-only hyperparameter-change timeline for one subnet: " +
+      "one entry per detected diff, newest first. Forward-only — entries only " +
+      "exist from when diff-on-change tracking started. Page with limit " +
+      "(1-1000, default 100) / offset, or follow next_cursor. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/hyperparameters/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        limit: {
+          type: "integer",
+          description: "Max entries to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Deprecated offset fallback when cursor is omitted.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a prior response's next_cursor.",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, _ctx) {
+      const netuid = requireNetuid(args);
+      return buildSubnetHyperparamsHistory([], netuid, {
+        limit: clampLimit(args?.limit, 100, 1000),
+        offset: optionalNonNegativeInt(args, "offset") ?? 0,
+        nextCursor: null,
+      });
+    },
+  },
+  {
+    name: "get_subnet_volume",
+    title: "Get a subnet's rolling 24h alpha volume",
+    description:
+      "Fetch one subnet's rolling 24h buy (StakeAdded) vs sell (StakeRemoved) " +
+      "alpha volume, unsigned (buy + sell, never netted) — a canonical market-" +
+      "depth figure, not a windowed analytics view. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/volume.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const netEconomics = await loadSubnetEconomics(ctx, netuid);
+      const marketCapTao =
+        typeof netEconomics.economics?.alpha_market_cap_tao === "number" &&
+        Number.isFinite(netEconomics.economics.alpha_market_cap_tao)
+          ? netEconomics.economics.alpha_market_cap_tao
+          : null;
+      return buildAlphaVolume([], netuid, { marketCapTao });
+    },
+  },
+  {
+    name: "get_subnet_recycled",
+    title: "Get a subnet's live cumulative recycled TAO",
+    description:
+      "Fetch the live cumulative TAO recycled for registration on one subnet, " +
+      "queried directly from the chain's RAORecycledForRegistration storage at " +
+      "request time (not a rollup). recycled_tao is null on an RPC failure. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/recycled.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `recycled:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live recycled-TAO requests from this client; slow down.",
+          );
+        }
+      }
+      return loadSubnetRecycled(ctx.env, netuid);
     },
   },
   {
@@ -4512,6 +4899,125 @@ export const MCP_TOOLS = [
     async handler(args, _ctx) {
       const ss58 = requireSs58(args);
       return buildAccountPortfolio([], ss58);
+    },
+  },
+  {
+    name: "get_account_identity",
+    title: "Get an account's on-chain identity",
+    description:
+      "Fetch the latest-only on-chain personal identity for one account (name, " +
+      "url, image, discord, github, and the rest of the MetagraphInfo.identities " +
+      "fields set via set_identity). has_identity is false for the common case " +
+      "— most accounts never call set_identity. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/identity.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description: "The account's SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpAccountIdentityRequest(ss58),
+          "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+        )) ?? (await loadAccountIdentity(mcpD1Runner(ctx), ss58))
+      );
+    },
+  },
+  {
+    name: "get_account_identity_history",
+    title: "Get an account's on-chain identity change history",
+    description:
+      "Fetch the append-only diff-tracking timeline for one account's on-chain " +
+      "identity, newest first. Page with limit (1-1000, default 100) / offset, " +
+      "or follow next_cursor. Mirrors GET /api/v1/accounts/{ss58}/identity-history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description: "The account's SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        limit: {
+          type: "integer",
+          description: "Max entries to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Deprecated offset fallback when cursor is omitted.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a prior response's next_cursor.",
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const limit = clampLimit(args?.limit, 100, 1000);
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const cursor = optionalString(args, "cursor");
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpAccountIdentityHistoryRequest(ss58, { limit, offset, cursor }),
+          "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+        )) ??
+        (await loadAccountIdentityHistory(mcpD1Runner(ctx), ss58, {
+          limit,
+          offset,
+          cursor,
+        }))
+      );
+    },
+  },
+  {
+    name: "get_account_position_history",
+    title: "Get an account's position history in one subnet",
+    description:
+      "Fetch one account's per-day position history in one subnet: stake, " +
+      "emission, rank, trust, incentive, dividends per snapshot_date, newest " +
+      "first. Choose the window (7d, 30d, 90d, 1y, all; default 30d). Mirrors " +
+      "GET /api/v1/accounts/{ss58}/subnets/{netuid}/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description: "The account's SS58 address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["ss58", "netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, _ctx) {
+      const ss58 = requireSs58(args);
+      const netuid = requireNetuid(args);
+      const { label } = requireHistoryWindow(args);
+      return buildAccountPositionHistory([], ss58, netuid, { window: label });
     },
   },
   {
@@ -5554,6 +6060,246 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_sudo",
+    title: "Get the root-origin (Sudo) call feed",
+    description:
+      "Fetch the extrinsics feed filtered to the Sudo pallet — subtensor's " +
+      "root-origin call table (it has no Council/Senate, only Sudo). Same " +
+      "filters as list_extrinsics minus signer/call_module (call_module is " +
+      "fixed to Sudo). Use get_sudo_key for the current Sudo::Key holder. " +
+      "Mirrors GET /api/v1/sudo.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        block: {
+          type: "integer",
+          description: "Exact block number.",
+          minimum: 0,
+        },
+        call_function: {
+          type: "string",
+          description: "Exact call_function to match.",
+        },
+        success: {
+          type: "boolean",
+          description: "Filter to successful (true) or failed (false) calls.",
+        },
+        block_start: {
+          type: "integer",
+          description: "Inclusive block-height range start.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description: "Inclusive block-height range end.",
+          minimum: 0,
+        },
+        from: {
+          type: "integer",
+          description: "Alias for block_start.",
+          minimum: 0,
+        },
+        to: {
+          type: "integer",
+          description: "Alias for block_end.",
+          minimum: 0,
+        },
+        limit: {
+          type: "integer",
+          description: "Pagination limit.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpFixedCallModuleFeedRequest("/api/v1/sudo", args),
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        buildExtrinsicFeed([], {
+          limit: args?.limit,
+          offset: args?.offset,
+          nextCursor: null,
+        })
+      );
+    },
+  },
+  {
+    name: "get_sudo_key",
+    title: "Get the current Sudo::Key holder",
+    description:
+      "Fetch the current Sudo::Key holder, queried live from finney RPC at " +
+      "request time (1h KV cache). hotkey is null on an RPC failure or an " +
+      "unset sudo key. Mirrors GET /api/v1/sudo/key.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadSudoKey(ctx.env);
+    },
+  },
+  {
+    name: "get_governance_config_changes",
+    title: "Get the root-origin network-config change feed",
+    description:
+      "Fetch the extrinsics feed filtered to the AdminUtils pallet — " +
+      "subtensor's root-origin hyperparameter/network-config change pathway " +
+      "(re-scoped from a Council/Senate framing subtensor doesn't have). Same " +
+      "filters as list_extrinsics minus signer/call_module (call_module is " +
+      "fixed to AdminUtils). Mirrors GET /api/v1/governance/config-changes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        block: {
+          type: "integer",
+          description: "Exact block number.",
+          minimum: 0,
+        },
+        call_function: {
+          type: "string",
+          description: "Exact call_function to match.",
+        },
+        success: {
+          type: "boolean",
+          description: "Filter to successful (true) or failed (false) calls.",
+        },
+        block_start: {
+          type: "integer",
+          description: "Inclusive block-height range start.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description: "Inclusive block-height range end.",
+          minimum: 0,
+        },
+        from: {
+          type: "integer",
+          description: "Alias for block_start.",
+          minimum: 0,
+        },
+        to: {
+          type: "integer",
+          description: "Alias for block_end.",
+          minimum: 0,
+        },
+        limit: {
+          type: "integer",
+          description: "Pagination limit.",
+          minimum: 1,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpFixedCallModuleFeedRequest(
+            "/api/v1/governance/config-changes",
+            args,
+          ),
+          "METAGRAPH_EXTRINSICS_SOURCE",
+        )) ??
+        buildExtrinsicFeed([], {
+          limit: args?.limit,
+          offset: args?.offset,
+          nextCursor: null,
+        })
+      );
+    },
+  },
+  {
+    name: "get_runtime",
+    title: "Get the runtime spec-version transition timeline",
+    description:
+      "Fetch the spec-version transition timeline: the earliest known block " +
+      "at each distinct runtime spec_version observed, ascending by block " +
+      "number. A single aggregate over the whole retained window — nothing to " +
+      "filter or paginate. spec_version wasn't tracked before 2026-06-25 and " +
+      "can't be back-filled for rows written before then. Mirrors " +
+      "GET /api/v1/runtime.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          new Request("https://d/api/v1/runtime"),
+          "METAGRAPH_BLOCKS_SOURCE",
+        )) ?? buildRuntimeVersionHistory([])
+      );
+    },
+  },
+  {
+    name: "list_accounts",
+    title: "List the site-wide accounts leaderboard",
+    description:
+      "Fetch the site-wide accounts leaderboard: every currently-registered " +
+      "hotkey (miners included, not just validator_permit=1 rows), sortable by " +
+      "total_stake (default), total_emission, subnet_count, uid_count, " +
+      "validator_count, stake_dominance, or last_active. The all-accounts " +
+      "generalization of list_global_validators. Mirrors GET /api/v1/accounts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sort: {
+          type: "string",
+          enum: ACCOUNTS_LIST_SORTS,
+          description: "Ranking key (default total_stake).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max accounts to return (1-100, default 20).",
+          minimum: 1,
+          maximum: ACCOUNTS_LIST_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, _ctx) {
+      const sort =
+        optionalEnum(args, "sort", ACCOUNTS_LIST_SORTS) ??
+        DEFAULT_ACCOUNTS_LIST_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        ACCOUNTS_LIST_LIMIT_DEFAULT,
+        ACCOUNTS_LIST_LIMIT_MAX,
+      );
+      return buildAccountsList([], { sort, limit });
+    },
+  },
+  {
     name: "get_block_chain_events",
     title: "Get every raw chain event in one block",
     description:
@@ -6443,7 +7189,22 @@ export const MCP_TOOLS = [
       const poolEligible = optionalNullableBoolean(args, "pool_eligible");
       const limit = optionalPositiveInt(args, "limit");
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
-      const data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
+      let data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
+      // Live per-endpoint health overlay (mirrors workers/api.mjs's raw-
+      // artifact serving path): the build-time endpoints.json bakes stale
+      // operational health, so replace it from the 15-minute cron snapshot
+      // before filtering/pagination -- status/pool_eligible filters below
+      // must see live values, not the baked ones.
+      if (
+        Array.isArray(data?.endpoints) &&
+        data.endpoints.some((endpoint) => endpoint?.surface_id)
+      ) {
+        const overlaid = overlayArtifactEndpoints(
+          data,
+          await mcpLiveHealth(ctx),
+        );
+        if (overlaid) data = overlaid;
+      }
       const all = Array.isArray(data.endpoints) ? data.endpoints : [];
       const filtered = all.filter(
         (e) =>
@@ -6489,7 +7250,17 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(_args, ctx) {
-      return loadArtifactData(ctx, "/metagraph/rpc-endpoints.json");
+      const staticData = await loadArtifactData(
+        ctx,
+        "/metagraph/rpc-endpoints.json",
+      );
+      // Live overlay (mirrors workers/api.mjs's rpc-endpoints raw-artifact
+      // route): the build-time snapshot bakes stale health/latency, replace
+      // it from the 15-minute cron RPC-pool KV snapshot.
+      const pool = ctx.readHealthKv
+        ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
+        : null;
+      return pool ? mergeRpcEndpoints(staticData, pool) : staticData;
     },
   },
   {
@@ -6577,7 +7348,22 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadArtifactData(ctx, `/metagraph/endpoints/${netuid}.json`);
+      const data = await loadArtifactData(
+        ctx,
+        `/metagraph/endpoints/${netuid}.json`,
+      );
+      // Live per-endpoint health overlay, same rule as list_endpoints above.
+      if (
+        Array.isArray(data?.endpoints) &&
+        data.endpoints.some((endpoint) => endpoint?.surface_id)
+      ) {
+        const overlaid = overlayArtifactEndpoints(
+          data,
+          await mcpLiveHealth(ctx),
+        );
+        if (overlaid) return overlaid;
+      }
+      return data;
     },
   },
   {
@@ -9231,6 +10017,67 @@ const TOOL_OUTPUT_SCHEMAS = {
       validators: objectItems(GLOBAL_VALIDATOR_ITEM),
     },
   },
+  get_validator_detail: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "subnet_count", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: { type: "string" },
+      coldkey: NULLABLE_STRING,
+      coldkey_count: { type: "integer" },
+      subnet_count: { type: "integer" },
+      take: { type: ["number", "null"] },
+      total_stake_tao: ANY,
+      total_emission_tao: ANY,
+      avg_validator_trust: { type: ["number", "null"] },
+      max_validator_trust: { type: ["number", "null"] },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      subnets: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_validator_nominators: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "nominator_count", "nominators"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: { type: "string" },
+      window: NULLABLE_STRING,
+      sort: { type: "string", enum: NOMINATOR_SORTS },
+      limit: { type: "integer" },
+      offset: { type: "integer" },
+      nominator_count: { type: "integer" },
+      nominators: objectItems({
+        coldkey: { type: "string" },
+        staked_tao: ANY,
+        unstaked_tao: ANY,
+        net_staked_tao: ANY,
+        gross_staked_tao: ANY,
+        event_count: { type: "integer" },
+        last_observed_at: NULLABLE_STRING,
+      }),
+    },
+  },
+  get_validator_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: { type: "string" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        subnet_count: NULLABLE_INT,
+        total_stake_tao: ANY,
+        total_emission_tao: ANY,
+        rewards_per_1000_tao: { type: ["number", "null"] },
+      }),
+    },
+  },
   get_neuron: {
     type: "object",
     additionalProperties: true,
@@ -9284,6 +10131,73 @@ const TOOL_OUTPUT_SCHEMAS = {
         logo_url: NULLABLE_STRING,
         identity_hash: { type: "string" },
       }),
+    },
+  },
+  get_subnet_hyperparams: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      hyperparameters: { type: ["object", "null"], additionalProperties: true },
+    },
+  },
+  get_subnet_hyperparams_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "entry_count", "entries"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      entry_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      entries: objectItems({
+        block_number: NULLABLE_INT,
+        observed_at: NULLABLE_STRING,
+        hyperparameters: {
+          type: ["object", "null"],
+          additionalProperties: true,
+        },
+        hyperparams_hash: NULLABLE_STRING,
+      }),
+    },
+  },
+  get_subnet_volume: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "window"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: { type: "string" },
+      buy_volume_alpha: ANY,
+      sell_volume_alpha: ANY,
+      total_volume_alpha: ANY,
+      buy_volume_tao: ANY,
+      sell_volume_tao: ANY,
+      total_volume_tao: ANY,
+      buy_count: { type: "integer" },
+      sell_count: { type: "integer" },
+      net_volume_alpha: ANY,
+      sentiment_ratio: { type: ["number", "null"] },
+      sentiment: NULLABLE_STRING,
+      vol_mcap_ratio: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_recycled: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "queried_at"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      recycled_tao: { type: ["number", "null"] },
+      queried_at: NULLABLE_STRING,
     },
   },
   get_neuron_history: {
@@ -9370,6 +10284,61 @@ const TOOL_OUTPUT_SCHEMAS = {
       overall_yield: { type: ["number", "null"] },
       stake_concentration: { type: ["object", "null"] },
       positions: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_account_identity: {
+    type: "object",
+    additionalProperties: true,
+    required: ["account", "has_identity"],
+    properties: {
+      schema_version: { type: "integer" },
+      account: { type: "string" },
+      has_identity: { type: "boolean" },
+      name: NULLABLE_STRING,
+      url: NULLABLE_STRING,
+      github: NULLABLE_STRING,
+      image: NULLABLE_STRING,
+      discord: NULLABLE_STRING,
+      description: NULLABLE_STRING,
+      additional: NULLABLE_STRING,
+      captured_at: NULLABLE_STRING,
+    },
+  },
+  get_account_identity_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["account", "entry_count", "entries"],
+    properties: {
+      schema_version: { type: "integer" },
+      account: { type: "string" },
+      entry_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      entries: objectItems({
+        observed_at: NULLABLE_STRING,
+        name: NULLABLE_STRING,
+        url: NULLABLE_STRING,
+        github: NULLABLE_STRING,
+        image: NULLABLE_STRING,
+        discord: NULLABLE_STRING,
+        description: NULLABLE_STRING,
+        additional: NULLABLE_STRING,
+        identity_hash: NULLABLE_STRING,
+      }),
+    },
+  },
+  get_account_position_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "netuid", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: { type: "array", items: { type: "object" } },
     },
   },
   get_account_events: {
@@ -9881,6 +10850,86 @@ const TOOL_OUTPUT_SCHEMAS = {
       ref: ANY,
       extrinsic: { type: ["object", "null"], additionalProperties: true },
       events: objectItems(ACCOUNT_EVENT_ITEM),
+    },
+  },
+  get_sudo: {
+    type: "object",
+    additionalProperties: true,
+    required: ["extrinsic_count", "extrinsics"],
+    properties: {
+      schema_version: { type: "integer" },
+      extrinsic_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      extrinsics: objectItems(EXTRINSIC_ITEM),
+    },
+  },
+  get_sudo_key: {
+    type: "object",
+    additionalProperties: true,
+    required: ["hotkey", "queried_at"],
+    properties: {
+      schema_version: { type: "integer" },
+      hotkey: NULLABLE_STRING,
+      queried_at: NULLABLE_STRING,
+    },
+  },
+  get_governance_config_changes: {
+    type: "object",
+    additionalProperties: true,
+    required: ["extrinsic_count", "extrinsics"],
+    properties: {
+      schema_version: { type: "integer" },
+      extrinsic_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      extrinsics: objectItems(EXTRINSIC_ITEM),
+    },
+  },
+  get_runtime: {
+    type: "object",
+    additionalProperties: true,
+    required: ["transition_count", "transitions"],
+    properties: {
+      schema_version: { type: "integer" },
+      transition_count: { type: "integer" },
+      current_spec_version: NULLABLE_INT,
+      coverage_from_block: NULLABLE_INT,
+      coverage_from_at: NULLABLE_STRING,
+      transitions: objectItems({
+        spec_version: { type: "integer" },
+        block_number: { type: "integer" },
+        observed_at: NULLABLE_STRING,
+      }),
+    },
+  },
+  list_accounts: {
+    type: "object",
+    additionalProperties: true,
+    required: ["sort", "limit", "account_count", "accounts"],
+    properties: {
+      schema_version: { type: "integer" },
+      sort: { type: "string", enum: ACCOUNTS_LIST_SORTS },
+      limit: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      account_count: { type: "integer" },
+      accounts: objectItems({
+        hotkey: { type: "string" },
+        coldkey: NULLABLE_STRING,
+        coldkey_count: { type: "integer" },
+        subnet_count: { type: "integer" },
+        uid_count: { type: "integer" },
+        validator_count: { type: "integer" },
+        miner_count: { type: "integer" },
+        total_stake_tao: ANY,
+        total_emission_tao: ANY,
+        latest_captured_at: NULLABLE_STRING,
+        latest_block_number: NULLABLE_INT,
+        subnets: { type: "array", items: { type: "object" } },
+      }),
     },
   },
   get_block_chain_events: {
