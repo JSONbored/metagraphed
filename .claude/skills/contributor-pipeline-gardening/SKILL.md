@@ -67,8 +67,10 @@ Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo'
 4. Every new issue: correct milestone, a `gittensor:bug`/`gittensor:feature`/`gittensor:priority`
    label (this repo's own convention — priority isn't scarce here the way it is in gittensory, but
    still means "the maintainer actually wants this soon," don't apply it reflexively to everything),
-   `help wanted` (paired convention here too), and `good first issue` when genuinely scoped/documented
-   enough for a newcomer (a label gittensory doesn't use — apply it honestly, not as a default).
+   and `help wanted` (paired convention here too). Do NOT apply `good first issue` — it isn't a real
+   convention in this repo (the label doesn't exist here, confirmed 2026-07-14) and the maintainer
+   doesn't want it introduced. Only `gittensor:*` + `help wanted` matter for contributor-available
+   issues.
 5. Full body template — Context, Requirements, Deliverables, Expected Outcome, Links & Resources (see
    `reference.md`). Registry/surface-data contributions have their own distinct shape (one file per
    subnet, `registry/subnets/<slug>.json`) — don't template a data-contribution issue the same as a

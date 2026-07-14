@@ -24,14 +24,15 @@ skill only covers issue-pipeline hygiene, not PR review mechanics.
   values as gittensory, **but `gittensor:priority` is used far more liberally here** (roughly a third
   of all open issues, often standalone with no `gittensor:feature`/`gittensor:bug` pairing). Follow
   this repo's existing density, don't artificially scarce it down to match gittensory.
-- `good first issue` — used on ~40% of open issues here (gittensory has no equivalent label). Apply
-  honestly: genuinely scoped, well-documented, low-context-needed work only.
 - `help wanted` — paired with points labels, same as gittensory.
 - `backend` / `frontend` — apply when the work is clearly one or the other; skip when it's genuinely
   both or neither (e.g. a pure docs/data issue).
 - `maintainer-only` — used on ~57% of open issues (81/142). Only ~14 of those also carry `roadmap`,
   so **don't assume the `roadmap`+`maintainer-only` pairing convention from gittensory applies here**
   — in this repo `maintainer-only` alone is a complete, sufficient signal.
+- `good first issue` is **not** a real convention here — the label doesn't exist in this repo
+  (confirmed 2026-07-14) and the maintainer doesn't want it added. Only `gittensor:*` + `help wanted`
+  (+ `backend`/`frontend` where clearly applicable) matter for contributor-available issues.
 - Never add anything beyond the above to a gardening-generated issue.
 
 ## What's safe to unleash
