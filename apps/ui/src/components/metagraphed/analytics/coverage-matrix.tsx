@@ -127,70 +127,88 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
         </div>
       </header>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[11px] font-mono">
-          <thead>
-            <tr className="bg-paper/30">
-              <th className="sticky left-0 z-10 bg-paper/30 text-left px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
-                Subnet
-              </th>
-              {KINDS.map((k) => (
-                <th
-                  key={k}
-                  className="px-2 py-2 text-center text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border"
-                >
-                  {k}
+      {/* At 375px only the subnet column + ~4 kind cells fit, and the far-right
+          "Comp" column — the signal that actually separates a 25%-complete
+          subnet from a full one — scrolls off-screen, so every row reads as
+          covered (#5310). Two cues fix that: each row shows its completeness in
+          the always-visible sticky column (below, mobile only), and a
+          right-edge fade signals there's more to scroll. */}
+      <div className="relative">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[11px] font-mono">
+            <thead>
+              <tr className="bg-paper/30">
+                <th className="sticky left-0 z-10 bg-paper/30 text-left px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
+                  Subnet
                 </th>
-              ))}
-              <th className="px-2 py-2 text-right text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
-                Comp
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.netuid}
-                className="border-b border-border last:border-b-0 hover:bg-paper/30"
-              >
-                <td className="sticky left-0 z-10 bg-card px-3 py-1.5 border-r border-border text-ink-strong">
-                  <Link
-                    to="/subnets/$netuid"
-                    params={{ netuid: r.netuid }}
-                    className="inline-flex items-center gap-1.5 hover:text-accent"
+                {KINDS.map((k) => (
+                  <th
+                    key={k}
+                    className="px-2 py-2 text-center text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border"
                   >
-                    <span className="font-mono text-[10px] text-ink-muted">SN{r.netuid}</span>
-                    <span className="truncate max-w-[160px]">{r.name}</span>
-                  </Link>
-                </td>
-                {KINDS.map((k) => {
-                  const cell = r.cells[k];
-                  const tone = CELL_TONE[cell];
-                  return (
-                    <td key={k} className="p-1 align-middle">
+                    {k}
+                  </th>
+                ))}
+                <th className="px-2 py-2 text-right text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
+                  Comp
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr
+                  key={r.netuid}
+                  className="border-b border-border last:border-b-0 hover:bg-paper/30"
+                >
+                  <td className="sticky left-0 z-10 bg-card px-3 py-1.5 border-r border-border text-ink-strong">
+                    <div className="flex items-center gap-2">
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: r.netuid }}
-                        search={{ tab: "surfaces" }}
-                        className={classNames(
-                          "block h-6 w-full rounded transition-all hover:ring-2",
-                          tone.bg,
-                          tone.ring,
-                        )}
-                        title={`${tone.label} · ${k} · SN${r.netuid}`}
+                        className="inline-flex min-w-0 items-center gap-1.5 hover:text-accent"
                       >
-                        <span className="sr-only">{`${k} ${tone.label}`}</span>
+                        <span className="font-mono text-[10px] text-ink-muted">SN{r.netuid}</span>
+                        <span className="truncate max-w-[110px] sm:max-w-[160px]">{r.name}</span>
                       </Link>
-                    </td>
-                  );
-                })}
-                <td className="px-2 py-1.5 text-right tabular-nums text-ink-strong">
-                  {Math.round(r.completeness * 100)}%
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      <CompletenessChip value={r.completeness} netuid={r.netuid} />
+                    </div>
+                  </td>
+                  {KINDS.map((k) => {
+                    const cell = r.cells[k];
+                    const tone = CELL_TONE[cell];
+                    return (
+                      <td key={k} className="p-1 align-middle">
+                        <Link
+                          to="/subnets/$netuid"
+                          params={{ netuid: r.netuid }}
+                          search={{ tab: "surfaces" }}
+                          className={classNames(
+                            "block h-6 w-full rounded transition-all hover:ring-2",
+                            tone.bg,
+                            tone.ring,
+                          )}
+                          title={`${tone.label} · ${k} · SN${r.netuid}`}
+                        >
+                          <span className="sr-only">{`${k} ${tone.label}`}</span>
+                        </Link>
+                      </td>
+                    );
+                  })}
+                  <td className="px-2 py-1.5 text-right tabular-nums text-ink-strong">
+                    {Math.round(r.completeness * 100)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent md:hidden"
+        />
+        <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-ink-strong/70 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-paper md:hidden">
+          scroll →
+        </div>
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-paper/30 px-4 py-2 font-mono text-[10px] text-ink-muted">
@@ -203,6 +221,34 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
         <div>showing top {rows.length} subnets</div>
       </footer>
     </section>
+  );
+}
+
+// Always-visible per-row completeness. On mobile the far-right "Comp" column —
+// the one signal that actually distinguishes a 25%-complete subnet from a
+// 100% one — scrolls off-screen, leaving only the leftmost (usually present)
+// kind cells visible, so every row reads as fully covered (#5310). Surfacing
+// completeness inside the sticky column (mobile only; the "Comp" column still
+// serves md+) makes a low-coverage subnet obvious without scrolling. Coloured
+// by tier so an incomplete subnet reads red at a glance.
+function CompletenessChip({ value, netuid }: { value: number; netuid: number }) {
+  const pct = Math.round(value * 100);
+  const tone =
+    value >= 0.8
+      ? "border-health-ok/40 bg-health-ok/10 text-health-ok"
+      : value >= 0.5
+        ? "border-health-warn/40 bg-health-warn/10 text-health-warn"
+        : "border-health-down/40 bg-health-down/10 text-health-down";
+  return (
+    <span
+      title={`SN${netuid}: ${pct}% of required public-interface kinds present`}
+      className={classNames(
+        "ml-auto inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 font-mono text-[9px] font-semibold tabular-nums md:hidden",
+        tone,
+      )}
+    >
+      {pct}%
+    </span>
   );
 }
 
