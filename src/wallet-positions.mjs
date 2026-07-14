@@ -156,8 +156,8 @@ export function buildWalletPositions(
   }
 
   positions.sort((a, b) => {
-    const aMark = a.spot_mark_tao ?? a.stake_tao ?? 0;
-    const bMark = b.spot_mark_tao ?? b.stake_tao ?? 0;
+    const aMark = a.spot_mark_tao ?? a.stake_tao;
+    const bMark = b.spot_mark_tao ?? b.stake_tao;
     const byMark = bMark - aMark;
     if (byMark !== 0) return byMark;
     return a.netuid - b.netuid;
