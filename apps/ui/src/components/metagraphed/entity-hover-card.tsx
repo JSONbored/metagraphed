@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import {
   HoverCard,
   HoverCardContent,
@@ -9,8 +9,13 @@ import {
   HealthPill,
   TimeAgo,
 } from "@jsonbored/ui-kit";
-import { subnetQuery, providerQuery, accountQuery } from "@/lib/metagraphed/queries";
+import { useCoarsePointer } from "@/hooks/use-coarse-pointer";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { subnetQuery, providerQuery, accountQuery } from "@/lib/metagraphed/queries";
+import {
+  resolveEntityHoverPlacement,
+  type EntityHoverPlacement,
+} from "./entity-hover-placement";
 
 interface SubnetHoverProps {
   kind: "subnet";
@@ -27,37 +32,29 @@ interface AccountHoverProps {
   ss58: string;
   children: ReactNode;
 }
-type Props = SubnetHoverProps | ProviderHoverProps | AccountHoverProps;
 
-/**
- * Detect a touch-primary device. On those we don't render a hover card at
- * all — the trigger renders as-is so the underlying <Link> remains the
- * one-tap target. Avoids the "tap once to hover, tap again to navigate"
- * trap of Radix HoverCard on mobile.
- */
-function useCoarsePointer(): boolean {
-  const [coarse, setCoarse] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const m = window.matchMedia("(hover: none), (pointer: coarse)");
-    const update = () => setCoarse(m.matches);
-    update();
-    m.addEventListener?.("change", update);
-    return () => m.removeEventListener?.("change", update);
-  }, []);
-  return coarse;
-}
+type EntityKindProps = SubnetHoverProps | ProviderHoverProps | AccountHoverProps;
+
+export type EntityHoverCardProps = EntityKindProps & Partial<EntityHoverPlacement>;
 
 /**
  * Linear-style hover profile card. Wraps any link/trigger and fetches its
  * detail payload on first open (cached via the shared query client).
  *
- * On touch devices this is a no-op passthrough so taps go straight to the
- * wrapped link, which keeps accessibility predictable.
+ * On touch-primary devices this is a no-op passthrough so taps go straight to
+ * the wrapped link — matches `(hover: none), (pointer: coarse)` (#5337).
  */
-export function EntityHoverCard(props: Props) {
+export function EntityHoverCard(props: EntityHoverCardProps) {
   const coarse = useCoarsePointer();
   if (coarse) return <>{props.children}</>;
+
+  const placement = resolveEntityHoverPlacement({
+    side: props.side,
+    align: props.align,
+    openDelayMs: props.openDelayMs,
+    closeDelayMs: props.closeDelayMs,
+    sideOffset: props.sideOffset,
+  });
 
   const ariaLabel =
     props.kind === "subnet"
@@ -67,12 +64,12 @@ export function EntityHoverCard(props: Props) {
         : `Preview account ${props.ss58}`;
 
   return (
-    <HoverCard openDelay={250} closeDelay={120}>
+    <HoverCard openDelay={placement.openDelayMs} closeDelay={placement.closeDelayMs}>
       <HoverCardTrigger asChild>{props.children}</HoverCardTrigger>
       <HoverCardContent
-        side="top"
-        align="start"
-        sideOffset={8}
+        side={placement.side}
+        align={placement.align}
+        sideOffset={placement.sideOffset}
         aria-label={ariaLabel}
         data-testid="entity-hover-card"
         className="w-80 p-3 bg-card border-border shadow-lg z-50"

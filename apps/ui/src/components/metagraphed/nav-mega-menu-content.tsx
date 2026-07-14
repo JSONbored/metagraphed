@@ -12,9 +12,6 @@ import {
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -31,6 +28,7 @@ import {
   persistOpen,
   type MegaPanel,
 } from "./nav-mega-menu-data";
+import { MegaMenuLivePreviewLink } from "./mega-menu-live-preview-link";
 
 type SnapshotResult = {
   tiles: { label: string; value: number | string }[];
@@ -94,135 +92,6 @@ function useSnapshot(key: string): SnapshotResult {
     };
   }
   return { tiles: [], isPending: false, isError: false };
-}
-
-const HEALTH_TONE: Record<string, string> = {
-  ok: "bg-health-ok",
-  warn: "bg-health-warn",
-  down: "bg-health-down",
-  unknown: "bg-ink-subtle",
-};
-
-function PreviewSkeleton() {
-  return (
-    <div className="w-56 space-y-2 animate-pulse">
-      <div className="h-3 w-20 rounded bg-surface" />
-      <div className="h-4 w-32 rounded bg-surface" />
-      <div className="grid grid-cols-2 gap-2">
-        <div className="h-8 rounded bg-surface" />
-        <div className="h-8 rounded bg-surface" />
-      </div>
-    </div>
-  );
-}
-
-function PreviewMissing({ to }: { to: string }) {
-  return (
-    <div className="w-56 text-[11px] text-ink-muted">
-      Details not cached yet. <span className="text-accent-text">Open page →</span>
-      <span className="sr-only">{to}</span>
-    </div>
-  );
-}
-
-function PreviewError({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="w-56 flex items-start gap-2">
-      <div className="text-[11px] text-health-down flex-1">Preview unavailable.</div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="rounded border border-border bg-card p-1 text-ink-muted hover:text-ink-strong"
-        aria-label="Retry preview"
-      >
-        <RefreshCw className="size-3" />
-      </button>
-    </div>
-  );
-}
-
-function SubnetPreviewCard({ netuid }: { netuid: number }) {
-  const qc = useQueryClient();
-  const { data, isPending, isError } = useQuery({
-    ...subnetsQuery(),
-    retry: 0,
-    placeholderData: (prev) => prev,
-  });
-  if (isPending) return <PreviewSkeleton />;
-  if (isError)
-    return (
-      <PreviewError onRetry={() => qc.invalidateQueries({ queryKey: subnetsQuery().queryKey })} />
-    );
-  const sub = data?.data.find((s) => s.netuid === netuid);
-  if (!sub) return <PreviewMissing to={`/subnets/${netuid}`} />;
-  const health = (sub.health ?? "unknown") as string;
-  return (
-    <div className="space-y-2 w-56">
-      <div className="flex items-center justify-between">
-        <div className="mg-label">netuid {sub.netuid}</div>
-        <span
-          className={classNames(
-            "inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest",
-          )}
-        >
-          <span
-            className={classNames(
-              "size-1.5 rounded-full",
-              HEALTH_TONE[health] ?? HEALTH_TONE.unknown,
-            )}
-          />
-          {health}
-        </span>
-      </div>
-      <div className="font-display text-sm font-semibold text-ink-strong truncate">
-        {sub.name ?? `Subnet ${sub.netuid}`}
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-[11px]">
-        <div>
-          <div className="text-ink-muted">Surfaces</div>
-          <div className="mg-num text-ink-strong">{sub.surfaces_count ?? "—"}</div>
-        </div>
-        <div>
-          <div className="text-ink-muted">Curation</div>
-          <div className="text-ink-strong truncate">{sub.curation_level ?? "native"}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProviderPreviewCard({ slug }: { slug: string }) {
-  const qc = useQueryClient();
-  const { data, isPending, isError } = useQuery({
-    ...providersQuery(),
-    retry: 0,
-    placeholderData: (prev) => prev,
-  });
-  if (isPending) return <PreviewSkeleton />;
-  if (isError)
-    return (
-      <PreviewError onRetry={() => qc.invalidateQueries({ queryKey: providersQuery().queryKey })} />
-    );
-  const p = data?.data.find((x) => x.slug === slug);
-  if (!p) return <PreviewMissing to={`/providers/${slug}`} />;
-  return (
-    <div className="space-y-2 w-56">
-      <div className="mg-label">{p.kind ?? "provider"}</div>
-      <div className="font-display text-sm font-semibold text-ink-strong truncate">
-        {p.name ?? p.slug}
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-[11px]">
-        <div>
-          <div className="text-ink-muted">Endpoints</div>
-          <div className="mg-num text-ink-strong">{p.endpoints_count ?? "—"}</div>
-        </div>
-        <div>
-          <div className="text-ink-muted">Surfaces</div>
-          <div className="mg-num text-ink-strong">{p.surfaces_count ?? "—"}</div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 type LiveItem = {
@@ -468,35 +337,12 @@ export function MegaPanelBody({
                   const i = nextIdx();
                   return (
                     <li key={`${item.kind}-${String(item.previewId)}`}>
-                      <HoverCard openDelay={150} closeDelay={80}>
-                        <HoverCardTrigger asChild>
-                          <Link
-                            to={item.to}
-                            params={item.params as never}
-                            onClick={onNavigate}
-                            ref={(el) => registerItem(el, i)}
-                            className="flex items-center justify-between rounded-md px-2 py-1.5 -mx-2 hover:bg-surface/70 focus:bg-surface/70 focus:outline-none transition-colors"
-                            preload="intent"
-                          >
-                            <span className="min-w-0">
-                              <span className="block text-sm text-ink-strong truncate">
-                                {item.label}
-                              </span>
-                              <span className="block text-[11px] text-ink-muted truncate">
-                                {item.sub}
-                              </span>
-                            </span>
-                            <ArrowUpRight className="size-3 text-ink-muted shrink-0" />
-                          </Link>
-                        </HoverCardTrigger>
-                        <HoverCardContent side="right" align="start" className="w-auto p-3">
-                          {item.kind === "subnet" ? (
-                            <SubnetPreviewCard netuid={item.previewId as number} />
-                          ) : (
-                            <ProviderPreviewCard slug={item.previewId as string} />
-                          )}
-                        </HoverCardContent>
-                      </HoverCard>
+                      <MegaMenuLivePreviewLink
+                        item={item}
+                        onNavigate={onNavigate}
+                        registerItem={registerItem}
+                        itemIndex={i}
+                      />
                     </li>
                   );
                 })}
