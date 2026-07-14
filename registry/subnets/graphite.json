@@ -199,6 +199,24 @@
         "https://api.graphite-ai.net/docs"
       ],
       "url": "https://api.graphite-ai.net/api/v1/miners/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-min-compute",
+      "kind": "data-artifact",
+      "name": "Graphite minimum compute requirements",
+      "notes": "Public no-auth min_compute.yml committed at the root of SN43 Graphite's official GraphiteAI/Graphite-Subnet repository — the minimum and recommended hardware specification (CPU, RAM, storage, OS, and network bandwidth) for running a Graphite miner or validator. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; a standalone machine-readable reference artifact distinct from the existing Graphite past-problems dataset and API surfaces.",
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "lourincedaging0-commits"
+      },
+      "source_urls": [
+        "https://github.com/GraphiteAI/Graphite-Subnet/blob/main/min_compute.yml"
+      ],
+      "url": "https://raw.githubusercontent.com/GraphiteAI/Graphite-Subnet/main/min_compute.yml"
     }
   ],
   "website_url": "https://graphite-ai.net/"
