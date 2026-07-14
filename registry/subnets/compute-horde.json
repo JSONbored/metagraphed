@@ -151,6 +151,31 @@
         "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json"
       ],
       "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/master/validator/app/src/compute_horde_validator/validator/collateral_abi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-12-computehorde-map-abi",
+      "kind": "data-artifact",
+      "name": "ComputeHorde map contract ABI",
+      "notes": "Public no-auth machine-readable JSON ABI for ComputeHorde's on-chain Map smart contract, committed in the official backend-developers-ltd/ComputeHorde source repository (whose README declares \"Subnet 12 of Bittensor\") at compute_horde/compute_horde/smart_contracts/abi/map_abi.json. Describes the contract's constructor and function/event interface used by the SN12 smart-contract layer. Distinct from the collateral contract ABI already registered — a separate on-chain contract's machine-readable interface. Pinned to an immutable commit. Verified 200, SS58-clean.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "compute-horde",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/2ab13d1b77c63d4f46eb1e5a7b65e51751de16d5/compute_horde/compute_horde/smart_contracts/abi/map_abi.json",
+        "https://github.com/backend-developers-ltd/ComputeHorde/blob/master/README.md"
+      ],
+      "url": "https://raw.githubusercontent.com/backend-developers-ltd/ComputeHorde/2ab13d1b77c63d4f46eb1e5a7b65e51751de16d5/compute_horde/compute_horde/smart_contracts/abi/map_abi.json"
     }
   ]
 }
