@@ -163,7 +163,13 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         eyebrow="Explorer · block"
         live
         title={`#${formatNumber(block.block_number)}`}
-        description={<span className="font-mono text-sm break-all">{block.block_hash || "—"}</span>}
+        description={
+          block.block_hash ? (
+            <CopyableCode value={block.block_hash} className="max-w-full" />
+          ) : (
+            <span className="text-ink-muted">—</span>
+          )
+        }
         actions={<ShareButton />}
         caption="explorer / v1"
       />
