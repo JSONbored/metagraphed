@@ -252,6 +252,8 @@ test("maps each upstream status to a distinct, condition-specific error code", a
   assert.equal(await codeFor(401), "alert_trigger_unauthorized");
   assert.equal(await codeFor(404), "alert_trigger_not_found");
   assert.equal(await codeFor(413), "alert_trigger_payload_too_large");
+  assert.equal(await codeFor(429), "alert_trigger_rate_limited");
+  assert.equal(await codeFor(502), "alert_triggers_unavailable");
   assert.equal(await codeFor(503), "alert_triggers_unavailable");
   // An unmapped status still falls back to the generic code.
   assert.equal(await codeFor(418), "alert_trigger_request_failed");
