@@ -57,6 +57,56 @@
         "https://taomarketcap.com/subnets/107"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/107"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-public-knowledge-pack",
+      "kind": "data-artifact",
+      "name": "Minos SN107 public knowledge pack manifest",
+      "notes": "Public no-auth machine-readable YAML manifest of the SN107 Minos public knowledge pack, published in the official minos-protocol/minos_subnet repository at docs/ai-assistant/memory-pack/manifest.yaml. Self-declares privacy: public_only and describes the subnet's public knowledge graph for miners, validators, and agent runtimes (name, version 1.0.0, published providers, and bootstrap scripts). Pinned to an immutable commit. Verified 200, SS58-clean.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/8310571d70b06af760b8d26bd705476b0624008f/docs/ai-assistant/memory-pack/manifest.yaml",
+        "https://github.com/minos-protocol/minos_subnet"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/8310571d70b06af760b8d26bd705476b0624008f/docs/ai-assistant/memory-pack/manifest.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-min-compute",
+      "kind": "data-artifact",
+      "name": "Minos minimum compute requirements",
+      "notes": "Public no-auth YAML miner and validator minimum hardware specification published at the root of the official minos-protocol/minos_subnet repository as min_compute.yml. Documents the SN107 Minos operator CPU/GPU/memory/storage/network floors. Pinned to an immutable commit. Verified 200, SS58-clean.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/b1d773e9f8fb0d16c314a89af731f2e00856121a/min_compute.yml",
+        "https://github.com/minos-protocol/minos_subnet"
+      ],
+      "url": "https://raw.githubusercontent.com/minos-protocol/minos_subnet/b1d773e9f8fb0d16c314a89af731f2e00856121a/min_compute.yml"
     }
   ],
   "contact": "contact@theminos.ai"
