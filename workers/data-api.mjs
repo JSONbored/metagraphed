@@ -663,7 +663,8 @@ async function handleNeuronsSync(request, env) {
             is_immunity_period = EXCLUDED.is_immunity_period,
             axon = EXCLUDED.axon,
             block_number = EXCLUDED.block_number,
-            captured_at = EXCLUDED.captured_at
+            captured_at = EXCLUDED.captured_at,
+            take = EXCLUDED.take
           WHERE neurons.captured_at <= EXCLUDED.captured_at`;
       }
 
@@ -693,7 +694,8 @@ async function handleNeuronsSync(request, env) {
             axon = EXCLUDED.axon,
             block_number = EXCLUDED.block_number,
             captured_at = EXCLUDED.captured_at,
-            updated_at = EXCLUDED.updated_at
+            updated_at = EXCLUDED.updated_at,
+            take = EXCLUDED.take
           WHERE neuron_daily.captured_at <= EXCLUDED.captured_at`;
       }
 
@@ -949,7 +951,8 @@ async function handleNeuronDailyBackfill(request, env) {
             axon = EXCLUDED.axon,
             block_number = EXCLUDED.block_number,
             captured_at = EXCLUDED.captured_at,
-            updated_at = EXCLUDED.updated_at
+            updated_at = EXCLUDED.updated_at,
+            take = EXCLUDED.take
           WHERE neuron_daily.captured_at <= EXCLUDED.captured_at`;
       }
 

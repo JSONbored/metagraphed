@@ -4940,6 +4940,8 @@ export interface components {
             stake_dominance: number | null;
             subnet_count: number;
             subnets: components["schemas"]["GlobalValidatorSubnet"][];
+            /** @description Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Global per-hotkey. Null if no SubtensorModule::Delegates entry existed at capture time. */
+            take: number | null;
             total_emission_tao: number;
             total_stake_tao: number;
             uid_count: number;
@@ -5267,6 +5269,8 @@ export interface components {
             rank?: number | null;
             registered_at_block?: number | null;
             stake_tao?: number | null;
+            /** @description Validator take/commission (#2548): the 0..1 fraction of delegator rewards this hotkey keeps, from SubtensorModule::Delegates. Global per-hotkey, not per-subnet -- identical across every Neuron row for the same hotkey. Null if the hotkey had no Delegates entry at capture time. */
+            take?: number | null;
             trust?: number | null;
             uid: number;
             validator_permit: boolean;
@@ -7601,6 +7605,8 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             subnets: components["schemas"]["ValidatorDetailSubnet"][];
+            /** @description Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Null if no SubtensorModule::Delegates entry existed at capture time. */
+            take: number | null;
             total_emission_tao: number;
             total_stake_tao: number;
         } & {
@@ -7621,6 +7627,8 @@ export interface components {
             rank?: number | null;
             registered_at_block?: number | null;
             stake_tao?: number | null;
+            /** @description Validator take/commission (#2548), 0..1 fraction. Global per-hotkey, identical across every subnet membership row here. */
+            take?: number | null;
             trust?: number | null;
             uid: number;
             validator_permit: boolean;
@@ -24617,6 +24625,7 @@ export interface operations {
                      *           "rank": 0.5,
                      *           "registered_at_block": 5000000,
                      *           "stake_tao": 0.5,
+                     *           "take": 0.5,
                      *           "trust": 0.5,
                      *           "uid": 1,
                      *           "validator_permit": false,
@@ -28342,6 +28351,7 @@ export interface operations {
                      *                 "validator_trust": 0.5
                      *               }
                      *             ],
+                     *             "take": 0.5,
                      *             "total_emission_tao": 0.5,
                      *             "total_stake_tao": 0.5,
                      *             "uid_count": 1
@@ -28471,6 +28481,7 @@ export interface operations {
                      *             "validator_permit": false
                      *           }
                      *         ],
+                     *         "take": 0.5,
                      *         "total_emission_tao": 0.5,
                      *         "total_stake_tao": 0.5
                      *       },

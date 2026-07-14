@@ -12,6 +12,12 @@ Units (verified by the parity check vs the prior Taostats data, #1348):
   consensus/incentive/dividends = on-chain 0..1 floats
   rank/validator_trust = SubtensorModule u16 (0..65535) ÷ 65535
   trust = 0.0 (dead in dTAO — 0 across all neurons, Taostats included)
+  take = SubtensorModule::Delegates u16 (0..65535) ÷ 65535 (#2548) — global
+    per-hotkey (a StorageMap keyed only by hotkey, not netuid), fetched once
+    and joined onto every row for that hotkey. Verified live 2026-07-14: a raw
+    value of 11796 decodes to exactly 0.18, Bittensor's documented default/
+    floor take. Hotkeys with no Delegates entry get take=None (never
+    registered as a delegate, not "0% take").
 
 Run: uv run --with bittensor python scripts/fetch-metagraph-native.py
 """
@@ -110,6 +116,19 @@ def main():
         except Exception:
             return []
 
+    def delegate_takes():
+        """SubtensorModule::Delegates: hotkey (SS58) -> take (u16 raw), a flat
+        StorageMap with no netuid key — fetched once for the whole network."""
+        try:
+            takes = {}
+            for key, value in s.substrate.query_map("SubtensorModule", "Delegates"):
+                hotkey = getattr(key, "value", key)
+                takes[hotkey] = u16_ratio(getattr(value, "value", value))
+            return takes
+        except Exception:
+            return {}
+
+    takes = delegate_takes()
     captured_at = int(time.time() * 1000)
     rows = []
     for netuid in sorted(by_netuid):
@@ -134,11 +153,12 @@ def main():
         subnet_rows = []
         for uid in range(n):
             reg = _at(reg_at, uid)
+            hotkey = _at(hotkeys, uid)
             subnet_rows.append(
                 {
                     "netuid": netuid,
                     "uid": uid,
-                    "hotkey": _at(hotkeys, uid),
+                    "hotkey": hotkey,
                     "coldkey": _at(coldkeys, uid),
                     "active": 1 if _at(active, uid) else 0,
                     "validator_permit": 1 if _at(permits, uid) else 0,
@@ -157,6 +177,7 @@ def main():
                     "axon": fmt_axon(_at(axons, uid)),
                     "block_number": block,
                     "captured_at": captured_at,
+                    "take": takes.get(hotkey),
                 }
             )
         # SubtensorModule has no rank-position storage in dTAO; derive the

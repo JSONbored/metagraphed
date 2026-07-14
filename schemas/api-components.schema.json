@@ -9697,6 +9697,13 @@
             "maxItems": 10,
             "type": "array"
           },
+          "take": {
+            "description": "Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Global per-hotkey. Null if no SubtensorModule::Delegates entry existed at capture time.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "total_emission_tao": {
             "minimum": 0,
             "type": "number"
@@ -9717,6 +9724,7 @@
           "coldkey_count",
           "subnet_count",
           "uid_count",
+          "take",
           "total_stake_tao",
           "total_emission_tao",
           "stake_dominance",
@@ -10983,6 +10991,13 @@
             ]
           },
           "stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "take": {
+            "description": "Validator take/commission (#2548): the 0..1 fraction of delegator rewards this hotkey keeps, from SubtensorModule::Delegates. Global per-hotkey, not per-subnet -- identical across every Neuron row for the same hotkey. Null if the hotkey had no Delegates entry at capture time.",
             "type": [
               "number",
               "null"
@@ -20756,6 +20771,13 @@
             },
             "type": "array"
           },
+          "take": {
+            "description": "Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Null if no SubtensorModule::Delegates entry existed at capture time.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "total_emission_tao": {
             "minimum": 0,
             "type": "number"
@@ -20771,6 +20793,7 @@
           "coldkey",
           "coldkey_count",
           "subnet_count",
+          "take",
           "total_stake_tao",
           "total_emission_tao",
           "avg_validator_trust",
@@ -20850,6 +20873,13 @@
             ]
           },
           "stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "take": {
+            "description": "Validator take/commission (#2548), 0..1 fraction. Global per-hotkey, identical across every subnet membership row here.",
             "type": [
               "number",
               "null"

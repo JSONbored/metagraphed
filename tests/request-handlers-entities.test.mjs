@@ -908,6 +908,7 @@ describe("handleGlobalValidators", () => {
       coldkey_count: 0,
       subnet_count: 1,
       uid_count: 1,
+      take: null,
       total_stake_tao: 0,
       total_emission_tao: 0,
       stake_dominance: null,

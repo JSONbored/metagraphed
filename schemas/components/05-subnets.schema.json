@@ -1416,7 +1416,11 @@
           "registered_at_block": { "type": ["integer", "null"] },
           "is_immunity_period": { "type": "boolean" },
           "axon": { "type": ["string", "null"] },
-          "featured": { "type": "boolean" }
+          "featured": { "type": "boolean" },
+          "take": {
+            "type": ["number", "null"],
+            "description": "Validator take/commission (#2548): the 0..1 fraction of delegator rewards this hotkey keeps, from SubtensorModule::Delegates. Global per-hotkey, not per-subnet -- identical across every Neuron row for the same hotkey. Null if the hotkey had no Delegates entry at capture time."
+          }
         }
       },
       "SubnetMetagraphArtifact": {
@@ -1999,6 +2003,7 @@
           "coldkey_count",
           "subnet_count",
           "uid_count",
+          "take",
           "total_stake_tao",
           "total_emission_tao",
           "stake_dominance",
@@ -2015,6 +2020,10 @@
           "coldkey_count": { "type": "integer", "minimum": 0 },
           "subnet_count": { "type": "integer", "minimum": 0 },
           "uid_count": { "type": "integer", "minimum": 0 },
+          "take": {
+            "type": ["number", "null"],
+            "description": "Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Global per-hotkey. Null if no SubtensorModule::Delegates entry existed at capture time."
+          },
           "total_stake_tao": { "type": "number", "minimum": 0 },
           "total_emission_tao": { "type": "number", "minimum": 0 },
           "stake_dominance": {
@@ -2193,7 +2202,11 @@
           "stake_tao": { "type": ["number", "null"] },
           "registered_at_block": { "type": ["integer", "null"] },
           "is_immunity_period": { "type": "boolean" },
-          "axon": { "type": ["string", "null"] }
+          "axon": { "type": ["string", "null"] },
+          "take": {
+            "type": ["number", "null"],
+            "description": "Validator take/commission (#2548), 0..1 fraction. Global per-hotkey, identical across every subnet membership row here."
+          }
         }
       },
       "ValidatorDetailArtifact": {
@@ -2206,6 +2219,7 @@
           "coldkey",
           "coldkey_count",
           "subnet_count",
+          "take",
           "total_stake_tao",
           "total_emission_tao",
           "avg_validator_trust",
@@ -2220,6 +2234,10 @@
           "coldkey": { "type": ["string", "null"] },
           "coldkey_count": { "type": "integer", "minimum": 0 },
           "subnet_count": { "type": "integer", "minimum": 0 },
+          "take": {
+            "type": ["number", "null"],
+            "description": "Validator take/commission (#2548), 0..1 fraction of delegator rewards kept. Null if no SubtensorModule::Delegates entry existed at capture time."
+          },
           "total_stake_tao": { "type": "number", "minimum": 0 },
           "total_emission_tao": { "type": "number", "minimum": 0 },
           "avg_validator_trust": { "type": ["number", "null"] },

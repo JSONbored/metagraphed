@@ -9,7 +9,7 @@
 export const NEURON_COLUMNS =
   "uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, " +
   "consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, " +
-  "is_immunity_period, axon, block_number, captured_at";
+  "is_immunity_period, axon, block_number, captured_at, take";
 
 // The full column set written to the neurons table (matches migration 0007 and
 // the normalizeNeuron row shape). Used by the cron's parameterized bulk load
@@ -34,6 +34,7 @@ export const NEURON_INSERT_COLUMNS = [
   "axon",
   "block_number",
   "captured_at",
+  "take",
 ];
 
 export const GLOBAL_VALIDATOR_SORTS = [
@@ -166,6 +167,9 @@ export function formatNeuron(row, featuredHotkeys) {
         : nonNegativeInt(row.registered_at_block),
     is_immunity_period: toD1Flag(row.is_immunity_period),
     axon: row.axon ?? null,
+    // Global per-hotkey (SubtensorModule::Delegates), not per (netuid, uid) --
+    // null means no Delegates entry at capture time (#2548).
+    take: row.take == null ? null : round(nullableNumber(row.take)),
   };
   if (featuredHotkeys) {
     neuron.featured = Boolean(hotkey && featuredHotkeys.has(hotkey));
@@ -267,6 +271,7 @@ function buildGlobalValidatorEntry(entry) {
     coldkey_count: entry.coldkeys.size,
     subnet_count: entry.netuids.size,
     uid_count: entry.uidCount,
+    take: round(entry.take),
     total_stake_tao: roundTao(raoBigToTao(entry.stakeTotalRao)),
     total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
     avg_validator_trust: round(avgTrust),
@@ -350,9 +355,16 @@ export function buildGlobalValidators(
         maxValidatorTrust: null,
         latestCapturedAt: null,
         latestBlockNumber: null,
+        take: null,
         subnets: [],
       };
       validatorsByHotkey.set(hotkey, entry);
+    }
+    // Global per-hotkey, identical across every row for this hotkey -- take
+    // the first non-null value seen rather than re-deriving/overwriting.
+    if (entry.take == null) {
+      const take = nullableNumber(row?.take);
+      if (take != null) entry.take = take;
     }
     if (typeof row?.coldkey === "string" && row.coldkey.length > 0) {
       entry.coldkeys.set(
@@ -543,6 +555,7 @@ export function buildValidatorDetail(rows, hotkey) {
   let maxValidatorTrust = null;
   let latestCapturedAt = null;
   let latestBlockNumber = null;
+  let take = null;
   const subnets = [];
 
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -557,6 +570,11 @@ export function buildValidatorDetail(rows, hotkey) {
 
     if (typeof row?.coldkey === "string" && row.coldkey.length > 0) {
       coldkeys.set(row.coldkey, (coldkeys.get(row.coldkey) ?? 0) + 1);
+    }
+    // Global per-hotkey, identical across every row here -- first non-null wins.
+    if (take == null) {
+      const rowTake = nullableNumber(row?.take);
+      if (rowTake != null) take = rowTake;
     }
     stakeTotalRao += toRaoBig(numberOrZero(row?.stake_tao));
     emissionTotalRao += toRaoBig(numberOrZero(row?.emission_tao));
@@ -593,6 +611,7 @@ export function buildValidatorDetail(rows, hotkey) {
     coldkey: primaryColdkey(coldkeys),
     coldkey_count: coldkeys.size,
     subnet_count: subnets.length,
+    take: round(take),
     total_stake_tao: roundTao(raoBigToTao(stakeTotalRao)),
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
     avg_validator_trust: round(avgTrust),

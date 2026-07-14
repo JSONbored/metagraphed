@@ -475,6 +475,22 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
+  test("buildGlobalValidators takes the first non-null take per hotkey and ignores later rows (#2548)", () => {
+    const data = buildGlobalValidators([
+      { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", take: 0.18 },
+      // A later row for the same hotkey with a different (or missing) take
+      // must not override the first value seen -- take is a single
+      // per-hotkey chain fact, not something to re-derive per subnet row.
+      { ...ROW, netuid: 2, uid: 0, hotkey: "hk-a", take: 0.25 },
+      { ...ROW, netuid: 3, uid: 0, hotkey: "hk-b" },
+    ]);
+    const byHotkey = Object.fromEntries(
+      data.validators.map((v) => [v.hotkey, v.take]),
+    );
+    assert.equal(byHotkey["hk-a"], 0.18);
+    assert.equal(byHotkey["hk-b"], null);
+  });
+
   test("buildGlobalValidators sets `featured` per hotkey entry, defaulting false", () => {
     const data = buildGlobalValidators(
       [
@@ -787,6 +803,19 @@ describe("metagraph-neurons builders", () => {
     assert.equal(empty.captured_at, null);
     assert.equal(empty.block_number, null);
     assert.deepEqual(empty.subnets, []);
+    assert.equal(empty.take, null);
+  });
+
+  test("buildValidatorDetail takes the first non-null take across subnet rows (#2548)", () => {
+    const data = buildValidatorDetail(
+      [
+        { ...ROW, netuid: 1, uid: 0, take: 0.18 },
+        // Same hotkey, later row -- must not override the first value seen.
+        { ...ROW, netuid: 2, uid: 0, take: 0.3 },
+      ],
+      "hk-a",
+    );
+    assert.equal(data.take, 0.18);
   });
 
   test("buildGlobalValidators reports a null block_number as null, not a fabricated 0", () => {
