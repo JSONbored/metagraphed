@@ -109,7 +109,7 @@ export function buildNominatorPositions(rows) {
       uid: null,
       role: "nominator",
       active: true,
-      stake_tao: round9(stakeTao ?? alphaAmount ?? 0),
+      stake_tao: round9(stakeTao != null ? stakeTao : alphaAmount),
       alpha_amount: alphaAmount != null ? round9(alphaAmount) : null,
       emission_tao: 0,
       rank: null,
