@@ -34,7 +34,7 @@
     "verified_at": "2026-06-08T20:25:00.000Z",
     "source_count": 5,
     "gap_notes": [
-      "Official TaoFi pool page, docs, and Swap source repository are verified live.",
+      "Official TaoFi docs and Swap source repository are verified live; the TaoFi pool page (www.taofi.com/pool) currently returns HTTP 402 to simple probes (checked twice ~20s apart) and is marked degraded until it recovers.",
       "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
       "No verified safe public subnet API endpoint yet.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",

@@ -17,7 +17,7 @@
   "dashboard_url": "https://www.tensorclaw.ai/dashboard",
   "website_url": "https://www.tensorclaw.ai/",
   "baseline_excluded_surface_ids": ["sn-92-taomarketcap-website"],
-  "notes": "Reviewed overlay for SN92 using the live Tensorclaw Network website, dashboard, and source repository. Native chain identity currently reports luis, so this remains an explicit identity-drift entry rather than a silent rename. The website links https://github.com/tensorclaw/tensorclaw and the repository README identifies it as Bittensor Tensorclaw Subnet 92.",
+  "notes": "Reviewed overlay for SN92 using the Tensorclaw Network website, dashboard, and source repository. The tensorclaw.ai website and dashboard currently return Cloudflare 521 ('web server is down') to simple probes (checked twice) and are marked degraded until they recover. Native chain identity currently reports luis, so this remains an explicit identity-drift entry rather than a silent rename. The website links https://github.com/tensorclaw/tensorclaw and the repository README identifies it as Bittensor Tensorclaw Subnet 92.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -26,7 +26,7 @@
     "source_count": 6,
     "gap_notes": [
       "Native chain name currently reports as luis while the public website identifies the project as Tensorclaw Network / Subnet 92.",
-      "Official website, dashboard, and source repository are verified live.",
+      "The tensorclaw.ai website and dashboard currently return Cloudflare 521 ('web server is down') to simple probes and are marked degraded until they recover; the source repository is verified live.",
       "No verified docs site yet beyond directory pages.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",

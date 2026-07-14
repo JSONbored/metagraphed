@@ -15,7 +15,7 @@
   "website_url": "https://oneoneone.io/",
   "source_repo": "https://github.com/oneoneone-io/subnet-111",
   "dashboard_url": "https://taomarketcap.com/subnets/111",
-  "notes": "Reviewed overlay for SN111 using the official oneoneone website and source repository. No official docs/API/OpenAPI surface is verified yet.",
+  "notes": "Reviewed overlay for SN111 using the official oneoneone website and source repository. The oneoneone.io website currently returns Cloudflare 530 (origin error) to simple probes (checked twice) and is marked degraded until it recovers; the source repository remains live. No official docs/API/OpenAPI surface is verified yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -23,6 +23,7 @@
     "verified_at": "2026-06-08T10:35:00.000Z",
     "source_count": 4,
     "gap_notes": [
+      "The oneoneone.io website currently returns Cloudflare 530 (origin error) to simple probes (checked twice) and is marked degraded until it recovers.",
       "No verified official docs URL yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",

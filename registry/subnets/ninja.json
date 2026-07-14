@@ -12,6 +12,7 @@
   "contact": "tau@arbos.life",
   "curation": {
     "gap_notes": [
+      "The ninja.arbos.life website/dashboard host currently returns HTTP 404 to simple probes (checked twice with a browser UA) and is marked degraded until it recovers.",
       "Swagger/OpenAPI routes currently serve HTML UI only; no verified machine-readable schema URL yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
@@ -33,7 +34,7 @@
   ],
   "name": "ninja",
   "netuid": 66,
-  "notes": "Reviewed overlay for SN66 using the official Ninja/Unarbos website, tau workflow repository, miner harness repository, health endpoint, and Swagger UI. The obvious OpenAPI JSON paths currently serve HTML, so schema-backed status remains a gap.",
+  "notes": "Reviewed overlay for SN66 using the official Ninja/Unarbos website, tau workflow repository, miner harness repository, health endpoint, and Swagger UI. The ninja.arbos.life website/dashboard/swagger host currently returns HTTP 404 to simple probes and is marked degraded until it recovers; the tau/ninja source repositories remain live. The obvious OpenAPI JSON paths currently serve HTML, so schema-backed status remains a gap.",
   "schema_version": 1,
   "slug": "sn-66",
   "source_repo": "https://github.com/unarbos/tau",
