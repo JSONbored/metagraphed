@@ -1,5 +1,5 @@
 import { ArrowRight, Check, Minus } from "lucide-react";
-import { HealthPill, ExternalLink } from "@jsonbored/ui-kit";
+import { ExternalLink } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import type { SubnetProfile } from "@/lib/metagraphed/types";
 
@@ -24,9 +24,10 @@ function scoreTone(score: number): { label: string; cls: string } {
 /**
  * Integration-readiness scorecard for the top of the subnet Overview tab (#369).
  * Composes the backend `integration_readiness` score + its component breakdown,
- * the `primary_app_surface` as a "start here" CTA, operational-vs-missing
- * interfaces, and live health — the highest-leverage answer for an integration
- * dev landing on a subnet ("can I build on this, and where do I start?").
+ * the `primary_app_surface` as a "start here" CTA, and operational-vs-missing
+ * interfaces. Live probe health lives only in the masthead HealthPill (#5332) —
+ * duplicating it here disagreed with the probe-backed strip and muddied which
+ * indicator was authoritative.
  */
 export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
   if (!profile) return null;
@@ -64,7 +65,6 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
             ) : null}
           </div>
         </div>
-        <HealthPill state={profile.health ?? "unknown"} />
       </div>
 
       {cta?.url ? (

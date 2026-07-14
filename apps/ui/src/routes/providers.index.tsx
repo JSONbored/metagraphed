@@ -22,6 +22,7 @@ import {
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
+import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
 import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
 import {
   BrandIcon,
@@ -337,83 +338,145 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
           action={{ label: "Browse all endpoints", href: "/endpoints" }}
         />
       ) : view === "table" ? (
-        <div className="rounded border border-border bg-card overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
-              <tr>
-                <th className="px-3 py-2">Provider</th>
-                <th className="px-3 py-2">Kind</th>
-                <th className="px-3 py-2">Authority</th>
-                <th className="px-3 py-2">Host</th>
-                <th className="px-3 py-2 text-right">Subnets</th>
-                <th className="px-3 py-2 text-right">Surfaces</th>
-                <th className="px-3 py-2 text-right">Endpoints</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {sorted.map((p) => {
-                const host = maskHost(p.website ?? p.homepage);
-                const c = counts[p.slug];
-                return (
-                  <tr key={p.slug} className="hover:bg-surface/40">
-                    <td className="px-3 py-2">
-                      <Link
-                        to="/providers/$slug"
-                        params={{ slug: p.slug }}
-                        className="inline-flex items-center gap-2 min-w-0"
-                      >
-                        <BrandIcon
-                          url={p.website ?? p.homepage}
-                          iconUrl={p.icon_url}
-                          repoUrl={p.repo}
-                          providerSlug={p.slug}
-                          name={p.name ?? p.slug}
-                          fallback={p.slug}
-                          size={20}
-                        />
-                        <span className="font-medium text-ink-strong truncate">
-                          {p.name ?? p.slug}
-                        </span>
-                        <span className="font-mono text-[10px] text-ink-muted truncate">
+        <>
+          {/* < lg: the 7-column table pushes the Subnets/Surfaces/Endpoints
+              columns off-screen behind an undiscoverable horizontal scroll on
+              phone/tablet widths (the audit flagged 768px specifically), so
+              narrow viewports get a stacked card per provider instead —
+              mirrors the leaderboards/validators mobile fallback split
+              (#5320/#5321). Wider than those 5-column boards, so the cutover
+              is `lg` (1024px) rather than `md`. */}
+          <div className="space-y-2 lg:hidden">
+            {sorted.map((p) => {
+              const f = resolveProviderCard(p, counts[p.slug]);
+              const host = maskHost(p.website ?? p.homepage);
+              return (
+                <Link
+                  key={p.slug}
+                  to="/providers/$slug"
+                  params={{ slug: p.slug }}
+                  className="block rounded border border-border bg-card p-3 transition-colors hover:border-accent/60"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex min-w-0 items-center gap-2">
+                      <BrandIcon
+                        url={p.website ?? p.homepage}
+                        iconUrl={p.icon_url}
+                        repoUrl={p.repo}
+                        providerSlug={p.slug}
+                        name={f.name}
+                        fallback={p.slug}
+                        size={20}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-ink-strong">{f.name}</span>
+                        <span className="block truncate font-mono text-[10px] text-ink-muted">
                           {p.slug}
                         </span>
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                      {p.kind ?? "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {p.authority ? (
-                        <span
-                          className={classNames(
-                            "font-mono text-[10px] uppercase tracking-wider rounded border px-1.5 py-0.5",
-                            authorityTone(p.authority),
-                          )}
+                      </span>
+                    </span>
+                    {p.authority ? (
+                      <span
+                        className={classNames(
+                          "shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                          authorityTone(p.authority),
+                        )}
+                      >
+                        {p.authority}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[11px] text-ink-muted">
+                    <span>{f.kindLabel}</span>
+                    {host ? <span className="max-w-[20ch] truncate">{host}</span> : null}
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-2 border-t border-border/60 pt-2">
+                    <ProviderCardStat label="Subnets" value={f.subnetsLabel} />
+                    <ProviderCardStat label="Surfaces" value={f.surfacesLabel} />
+                    <ProviderCardStat label="Endpoints" value={f.endpointsLabel} />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto rounded border border-border bg-card lg:block">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+                <tr>
+                  <th className="px-3 py-2">Provider</th>
+                  <th className="px-3 py-2">Kind</th>
+                  <th className="px-3 py-2">Authority</th>
+                  <th className="px-3 py-2">Host</th>
+                  <th className="px-3 py-2 text-right">Subnets</th>
+                  <th className="px-3 py-2 text-right">Surfaces</th>
+                  <th className="px-3 py-2 text-right">Endpoints</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {sorted.map((p) => {
+                  const host = maskHost(p.website ?? p.homepage);
+                  const c = counts[p.slug];
+                  return (
+                    <tr key={p.slug} className="hover:bg-surface/40">
+                      <td className="px-3 py-2">
+                        <Link
+                          to="/providers/$slug"
+                          params={{ slug: p.slug }}
+                          className="inline-flex items-center gap-2 min-w-0"
                         >
-                          {p.authority}
-                        </span>
-                      ) : (
-                        <span className="text-ink-muted">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-[11px] text-ink-muted truncate max-w-[22ch]">
-                      {host ?? "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
-                      {c?.subnets ?? 0}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
-                      {c?.surfaces ?? 0}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
-                      {c?.endpoints ?? 0}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          <BrandIcon
+                            url={p.website ?? p.homepage}
+                            iconUrl={p.icon_url}
+                            repoUrl={p.repo}
+                            providerSlug={p.slug}
+                            name={p.name ?? p.slug}
+                            fallback={p.slug}
+                            size={20}
+                          />
+                          <span className="font-medium text-ink-strong truncate">
+                            {p.name ?? p.slug}
+                          </span>
+                          <span className="font-mono text-[10px] text-ink-muted truncate">
+                            {p.slug}
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
+                        {p.kind ?? "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {p.authority ? (
+                          <span
+                            className={classNames(
+                              "font-mono text-[10px] uppercase tracking-wider rounded border px-1.5 py-0.5",
+                              authorityTone(p.authority),
+                            )}
+                          >
+                            {p.authority}
+                          </span>
+                        ) : (
+                          <span className="text-ink-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-ink-muted truncate max-w-[22ch]">
+                        {host ?? "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                        {c?.subnets ?? 0}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                        {c?.surfaces ?? 0}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                        {c?.endpoints ?? 0}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((p) => {
@@ -524,6 +587,15 @@ function ProviderCountsRow({
       <CountTile icon={<Layers className="size-3" />} label="Surfaces" value={s} />
       <CountTile icon={<Radio className="size-3" />} label="Endpoints" value={e} />
       <CountTile icon={<Network className="size-3" />} label="Subnets" value={n} />
+    </div>
+  );
+}
+
+function ProviderCardStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">{label}</span>
+      <span className="font-mono text-[13px] tabular-nums text-ink-strong">{value}</span>
     </div>
   );
 }

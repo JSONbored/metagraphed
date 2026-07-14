@@ -184,6 +184,25 @@
         "submitted_by": "dalledajay-coder"
       },
       "notes": "Public no-auth GET returning the Hone (SN5) training projects catalog as JSON (project, version, modelSize, runCount, lastSeen fields; 46 release entries observed at submission time). This is the machine-readable feed behind the registered hone.training /projects dashboard surface, served from the same first-party hone.training host as the subnet's registered website."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-5-hone-sandbox-runner-config",
+      "kind": "data-artifact",
+      "name": "Hone sandbox runner configuration",
+      "notes": "Public no-auth machine-readable sandbox_runner/config.yaml from the official SN5 Hone repository (manifold-inc/hone), pinned to an immutable commit. Documents the configuration for a Hone sandbox runner instance — runner identity, API server settings, hardware profile (GPU/CPU/memory), and per-job execution mode and resource limits used to run and score miner submissions. Static YAML artifact describing the subnet's evaluation runtime.",
+      "provider": "hone",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/manifold-inc/hone",
+        "https://github.com/manifold-inc/hone/blob/786d1d457b30319080885ce742c94b21185eaafc/sandbox_runner/config.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/manifold-inc/hone/786d1d457b30319080885ce742c94b21185eaafc/sandbox_runner/config.yaml"
     }
   ],
   "contact": "devs@manifold.inc"

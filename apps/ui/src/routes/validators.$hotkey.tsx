@@ -23,6 +23,7 @@ import { validatorDetailQuery, validatorNominatorsQuery } from "@/lib/metagraphe
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { hasValidatorIdentity } from "@/lib/metagraphed/validator-identity";
 import {
   annualizedDelegatorApyPct,
   formatApyPct,
@@ -211,10 +212,10 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
   const sourceRef = ss58PathSegment(hotkey);
   const detailRes = useSuspenseQuery(validatorDetailQuery(hotkey)).data;
   const detail = detailRes.data;
+  const identity = detail.coldkey_identity;
+  const hasIdentity = hasValidatorIdentity(identity);
   const displayName =
-    detail.coldkey_identity?.has_identity && detail.coldkey_identity.name
-      ? detail.coldkey_identity.name
-      : (shortHash(hotkey, 8) ?? "Validator");
+    hasIdentity && identity?.name ? identity.name : (shortHash(hotkey, 8) ?? "Validator");
   const snapshotApy = annualizedDelegatorApyPct(
     detail.total_emission_tao,
     detail.total_stake_tao,
@@ -229,14 +230,17 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         title={displayName}
         description={
           <span className="block space-y-4">
-            <span className="flex flex-wrap items-center gap-3">
-              <ValidatorIdentityChip hotkey={hotkey} identity={detail.coldkey_identity} size={40} />
-              {detail.coldkey_identity?.has_identity ? (
+            {/* With no declared operator identity the chip would only repeat the
+                hotkey already shown as the title and in the copyable field
+                below, so it's dropped when there's nothing extra to show (#5311). */}
+            {hasIdentity ? (
+              <span className="flex flex-wrap items-center gap-3">
+                <ValidatorIdentityChip hotkey={hotkey} identity={identity} size={40} />
                 <span className="text-[11px] text-ink-muted">
                   Operator identity is declared on the coldkey — not hotkey-specific (#5234).
                 </span>
-              ) : null}
-            </span>
+              </span>
+            ) : null}
             <span className="block max-w-2xl text-sm text-ink-muted">
               Cross-subnet performance, nominators, and staking history for one Bittensor validator
               hotkey.

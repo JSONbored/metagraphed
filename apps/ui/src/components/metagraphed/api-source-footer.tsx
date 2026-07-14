@@ -15,8 +15,11 @@ export function ApiSourceFooter({ paths, artifacts }: { paths: string[]; artifac
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <span className="font-mono uppercase tracking-widest text-[10px]">data sources</span>
         {paths.map((p) => (
-          <div key={p} className="flex items-center gap-1.5">
-            <ExternalLink href={`${API_BASE}${p}`} className="hover:text-ink-strong">
+          <div key={p} className="flex min-w-0 max-w-full items-center gap-1.5">
+            <ExternalLink
+              href={`${API_BASE}${p}`}
+              className="min-w-0 truncate hover:text-ink-strong"
+            >
               {p}
             </ExternalLink>
             <CopyableCode value={`${API_BASE}${p}`} label="copy" className="px-1.5 py-0.5" />
@@ -27,7 +30,11 @@ export function ApiSourceFooter({ paths, artifacts }: { paths: string[]; artifac
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="font-mono uppercase tracking-widest text-[10px]">artifacts</span>
           {artifacts.map((p) => (
-            <ExternalLink key={p} href={`${API_BASE}${p}`} className="hover:text-ink-strong">
+            <ExternalLink
+              key={p}
+              href={`${API_BASE}${p}`}
+              className="min-w-0 max-w-full truncate hover:text-ink-strong"
+            >
               {p}
             </ExternalLink>
           ))}

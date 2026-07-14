@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Compass, Github, Menu, Rss, Webhook, X } from "lucide-react";
+import { ChevronRight, Compass, Github, Menu, Rss, Webhook } from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -24,6 +24,9 @@ import {
   TimeAgo,
   Wordmark,
   BackToTop,
+  Sheet,
+  SheetContent,
+  SheetTitle,
 } from "@jsonbored/ui-kit";
 import { SettingsPopover } from "./settings-popover";
 import { classNames } from "@/lib/metagraphed/format";
@@ -207,47 +210,39 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <IncidentStrip />
 
-          {/* Mobile sheet */}
-          {mobileOpen ? (
-            <div className="fixed inset-0 z-50 lg:hidden">
-              <div
-                className="absolute inset-0 bg-ink-strong/40 backdrop-blur-sm"
-                onClick={() => setMobileOpen(false)}
-              />
-              <aside className="absolute inset-y-0 left-0 w-72 max-w-[82vw] border-r border-border bg-paper p-4 flex flex-col gap-4 mg-fade-in">
-                <div className="flex items-center justify-between">
-                  <Brand onNavigate={() => setMobileOpen(false)} />
-                  <button
-                    onClick={() => setMobileOpen(false)}
-                    aria-label="Close menu"
-                    className="rounded-md p-2 text-ink-muted hover:bg-surface min-h-10 min-w-10 inline-flex items-center justify-center"
-                  >
-                    <X className="size-4" />
-                  </button>
+          {/* Mobile navigation sheet. Using the shared Sheet (Radix Dialog)
+              primitive — the one ApiDrawer already uses — gives it a focus
+              trap, Escape-to-close, and role="dialog" for free, instead of the
+              previous hand-rolled <aside> a keyboard user could Tab out of (#5336). */}
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetContent
+              side="left"
+              className="flex w-72 max-w-[82vw] flex-col gap-4 border-r border-border bg-paper p-4"
+            >
+              <SheetTitle className="sr-only">Site navigation</SheetTitle>
+              <Brand onNavigate={() => setMobileOpen(false)} />
+              <div className="mg-label inline-flex items-center gap-1">
+                <Compass className="size-3" /> Unofficial registry
+              </div>
+              <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/settings"
+                  onClick={() => setMobileOpen(false)}
+                  className="inline-flex flex-1 items-center gap-2 rounded border border-border bg-card px-3 py-2 text-[13px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
+                >
+                  <Webhook className="size-3.5" aria-hidden="true" /> Developer settings
+                </Link>
+                <SettingsPopover />
+              </div>
+              <div className="mt-auto border-t border-border pt-3">
+                <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">
+                  API base
                 </div>
-                <div className="mg-label inline-flex items-center gap-1">
-                  <Compass className="size-3" /> Unofficial registry
-                </div>
-                <MobileMegaMenu onNavigate={() => setMobileOpen(false)} />
-                <div className="flex items-center gap-2">
-                  <Link
-                    to="/settings"
-                    onClick={() => setMobileOpen(false)}
-                    className="inline-flex flex-1 items-center gap-2 rounded border border-border bg-card px-3 py-2 text-[13px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors"
-                  >
-                    <Webhook className="size-3.5" aria-hidden="true" /> Developer settings
-                  </Link>
-                  <SettingsPopover />
-                </div>
-                <div className="mt-auto border-t border-border pt-3">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mb-1.5">
-                    API base
-                  </div>
-                  <ApiBaseRow />
-                </div>
-              </aside>
-            </div>
-          ) : null}
+                <ApiBaseRow />
+              </div>
+            </SheetContent>
+          </Sheet>
 
           <main
             id="main-content"

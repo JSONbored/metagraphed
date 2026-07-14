@@ -12,7 +12,6 @@ import {
   TimeAgo,
   CurationChip,
   HealthPill,
-  AnimatedNumber,
   CopyableCode,
   InfoTooltip,
   safeExternalUrl,
@@ -49,8 +48,6 @@ import {
   healthQuery,
   subnetsQuery,
   adapterQuery,
-  endpointsQuery,
-  providersQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -105,6 +102,7 @@ function OverviewPage() {
         <SectionHeader
           eyebrow="What's tracked"
           title="Every public surface, in one registry."
+          description="Glance counts live in the registry pulse ticker above — these are the sections to explore."
           link={{ to: "/subnets", label: "Browse the registry" }}
         />
         <TrackedGrid />
@@ -389,35 +387,9 @@ function HomeHero() {
 }
 
 function HeroKpis() {
-  // #3964: track each source query's phase so a cell shows a skeleton (loading)
-  // or a distinct "Unavailable" glyph (error) instead of collapsing loading /
-  // error / genuinely-null all into "—". Shared statPhase()/StatUnavailable
-  // keep this identical to the About "At a glance" sidebar.
-  const coverageResult = useQuery(coverageQuery());
-  const freshnessResult = useQuery(freshnessQuery());
-  const healthResult = useQuery(healthQuery());
-  const coverage = coverageResult.data?.data;
-  const freshness = freshnessResult.data?.data;
-  const health = healthResult.data?.data;
-  const active = coverage?.netuids_active;
-  const avgAge = freshness?.avg_age_seconds;
-  const uptime = health?.uptime_24h;
-
-  const ages = (freshness?.sources ?? [])
-    .map((s) => (s.last_seen ? (Date.now() - new Date(s.last_seen).getTime()) / 1000 : null))
-    .filter((v): v is number => typeof v === "number");
-  // Real per-source freshness ages (newest first). No fabricated fallback —
-  // the sparkline simply hides when there's no series.
-  const freshSeries = ages.length ? ages.slice(0, 24).reverse() : undefined;
-
-  // No per-hour uptime series is exposed by /api/v1/health, so the uptime cell
-  // shows the honest number with no invented trend line.
-  const freshPoints = freshSeries ? buildHourlyPoints(freshSeries) : undefined;
-
-  // #3383: chain-direct activity, distinct from the registry/freshness metadata
-  // above — useQuery (not suspense), so a slow/failed fetch degrades this one
-  // cell instead of blocking the whole hero card. No fabricated fallback: the
-  // sparkline hides via HeroStatCell's own hasSeries guard when there's no data.
+  // #5312: freshness and health percentages live only in LivePerformance
+  // (homepage deep dive) — the global registry ticker already carries glance
+  // counts. The hero card keeps the subnet health map + chain-direct activity.
   const activityResult = useQuery(chainActivityQuery("7d"));
   const activity = activityResult.data?.data;
   const activityChrono = activity?.days.length ? [...activity.days].reverse() : undefined;
@@ -438,15 +410,10 @@ function HeroKpis() {
         </div>
       </div>
 
-      {/* Subnet pulse grid */}
+      {/* Subnet health map — visual only; active-subnet count is in the global ticker. */}
       <div className="px-4 py-3.5 border-b border-border">
-        <div className="flex items-baseline justify-between mb-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Active subnets
-          </span>
-          <span className="font-display text-sm font-semibold text-ink-strong mg-num">
-            <AnimatedNumber value={active ?? null} />
-          </span>
+        <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          Subnet health map
         </div>
         <SubnetPulseGrid columns={16} />
         <div className="mt-2.5 flex items-center gap-3 text-[10px] font-mono text-ink-muted">
@@ -457,28 +424,8 @@ function HeroKpis() {
         </div>
       </div>
 
-      {/* Three stat cells. Uptime has no exposed per-hour series, so it shows the
-          number alone; freshness charts the real per-source ages when present;
-          chain activity is the only one sourced chain-direct rather than from
-          registry/probe metadata. */}
-      <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
-        <HeroStatCell
-          label="Healthy now"
-          value={uptime != null ? `${(uptime * 100).toFixed(1)}%` : "—"}
-          phase={statPhase(healthResult)}
-          formatValue={(v) => `${v.toFixed(1)}%`}
-          tooltip="Share of verified endpoints passing their most recent probe. Failures are non-2xx, timeouts, or schema-invalid responses. Source: /api/v1/health."
-          accent
-        />
-        <HeroStatCell
-          label="Freshness"
-          value={avgAge != null ? humaniseSeconds(avgAge) : "—"}
-          phase={statPhase(freshnessResult)}
-          series={freshSeries}
-          points={freshPoints}
-          formatValue={(v) => humaniseSeconds(v)}
-          tooltip="Median age of the most recent successful probe per registered source over the last 24 hours. Lower is better. Source: /api/v1/freshness."
-        />
+      {/* Chain-direct activity — the only numeric hero stat; not in the ticker. */}
+      <div className="border-b border-border">
         <HeroStatCell
           label="Chain activity"
           value={latestExtrinsics != null ? formatNumber(latestExtrinsics) : "—"}
@@ -512,17 +459,6 @@ function HeroKpis() {
       </div>
     </div>
   );
-}
-
-function buildHourlyPoints(series: number[]): SparklinePoint[] {
-  const now = Date.now();
-  const stepMs = 60 * 60 * 1000;
-  return series.map((v, i) => {
-    const d = new Date(now - (series.length - 1 - i) * stepMs);
-    const hh = String(d.getUTCHours()).padStart(2, "0");
-    const mm = String(d.getUTCMinutes()).padStart(2, "0");
-    return { t: `${hh}:${mm} UTC`, v };
-  });
 }
 
 function LegendDot({ tone, label }: { tone: string; label: string }) {
@@ -663,56 +599,29 @@ function SectionHeader({
 }
 
 function TrackedGrid() {
-  const coverageResult = useQuery(coverageQuery());
-  const coverage = coverageResult.data?.data as Record<string, number | undefined> | undefined;
-  // Endpoint/provider totals are not in /api/v1/coverage — read from their own
-  // list endpoints. Use limit=1 for endpoints (1197 items) to get only the
-  // pagination meta; providers are small enough to load in full (cached for /providers).
-  const endpointsResult = useQuery({ ...endpointsQuery({ limit: 1 }), retry: 0 });
-  const providersResult = useQuery({ ...providersQuery(), retry: 0 });
-  const endpointsTotal =
-    endpointsResult.data?.meta.pagination?.total ??
-    endpointsResult.data?.meta.total ??
-    endpointsResult.data?.data.length;
-  const providersTotal =
-    providersResult.data?.meta.pagination?.total ??
-    providersResult.data?.meta.total ??
-    providersResult.data?.data.length;
-
-  const items: Array<{
-    label: string;
-    to: string;
-    value: number | undefined;
-    desc: string;
-    phase: StatPhase;
-  }> = [
+  // #5312: navigation cards only — subnet/endpoint/surface/provider counts
+  // already surface in the global registry ticker; freshness/health deep-dive
+  // lives in LivePerformance below.
+  const items = [
     {
       label: "Subnets",
       to: "/subnets",
-      value: coverage?.netuids_active,
-      desc: "Active Finney netuids with curated overlays.",
-      phase: statPhase(coverageResult),
+      desc: "Active Finney netuids with curated overlays, identity, and health.",
     },
     {
       label: "Surfaces",
       to: "/surfaces",
-      value: coverage?.surfaces_total,
-      desc: "Verified public APIs, schemas, docs, dashboards.",
-      phase: statPhase(coverageResult),
+      desc: "Verified public APIs, schemas, docs, dashboards, and SDKs.",
     },
     {
       label: "Endpoints",
       to: "/endpoints",
-      value: endpointsTotal,
       desc: "Tracked endpoint resources including root RPC pools.",
-      phase: statPhase(endpointsResult),
     },
     {
       label: "Providers",
       to: "/providers",
-      value: providersTotal,
-      desc: "Subnet teams and infrastructure operators.",
-      phase: statPhase(providersResult),
+      desc: "Subnet teams and infrastructure operators behind the registry.",
     },
   ];
   return (
@@ -726,20 +635,9 @@ function TrackedGrid() {
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             {item.label}
           </div>
-          <div className="mt-3 font-display text-3xl md:text-4xl font-semibold leading-none tabular-nums text-ink-strong">
-            {item.phase === "pending" ? (
-              <Skeleton className="h-8 w-20" />
-            ) : item.phase === "error" ? (
-              <StatUnavailable iconClassName="size-4" />
-            ) : item.value != null ? (
-              formatNumber(item.value)
-            ) : (
-              "—"
-            )}
-          </div>
-          <p className="mt-3 text-xs text-ink-muted leading-relaxed flex-1">{item.desc}</p>
+          <p className="mt-3 text-sm text-ink-strong leading-relaxed flex-1">{item.desc}</p>
           <span className="mt-4 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted group-hover:text-accent transition-colors">
-            View
+            Explore
             <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
         </Link>
@@ -749,6 +647,8 @@ function TrackedGrid() {
 }
 
 function LivePerformance() {
+  // #5312: canonical homepage deep-dive for freshness + health — the only place
+  // on `/` these numbers appear (glance counts live in RegistryTicker).
   const freshnessResult = useQuery(freshnessQuery());
   const healthResult = useQuery(healthQuery());
   const freshness = freshnessResult.data?.data;

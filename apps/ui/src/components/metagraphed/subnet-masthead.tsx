@@ -37,6 +37,7 @@ import {
   subnetTrajectoryQuery,
   subnetUptimeQuery,
 } from "@/lib/metagraphed/queries";
+import { useSubnetProbeHealth } from "@/hooks/use-subnet-probe-health";
 import type {
   Endpoint,
   SubnetProfile,
@@ -187,6 +188,9 @@ export function SubnetMasthead({
   const { data: regRes } = useQuery(subnetRegistrationsQuery(netuid));
   const { data: deregRes } = useQuery(subnetDeregistrationsQuery(netuid));
   const { data: eventsRes } = useQuery(subnetEventSummaryQuery(netuid));
+  // Canonical probe health (#5332) — same source as the /subnets table join,
+  // never profile/chain lifecycle status.
+  const probeHealth = useSubnetProbeHealth(netuid);
   const reg = regRes?.data;
   const dereg = deregRes?.data;
 
@@ -265,8 +269,8 @@ export function SubnetMasthead({
     { label: "Dashboard", href: profile?.dashboard, icon: LayoutDashboard },
   ].filter((l) => !!l.href) as LinkChip[];
 
-  // Health-derived accent for the top rail.
-  const health = profile?.health ?? "unknown";
+  // Health-derived accent for the top rail — probe health, not profile.status.
+  const health = probeHealth;
   const accentColor =
     health === "ok"
       ? "var(--health-ok)"
@@ -322,7 +326,9 @@ export function SubnetMasthead({
         }}
       />
 
-      {/* Status row — slim, never dominates */}
+      {/* Status row — slim, never dominates. On mobile the probe HealthPill lives
+          here (not in the identity grid) so the title/tags/links keep a full-width
+          middle column (#5332) instead of crushing into a 3-col squeeze. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-ink-muted mb-3">
         <Link to="/subnets" className="font-mono uppercase tracking-widest hover:text-ink-strong">
           Registry
@@ -340,12 +346,16 @@ export function SubnetMasthead({
             stale
           </span>
         ) : null}
+        <div className="ml-auto flex md:hidden items-center gap-1.5">
+          <HealthPill state={probeHealth} />
+          <CurationChip level={profile?.curation_level} />
+        </div>
       </div>
 
       {banner ? <div className="mb-4">{banner}</div> : null}
 
-      {/* Identity row */}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-4">
+      {/* Identity row — 2 cols on mobile (icon + body), 3 cols from md with health */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] md:grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 md:gap-4">
         <div className="shrink-0 mt-0.5">
           <BrandIcon
             url={profile?.website ?? profile?.homepage}
@@ -436,8 +446,10 @@ export function SubnetMasthead({
             </div>
           ) : null}
         </div>
+        {/* Desktop/tablet: health + curation beside the identity block. Mobile
+            counterpart lives in the status row above so the body column stays wide. */}
         <div className="hidden md:flex shrink-0 flex-col items-end gap-1.5">
-          <HealthPill state={profile?.health} />
+          <HealthPill state={probeHealth} />
           <CurationChip level={profile?.curation_level} />
         </div>
       </div>
