@@ -1,32 +1,28 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero, ShareButton } from "@jsonbored/ui-kit";
+import { DensityToggle, PageHero, ShareButton, type Density } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ariaSort, SortHeader } from "@/components/metagraphed/table-controls";
+import { ValidatorsSavedViews } from "@/components/metagraphed/validators-saved-views";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
-import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
+import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
-import {
-  annualizedDelegatorApyPct,
-  formatApyPct,
-  formatTakePct,
-} from "@/lib/metagraphed/validator-apy";
-import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
+import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
+import { useIsMobile } from "@/hooks/use-mobile";
+import type { GlobalValidator, GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 // The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
-// Stake / emission / dominance / trust get their own columns in #3359; this
-// baseline page only renders hotkey identity + subnet/UID counts (#3360 adds the
-// dedicated active-subnet column), but every sort key stays selectable.
 const validatorSortKeys = [
   "subnet_count",
   "uid_count",
@@ -47,8 +43,54 @@ const SORT_LABELS: Record<GlobalValidatorSort, string> = {
   max_validator_trust: "Max trust",
 };
 
+/** Numeric value for the active GlobalValidatorSort key (API field names differ slightly). */
+function validatorSortValue(v: GlobalValidator, sort: GlobalValidatorSort): number | null {
+  switch (sort) {
+    case "subnet_count":
+      return v.subnet_count;
+    case "uid_count":
+      return v.uid_count;
+    case "stake_dominance":
+      return v.stake_dominance;
+    case "total_stake":
+      return v.total_stake_tao;
+    case "total_emission":
+      return v.total_emission_tao;
+    case "avg_validator_trust":
+      return v.avg_validator_trust;
+    case "max_validator_trust":
+      return v.max_validator_trust;
+  }
+}
+
+/**
+ * Client-side order for the URL `order` param. The validators API always ranks
+ * descending for the selected sort key; we re-sort the returned page so ascending
+ * is a true field sort (nulls last, hotkey tie-break) rather than a list reverse.
+ */
+function compareValidators(
+  a: GlobalValidator,
+  b: GlobalValidator,
+  sort: GlobalValidatorSort,
+  order: "asc" | "desc",
+): number {
+  const av = validatorSortValue(a, sort);
+  const bv = validatorSortValue(b, sort);
+  if (av == null && bv == null) return a.hotkey.localeCompare(b.hotkey);
+  if (av == null) return 1;
+  if (bv == null) return -1;
+  if (av !== bv) {
+    const cmp = av < bv ? -1 : 1;
+    return order === "asc" ? cmp : -cmp;
+  }
+  return a.hotkey.localeCompare(b.hotkey);
+}
+
 const validatorsSearchSchema = z.object({
   sort: fallback(z.enum(validatorSortKeys), "subnet_count").default("subnet_count"),
+  // API ranks desc; URL `order` re-sorts the returned page client-side (#5344).
+  order: fallback(z.enum(["asc", "desc"]), "desc").default("desc"),
+  density: fallback(z.enum(["comfortable", "compact"]), "comfortable").default("comfortable"),
 });
 
 export const Route = createFileRoute("/validators/")({
@@ -74,7 +116,35 @@ export const Route = createFileRoute("/validators/")({
 function ValidatorsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const sort = search.sort ?? "subnet_count";
+  const isMobile = useIsMobile();
+  const sort = (search.sort as GlobalValidatorSort) ?? "subnet_count";
+  const order = search.order === "asc" ? "asc" : "desc";
+  const effectiveDensity: Density =
+    search.density === "compact" || search.density === "comfortable"
+      ? search.density
+      : isMobile
+        ? "compact"
+        : "comfortable";
+
+  const setDensity = (d: Density) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, density: d }) as never,
+      replace: true,
+    });
+
+  const onSort = (field: string) => {
+    if (!(validatorSortKeys as readonly string[]).includes(field)) return;
+    navigate({
+      search: (prev: { sort?: string; order?: "asc" | "desc" }) =>
+        ({
+          ...prev,
+          sort: field,
+          order: prev.sort === field && prev.order === "desc" ? "asc" : "desc",
+        }) as never,
+      replace: true,
+    });
+  };
+
   return (
     <AppShell>
       <PageHero
@@ -82,20 +152,18 @@ function ValidatorsPage() {
         live
         title="Validators"
         description="Network-wide validator directory — hotkeys ranked across all Bittensor subnets, computed live from the chain-direct metagraph."
-        actions={<ShareButton />}
+        actions={
+          <>
+            <DensityToggle value={effectiveDensity} onChange={setDensity} />
+            <ShareButton />
+          </>
+        }
       />
       <ValidatorGuide />
+      <ValidatorsSavedViews />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <ValidatorsTable
-            sort={sort}
-            onSortChange={(v) =>
-              navigate({
-                search: (prev: Record<string, unknown>) => ({ ...prev, sort: v }) as never,
-                replace: true,
-              })
-            }
-          />
+          <ValidatorsTable sort={sort} order={order} density={effectiveDensity} onSort={onSort} />
         </Suspense>
       </QueryErrorBoundary>
       <div className="mt-6" id="validator-subnet-heatmap">
@@ -110,44 +178,27 @@ function ValidatorsPage() {
   );
 }
 
-const TH = "px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted";
-
-function SortSelect({
-  value,
-  onChange,
-}: {
-  value: GlobalValidatorSort;
-  onChange: (v: GlobalValidatorSort) => void;
-}) {
-  return (
-    <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">Sort</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as GlobalValidatorSort)}
-        className="bg-transparent text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Sort validators"
-      >
-        {validatorSortKeys.map((k) => (
-          <option key={k} value={k}>
-            {SORT_LABELS[k]}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function ValidatorsTable({
   sort,
-  onSortChange,
+  order,
+  density,
+  onSort,
 }: {
   sort: GlobalValidatorSort;
-  onSortChange: (v: GlobalValidatorSort) => void;
+  order: "asc" | "desc";
+  density: Density;
+  onSort: (field: string) => void;
 }) {
   const res = useSuspenseQuery(validatorsQuery({ sort })).data;
-  const validators = res.data.validators;
   const generatedAt = res.meta?.generated_at ?? null;
+  const validators = useMemo(
+    () => [...res.data.validators].sort((a, b) => compareValidators(a, b, sort, order)),
+    [res.data.validators, sort, order],
+  );
+
+  const compact = density === "compact";
+  const cellPad = compact ? "px-2 py-1.5" : "px-3 py-2";
+  const monoSize = compact ? "text-[10px]" : "text-[11px]";
 
   return (
     <div className="space-y-3">
@@ -160,82 +211,117 @@ function ValidatorsTable({
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-mono text-[11px] text-ink-muted">
-          {formatNumber(validators.length)} validators · ranked by {SORT_LABELS[sort]}
+          {formatNumber(validators.length)} validators · ranked by {SORT_LABELS[sort]} ({order})
         </span>
-        <SortSelect value={sort} onChange={onSortChange} />
       </div>
 
       {validators.length > 0 ? (
         <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
-            <thead className="bg-surface/50">
+            <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
               <tr>
-                <th className={TH}>Operator</th>
-                <th className={TH}>Hotkey</th>
-                <th className={TH}>Coldkey</th>
-                <th className={`${TH} text-right`}>Take</th>
-                <th className={`${TH} text-right`}>Est. APY</th>
-                <th className={`${TH} text-right`}>Active subnets</th>
-                <th className={`${TH} text-right`}>UIDs</th>
-                <th className={`${TH} text-right`}>Nominators</th>
-                <th className={`${TH} text-right`}>Dominance</th>
-                <th className={`${TH} text-right`}>Total stake</th>
-                <th className={`${TH} text-right`}>Total emission</th>
-                <th className={`${TH} text-right`}>Est. APY</th>
+                <th className={cellPad}>Operator</th>
+                <th className={cellPad}>Hotkey</th>
+                <th className={cellPad}>Coldkey</th>
+                <th className={classNames(cellPad, "text-right")}>Take</th>
+                <th className={classNames(cellPad, "text-right")}>Est. APY</th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(sort === "subnet_count", order)}
+                >
+                  <SortHeader
+                    label="Active subnets"
+                    field="subnet_count"
+                    active={sort === "subnet_count"}
+                    order={order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(sort === "uid_count", order)}
+                >
+                  <SortHeader
+                    label="UIDs"
+                    field="uid_count"
+                    active={sort === "uid_count"}
+                    order={order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th className={classNames(cellPad, "text-right")}>Nominators</th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(sort === "stake_dominance", order)}
+                >
+                  <SortHeader
+                    label="Dominance"
+                    field="stake_dominance"
+                    active={sort === "stake_dominance"}
+                    order={order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(sort === "total_stake", order)}
+                >
+                  <SortHeader
+                    label="Total stake"
+                    field="total_stake"
+                    active={sort === "total_stake"}
+                    order={order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(sort === "total_emission", order)}
+                >
+                  <SortHeader
+                    label="Total emission"
+                    field="total_emission"
+                    active={sort === "total_emission"}
+                    order={order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(sort === "avg_validator_trust", order)}
+                >
+                  <SortHeader
+                    label="Avg trust"
+                    field="avg_validator_trust"
+                    active={sort === "avg_validator_trust"}
+                    order={order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(sort === "max_validator_trust", order)}
+                >
+                  <SortHeader
+                    label="Max trust"
+                    field="max_validator_trust"
+                    active={sort === "max_validator_trust"}
+                    order={order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {validators.map((v) => (
-                <tr key={v.hotkey} className="hover:bg-surface/40">
-                  <td className="px-3 py-2 font-mono text-[11px]">
-                    <div className="flex items-center gap-1.5">
-                      {v.featured ? <FeaturedBadge /> : null}
-                      <Link
-                        to="/validators/$hotkey"
-                        params={{ hotkey: v.hotkey }}
-                        className="text-ink-strong hover:text-accent hover:underline"
-                        title={v.hotkey}
-                      >
-                        {shortHash(v.hotkey) ?? v.hotkey}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                    {v.coldkey ? (
-                      <Link
-                        to="/accounts/$ss58"
-                        params={{ ss58: v.coldkey }}
-                        className="hover:text-accent hover:underline"
-                        title={v.coldkey}
-                      >
-                        {shortHash(v.coldkey) ?? v.coldkey}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {formatNumber(v.subnet_count)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {formatNumber(v.uid_count)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {v.nominator_count != null ? formatNumber(v.nominator_count) : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
-                    {taoCompact(v.total_stake_tao)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {taoCompact(v.total_emission_tao)}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
-                    {v.apy_estimate != null ? `${(v.apy_estimate * 100).toFixed(1)}%` : "—"}
-                  </td>
-                </tr>
+                <ValidatorRow key={v.hotkey} v={v} cellPad={cellPad} monoSize={monoSize} />
               ))}
             </tbody>
           </table>
@@ -254,5 +340,117 @@ function ValidatorsTable({
         />
       ) : null}
     </div>
+  );
+}
+
+function ValidatorRow({
+  v,
+  cellPad,
+  monoSize,
+}: {
+  v: GlobalValidator;
+  cellPad: string;
+  monoSize: string;
+}) {
+  const apyPct = v.apy_estimate != null ? v.apy_estimate * 100 : null;
+  return (
+    <tr className="mg-row-accent hover:bg-surface/40">
+      <td className={cellPad}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {v.featured ? <FeaturedBadge /> : null}
+          <Link
+            to="/validators/$hotkey"
+            params={{ hotkey: v.hotkey }}
+            className="min-w-0 hover:text-accent"
+          >
+            <ValidatorIdentityChip hotkey={v.hotkey} identity={v.coldkey_identity} size={22} />
+          </Link>
+        </div>
+      </td>
+      <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
+        <Link
+          to="/validators/$hotkey"
+          params={{ hotkey: v.hotkey }}
+          className="text-ink-strong hover:text-accent hover:underline"
+          title={v.hotkey}
+        >
+          {shortHash(v.hotkey) ?? v.hotkey}
+        </Link>
+      </td>
+      <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
+        {v.coldkey ? (
+          <Link
+            to="/accounts/$ss58"
+            params={{ ss58: v.coldkey }}
+            className="hover:text-accent hover:underline"
+            title={v.coldkey}
+          >
+            {shortHash(v.coldkey) ?? v.coldkey}
+          </Link>
+        ) : (
+          "—"
+        )}
+      </td>
+      <td className={classNames(cellPad, "text-right font-mono tabular-nums text-ink", monoSize)}>
+        {formatTakePct(v.take)}
+      </td>
+      <td className={classNames(cellPad, "text-right font-mono tabular-nums text-ink", monoSize)}>
+        {formatApyPct(apyPct)}
+      </td>
+      <td className={classNames(cellPad, "text-right font-mono tabular-nums text-ink", monoSize)}>
+        {formatNumber(v.subnet_count)}
+      </td>
+      <td
+        className={classNames(
+          cellPad,
+          "text-right font-mono tabular-nums text-ink-muted",
+          monoSize,
+        )}
+      >
+        {formatNumber(v.uid_count)}
+      </td>
+      <td
+        className={classNames(
+          cellPad,
+          "text-right font-mono tabular-nums text-ink-muted",
+          monoSize,
+        )}
+      >
+        {v.nominator_count != null ? formatNumber(v.nominator_count) : "—"}
+      </td>
+      <td className={classNames(cellPad, "text-right font-mono tabular-nums text-ink", monoSize)}>
+        {v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"}
+      </td>
+      <td className={classNames(cellPad, "text-right font-mono tabular-nums text-ink", monoSize)}>
+        {taoCompact(v.total_stake_tao)}
+      </td>
+      <td
+        className={classNames(
+          cellPad,
+          "text-right font-mono tabular-nums text-ink-muted",
+          monoSize,
+        )}
+      >
+        {taoCompact(v.total_emission_tao)}
+      </td>
+      <td
+        className={classNames(
+          cellPad,
+          "text-right font-mono tabular-nums text-ink-muted",
+          monoSize,
+        )}
+      >
+        {v.avg_validator_trust != null ? v.avg_validator_trust.toFixed(3) : "—"}
+      </td>
+      <td
+        className={classNames(
+          cellPad,
+          "text-right font-mono tabular-nums text-ink-muted",
+          monoSize,
+        )}
+      >
+        {v.max_validator_trust != null ? v.max_validator_trust.toFixed(3) : "—"}
+      </td>
+    </tr>
   );
 }
