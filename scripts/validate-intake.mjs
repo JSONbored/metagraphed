@@ -1,3 +1,5 @@
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { listJsonFilesRecursive, readJson, repoRoot } from "./lib.mjs";
@@ -45,6 +47,23 @@ const directProviderExample = await readJson(
 const statusReportExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/status-report.json"),
 );
+
+const ajv = new Ajv2020({
+  allErrors: true,
+  allowUnionTypes: true,
+  strict: false,
+  validateFormats: true,
+});
+addFormats(ajv);
+const providerSchema = await readJson(
+  path.join(repoRoot, "schemas/provider.schema.json"),
+);
+ajv.addSchema(providerSchema, providerSchema.$id);
+const providerSubmissionSchema = await readJson(
+  path.join(repoRoot, "schemas/provider-submission.schema.json"),
+);
+const validateProviderSubmission = ajv.compile(providerSubmissionSchema);
+
 const errors = [];
 
 // The per-surface community-candidate intake lane is retired — surfaces now live
@@ -206,21 +225,29 @@ function checkExampleProvider(provider) {
 }
 
 function checkExampleProviderSubmission(document) {
-  if (document?.schema_version !== 1 || !document?.provider) {
-    errors.push(
-      "direct provider profile example: missing schema_version or provider",
-    );
+  if (!validateProviderSubmission(document)) {
+    for (const error of validateProviderSubmission.errors || []) {
+      errors.push(
+        `direct provider profile example${error.instancePath}: ${error.message}`,
+      );
+    }
     return;
   }
+  // Cross-field consistency (submitted_by_url must point at submitted_by)
+  // isn't expressible as a single-field schema pattern, so it stays a
+  // hand-rolled check on top of the schema-driven validation above.
   if (
-    document?.submission?.submitted_by_url !==
-    `https://github.com/${document?.submission?.submitted_by}`
+    document.submission.submitted_by_url !==
+    `https://github.com/${document.submission.submitted_by}`
   ) {
     errors.push(
       "direct provider profile example: submitted_by_url must match submitted_by",
     );
   }
-  checkExampleProvider(document.provider);
+  // Deliberately narrower than provider.schema.json's full 4-value Authority
+  // enum: a self-submitted direct-provider-profile can't claim "official" or
+  // "registry-observed" (those are reserved for maintainer/registry-curated
+  // authority), even though the schema itself allows all four.
   if (
     !["community", "provider-claimed"].includes(document.provider.authority)
   ) {
