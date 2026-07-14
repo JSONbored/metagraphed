@@ -128,7 +128,7 @@ export function SelectFilter({
         // to font-mono so the value matches the label instead of falling back to
         // the sans body font, which reads as unstyled next to the mono label.
         className={classNames(
-          "min-w-0 truncate bg-transparent font-mono text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "min-w-0 truncate bg-transparent font-mono text-ink-strong text-xs rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-7",
           fill ? "flex-1" : "",
         )}
       >
@@ -243,13 +243,24 @@ export function ResetFiltersButton({ active, onReset }: { active: boolean; onRes
 }
 
 /**
+ * Compact row for selects / reset inside {@link CollapsibleFilters}.
+ * Mobile: keeps RESULT / per-page as side-by-side chips (not stretched bars).
+ * Desktop: `display: contents` so children join the normal flex wrap row.
+ */
+export function FilterActionRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 max-md:w-full md:contents">{children}</div>
+  );
+}
+
+/**
  * Mobile filter disclosure for dense ListShell filter bars (#5323).
  *
  * On viewports below `md` the controls collapse behind a single "Filters"
  * toggle (closed by default) so list data stays above the fold; when open
- * they lay out as a 2-column grid. On `md+` an inner flex row mirrors
- * ListShell's previous wrap behavior — mobile-only classes stay behind
- * `max-md:` so tablet/desktop never inherit the grid/hidden styles.
+ * text inputs stack full-width, while select chips stay compact via
+ * {@link FilterActionRow}. On `md+` an inner flex row mirrors ListShell's
+ * previous wrap behavior — mobile-only classes stay behind `max-md:`.
  */
 export function CollapsibleFilters({
   activeCount = 0,
@@ -289,13 +300,12 @@ export function CollapsibleFilters({
       <div
         id={panelId}
         className={classNames(
-          // Desktop / tablet: same wrap row ListShell used before (do not use
-          // display:contents — it lost to unscoped grid/hidden in practice).
+          // Desktop / tablet: same wrap row ListShell used before.
           "md:flex md:flex-wrap md:items-center md:gap-2 md:min-w-0 md:flex-1",
-          // Mobile: closed = hidden; open = 2-col grid. All scoped to max-md.
+          // Mobile: closed = hidden; open = full-width input stack.
           !open && "max-md:hidden",
           open &&
-            "max-md:grid max-md:w-full max-md:grid-cols-2 max-md:gap-2 max-md:[&_input]:min-w-0 max-md:[&_input]:max-w-none max-md:[&_input]:w-full max-md:[&_input]:flex-none max-md:[&>span]:col-span-2 max-md:[&>button]:col-span-2 max-md:[&>label]:col-span-2",
+            "max-md:flex max-md:w-full max-md:flex-col max-md:gap-2 max-md:[&_input]:min-w-0 max-md:[&_input]:max-w-none max-md:[&_input]:w-full max-md:[&_input]:flex-none",
         )}
       >
         {children}

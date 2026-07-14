@@ -22,6 +22,7 @@ import {
 } from "@jsonbored/ui-kit";
 import {
   CollapsibleFilters,
+  FilterActionRow,
   PageSizeSelect,
   ResetFiltersButton,
   SearchInput,
@@ -284,25 +285,27 @@ function BlocksTable() {
         inputMode="numeric"
         className="min-w-[120px] max-w-[140px] flex-none"
       />
-      <PageSizeSelect
-        value={search.limit}
-        onChange={(n) => setSearch({ limit: n, offset: 0 })}
-        options={[10, 25, 50, 100]}
-      />
-      <ResetFiltersButton
-        active={filtersActive}
-        onReset={() =>
-          setSearch({
-            author: "",
-            spec_version: "",
-            block_start: "",
-            block_end: "",
-            min_extrinsics: "",
-            min_events: "",
-            offset: 0,
-          })
-        }
-      />
+      <FilterActionRow>
+        <PageSizeSelect
+          value={search.limit}
+          onChange={(n) => setSearch({ limit: n, offset: 0 })}
+          options={[10, 25, 50, 100]}
+        />
+        <ResetFiltersButton
+          active={filtersActive}
+          onReset={() =>
+            setSearch({
+              author: "",
+              spec_version: "",
+              block_start: "",
+              block_end: "",
+              min_extrinsics: "",
+              min_events: "",
+              offset: 0,
+            })
+          }
+        />
+      </FilterActionRow>
     </CollapsibleFilters>
   );
 
