@@ -8,6 +8,12 @@ import {
 } from "graphql";
 import { readArtifact, readHealthKv } from "../workers/storage.mjs";
 import { contractVersion } from "../workers/responses.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import {
+  BLOCK_PAGINATION,
+  clampLimit,
+  clampOffset,
+} from "../workers/request-params.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
@@ -20,6 +26,7 @@ import {
   parseCompareDimensionList,
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
+import { buildExtrinsic, buildExtrinsicFeed } from "./extrinsics.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
@@ -54,6 +61,10 @@ export const SDL = `
     opportunity_boards(limit: Int): OpportunityBoards!
     "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
     compare(netuids: [Int!]!, dimensions: [String!]): Compare!
+    "Recent-extrinsic feed (newest first), optionally filtered. Mirrors GET /api/v1/extrinsics."
+    extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
+    "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
+    extrinsic(ref: String!): ExtrinsicDetail
   }
 
   type SubnetList {
@@ -317,6 +328,33 @@ export const SDL = `
     avg_latency_ms: Int
   }
 
+  type ExtrinsicList {
+    items: [Extrinsic!]!
+    "Page count -- this feed has no cheap grand total, matching REST's extrinsic_count."
+    total: Int!
+    next_cursor: String
+  }
+
+  type Extrinsic {
+    block_number: Int
+    extrinsic_index: Int
+    extrinsic_hash: String
+    signer: String
+    call_module: String
+    call_function: String
+    "JSON-encoded decoded call arguments."
+    call_args: String
+    success: Boolean
+    fee_tao: Float
+    tip_tao: Float
+    observed_at: String
+  }
+
+  type ExtrinsicDetail {
+    ref: String
+    extrinsic: Extrinsic
+  }
+
   # Realtime chain-event firehose (#4983, ADR 0015) -- a thin protocol adapter
   # over the SAME ChainFirehoseHub Durable Object connection #4982's SSE/WS
   # transports use, not a second event pipeline. Reached over WebSocket only
@@ -449,6 +487,8 @@ export const FIELD_COMPLEXITY = {
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
+  extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
+  extrinsic: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -766,6 +806,20 @@ async function loadEconomicsRows(context) {
   return Array.isArray(data?.subnets) ? data.subnets : [];
 }
 
+// Synthesize the GET request tryPostgresTier forwards to the DATA_API service
+// binding, keyed off the same origin as the inbound GraphQL POST (GraphQL has
+// no REST-shaped request of its own to forward, unlike every REST handler
+// that already owns one matching its own route). Same technique
+// handleCompare's health dimension uses for its own internal compare-health
+// forward (workers/request-handlers/analytics-routes.mjs) rather than
+// forwarding the caller's request unchanged.
+function postgresTierRequest(context, pathname, params) {
+  const pgUrl = new URL(context.request.url);
+  pgUrl.pathname = pathname;
+  pgUrl.search = params ? params.toString() : "";
+  return new Request(pgUrl);
+}
+
 // --- Node builders (attach lazy relationship resolvers to artifact rows) ---
 
 // graphql-js' default field resolver invokes a source property when it is a
@@ -786,6 +840,20 @@ function subnetNode(identity, prefetch = {}) {
     economics: (_args, context) => loadSubnetEconomics(context, netuid),
     surfaces: bundledOr(prefetch.surfaces, loadSubnetSurfaces),
     endpoints: bundledOr(prefetch.endpoints, loadSubnetEndpoints),
+  };
+}
+
+// formatExtrinsic's call_args is a decoded JS value (object/array/null), but
+// the SDL exposes it as an opaque JSON-encoded String (no custom JSON scalar
+// exists in this schema yet) -- stringify it here rather than letting
+// graphql-js' default String serializer coerce the object via `String(...)`
+// (which would silently produce "[object Object]").
+function extrinsicNode(extrinsic) {
+  if (!extrinsic) return null;
+  return {
+    ...extrinsic,
+    call_args:
+      extrinsic.call_args == null ? null : JSON.stringify(extrinsic.call_args),
   };
 }
 
@@ -1003,6 +1071,69 @@ const rootValue = {
       observedAt: await loadObservedAt(context),
     });
   },
+
+  async extrinsics(
+    {
+      limit,
+      offset,
+      cursor,
+      block,
+      signer,
+      call_module: callModule,
+      call_function: callFunction,
+      success,
+    },
+    context,
+  ) {
+    if (block != null && (!Number.isInteger(block) || block < 0)) {
+      throw new GraphQLError("block must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const params = new URLSearchParams();
+    params.set("limit", String(safeLimit));
+    params.set("offset", String(safeOffset));
+    if (cursor) params.set("cursor", cursor);
+    if (block != null) params.set("block", String(block));
+    if (signer) params.set("signer", signer);
+    if (callModule) params.set("call_module", callModule);
+    if (callFunction) params.set("call_function", callFunction);
+    if (success != null) params.set("success", String(success));
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/extrinsics", params),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ??
+      buildExtrinsicFeed([], {
+        limit: safeLimit,
+        offset: safeOffset,
+        nextCursor: null,
+      });
+    return {
+      items: (data.extrinsics || []).map(extrinsicNode),
+      total: data.extrinsic_count ?? 0,
+      next_cursor: data.next_cursor ?? null,
+    };
+  },
+
+  async extrinsic({ ref }, context) {
+    const data =
+      (await tryPostgresTier(
+        context.env,
+        postgresTierRequest(
+          context,
+          `/api/v1/extrinsics/${encodeURIComponent(ref)}`,
+        ),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      )) ?? buildExtrinsic(undefined, ref);
+    return {
+      ref: data.ref ?? ref,
+      extrinsic: extrinsicNode(data.extrinsic),
+    };
+  },
 };
 
 // --- Response helpers ---
@@ -1165,7 +1296,7 @@ export async function handleGraphQLRequest(request, env) {
     schema,
     document,
     rootValue,
-    contextValue: { env, cache: new Map() },
+    contextValue: { env, cache: new Map(), request },
     variableValues: variables ?? undefined,
     operationName: operationName ?? undefined,
   });

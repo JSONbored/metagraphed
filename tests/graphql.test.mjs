@@ -1765,6 +1765,228 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
   });
 });
 
+describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () => {
+  function dataApi(response) {
+    return { fetch: async () => response };
+  }
+
+  test("extrinsics: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
+    const { status, body } = await gql(
+      "{ extrinsics { items { call_module } total next_cursor } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.extrinsics, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("extrinsics: resolves Postgres-tier rows, JSON-encoding call_args", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          extrinsic_count: 1,
+          limit: 20,
+          offset: 0,
+          next_cursor: "cursor-1",
+          extrinsics: [
+            {
+              block_number: 5,
+              extrinsic_index: 0,
+              extrinsic_hash: `0x${"a".repeat(64)}`,
+              signer: "5Signer",
+              call_module: "SubtensorModule",
+              call_function: "register",
+              call_args: [{ name: "netuid", value: 1 }],
+              success: true,
+              fee_tao: 0.001,
+              tip_tao: 0,
+              observed_at: "2026-07-14T00:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ extrinsics { items { block_number call_module call_args success } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.extrinsics.total, 1);
+    assert.equal(body.data.extrinsics.next_cursor, "cursor-1");
+    const item = body.data.extrinsics.items[0];
+    assert.equal(item.call_module, "SubtensorModule");
+    assert.equal(item.success, true);
+    assert.equal(
+      item.call_args,
+      JSON.stringify([{ name: "netuid", value: 1 }]),
+    );
+  });
+
+  test("extrinsics: filter args are forwarded as query params to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 5,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(
+      `{ extrinsics(limit: 5, block: 42, signer: "5Signer", call_module: "SubtensorModule", call_function: "register", success: true) { total } }`,
+      env,
+    );
+    assert.equal(capturedUrl.pathname, "/api/v1/extrinsics");
+    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("block"), "42");
+    assert.equal(capturedUrl.searchParams.get("signer"), "5Signer");
+    assert.equal(
+      capturedUrl.searchParams.get("call_module"),
+      "SubtensorModule",
+    );
+    assert.equal(capturedUrl.searchParams.get("call_function"), "register");
+    assert.equal(capturedUrl.searchParams.get("success"), "true");
+  });
+
+  test("extrinsics: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 20,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    };
+    await gql(`{ extrinsics(cursor: "abc123") { total } }`, env);
+    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+  });
+
+  test("extrinsics: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      "{ extrinsics { items { call_module } total next_cursor } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.extrinsics, {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    });
+  });
+
+  test("extrinsic: a malformed Postgres-tier body falls back to the requested ref", async () => {
+    const ref = "5-2";
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.extrinsic.ref, ref);
+    assert.equal(body.data.extrinsic.extrinsic, null);
+  });
+
+  test("extrinsics: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({});
+        },
+      },
+    };
+    const { status, body } = await gql(
+      "{ extrinsics(block: -1) { total } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.equal(body.data, null);
+    assert.equal(called, false);
+  });
+
+  test("extrinsic: unresolved ref returns extrinsic:null, never a GraphQL error", async () => {
+    const ref = `0x${"a".repeat(64)}`;
+    const { status, body } = await gql(
+      `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module } } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.extrinsic.ref, ref);
+    assert.equal(body.data.extrinsic.extrinsic, null);
+  });
+
+  test("extrinsic: resolves a Postgres-tier row by composite ref", async () => {
+    const ref = "5-2";
+    const env = {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          ref,
+          extrinsic: {
+            block_number: 5,
+            extrinsic_index: 2,
+            extrinsic_hash: null,
+            signer: "5Signer",
+            call_module: "SubtensorModule",
+            call_function: "set_weights",
+            call_args: null,
+            success: true,
+            fee_tao: 0,
+            tip_tao: 0,
+            observed_at: "2026-07-14T00:00:00.000Z",
+          },
+          events: [],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module call_function } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.extrinsic.ref, ref);
+    assert.equal(body.data.extrinsic.extrinsic.call_module, "SubtensorModule");
+    assert.equal(body.data.extrinsic.extrinsic.call_function, "set_weights");
+  });
+
+  test("extrinsics / extrinsic are weighted as fan-out fields", () => {
+    assert.equal(FIELD_COMPLEXITY.extrinsics, 5);
+    assert.equal(FIELD_COMPLEXITY.extrinsic, 5);
+  });
+});
+
 // --- Subscription.chainEvents (#4983, ADR 0015) ---------------------------------
 //
 // The DO-runtime side of this wiring (ChainFirehoseHub.subscribeChainEvents,
