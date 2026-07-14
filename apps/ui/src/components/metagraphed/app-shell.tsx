@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Compass, Github, Menu, Rss, Webhook } from "lucide-react";
+import { ChevronRight, Compass, Github, Menu, Rss, Search, Webhook } from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -221,6 +221,27 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <SheetTitle className="sr-only">Site navigation</SheetTitle>
               <Brand onNavigate={() => setMobileOpen(false)} />
+              {/* Below md the NavOmnibox is hidden entirely (it can't shrink to
+                  a usable width on phones — #5034) and the command palette only
+                  opens via ⌘K / "/" keydown, so mobile visitors had no way to
+                  open global search at all (#5319). The top bar is already full
+                  at 375px (menu + wordmark + network switcher), so the search
+                  entry lives here in the drawer: close the sheet and open the
+                  same palette the keyboard shortcuts use. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  setPaletteOpen(true);
+                }}
+                className="inline-flex items-center gap-2 rounded border border-border bg-card px-3 py-2.5 text-[13px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors min-h-11"
+              >
+                <Search className="size-4 shrink-0" aria-hidden="true" />
+                <span>Search everything</span>
+                <kbd className="ml-auto rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-ink-muted">
+                  /
+                </kbd>
+              </button>
               <div className="mg-label inline-flex items-center gap-1">
                 <Compass className="size-3" /> Unofficial registry
               </div>
