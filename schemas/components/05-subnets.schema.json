@@ -3700,7 +3700,11 @@
           },
           "active": { "type": "boolean" },
           "stake_tao": { "type": "number", "minimum": 0 },
-          "share_fraction": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "share_fraction": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          },
           "alpha_amount": { "type": ["number", "null"] },
           "alpha_price_tao": { "type": ["number", "null"] },
           "root_stake_tao": { "type": "number", "minimum": 0 },

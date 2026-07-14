@@ -2147,11 +2147,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (accountPositionsMatch) {
       return handleAccountPositions(request, env, accountPositionsMatch[1]);
     }
-    const accountWalletPositionsMatch = ACCOUNT_WALLET_POSITIONS_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
+    const accountWalletPositionsMatch =
+      ACCOUNT_WALLET_POSITIONS_PATH_PATTERN.exec(resolved.url.pathname);
     if (accountWalletPositionsMatch) {
-      return handleWalletPositions(request, env, accountWalletPositionsMatch[1]);
+      return handleWalletPositions(
+        request,
+        env,
+        accountWalletPositionsMatch[1],
+      );
     }
     // Per-account, per-subnet position history (#4329/6.2): computed live from
     // the account_position_daily rollup tier.

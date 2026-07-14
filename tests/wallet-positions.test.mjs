@@ -17,7 +17,12 @@ describe("buildWalletPositions", () => {
         tao_in_pool_tao: 10000,
         alpha_in_pool: 5000,
       },
-      { netuid: 0, alpha_price_tao: 1, tao_in_pool_tao: null, alpha_in_pool: null },
+      {
+        netuid: 0,
+        alpha_price_tao: 1,
+        tao_in_pool_tao: null,
+        alpha_in_pool: null,
+      },
     ]);
 
     const out = buildWalletPositions(
@@ -147,7 +152,12 @@ describe("buildWalletPositions", () => {
 describe("economicsByNetuidFromRows", () => {
   test("maps subnet economics rows by netuid", () => {
     const map = economicsByNetuidFromRows([
-      { netuid: 1, alpha_price_tao: 1.2, tao_in_pool_tao: 100, alpha_in_pool: 50 },
+      {
+        netuid: 1,
+        alpha_price_tao: 1.2,
+        tao_in_pool_tao: 100,
+        alpha_in_pool: 50,
+      },
     ]);
     expect(map.get(1)?.alpha_price_tao).toBe(1.2);
   });

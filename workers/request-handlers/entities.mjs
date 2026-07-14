@@ -92,10 +92,7 @@ import {
 } from "../../src/account-events.mjs";
 import { buildAccountPortfolio } from "../../src/account-portfolio.mjs";
 import { buildAccountPositions } from "../../src/account-nominator-positions.mjs";
-import {
-  buildWalletPositions,
-  economicsByNetuidFromRows,
-} from "../../src/wallet-positions.mjs";
+import { buildWalletPositions } from "../../src/wallet-positions.mjs";
 import { buildAccountPositionHistory } from "../../src/account-position-history.mjs";
 import { loadAccountIdentity } from "../../src/account-identity.mjs";
 import { loadAccountIdentityHistory } from "../../src/account-identity-history.mjs";

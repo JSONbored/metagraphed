@@ -51,14 +51,20 @@ function exitValueTao(netuid, stakeTao, alphaAmount, economics) {
 }
 
 function enrichPosition(base, economicsByNetuid) {
-  const econ = economicsByNetuid?.get?.(base.netuid) ?? economicsByNetuid?.[base.netuid];
+  const econ =
+    economicsByNetuid?.get?.(base.netuid) ?? economicsByNetuid?.[base.netuid];
   const alphaPrice = nullablePositive(econ?.alpha_price_tao);
   const isRoot = base.netuid === 0;
   const stakeTao = base.stake_tao ?? 0;
   const alphaAmount =
     !isRoot && alphaPrice != null ? roundTao(stakeTao / alphaPrice) : null;
 
-  const spot_mark_tao = spotMarkTao(base.netuid, stakeTao, alphaAmount, alphaPrice);
+  const spot_mark_tao = spotMarkTao(
+    base.netuid,
+    stakeTao,
+    alphaAmount,
+    alphaPrice,
+  );
   const exit_value_tao = exitValueTao(
     base.netuid,
     stakeTao,
@@ -70,8 +76,8 @@ function enrichPosition(base, economicsByNetuid) {
     ...base,
     alpha_amount: alphaAmount,
     alpha_price_tao: alphaPrice,
-    root_stake_tao: isRoot ? roundTao(stakeTao) ?? 0 : 0,
-    alpha_stake_tao: isRoot ? 0 : roundTao(stakeTao) ?? 0,
+    root_stake_tao: isRoot ? (roundTao(stakeTao) ?? 0) : 0,
+    alpha_stake_tao: isRoot ? 0 : (roundTao(stakeTao) ?? 0),
     spot_mark_tao,
     exit_value_tao,
     realized_yield_tao: null,
@@ -92,11 +98,18 @@ export function buildWalletPositions(
   const econMap =
     economicsByNetuid instanceof Map
       ? economicsByNetuid
-      : new Map(Object.entries(economicsByNetuid ?? {}).map(([k, v]) => [Number(k), v]));
+      : new Map(
+          Object.entries(economicsByNetuid ?? {}).map(([k, v]) => [
+            Number(k),
+            v,
+          ]),
+        );
 
   const positions = [];
 
-  for (const row of Array.isArray(portfolio.positions) ? portfolio.positions : []) {
+  for (const row of Array.isArray(portfolio.positions)
+    ? portfolio.positions
+    : []) {
     if (!(row?.stake_tao > 0) || row?.netuid == null) continue;
     const kind = row.role === "validator" ? "validator-own" : "miner-own";
     positions.push(
@@ -117,7 +130,9 @@ export function buildWalletPositions(
     );
   }
 
-  for (const row of Array.isArray(nominator.positions) ? nominator.positions : []) {
+  for (const row of Array.isArray(nominator.positions)
+    ? nominator.positions
+    : []) {
     if (!(row?.stake_tao > 0) || row?.netuid == null || !row?.hotkey) continue;
     positions.push(
       enrichPosition(
@@ -139,8 +154,8 @@ export function buildWalletPositions(
 
   positions.sort(
     (a, b) =>
-      (b.spot_mark_tao ?? b.stake_tao ?? 0) - (a.spot_mark_tao ?? a.stake_tao ?? 0) ||
-      a.netuid - b.netuid,
+      (b.spot_mark_tao ?? b.stake_tao ?? 0) -
+        (a.spot_mark_tao ?? a.stake_tao ?? 0) || a.netuid - b.netuid,
   );
 
   const total_spot_mark_tao = roundTao(
@@ -153,8 +168,7 @@ export function buildWalletPositions(
     positions.reduce((sum, p) => sum + (p.stake_tao ?? 0), 0),
   );
 
-  const captured_at =
-    portfolio.captured_at ?? nominator.captured_at ?? null;
+  const captured_at = portfolio.captured_at ?? nominator.captured_at ?? null;
 
   return {
     schema_version: 1,
