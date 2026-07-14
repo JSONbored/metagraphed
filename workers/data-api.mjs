@@ -2292,9 +2292,28 @@ function json(data, status = 200) {
 // missing table (e.g. before the migration has landed) or any other read
 // failure here just yields "nothing is featured" instead of a 502 for the
 // whole /validators route.
+//
+// #5220: every caller runs inside the route dispatcher's shared
+// `sql.begin(...)` transaction (see the top of the fetch handler). A local
+// try/catch around a bare `sql\`...\`` call is NOT enough to contain a
+// failure there -- postgres.js's `begin()` independently tracks every query
+// issued against the transaction's `sql` via its own internal `.catch()`
+// (see node_modules/postgres/src/index.js's `scope()`/`uncaughtError`), so
+// even a query whose rejection THIS function already handles still poisons
+// the whole transaction and makes `sql.begin(...)` itself reject once the
+// route handler returns -- which is exactly what made the entire
+// /api/v1/validators (and /api/v1/subnets/:netuid/validators) response
+// degrade to the empty D1-era fallback in production despite this catch:
+// the primary `neurons` query's own results were discarded by the outer
+// `sql.begin()` rejecting *after* the route handler had already built its
+// response. `sql.savepoint()` runs the read in its own nested scope so a
+// failure there rolls back to a savepoint instead of the whole transaction,
+// leaving the enclosing transaction (and its other queries) unaffected.
 async function loadFeaturedHotkeys(sql) {
   try {
-    const rows = await sql`SELECT hotkey FROM featured_validators`;
+    const rows = await sql.savepoint(
+      (sql) => sql`SELECT hotkey FROM featured_validators`,
+    );
     return new Set(rows.map((row) => row.hotkey));
   } catch (err) {
     console.error("featured_validators query failed:", err);

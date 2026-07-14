@@ -218,13 +218,37 @@ vi.mock("postgres", () => ({
       return Promise.resolve(mockRows.current);
     };
     // sql.begin(["read only",] cb) reserves a connection for cb in real
-    // postgres.js; the mock just invokes cb with this same sql function so
-    // every existing tagged-template assertion (sqlCalls, mockQueue) still
-    // sees the identical call stream, and resolves to whatever cb returns.
+    // postgres.js; the mock invokes cb with a wrapped sql so every existing
+    // tagged-template assertion (sqlCalls, mockQueue) still sees the
+    // identical call stream, and resolves to whatever cb returns.
+    //
+    // #5220: this wrapper also mirrors a real postgres.js behavior that an
+    // earlier, naive `cb(sql)` pass-through did NOT reproduce and that let a
+    // production bug ship past this suite -- every query issued directly
+    // against a `begin()` transaction's `sql` poisons the whole transaction
+    // if it rejects, even when the *caller* catches that rejection locally
+    // (postgres.js tracks it via each query's own internal `.catch()`; see
+    // node_modules/postgres/src/index.js's `scope()`/`uncaughtError`).
+    // `sql.savepoint(fn)` is the only way to isolate a query's failure from
+    // the enclosing transaction, so it runs `fn` against the unwrapped sql
+    // (no poisoning) instead.
     sql.begin = (optionsOrCb, maybeCb) => {
       const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
       sqlBeginOptions.push(typeof optionsOrCb === "string" ? optionsOrCb : "");
-      return cb(sql);
+      let uncaughtError;
+      function scopedSql(...args) {
+        const result = sql(...args);
+        Promise.resolve(result).catch((e) => {
+          if (!uncaughtError) uncaughtError = e;
+        });
+        return result;
+      }
+      Object.assign(scopedSql, sql);
+      scopedSql.savepoint = (fn) => fn(sql);
+      return Promise.resolve(cb(scopedSql)).then((result) => {
+        if (uncaughtError) throw uncaughtError;
+        return result;
+      });
     };
     return sql;
   },
@@ -1339,6 +1363,43 @@ test("GET /api/v1/subnets/:netuid/validators still serves the primary rows when 
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.validator_count).toBe(1);
+  expect(body.validators[0].featured).toBe(false);
+});
+
+test("GET /api/v1/validators still serves the primary rows when the featured_validators read fails (#5220)", async () => {
+  // Regression test for #5220: this network-wide route (unlike the single
+  // /validators/:hotkey detail route, which never reads featured_validators)
+  // returned validator_count: 0 in production because a bare sql`...` inside
+  // loadFeaturedHotkeys poisoned the whole shared sql.begin() transaction --
+  // even though this function's own try/catch handled the rejection -- so
+  // the outer sql.begin() itself rejected after the route handler had
+  // already built its response. See loadFeaturedHotkeys's header comment and
+  // the sql.begin mock above for how postgres.js's real transaction-scoped
+  // error tracking works.
+  featuredValidatorsQueryFailure.error = new Error(
+    'relation "featured_validators" does not exist',
+  );
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        netuid: 7,
+        uid: 3,
+        hotkey: "5Hot",
+        coldkey: "5Cold",
+        validator_trust: "0.8",
+        emission_tao: "1.23",
+        stake_tao: "456.7",
+        block_number: "5000000",
+        captured_at: "1780000000000",
+      },
+    ],
+  ];
+  const res = await req("/api/v1/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validator_count).toBe(1);
+  expect(body.validators[0].hotkey).toBe("5Hot");
   expect(body.validators[0].featured).toBe(false);
 });
 
