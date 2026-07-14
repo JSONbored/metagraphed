@@ -57,6 +57,26 @@
         "https://taomarketcap.com/subnets/107"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/107"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-docs-llms-full-txt",
+      "kind": "data-artifact",
+      "name": "Minos docs llms-full.txt index",
+      "notes": "Public no-auth machine-readable llms-full.txt full-text index of the official SN107 Minos documentation site (docs.theminos.ai, title 'Overview - Minos'), the documentation subdomain linked from the Minos homepage at theminos.ai. A ~70 KB agent-consumable Markdown map of the Minos docs covering the subnet architecture, miner and validator roles, and the scoring loop; the document self-identifies as 'Minos (SN107)'.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet",
+        "https://theminos.ai/",
+        "https://docs.theminos.ai/"
+      ],
+      "url": "https://docs.theminos.ai/llms-full.txt"
     }
   ],
   "contact": "contact@theminos.ai"
