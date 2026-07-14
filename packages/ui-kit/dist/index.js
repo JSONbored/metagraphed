@@ -3323,7 +3323,8 @@ function StatTile({
   chart,
   tone = "default",
   className,
-  truncate = true
+  truncate = true,
+  tooltip
 }) {
   return /* @__PURE__ */ jsxs(
     "div",
@@ -3349,16 +3350,10 @@ function StatTile({
           }
         ) : null,
         /* @__PURE__ */ jsxs("div", { className: "min-w-0 flex-1", children: [
-          /* @__PURE__ */ jsx(
-            "div",
-            {
-              className: classNames(
-                "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted",
-                truncate ? "truncate" : "leading-tight"
-              ),
-              children: eyebrow
-            }
-          ),
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted", children: [
+            /* @__PURE__ */ jsx("span", { className: truncate ? "truncate" : "leading-tight", children: eyebrow }),
+            tooltip ? /* @__PURE__ */ jsx(InfoTooltip, { label: tooltip, className: "shrink-0" }) : null
+          ] }),
           /* @__PURE__ */ jsxs(
             "div",
             {
