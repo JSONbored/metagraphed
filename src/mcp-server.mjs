@@ -369,54 +369,54 @@ import {
   loadAccountHistory,
   loadAccountExtrinsics,
   loadAccountTransfers,
-  loadSubnetEventSummary,
+  buildSubnetEventSummary,
   SUBNET_EVENT_SUMMARY_WINDOWS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
 } from "./account-events.mjs";
 import {
-  loadSubnetWeightSetters,
+  buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
 } from "./subnet-weight-setters.mjs";
 import {
-  loadSubnetWeights,
+  buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
 } from "./subnet-weights.mjs";
 import {
-  loadSubnetRegistrations,
+  buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
 } from "./subnet-registrations.mjs";
 import {
-  loadSubnetStakeMoves,
+  buildSubnetStakeMoves,
   SUBNET_STAKE_MOVES_WINDOWS,
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
 } from "./subnet-stake-moves.mjs";
 import {
-  loadSubnetStakeTransfers,
+  buildSubnetStakeTransfers,
   SUBNET_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
 } from "./subnet-stake-transfers.mjs";
 import {
-  loadSubnetAxonRemovals,
+  buildSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
 } from "./subnet-axon-removals.mjs";
 import {
-  loadSubnetServing,
+  buildSubnetServing,
   SUBNET_SERVING_WINDOWS,
   DEFAULT_SUBNET_SERVING_WINDOW,
 } from "./subnet-serving.mjs";
 import {
-  loadSubnetPrometheus,
+  buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
 } from "./subnet-prometheus.mjs";
 import {
-  loadSubnetDeregistrations,
+  buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "./subnet-deregistrations.mjs";
@@ -451,7 +451,7 @@ import {
   loadChainIdentityHistory,
 } from "./chain-identity-history.mjs";
 import {
-  loadSubnetStakeFlow,
+  buildStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
   STAKE_FLOW_DIRECTIONS,
@@ -3280,7 +3280,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
@@ -3290,6 +3290,8 @@ export const MCP_TOOLS = [
           `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
+      // direction is still validated (bad input still errors) even though an
+      // empty event stream makes the filter itself moot.
       const direction =
         optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
       if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
@@ -3298,11 +3300,10 @@ export const MCP_TOOLS = [
           `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
         );
       }
-      const { data } = await loadSubnetStakeFlow(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        direction,
-      });
-      return data;
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildStakeFlow([], netuid, { window });
     },
   },
   {
@@ -3338,7 +3339,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
@@ -3353,10 +3354,10 @@ export const MCP_TOOLS = [
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
       );
-      return await loadSubnetEventSummary(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        limit,
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetEventSummary([], [], netuid, { window, limit });
     },
   },
   {
@@ -3382,7 +3383,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -3392,10 +3393,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_WEIGHTS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return await loadSubnetWeights(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_WEIGHTS_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetWeights(null, netuid, { window });
     },
   },
   {
@@ -3422,7 +3423,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
@@ -3432,10 +3433,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return await loadSubnetWeightSetters(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetWeightSetters([], null, netuid, { window });
     },
   },
   {
@@ -3461,7 +3462,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
@@ -3471,10 +3472,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${Object.keys(SUBNET_REGISTRATIONS_WINDOWS).join(", ")}.`,
         );
       }
-      return await loadSubnetRegistrations(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_REGISTRATIONS_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetRegistrations(null, netuid, { window });
     },
   },
   {
@@ -3500,7 +3501,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
@@ -3510,10 +3511,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return await loadSubnetStakeMoves(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_STAKE_MOVES_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetStakeMoves(null, netuid, { window });
     },
   },
   {
@@ -3540,7 +3541,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
@@ -3550,10 +3551,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return await loadSubnetStakeTransfers(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_STAKE_TRANSFERS_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetStakeTransfers(null, netuid, { window });
     },
   },
   {
@@ -3580,7 +3581,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
@@ -3590,10 +3591,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return await loadSubnetAxonRemovals(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_AXON_REMOVALS_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetAxonRemovals(null, netuid, { window });
     },
   },
   {
@@ -3621,7 +3622,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_SERVING_WINDOW;
@@ -3631,10 +3632,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_SERVING_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return await loadSubnetServing(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_SERVING_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetServing(null, netuid, { window });
     },
   },
   {
@@ -3662,7 +3663,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_PROMETHEUS_WINDOW;
@@ -3672,10 +3673,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return await loadSubnetPrometheus(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_PROMETHEUS_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetPrometheus(null, netuid, { window });
     },
   },
   {
@@ -3701,7 +3702,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
@@ -3711,10 +3712,10 @@ export const MCP_TOOLS = [
           `window must be one of: ${SUBNET_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      return await loadSubnetDeregistrations(mcpD1Runner(ctx), netuid, {
-        windowLabel: window,
-        windowDays: SUBNET_DEREGISTRATIONS_WINDOWS[window],
-      });
+      // #5047 D1 retirement: account_events' D1 write path is retired (#4772)
+      // and the table is dropped in production, so a D1 query here would
+      // always miss.
+      return buildSubnetDeregistrations(null, netuid, { window });
     },
   },
   {

@@ -3876,74 +3876,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  test("get_subnet_stake_flow aggregates StakeAdded and StakeRemoved", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const capture = [];
-      const res = await callTool(
-        "get_subnet_stake_flow",
-        { netuid: 7, window: "30d" },
-        {
-          env: stakeFlowD1(
-            [
-              {
-                event_kind: "StakeAdded",
-                total_tao: 200,
-                event_count: 4,
-                last_observed: 1_717_000_000_000,
-              },
-              {
-                event_kind: "StakeRemoved",
-                total_tao: 50,
-                event_count: 2,
-                last_observed: 1_717_000_000_000,
-              },
-            ],
-            capture,
-          ),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.netuid, 7);
-      assert.equal(out.window, "30d");
-      assert.equal(out.total_staked_tao, 200);
-      assert.equal(out.total_unstaked_tao, 50);
-      assert.equal(out.net_flow_tao, 150);
-      assert.match(capture[0].sql, /FROM account_events/);
-      assert.equal(capture[0].params[0], 7);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  test("get_subnet_stake_flow narrows to one side with direction=in", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_stake_flow",
-      { netuid: 7, window: "30d", direction: "in" },
-      {
-        env: stakeFlowD1(
-          [
-            {
-              event_kind: "StakeAdded",
-              total_tao: 200,
-              event_count: 4,
-              last_observed: 1_717_000_000_000,
-            },
-          ],
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.total_staked_tao, 200);
-    assert.equal(out.total_unstaked_tao, 0);
-    // direction=in binds only the StakeAdded kind, not StakeRemoved.
-    assert.ok(capture[0].params.includes("StakeAdded"));
-    assert.ok(!capture[0].params.includes("StakeRemoved"));
-  });
-
   test("get_subnet_stake_flow rejects an unsupported direction", async () => {
     const res = await callTool("get_subnet_stake_flow", {
       netuid: 7,
@@ -5125,105 +5057,6 @@ describe("MCP stake-flow and movers economics tools", () => {
 });
 
 describe("MCP get_subnet_event_summary", () => {
-  function eventSummaryD1(
-    { kindRows = [], recentRows = [] } = {},
-    capture = [],
-  ) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  if (/GROUP BY event_kind/.test(sql)) {
-                    return { results: kindRows };
-                  }
-                  if (/ORDER BY block_number DESC/.test(sql)) {
-                    return { results: recentRows };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("summarizes per-kind counts plus a recent-events tail", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_event_summary",
-      { netuid: 7, window: "7d", limit: 2 },
-      {
-        env: eventSummaryD1(
-          {
-            kindRows: [
-              {
-                event_kind: "StakeAdded",
-                event_count: 5,
-                hotkey_count: 3,
-                coldkey_count: 2,
-                amount_tao: 120,
-                alpha_amount: 40,
-                first_block: 100,
-                last_block: 140,
-                first_observed_at: 1_717_000_000_000,
-                last_observed_at: 1_717_500_000_000,
-              },
-              {
-                event_kind: "StakeRemoved",
-                event_count: 2,
-                hotkey_count: 1,
-                coldkey_count: 1,
-                amount_tao: 30,
-                alpha_amount: 10,
-                first_block: 110,
-                last_block: 130,
-                first_observed_at: 1_717_100_000_000,
-                last_observed_at: 1_717_400_000_000,
-              },
-            ],
-            recentRows: [
-              {
-                block_number: 140,
-                event_index: 1,
-                event_kind: "StakeAdded",
-                hotkey: "5Hkey",
-                coldkey: "5Ckey",
-                netuid: 7,
-                uid: 3,
-                amount_tao: 25,
-                alpha_amount: 8,
-                observed_at: 1_717_500_000_000,
-                extrinsic_index: 2,
-              },
-            ],
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.limit, 2);
-    assert.equal(out.total_events, 7);
-    assert.equal(out.kind_count, 2);
-    assert.equal(out.recent_event_count, 1);
-    assert.equal(out.event_kinds[0].event_kind, "StakeAdded");
-    assert.equal(out.recent_events[0].block_number, 140);
-    // netuid bound first, and the recent-tail LIMIT is clamped to 2.
-    assert.equal(capture[0].params[0], 7);
-    const recentCall = capture.find((c) =>
-      /ORDER BY block_number DESC/.test(c.sql),
-    );
-    assert.equal(recentCall.params[recentCall.params.length - 1], 2);
-  });
-
   test("defaults to the 30d window and degrades to an empty summary on cold D1", async () => {
     const res = await callTool("get_subnet_event_summary", { netuid: 7 });
     const out = res.body.result.structuredContent;
@@ -5274,24 +5107,6 @@ describe("MCP get_subnet_stake_moves", () => {
       },
     };
   }
-
-  test("summarizes per-subnet stake-movement activity", async () => {
-    const res = await callTool(
-      "get_subnet_stake_moves",
-      { netuid: 5, window: "7d" },
-      {
-        env: stakeMovesD1({
-          movements: 9,
-          distinct_movers: 3,
-          newest_observed: 1_717_500_000_000,
-        }),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.movements, 9);
-    assert.equal(out.distinct_movers, 3);
-  });
 
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
@@ -5356,25 +5171,6 @@ describe("MCP get_subnet_stake_transfers", () => {
       },
     };
   }
-
-  test("summarizes per-subnet stake-transfer activity", async () => {
-    const res = await callTool(
-      "get_subnet_stake_transfers",
-      { netuid: 5, window: "7d" },
-      {
-        env: stakeTransfersD1({
-          transfers: 8,
-          distinct_senders: 4,
-          newest_observed: 1_717_500_000_000,
-        }),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.transfers, 8);
-    assert.equal(out.distinct_senders, 4);
-    assert.equal(out.transfers_per_sender, 2);
-  });
 
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
@@ -5441,24 +5237,6 @@ describe("MCP get_subnet_registrations", () => {
     };
   }
 
-  test("summarizes per-subnet registration activity", async () => {
-    const res = await callTool(
-      "get_subnet_registrations",
-      { netuid: 5, window: "7d" },
-      {
-        env: registrationsSubnetD1({
-          registrations: 12,
-          distinct_registrants: 4,
-          newest_observed: 1_717_500_000_000,
-        }),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.registrations, 12);
-    assert.equal(out.distinct_registrants, 4);
-  });
-
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
       "get_subnet_registrations",
@@ -5503,31 +5281,6 @@ describe("MCP get_subnet_weights", () => {
       },
     };
   }
-
-  test("reports weight-setting activity for one subnet over the window", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_weights",
-      { netuid: 5, window: "7d" },
-      {
-        env: weightsD1(
-          {
-            distinct_setters: 2,
-            weight_sets: 20,
-            newest_observed: 1_750_000_000_000,
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.window, "7d");
-    assert.equal(out.distinct_setters, 2);
-    assert.equal(out.weight_sets, 20);
-    assert.equal(out.sets_per_setter, 10);
-    assert.equal(capture[0].params[0], 5);
-  });
 
   test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
     const res = await callTool("get_subnet_weights", { netuid: 5 });
@@ -5574,88 +5327,7 @@ describe("MCP get_subnet_weights", () => {
 });
 
 describe("MCP get_subnet_weight_setters", () => {
-  // The loader runs two reads: the per-setter leaderboard (GROUP BY the
-  // hotkey-or-uid identity) and the subnet-wide totals row. Route by SQL shape.
-  function weightSettersD1(
-    { leaderboardRows = [], totalsRow = null } = {},
-    capture = [],
-  ) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  if (/GROUP BY/.test(sql)) {
-                    return { results: leaderboardRows };
-                  }
-                  return { results: totalsRow ? [totalsRow] : [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("ranks setters with per-setter shares and set-time bounds", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_weight_setters",
-      { netuid: 5, window: "7d" },
-      {
-        env: weightSettersD1(
-          {
-            leaderboardRows: [
-              {
-                hotkey: "5Val1",
-                uid: 3,
-                weight_sets: 6,
-                first_set: 1_717_000_000_000,
-                last_set: 1_717_500_000_000,
-              },
-              {
-                hotkey: "5Val2",
-                uid: 7,
-                weight_sets: 4,
-                first_set: 1_717_100_000_000,
-                last_set: 1_717_400_000_000,
-              },
-            ],
-            totalsRow: {
-              weight_sets: 10,
-              distinct_setters: 2,
-              newest_observed: 1_717_500_000_000,
-            },
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.window, "7d");
-    assert.equal(out.weight_sets, 10);
-    assert.equal(out.distinct_setters, 2);
-    assert.equal(out.setter_count, 2);
-    assert.equal(out.setters[0].hotkey, "5Val1");
-    assert.equal(out.setters[0].uid, 3);
-    assert.equal(out.setters[0].weight_sets, 6);
-    assert.equal(out.setters[0].share, 0.6);
-    assert.equal(
-      out.setters[0].last_set_at,
-      new Date(1_717_500_000_000).toISOString(),
-    );
-    assert.equal(out.setters[1].hotkey, "5Val2");
-    assert.equal(out.setters[1].share, 0.4);
-    // netuid is bound first on both reads.
-    assert.equal(capture[0].params[0], 5);
-  });
-
-  test("defaults to the 7d window and degrades to an empty leaderboard on cold D1", async () => {
+  test("defaults to the 7d window and returns an empty leaderboard (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_weight_setters", { netuid: 5 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5682,51 +5354,7 @@ describe("MCP get_subnet_weight_setters", () => {
 });
 
 describe("MCP get_subnet_axon_removals", () => {
-  function axonRemovalsD1(row = null, capture = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  return { results: row ? [row] : [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("reports removal activity for one subnet over the window", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_axon_removals",
-      { netuid: 7, window: "7d" },
-      {
-        env: axonRemovalsD1(
-          {
-            distinct_removers: 2,
-            removals: 20,
-            newest_observed: 1_750_000_000_000,
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.distinct_removers, 2);
-    assert.equal(out.removals, 20);
-    assert.equal(out.removals_per_remover, 10);
-    assert.equal(capture[0].params[0], 7);
-  });
-
-  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_axon_removals", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5771,32 +5399,7 @@ describe("MCP get_subnet_serving", () => {
     };
   }
 
-  test("reports axon serving activity for one subnet over the window", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_serving",
-      { netuid: 7, window: "7d" },
-      {
-        env: servingD1(
-          {
-            distinct_servers: 2,
-            announcements: 20,
-            newest_observed: 1_750_000_000_000,
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.distinct_servers, 2);
-    assert.equal(out.announcements, 20);
-    assert.equal(out.announcements_per_server, 10);
-    assert.equal(capture[0].params[0], 7);
-  });
-
-  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_serving", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5860,32 +5463,7 @@ describe("MCP get_subnet_prometheus", () => {
     };
   }
 
-  test("reports Prometheus serving activity for one subnet over the window", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_prometheus",
-      { netuid: 7, window: "7d" },
-      {
-        env: prometheusD1(
-          {
-            distinct_exporters: 2,
-            announcements: 20,
-            newest_observed: 1_750_000_000_000,
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.distinct_exporters, 2);
-    assert.equal(out.announcements, 20);
-    assert.equal(out.announcements_per_exporter, 10);
-    assert.equal(capture[0].params[0], 7);
-  });
-
-  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_prometheus", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5930,45 +5508,7 @@ describe("MCP get_subnet_prometheus", () => {
 });
 
 describe("MCP get_subnet_deregistrations", () => {
-  function deregistrationsD1(row = null) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(_sql) {
-          return {
-            bind(..._params) {
-              return {
-                async all() {
-                  return { results: row ? [row] : [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("returns the deregistration scorecard", async () => {
-    const res = await callTool(
-      "get_subnet_deregistrations",
-      { netuid: 9 },
-      {
-        env: deregistrationsD1({
-          deregistrations: 8,
-          distinct_deregistered_hotkeys: 2,
-          newest_observed: 1_717_400_000_000,
-        }),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 9);
-    assert.equal(out.window, "7d");
-    assert.equal(out.deregistrations, 8);
-    assert.equal(out.distinct_deregistered_hotkeys, 2);
-    assert.equal(out.deregistrations_per_hotkey, 4);
-  });
-
-  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_deregistrations", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
