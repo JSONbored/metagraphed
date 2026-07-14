@@ -71,6 +71,10 @@ const RAO_PER_TAO = 1_000_000_000n;
 // toRaoBig/raoBigToTao pattern used for per-entity sums elsewhere (e.g.
 // src/chain-yield.mjs), extended to a string output since -- unlike those
 // per-entity totals -- this sum's magnitude is the whole reason this exists.
+// No negative-sign handling: total_stake_tao is a non-negative on-chain
+// quantity (matches the schema's own `minimum: 0`), so a negative sum is
+// unreachable -- unlike a real negative-capable delta, branching on a sign
+// that can never occur here would just be untestable dead code.
 function sumFieldTaoString(rows, field) {
   let sumRao = 0n;
   for (const row of rows) {
@@ -79,11 +83,9 @@ function sumFieldTaoString(rows, field) {
       sumRao += BigInt(Math.round(value * 1e9));
     }
   }
-  const negative = sumRao < 0n;
-  const abs = negative ? -sumRao : sumRao;
-  const whole = abs / RAO_PER_TAO;
-  const frac = abs % RAO_PER_TAO;
-  return `${negative ? "-" : ""}${whole}.${frac.toString().padStart(9, "0")}`;
+  const whole = sumRao / RAO_PER_TAO;
+  const frac = sumRao % RAO_PER_TAO;
+  return `${whole}.${frac.toString().padStart(9, "0")}`;
 }
 
 export function buildEconomicsArtifact({

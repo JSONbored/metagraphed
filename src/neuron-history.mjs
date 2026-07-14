@@ -217,12 +217,13 @@ const RAO_PER_TAO = 1_000_000_000n;
 // formatting (instead of returning a float) are required to avoid silently
 // corrupting the value. Mirrors the identical helper in
 // scripts/lib/economics-artifacts.mjs's buildEconomicsArtifact summary.
+// No negative-sign handling: total_stake_tao is a non-negative on-chain
+// quantity, so a negative sum is unreachable here -- would be untestable
+// dead code.
 function raoToTaoString(rao) {
-  const negative = rao < 0n;
-  const abs = negative ? -rao : rao;
-  const whole = abs / RAO_PER_TAO;
-  const frac = abs % RAO_PER_TAO;
-  return `${negative ? "-" : ""}${whole}.${frac.toString().padStart(9, "0")}`;
+  const whole = rao / RAO_PER_TAO;
+  const frac = rao % RAO_PER_TAO;
+  return `${whole}.${frac.toString().padStart(9, "0")}`;
 }
 // Round a TAO sum, preserving null — so an unrounded D1 SUM(stake_tao)/SUM(
 // emission_tao) never leaks accumulated float noise, while a null SUM (cold/
