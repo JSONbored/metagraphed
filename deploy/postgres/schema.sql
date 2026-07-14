@@ -178,6 +178,36 @@ CREATE TABLE IF NOT EXISTS featured_validators (
   featured_at BIGINT NOT NULL
 );
 
+-- Per-hotkey nominator counts, one row per validator (#2549; mirrors D1
+-- migrations/0043_validator_nominator_counts.sql). Derived from a full scan
+-- of SubtensorModule::Alpha, populated by its own lower-frequency job
+-- (scripts/fetch-validator-nominator-counts.py) and joined into
+-- buildGlobalValidators/buildValidatorDetail at serve time -- mirrors
+-- featured_validators' own side-table join pattern above. Latest-only,
+-- REPLACE-on-conflict.
+CREATE TABLE IF NOT EXISTS validator_nominator_counts (
+  hotkey           TEXT    NOT NULL,
+  nominator_count  INTEGER NOT NULL,
+  captured_at      BIGINT  NOT NULL,
+  PRIMARY KEY (hotkey)
+);
+
+-- Nominator (coldkey) positions across every hotkey/subnet it stakes to
+-- (#5233; mirrors D1 migrations/0044_nominator_positions.sql) -- the
+-- per-coldkey counterpart to validator_nominator_counts above, populated
+-- by the SAME Alpha full scan. share_fraction is the normalized share of
+-- that hotkey+netuid's stake pool (NOT a TAO amount), joined against
+-- neurons.stake_tao at serve time (src/account-nominator-positions.mjs).
+-- Root (netuid 0) is not covered -- see the fetch script's own header.
+CREATE TABLE IF NOT EXISTS nominator_positions (
+  coldkey        TEXT NOT NULL,
+  hotkey         TEXT NOT NULL,
+  netuid         INTEGER NOT NULL,
+  share_fraction REAL NOT NULL,
+  captured_at    BIGINT NOT NULL,
+  PRIMARY KEY (coldkey, hotkey, netuid)
+);
+
 -- Daily per-UID history (mirror of D1 `neuron_daily`, ~10.8M rows / 370d).
 CREATE TABLE IF NOT EXISTS neuron_daily (
   netuid           INTEGER NOT NULL,
