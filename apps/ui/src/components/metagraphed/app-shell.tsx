@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Compass, Github, Menu, Rss, Webhook, X } from "lucide-react";
+import { ChevronRight, Compass, Github, Menu, Rss, Search, Webhook, X } from "lucide-react";
 import {
   API_BASE,
   DEFAULT_DISCORD_URL,
@@ -225,6 +225,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <X className="size-4" />
                   </button>
                 </div>
+                {/* NavOmnibox is `hidden md:block` — below md there is otherwise
+                    no way to open search at all (#5319). */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setPaletteOpen(true);
+                  }}
+                  className="flex items-center gap-2 rounded border border-border bg-card px-3 py-2 text-[13px] text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors min-h-11"
+                >
+                  <Search className="size-3.5" aria-hidden="true" /> Search
+                </button>
                 <div className="mg-label inline-flex items-center gap-1">
                   <Compass className="size-3" /> Unofficial registry
                 </div>
