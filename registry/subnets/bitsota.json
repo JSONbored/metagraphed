@@ -160,6 +160,56 @@
         "https://bitsota.ai/docs/autoresearch-backend-routes"
       ],
       "url": "https://autoresearch.bitsota.com/api/v1/disclaimer"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-problem-config",
+      "kind": "data-artifact",
+      "name": "Bitsota problem config",
+      "notes": "Public no-auth JSON problem/task configuration for the SN94 Bitsota subnet, published in the official AlveusLabs/SN94-BitSota repository at problem_config.json. Defines the mining/validation problem parameters (task counts, seeds, and GUI/continuous-mining notes) used by miners and validators. Pinned to an immutable commit. Verified 200 application/json, SS58-clean.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/AlveusLabs/SN94-BitSota/blob/61f81b32054a7ed502faa319b97b90b80b897c13/problem_config.json",
+        "https://github.com/AlveusLabs/SN94-BitSota"
+      ],
+      "url": "https://raw.githubusercontent.com/AlveusLabs/SN94-BitSota/61f81b32054a7ed502faa319b97b90b80b897c13/problem_config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-bitsota-capacitor-abi",
+      "kind": "data-artifact",
+      "name": "Bitsota Capacitor contract ABI",
+      "notes": "Public no-auth machine-readable Solidity ABI (JSON) for the SN94 Bitsota on-chain Capacitor contract, published in the official AlveusLabs/SN94-BitSota repository at capacitor_abi.json. Describes the contract's constructor inputs, functions, and events used by the subnet's on-chain settlement flow. Pinned to an immutable commit. Verified 200, SS58-clean.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/AlveusLabs/SN94-BitSota/blob/9a91af33b69a42ea9c124ea8a7ea4f05203fde04/capacitor_abi.json",
+        "https://github.com/AlveusLabs/SN94-BitSota"
+      ],
+      "url": "https://raw.githubusercontent.com/AlveusLabs/SN94-BitSota/9a91af33b69a42ea9c124ea8a7ea4f05203fde04/capacitor_abi.json"
     }
   ],
   "contact": "info@bitsota.ai"
