@@ -24,6 +24,7 @@ import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import { providerQuery, providerEndpointsQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
+import { shouldShowProviderSlugSubtitle } from "@/lib/metagraphed/provider-hero-fields";
 import type { Endpoint, Subnet } from "@/lib/metagraphed/types";
 
 type SearchParams = { tab?: string };
@@ -127,7 +128,7 @@ function ProviderShell({ slug }: { slug: string }) {
           </span>
         }
         title={p?.name ?? slug}
-        subtitle={<>· {slug}</>}
+        subtitle={shouldShowProviderSlugSubtitle(p?.name, slug) ? <>· {slug}</> : null}
         description={p?.notes}
         links={<PrimaryLinksRail website={p?.website ?? p?.homepage} docs={p?.docs} />}
         stats={[
