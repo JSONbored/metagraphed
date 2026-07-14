@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   economicsQuery,
+  subnetRecycledQuery,
   subnetStakeMovesQuery,
   subnetStakeTransfersQuery,
   subnetTrajectoryQuery,
@@ -110,6 +111,24 @@ function StakeTransfersTile({ netuid }: { netuid: number }) {
   );
 }
 
+// #4339/8.4: cumulative TAO recycled for registration on this subnet, queried
+// live from the chain (600s KV cache on the backend) rather than the
+// account_events log-layer aggregations the sibling stake tiles above use --
+// see subnet-recycled.mjs's header for why. recycled_tao stays "—" (not "0")
+// on an RPC failure, since 0 is a real, distinct value here.
+function RecycledTaoTile({ netuid }: { netuid: number }) {
+  const { data: res, isPending, isError } = useQuery(subnetRecycledQuery(netuid));
+  const recycled = res?.data.recycled_tao;
+  const value = isError
+    ? "—"
+    : isPending && recycled == null
+      ? "…"
+      : recycled == null
+        ? "—"
+        : formatTao(recycled);
+  return <StatTile eyebrow="Recycled TAO" value={value} hint="cumulative · live RPC" />;
+}
+
 export function EconomicsPanel({ netuid }: { netuid: number }) {
   const { data: res, isPending } = useQuery(economicsQuery());
   const e = res?.data.find((x) => x.netuid === netuid);
@@ -182,6 +201,7 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
           value={e.registration_cost_tao != null ? `${e.registration_cost_tao} τ` : "—"}
           hint={e.registration_allowed === false ? "closed" : "open"}
         />
+        <RecycledTaoTile netuid={netuid} />
         <StakeMovesTile netuid={netuid} />
         <StakeTransfersTile netuid={netuid} />
       </div>

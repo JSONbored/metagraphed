@@ -1703,6 +1703,7 @@ function ApiPanel({ netuid }: { netuid: number }) {
       label: "stake-quote",
       path: `/api/v1/subnets/${netuid}/stake-quote?amount=100&direction=stake`,
     },
+    { label: "recycled", path: `/api/v1/subnets/${netuid}/recycled` },
     { label: "health", path: `/api/v1/subnets/${netuid}/health` },
     { label: "agent-catalog", path: `/api/v1/agent-catalog/${netuid}` },
     { label: "artifact", path: `/metagraph/subnets/${netuid}.json` },

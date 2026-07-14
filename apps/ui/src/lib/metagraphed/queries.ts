@@ -182,6 +182,7 @@ import type {
   SubnetHyperparamsHistory,
   SubnetHyperparamsHistoryEntry,
   SubnetStakeQuote,
+  SubnetRecycled,
   SubnetIdentityHistory,
   SubnetWeightSetter,
   SubnetWeightSetters,
@@ -4924,6 +4925,30 @@ export const subnetStakeQuoteQuery = (
     },
     enabled: Number.isFinite(amount) && amount > 0,
     staleTime: STALE_SHORT,
+  });
+
+// #4339/8.4: the live cumulative TAO recycled for registration on one subnet,
+// queried live from the chain (600s KV cache on the backend) — a single
+// snapshot, no pagination. recycled_tao stays null on RPC failure rather than
+// coercing to 0, since 0 is a real, distinct value (zero registrations ever).
+export const subnetRecycledQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-recycled", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/recycled`, { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+          netuid: firstFiniteNumber(d.netuid) ?? netuid,
+          recycled_tao: coerceFiniteNumber(d.recycled_tao) ?? null,
+          queried_at: firstString(d.queried_at) ?? null,
+        } as SubnetRecycled,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetRecycled>;
+    },
+    staleTime: STALE_MED,
   });
 
 // #1302: per-subnet on-chain history — daily neuron/validator counts, total

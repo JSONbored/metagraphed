@@ -1660,6 +1660,17 @@ export interface SubnetStakeQuote {
   is_root: boolean;
 }
 
+/** The live cumulative TAO recycled for registration on one subnet (#4339/8.4),
+ * from GET /api/v1/subnets/{netuid}/recycled — queried live from the chain's
+ * RAORecycledForRegistration storage map (600s KV cache). recycled_tao is
+ * null only on RPC failure (schema-stable), a real 0 for zero registrations. */
+export interface SubnetRecycled {
+  schema_version: number;
+  netuid: number;
+  recycled_tao: number | null;
+  queried_at: string | null;
+}
+
 /** Append-only on-chain identity timeline for one subnet (#1647), newest first. */
 export interface SubnetIdentityHistory {
   schema_version: number;
