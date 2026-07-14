@@ -1601,6 +1601,26 @@ export interface SubnetHyperparametersDetail {
   hyperparameters: SubnetHyperparameters | null;
 }
 
+/** One historic hyperparameter snapshot in a subnet's append-only change
+ * timeline, from GET /api/v1/subnets/{netuid}/hyperparameters/history. */
+export interface SubnetHyperparamsHistoryEntry {
+  block_number: number | null;
+  observed_at: string | null;
+  hyperparameters: SubnetHyperparameters | null;
+  hyperparams_hash: string;
+}
+
+/** Append-only hyperparameter-change timeline for one subnet, newest first. */
+export interface SubnetHyperparamsHistory {
+  schema_version: number;
+  netuid: number;
+  entry_count: number;
+  entries: SubnetHyperparamsHistoryEntry[];
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+}
+
 /** Append-only on-chain identity timeline for one subnet (#1647), newest first. */
 export interface SubnetIdentityHistory {
   schema_version: number;

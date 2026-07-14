@@ -1,12 +1,13 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
   ArrowUpFromLine,
   Waves,
   Activity,
+  ChevronDown,
   Filter,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -69,6 +70,7 @@ import {
   subnetIdentityHistoryQuery,
   subnetStakeFlowQuery,
   subnetHyperparametersQuery,
+  subnetHyperparamsHistoryQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -203,6 +205,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   activity: "activity",
   identity: "identity",
   hyperparameters: "hyperparameters",
+  "hyperparameters-history": "hyperparameters",
   services: "services",
   "agent-readiness": "services",
   surfaces: "surfaces",
@@ -296,7 +299,12 @@ function ProfileShell({ netuid }: { netuid: number }) {
           {tab === "validators" ? <ValidatorsPanel netuid={netuid} /> : null}
           {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
           {tab === "identity" ? <IdentityHistoryPanel netuid={netuid} /> : null}
-          {tab === "hyperparameters" ? <HyperparametersPanel netuid={netuid} /> : null}
+          {tab === "hyperparameters" ? (
+            <div className="space-y-8">
+              <HyperparametersPanel netuid={netuid} />
+              <HyperparamsHistoryPanel netuid={netuid} />
+            </div>
+          ) : null}
           {tab === "services" ? <CallableServicesPanel netuid={netuid} /> : null}
           {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
           {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
@@ -1482,6 +1490,10 @@ function ApiPanel({ netuid }: { netuid: number }) {
     { label: "endpoints", path: `/api/v1/subnets/${netuid}/endpoints` },
     { label: "candidates", path: `/api/v1/subnets/${netuid}/candidates` },
     { label: "gaps", path: `/api/v1/subnets/${netuid}/gaps` },
+    {
+      label: "hyperparameters-history",
+      path: `/api/v1/subnets/${netuid}/hyperparameters/history`,
+    },
     { label: "health", path: `/api/v1/subnets/${netuid}/health` },
     { label: "agent-catalog", path: `/api/v1/agent-catalog/${netuid}` },
     { label: "artifact", path: `/metagraph/subnets/${netuid}.json` },
@@ -1741,6 +1753,17 @@ function HyperparametersTable({ netuid }: { netuid: number }) {
           {res.data.block_number != null ? ` · block #${formatNumber(res.data.block_number)}` : ""}
         </p>
       ) : null}
+      <HyperparamGroupsTable h={h} />
+    </div>
+  );
+}
+
+// Shared full-detail render for one hyperparameter snapshot — used both for
+// the current-value table above and each expanded entry in the change-history
+// timeline below, since both are the same 33-field SubnetHyperparameters shape.
+function HyperparamGroupsTable({ h }: { h: SubnetHyperparameters }) {
+  return (
+    <div className="space-y-6">
       {HYPERPARAM_GROUPS.map((group) => (
         <div key={group.title} className="rounded-xl border border-border bg-card">
           <div className="border-b border-border px-4 py-2.5">
@@ -1759,6 +1782,78 @@ function HyperparametersTable({ netuid }: { netuid: number }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/* ----------------------------- hyperparameters history ----------------------------- */
+
+function HyperparamsHistoryPanel({ netuid }: { netuid: number }) {
+  return (
+    <SectionAnchor
+      id="hyperparameters-history"
+      title="Hyperparameter history"
+      subtitle="Every recorded change to this subnet's consensus, economic, and governance settings, newest first."
+      info="GET /api/v1/subnets/{netuid}/hyperparameters/history — an append-only timeline of full hyperparameter snapshots, one entry per detected change. Forward-only: rows only exist from when this tier started tracking, so an established subnet may show fewer entries than its full history."
+    >
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+          <HyperparamsHistoryList netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
+    </SectionAnchor>
+  );
+}
+
+function HyperparamsHistoryList({ netuid }: { netuid: number }) {
+  const { data: res } = useSuspenseQuery(subnetHyperparamsHistoryQuery(netuid));
+  const entries = res.data.entries;
+  const [expandedHash, setExpandedHash] = useState<string | null>(null);
+
+  if (entries.length === 0) {
+    return (
+      <EmptyState
+        title="No hyperparameter history yet"
+        description="This subnet has no recorded hyperparameter changes since this tier started tracking."
+      />
+    );
+  }
+
+  return (
+    <ol className="space-y-2">
+      {entries.map((entry) => {
+        const expanded = expandedHash === entry.hyperparams_hash;
+        return (
+          <li key={entry.hyperparams_hash} className="rounded-lg border border-border bg-card p-3">
+            <button
+              type="button"
+              onClick={() => setExpandedHash(expanded ? null : entry.hyperparams_hash)}
+              aria-expanded={expanded}
+              className="flex w-full flex-wrap items-baseline justify-between gap-2 text-left"
+            >
+              <span className="inline-flex items-center gap-1.5 font-display text-sm font-semibold text-ink-strong">
+                <ChevronDown
+                  aria-hidden
+                  className={classNames(
+                    "size-3.5 text-ink-muted transition-transform",
+                    expanded ? "rotate-180" : "",
+                  )}
+                />
+                {entry.observed_at ? <TimeAgo at={entry.observed_at} /> : "unknown time"}
+              </span>
+              <span className="font-mono text-[11px] text-ink-muted">
+                {entry.block_number != null ? `block #${formatNumber(entry.block_number)} · ` : ""}
+                {entry.hyperparams_hash.slice(0, 10)}
+              </span>
+            </button>
+            {expanded && entry.hyperparameters ? (
+              <div className="mt-3">
+                <HyperparamGroupsTable h={entry.hyperparameters} />
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
