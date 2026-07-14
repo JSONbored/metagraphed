@@ -420,6 +420,25 @@
         "https://api.gittensor.io/swagger"
       ],
       "url": "https://api.gittensor.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-language-weights",
+      "kind": "data-artifact",
+      "name": "Gittensor programming-language scoring weights",
+      "notes": "Public no-auth machine-readable JSON from the official SN74 Gittensor repository (entrius/gittensor), pinned to an immutable commit. Maps each programming language to the scoring weight the validators apply when evaluating miners' code contributions (e.g. per-language weight multipliers). Static data artifact documenting the subnet's language-weighting scoring parameters.",
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/entrius/gittensor",
+        "https://github.com/entrius/gittensor/blob/a5b21df92d123f9bd5fe63cea05d98c13d20fa8f/gittensor/validator/weights/programming_languages.json"
+      ],
+      "url": "https://raw.githubusercontent.com/entrius/gittensor/a5b21df92d123f9bd5fe63cea05d98c13d20fa8f/gittensor/validator/weights/programming_languages.json"
     }
   ],
   "website_url": "https://gittensor.io/"
