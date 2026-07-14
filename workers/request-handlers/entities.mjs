@@ -2466,269 +2466,120 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
   );
 }
 
+// Factory for the account-events handlers below (#5296): each GET /api/v1/accounts/{ss58}/<kind>
+// endpoint validates ?window=, resolves via the Postgres tier with a schema-stable-zeros fallback,
+// and wraps the result in the standard account envelope — identical control flow across all 7,
+// differing only in the window enum, the shaping builder, and the response artifact's URL suffix.
+function makeAccountEventHandler({ windows, defaultWindow, build, urlSuffix }) {
+  return async function handleAccountEvent(request, env, ss58, url) {
+    const validationError = validateQueryParams(url, ["window"]);
+    if (validationError) return analyticsQueryError(validationError);
+    const windowParam = url.searchParams.get("window") || defaultWindow;
+    if (!Object.hasOwn(windows, windowParam)) {
+      return analyticsQueryError({
+        parameter: "window",
+        message: unsupportedWindowMessage(windowParam, windows),
+      });
+    }
+    const { data, generatedAt } = (await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) ?? {
+      data: build([], ss58, { window: windowParam }),
+      generatedAt: null,
+    };
+    return accountEnvelopeResponse(
+      request,
+      {
+        data,
+        meta: await accountMeta(
+          env,
+          `/metagraph/accounts/${ss58}/${urlSuffix}.json`,
+          generatedAt,
+        ),
+      },
+      "short",
+    );
+  };
+}
+
 // GET /api/v1/accounts/{ss58}/stake-moves: the account's per-subnet StakeMoved footprint
 // over a 7d/30d/90d window — movement count + first/last timestamps per subnet, an HHI
 // concentration of where its re-delegation churn is focused, and the dominant subnet.
 // account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros.
-export async function handleAccountStakeMoves(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
-  if (!Object.hasOwn(ACCOUNT_STAKE_MOVES_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        ACCOUNT_STAKE_MOVES_WINDOWS,
-      ),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountStakeMoves([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/stake-moves.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountStakeMoves = makeAccountEventHandler({
+  windows: ACCOUNT_STAKE_MOVES_WINDOWS,
+  defaultWindow: DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+  build: buildAccountStakeMoves,
+  urlSuffix: "stake-moves",
+});
 
 // GET /api/v1/accounts/{ss58}/weight-setters: the account's (validator's) per-subnet WeightsSet
 // footprint over a 7d/30d window — weight-set count + first/last timestamps per subnet, an HHI
 // concentration of where its weight-setting activity is focused, and the dominant subnet.
 // account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros.
-export async function handleAccountWeightSetters(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
-  if (!Object.hasOwn(ACCOUNT_WEIGHT_SETTERS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        ACCOUNT_WEIGHT_SETTERS_WINDOWS,
-      ),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountWeightSetters([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/weight-setters.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountWeightSetters = makeAccountEventHandler({
+  windows: ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+  defaultWindow: DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+  build: buildAccountWeightSetters,
+  urlSuffix: "weight-setters",
+});
 
 // GET /api/v1/accounts/{ss58}/registrations: the account's per-subnet NeuronRegistered footprint
 // over a 7d/30d/90d window — registration count + first/last timestamps per subnet, an HHI
 // concentration of where its registration activity is focused, and the dominant subnet.
 // account_events-derived (source "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountRegistrations(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_REGISTRATION_WINDOW;
-  if (!Object.hasOwn(REGISTRATION_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, REGISTRATION_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountRegistrations([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/registrations.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountRegistrations = makeAccountEventHandler({
+  windows: REGISTRATION_WINDOWS,
+  defaultWindow: DEFAULT_REGISTRATION_WINDOW,
+  build: buildAccountRegistrations,
+  urlSuffix: "registrations",
+});
 
 // GET /api/v1/accounts/{ss58}/serving: the account's per-subnet AxonServed footprint over a
 // 7d/30d/90d window — announcement count + first/last timestamps per subnet, an HHI concentration
 // of where its serving activity is focused, and the dominant subnet. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountServing(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam = url.searchParams.get("window") || DEFAULT_SERVING_WINDOW;
-  if (!Object.hasOwn(SERVING_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, SERVING_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountServing([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/serving.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountServing = makeAccountEventHandler({
+  windows: SERVING_WINDOWS,
+  defaultWindow: DEFAULT_SERVING_WINDOW,
+  build: buildAccountServing,
+  urlSuffix: "serving",
+});
 
 // GET /api/v1/accounts/{ss58}/axon-removals: the account's per-subnet AxonInfoRemoved footprint over
 // a 7d/30d/90d window — removal count + first/last timestamps per subnet, an HHI concentration of
 // where its teardown activity is focused, and the dominant subnet. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountAxonRemovals(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_AXON_REMOVAL_WINDOW;
-  if (!Object.hasOwn(AXON_REMOVAL_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, AXON_REMOVAL_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountAxonRemovals([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/axon-removals.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountAxonRemovals = makeAccountEventHandler({
+  windows: AXON_REMOVAL_WINDOWS,
+  defaultWindow: DEFAULT_AXON_REMOVAL_WINDOW,
+  build: buildAccountAxonRemovals,
+  urlSuffix: "axon-removals",
+});
 
 // GET /api/v1/accounts/{ss58}/prometheus: the account's per-subnet PrometheusServed footprint over a
 // 7d/30d/90d window — announcement count + first/last timestamps per subnet, an HHI concentration of
 // where its telemetry activity is focused, and the dominant subnet. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountPrometheus(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_PROMETHEUS_WINDOW;
-  if (!Object.hasOwn(PROMETHEUS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, PROMETHEUS_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountPrometheus([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/prometheus.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountPrometheus = makeAccountEventHandler({
+  windows: PROMETHEUS_WINDOWS,
+  defaultWindow: DEFAULT_PROMETHEUS_WINDOW,
+  build: buildAccountPrometheus,
+  urlSuffix: "prometheus",
+});
 
 // GET /api/v1/accounts/{ss58}/deregistrations: the account's per-subnet NeuronDeregistered footprint
 // over a 7d/30d/90d window — eviction count + first/last timestamps per subnet, an HHI concentration
 // of where its deregistration activity is focused, and the dominant subnet. account_events-derived
 // (source "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountDeregistrations(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_DEREGISTRATION_WINDOW;
-  if (!Object.hasOwn(DEREGISTRATION_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, DEREGISTRATION_WINDOWS),
-    });
-  }
-  const { data, generatedAt } = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAccountDeregistrations([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
-  return accountEnvelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/deregistrations.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
-}
+export const handleAccountDeregistrations = makeAccountEventHandler({
+  windows: DEREGISTRATION_WINDOWS,
+  defaultWindow: DEFAULT_DEREGISTRATION_WINDOW,
+  build: buildAccountDeregistrations,
+  urlSuffix: "deregistrations",
+});
 
 // GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates
 // (account_events, matched by hotkey OR coldkey) joined to current registrations
