@@ -21,11 +21,7 @@
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
-import {
-  DAY_MS,
-  resolveClientIp,
-  SS58_ADDRESS_PATTERN,
-} from "../workers/config.mjs";
+import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
@@ -201,9 +197,9 @@ import {
   loadHealthHistory,
 } from "./health-history-mcp.mjs";
 import {
-  loadChainConcentration,
-  loadSubnetConcentration,
-  loadSubnetConcentrationHistory,
+  buildChainConcentration,
+  buildConcentration,
+  buildConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
 import {
@@ -220,7 +216,7 @@ import {
   DEFAULT_CHAIN_TRANSFER_WINDOW,
 } from "./chain-transfers.mjs";
 import {
-  loadChainTurnover,
+  buildChainTurnover,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
   CHAIN_TURNOVER_WINDOWS,
@@ -355,10 +351,10 @@ import {
   resolveLiveHealth,
 } from "./health-serving.mjs";
 import {
-  loadNeuron,
-  loadSubnetMetagraph,
-  loadSubnetValidators,
-  loadGlobalValidators,
+  buildNeuronDetail,
+  buildSubnetMetagraph,
+  buildSubnetValidators,
+  buildGlobalValidators,
   GLOBAL_VALIDATOR_SORTS,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -428,25 +424,27 @@ import { loadAccountPortfolio } from "./account-portfolio.mjs";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
-  MAX_HISTORY_POINTS,
-  NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
-import { loadSubnetTurnover } from "./turnover.mjs";
 import {
-  loadSubnetYield,
-  loadSubnetYieldHistory,
+  buildTurnover,
+  buildTurnoverChanges,
+  turnoverChangeDetail,
+} from "./turnover.mjs";
+import {
+  buildSubnetYield,
+  buildSubnetYieldHistory,
   parseSubnetYieldHistoryWindow,
 } from "./subnet-yield.mjs";
 import {
-  loadSubnetPerformance,
-  loadSubnetPerformanceHistory,
+  buildSubnetPerformance,
+  buildSubnetPerformanceHistory,
   parseSubnetPerformanceHistoryWindow,
 } from "./subnet-performance.mjs";
-import { loadChainPerformance } from "./chain-performance.mjs";
-import { loadChainYield } from "./chain-yield.mjs";
-import { loadBlocksSummary } from "./blocks-summary.mjs";
+import { buildChainPerformance } from "./chain-performance.mjs";
+import { buildChainYield } from "./chain-yield.mjs";
+import { buildBlocksSummary } from "./blocks-summary.mjs";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -1192,41 +1190,21 @@ async function mcpObservedAt(ctx) {
 
 // Resolve + validate a history window arg (7d|30d|90d|1y|all) the way the REST
 // /history routes do, mapping a bad value to a clean tool error. Returns the
-// parsed {label, days} (days is null for the unbounded `all` window).
+// parsed {label} (the REST routes drop `days` the same way, #5047 below).
 function requireHistoryWindow(args) {
-  const { label, days, error } = parseHistoryWindow(args?.window);
+  const { label, error } = parseHistoryWindow(args?.window);
   if (error) {
     throw toolError("invalid_params", error.message);
   }
-  return { label, days };
+  return { label };
 }
 
-// Day-cutoff (YYYY-MM-DD) for a window's `days`, matching the REST handlers'
-// JS-computed cutoff bound against the dated `snapshot_date` column.
-function historyCutoff(days) {
-  return new Date(Date.now() - days * DAY_MS).toISOString().slice(0, 10);
-}
-
-// One subnet's per-day aggregate history — mirrors handleSubnetHistory: a GROUP
-// BY snapshot_date read over the neuron_daily rollup, newest first, bounded by
-// MAX_HISTORY_POINTS, shaped by buildSubnetHistory. A cold/absent D1 yields the
-// schema-stable point_count:0 payload (never throws).
-async function loadSubnetHistory(ctx, netuid, { label, days }) {
-  const run = mcpD1Runner(ctx);
-  const params = [netuid];
-  let sql =
-    "SELECT snapshot_date, COUNT(*) AS neuron_count, " +
-    "SUM(validator_permit) AS validator_count, " +
-    "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
-    "FROM neuron_daily WHERE netuid = ?";
-  if (days != null) {
-    sql += " AND snapshot_date >= ?";
-    params.push(historyCutoff(days));
-  }
-  sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
-  params.push(MAX_HISTORY_POINTS);
-  const rows = await run(sql, params);
-  return buildSubnetHistory(rows, netuid, { window: label });
+// One subnet's per-day aggregate history — mirrors handleSubnetHistory. #5047 D1
+// retirement: neuron_daily's D1 write path is retired (#4772) and the table is
+// dropped in production, so a D1 query here would always miss; buildSubnetHistory
+// with no rows yields the schema-stable point_count:0 payload (never throws).
+function loadSubnetHistory(netuid, { label }) {
+  return buildSubnetHistory([], netuid, { window: label });
 }
 
 // Mirrors REST's handleSubnetIdentityHistory: try Postgres first, fall back
@@ -1253,21 +1231,12 @@ async function loadSubnetIdentityHistoryTool(
   );
 }
 
-// One UID's per-day time series — mirrors handleNeuronHistory: neuron_daily rows
-// for (netuid, uid), newest first, bounded, shaped by buildNeuronHistory. Cold D1
-// → point_count:0.
-async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
-  const run = mcpD1Runner(ctx);
-  const params = [netuid, uid];
-  let sql = `SELECT ${NEURON_DAILY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND uid = ?`;
-  if (days != null) {
-    sql += " AND snapshot_date >= ?";
-    params.push(historyCutoff(days));
-  }
-  sql += " ORDER BY snapshot_date DESC LIMIT ?";
-  params.push(MAX_HISTORY_POINTS);
-  const rows = await run(sql, params);
-  return buildNeuronHistory(rows, netuid, uid, { window: label });
+// One UID's per-day time series — mirrors handleNeuronHistory. #5047 D1
+// retirement: neuron_daily's D1 write path is retired (#4772) and the table is
+// dropped in production, so a D1 query here would always miss; buildNeuronHistory
+// with no rows yields the schema-stable point_count:0 payload (never throws).
+function loadNeuronHistory(netuid, uid, { label }) {
+  return buildNeuronHistory([], netuid, uid, { window: label });
 }
 
 // One provider's detail + (optionally) its endpoints, mirroring GET
@@ -2504,9 +2473,11 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
-      return loadSubnetConcentration(mcpD1Runner(ctx), netuid);
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return buildConcentration([], netuid);
     },
   },
   {
@@ -2529,9 +2500,11 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
-      return loadSubnetPerformance(mcpD1Runner(ctx), netuid);
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return buildSubnetPerformance([], netuid);
     },
   },
   {
@@ -2550,8 +2523,10 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadChainConcentration(mcpD1Runner(ctx));
+    async handler() {
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return buildChainConcentration([]);
     },
   },
   {
@@ -2571,8 +2546,10 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadChainPerformance(mcpD1Runner(ctx));
+    async handler() {
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return buildChainPerformance([]);
     },
   },
   {
@@ -2634,8 +2611,10 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadChainYield(mcpD1Runner(ctx));
+    async handler() {
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return buildChainYield([]);
     },
   },
   {
@@ -2668,7 +2647,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
       if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)) {
@@ -2682,8 +2661,12 @@ export const MCP_TOOLS = [
         CHAIN_TURNOVER_LIMIT_DEFAULT,
         CHAIN_TURNOVER_LIMIT_MAX,
       );
-      return loadChainTurnover(mcpD1Runner(ctx), {
-        windowLabel: window,
+      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+      // the table is dropped in production, so a D1 query here would always miss.
+      return buildChainTurnover([], {
+        window,
+        startDate: null,
+        endDate: null,
         limit,
       });
     },
@@ -3116,8 +3099,10 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
-      return loadBlocksSummary(mcpD1Runner(ctx));
+    async handler() {
+      // #5047 D1 retirement: blocks' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return buildBlocksSummary([]);
     },
   },
   {
@@ -3142,15 +3127,17 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const parsed = parseConcentrationHistoryWindow(args?.window);
       if (parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      return loadSubnetConcentrationHistory(mcpD1Runner(ctx), netuid, {
-        windowLabel: parsed.label,
-        windowDays: parsed.days,
+      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+      // the table is dropped in production, so a D1 query here would always miss.
+      return buildConcentrationHistory([], netuid, {
+        window: parsed.label,
+        capped: false,
       });
     },
   },
@@ -3185,14 +3172,20 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
-      const { label, days } = requireHistoryWindow(args);
-      return loadSubnetTurnover(mcpD1Runner(ctx), netuid, {
-        windowLabel: label,
-        windowDays: days,
-        includeChanges: optionalBoolean(args, "changes"),
-      });
+      const { label } = requireHistoryWindow(args);
+      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+      // the table is dropped in production, so a D1 query here would always miss.
+      const turnoverOptions = { window: label, startDate: null, endDate: null };
+      return optionalBoolean(args, "changes")
+        ? {
+            ...buildTurnover([], netuid, turnoverOptions),
+            changes: turnoverChangeDetail(
+              buildTurnoverChanges([], netuid, turnoverOptions),
+            ),
+          }
+        : buildTurnover([], netuid, turnoverOptions);
     },
   },
   {
@@ -3214,9 +3207,11 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
-      return loadSubnetYield(mcpD1Runner(ctx), netuid);
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return buildSubnetYield([], netuid);
     },
   },
   {
@@ -3242,16 +3237,17 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetYieldHistoryWindow(args?.window);
       if (args?.window !== undefined && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      const { label, days } = parsed;
-      return await loadSubnetYieldHistory(mcpD1Runner(ctx), netuid, {
-        windowLabel: label,
-        windowDays: days,
+      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+      // the table is dropped in production, so a D1 query here would always miss.
+      return buildSubnetYieldHistory([], netuid, {
+        window: parsed.label,
+        capped: false,
       });
     },
   },
@@ -3743,16 +3739,17 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetPerformanceHistoryWindow(args?.window);
       if (args?.window !== undefined && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      const { label, days } = parsed;
-      return await loadSubnetPerformanceHistory(mcpD1Runner(ctx), netuid, {
-        windowLabel: label,
-        windowDays: days,
+      // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+      // the table is dropped in production, so a D1 query here would always miss.
+      return buildSubnetPerformanceHistory([], netuid, {
+        window: parsed.label,
+        capped: false,
       });
     },
   },
@@ -4039,10 +4036,14 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
-      const validatorsOnly = optionalBoolean(args, "validator_permit");
-      return loadSubnetMetagraph(mcpD1Runner(ctx), netuid, { validatorsOnly });
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      // validator_permit is still validated (bad input still errors) even
+      // though an empty snapshot makes the filter itself moot.
+      optionalBoolean(args, "validator_permit");
+      return buildSubnetMetagraph([], netuid);
     },
   },
   {
@@ -4076,11 +4077,13 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const limit = optionalPositiveInt(args, "limit");
       const minStakeTao = optionalNonNegativeNumber(args, "min_stake_tao");
-      const data = await loadSubnetValidators(mcpD1Runner(ctx), netuid);
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      const data = buildSubnetValidators([], netuid);
       if (limit === null && minStakeTao === null) {
         return data;
       }
@@ -4127,7 +4130,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const sort =
         optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
         DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -4136,7 +4139,9 @@ export const MCP_TOOLS = [
         GLOBAL_VALIDATOR_LIMIT_DEFAULT,
         GLOBAL_VALIDATOR_LIMIT_MAX,
       );
-      return loadGlobalValidators(mcpD1Runner(ctx), { sort, limit });
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      return buildGlobalValidators([], { sort, limit });
     },
   },
   {
@@ -4160,10 +4165,14 @@ export const MCP_TOOLS = [
       required: ["netuid", "uid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
-      const uid = requireNonNegativeInt(args, "uid");
-      return loadNeuron(mcpD1Runner(ctx), netuid, uid);
+      // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+      // table is dropped in production, so a D1 query here would always miss.
+      // uid is still validated even though buildNeuronDetail's null-row miss
+      // doesn't depend on it.
+      requireNonNegativeInt(args, "uid");
+      return buildNeuronDetail(null, netuid);
     },
   },
   {
@@ -4188,9 +4197,9 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
-      return loadSubnetHistory(ctx, netuid, requireHistoryWindow(args));
+      return loadSubnetHistory(netuid, requireHistoryWindow(args));
     },
   },
   {
@@ -4264,10 +4273,10 @@ export const MCP_TOOLS = [
       required: ["netuid", "uid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args) {
       const netuid = requireNetuid(args);
       const uid = requireNonNegativeInt(args, "uid");
-      return loadNeuronHistory(ctx, netuid, uid, requireHistoryWindow(args));
+      return loadNeuronHistory(netuid, uid, requireHistoryWindow(args));
     },
   },
   {
