@@ -10,8 +10,44 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 117,
+  "surface_count": 119,
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subtensor-rpc",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "JSON-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "metagraphed",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "metagraphed-fullnode-rpc",
+      "surface_key": "srf-78ffc33642323545",
+      "url": "https://fullnode-rpc.metagraph.sh"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "kind": "subtensor-wss",
+      "netuid": 0,
+      "probe": {
+        "expect": "json",
+        "method": "WSS-RPC",
+        "timeout_ms": 12000
+      },
+      "provider": "metagraphed",
+      "public_safe": true,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "metagraphed-fullnode-wss",
+      "surface_key": "srf-8e0ed44b4e9373b8",
+      "url": "wss://fullnode-rpc.metagraph.sh"
+    },
     {
       "auth_required": false,
       "authority": "provider-claimed",

@@ -430,4 +430,12 @@ export const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
   "wss://bittensor-finney.api.onfinality.io",
   "wss://entrypoint-finney.opentensor.ai",
   "wss://lite.chain.opentensor.ai",
+  // First-party pruned RPC node (#4965), behind a Cloudflare Tunnel --
+  // --rpc-methods=safe + node-level rate limiting at the origin, Cloudflare's
+  // own edge protection in front of that. Both HTTPS and WSS confirmed live
+  // 2026-07-14 (WSS via a real 101 Switching Protocols handshake, same bar as
+  // the testnet endpoints above), and an unsafe method (author_insertKey)
+  // confirmed rejected through the public URL, not just the private one.
+  "https://fullnode-rpc.metagraph.sh",
+  "wss://fullnode-rpc.metagraph.sh",
 ]);
