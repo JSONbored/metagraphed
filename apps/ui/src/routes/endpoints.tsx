@@ -147,6 +147,22 @@ function EndpointsPage() {
         description="A load-balanced reverse proxy for Bittensor RPC, plus the registry of callable Subtensor and subnet endpoints behind it."
       />
       <div className="space-y-section">
+        {/* Endpoint KPIs stay visible above the tabs so the tab bar has context
+            and doesn't float alone under the hero. */}
+        <QueryErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+              </div>
+            }
+          >
+            <EndpointsStatStrip />
+          </Suspense>
+        </QueryErrorBoundary>
         <div
           className="flex flex-wrap gap-2 border-b border-border pb-3"
           role="tablist"
@@ -184,20 +200,6 @@ function EndpointsPage() {
                 </Suspense>
               </QueryErrorBoundary>
             </section>
-            <QueryErrorBoundary>
-              <Suspense
-                fallback={
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <Skeleton className="h-20" />
-                    <Skeleton className="h-20" />
-                    <Skeleton className="h-20" />
-                    <Skeleton className="h-20" />
-                  </div>
-                }
-              >
-                <EndpointsStatStrip />
-              </Suspense>
-            </QueryErrorBoundary>
           </>
         )}
 
