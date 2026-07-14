@@ -135,6 +135,55 @@ test("rejects a missing or wrong token (401)", async () => {
   expect(missing.status).toBe(401);
 });
 
+// #5548: gated by REGISTRY_SYNC_RATE_LIMITER (a no-op when the binding is
+// absent). Mirrors the webhook-subscription/alert-trigger-create suites:
+// within-limit success, over-limit 429 with the standard header family, and
+// unbound-binding no-op (already covered implicitly by every test above,
+// which uses baseEnv() with no limiter bound).
+const allowLimiter = () => ({ limit: vi.fn(async () => ({ success: true })) });
+const rejectLimiter = () => ({
+  limit: vi.fn(async () => ({ success: false })),
+});
+
+test("rate limiting: 429 with the rate-limit header family when the limiter rejects", async () => {
+  const limiter = rejectLimiter();
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    baseEnv({ REGISTRY_SYNC_RATE_LIMITER: limiter }),
+    {},
+  );
+  expect(res.status).toBe(429);
+  expect((await res.json()).error).toMatch(/too many registry sync requests/);
+  expect(res.headers.get("retry-after")).toBe("60");
+  expect(res.headers.get("x-ratelimit-limit")).toBe("30");
+  expect(res.headers.get("x-ratelimit-policy")).toBe("30;w=60");
+  expect(res.headers.get("x-ratelimit-remaining")).toBe("0");
+  expect(limiter.limit.mock.calls.length).toBe(1);
+  expect(sqlCalls.length).toBe(0);
+});
+
+test("rate limiting: proceeds normally when the limiter allows the request", async () => {
+  const limiter = allowLimiter();
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    baseEnv({ REGISTRY_SYNC_RATE_LIMITER: limiter }),
+    {},
+  );
+  expect(res.status).toBe(200);
+  expect(limiter.limit.mock.calls.length).toBe(1);
+});
+
+test("rate limiting: rejects an invalid token before consulting the limiter", async () => {
+  const limiter = rejectLimiter();
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: "wrong" }),
+    baseEnv({ REGISTRY_SYNC_RATE_LIMITER: limiter }),
+    {},
+  );
+  expect(res.status).toBe(401);
+  expect(limiter.limit.mock.calls.length).toBe(0);
+});
+
 test("returns 503 when the HYPERDRIVE binding is unavailable", async () => {
   const res = await worker.fetch(
     post({ providers: [provider()] }, { secret: SECRET }),
