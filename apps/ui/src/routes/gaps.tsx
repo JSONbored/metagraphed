@@ -400,6 +400,7 @@ function MissingKindsAtAGlance() {
       <ul className="rounded-xl border border-border bg-card divide-y divide-border">
         {counts.map(([k, n]) => {
           const isActive = activeMissing.has(k);
+          const pct = Math.max(2, Math.round((n / max) * 100));
           return (
             <li key={k} className={isActive ? "bg-primary-soft/40" : undefined}>
               <button
@@ -439,7 +440,7 @@ function MissingKindsAtAGlance() {
                     "h-2 rounded-full transition-colors",
                     isActive ? "bg-accent" : "bg-health-warn/70",
                   )}
-                  style={{ width: `${(n / max) * 100}%` }}
+                  style={{ width: `${pct}%` }}
                   aria-hidden
                 />
                 <span className="font-mono text-[11px] tabular-nums text-ink-muted">

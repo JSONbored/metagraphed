@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { Suspense, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
@@ -79,13 +79,13 @@ export const Route = createFileRoute("/status")({
       {
         name: "description",
         content:
-          "Live system status for the metagraphed registry: overall operational health and recent cross-subnet incidents.",
+          "Public system status for the metagraphed registry: plain-language uptime, recent incidents, and probe history.",
       },
       { property: "og:title", content: "Status — Metagraphed" },
       {
         property: "og:description",
         content:
-          "Live system status for the metagraphed registry: overall operational health and recent cross-subnet incidents.",
+          "Public system status for the metagraphed registry: plain-language uptime, recent incidents, and probe history.",
       },
     ],
   }),
@@ -98,9 +98,18 @@ function StatusPage() {
   return (
     <AppShell>
       <PageHeading
-        eyebrow="Status"
+        eyebrow="Public status"
         title="System status"
-        description="Live operational status across every monitored subnet surface. Probe-derived — user submissions cannot set health or incident state."
+        description="Plain-language uptime for everyone — overall verdict, the global incident ledger, and probe history. Probe-derived only; submissions cannot set health. For the ops drill-down (matrix, mosaic, live probes), use Health."
+        right={
+          <Link
+            to="/health"
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-ink-muted hover:border-ink/30 hover:text-ink-strong min-h-9"
+          >
+            Ops health dashboard
+            <ArrowUpRight className="size-3" aria-hidden="true" />
+          </Link>
+        }
       />
       <div className="space-y-section">
         <QueryErrorBoundary>

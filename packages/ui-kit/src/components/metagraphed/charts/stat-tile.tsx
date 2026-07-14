@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { classNames } from "@/lib/format";
+import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
 
 interface Props {
   icon?: LucideIcon;
@@ -17,6 +18,12 @@ interface Props {
    * Defaults to true, unchanged for every other consumer.
    */
   truncate?: boolean;
+  /**
+   * Optional hover/focus explainer shown as an info icon next to the eyebrow —
+   * what the statistic means and what a healthy value looks like. Matches the
+   * HeroStatCell tooltip pattern.
+   */
+  tooltip?: string;
 }
 
 /**
@@ -32,6 +39,7 @@ export function StatTile({
   tone = "default",
   className,
   truncate = true,
+  tooltip,
 }: Props) {
   return (
     <div
@@ -63,13 +71,13 @@ export function StatTile({
         />
       ) : null}
       <div className="min-w-0 flex-1">
-        <div
-          className={classNames(
-            "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted",
-            truncate ? "truncate" : "leading-tight",
-          )}
-        >
-          {eyebrow}
+        <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <span className={truncate ? "truncate" : "leading-tight"}>
+            {eyebrow}
+          </span>
+          {tooltip ? (
+            <InfoTooltip label={tooltip} className="shrink-0" />
+          ) : null}
         </div>
         <div
           className={classNames(

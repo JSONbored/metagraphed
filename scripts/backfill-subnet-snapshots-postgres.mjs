@@ -66,6 +66,10 @@ const COLUMNS = [
   "total_stake_tao",
   "alpha_price_tao",
   "emission_share",
+  "tao_in_pool_tao",
+  "alpha_in_pool",
+  "alpha_out_pool",
+  "subnet_volume_tao",
 ];
 const INTEGER_COLUMNS = new Set([
   "netuid",
@@ -82,6 +86,10 @@ const REAL_COLUMNS = new Set([
   "total_stake_tao",
   "alpha_price_tao",
   "emission_share",
+  "tao_in_pool_tao",
+  "alpha_in_pool",
+  "alpha_out_pool",
+  "subnet_volume_tao",
 ]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const UPDATE_COLUMNS = COLUMNS.filter(

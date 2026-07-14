@@ -96,7 +96,13 @@ const ROUTE_INDEX: Array<{
     icon: Network,
     scope: "route",
   },
-  { label: "Health", to: "/health", hint: "Global probe status", icon: Activity, scope: "route" },
+  {
+    label: "Health",
+    to: "/health",
+    hint: "Ops matrix, mosaic & freshness",
+    icon: Activity,
+    scope: "route",
+  },
   {
     label: "Status",
     to: "/status",

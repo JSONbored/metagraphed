@@ -225,6 +225,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons D1 tier. Root (netuid 0) stake is not covered. */
+        get: operations["accountPositions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/prometheus": {
         parameters: {
             query?: never;
@@ -2923,6 +2940,21 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from AccountPortfolioArtifact's hotkey-scoped view (a pure delegator shows near-zero there since its stake lives on someone ELSE's hotkey row). Sourced from nominator_positions, a share-fraction ledger populated by the same SubtensorModule::Alpha scan as validator_nominator_counts (#2549), joined against live neurons stake_tao. Served live at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is NOT covered -- root has no alpha pool (#2550) and Alpha carries no root data at all, so an account that only holds root-delegated stake shows an empty positions[] here, not because it holds nothing but because this source can't see it yet. */
+        AccountPositionsArtifact: {
+            /**
+             * Format: date-time
+             * @description The most recent nominator_positions.captured_at across this account's positions -- when the source Alpha scan last observed them, not when neurons.stake_tao (used for the stake_tao join) last refreshed.
+             */
+            captured_at: string | null;
+            position_count: number;
+            positions: components["schemas"]["NominatorPosition"][];
+            schema_version: number;
+            ss58: string;
+            total_stake_tao: number;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description One account's Prometheus-endpoint serving footprint per subnet over a recent window, from the account_events PrometheusServed stream: per-subnet announcement count with the first/last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet. Operational activity (announcing a Prometheus telemetry endpoint) — the telemetry sibling of /accounts/{ss58}/serving and the account-level companion to /api/v1/chain/prometheus and /api/v1/subnets/{netuid}/prometheus, orthogonal to /accounts/{ss58}/subnets (registration state). */
         AccountPrometheusArtifact: {
             address: string;
@@ -5351,6 +5383,15 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One (hotkey, netuid) delegation this account holds, reconstructed from nominator_positions (#5233) joined against the live neurons stake_tao for that (hotkey, netuid). */
+        NominatorPosition: {
+            hotkey: string;
+            netuid: number;
+            /** @description This account's share of the hotkey's total alpha-pool shares on this subnet (0..1) -- a dimensionless ratio, not a TAO amount. Every delegator's share_fraction for the same (hotkey, netuid) sums to exactly 1.0. */
+            share_fraction: number;
+            /** @description share_fraction * the hotkey's current stake_tao for this netuid. Derived at serve time from the live neurons snapshot, so it moves as that snapshot refreshes even between nominator_positions scans. */
+            stake_tao: number;
+        };
         OpenApiArtifact: {
             components: {
                 [key: string]: unknown;
@@ -7283,6 +7324,7 @@ export interface components {
         SubnetStatus: "active" | "inactive" | "unknown";
         SubnetSurfacesArtifact: components["schemas"]["SurfacesArtifact"];
         SubnetTrajectoryArtifact: {
+            /** @description Windowed deltas (7d/30d) between the latest point and the point at or before that many days prior. tao_in_pool_tao/alpha_in_pool/alpha_out_pool deltas are the net TAO/alpha flow into or out of the pool over the window (#2552) — positive means net inflow. */
             deltas: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -7291,13 +7333,21 @@ export interface components {
             netuid: number;
             point_count: number;
             points: ({
+                /** @description Alpha reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative. */
+                alpha_in_pool?: number | null;
+                /** @description Alpha issued/staked out of the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative. */
+                alpha_out_pool?: number | null;
                 alpha_price_tao?: number | null;
                 completeness_score?: number | null;
                 date: string;
                 emission_share?: number | null;
                 endpoint_count?: number | null;
                 miner_count?: number | null;
+                /** @description Cumulative subnet trading volume in TAO as reported by the chain at this snapshot (#2552). */
+                subnet_volume_tao?: number | null;
                 surface_count?: number | null;
+                /** @description TAO reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative — see deltas for net flow. */
+                tao_in_pool_tao?: number | null;
                 total_stake_tao?: number | null;
                 validator_count?: number | null;
             } & {
@@ -9432,6 +9482,119 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountPortfolioArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountPositions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "position_count": 1,
+                     *         "positions": [
+                     *           {
+                     *             "hotkey": "example",
+                     *             "netuid": 7,
+                     *             "share_fraction": 0.5,
+                     *             "stake_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *         "total_stake_tao": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountPositionsArtifact"];
                     };
                 };
             };
@@ -26929,8 +27092,8 @@ export interface operations {
                         data?: components["schemas"]["SubnetTrajectoryArtifact"];
                     };
                     /**
-                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share
-                     *     2026-06-01,35,1,1,8,60,90,0.01,0.02
+                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao
+                     *     2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45
                      */
                     "text/csv": string;
                 };

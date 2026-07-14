@@ -1,0 +1,139 @@
+{
+  "ok": true,
+  "schema_version": 1,
+  "data": {
+    "schema_version": 1,
+    "sort": "subnet_count",
+    "limit": 20,
+    "validator_count": 3,
+    "captured_at": "2026-07-14T08:00:00.000Z",
+    "block_number": 4200000,
+    "validators": [
+      {
+        "hotkey": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+        "featured": true,
+        "coldkey": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+        "coldkey_identity": {
+          "has_identity": true,
+          "name": "Tensor Labs",
+          "url": "https://tensorlabs.example",
+          "github": "https://github.com/tensorlabs",
+          "image": "https://avatars.githubusercontent.com/u/1?v=4",
+          "discord": null,
+          "description": "Multi-subnet validator operator",
+          "additional": null,
+          "captured_at": "2026-07-14T07:00:00.000Z"
+        },
+        "coldkey_count": 1,
+        "subnet_count": 12,
+        "uid_count": 14,
+        "take": 0.18,
+        "total_stake_tao": 842000,
+        "root_stake_tao": 120000,
+        "alpha_stake_tao": 722000,
+        "total_emission_tao": 4.82,
+        "nominator_count": 2847,
+        "avg_validator_trust": 0.991,
+        "max_validator_trust": 1,
+        "stake_dominance": 0.042,
+        "latest_captured_at": "2026-07-14T08:00:00.000Z",
+        "latest_block_number": 4200000,
+        "subnets": [
+          {
+            "netuid": 1,
+            "uid": 42,
+            "stake_tao": 210000,
+            "emission_tao": 1.2,
+            "validator_trust": 1
+          },
+          {
+            "netuid": 8,
+            "uid": 7,
+            "stake_tao": 98000,
+            "emission_tao": 0.6,
+            "validator_trust": 0.99
+          }
+        ]
+      },
+      {
+        "hotkey": "5DAAnrj7VHTznn2AWBemMuyVRZyr4MfPL3BWrMVCyYvsJ5mq",
+        "featured": false,
+        "coldkey": "5DAAnrj7VHTznn2AWBemMuyVRZyr4MfPL3BWrMVCyYvsJ5mq",
+        "coldkey_identity": {
+          "has_identity": true,
+          "name": "NorthStake",
+          "url": null,
+          "github": null,
+          "image": null,
+          "discord": null,
+          "description": null,
+          "additional": null,
+          "captured_at": "2026-07-14T07:00:00.000Z"
+        },
+        "coldkey_count": 1,
+        "subnet_count": 8,
+        "uid_count": 9,
+        "take": 0.09,
+        "total_stake_tao": 412000,
+        "root_stake_tao": 80000,
+        "alpha_stake_tao": 332000,
+        "total_emission_tao": 2.1,
+        "nominator_count": 1204,
+        "avg_validator_trust": 0.978,
+        "max_validator_trust": 0.995,
+        "stake_dominance": 0.021,
+        "latest_captured_at": "2026-07-14T08:00:00.000Z",
+        "latest_block_number": 4200000,
+        "subnets": [
+          {
+            "netuid": 3,
+            "uid": 12,
+            "stake_tao": 88000,
+            "emission_tao": 0.4,
+            "validator_trust": 0.98
+          }
+        ]
+      },
+      {
+        "hotkey": "5GNJqTPyNqANBkUQNUqj8Bc6Dt3NGPMEZ98HkTUbc6fe9",
+        "featured": false,
+        "coldkey": "5GNJqTPyNqANBkUQNUqj8Bc6Dt3NGPMEZ98HkTUbc6fe9",
+        "coldkey_identity": {
+          "has_identity": false,
+          "name": null,
+          "url": null,
+          "github": null,
+          "image": null,
+          "discord": null,
+          "description": null,
+          "additional": null,
+          "captured_at": null
+        },
+        "coldkey_count": 1,
+        "subnet_count": 5,
+        "uid_count": 6,
+        "take": 0.15,
+        "total_stake_tao": 198000,
+        "root_stake_tao": 40000,
+        "alpha_stake_tao": 158000,
+        "total_emission_tao": 0.95,
+        "nominator_count": 412,
+        "avg_validator_trust": 0.962,
+        "max_validator_trust": 0.98,
+        "stake_dominance": 0.01,
+        "latest_captured_at": "2026-07-14T08:00:00.000Z",
+        "latest_block_number": 4200000,
+        "subnets": [
+          {
+            "netuid": 19,
+            "uid": 3,
+            "stake_tao": 42000,
+            "emission_tao": 0.2,
+            "validator_trust": 0.96
+          }
+        ]
+      }
+    ]
+  },
+  "meta": { "generated_at": "2026-07-14T08:00:00.000Z" }
+}

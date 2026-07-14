@@ -680,13 +680,30 @@
                 "miner_count": { "type": ["integer", "null"] },
                 "total_stake_tao": { "type": ["number", "null"] },
                 "alpha_price_tao": { "type": ["number", "null"] },
-                "emission_share": { "type": ["number", "null"] }
+                "emission_share": { "type": ["number", "null"] },
+                "tao_in_pool_tao": {
+                  "type": ["number", "null"],
+                  "description": "TAO reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative — see deltas for net flow."
+                },
+                "alpha_in_pool": {
+                  "type": ["number", "null"],
+                  "description": "Alpha reserve in the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative."
+                },
+                "alpha_out_pool": {
+                  "type": ["number", "null"],
+                  "description": "Alpha issued/staked out of the subnet's AMM pool at this snapshot (#2552). Point-in-time, not cumulative."
+                },
+                "subnet_volume_tao": {
+                  "type": ["number", "null"],
+                  "description": "Cumulative subnet trading volume in TAO as reported by the chain at this snapshot (#2552)."
+                }
               },
               "additionalProperties": true
             }
           },
           "deltas": {
             "type": "object",
+            "description": "Windowed deltas (7d/30d) between the latest point and the point at or before that many days prior. tao_in_pool_tao/alpha_in_pool/alpha_out_pool deltas are the net TAO/alpha flow into or out of the pool over the window (#2552) — positive means net inflow.",
             "additionalProperties": {
               "type": ["object", "null"],
               "additionalProperties": true

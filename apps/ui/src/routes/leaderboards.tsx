@@ -179,7 +179,49 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
               ) : null}
             </span>
           </div>
-          <div className="overflow-x-auto">
+          {/* < md: the 5-column table clips its trailing columns behind an
+              undiscoverable horizontal scroll, so narrow viewports get a
+              stacked card per subnet instead — mirrors the cards/desktop-only
+              split the explorer leaderboards use for the same static boards. */}
+          <div className="md:hidden space-y-2 p-3">
+            {board.subnets.map((row, i) => {
+              const subnet = subnetById.get(row.netuid);
+              const name = subnet?.name ?? `Subnet ${row.netuid}`;
+              return (
+                <div key={row.netuid} className="rounded border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: row.netuid }}
+                      className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
+                    >
+                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                        {i + 1}
+                      </span>
+                      <BrandIcon
+                        size={18}
+                        name={name}
+                        fallback={row.netuid}
+                        netuid={row.netuid}
+                        subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
+                      />
+                      <span className="truncate text-sm text-ink-strong">{name}</span>
+                    </Link>
+                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                      {row.sets_per_setter != null
+                        ? `${row.sets_per_setter.toFixed(2)} / setter`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                    <span>{formatNumber(row.weight_sets)} weight-sets</span>
+                    <span>{formatNumber(row.distinct_setters)} setters</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr>
@@ -302,7 +344,46 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
               ) : null}
             </span>
           </div>
-          <div className="overflow-x-auto">
+          {/* < md: card fallback per subnet (see the weight-setting board). */}
+          <div className="md:hidden space-y-2 p-3">
+            {board.subnets.map((row, i) => {
+              const subnet = subnetById.get(row.netuid);
+              const name = subnet?.name ?? `Subnet ${row.netuid}`;
+              return (
+                <div key={row.netuid} className="rounded border border-border bg-card p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link
+                      to="/subnets/$netuid"
+                      params={{ netuid: row.netuid }}
+                      className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
+                    >
+                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                        {i + 1}
+                      </span>
+                      <BrandIcon
+                        size={18}
+                        name={name}
+                        fallback={row.netuid}
+                        netuid={row.netuid}
+                        subnetSlug={typeof subnet?.slug === "string" ? subnet.slug : undefined}
+                      />
+                      <span className="truncate text-sm text-ink-strong">{name}</span>
+                    </Link>
+                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                      {row.deregistrations_per_hotkey != null
+                        ? `${row.deregistrations_per_hotkey.toFixed(2)} / hotkey`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                    <span>{formatNumber(row.deregistrations)} deregistrations</span>
+                    <span>{formatNumber(row.distinct_deregistered_hotkeys)} hotkeys</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr>

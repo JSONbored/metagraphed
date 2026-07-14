@@ -1980,16 +1980,35 @@ export interface GlobalValidatorSubnet {
   validator_trust: number | null;
 }
 
+/** Self-declared on-chain identity for a validator's primary coldkey (#5234). */
+export interface ColdkeyIdentity {
+  has_identity: boolean;
+  name: string | null;
+  url: string | null;
+  github: string | null;
+  image: string | null;
+  discord: string | null;
+  description: string | null;
+  additional: string | null;
+  captured_at: string | null;
+}
+
 /** One validator/operator row grouped by hotkey across subnet memberships. */
 export interface GlobalValidator {
   hotkey: string;
   /** DB-toggled maintainer pin (#5166) — always present, moves the row to the front of the default (unsorted) view. */
   featured: boolean;
   coldkey: string | null;
+  /** Primary coldkey's self-declared identity (#5234); null when coldkey is null. */
+  coldkey_identity: ColdkeyIdentity | null;
   coldkey_count: number;
   subnet_count: number;
   uid_count: number;
+  /** Validator take/commission (#2548), 0..1 fraction kept from delegator rewards. */
+  take: number | null;
   total_stake_tao: number;
+  root_stake_tao: number;
+  alpha_stake_tao: number;
   total_emission_tao: number;
   /** Distinct coldkeys currently staking to this hotkey, network-wide (#2549). Null when the low-frequency source table has no row for this hotkey yet. */
   nominator_count: number | null;
@@ -2043,8 +2062,11 @@ export interface ValidatorDetail {
   schema_version?: number;
   hotkey: string;
   coldkey: string | null;
+  coldkey_identity: ColdkeyIdentity | null;
   coldkey_count: number;
   subnet_count: number;
+  take: number | null;
+  nominator_count: number | null;
   total_stake_tao: number;
   /** Stake on netuid 0 (root), TAO-denominated 1:1, no AMM/price exposure (#2550). */
   root_stake_tao: number;

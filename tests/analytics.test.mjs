@@ -993,6 +993,10 @@ describe("writeSubnetSnapshot", () => {
       "total_stake_tao",
       "alpha_price_tao",
       "emission_share",
+      "tao_in_pool_tao",
+      "alpha_in_pool",
+      "alpha_out_pool",
+      "subnet_volume_tao",
     ]) {
       assert.match(
         captured,
@@ -1097,6 +1101,10 @@ describe("syncSubnetSnapshotToPostgres", () => {
         total_stake_tao: null,
         alpha_price_tao: null,
         emission_share: null,
+        tao_in_pool_tao: null,
+        alpha_in_pool: null,
+        alpha_out_pool: null,
+        subnet_volume_tao: null,
         captured_at: 1,
       },
     ]);
@@ -1155,6 +1163,10 @@ describe("syncSubnetSnapshotToPostgres", () => {
         total_stake_tao: null,
         alpha_price_tao: null,
         emission_share: null,
+        tao_in_pool_tao: null,
+        alpha_in_pool: null,
+        alpha_out_pool: null,
+        subnet_volume_tao: null,
         captured_at: 1,
       },
     ]);
@@ -1240,6 +1252,10 @@ function rowsForSql(sql) {
         total_stake_tao: "1500000",
         alpha_price_tao: "0.03",
         emission_share: "0.008",
+        tao_in_pool_tao: "20000",
+        alpha_in_pool: "2900000",
+        alpha_out_pool: "2200000",
+        subnet_volume_tao: "700000",
       },
       {
         snapshot_date: "2026-06-10",
@@ -1251,6 +1267,10 @@ function rowsForSql(sql) {
         total_stake_tao: "1600000",
         alpha_price_tao: "0.035",
         emission_share: "0.009",
+        tao_in_pool_tao: "26707.57",
+        alpha_in_pool: "2956464.98",
+        alpha_out_pool: "2257199.02",
+        subnet_volume_tao: "798027.45",
       },
     ];
   }
@@ -1656,6 +1676,12 @@ describe("analytics routes (fake D1 with data)", () => {
     assert.equal(typeof latest.alpha_price_tao, "number");
     assert.equal(typeof latest.emission_share, "number");
     assert.equal(latest.emission_share, 0.009);
+    // #2552: pool liquidity + volume ride the same D1 string-coerced path.
+    assert.equal(latest.tao_in_pool_tao, 26707.57);
+    assert.equal(latest.alpha_in_pool, 2956464.98);
+    assert.equal(latest.alpha_out_pool, 2257199.02);
+    assert.equal(latest.subnet_volume_tao, 798027.45);
+    assert.equal(body.data.deltas["7d"].tao_in_pool_tao, 6707.57);
   });
   test("leaderboards combines D1 health with registry growth", async () => {
     const { body } = await getJson(

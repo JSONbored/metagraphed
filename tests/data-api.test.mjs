@@ -104,6 +104,12 @@ const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
 // isolation purpose as validatorNominatorCountsQueryFailure above, but for
 // loadSubnetTempos' own SELECT.
 const subnetTemposQueryFailure = vi.hoisted(() => ({ error: null }));
+// State for the nominator-positions-sync WRITE (#5233) tests only.
+const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
+// State for the nominator_positions READ (#5233) tests only -- same
+// isolation purpose as subnetTemposQueryFailure above, but for
+// loadNominatorPositions' own SELECT.
+const nominatorPositionsQueryFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -177,6 +183,18 @@ vi.mock("postgres", () => ({
         /INSERT INTO validator_nominator_counts\b/.test(text)
       ) {
         return Promise.reject(validatorNominatorCountsSyncFailure.error);
+      }
+      if (
+        nominatorPositionsSyncFailure.error &&
+        /INSERT INTO nominator_positions\b/.test(text)
+      ) {
+        return Promise.reject(nominatorPositionsSyncFailure.error);
+      }
+      if (
+        nominatorPositionsQueryFailure.error &&
+        /FROM nominator_positions\b/.test(text)
+      ) {
+        return Promise.reject(nominatorPositionsQueryFailure.error);
       }
       if (
         subnetSnapshotSyncFailure.error &&
@@ -315,6 +333,7 @@ const SUBNET_IDENTITY_SYNC_SECRET = "test-subnet-identity-sync-secret";
 const HEALTH_CHECKS_SYNC_SECRET = "test-health-checks-sync-secret";
 const SUBNET_SNAPSHOT_SYNC_SECRET = "test-subnet-snapshot-sync-secret";
 const RPC_USAGE_SYNC_SECRET = "test-rpc-usage-sync-secret";
+const NOMINATOR_POSITIONS_SYNC_SECRET = "test-nominator-positions-sync-secret";
 const env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   NEURONS_SYNC_SECRET,
@@ -327,6 +346,7 @@ const env = {
   HEALTH_CHECKS_SYNC_SECRET,
   SUBNET_SNAPSHOT_SYNC_SECRET,
   RPC_USAGE_SYNC_SECRET,
+  NOMINATOR_POSITIONS_SYNC_SECRET,
 };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
@@ -349,6 +369,8 @@ beforeEach(() => {
   validatorNominatorCountsSyncFailure.error = null;
   validatorNominatorCountsQueryFailure.error = null;
   subnetTemposQueryFailure.error = null;
+  nominatorPositionsSyncFailure.error = null;
+  nominatorPositionsQueryFailure.error = null;
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
   healthChecksSyncFailure.error = null;
@@ -4387,6 +4409,270 @@ test("validator-nominator-counts-sync maps a DB failure to a clean 502 instead o
   expect((await res.json()).error).toBe("write failed");
 });
 
+// #5352 live incident: a real 112,550-row sync (762,577-row Alpha scan
+// output) hit Postgres' hard 65535-bound-parameters-per-statement ceiling
+// (112,550 rows x 3 columns = 337,650 params) inside a single INSERT,
+// failing every real-world sync at production scale even though every
+// smaller test above passed. batchedUpsert (workers/data-api.mjs) splits
+// into VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH-sized statements inside
+// one sql.begin() transaction -- this proves more than one INSERT actually
+// gets issued for a payload over that threshold, not just that the response
+// still reports the right total.
+test("validator-nominator-counts-sync splits a payload over the per-statement param cap into multiple INSERT statements (#5352)", async () => {
+  const MAX_ROWS_PER_BATCH = 20_000; // must match workers/data-api.mjs's own constant
+  const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
+    validatorNominatorCountRow({ hotkey: `5Hk${i}`, nominator_count: i }),
+  );
+  const res = await postValidatorNominatorCounts(rows, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  expect((await res.json()).validator_nominator_counts_written).toBe(
+    rows.length,
+  );
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO validator_nominator_counts"),
+  );
+  expect(insertCalls.length).toBe(2);
+});
+
+test("validator-nominator-counts-sync issues a single INSERT for a payload at or under the per-statement batch size", async () => {
+  const rows = [
+    validatorNominatorCountRow({ hotkey: "5Hk1" }),
+    validatorNominatorCountRow({ hotkey: "5Hk2" }),
+  ];
+  const res = await postValidatorNominatorCounts(rows, {
+    secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO validator_nominator_counts"),
+  );
+  expect(insertCalls.length).toBe(1);
+});
+
+// #5233: POST /api/v1/internal/nominator-positions-sync -- the write path
+// into nominator_positions (see workers/data-api.mjs's
+// handleNominatorPositionsSync). Same latest-only-upsert shape as
+// validator-nominator-counts-sync above, just a wider composite key.
+function nominatorPositionRow(overrides = {}) {
+  return {
+    coldkey: "5Cold1",
+    hotkey: "5Hk1",
+    netuid: 3,
+    share_fraction: 0.25,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postNominatorPositions(body, { secret, raw } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (secret !== undefined)
+    headers["x-nominator-positions-sync-token"] = secret;
+  return req("/api/v1/internal/nominator-positions-sync", {
+    method: "POST",
+    headers,
+    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
+  });
+}
+
+test("nominator-positions-sync rejects a missing or wrong token (401)", async () => {
+  const wrong = await postNominatorPositions([nominatorPositionRow()], {
+    secret: "nope",
+  });
+  expect(wrong.status).toBe(401);
+  const missing = await postNominatorPositions([nominatorPositionRow()]);
+  expect(missing.status).toBe(401);
+});
+
+test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/nominator-positions-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nominator-positions-sync-token": NOMINATOR_POSITIONS_SYNC_SECRET,
+      },
+      body: JSON.stringify([nominatorPositionRow()]),
+    }),
+    { ...env, NOMINATOR_POSITIONS_SYNC_SECRET: undefined },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("nominator-positions-sync returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/internal/nominator-positions-sync", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nominator-positions-sync-token": NOMINATOR_POSITIONS_SYNC_SECRET,
+      },
+      body: JSON.stringify([nominatorPositionRow()]),
+    }),
+    { ...env, HYPERDRIVE: undefined },
+    ctx,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("nominator-positions-sync rejects malformed JSON (400)", async () => {
+  const res = await postNominatorPositions(null, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+    raw: "{not json",
+  });
+  expect(res.status).toBe(400);
+});
+
+test("nominator-positions-sync rejects a body that isn't an array (400)", async () => {
+  const res = await postNominatorPositions(null, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+    raw: JSON.stringify({ nope: true }),
+  });
+  expect(res.status).toBe(400);
+});
+
+test("nominator-positions-sync rejects an empty array (400)", async () => {
+  const res = await postNominatorPositions([], {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("nominator-positions-sync rejects a row missing a required field or carrying an unknown key (400)", async () => {
+  const missingColdkey = await postNominatorPositions(
+    [nominatorPositionRow({ coldkey: "" })],
+    { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
+  );
+  expect(missingColdkey.status).toBe(400);
+
+  const negativeFraction = await postNominatorPositions(
+    [nominatorPositionRow({ share_fraction: -0.1 })],
+    { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
+  );
+  expect(negativeFraction.status).toBe(400);
+
+  const unknownKey = await postNominatorPositions(
+    [{ ...nominatorPositionRow(), extra: 1 }],
+    { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
+  );
+  expect(unknownKey.status).toBe(400);
+});
+
+test("nominator-positions-sync accepts the wrapped {rows:[...]} form and upserts on (coldkey, hotkey, netuid)", async () => {
+  const res = await postNominatorPositions(
+    { rows: [nominatorPositionRow()] },
+    { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, nominator_positions_written: 1 });
+  expect(queryText()).toMatch(/INSERT INTO nominator_positions/);
+  expect(queryText()).toMatch(/ON CONFLICT \(coldkey, hotkey, netuid\)/);
+});
+
+test("nominator-positions-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  nominatorPositionsSyncFailure.error = new Error("connection reset");
+  const res = await postNominatorPositions([nominatorPositionRow()], {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+// #5352 live incident (same root cause as validator-nominator-counts-sync's
+// own batching test above): a real 132,505-row sync hit Postgres' 65535
+// bound-parameters-per-statement ceiling even harder here (5 columns vs 3 --
+// 132,505 x 5 = 662,525 params). batchedUpsert applies identically; this
+// proves nominator-positions-sync actually issues multiple INSERT
+// statements for a payload over its own (smaller, 5-column) batch size.
+test("nominator-positions-sync splits a payload over the per-statement param cap into multiple INSERT statements (#5352)", async () => {
+  const MAX_ROWS_PER_BATCH = 10_000; // must match workers/data-api.mjs's own constant
+  const rows = Array.from({ length: MAX_ROWS_PER_BATCH + 1 }, (_, i) =>
+    nominatorPositionRow({ hotkey: `5Hk${i}`, netuid: i % 128 }),
+  );
+  const res = await postNominatorPositions(rows, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  expect((await res.json()).nominator_positions_written).toBe(rows.length);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO nominator_positions"),
+  );
+  expect(insertCalls.length).toBe(2);
+});
+
+test("nominator-positions-sync issues a single INSERT for a payload at or under the per-statement batch size", async () => {
+  const rows = [
+    nominatorPositionRow({ hotkey: "5Hk1" }),
+    nominatorPositionRow({ hotkey: "5Hk2" }),
+  ];
+  const res = await postNominatorPositions(rows, {
+    secret: NOMINATOR_POSITIONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(200);
+  const insertCalls = sqlCalls.filter((call) =>
+    call.text.includes("INSERT INTO nominator_positions"),
+  );
+  expect(insertCalls.length).toBe(1);
+});
+
+test("GET /api/v1/accounts/:ss58/positions joins share_fraction against live neurons stake_tao (#5233)", async () => {
+  // loadNominatorPositions is a plain tagged-template call -- consumes
+  // mockQueue. loadNeuronStakeByHotkeys goes through sql.unsafe (an IN-list
+  // query), which this mock always answers from mockRows.current regardless
+  // of mockQueue (see the sql.unsafe branch's own fallback), so the two rows
+  // are primed separately rather than both queued.
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        coldkey: "5Cold1",
+        hotkey: "5Hk1",
+        netuid: 3,
+        share_fraction: 0.25,
+        captured_at: "1780000000000",
+      },
+    ], // loadNominatorPositions
+  ];
+  mockRows.current = [{ hotkey: "5Hk1", netuid: 3, stake_tao: "1000" }]; // loadNeuronStakeByHotkeys
+  const res = await req("/api/v1/accounts/5Cold1/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(queryText()).toMatch(/FROM nominator_positions WHERE coldkey/);
+  expect(queryText()).toMatch(/FROM neurons WHERE hotkey IN/);
+  expect(body.ss58).toBe("5Cold1");
+  expect(body.position_count).toBe(1);
+  expect(body.positions[0].stake_tao).toBe(250);
+  expect(body.total_stake_tao).toBe(250);
+});
+
+test("GET /api/v1/accounts/:ss58/positions returns an empty card for a coldkey with no positions", async () => {
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [], // loadNominatorPositions -- no rows, so distinctHotkeys is empty and loadNeuronStakeByHotkeys short-circuits without a query
+  ];
+  const res = await req("/api/v1/accounts/5NoPositions/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.position_count).toBe(0);
+  expect(body.total_stake_tao).toBe(0);
+  expect(body.positions).toEqual([]);
+});
+
+test("GET /api/v1/accounts/:ss58/positions still serves an empty card when the nominator_positions read fails", async () => {
+  nominatorPositionsQueryFailure.error = new Error(
+    'relation "nominator_positions" does not exist',
+  );
+  const res = await req("/api/v1/accounts/5Cold1/positions");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.position_count).toBe(0);
+  expect(body.positions).toEqual([]);
+});
+
 test("GET /api/v1/accounts/:ss58/identity returns the latest row", async () => {
   mockRows.current = [
     {
@@ -6015,6 +6301,10 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
       total_stake_tao: 90,
       alpha_price_tao: 0.01,
       emission_share: 0.02,
+      tao_in_pool_tao: 26707.57,
+      alpha_in_pool: 2956464.98,
+      alpha_out_pool: 2257199.02,
+      subnet_volume_tao: 798027.45,
     },
   ];
   const res = await req("/api/v1/subnets/7/trajectory");
@@ -6023,6 +6313,11 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
   expect(body.netuid).toBe(7);
   expect(body.points[0].date).toBe("2026-06-01");
   expect(body.points[0].completeness_score).toBe(90);
+  // #2552: pool liquidity + volume flow through the Postgres trajectory path.
+  expect(body.points[0].tao_in_pool_tao).toBe(26707.57);
+  expect(body.points[0].alpha_in_pool).toBe(2956464.98);
+  expect(body.points[0].alpha_out_pool).toBe(2257199.02);
+  expect(body.points[0].subnet_volume_tao).toBe(798027.45);
 });
 
 test("GET /api/v1/economics/trends: aggregates daily rows network-wide", async () => {
@@ -6066,6 +6361,10 @@ function snapshotRow(overrides = {}) {
     total_stake_tao: 90,
     alpha_price_tao: 0.01,
     emission_share: 0.02,
+    tao_in_pool_tao: 26707.57,
+    alpha_in_pool: 2956464.98,
+    alpha_out_pool: 2257199.02,
+    subnet_volume_tao: 798027.45,
     captured_at: 1780000000000,
     ...overrides,
   };
@@ -6190,6 +6489,21 @@ test("subnet-snapshot-sync upserts subnet_snapshots with the COALESCE-on-economi
   expect(queryText()).toMatch(
     /validator_count = COALESCE\(subnet_snapshots\.validator_count, excluded\.validator_count\)/,
   );
+  // #2552: pool liquidity + volume columns follow the same COALESCE-on-conflict
+  // semantics as the other economics columns (a later NULL never wipes an
+  // earlier fire's good value).
+  for (const column of [
+    "tao_in_pool_tao",
+    "alpha_in_pool",
+    "alpha_out_pool",
+    "subnet_volume_tao",
+  ]) {
+    expect(queryText()).toMatch(
+      new RegExp(
+        `${column} = COALESCE\\(subnet_snapshots\\.${column}, excluded\\.${column}\\)`,
+      ),
+    );
+  }
 });
 
 test("subnet-snapshot-sync defaults every optional field to null when absent", async () => {

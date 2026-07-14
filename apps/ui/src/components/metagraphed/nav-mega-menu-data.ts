@@ -138,10 +138,19 @@ export const MEGA_PANELS: MegaPanel[] = [
     to: "/health",
     label: "Health",
     icon: Activity,
-    blurb: "Probe-derived freshness and incident state.",
+    blurb: "Public status for everyone; ops drill-down for maintainers.",
     apiPath: "/api/v1/health",
     browse: [
-      { to: "/health", label: "Overview" },
+      {
+        to: "/status",
+        label: "Public status",
+        hint: "Plain-language uptime & incidents",
+      },
+      {
+        to: "/health",
+        label: "Ops overview",
+        hint: "Matrix, mosaic, freshness",
+      },
       { to: "/health", search: { view: "matrix" }, label: "Subnet matrix" },
       { to: "/health", search: { view: "incidents" }, label: "Incidents" },
       { to: "/health", search: { view: "sources" }, label: "Source health" },

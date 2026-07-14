@@ -308,6 +308,12 @@ import {
 } from "../src/validator-nominator-summary.mjs";
 import { tempoByNetuid as buildTempoByNetuid } from "../src/subnet-tempo.mjs";
 import {
+  NOMINATOR_POSITION_INSERT_COLUMNS,
+  buildAccountPositions,
+  distinctHotkeys,
+  stakeByHotkeyNetuid,
+} from "../src/account-nominator-positions.mjs";
+import {
   identityHash,
   buildAccountIdentityHistory,
 } from "../src/account-identity-history.mjs";
@@ -1559,6 +1565,29 @@ async function handleAccountIdentitySync(request, env) {
   }
 }
 
+// Postgres hard-caps a single statement at 65535 bound parameters -- a bulk
+// `INSERT ... ${sql(rows, ...columns)}` blows past that the moment
+// rows.length * columns.length exceeds it, which the ROW-count ceilings
+// alone (*_SYNC_MAX_ROWS above/below) don't prevent, since those bound the
+// PAYLOAD, not any single statement. Found live 2026-07-14 exercising
+// validator-nominator-counts-sync for the first time at real production
+// scale (#5352): 112,550 hotkey rows x 3 columns = 337,650 params, and the
+// paired nominator-positions-sync payload (132,505 rows x 5 columns =
+// 662,525 params) hits the exact same wall -- both single-batch INSERTs
+// failed the request with a Postgres protocol error, surfaced to the caller
+// as a bare 502 with no detail. batchedUpsert splits `rows` into
+// PARAMS_PER_ROW-sized chunks (each well under the 65535 ceiling) and runs
+// them as sequential statements inside ONE transaction (`sql.begin`), same
+// atomicity as every other sync handler's single-statement writes -- a
+// mid-batch failure still rolls back the whole sync rather than leaving a
+// partial write, and both these tables are latest-only/REPLACE-on-conflict
+// so a subsequent retry is safe either way.
+async function batchedUpsert(sql, rows, insertFn, maxRowsPerBatch) {
+  for (let i = 0; i < rows.length; i += maxRowsPerBatch) {
+    await insertFn(sql, rows.slice(i, i + maxRowsPerBatch));
+  }
+}
+
 // --- POST /api/v1/internal/validator-nominator-counts-sync (#2549) --------
 //
 // The write path into validator_nominator_counts (migration 0043) --
@@ -1571,6 +1600,10 @@ async function handleAccountIdentitySync(request, env) {
 // neurons snapshot's cadence.
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER =
   "x-validator-nominator-counts-sync-token";
+// floor(65535 / 3 columns) = 21845 -- batchedUpsert's per-statement row cap,
+// rounded down for headroom (see batchedUpsert's own header comment for why
+// this exists at all).
+const VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH = 20_000;
 // A ceiling on distinct hotkeys ever seen holding stake, NOT on
 // validator-permit hotkeys (~1-2k) -- this table isn't validator-scoped by
 // design (see the fetch script). A live full-scan probe 2026-07-14 found
@@ -1672,13 +1705,20 @@ async function handleValidatorNominatorCountsSync(request, env) {
   });
 
   try {
-    await sql`SET statement_timeout = '20000ms'`;
-    await sql`
-      INSERT INTO validator_nominator_counts ${sql(incoming, ...VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS)}
-      ON CONFLICT (hotkey) DO UPDATE SET
-        nominator_count = EXCLUDED.nominator_count,
-        captured_at = EXCLUDED.captured_at
-      WHERE validator_nominator_counts.captured_at <= EXCLUDED.captured_at`;
+    await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+      await batchedUpsert(
+        sql,
+        incoming,
+        (sql, batch) => sql`
+          INSERT INTO validator_nominator_counts ${sql(batch, ...VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS)}
+          ON CONFLICT (hotkey) DO UPDATE SET
+            nominator_count = EXCLUDED.nominator_count,
+            captured_at = EXCLUDED.captured_at
+          WHERE validator_nominator_counts.captured_at <= EXCLUDED.captured_at`,
+        VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH,
+      );
+    });
     return writeJson({
       ok: true,
       validator_nominator_counts_written: incoming.length,
@@ -1688,6 +1728,135 @@ async function handleValidatorNominatorCountsSync(request, env) {
       "data-api validator-nominator-counts-sync write failed:",
       err,
     );
+    return writeJson({ error: "write failed" }, 502);
+  }
+}
+
+const NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER =
+  "x-nominator-positions-sync-token";
+// floor(65535 / 5 columns) = 13107 -- batchedUpsert's per-statement row cap,
+// rounded down for headroom (see batchedUpsert's own header comment, above
+// validator-nominator-counts-sync, for the live incident this fixes).
+const NOMINATOR_POSITIONS_MAX_ROWS_PER_BATCH = 10_000;
+// Same headroom rationale as VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS above --
+// this is one row per (coldkey, hotkey, netuid) triple, not per hotkey, so
+// it carries generous headroom over the 762,577 total Alpha rows observed
+// in the live full-scan probe (#2549/#5233), not a tight bound.
+const NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES = 200_000_000;
+const NOMINATOR_POSITIONS_SYNC_MAX_ROWS = 1_000_000;
+
+function validNominatorPositionSyncRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  if (typeof row.coldkey !== "string" || row.coldkey?.length === 0)
+    return false;
+  if (typeof row.hotkey !== "string" || row.hotkey.length === 0) return false;
+  if (!Number.isInteger(row.netuid) || row.netuid < 0) return false;
+  if (!Number.isFinite(row.share_fraction) || row.share_fraction < 0)
+    return false;
+  if (!Number.isFinite(row.captured_at)) return false;
+  for (const key of Object.keys(row)) {
+    if (!NOMINATOR_POSITION_INSERT_COLUMNS.includes(key)) return false;
+  }
+  return true;
+}
+
+async function handleNominatorPositionsSync(request, env) {
+  if (!env.NOMINATOR_POSITIONS_SYNC_SECRET) {
+    return writeJson(
+      {
+        error: "nominator-positions sync is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.NOMINATOR_POSITIONS_SYNC_SECRET)
+  ) {
+    return writeJson(
+      {
+        error: `provide a valid ${NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      {
+        error: `body exceeds ${NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES} bytes`,
+      },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of nominator-position rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > NOMINATOR_POSITIONS_SYNC_MAX_ROWS) {
+    return writeJson(
+      {
+        error: `at most ${NOMINATOR_POSITIONS_SYNC_MAX_ROWS} rows per request`,
+      },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validNominatorPositionSyncRow)) {
+    return writeJson(
+      { error: "rows must match the nominator-position row shape" },
+      400,
+    );
+  }
+
+  const sql = postgres(env.HYPERDRIVE.connectionString, {
+    max: 5,
+    prepare: false,
+    fetch_types: false,
+  });
+
+  try {
+    await sql.begin(async (sql) => {
+      await sql`SET statement_timeout = '20000ms'`;
+      await batchedUpsert(
+        sql,
+        incoming,
+        (sql, batch) => sql`
+          INSERT INTO nominator_positions ${sql(batch, ...NOMINATOR_POSITION_INSERT_COLUMNS)}
+          ON CONFLICT (coldkey, hotkey, netuid) DO UPDATE SET
+            share_fraction = EXCLUDED.share_fraction,
+            captured_at = EXCLUDED.captured_at
+          WHERE nominator_positions.captured_at <= EXCLUDED.captured_at`,
+        NOMINATOR_POSITIONS_MAX_ROWS_PER_BATCH,
+      );
+    });
+    return writeJson({
+      ok: true,
+      nominator_positions_written: incoming.length,
+    });
+  } catch (err) {
+    console.error("data-api nominator-positions-sync write failed:", err);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2292,6 +2461,18 @@ async function handleSubnetSnapshotSync(request, env) {
     emission_share: Number.isFinite(row.emission_share)
       ? row.emission_share
       : null,
+    tao_in_pool_tao: Number.isFinite(row.tao_in_pool_tao)
+      ? row.tao_in_pool_tao
+      : null,
+    alpha_in_pool: Number.isFinite(row.alpha_in_pool)
+      ? row.alpha_in_pool
+      : null,
+    alpha_out_pool: Number.isFinite(row.alpha_out_pool)
+      ? row.alpha_out_pool
+      : null,
+    subnet_volume_tao: Number.isFinite(row.subnet_volume_tao)
+      ? row.subnet_volume_tao
+      : null,
     captured_at: row.captured_at,
   }));
 
@@ -2313,6 +2494,10 @@ async function handleSubnetSnapshotSync(request, env) {
           "total_stake_tao",
           "alpha_price_tao",
           "emission_share",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "alpha_out_pool",
+          "subnet_volume_tao",
           "captured_at",
         )}
         ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
@@ -2320,7 +2505,11 @@ async function handleSubnetSnapshotSync(request, env) {
           miner_count = COALESCE(subnet_snapshots.miner_count, excluded.miner_count),
           total_stake_tao = COALESCE(subnet_snapshots.total_stake_tao, excluded.total_stake_tao),
           alpha_price_tao = COALESCE(subnet_snapshots.alpha_price_tao, excluded.alpha_price_tao),
-          emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share)`;
+          emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share),
+          tao_in_pool_tao = COALESCE(subnet_snapshots.tao_in_pool_tao, excluded.tao_in_pool_tao),
+          alpha_in_pool = COALESCE(subnet_snapshots.alpha_in_pool, excluded.alpha_in_pool),
+          alpha_out_pool = COALESCE(subnet_snapshots.alpha_out_pool, excluded.alpha_out_pool),
+          subnet_volume_tao = COALESCE(subnet_snapshots.subnet_volume_tao, excluded.subnet_volume_tao)`;
       return writeJson({ ok: true, rows_written: snapshotRows.length });
     });
   } catch (err) {
@@ -2527,6 +2716,45 @@ async function loadSubnetTempos(sql) {
     return buildTempoByNetuid(rows);
   } catch (err) {
     console.error("subnet_hyperparams tempo query failed:", err);
+    return new Map();
+  }
+}
+
+// Raw nominator_positions rows for one coldkey (#5233) -- savepoint-isolated
+// like the loaders above, so a cold/absent table degrades this specific
+// route to an empty positions card rather than failing the request.
+async function loadNominatorPositions(sql, ss58) {
+  try {
+    return await sql.savepoint(
+      (sql) => sql`
+        SELECT coldkey, hotkey, netuid, share_fraction, captured_at
+        FROM nominator_positions WHERE coldkey = ${ss58}`,
+    );
+  } catch (err) {
+    console.error("nominator_positions query failed:", err);
+    return [];
+  }
+}
+
+// neurons.stake_tao for every (hotkey, netuid) referenced by one account's
+// position rows -- the join input buildAccountPositions needs to turn a
+// dimensionless share_fraction into an actual stake_tao figure. Same
+// scalar-placeholder IN-list shape as loadAccountIdentitiesByColdkey above
+// (this Worker's Hyperdrive fetch_types:false setting breaks automatic
+// ARRAY-literal binding for a JS array).
+async function loadNeuronStakeByHotkeys(sql, hotkeys) {
+  if (hotkeys.length === 0) return new Map();
+  try {
+    const placeholders = hotkeys.map((_, i) => `$${i + 1}::text`).join(", ");
+    const rows = await sql.savepoint((sql) =>
+      sql.unsafe(
+        `SELECT hotkey, netuid, stake_tao FROM neurons WHERE hotkey IN (${placeholders})`,
+        hotkeys,
+      ),
+    );
+    return stakeByHotkeyNetuid(rows);
+  } catch (err) {
+    console.error("neurons stake-by-hotkey join query failed:", err);
     return new Map();
   }
 }
@@ -3043,6 +3271,12 @@ export default {
       url.pathname === "/api/v1/internal/validator-nominator-counts-sync"
     ) {
       return handleValidatorNominatorCountsSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/nominator-positions-sync"
+    ) {
+      return handleNominatorPositionsSync(request, env);
     }
     if (
       request.method === "POST" &&
@@ -5178,7 +5412,8 @@ export default {
           const rows = await sql`
           SELECT snapshot_date::text AS snapshot_date, completeness_score,
                  surface_count, endpoint_count, validator_count, miner_count,
-                 total_stake_tao, alpha_price_tao, emission_share
+                 total_stake_tao, alpha_price_tao, emission_share,
+                 tao_in_pool_tao, alpha_in_pool, alpha_out_pool, subnet_volume_tao
           FROM subnet_snapshots
           WHERE netuid = ${netuid}
           ORDER BY snapshot_date DESC
@@ -6188,6 +6423,28 @@ export default {
           SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
           FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
           return json(buildAccountPortfolio(rows, ss58));
+        }
+
+        // GET /api/v1/accounts/:ss58/positions (#5233): the nominator-scoped
+        // counterpart to /portfolio above -- what this account holds across
+        // every hotkey/subnet it delegates to, reconstructed from
+        // nominator_positions (a share_fraction ledger) joined against the
+        // live neurons stake_tao for each referenced (hotkey, netuid). See
+        // src/account-nominator-positions.mjs's header comment for the
+        // root-stake (netuid 0) scope limitation.
+        const acctPositions = url.pathname.match(
+          /^\/api\/v1\/accounts\/([^/]+)\/positions$/,
+        );
+        if (acctPositions) {
+          const ss58 = decodeURIComponent(acctPositions[1]);
+          const positionRows = await loadNominatorPositions(sql, ss58);
+          const hotkeyNetuidStake = await loadNeuronStakeByHotkeys(
+            sql,
+            distinctHotkeys(positionRows),
+          );
+          return json(
+            buildAccountPositions(positionRows, hotkeyNetuidStake, ss58),
+          );
         }
 
         // GET /api/v1/accounts/:ss58/identity (#4832 gap-closure, Phase B):

@@ -1,0 +1,73 @@
+{
+  "ok": true,
+  "schema_version": 1,
+  "data": {
+    "schema_version": 1,
+    "hotkey": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+    "coldkey": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+    "coldkey_identity": {
+      "has_identity": true,
+      "name": "Tensor Labs",
+      "url": "https://tensorlabs.example",
+      "github": "https://github.com/tensorlabs",
+      "image": "https://avatars.githubusercontent.com/u/1?v=4",
+      "discord": null,
+      "description": "Multi-subnet validator operator",
+      "additional": null,
+      "captured_at": "2026-07-14T07:00:00.000Z"
+    },
+    "coldkey_count": 1,
+    "subnet_count": 2,
+    "take": 0.18,
+    "nominator_count": 2847,
+    "total_stake_tao": 842000,
+    "root_stake_tao": 120000,
+    "alpha_stake_tao": 722000,
+    "total_emission_tao": 4.82,
+    "avg_validator_trust": 0.995,
+    "max_validator_trust": 1,
+    "captured_at": "2026-07-14T08:00:00.000Z",
+    "block_number": 4200000,
+    "subnets": [
+      {
+        "netuid": 1,
+        "uid": 42,
+        "hotkey": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+        "coldkey": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+        "active": true,
+        "validator_permit": true,
+        "rank": 1,
+        "trust": 0.99,
+        "validator_trust": 1,
+        "consensus": 0.98,
+        "incentive": 0.95,
+        "dividends": 0.88,
+        "emission_tao": 1.2,
+        "stake_tao": 210000,
+        "registered_at_block": 1000000,
+        "is_immunity_period": false,
+        "axon": null
+      },
+      {
+        "netuid": 8,
+        "uid": 7,
+        "hotkey": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+        "coldkey": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+        "active": true,
+        "validator_permit": true,
+        "rank": 2,
+        "trust": 0.97,
+        "validator_trust": 0.99,
+        "consensus": 0.96,
+        "incentive": 0.9,
+        "dividends": 0.82,
+        "emission_tao": 0.6,
+        "stake_tao": 98000,
+        "registered_at_block": 1100000,
+        "is_immunity_period": false,
+        "axon": null
+      }
+    ]
+  },
+  "meta": { "generated_at": "2026-07-14T08:00:00.000Z" }
+}

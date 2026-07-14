@@ -171,6 +171,11 @@ export const ACCOUNT_SUBNETS_PATH_PATTERN =
 // + aggregates), richer than the bare /subnets registration footprint.
 export const ACCOUNT_PORTFOLIO_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/portfolio$/;
+// Nominator-side (coldkey) position reconstruction (#5233): what this
+// account holds delegated across every hotkey/subnet, distinct from
+// /portfolio above (hotkey-scoped).
+export const ACCOUNT_POSITIONS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/positions$/;
 // Per-account, per-subnet position HISTORY (block-explorer Tier-1, #4329/6.2):
 // time series read from the account_position_daily rollup tier — the "Alpha
 // Holdings chart" for one wallet's position on one subnet.

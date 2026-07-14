@@ -1236,6 +1236,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountPortfolioArtifact",
   ),
   artifact(
+    "account-positions",
+    "/metagraph/accounts/{ss58}/positions.json",
+    "This account's reconstructed nominator-side positions (#5233): what it holds delegated across every hotkey/subnet, distinct from account-portfolio's hotkey-scoped view (a pure delegator shows near-zero there). Computed live from nominator_positions (a share-fraction ledger) joined against the neurons D1 tier's stake_tao, served at /api/v1/accounts/{ss58}/positions (no static file). Root (netuid 0) stake is not covered -- see the artifact schema's own description.",
+    "AccountPositionsArtifact",
+  ),
+  artifact(
     "account-subnet-position-history",
     "/metagraph/accounts/{ss58}/subnets/{netuid}/history.json",
     "One wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, served live from the account_position_daily D1 rollup tier at /api/v1/accounts/{ss58}/subnets/{netuid}/history (no static file).",
@@ -2904,6 +2910,17 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "account-positions",
+    "GET",
+    "/api/v1/accounts/{ss58}/positions",
+    "/metagraph/accounts/{ss58}/positions.json",
+    "Fetch this account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from /portfolio's hotkey-scoped view. Computed live from nominator_positions joined against the neurons D1 tier. Root (netuid 0) stake is not covered.",
+    "short",
+    ["accounts", "analytics"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
     "account-subnet-position-history",
     "GET",
     "/api/v1/accounts/{ss58}/subnets/{netuid}/history",
@@ -4338,8 +4355,8 @@ function csvExampleForRoute(entry) {
   }
   if (entry.id === "subnet-trajectory") {
     return [
-      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
-      "2026-06-01,35,1,1,8,60,90,0.01,0.02",
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share,tao_in_pool_tao,alpha_in_pool,alpha_out_pool,subnet_volume_tao",
+      "2026-06-01,35,1,1,8,60,90,0.01,0.02,26707.57,2956464.98,2257199.02,798027.45",
     ].join("\r\n");
   }
   if (entry.id === "extrinsics-feed") {

@@ -710,6 +710,19 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/positions",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(Array.isArray(body.data.positions), true);
+      assert.equal(typeof body.data.position_count, "number");
+      assert.equal(typeof body.data.total_stake_tao, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets/7/history?window=30d",
     (body) => {
       assert.equal(body.data.schema_version, 1);

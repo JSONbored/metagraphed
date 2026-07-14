@@ -1103,6 +1103,14 @@ export function formatTrajectory({ netuid, rows }) {
       total_stake_tao: toFiniteOrNull(row.total_stake_tao),
       alpha_price_tao: toFiniteOrNull(row.alpha_price_tao),
       emission_share: toFiniteOrNull(row.emission_share),
+      // Pool liquidity + volume (#2552) — reserves are a point-in-time chain
+      // read (not cumulative), so unlike the other economics columns their
+      // useful signal is the *delta* between two points, not the raw level;
+      // see deltaOver below for the derived net TAO/alpha flow.
+      tao_in_pool_tao: toFiniteOrNull(row.tao_in_pool_tao),
+      alpha_in_pool: toFiniteOrNull(row.alpha_in_pool),
+      alpha_out_pool: toFiniteOrNull(row.alpha_out_pool),
+      subnet_volume_tao: toFiniteOrNull(row.subnet_volume_tao),
     }))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
@@ -1120,6 +1128,13 @@ export function formatTrajectory({ netuid, rows }) {
       ),
       surface_count: diff(latest.surface_count, cutoff.surface_count),
       endpoint_count: diff(latest.endpoint_count, cutoff.endpoint_count),
+      // Net TAO/alpha flow into or out of the pool over the window (#2552) —
+      // reserve level now minus reserve level then, positive means net
+      // inflow. tao_in_pool_tao's delta doubles as the requested "TAO in/out
+      // flow" metric; no separate flow-only ingestion needed.
+      tao_in_pool_tao: diff(latest.tao_in_pool_tao, cutoff.tao_in_pool_tao),
+      alpha_in_pool: diff(latest.alpha_in_pool, cutoff.alpha_in_pool),
+      alpha_out_pool: diff(latest.alpha_out_pool, cutoff.alpha_out_pool),
     };
   };
 
@@ -1140,7 +1155,8 @@ export async function loadSubnetTrajectory(d1, netuid) {
   const rows = await d1(
     `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
             validator_count, miner_count, total_stake_tao, alpha_price_tao,
-            emission_share
+            emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool,
+            subnet_volume_tao
      FROM subnet_snapshots
      WHERE netuid = ?
      ORDER BY snapshot_date DESC
