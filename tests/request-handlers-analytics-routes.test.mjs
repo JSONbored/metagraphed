@@ -735,6 +735,17 @@ describe("handleLeaderboards", () => {
     assert.match(body.error.message, /limit must be an integer/);
   });
 
+  // #5555: a leading-zero limit like 007 must be rejected the same way every
+  // other analytics route rejects it (shared parseLimitParam, /^[1-9]\d*$/),
+  // not silently accepted because Number("007") === 7 is in range.
+  test("rejects a leading-zero limit like 007", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleLeaderboards(req("/"), env, url("/?limit=007"));
+    assert.equal(res.status, 400);
+    const body = await errorJson(res);
+    assert.match(body.error.message, /limit must be an integer/);
+  });
+
   test("filters to a single board when requested", async () => {
     const env = createLocalArtifactEnv();
     const body = await json(
@@ -1232,6 +1243,13 @@ describe("canonicalLeaderboardsCachePath", () => {
 
   test("falls back to raw search on invalid limit", () => {
     const raw = "/api/v1/registry/leaderboards?limit=0";
+    assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
+  });
+
+  // #5555: a leading-zero limit is invalid under the shared parseLimitParam,
+  // so it must not be canonicalized into the shared default cache key.
+  test("falls back to raw search on a leading-zero limit like 007", () => {
+    const raw = "/api/v1/registry/leaderboards?limit=007";
     assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
   });
 
