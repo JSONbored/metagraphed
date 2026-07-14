@@ -3191,6 +3191,32 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
   });
 });
 
+describe("MCP get_subnet_performance", () => {
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so this tool always returns the schema-stable zeroed card
+  // (buildSubnetPerformance([], netuid)) -- a D1 mock, if bound, is never queried.
+  test("returns a schema-stable zeroed card (neurons D1 tier retired)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("D1 must not be queried -- neurons tier is retired");
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_performance",
+      { netuid: 7 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.validator_count, 0);
+    assert.equal(out.incentive, null);
+    assert.equal(out.trust, null);
+  });
+});
+
 describe("MCP get_chain_signers", () => {
   test("returns signers ranked by tx_count from D1", async () => {
     const env = {
@@ -3876,6 +3902,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_stake_flow always returns the schema-stable zeroed
+  // card (buildStakeFlow([], netuid, {window})) regardless of `direction` --
+  // covered by "degrades to zeros on cold D1" below; account_events row-shaping
+  // and direction-narrowing are no longer reachable from this tool.
+
   test("get_subnet_stake_flow rejects an unsupported direction", async () => {
     const res = await callTool("get_subnet_stake_flow", {
       netuid: 7,
@@ -3907,6 +3939,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.equal(out.net_flow_tao, 0);
     assert.equal(out.stake_events, 0);
   });
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_stake_flow always returns the schema-stable
+  // zeroed card (buildAccountStakeFlow([], ss58, {window})) -- covered by
+  // "degrades to zeros on cold D1" below; account_events row-shaping and
+  // direction-narrowing are no longer reachable from this tool.
 
   test("get_account_stake_flow rejects a missing ss58", async () => {
     const res = await callTool("get_account_stake_flow", {});
@@ -3965,6 +4003,12 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_stake_moves always returns the schema-stable
+  // zeroed card (buildAccountStakeMoves([], ss58, {window})) -- covered by
+  // "degrades to zeros on cold D1" below; account_events row-shaping is no
+  // longer reachable from this tool.
 
   test("get_account_stake_moves rejects a missing ss58", async () => {
     const res = await callTool("get_account_stake_moves", {});
@@ -4039,6 +4083,12 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_axon_removals always returns the schema-stable
+  // zeroed card (buildAccountAxonRemovals([], ss58, {window})) -- covered by
+  // "degrades to zeros on cold D1" below; account_events row-shaping is no
+  // longer reachable from this tool.
 
   test("get_account_axon_removals rejects a missing ss58", async () => {
     const res = await callTool("get_account_axon_removals", {});
@@ -4116,6 +4166,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_prometheus always returns the schema-stable
+  // zeroed card (buildAccountPrometheus([], ss58, {window})) -- covered by
+  // "degrades to zeros on cold D1" below; account_events row-shaping is no
+  // longer reachable from this tool.
+
   test("get_account_prometheus rejects a missing ss58", async () => {
     const res = await callTool("get_account_prometheus", {});
     assert.equal(res.body.result.isError, true);
@@ -4190,6 +4246,12 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_registrations always returns the schema-stable
+  // zeroed card (buildAccountRegistrations([], ss58, {window})) -- covered by
+  // "degrades to zeros on cold D1" below; account_events row-shaping is no
+  // longer reachable from this tool.
 
   test("get_account_registrations rejects a missing ss58", async () => {
     const res = await callTool("get_account_registrations", {});
@@ -4266,6 +4328,12 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_serving always returns the schema-stable zeroed
+  // card (buildAccountServing([], ss58, {window})) -- covered by "degrades to
+  // zeros on cold D1" below; account_events row-shaping is no longer reachable
+  // from this tool.
 
   test("get_account_serving rejects a missing ss58", async () => {
     const res = await callTool("get_account_serving", {});
@@ -4372,6 +4440,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_deregistrations always returns the schema-stable
+  // zeroed card (buildAccountDeregistrations([], ss58, {window})) -- covered by
+  // "degrades to zeros on cold D1" below; account_events row-shaping is no
+  // longer reachable from this tool.
+
   test("get_account_deregistrations rejects a missing ss58", async () => {
     const res = await callTool("get_account_deregistrations", {});
     assert.equal(res.body.result.isError, true);
@@ -4421,6 +4495,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_weight_setters always returns the schema-stable
+  // zeroed card (buildAccountWeightSetters([], ss58, {window})) -- covered by
+  // "degrades to zeros on cold D1" below; account_events row-shaping is no
+  // longer reachable from this tool.
+
   test("get_account_weight_setters rejects a missing ss58", async () => {
     const res = await callTool("get_account_weight_setters", {});
     assert.equal(res.body.result.isError, true);
@@ -4469,6 +4549,13 @@ describe("MCP stake-flow and movers economics tools", () => {
     const validate = new Ajv2020().compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
+
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_movers always returns the schema-stable empty
+  // leaderboard (buildMovers([], [], {window, startDate:null, endDate:null,
+  // sort, limit})) -- covered by "degrades to an empty leaderboard on cold D1"
+  // below; neuron_daily boundary-snapshot row-shaping is no longer reachable
+  // from this tool.
 
   test("get_subnet_movers rejects an invalid sort", async () => {
     const res = await callTool("get_subnet_movers", { sort: "liquidity" });
@@ -4618,6 +4705,27 @@ describe("MCP stake-flow and movers economics tools", () => {
 });
 
 describe("MCP get_subnet_event_summary", () => {
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_event_summary always returns the schema-stable
+  // empty summary (buildSubnetEventSummary([], [], netuid, {window, limit})) --
+  // covered by "defaults to the 30d window and degrades to an empty summary on
+  // cold D1" below; account_events row-shaping is no longer reachable from this
+  // tool. `limit` is still echoed/clamped from `args`, so that assertion stays
+  // meaningful without a D1 mock.
+  test("echoes a custom limit even with no D1 data to shape", async () => {
+    const res = await callTool("get_subnet_event_summary", {
+      netuid: 7,
+      window: "7d",
+      limit: 2,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "7d");
+    assert.equal(out.limit, 2);
+    assert.equal(out.total_events, 0);
+    assert.equal(out.recent_event_count, 0);
+  });
+
   test("defaults to the 30d window and degrades to an empty summary on cold D1", async () => {
     const res = await callTool("get_subnet_event_summary", { netuid: 7 });
     const out = res.body.result.structuredContent;
@@ -4668,6 +4776,12 @@ describe("MCP get_subnet_stake_moves", () => {
       },
     };
   }
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_stake_moves always returns the schema-stable
+  // empty summary (buildSubnetStakeMoves(null, netuid, {window})) -- covered by
+  // "cold subnet degrades to a schema-stable empty summary" below;
+  // account_events row-shaping is no longer reachable from this tool.
 
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
@@ -4732,6 +4846,12 @@ describe("MCP get_subnet_stake_transfers", () => {
       },
     };
   }
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_stake_transfers always returns the schema-stable
+  // empty summary (buildSubnetStakeTransfers(null, netuid, {window})) --
+  // covered by "cold subnet degrades to a schema-stable empty summary" below;
+  // account_events row-shaping is no longer reachable from this tool.
 
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
@@ -4798,6 +4918,12 @@ describe("MCP get_subnet_registrations", () => {
     };
   }
 
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_registrations always returns the schema-stable
+  // empty summary (buildSubnetRegistrations(null, netuid, {window})) -- covered
+  // by "cold subnet degrades to a schema-stable empty summary" below;
+  // account_events row-shaping is no longer reachable from this tool.
+
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
       "get_subnet_registrations",
@@ -4842,6 +4968,12 @@ describe("MCP get_subnet_weights", () => {
       },
     };
   }
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_weights always returns the schema-stable zeroed
+  // card (buildSubnetWeights(null, netuid, {window})) -- covered by "defaults
+  // to the 7d window and degrades to a zeroed card on cold D1" below;
+  // account_events row-shaping is no longer reachable from this tool.
 
   test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
     const res = await callTool("get_subnet_weights", { netuid: 5 });
@@ -4888,7 +5020,14 @@ describe("MCP get_subnet_weights", () => {
 });
 
 describe("MCP get_subnet_weight_setters", () => {
-  test("defaults to the 7d window and returns an empty leaderboard (account_events retired, #4772)", async () => {
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_weight_setters always returns the schema-stable
+  // empty leaderboard (buildSubnetWeightSetters([], null, netuid, {window})) --
+  // covered by "defaults to the 7d window and degrades to an empty leaderboard
+  // on cold D1" below; account_events row-shaping is no longer reachable from
+  // this tool.
+
+  test("defaults to the 7d window and degrades to an empty leaderboard on cold D1", async () => {
     const res = await callTool("get_subnet_weight_setters", { netuid: 5 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -4915,7 +5054,13 @@ describe("MCP get_subnet_weight_setters", () => {
 });
 
 describe("MCP get_subnet_axon_removals", () => {
-  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_axon_removals always returns the schema-stable
+  // zeroed card (buildSubnetAxonRemovals(null, netuid, {window})) -- covered by
+  // "defaults to the 7d window and degrades to a zeroed card on cold D1" below;
+  // account_events row-shaping is no longer reachable from this tool.
+
+  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
     const res = await callTool("get_subnet_axon_removals", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -4960,7 +5105,13 @@ describe("MCP get_subnet_serving", () => {
     };
   }
 
-  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_serving always returns the schema-stable zeroed
+  // card (buildSubnetServing(null, netuid, {window})) -- covered by "defaults
+  // to the 7d window and degrades to a zeroed card on cold D1" below;
+  // account_events row-shaping is no longer reachable from this tool.
+
+  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
     const res = await callTool("get_subnet_serving", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5024,7 +5175,13 @@ describe("MCP get_subnet_prometheus", () => {
     };
   }
 
-  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_prometheus always returns the schema-stable
+  // zeroed card (buildSubnetPrometheus(null, netuid, {window})) -- covered by
+  // "defaults to the 7d window and degrades to a zeroed card on cold D1" below;
+  // account_events row-shaping is no longer reachable from this tool.
+
+  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
     const res = await callTool("get_subnet_prometheus", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5069,7 +5226,13 @@ describe("MCP get_subnet_prometheus", () => {
 });
 
 describe("MCP get_subnet_deregistrations", () => {
-  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
+  // account_events' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_deregistrations always returns the schema-stable
+  // zeroed card (buildSubnetDeregistrations(null, netuid, {window})) -- covered
+  // by "defaults to the 7d window and degrades to a zeroed card on cold D1"
+  // below; account_events row-shaping is no longer reachable from this tool.
+
+  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
     const res = await callTool("get_subnet_deregistrations", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5095,6 +5258,24 @@ describe("MCP get_subnet_deregistrations", () => {
 });
 
 describe("MCP get_subnet_performance_history", () => {
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_performance_history always returns the
+  // schema-stable empty series (buildSubnetPerformanceHistory([], netuid,
+  // {window, capped:false})) -- covered by "defaults to the 30d window on
+  // cold D1" below; neuron_daily row-shaping is no longer reachable from this
+  // tool.
+  test("echoes a custom window even with no D1 data to shape", async () => {
+    const res = await callTool("get_subnet_performance_history", {
+      netuid: 7,
+      window: "7d",
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "7d");
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
+  });
+
   test("defaults to the 30d window on cold D1", async () => {
     const res = await callTool("get_subnet_performance_history", { netuid: 7 });
     const out = res.body.result.structuredContent;
@@ -5122,6 +5303,30 @@ describe("MCP get_subnet_performance_history", () => {
 });
 
 describe("MCP get_subnet_yield_history", () => {
+  function yieldHistoryD1(rows = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(_sql) {
+          return {
+            bind(..._params) {
+              return {
+                async all() {
+                  return { results: rows };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_yield_history always returns the schema-stable
+  // empty series (buildSubnetYieldHistory([], netuid, {window, capped:false}))
+  // -- covered by "defaults to the 30d window on cold D1" below; neuron_daily
+  // row-shaping is no longer reachable from this tool.
+
   test("defaults to the 30d window on cold D1", async () => {
     const res = await callTool("get_subnet_yield_history", { netuid: 7 });
     const out = res.body.result.structuredContent;
@@ -5149,7 +5354,20 @@ describe("MCP get_subnet_yield_history", () => {
     const schema = listToolDefinitions().find(
       (t) => t.name === "get_subnet_yield_history",
     )?.outputSchema;
-    const res = await callTool("get_subnet_yield_history", { netuid: 7 });
+    const res = await callTool(
+      "get_subnet_yield_history",
+      { netuid: 7 },
+      {
+        env: yieldHistoryD1([
+          {
+            snapshot_date: "2026-06-27",
+            stake_tao: 100,
+            emission_tao: 10,
+            validator_permit: 1,
+          },
+        ]),
+      },
+    );
     const validate = new Ajv2020().compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
@@ -5341,6 +5559,29 @@ describe("MCP get_rpc_usage", () => {
 
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_account_counterparties always returns the
+  // schema-stable empty rollup (list mode: buildCounterparties([], ss58,
+  // {limit}); relationship mode: the composite literal seeded from
+  // buildCounterpartyRelationship([], ss58, counterparty, {limit})) -- covered
+  // by "degrades to an empty rollup on cold D1" below and the relationship-mode
+  // assertion added there; account_events row-shaping is no longer reachable
+  // from this tool.
+  test("counterparty=<ss58> drills into the schema-stable empty relationship", async () => {
+    const res = await callTool(
+      "get_account_counterparties",
+      { ss58: SS58, counterparty: CP },
+      { env: {} },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.counterparty_count, 0);
+    assert.deepEqual(out.counterparties, []);
+    assert.equal(out.relationship.counterparty, CP);
+    assert.equal(out.relationship.transfer_count, 0);
+    assert.deepEqual(out.relationship.transfers, []);
+  });
 
   test("rejects a malformed counterparty before any D1 work", async () => {
     const res = await callTool(
@@ -5378,25 +5619,6 @@ describe("MCP get_account_counterparties", () => {
     assert.equal(res.body.result.isError, false);
     assert.equal(out.counterparty_count, 0);
     assert.deepEqual(out.counterparties, []);
-  });
-
-  // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
-  // and the table is dropped in production, so the counterparty=<ss58>
-  // drilldown always builds from an empty rowset now.
-  test("counterparty=<ss58> degrades to an empty relationship on cold D1", async () => {
-    const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
-    const res = await callTool("get_account_counterparties", {
-      ss58: SS58,
-      counterparty: CP,
-    });
-    const out = res.body.result.structuredContent;
-    assert.equal(res.body.result.isError, false);
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.counterparty_count, 0);
-    assert.deepEqual(out.counterparties, []);
-    assert.equal(out.relationship.counterparty, CP);
-    assert.equal(out.relationship.transfer_count, 0);
-    assert.deepEqual(out.relationship.transfers, []);
   });
 });
 
@@ -7884,10 +8106,11 @@ describe("MCP economics + metagraph data tools", () => {
     },
   });
 
-  test("get_subnet_metagraph returns a schema-stable empty snapshot even with rows in scope", async () => {
-    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-    // table is dropped in production, so this always builds from an empty
-    // rowset now — d1Env's mocked neurons are never actually queried.
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_metagraph always returns the schema-stable empty
+  // metagraph (buildSubnetMetagraph([], netuid)) regardless of validator_permit
+  // -- a D1 mock, if bound, is never queried.
+  test("get_subnet_metagraph returns a schema-stable empty metagraph (neurons D1 tier retired)", async () => {
     const res = await callTool(
       "get_subnet_metagraph",
       { netuid: 7 },
@@ -7897,6 +8120,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.neuron_count, 0);
     assert.equal(out.block_number, null);
+    assert.equal(out.captured_at, null);
     assert.deepEqual(out.neurons, []);
   });
 
@@ -7910,60 +8134,49 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /boolean/);
   });
 
-  function threeValidatorsD1() {
-    return {
-      METAGRAPH_HEALTH_DB: metagraphD1({
-        neurons: [
-          {
-            netuid: 7,
-            uid: 0,
-            hotkey: "5Hk-a",
-            coldkey: "5Co-a",
-            validator_permit: 1,
-            stake_tao: 100,
-            emission_tao: 1,
-            validator_trust: 0.9,
-            captured_at: 1750000000000,
-            block_number: 100,
-          },
-          {
-            netuid: 7,
-            uid: 1,
-            hotkey: "5Hk-b",
-            coldkey: "5Co-b",
-            validator_permit: 1,
-            stake_tao: 50,
-            emission_tao: 1,
-            validator_trust: 0.8,
-            captured_at: 1750000000000,
-            block_number: 100,
-          },
-          {
-            netuid: 7,
-            uid: 2,
-            hotkey: "5Hk-c",
-            coldkey: "5Co-c",
-            validator_permit: 1,
-            stake_tao: 5,
-            emission_tao: 1,
-            validator_trust: 0.5,
-            captured_at: 1750000000000,
-            block_number: 100,
-          },
-        ],
-      }),
-    };
-  }
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so list_subnet_validators always ranks over the schema-stable
+  // empty base list (buildSubnetValidators([], netuid)) -- a D1 mock, if
+  // bound, is never queried. Each test still exercises a distinct branch of
+  // the handler's post-fetch limit/min_stake_tao filtering ternary.
+  test("list_subnet_validators returns a schema-stable empty list (neurons D1 tier retired)", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
+  });
 
-  test("list_subnet_validators returns a schema-stable empty list even with rows in scope", async () => {
-    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-    // table is dropped in production, so this always builds from an empty
-    // rowset now — threeValidatorsD1's mocked neurons are never actually
-    // queried, so limit/min_stake_tao filtering has nothing left to filter.
+  test("list_subnet_validators limit is a no-op on an empty base list", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, limit: 2 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
+  });
+
+  test("list_subnet_validators min_stake_tao is a no-op on an empty base list", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7, min_stake_tao: 50 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
+  });
+
+  test("list_subnet_validators combines min_stake_tao and limit on an empty base list", async () => {
     const res = await callTool(
       "list_subnet_validators",
       { netuid: 7, min_stake_tao: 6, limit: 1 },
-      { env: threeValidatorsD1() },
+      { env: d1Env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.validator_count, 0);
@@ -7974,7 +8187,7 @@ describe("MCP economics + metagraph data tools", () => {
     const zeroLimit = await callTool(
       "list_subnet_validators",
       { netuid: 7, limit: 0 },
-      { env: threeValidatorsD1() },
+      { env: d1Env },
     );
     assert.equal(zeroLimit.body.result.isError, true);
     assert.match(zeroLimit.body.result.content[0].text, /invalid_params/);
@@ -7982,7 +8195,7 @@ describe("MCP economics + metagraph data tools", () => {
     const negStake = await callTool(
       "list_subnet_validators",
       { netuid: 7, min_stake_tao: -1 },
-      { env: threeValidatorsD1() },
+      { env: d1Env },
     );
     assert.equal(negStake.body.result.isError, true);
     assert.match(negStake.body.result.content[0].text, /invalid_params/);
@@ -7998,19 +8211,30 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.captured_at, null);
   });
 
-  test("list_global_validators echoes sort/limit on a schema-stable empty list", async () => {
-    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-    // table is dropped in production, so this always builds from an empty
-    // rowset now — there is no longer a row-derived leaderboard to rank.
-    const res = await callTool("list_global_validators", {
-      sort: "total_stake",
-      limit: 1,
-    });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.sort, "total_stake");
-    assert.equal(out.limit, 1);
-    assert.equal(out.validator_count, 0);
-    assert.deepEqual(out.validators, []);
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so list_global_validators always ranks over the schema-stable
+  // empty base list (buildGlobalValidators([], {sort, limit})) -- a D1 mock,
+  // if bound, is never queried. Row-shaping/sorting across a real leaderboard
+  // is still covered directly against the pure builder in
+  // tests/metagraph-neurons.test.mjs; this only proves each REST-supported
+  // sort key is still accepted and echoed back with an empty leaderboard.
+  test("list_global_validators accepts each REST-supported sort key with an empty leaderboard", async () => {
+    for (const sort of [
+      "subnet_count",
+      "uid_count",
+      "total_stake",
+      "total_emission",
+      "max_validator_trust",
+      "avg_validator_trust",
+      "stake_dominance",
+    ]) {
+      const res = await callTool("list_global_validators", { sort, limit: 1 });
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, sort, `sort echo for ${sort}`);
+      assert.equal(out.limit, 1);
+      assert.equal(out.validator_count, 0);
+      assert.deepEqual(out.validators, []);
+    }
   });
 
   test("list_global_validators rejects an invalid sort", async () => {
@@ -8019,16 +8243,21 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /sort/i);
   });
 
-  test("get_neuron always returns neuron:null even with rows in scope", async () => {
-    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-    // table is dropped in production, so this always builds from a null row
-    // now — d1Env's mocked neurons are never actually queried.
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_neuron always returns the schema-stable neuron:null
+  // detail (buildNeuronDetail(null, netuid)) regardless of uid -- a D1 mock,
+  // if bound, is never queried.
+  test("get_neuron returns a schema-stable neuron:null detail (neurons D1 tier retired)", async () => {
     const res = await callTool(
       "get_neuron",
       { netuid: 7, uid: 0 },
       { env: d1Env },
     );
-    assert.equal(res.body.result.structuredContent.neuron, null);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron, null);
+    assert.equal(out.captured_at, null);
+    assert.equal(out.block_number, null);
   });
 
   test("get_neuron requires a non-negative uid", async () => {
@@ -8087,20 +8316,12 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.emission, null);
   });
 
-  // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-  // table is dropped in production, so this always builds from an empty
-  // rowset now.
-  test("get_subnet_performance returns schema-stable null blocks on cold D1", async () => {
-    const res = await callTool("get_subnet_performance", { netuid: 7 });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.neuron_count, 0);
-    assert.equal(out.validator_count, 0);
-    assert.equal(out.active_count, 0);
-    assert.equal(out.captured_at, null);
-    assert.equal(out.incentive, null);
-    assert.equal(out.dividends, null);
-  });
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_concentration always returns the schema-stable
+  // null-block card (buildConcentration([], netuid)) -- covered by "returns
+  // schema-stable null blocks on cold D1" above; entity-collapsing row-shaping
+  // is still covered directly against the pure builder in
+  // tests/concentration.test.mjs.
 
   test("get_chain_concentration returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_concentration", {});
@@ -8111,6 +8332,13 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.emission, null);
   });
 
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_chain_concentration always returns the schema-stable
+  // null-block card (buildChainConcentration([])) -- covered by "returns
+  // schema-stable null blocks on cold D1" above; entity-collapsing row-shaping
+  // is still covered directly against the pure builder in
+  // tests/chain-concentration.test.mjs.
+
   test("get_chain_performance returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_performance", {});
     const out = res.body.result.structuredContent;
@@ -8120,6 +8348,13 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.trust, null);
     assert.equal(out.validator_trust, null);
   });
+
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_chain_performance always returns the schema-stable
+  // null-block card (buildChainPerformance([])) -- covered by "returns
+  // schema-stable null blocks on cold D1" above; reward/score row-shaping is
+  // still covered directly against the pure builder in
+  // tests/chain-performance.test.mjs.
 
   test("get_chain_identity_history returns a schema-stable empty feed on cold D1", async () => {
     const res = await callTool("get_chain_identity_history", {});
@@ -8345,6 +8580,12 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.distribution, null);
   });
 
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_chain_yield always returns the schema-stable
+  // null-block card (buildChainYield([])) -- covered by "returns schema-stable
+  // null blocks on cold D1" above; return/distribution row-shaping is still
+  // covered directly against the pure builder in tests/chain-yield.test.mjs.
+
   test("get_blocks_summary returns a schema-stable zeroed card on cold D1", async () => {
     const res = await callTool("get_blocks_summary", {});
     const out = res.body.result.structuredContent;
@@ -8354,40 +8595,46 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.author_concentration, null);
   });
 
-  test("get_blocks_summary returns a schema-stable zeroed card even with rows in scope", async () => {
-    // #5047 D1 retirement: blocks' D1 write path is retired (#4772) and the
-    // table is dropped in production, so get_blocks_summary always builds from
-    // an empty rowset now — this mock is never actually queried.
-    const res = await callTool(
-      "get_blocks_summary",
-      {},
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            blocks: [
-              {
-                block_number: 100,
-                author: "5Alice",
-                extrinsic_count: 3,
-                event_count: 10,
-                spec_version: 200,
-                observed_at: 1_750_000_000_000,
-              },
-            ],
-          }),
-        },
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.block_count, 0);
-    assert.equal(out.block_time, null);
-    assert.equal(out.throughput, null);
-  });
+  // blocks' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_blocks_summary always returns the schema-stable
+  // zeroed card (buildBlocksSummary([])) -- covered by "returns a
+  // schema-stable zeroed card on cold D1" above; block-production row-shaping
+  // is still covered directly against the pure builder in
+  // tests/blocks-summary.test.mjs.
 
+  // A validator-permit neuron_daily row for one boundary snapshot; keeps the
+  // turnover fixtures compact so the churn arithmetic under test stays legible.
+  function turnoverRow(snapshot_date, netuid, hotkey) {
+    return { snapshot_date, netuid, hotkey, validator_permit: 1 };
+  }
+
+  // A metagraphD1 env wired for the chain-turnover boundary reads: the MIN/MAX
+  // bounds row plus the two-snapshot validator rows the loader reads.
+  function chainTurnoverEnv(
+    rows,
+    { start = "2026-06-01", end = "2026-06-30" } = {},
+  ) {
+    return {
+      env: {
+        METAGRAPH_HEALTH_DB: metagraphD1({
+          turnoverBounds: [{ start_date: start, end_date: end }],
+          turnoverRows: rows,
+        }),
+      },
+    };
+  }
+
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_chain_turnover always returns the schema-stable empty
+  // scorecard (buildChainTurnover([], {window, startDate:null, endDate:null,
+  // limit})) -- churn-ranking row-shaping is still covered directly against
+  // the pure builder in tests/chain-turnover.test.mjs; this only proves the
+  // window/limit args are still accepted and echoed with an empty rollup.
   test("get_chain_turnover returns schema-stable empty on cold D1", async () => {
     const res = await callTool("get_chain_turnover", {});
     const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "30d"); // REST default window parity
     assert.equal(out.comparable, false);
     assert.equal(out.subnet_count, 0);
     assert.deepEqual(out.subnets, []);
@@ -8401,11 +8648,29 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
+  test("get_chain_turnover echoes a custom window and limit with an empty rollup", async () => {
+    const res = await callTool("get_chain_turnover", {
+      window: "7d",
+      limit: 1,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+  });
+
   test("get_chain_turnover payload validates against its declared outputSchema", async () => {
     const schema = listToolDefinitions().find(
       (t) => t.name === "get_chain_turnover",
     )?.outputSchema;
-    const res = await callTool("get_chain_turnover", {});
+    const res = await callTool(
+      "get_chain_turnover",
+      {},
+      chainTurnoverEnv([
+        turnoverRow("2026-06-01", 1, "V1"),
+        turnoverRow("2026-06-30", 1, "V2"),
+      ]),
+    );
     const validate = new Ajv2020().compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
@@ -9505,25 +9770,18 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  test("get_subnet_concentration_history returns a schema-stable empty trend even with rows in scope", async () => {
-    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-    // the table is dropped in production, so this always builds from an empty
-    // rowset now — the mocked neuronDaily rows are never actually queried.
-    const res = await callTool(
-      "get_subnet_concentration_history",
-      { netuid: 7 },
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            neuronDaily: [
-              { snapshot_date: "2026-06-02", stake_tao: 20, emission_tao: 2 },
-              { snapshot_date: "2026-06-01", stake_tao: 10, emission_tao: 1 },
-            ],
-          }),
-        },
-      },
-    );
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_subnet_concentration_history always returns the
+  // schema-stable empty series (buildConcentrationHistory([], netuid,
+  // {window, capped:false})) -- per-day row-shaping is still covered directly
+  // against the pure builder in tests/concentration.test.mjs; this only
+  // proves the default window is still echoed with an empty series.
+  test("get_subnet_concentration_history defaults to 30d with an empty series", async () => {
+    const res = await callTool("get_subnet_concentration_history", {
+      netuid: 7,
+    });
     const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
     assert.equal(out.window, "30d");
     assert.equal(out.point_count, 0);
     assert.deepEqual(out.points, []);
@@ -9548,6 +9806,13 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.stability_score, null);
   });
 
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_subnet_turnover always returns the schema-stable
+  // comparable:false scorecard (buildTurnover([], netuid, {window,
+  // startDate:null, endDate:null})) -- covered by "returns schema-stable
+  // empty on cold D1" above; validator-churn row-shaping is still covered
+  // directly against the pure builder in tests/turnover.test.mjs.
+
   test("get_subnet_turnover rejects an invalid window", async () => {
     const res = await callTool("get_subnet_turnover", {
       netuid: 7,
@@ -9557,10 +9822,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /is not a supported window/);
   });
 
-  test("get_subnet_turnover accepts the all window without a date cutoff", async () => {
-    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-    // the table is dropped in production, so this always builds from an empty
-    // rowset now — the mocked turnover rows are never actually queried.
+  test("get_subnet_turnover accepts the all window with an empty scorecard", async () => {
     const res = await callTool("get_subnet_turnover", {
       netuid: 9,
       window: "all",
@@ -9614,6 +9876,12 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.changes.uid_reassignments, []);
   });
 
+  // account_events/neuron_daily row-shaping for the changes=true detail
+  // (entered/exited validators, UID reassignments) is covered directly
+  // against the pure builders (buildTurnoverChanges/turnoverChangeDetail) in
+  // tests/turnover.test.mjs -- see "with changes=true returns schema-stable
+  // empty detail on cold D1" above for this tool's now-only-reachable path.
+
   test("get_subnet_turnover rejects a non-boolean changes flag", async () => {
     const res = await callTool("get_subnet_turnover", {
       netuid: 7,
@@ -9632,36 +9900,11 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.neurons, []);
   });
 
-  test("get_subnet_yield returns a schema-stable empty ranking even with rows in scope", async () => {
-    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
-    // table is dropped in production, so this always builds from an empty
-    // rowset now — the mocked neuron rows are never actually queried.
-    const res = await callTool(
-      "get_subnet_yield",
-      { netuid: 7 },
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            neurons: [
-              {
-                uid: 0,
-                hotkey: "5Hk0",
-                validator_permit: 1,
-                stake_tao: 10,
-                emission_tao: 1,
-                captured_at: 1750000000000,
-                block_number: 5000,
-              },
-            ],
-          }),
-        },
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.neuron_count, 0);
-    assert.equal(out.subnet_yield, null);
-    assert.deepEqual(out.neurons, []);
-  });
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_subnet_yield always returns the schema-stable empty
+  // card (buildSubnetYield([], netuid)) -- covered by "returns schema-stable
+  // empty on cold D1" above; per-UID yield row-shaping is still covered
+  // directly against the pure builder in tests/subnet-yield.test.mjs.
 
   test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
     const meta = await callTool("get_subnet_metagraph", { netuid: 7 });
@@ -10470,6 +10713,13 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     };
   }
 
+  // account_events/neurons' D1 write path is retired (#4772) and both tables
+  // are dropped in production, so get_account always returns the
+  // schema-stable zero summary (buildAccountSummary(ss58, {})) -- covered by
+  // "the account tools degrade to schema-stable empty payloads when D1 is
+  // cold" below; cross-subnet row-shaping is still covered directly against
+  // the pure builder in tests/account-events.test.mjs.
+
   test("get_account_balance returns balance_tao from finney RPC", async () => {
     const orig = globalThis.fetch;
     globalThis.fetch = async () => ({
@@ -10551,6 +10801,33 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
+  // account_events' D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_account_events always returns the schema-stable
+  // empty feed (buildAccountEvents([], ss58, {limit, offset, nextCursor:
+  // null})) -- kind/netuid filtering row-shaping is still covered directly
+  // against the pure builder in tests/account-events.test.mjs; this only
+  // proves kind/netuid/limit are still accepted (or validated) with an empty
+  // feed.
+  test("get_account_events accepts kind and echoes the limit with an empty feed", async () => {
+    const res = await callTool("get_account_events", {
+      ss58: SS58,
+      kind: "StakeRemoved",
+      limit: 50,
+    });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.events, []);
+    assert.equal(out.limit, 50);
+    assert.equal(out.offset, 0);
+  });
+
+  test("get_account_events accepts netuid with an empty feed (#2585 parity)", async () => {
+    const res = await callTool("get_account_events", {
+      ss58: SS58,
+      netuid: 74,
+    });
+    assert.deepEqual(res.body.result.structuredContent.events, []);
+  });
+
   test("get_account_events rejects a malformed netuid", async () => {
     const env = accountD1({ events: [] });
     const res = await callTool(
@@ -10562,6 +10839,38 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.match(res.body.result.content[0].text, /invalid_params/);
   });
 
+  test("get_account_events clamps an over-range limit the same way the REST route does", async () => {
+    const res = await callTool("get_account_events", {
+      ss58: SS58,
+      limit: 5000,
+    });
+    // clampLimit(5000, 100, 1000) → 1000, echoed in the payload.
+    assert.equal(res.body.result.structuredContent.limit, 1000);
+  });
+
+  test("get_account_events falls back to the default limit for a non-numeric limit", async () => {
+    const env = accountD1({ events: [] });
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, limit: "abc" },
+      { env },
+    );
+    // clampInt(NaN) → default 100.
+    assert.equal(res.body.result.structuredContent.limit, 100);
+  });
+
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_subnets always returns the schema-stable
+  // empty footprint (buildAccountSubnets([], ss58)) -- covered by "the
+  // account tools degrade to schema-stable empty payloads when D1 is cold"
+  // below; cross-subnet row-shaping is still covered directly against the
+  // pure builder in tests/account-events.test.mjs.
+
+  // neurons' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_portfolio always returns the schema-stable
+  // empty portfolio (buildAccountPortfolio([], ss58)) -- position row-shaping
+  // is still covered directly against the pure builder in
+  // tests/account-portfolio.test.mjs.
   test("get_account_portfolio returns an empty portfolio on cold D1", async () => {
     const res = await callTool(
       "get_account_portfolio",
@@ -10669,6 +10978,28 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
+  // account_events' D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_account_events never issues a D1 query at all --
+  // cursor/offset row-value-seek SQL shaping is no longer reachable from this
+  // tool (buildAccountEvents([], ss58, {limit, offset, nextCursor: null})
+  // always echoes next_cursor: null). block_start/block_end/cursor are still
+  // accepted (validated) with an empty feed.
+  test("get_account_events accepts block_start/block_end/cursor with an empty feed and null next_cursor", async () => {
+    const res = await callTool("get_account_events", {
+      ss58: SS58,
+      block_start: 100,
+      block_end: 900,
+      cursor: "200.2",
+      limit: 1,
+      offset: 99,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 0);
+    assert.deepEqual(out.events, []);
+    assert.equal(out.next_cursor, null);
+    assert.equal(out.limit, 1);
+  });
+
   test("get_account_events rejects a non-integer block_start", async () => {
     const res = await callTool(
       "get_account_events",
@@ -10741,6 +11072,54 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     };
   }
 
+  test("get_account_history returns daily series with fields correctly shaped", async () => {
+    const env = tailD1({
+      days: [
+        {
+          day: "2025-06-24",
+          netuid: 7,
+          event_count: 3,
+          event_kinds: "StakeAdded,WeightsSet",
+          first_block: 100,
+          last_block: 200,
+        },
+      ],
+    });
+    const res = await callTool("get_account_history", { ss58: SS58 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.day_count, 1);
+    assert.equal(out.days[0].day, "2025-06-24");
+    assert.equal(out.days[0].netuid, 7);
+    assert.deepEqual(out.days[0].event_kinds, ["StakeAdded", "WeightsSet"]);
+    assert.equal(out.days[0].first_block, 100);
+  });
+
+  test("get_account_history passes netuid and date bounds to the SQL query", async () => {
+    const capture = [];
+    const env = tailD1({ days: [] }, capture);
+    await callTool(
+      "get_account_history",
+      {
+        ss58: SS58,
+        netuid: 7,
+        from: "2025-01-01",
+        to: "2025-06-30",
+        limit: 10,
+      },
+      { env },
+    );
+    const q = capture.find((c) => /FROM account_events_daily/.test(c.sql));
+    assert.ok(q, "daily query must be executed");
+    assert.ok(/AND netuid = \?/.test(q.sql), "netuid filter must be applied");
+    assert.ok(/AND day >= \?/.test(q.sql), "from filter must be applied");
+    assert.ok(/AND day <= \?/.test(q.sql), "to filter must be applied");
+    assert.ok(q.params.includes(7));
+    assert.ok(q.params.includes("2025-01-01"));
+    assert.ok(q.params.includes("2025-06-30"));
+    assert.ok(q.params.includes(10));
+  });
+
   test("get_account_history degrades to empty payload on cold D1", async () => {
     const res = await callTool("get_account_history", { ss58: SS58 });
     assert.equal(res.body.result.isError, false);
@@ -10766,11 +11145,46 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.match(res.body.result.content[0].text, /netuid/i);
   });
 
+  // extrinsics' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_account_extrinsics always returns the schema-stable
+  // empty feed (buildAccountExtrinsics([], ss58, {limit, offset, nextCursor:
+  // null})) -- covered by "degrades to empty payload on cold D1" below.
+  // buildAccountExtrinsics's populated-row shaping (the same builder REST's
+  // handleAccountExtrinsics also now calls with []) is unreachable in
+  // production either way; block_start/block_end/cursor are still accepted
+  // (validated) with an empty feed and a null next_cursor.
+  test("get_account_extrinsics echoes the limit with an empty feed", async () => {
+    const res = await callTool("get_account_extrinsics", {
+      ss58: SS58,
+      limit: 50,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.extrinsic_count, 0);
+    assert.equal(out.limit, 50);
+    assert.deepEqual(out.extrinsics, []);
+  });
+
   test("get_account_extrinsics degrades to empty payload on cold D1", async () => {
     const res = await callTool("get_account_extrinsics", { ss58: SS58 });
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
+  });
+
+  test("get_account_extrinsics accepts block_start/block_end/cursor with an empty feed and null next_cursor", async () => {
+    const res = await callTool("get_account_extrinsics", {
+      ss58: SS58,
+      block_start: 100,
+      block_end: 900,
+      cursor: "200.2",
+      limit: 1,
+      offset: 99,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 0);
+    assert.deepEqual(out.extrinsics, []);
+    assert.equal(out.next_cursor, null);
   });
 
   test("get_account_extrinsics rejects a non-integer block_start", async () => {
@@ -10781,6 +11195,31 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /block_start/i);
+  });
+
+  // account_events' D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_account_transfers always returns the schema-stable
+  // empty feed (buildAccountTransfers([], ss58, {limit, offset, nextCursor:
+  // null, direction})) -- covered by "degrades to empty payload on cold D1"
+  // below; direction-labeled row-shaping is still covered directly against
+  // the pure builder in tests/account-events.test.mjs. direction/
+  // block_start/block_end/cursor are still accepted (validated) with an
+  // empty feed and a null next_cursor.
+  test("get_account_transfers accepts direction/block bounds/cursor with an empty feed and null next_cursor", async () => {
+    const res = await callTool("get_account_transfers", {
+      ss58: SS58,
+      direction: "sent",
+      block_start: 100,
+      block_end: 900,
+      cursor: "200.2",
+      limit: 1,
+      offset: 99,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.transfer_count, 0);
+    assert.deepEqual(out.transfers, []);
+    assert.equal(out.next_cursor, null);
   });
 
   test("get_account_transfers rejects a non-integer block_end", async () => {
@@ -10994,11 +11433,47 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     observed_at: 1750009000000,
   };
 
+  // blocks' D1 write path is retired (#4772) and the table is dropped in
+  // production, so list_blocks always returns the schema-stable empty feed
+  // (buildBlockFeed([], {limit, offset, nextCursor: null})) -- covered by
+  // "degrades to empty payload on cold D1" below; row-shaping/pagination
+  // (including keyset cursor emission) is still covered directly against the
+  // pure builder in tests/blocks.test.mjs. A D1 mock, if bound, is never
+  // queried -- cursor is still accepted (validated) with an empty feed.
+  test("list_blocks accepts a cursor with an empty feed (D1 never queried)", async () => {
+    const res = await callTool("list_blocks", {
+      cursor: "4200000",
+      limit: 50,
+      offset: 10,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_count, 0);
+    assert.deepEqual(out.blocks, []);
+    assert.equal(out.next_cursor, null);
+    assert.equal(out.offset, 10);
+  });
+
   test("list_blocks degrades to empty payload on cold D1", async () => {
     const res = await callTool("list_blocks", {});
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.block_count, 0);
     assert.deepEqual(res.body.result.structuredContent.blocks, []);
+  });
+
+  test("list_blocks accepts every REST filter parity param with an empty feed (D1 never queried)", async () => {
+    const res = await callTool("list_blocks", {
+      author: BLOCK_ROW.author,
+      spec_version: 207,
+      block_start: 100,
+      block_end: 200,
+      from: 1_000,
+      to: 2_000,
+      min_extrinsics: 1,
+      min_events: 5,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_count, 0);
+    assert.deepEqual(out.blocks, []);
   });
 
   test("list_blocks short-circuits impossible count floors without querying D1", async () => {
@@ -11013,6 +11488,21 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.equal(capture.filter((c) => /FROM blocks/.test(c.sql)).length, 0);
   });
 
+  // blocks' D1 write path is retired (#4772) and the table is dropped in
+  // production, so get_block always returns the schema-stable block:null
+  // detail (buildBlock(undefined, ref)) -- no D1 lookup (numeric or hash ref,
+  // or prev/next neighbor query) happens at all. Row-shaping is still
+  // covered directly against the pure builder in tests/blocks.test.mjs.
+  test("get_block accepts a 0x hash ref with block:null (D1 never queried)", async () => {
+    const hash = "0x" + "a".repeat(64);
+    const res = await callTool("get_block", { ref: hash });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ref, hash);
+    assert.equal(out.block, null);
+    assert.equal(out.prev_block_number, null);
+    assert.equal(out.next_block_number, null);
+  });
+
   test("get_block returns block:null for an unknown ref (cold store)", async () => {
     const res = await callTool("get_block", { ref: "9999999" });
     assert.equal(res.body.result.isError, false);
@@ -11025,18 +11515,65 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.match(res.body.result.content[0].text, /ref/);
   });
 
+  // extrinsics'/account_events' D1 write paths are retired (#4772) and both
+  // tables are dropped in production, so list_block_extrinsics and
+  // get_block_events always return the schema-stable block_number:null
+  // detail (buildBlockExtrinsics([], ref, null, {...}) /
+  // buildBlockEvents([], ref, null, {...})) -- no block-ref resolution (numeric
+  // or hash) or sub-resource query happens at all. Covered by "returns empty
+  // payload for unknown ref" below for each tool.
+
   test("list_block_extrinsics returns empty payload for unknown ref", async () => {
-    const res = await callTool("list_block_extrinsics", { ref: "9999999" });
+    const res = await callTool("list_block_extrinsics", {
+      ref: "9999999",
+      offset: 5,
+    });
     const out = res.body.result.structuredContent;
     assert.equal(out.block_number, null);
     assert.deepEqual(out.extrinsics, []);
+    assert.equal(out.offset, 5);
   });
 
   test("get_block_events returns empty payload for unknown ref", async () => {
-    const res = await callTool("get_block_events", { ref: "9999999" });
+    const res = await callTool("get_block_events", {
+      ref: "9999999",
+      offset: 5,
+    });
     const out = res.body.result.structuredContent;
     assert.equal(out.block_number, null);
     assert.deepEqual(out.events, []);
+    assert.equal(out.offset, 5);
+  });
+
+  // extrinsics' D1 write path is retired (#4772) and the table is dropped in
+  // production, so list_extrinsics/get_extrinsic (D1 tail, past a failed/
+  // absent Postgres tier) always return the schema-stable empty feed/detail
+  // (buildExtrinsicFeed([], {...}) / buildExtrinsic(undefined, ref)) -- no
+  // filter/cursor SQL is built at all. Covered by "degrades to empty payload
+  // on cold D1" / "returns extrinsic:null for an unknown ref" below; feed and
+  // detail row-shaping (including success coercion, composite-ref parsing) is
+  // still covered directly against the pure builders in
+  // tests/extrinsics.test.mjs.
+  test("list_extrinsics accepts every REST filter parity param with an empty feed (D1 never queried)", async () => {
+    const toMs = Date.now();
+    const fromMs = toMs - 60_000;
+    const res = await callTool("list_extrinsics", {
+      block: 4200000,
+      signer: EXTRINSIC_ROW.signer,
+      call_module: "SubtensorModule",
+      call_function: "set_weights",
+      success: true,
+      block_start: 100,
+      block_end: 200,
+      from: fromMs,
+      to: toMs,
+      cursor: "4200000.3",
+      offset: 15,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 0);
+    assert.deepEqual(out.extrinsics, []);
+    assert.equal(out.offset, 15);
   });
 
   test("list_extrinsics degrades to empty payload on cold D1", async () => {
@@ -11065,6 +11602,15 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     const res = await callTool("list_extrinsics", { success: "maybe" });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /success/);
+  });
+
+  test("get_extrinsic returns extrinsic:null by 0x hash (D1 never queried)", async () => {
+    const hash = "0x" + "c".repeat(64);
+    const res = await callTool("get_extrinsic", { ref: hash });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ref, hash);
+    assert.equal(out.extrinsic, null);
+    assert.deepEqual(out.events, []);
   });
 
   test("get_extrinsic returns extrinsic:null for an unknown ref (cold store)", async () => {
@@ -11108,11 +11654,12 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.deepEqual(capture, []);
     });
 
-    // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
-    // the table is dropped in production, so the fallback below Postgres is
-    // now a schema-stable-empty literal, not a second (D1) query.
-    test("list_extrinsics: flag=postgres falls back to a zeroed feed on failure (D1 retired)", async () => {
-      const env = chainD1({ extrinsics: [EXTRINSIC_ROW] });
+    // extrinsics' D1 write path is retired (#4772) and the table is dropped
+    // in production, so the tail of the tryPostgresTier ?? chain is now the
+    // schema-stable empty feed (buildExtrinsicFeed([], {...})), not a live D1
+    // query -- a D1 mock, if bound, is never queried either way.
+    test("list_extrinsics: flag=postgres falls back to the schema-stable empty feed on Postgres failure", async () => {
+      const env = {};
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = {
         fetch: async () => {
@@ -11123,9 +11670,8 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     });
 
-    test("list_extrinsics: flag absent never queries D1 (D1 retired, #4772)", async () => {
-      const capture = [];
-      const env = chainD1({ extrinsics: [EXTRINSIC_ROW] }, capture);
+    test("list_extrinsics: flag absent returns the schema-stable empty feed even when DATA_API is bound (unflipped)", async () => {
+      const env = {};
       env.DATA_API = dataApi(
         Response.json({
           schema_version: 1,
@@ -11135,7 +11681,6 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       );
       const res = await callTool("list_extrinsics", {}, { env });
       assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
-      assert.deepEqual(capture, []);
     });
 
     test("list_extrinsics: flag=postgres forwards filters as REST-equivalent query params", async () => {
@@ -11197,18 +11742,21 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.deepEqual(capture, []);
     });
 
-    // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
-    // the table is dropped in production, so the fallback below Postgres is
-    // now a schema-stable extrinsic:null, not a second (D1) query.
-    test("get_extrinsic: flag=postgres falls back to extrinsic:null on failure (D1 retired)", async () => {
+    // extrinsics' D1 write path is retired (#4772) and the table is dropped
+    // in production, so the tail of the tryPostgresTier ?? chain is now the
+    // schema-stable extrinsic:null detail (buildExtrinsic(undefined, ref)),
+    // not a live D1 query.
+    test("get_extrinsic: flag=postgres falls back to the schema-stable empty detail on Postgres failure", async () => {
       const hash = "0x" + "c".repeat(64);
-      const env = chainD1({ extrinsic: EXTRINSIC_ROW });
+      const env = {};
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = {
         fetch: async () => new Response("err", { status: 500 }),
       };
       const res = await callTool("get_extrinsic", { ref: hash }, { env });
-      assert.equal(res.body.result.structuredContent.extrinsic, null);
+      const out = res.body.result.structuredContent;
+      assert.equal(out.ref, hash);
+      assert.equal(out.extrinsic, null);
     });
 
     test("get_extrinsic: flag=postgres forwards the ref in the request path", async () => {
@@ -11576,33 +12124,6 @@ describe("MCP tool-input validation — typed errors, never a throw (#742)", () 
 // data-access (mcpD1Runner over the same SQL, or loadArtifactData over the same
 // artifact) so an agent reaches the same data through MCP.
 describe("MCP parity tools — subnet history / events (D1-backed)", () => {
-  // A neuron_daily row shaped like NEURON_DAILY_READ_COLUMNS (snapshot_date +
-  // the live NEURON_COLUMNS) so buildNeuronHistory/buildSubnetHistory consume it.
-  function neuronDailyRow(date, uid, overrides = {}) {
-    return {
-      snapshot_date: date,
-      uid,
-      hotkey: `hk-${uid}`,
-      coldkey: `ck-${uid}`,
-      active: 1,
-      validator_permit: uid === 0 ? 1 : 0,
-      rank: 0.5,
-      trust: 0.5,
-      validator_trust: 0.5,
-      consensus: 0.5,
-      incentive: 0.4,
-      dividends: 0.1,
-      emission_tao: 1.25,
-      stake_tao: 1000,
-      registered_at_block: 100,
-      is_immunity_period: 0,
-      axon: null,
-      block_number: 8454388,
-      captured_at: 1750000000000,
-      ...overrides,
-    };
-  }
-
   // A D1 binding routing by SQL shape over neuron_daily + account_events, so the
   // parity loaders' WHERE/GROUP-BY clauses get realistic rows. `capture` records
   // each bound (sql, params) so a test can assert what reached the query.
@@ -11643,31 +12164,30 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     };
   }
 
-  test("get_subnet_history returns a schema-stable empty series even with rows in scope", async () => {
-    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-    // the table is dropped in production, so this always builds from an empty
-    // rowset now — the mocked dailyAgg rows are never actually queried.
-    const env = parityD1({
-      dailyAgg: [
-        {
-          snapshot_date: "2026-06-26",
-          neuron_count: 256,
-          validator_count: 9,
-          total_stake_tao: 2_500_000,
-          total_emission_tao: 81,
-        },
-      ],
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_subnet_history always returns the schema-stable
+  // empty series (buildSubnetHistory([], netuid, {window})) -- no D1 query
+  // (GROUP BY snapshot_date, date-cutoff bind) happens at all. Per-day
+  // row-shaping is still covered directly against the pure builder in
+  // tests/neuron-history.test.mjs.
+  test("get_subnet_history returns a schema-stable empty series (D1 never queried)", async () => {
+    const res = await callTool("get_subnet_history", {
+      netuid: 1,
+      window: "7d",
     });
-    const res = await callTool(
-      "get_subnet_history",
-      { netuid: 1, window: "7d" },
-      { env },
-    );
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 1);
     assert.equal(out.window, "7d");
     assert.equal(out.point_count, 0);
     assert.deepEqual(out.points, []);
+  });
+
+  test("get_subnet_history accepts the all window with an empty series", async () => {
+    const res = await callTool("get_subnet_history", {
+      netuid: 1,
+      window: "all",
+    });
+    assert.equal(res.body.result.structuredContent.window, "all");
   });
 
   test("get_subnet_history defaults to the 30d window when omitted", async () => {
@@ -11862,18 +12382,17 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     });
   });
 
-  test("get_neuron_history returns a schema-stable empty series even with rows in scope", async () => {
-    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-    // the table is dropped in production, so this always builds from an empty
-    // rowset now — the mocked dailyRows are never actually queried.
-    const env = parityD1({
-      dailyRows: [neuronDailyRow("2026-06-26", 3, { stake_tao: 1200 })],
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_neuron_history always returns the schema-stable
+  // empty series (buildNeuronHistory([], netuid, uid, {window})) -- no D1
+  // query happens at all. Per-day row-shaping is still covered directly
+  // against the pure builder in tests/neuron-history.test.mjs.
+  test("get_neuron_history returns a schema-stable empty series (D1 never queried)", async () => {
+    const res = await callTool("get_neuron_history", {
+      netuid: 1,
+      uid: 3,
+      window: "30d",
     });
-    const res = await callTool(
-      "get_neuron_history",
-      { netuid: 1, uid: 3, window: "30d" },
-      { env },
-    );
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 1);
     assert.equal(out.uid, 3);
@@ -11887,26 +12406,13 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.match(res.body.result.content[0].text, /uid/);
   });
 
-  test("get_subnet_concentration_history returns a schema-stable empty trend even with rows in scope", async () => {
-    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
-    // the table is dropped in production, so this always builds from an empty
-    // rowset now — the mocked concentrationRows are never actually queried.
-    const env = parityD1({
-      concentrationRows: [
-        { snapshot_date: "2026-06-26", stake_tao: 100, emission_tao: 10 },
-      ],
-    });
-    const res = await callTool(
-      "get_subnet_concentration_history",
-      { netuid: 1, window: "30d" },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 1);
-    assert.equal(out.window, "30d");
-    assert.equal(out.point_count, 0);
-    assert.deepEqual(out.points, []);
-  });
+  // neuron_daily's D1 write path is retired (#4772) and the table is dropped
+  // in production, so get_subnet_concentration_history always returns the
+  // schema-stable empty series (buildConcentrationHistory([], netuid,
+  // {window, capped:false})) -- covered by the equivalent empty-series
+  // assertion in the "MCP economics + metagraph data tools" describe block
+  // above; per-day row-shaping is still covered directly against the pure
+  // builder in tests/concentration.test.mjs.
 
   test("get_subnet_concentration_history rejects the 1y window (smaller set)", async () => {
     const res = await callTool("get_subnet_concentration_history", {
@@ -11917,22 +12423,27 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
-  // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
-  // the table is dropped in production, so get_subnet_events always builds
-  // from an empty rowset now regardless of kind/limit/cursor.
-  test("returns a schema-stable empty feed (account_events retired, #4772)", async () => {
-    const res = await callTool(
-      "get_subnet_events",
-      { netuid: 1, kind: "WeightsSet", limit: 5000 },
-      {},
-    );
+  // account_events' D1 write path is retired (#4772) and the table is
+  // dropped in production, so get_subnet_events always returns the
+  // schema-stable empty feed (buildSubnetEvents([], netuid, {limit, offset,
+  // nextCursor: null})) -- covered by "the parity history/events tools
+  // degrade to empty payloads on cold D1" below. buildSubnetEvents shares
+  // formatAccountEvent's row-mapping with buildAccountEvents, which is
+  // covered with real rows in tests/account-events.test.mjs; kind is still
+  // validated (and other args accepted) with an empty feed and a null
+  // next_cursor.
+  test("get_subnet_events accepts kind and echoes the limit with an empty feed", async () => {
+    const res = await callTool("get_subnet_events", {
+      netuid: 1,
+      kind: "WeightsSet",
+      limit: 1,
+    });
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 1);
     assert.equal(out.event_count, 0);
+    assert.equal(out.limit, 1);
     assert.deepEqual(out.events, []);
     assert.equal(out.next_cursor, null);
-    // clampInt(5000, 100, 1, 1000) -> 1000, same as the REST route.
-    assert.equal(out.limit, 1000);
   });
 
   test("get_subnet_events rejects an unknown event kind before D1", async () => {
@@ -11959,6 +12470,30 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.equal(called, false);
   });
 
+  test("get_subnet_events accepts an ingested non-indexed kind (Transfer) with an empty feed", async () => {
+    const res = await callTool("get_subnet_events", {
+      netuid: 1,
+      kind: "Transfer",
+    });
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(res.body.result.structuredContent.events, []);
+  });
+
+  test("get_subnet_events accepts block_start/block_end/cursor with an empty feed and null next_cursor", async () => {
+    const res = await callTool("get_subnet_events", {
+      netuid: 1,
+      block_start: 100,
+      block_end: 900,
+      cursor: "200.2",
+      limit: 1,
+      offset: 99,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 0);
+    assert.deepEqual(out.events, []);
+    assert.equal(out.next_cursor, null);
+  });
+
   test("get_subnet_events rejects a non-integer block_start", async () => {
     const res = await callTool(
       "get_subnet_events",
@@ -11967,6 +12502,15 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /block_start/i);
+  });
+
+  test("get_subnet_events clamps an over-range limit like the REST route", async () => {
+    const res = await callTool("get_subnet_events", {
+      netuid: 1,
+      limit: 5000,
+    });
+    // clampLimit(5000, 100, 1000) → 1000, echoed in the payload.
+    assert.equal(res.body.result.structuredContent.limit, 1000);
   });
 
   test("the parity history/events tools degrade to empty payloads on cold D1", async () => {
