@@ -2390,10 +2390,9 @@ test("enrichment guidance ignores maintainer-excluded candidate URLs", () => {
   // OpenAPI flips SN38 from submit-new-evidence to maintainer-review-existing-evidence.
   // This test's intent is maintainer-excluded URL filtering, not that action pin.
   assert.ok(
-    [
-      "submit-new-evidence",
-      "maintainer-review-existing-evidence",
-    ].includes(colosseum.evidence_action),
+    ["submit-new-evidence", "maintainer-review-existing-evidence"].includes(
+      colosseum.evidence_action,
+    ),
     `unexpected SN38 evidence_action: ${colosseum.evidence_action}`,
   );
   assert.equal(
