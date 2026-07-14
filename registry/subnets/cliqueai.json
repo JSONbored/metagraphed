@@ -64,6 +64,31 @@
         "https://github.com/toptensor/CliqueAI"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/83"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-83-cliqueai-protocol",
+      "kind": "data-artifact",
+      "name": "CliqueAI subnet protocol definition",
+      "notes": "Public no-auth machine-readable protocol module (CliqueAI/protocol.py) committed in the official toptensor/CliqueAI repository, defining the subnet's Bittensor synapse schema MaximumCliqueOfLambdaGraph — the request/response contract SN83 miners and validators communicate over (inputs: uuid, label, number_of_nodes, base92-encoded adjacency matrix; output: the maximum_clique node list). Pinned to an immutable commit. Verified 200, SS58-clean, no keys or secrets. Distinct from the min_compute spec and dashboard already registered.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "provider": "cliqueai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/toptensor/CliqueAI/blob/18f979dbc5777fde45ec2b1cf532c5e3f8b047fd/CliqueAI/protocol.py",
+        "https://github.com/toptensor/CliqueAI"
+      ],
+      "url": "https://raw.githubusercontent.com/toptensor/CliqueAI/18f979dbc5777fde45ec2b1cf532c5e3f8b047fd/CliqueAI/protocol.py"
     }
   ],
   "source_repo": "https://github.com/toptensor/CliqueAI",
