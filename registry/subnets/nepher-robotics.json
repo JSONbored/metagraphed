@@ -374,6 +374,25 @@
       },
       "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
       "url": "https://tournament-api.nepher.ai/api/v1/evaluations"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-common-config",
+      "kind": "data-artifact",
+      "name": "Nepher common configuration",
+      "notes": "Public no-auth machine-readable common_config.yaml from the official SN49 Nepher Robotics repository (nepher-ai/nepher-subnet), pinned to an immutable commit. The project-maintained shared configuration for all Nepher validators and miners — it declares the subnet (network finney, subnet_uid 49) and the tournament API endpoint and related network settings. Static YAML artifact self-identifying as SN49.",
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet",
+        "https://github.com/nepher-ai/nepher-subnet/blob/29c508fddd5ab3bf19797e197cbd818e9f56c4c7/config/common_config.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/nepher-ai/nepher-subnet/29c508fddd5ab3bf19797e197cbd818e9f56c4c7/config/common_config.yaml"
     }
   ],
   "website_url": "https://nepher.ai"
