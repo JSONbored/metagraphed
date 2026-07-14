@@ -525,10 +525,16 @@ test("chain-events decodes both account-keyed fields of a Balances.Transfer (to 
   expect(body.events[0].args.amount).toBe(30681);
 });
 
-test("chain-events hex-encodes an untagged positional 32-byte value (no field name to key SS58 off of)", async () => {
+test("chain-events decodes a positional SubtensorModule.TimelockedWeightsRevealed [netuid, who] to SS58 via coerceEvent's ctx (#5359/#61, fixed 2026-07-14)", async () => {
   // Real SubtensorModule.TimelockedWeightsRevealed row (block 8587756, event
-  // 2): args has no field names at all for non-System/Balances pallets --
-  // must degrade to hex, never guess an SS58 address with no key hint.
+  // 2). Previously hex-encoded the who field for lack of a key hint at any
+  // depth -- coerceEvent already passed row.pallet/row.method as ctx, but
+  // decodeChainEventArgs only used ctx for the TEXTUAL/HEX_BLOB/ENUM_PAYLOAD
+  // allowlists, never to recover a positional tuple's field names. Fixed by
+  // POSITIONAL_FIELD_NAMES (src/chain-event-args.mjs) -- see
+  // tests/chain-event-args.test.mjs for the exhaustive per-event-kind unit
+  // coverage; this is the one route-level regression test proving the fix
+  // reaches a real REST response, not just the decoder in isolation.
   mockRows.current = [
     {
       block_number: "8587756",
@@ -555,7 +561,7 @@ test("chain-events hex-encodes an untagged positional 32-byte value (no field na
   const body = await res.json();
   expect(body.events[0].args).toEqual([
     78,
-    "0xa2c17957c44381b7f39e6f0aab251f7a09985983ea61f92910a8b39a92fcd145",
+    "5Fk765B4CRBekwErwE5VxvveWhHztHSfsnsLt8cbDayDWsuk",
   ]);
 });
 

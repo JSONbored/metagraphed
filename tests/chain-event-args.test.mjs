@@ -45,7 +45,7 @@ describe("decodeChainEventArgs", () => {
     });
   });
 
-  test("hex-encodes an untagged positional 32-byte value with no field name (real SubtensorModule.TimelockedWeightsRevealed, block 8587756/2)", () => {
+  test("hex-encodes an untagged positional 32-byte value with no field name when the event kind isn't in POSITIONAL_FIELD_NAMES (no ctx)", () => {
     const args = [
       78,
       [
@@ -60,6 +60,152 @@ describe("decodeChainEventArgs", () => {
       78,
       "0xa2c17957c44381b7f39e6f0aab251f7a09985983ea61f92910a8b39a92fcd145",
     ]);
+  });
+
+  test("decodes a positional SubtensorModule.TimelockedWeightsRevealed [netuid, who] to SS58, not hex (real block 8587756/2, fixed 2026-07-14 #5359/#61)", () => {
+    // This is the SAME real args this file's hex-encoding test above uses --
+    // proving the difference is entirely `ctx` (the fallback path with no
+    // pallet/method still correctly can't know the field order and stays
+    // hex), not a change to the underlying byte decode.
+    const args = [
+      78,
+      [
+        [
+          162, 193, 121, 87, 196, 67, 129, 183, 243, 158, 111, 10, 171, 37, 31,
+          122, 9, 152, 89, 131, 234, 97, 249, 41, 16, 168, 179, 154, 146, 252,
+          209, 69,
+        ],
+      ],
+    ];
+    assert.deepEqual(
+      decodeChainEventArgs(args, {
+        pallet: "SubtensorModule",
+        method: "TimelockedWeightsRevealed",
+      }),
+      [78, "5Fk765B4CRBekwErwE5VxvveWhHztHSfsnsLt8cbDayDWsuk"],
+    );
+  });
+
+  test("decodes a positional SubtensorModule.AxonServed [netuid, hotkey] to SS58 (real block 8619226 sample, #5359/#61)", () => {
+    const args = [
+      33,
+      [
+        [
+          114, 211, 59, 166, 53, 72, 237, 250, 73, 154, 31, 222, 240, 135, 36,
+          38, 38, 139, 52, 84, 62, 8, 208, 191, 72, 13, 65, 123, 86, 171, 97,
+          71,
+        ],
+      ],
+    ];
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "SubtensorModule",
+      method: "AxonServed",
+    });
+    assert.equal(decoded[0], 33);
+    assert.ok(typeof decoded[1] === "string" && decoded[1].startsWith("5"));
+  });
+
+  test("decodes a positional SubtensorModule.NeuronRegistered [netuid, uid, hotkey] to SS58 (real block 8619226 sample, #5359/#61)", () => {
+    const args = [
+      3,
+      30,
+      [
+        [
+          118, 218, 242, 148, 66, 182, 145, 154, 35, 242, 77, 15, 119, 5, 163,
+          99, 37, 63, 189, 121, 188, 87, 154, 78, 203, 176, 176, 248, 139, 90,
+          208, 76,
+        ],
+      ],
+    ];
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "SubtensorModule",
+      method: "NeuronRegistered",
+    });
+    assert.deepEqual(decoded.slice(0, 2), [3, 30]);
+    assert.ok(typeof decoded[2] === "string" && decoded[2].startsWith("5"));
+  });
+
+  test("decodes a positional SubtensorModule.StakeTransferred [origin_coldkey, destination_coldkey, hotkey, origin_netuid, destination_netuid, amount] to SS58 across all three account positions (real block 8619226 sample, #5359/#61)", () => {
+    const coldkeyA = new Array(32).fill(11);
+    const coldkeyB = new Array(32).fill(22);
+    const hotkey = new Array(32).fill(33);
+    const args = [[coldkeyA], [coldkeyB], [hotkey], 0, 1, 1000000000];
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "SubtensorModule",
+      method: "StakeTransferred",
+    });
+    assert.ok(decoded[0].startsWith("5"));
+    assert.ok(decoded[1].startsWith("5"));
+    assert.ok(decoded[2].startsWith("5"));
+    assert.notEqual(decoded[0], decoded[1]);
+    assert.notEqual(decoded[0], decoded[2]);
+    assert.deepEqual(decoded.slice(3), [0, 1, 1000000000]);
+  });
+
+  test("decodes a positional SubtensorModule.StakeMoved 6-field tuple, naming the 4th field destination_hotkey (real block 8619226 shape, #5359/#61)", () => {
+    const coldkey = new Array(32).fill(44);
+    const hotkey = new Array(32).fill(55);
+    const destinationHotkey = new Array(32).fill(66);
+    const args = [[coldkey], [hotkey], 84, [destinationHotkey], 84, 3094221033];
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "SubtensorModule",
+      method: "StakeMoved",
+    });
+    assert.ok(decoded[0].startsWith("5"));
+    assert.ok(decoded[1].startsWith("5"));
+    assert.ok(decoded[3].startsWith("5"));
+    assert.notEqual(decoded[1], decoded[3]);
+    assert.deepEqual(
+      [decoded[2], decoded[4], decoded[5]],
+      [84, 84, 3094221033],
+    );
+  });
+
+  test("leaves a position past the known field names untouched (StakeAdded's confirmed-live but uncurated 6th field)", () => {
+    const coldkey = new Array(32).fill(1);
+    const hotkey = new Array(32).fill(2);
+    const args = [[coldkey], [hotkey], 7990000000, 7990000000, 0, 0];
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "SubtensorModule",
+      method: "StakeAdded",
+    });
+    assert.ok(decoded[0].startsWith("5"));
+    assert.ok(decoded[1].startsWith("5"));
+    assert.deepEqual(decoded.slice(2), [7990000000, 7990000000, 0, 0]);
+  });
+
+  test("leaves a positional event kind with no fields containing an account (WeightsSet) as plain scalars", () => {
+    assert.deepEqual(
+      decodeChainEventArgs([62, 188], {
+        pallet: "SubtensorModule",
+        method: "WeightsSet",
+      }),
+      [62, 188],
+    );
+  });
+
+  test("does not apply positional field names to an event kind not in the map", () => {
+    const bytes = new Array(32).fill(5);
+    assert.deepEqual(
+      decodeChainEventArgs([1, [bytes]], {
+        pallet: "SubtensorModule",
+        method: "SomeUnmappedEvent",
+      }),
+      [1, "0x" + "05".repeat(32)],
+    );
+  });
+
+  test("decodes new_coldkey/old_coldkey to SS58 (real SubtensorModule.ColdkeySwapped, previously missing from ACCOUNT_KEYS despite arriving as a named object, #5359/#61)", () => {
+    const newColdkey = new Array(32).fill(6);
+    const oldColdkey = new Array(32).fill(7);
+    const args = { new_coldkey: [newColdkey], old_coldkey: [oldColdkey] };
+    const decoded = decodeChainEventArgs(args, {
+      pallet: "SubtensorModule",
+      method: "ColdkeySwapped",
+    });
+    assert.ok(decoded.new_coldkey.startsWith("5"));
+    assert.ok(decoded.old_coldkey.startsWith("5"));
+    assert.notEqual(decoded.new_coldkey, decoded.old_coldkey);
   });
 
   test("preserves array-ness for a hypothetical Vec<AccountId>-shaped field (each entry independently newtype-wrapped, not collapsed like a scalar field)", () => {
