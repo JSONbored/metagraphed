@@ -4281,19 +4281,18 @@ export const MCP_TOOLS = [
       if (args?.window !== undefined && window === null) {
         throw toolError("invalid_params", "window must be one of: 90d, 1y.");
       }
-      const resolvedWindow = window || "90d";
       const minSamples = optionalNonNegativeInt(args, "min_samples");
       return (
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/uptime`, {
-            window: resolvedWindow,
+            window,
             min_samples: minSamples,
           }),
           "METAGRAPH_HEALTH_SOURCE",
         )) ??
         (await loadSubnetUptime(mcpD1Runner(ctx), netuid, {
-          window: resolvedWindow,
+          window,
           observedAt: await mcpObservedAt(ctx),
           minSamples,
         }))

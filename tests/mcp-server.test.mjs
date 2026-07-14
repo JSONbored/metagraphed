@@ -10431,6 +10431,38 @@ describe("MCP economics + metagraph data tools", () => {
     });
   });
 
+  test("compare_subnets: health+economics dimensions flag=postgres still includes economicsRows", async () => {
+    let captured;
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          const reqUrl = new URL(req.url);
+          captured = reqUrl.pathname + reqUrl.search;
+          return Response.json({
+            rows: [
+              { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
+            ],
+          });
+        },
+      },
+    };
+    const res = await callTool(
+      "compare_subnets",
+      { netuids: [7], dimensions: ["health", "economics"] },
+      { deps: liveAnalyticsDeps, env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(captured, "/api/v1/internal/compare-health?netuids=7");
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.subnets[0].health, {
+      surface_count: 9,
+      ok_count: 8,
+      avg_latency_ms: 55,
+    });
+    assert.ok(out.subnets[0].economics);
+  });
+
   test("compare_subnets: health dimension flag=postgres falls back to D1 on DATA_API failure", async () => {
     const env = {
       ...d1Env,
@@ -16890,6 +16922,11 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
       tool: "get_subnet_uptime",
       args: { netuid: 7, window: "1y", min_samples: 5 },
       path: "/api/v1/subnets/7/uptime?window=1y&min_samples=5",
+    },
+    {
+      tool: "get_subnet_uptime",
+      args: { netuid: 7 },
+      path: "/api/v1/subnets/7/uptime?window=90d",
     },
   ];
 
