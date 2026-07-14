@@ -2386,12 +2386,7 @@ test("enrichment guidance ignores maintainer-excluded candidate URLs", () => {
   const colosseum = queue.queue.find((entry) => entry.netuid === 38);
 
   assert(colosseum, "expected SN38 colosseum enrichment queue entry");
-  // Once a community OpenAPI surface lands for ChronoLLM, enrichment flips from
-  // "submit new" to maintainer review of the registered evidence.
-  assert.equal(
-    colosseum.evidence_action,
-    "maintainer-review-existing-evidence",
-  );
+  assert.equal(colosseum.evidence_action, "submit-new-evidence");
   assert.equal(
     colosseum.sample_target_candidate_ids.includes(
       "sn-38-native-chain-website",
