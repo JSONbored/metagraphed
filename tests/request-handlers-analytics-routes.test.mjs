@@ -397,7 +397,7 @@ describe("handleEconomicsTrends", () => {
     const [recent, older] = body.data.days;
     assert.equal(recent.snapshot_date, "2026-06-02");
     assert.equal(recent.subnet_count, 2);
-    assert.equal(recent.total_stake_tao, 400);
+    assert.equal(recent.total_stake_tao, "400.000000000");
     assert.equal(recent.validator_count, 10);
     assert.equal(recent.miner_count, 60);
     // Stake-weighted mean price: (0.02·300 + 0.06·100) / 400 = 0.03.
@@ -408,7 +408,7 @@ describe("handleEconomicsTrends", () => {
     assert.equal(recent.mean_emission_share, 0.03);
     assert.equal(older.snapshot_date, "2026-06-01");
     assert.equal(older.subnet_count, 1);
-    assert.equal(older.total_stake_tao, 100);
+    assert.equal(older.total_stake_tao, "100.000000000");
   });
 
   test("nulls a metric for a day when no subnet reported it", async () => {
@@ -464,7 +464,7 @@ describe("handleEconomicsTrends", () => {
       lines[0],
       "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
     );
-    assert.equal(lines[1], "2026-06-02,1,300,0.02,0.02,8,50,0.04");
+    assert.equal(lines[1], "2026-06-02,1,300.000000000,0.02,0.02,8,50,0.04");
   });
 
   test("returns CSV response when Accept: text/csv header is present", async () => {
@@ -488,7 +488,7 @@ describe("handleEconomicsTrends", () => {
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
     const text = await res.text();
     const lines = text.split("\r\n");
-    assert.equal(lines[1], "2026-06-02,1,300,0.02,0.02,8,50,0.04");
+    assert.equal(lines[1], "2026-06-02,1,300.000000000,0.02,0.02,8,50,0.04");
   });
 
   test("returns empty/header-only CSV when rollup is cold", async () => {

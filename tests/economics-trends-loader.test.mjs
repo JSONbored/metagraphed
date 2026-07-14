@@ -56,7 +56,7 @@ describe("loadEconomicsTrends", () => {
     assert.equal(rows.length, 1);
     assert.equal(data.window, "7d");
     assert.equal(data.day_count, 1);
-    assert.equal(data.days[0].total_stake_tao, 1000);
+    assert.equal(data.days[0].total_stake_tao, "1000.000000000");
   });
 
   test("omits the date lower bound for the all window", async () => {
