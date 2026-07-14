@@ -178,6 +178,8 @@ import type {
   SubnetHistoryPoint,
   SubnetHyperparameters,
   SubnetHyperparametersDetail,
+  SubnetHyperparamsHistory,
+  SubnetHyperparamsHistoryEntry,
   SubnetIdentityHistory,
   SubnetWeightSetter,
   SubnetWeightSetters,
@@ -4739,6 +4741,63 @@ export const subnetHyperparametersQuery = (netuid: number) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetHyperparametersDetail>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #4309/1.6: one historic hyperparameter snapshot in a subnet's append-only
+// change timeline. Discarded (like the sibling identity-history normalizer)
+// when the stable `hyperparams_hash` keyset anchor is missing.
+function normalizeSubnetHyperparamsHistoryEntry(
+  raw: unknown,
+): SubnetHyperparamsHistoryEntry | null {
+  if (!isRecord(raw)) return null;
+  const hash = firstString(raw.hyperparams_hash);
+  if (hash == null) return null;
+  return {
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+    hyperparameters: normalizeSubnetHyperparameters(raw.hyperparameters),
+    hyperparams_hash: hash,
+  };
+}
+
+const MAX_SUBNET_HYPERPARAMS_HISTORY_ENTRIES = 1000;
+
+function normalizeSubnetHyperparamsHistory(netuid: number, raw: unknown): SubnetHyperparamsHistory {
+  const rec = isRecord(raw) ? raw : {};
+  const entries = (Array.isArray(rec.entries) ? rec.entries : [])
+    .map(normalizeSubnetHyperparamsHistoryEntry)
+    .filter((entry): entry is SubnetHyperparamsHistoryEntry => entry != null)
+    .slice(0, MAX_SUBNET_HYPERPARAMS_HISTORY_ENTRIES);
+  return {
+    schema_version: firstFiniteNumber(rec.schema_version) ?? 1,
+    netuid: firstFiniteNumber(rec.netuid) ?? netuid,
+    entry_count: firstFiniteNumber(rec.entry_count) ?? entries.length,
+    entries,
+    limit: firstFiniteNumber(rec.limit) ?? null,
+    offset: firstFiniteNumber(rec.offset) ?? null,
+    next_cursor: firstString(rec.next_cursor) ?? null,
+  };
+}
+
+// GET /api/v1/subnets/{netuid}/hyperparameters/history (#4309/1.6): append-only
+// hyperparameter-change timeline for one subnet, newest first, from the
+// subnet_hyperparams_history Postgres tier. Forward-only — rows only exist
+// from when the diff-on-change write started running.
+export const subnetHyperparamsHistoryQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-hyperparams-history", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetHyperparamsHistory>>(
+        `/api/v1/subnets/${netuid}/hyperparameters/history`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetHyperparamsHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      };
     },
     staleTime: STALE_MED,
   });
