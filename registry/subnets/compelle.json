@@ -102,6 +102,22 @@
         "https://github.com/compelle/compelle-validator/blob/main/compelle/config.json"
       ],
       "url": "https://raw.githubusercontent.com/compelle/compelle-validator/main/compelle/config.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-82-compelle-status-dashboard",
+      "kind": "dashboard",
+      "name": "Compelle system status dashboard",
+      "notes": "Public no-auth web dashboard at compelle.com/status - a live system-status readout of the SN82 Compelle validator network (validator state, last epoch block and time, distinct validators reporting, eligible miners scored in the last epoch, total epochs and games indexed), refreshing every 30 seconds. Server-rendered human-viewable page (page title: System Status | Compelle) on the subnet's official compelle.com app host, distinct in kind from the JSON /api/health endpoint and the validator-config data-artifact.",
+      "provider": "compelle",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jaytbarimbao-collab"
+      },
+      "source_urls": ["https://compelle.com/status", "https://compelle.com/"],
+      "url": "https://compelle.com/status"
     }
   ]
 }
