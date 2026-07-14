@@ -76,4 +76,13 @@ describe("VALIDATOR_COLUMNS", () => {
       expect(headers).toContain(h);
     }
   });
+
+  it("maps sortable headers to unique GlobalValidatorSort fields (#5344)", () => {
+    const fields = VALIDATOR_COLUMNS.map((c) => c.sortField).filter(Boolean);
+    expect(fields.length).toBeGreaterThan(0);
+    expect(new Set(fields).size).toBe(fields.length);
+    for (const h of ["Active subnets", "UIDs", "Dominance", "Total stake", "Total emission"]) {
+      expect(VALIDATOR_COLUMNS.find((c) => c.header === h)?.sortField).toBeDefined();
+    }
+  });
 });
