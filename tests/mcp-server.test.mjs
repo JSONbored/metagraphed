@@ -5557,6 +5557,210 @@ describe("MCP get_rpc_usage", () => {
   });
 });
 
+describe("MCP call_rpc", () => {
+  // Mirrors rpcEnv() in tests/request-handlers-rpc-proxy.test.mjs: rpc/pools.json
+  // is R2-only, so both ASSETS and METAGRAPH_ARCHIVE are stubbed the same way
+  // readArtifact's tier resolution expects.
+  const RPC_POOL = {
+    pools: [
+      {
+        id: "finney-rpc",
+        endpoints: [
+          {
+            id: "fx",
+            provider: "fx",
+            pool_eligible: true,
+            status: "ok",
+            score: 100,
+            url: "https://bittensor-finney.api.onfinality.io/public",
+          },
+        ],
+      },
+    ],
+  };
+
+  function callRpcEnv(overrides = {}) {
+    return {
+      METAGRAPH_ENABLE_RPC_PROXY: "true",
+      ASSETS: {
+        async fetch(request) {
+          const target = new URL(request.url);
+          if (target.pathname === "/metagraph/rpc/pools.json") {
+            return Response.json(RPC_POOL);
+          }
+          return new Response("{}", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              return RPC_POOL;
+            },
+          };
+        },
+      },
+      ...overrides,
+    };
+  }
+
+  test("rejects a missing method as invalid_params", async () => {
+    const res = await callTool("call_rpc", {}, { env: callRpcEnv() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("rejects a non-array params as invalid_params", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", params: "nope" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("propagates the REST route's rpc_method_blocked error verbatim for a denied method", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "author_submitExtrinsic" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_method_blocked/);
+  });
+
+  test("propagates rpc_network_unsupported for an unknown network", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", network: "moonbeam" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_network_unsupported/);
+  });
+
+  test("forwards the real MCP client IP into the proxy's rate-limit key", async () => {
+    let limiterKey;
+    const env = callRpcEnv({
+      // MCP_RATE_LIMITER absent falls back to RPC_RATE_LIMITER for the transport-
+      // level MCP rate limit too (enforceMcpRateLimit) -- stub it separately so
+      // only the proxy's own internal check below is under test.
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    });
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health" },
+      { env, headers: { "cf-connecting-ip": "198.51.100.7" } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_rate_limited/);
+    assert.equal(limiterKey, "rpc:198.51.100.7");
+  });
+
+  test("returns the upstream result plus served-endpoint metadata on success", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { isSyncing: false, peers: 3, shouldHavePeers: true },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.network, "finney");
+      assert.equal(out.method, "system_health");
+      assert.deepEqual(out.result, {
+        isSyncing: false,
+        peers: 3,
+        shouldHavePeers: true,
+      });
+      assert.equal(out.error, null);
+      assert.equal(out.endpoint_id, "fx");
+      assert.equal(out.provider, "fx");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("state_getStorage forwards to the state-query path and validates the key", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "state_getStorage", params: ["not-hex"] },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /0x-prefixed hex/);
+  });
+
+  test("rpc_invalid_response when the upstream body is not JSON", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response("not json", {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rpc_invalid_response/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("advertises a call_rpc-shaped outputSchema and the result validates against it", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const def = listToolDefinitions().find((t) => t.name === "call_rpc");
+    assert.ok(def.outputSchema);
+    const validate = ajv.compile(def.outputSchema);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: "finney" }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_chain" },
+        { env: callRpcEnv() },
+      );
+      assert.ok(
+        validate(res.body.result.structuredContent),
+        JSON.stringify(validate.errors),
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
