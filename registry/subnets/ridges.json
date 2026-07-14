@@ -49,29 +49,6 @@
       "notes": "Official Ridges source repository."
     },
     {
-      "id": "sn-62-ridges-subnet-api",
-      "name": "Ridges API — top agents leaderboard (retrieval)",
-      "kind": "subnet-api",
-      "url": "https://agent-upload.ridges.ai/retrieval/top-agents",
-      "provider": "ridges",
-      "auth_required": false,
-      "authority": "community",
-      "public_safe": true,
-      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
-      "schema_status": "machine-readable",
-      "source_urls": [
-        "https://github.com/ridgesai/ridges/blob/main/miners/cli/commands/upload.py",
-        "https://raw.githubusercontent.com/ridgesai/ridges/main/miners/cli/commands/upload.py",
-        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/retrieval.py",
-        "https://raw.githubusercontent.com/ridgesai/ridges/main/api/endpoints/retrieval.py"
-      ],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "dexterity104"
-      },
-      "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json."
-    },
-    {
       "auth_required": false,
       "authority": "community",
       "id": "sn-62-ridges-openapi",
@@ -97,17 +74,24 @@
       "authority": "community",
       "id": "sn-62-ridges-data-artifact",
       "kind": "data-artifact",
-      "name": "Ridges evaluation-set problems dump",
-      "notes": "Public no-auth GET /evaluation-sets/all-latest-set-problems on agent-upload.ridges.ai returning the latest evaluation-set problem list (observed live: 89 SWE-bench/Aider/infinite-swe problem records with set_id, problem_name, benchmark_family, execution_spec). Same first-party host as the registered OpenAPI schema and top-agents subnet-api; DEFAULT_API_BASE_URL in miners/cli/commands/upload.py and the FastAPI route in api/endpoints/evaluation_sets.py prove SN62 Ridges ownership.",
+      "name": "Ridges evaluation-set problem suite",
+      "notes": "Public no-auth GET /evaluation-sets/all-latest-set-problems on agent-upload.ridges.ai returning the latest SN62 Ridges evaluation-set problem suite as JSON (set_id, set_group, problem_name, benchmark_family, execution_spec). Listed in the platform OpenAPI schema and implemented in api/endpoints/evaluation_sets.py; same first-party agent-upload.ridges.ai host as the registered OpenAPI surface. Distinct from the OpenAPI schema surface.",
       "provider": "ridges",
       "public_safe": true,
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 15000
+      },
       "review": {
         "state": "community-submitted",
         "submitted_by": "bohdansolovie"
       },
       "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/evaluation_sets.py",
         "https://github.com/ridgesai/ridges/blob/main/miners/cli/commands/upload.py",
-        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/evaluation_sets.py"
+        "https://agent-upload.ridges.ai/openapi.json"
       ],
       "url": "https://agent-upload.ridges.ai/evaluation-sets/all-latest-set-problems"
     }
