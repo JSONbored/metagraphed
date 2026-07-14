@@ -247,8 +247,9 @@ export function ResetFiltersButton({ active, onReset }: { active: boolean; onRes
  *
  * On viewports below `md` the controls collapse behind a single "Filters"
  * toggle (closed by default) so list data stays above the fold; when open
- * they lay out as a 2-column grid. On `md+` the wrapper is `display: contents`
- * so children participate in ListShell's existing flex row unchanged.
+ * they lay out as a 2-column grid. On `md+` an inner flex row mirrors
+ * ListShell's previous wrap behavior — mobile-only classes stay behind
+ * `max-md:` so tablet/desktop never inherit the grid/hidden styles.
  */
 export function CollapsibleFilters({
   activeCount = 0,
@@ -288,14 +289,13 @@ export function CollapsibleFilters({
       <div
         id={panelId}
         className={classNames(
-          // Desktop: unwrap so children join ListShell's flex row.
-          "md:contents",
-          open
-            ? // Mobile open: 2-col grid. Force inputs to fit (SearchInput
-              // defaults to min-w-[180px], which blows out a 2-col cell).
-              "w-full grid grid-cols-2 gap-2 [&_input]:min-w-0 [&_input]:max-w-none [&_input]:w-full [&_input]:flex-none [&>span]:col-span-2 [&>button]:col-span-2 [&>label]:col-span-2"
-            : // Mobile closed: hide the panel entirely.
-              "hidden",
+          // Desktop / tablet: same wrap row ListShell used before (do not use
+          // display:contents — it lost to unscoped grid/hidden in practice).
+          "md:flex md:flex-wrap md:items-center md:gap-2 md:min-w-0 md:flex-1",
+          // Mobile: closed = hidden; open = 2-col grid. All scoped to max-md.
+          !open && "max-md:hidden",
+          open &&
+            "max-md:grid max-md:w-full max-md:grid-cols-2 max-md:gap-2 max-md:[&_input]:min-w-0 max-md:[&_input]:max-w-none max-md:[&_input]:w-full max-md:[&_input]:flex-none max-md:[&>span]:col-span-2 max-md:[&>button]:col-span-2 max-md:[&>label]:col-span-2",
         )}
       >
         {children}
