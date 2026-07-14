@@ -619,6 +619,33 @@ describe("metagraph-neurons builders", () => {
     assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
   });
 
+  test("buildGlobalValidators nulls apy_estimate AND reports 0 eligible when the only eligible stake rounds to exactly 0 rao (#2551)", () => {
+    // 4e-10 TAO is > 0 in JS float terms, so accumulateApyRow's stake > 0
+    // guard passes and its own local apyEligibleCount reaches 1 -- but
+    // toRaoBig(4e-10) rounds to 0n (sub-rao precision), leaving
+    // apyDenominatorRao at 0n. finalizeApy's apyDenominatorRao <= 0n guard
+    // catches exactly this: it must report eligible_count 0 (not the raw 1
+    // accumulateApyRow counted), never 1, to preserve the field's own
+    // documented invariant ("apy_estimate is null iff eligible_count is 0")
+    // and avoid a 0/0 division producing NaN instead of a clean null.
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-a",
+          stake_tao: 4e-10,
+          emission_tao: 1,
+        },
+      ],
+      { tempoByNetuid: new Map([[3, 360]]) },
+    );
+    const entry = data.validators.find((v) => v.hotkey === "hk-a");
+    assert.equal(entry.apy_estimate, null);
+    assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+  });
+
   test("buildGlobalValidators defaults apy_estimate to null on every entry when no tempoByNetuid map is passed", () => {
     const data = buildGlobalValidators([
       { ...ROW, netuid: 3, uid: 0, hotkey: "hk-a" },

@@ -45,6 +45,16 @@ describe("tempoByNetuid", () => {
     assert.equal(map.size, 0);
   });
 
+  test("excludes a row with a blank/whitespace-only string netuid or tempo", () => {
+    const map = tempoByNetuid([
+      { netuid: "", tempo: 360 },
+      { netuid: "  ", tempo: 360 },
+      { netuid: 3, tempo: "" },
+      { netuid: 3, tempo: "   " },
+    ]);
+    assert.equal(map.size, 0);
+  });
+
   test("accepts a numeric-string netuid/tempo (D1/Postgres text cell coercion)", () => {
     const map = tempoByNetuid([{ netuid: "3", tempo: "360" }]);
     assert.equal(map.get(3), 360);
