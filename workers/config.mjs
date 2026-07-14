@@ -68,6 +68,10 @@ export const SUBNET_STAKE_FLOW_PATH_PATTERN =
 // account_events tier, no static file.
 export const SUBNET_ALPHA_VOLUME_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/volume$/;
+// Read-only constant-product stake/unstake slippage quote (#5235) — pure math
+// over the subnet's live economics-artifact pool reserves, no chain write.
+export const SUBNET_STAKE_QUOTE_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/stake-quote$/;
 // Live cumulative TAO recycled for registration on one subnet (#4339/8.4),
 // queried from the chain's own RAORecycledForRegistration storage map at
 // request time — not a D1/account_events tier, no static file.

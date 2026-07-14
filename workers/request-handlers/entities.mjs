@@ -100,6 +100,7 @@ import {
 } from "../../src/account-balance.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
+import { computeStakeQuote } from "../../src/stake-quote.mjs";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.mjs";
@@ -2220,6 +2221,69 @@ async function resolveSubnetMarketCapTao(env, netuid) {
   return typeof marketCap === "number" && Number.isFinite(marketCap)
     ? marketCap
     : null;
+}
+
+// One subnet's live AMM pool reserves (#5235) — the constant-product inputs the
+// stake-quote math needs — resolved from the same live-KV-then-committed-R2
+// economics tiers as resolveSubnetMarketCapTao, plus the blob's freshness stamp
+// for the response meta. Returns { row: null } when neither tier has a row.
+async function resolveSubnetEconomicsRow(env, netuid) {
+  const live = await resolveLiveEconomics({
+    readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
+    env,
+    contractVersion: contractVersion(env),
+  });
+  let blob = Array.isArray(live?.data?.subnets) ? live.data : null;
+  if (!blob) {
+    const artifact = await readArtifact(env, "/metagraph/economics.json");
+    blob =
+      artifact.ok && Array.isArray(artifact.data?.subnets)
+        ? artifact.data
+        : null;
+  }
+  const rows = Array.isArray(blob?.subnets) ? blob.subnets : [];
+  return {
+    row: rows.find((entry) => entry?.netuid === netuid) ?? null,
+    generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
+  };
+}
+
+// GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake
+// (#5235): a read-only constant-product slippage/price-impact estimate against
+// the subnet's live AMM pool reserves — no chain write, no custody. Pure math in
+// src/stake-quote.mjs; this handler just resolves the reserves and maps its
+// typed result onto the API envelope (400 for a bad request, 422 when the pool
+// can't fill the requested swap).
+export async function handleSubnetStakeQuote(request, env, netuid, url) {
+  const validationError = validateEntityQuery(url, ["amount", "direction"]);
+  if (validationError) return analyticsQueryError(validationError);
+  // A missing/empty `amount` coerces to 0, which computeStakeQuote rejects as
+  // invalid_amount just like a non-numeric value — no separate null check.
+  const amount = Number(url.searchParams.get("amount"));
+  const direction = url.searchParams.get("direction") ?? "stake";
+  const { row, generatedAt } = await resolveSubnetEconomicsRow(env, netuid);
+  const result = computeStakeQuote({
+    netuid,
+    taoInPool: row?.tao_in_pool_tao,
+    alphaInPool: row?.alpha_in_pool,
+    amount,
+    direction,
+  });
+  if (!result.ok) {
+    return errorResponse(result.code, result.error, result.status);
+  }
+  return envelopeResponse(
+    request,
+    {
+      data: { schema_version: 1, ...result.quote },
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/stake-quote.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
 }
 
 // GET /api/v1/subnets/{netuid}/volume (#4339/8.1): rolling 24h buy (StakeAdded)

@@ -19159,6 +19159,83 @@
         ],
         "type": "object"
       },
+      "SubnetStakeQuoteArtifact": {
+        "additionalProperties": false,
+        "description": "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for an ?amount=/?direction=stake|unstake swap against the subnet's live economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math -- no chain write, no custody -- mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000x the relevant reserve is rejected). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote with null pool reserves.",
+        "properties": {
+          "alpha_in_pool": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "amount": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "direction": {
+            "enum": [
+              "stake",
+              "unstake"
+            ],
+            "type": "string"
+          },
+          "effective_price_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "expected_out": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "expected_out_unit": {
+            "enum": [
+              "alpha",
+              "tao"
+            ],
+            "type": "string"
+          },
+          "is_root": {
+            "type": "boolean"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "price_impact_pct": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "spot_price_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "tao_in_pool_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "direction",
+          "amount",
+          "expected_out",
+          "expected_out_unit",
+          "spot_price_tao",
+          "effective_price_tao",
+          "price_impact_pct",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "is_root"
+        ],
+        "type": "object"
+      },
       "SubnetStakeTransfersArtifact": {
         "additionalProperties": false,
         "description": "Per-subnet stake-transfer activity over a 7d/30d window: distinct senders (accounts), StakeTransferred event count, and transfers per sender for ONE subnet. The per-subnet drill-in of /api/v1/chain/stake-transfers and the between-coldkeys sibling of /api/v1/subnets/{netuid}/stake-moves — transfer_stake relocates staked alpha between accounts on the same hotkey (origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/subnets/{netuid}/stake-transfers (no static file); zeroed when the subnet has no events in the window.",

@@ -2316,6 +2316,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/stake-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote. */
+        get: operations["subnetStakeQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/stake-transfers": {
         parameters: {
             query?: never;
@@ -7197,6 +7214,23 @@ export interface components {
             schema_version: number;
             /** @enum {string|null} */
             window: "7d" | "30d" | null;
+        };
+        /** @description Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for an ?amount=/?direction=stake|unstake swap against the subnet's live economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math -- no chain write, no custody -- mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000x the relevant reserve is rejected). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote with null pool reserves. */
+        SubnetStakeQuoteArtifact: {
+            alpha_in_pool: number | null;
+            amount: number;
+            /** @enum {string} */
+            direction: "stake" | "unstake";
+            effective_price_tao: number;
+            expected_out: number;
+            /** @enum {string} */
+            expected_out_unit: "alpha" | "tao";
+            is_root: boolean;
+            netuid: number;
+            price_impact_pct: number;
+            schema_version: number;
+            spot_price_tao: number;
+            tao_in_pool_tao: number | null;
         };
         /** @description Per-subnet stake-transfer activity over a 7d/30d window: distinct senders (accounts), StakeTransferred event count, and transfers per sender for ONE subnet. The per-subnet drill-in of /api/v1/chain/stake-transfers and the between-coldkeys sibling of /api/v1/subnets/{netuid}/stake-moves — transfer_stake relocates staked alpha between accounts on the same hotkey (origin leg only). Served live from the account_events StakeTransferred stream at /api/v1/subnets/{netuid}/stake-transfers (no static file); zeroed when the subnet has no events in the window. */
         SubnetStakeTransfersArtifact: {
@@ -26375,6 +26409,121 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetStakeMovesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetStakeQuote: {
+        parameters: {
+            query?: {
+                amount?: number;
+                direction?: "stake" | "unstake";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "alpha_in_pool": 0.5,
+                     *         "amount": 0.5,
+                     *         "direction": "stake",
+                     *         "effective_price_tao": 0.5,
+                     *         "expected_out": 0.5,
+                     *         "expected_out_unit": "alpha",
+                     *         "is_root": false,
+                     *         "netuid": 7,
+                     *         "price_impact_pct": 0.5,
+                     *         "schema_version": 1,
+                     *         "spot_price_tao": 0.5,
+                     *         "tao_in_pool_tao": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetStakeQuoteArtifact"];
                     };
                 };
             };
