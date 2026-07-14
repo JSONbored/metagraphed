@@ -191,6 +191,7 @@ import type {
   SubnetStakeTransfers,
   SubnetRegistrations,
   SubnetStakeFlow,
+  SubnetAlphaVolume,
   SubnetMovers,
   SubnetMover,
   MetagraphNeuron,
@@ -4498,6 +4499,47 @@ export const subnetStakeFlowQuery = (netuid: number, window = "30d") =>
         signal,
       });
       return { data: normalizeSubnetStakeFlow(netuid, res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// #4339/8.1: rolling 24h buy/sell alpha volume scorecard, summed live from the
+// same account_events stream as stake-flow. A cold store returns all-zero
+// totals (never 404); sentiment_ratio/vol_mcap_ratio stay null rather than 0
+// when their inputs are unavailable (0 is a real "no lean"/"no data" value).
+function normalizeSubnetAlphaVolume(netuid: number, raw: unknown): SubnetAlphaVolume {
+  const d = isRecord(raw) ? raw : {};
+  const sentiment = firstString(d.sentiment);
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    window: firstString(d.window) ?? "24h",
+    buy_volume_alpha: coerceFiniteNumber(d.buy_volume_alpha) ?? 0,
+    sell_volume_alpha: coerceFiniteNumber(d.sell_volume_alpha) ?? 0,
+    total_volume_alpha: coerceFiniteNumber(d.total_volume_alpha) ?? 0,
+    buy_volume_tao: coerceFiniteNumber(d.buy_volume_tao) ?? 0,
+    sell_volume_tao: coerceFiniteNumber(d.sell_volume_tao) ?? 0,
+    total_volume_tao: coerceFiniteNumber(d.total_volume_tao) ?? 0,
+    buy_count: firstFiniteNumber(d.buy_count) ?? 0,
+    sell_count: firstFiniteNumber(d.sell_count) ?? 0,
+    net_volume_alpha: coerceFiniteNumber(d.net_volume_alpha) ?? 0,
+    sentiment_ratio: coerceFiniteNumber(d.sentiment_ratio) ?? null,
+    sentiment: sentiment === "bullish" || sentiment === "bearish" ? sentiment : "neutral",
+    vol_mcap_ratio: coerceFiniteNumber(d.vol_mcap_ratio) ?? null,
+  };
+}
+
+// GET /api/v1/subnets/{netuid}/volume (#4339/8.1): rolling 24h buy vs sell
+// alpha volume, unsigned (buy + sell, never netted) — a market-depth figure,
+// distinct from the cumulative subnet_volume_tao already shown in economics.
+export const subnetAlphaVolumeQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-alpha-volume", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetAlphaVolume>>(`/api/v1/subnets/${netuid}/volume`, {
+        signal,
+      });
+      return { data: normalizeSubnetAlphaVolume(netuid, res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });

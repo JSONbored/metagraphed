@@ -1801,6 +1801,27 @@ export interface SubnetStakeFlow {
   unstake_events: number;
 }
 
+/** Rolling 24h buy/sell alpha volume for one subnet, from
+ * /api/v1/subnets/{netuid}/volume (#4339/8.1). Unsigned (buy + sell, never
+ * netted); fixed 24h window, no ?window= param. */
+export interface SubnetAlphaVolume {
+  schema_version: number;
+  netuid: number;
+  window: string;
+  buy_volume_alpha: number;
+  sell_volume_alpha: number;
+  total_volume_alpha: number;
+  buy_volume_tao: number;
+  sell_volume_tao: number;
+  total_volume_tao: number;
+  buy_count: number;
+  sell_count: number;
+  net_volume_alpha: number;
+  sentiment_ratio: number | null;
+  sentiment: "bullish" | "bearish" | "neutral";
+  vol_mcap_ratio: number | null;
+}
+
 /** One subnet's movement over the comparison window on the /subnets/movers board. */
 export interface SubnetMover {
   netuid: number;

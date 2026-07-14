@@ -4,11 +4,15 @@ import { Suspense, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
+  ArrowLeftRight,
   ArrowUpFromLine,
   Waves,
   Activity,
   ChevronDown,
   Filter,
+  Minus,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
@@ -71,6 +75,7 @@ import {
   subnetStakeFlowQuery,
   subnetHyperparametersQuery,
   subnetHyperparamsHistoryQuery,
+  subnetAlphaVolumeQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -193,6 +198,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   "health-trends": "overview",
   incidents: "overview",
   economics: "overview",
+  "volume-24h": "overview",
   reliability: "overview",
   lineage: "overview",
   evidence: "overview",
@@ -397,6 +403,20 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         info="Live chain economics from the Bittensor metagraph — emission share, alpha price, stake, validator/miner counts, and subnet volume."
       >
         <EconomicsPanel netuid={netuid} />
+      </SectionAnchor>
+
+      {/* 5a2 — Rolling 24h alpha volume (#4339/8.1): a distinct windowed
+          market-depth figure from economics' cumulative subnet_volume_tao
+          tile above — buy vs sell, unsigned, always a fixed 24h window. */}
+      <SectionAnchor
+        id="volume-24h"
+        title="24h Volume"
+        subtitle="Rolling 24h buy vs sell alpha volume — a windowed market-depth figure, distinct from the cumulative volume shown in Economics."
+        info="GET /api/v1/subnets/{netuid}/volume — unsigned buy + sell alpha volume summed from the account_events stream over a fixed 24h window (not netted, no ?window= param)."
+      >
+        <QueryErrorBoundary>
+          <AlphaVolumeScorecard netuid={netuid} />
+        </QueryErrorBoundary>
       </SectionAnchor>
 
       {/* 5b — On-chain network history (#1302): daily neuron/validator counts,
@@ -646,6 +666,52 @@ function SurfacesPanel({ netuid }: { netuid: number }) {
         </Suspense>
       </QueryErrorBoundary>
     </SectionAnchor>
+  );
+}
+
+// #4339/8.1: rolling 24h buy/sell alpha volume scorecard. A cold store returns
+// all-zero totals (never 404) — non-blocking (useQuery, not suspense) so a
+// slow/failed fetch never stalls the rest of the overview tab.
+function AlphaVolumeScorecard({ netuid }: { netuid: number }) {
+  const { data: res } = useQuery(subnetAlphaVolumeQuery(netuid));
+  const card = res?.data;
+  if (!card) return null;
+  const sentimentIcon =
+    card.sentiment === "bullish" ? TrendingUp : card.sentiment === "bearish" ? TrendingDown : Minus;
+  const sentimentTone: "ok" | "down" | "default" =
+    card.sentiment === "bullish" ? "ok" : card.sentiment === "bearish" ? "down" : "default";
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <StatTile
+        icon={ArrowLeftRight}
+        eyebrow="Total volume"
+        value={`${taoCompact(card.total_volume_tao)} τ`}
+        hint={`${formatNumber(card.buy_count + card.sell_count)} txns · ${card.window}`}
+      />
+      <StatTile
+        icon={ArrowDownToLine}
+        eyebrow="Buy volume"
+        value={`${taoCompact(card.buy_volume_tao)} τ`}
+        hint={`${formatNumber(card.buy_count)} buys`}
+      />
+      <StatTile
+        icon={ArrowUpFromLine}
+        eyebrow="Sell volume"
+        value={`${taoCompact(card.sell_volume_tao)} τ`}
+        hint={`${formatNumber(card.sell_count)} sells`}
+      />
+      <StatTile
+        icon={sentimentIcon}
+        eyebrow="Sentiment"
+        tone={sentimentTone}
+        value={card.sentiment}
+        hint={
+          card.sentiment_ratio != null
+            ? `ratio ${card.sentiment_ratio.toFixed(2)}`
+            : "no volume yet"
+        }
+      />
+    </div>
   );
 }
 
@@ -1494,6 +1560,7 @@ function ApiPanel({ netuid }: { netuid: number }) {
       label: "hyperparameters-history",
       path: `/api/v1/subnets/${netuid}/hyperparameters/history`,
     },
+    { label: "volume", path: `/api/v1/subnets/${netuid}/volume` },
     { label: "health", path: `/api/v1/subnets/${netuid}/health` },
     { label: "agent-catalog", path: `/api/v1/agent-catalog/${netuid}` },
     { label: "artifact", path: `/metagraph/subnets/${netuid}.json` },
