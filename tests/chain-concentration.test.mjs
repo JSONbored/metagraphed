@@ -5,10 +5,6 @@ import {
   loadChainConcentration,
 } from "../src/concentration.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import {
-  readNeuronsCacheStamp,
-  readSubnetNeuronsCacheStamp,
-} from "../workers/request-handlers/analytics.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 // buildChainConcentration reuses the (separately tested) computeConcentration /
@@ -281,106 +277,80 @@ describe("GET /api/v1/chain/concentration", () => {
   });
 });
 
-describe("readNeuronsCacheStamp", () => {
-  function stampEnv(results) {
-    return {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return { bind: () => ({ all: () => Promise.resolve({ results }) }) };
-        },
-      },
-    };
-  }
-
-  test("returns the newest captured_at across all subnets as a string", async () => {
-    const stamp = await readNeuronsCacheStamp(
-      stampEnv([{ captured_at: 1_700_000_000_000 }]),
-    );
-    assert.equal(stamp, "1700000000000");
-  });
-
-  test("returns null on a cold store (null or non-positive stamp)", async () => {
-    assert.equal(
-      await readNeuronsCacheStamp(stampEnv([{ captured_at: null }])),
-      null,
-    );
-    assert.equal(
-      await readNeuronsCacheStamp(stampEnv([{ captured_at: 0 }])),
-      null,
-    );
-  });
-
-  test("returns null when D1 is unbound (fallback rows)", async () => {
-    assert.equal(await readNeuronsCacheStamp({}), null);
-  });
-
-  test("coerces D1 numeric-string captured_at cells", async () => {
-    const env = stampEnv([{ captured_at: "1700000000000" }]);
-    assert.equal(await readNeuronsCacheStamp(env), "1700000000000");
-    assert.equal(await readSubnetNeuronsCacheStamp(env, 7), "1700000000000");
-  });
-});
-
 describe("chain/concentration edge cache", () => {
   let originalCaches;
   afterEach(() => {
     globalThis.caches = originalCaches;
   });
 
-  // A Map-backed stand-in for the Workers cache so withEdgeCache actually engages
-  // and invokes the neurons stamp resolver (mirrors analytics-edge-cache.test).
-  function neuronsEnv(rows) {
+  // #5358: chain/concentration no longer reads D1 for its edge-cache stamp — the
+  // neurons-tier captured_at stamp it used to bust on (readNeuronsCacheStamp) was
+  // removed, since the D1 `neurons` table it read was fully dropped in #4772 (it
+  // had been reading a permanently-empty/nonexistent source and returning a
+  // frozen stamp ever since). It now busts on the same shared health-cron
+  // `last_run_at` KV value every sibling Postgres-tier analytics route already
+  // uses.
+  function controlEnv(lastRunAt) {
     return {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind: () => ({
-              all: () =>
-                Promise.resolve({
-                  results: /MAX\(captured_at\)/.test(sql)
-                    ? [{ captured_at: 1_700_000_000_000 }]
-                    : rows,
-                }),
-            }),
-          };
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key !== "health:meta") return null;
+          return lastRunAt ? { last_run_at: lastRunAt } : null;
         },
       },
     };
   }
 
-  test("engages the edge cache, busting on the newest neuron captured_at", async () => {
-    originalCaches = globalThis.caches;
+  // A Map-backed stand-in for the Workers cache so withEdgeCache actually engages.
+  function mockCacheStore() {
     const store = new Map();
-    globalThis.caches = {
-      default: {
-        async match(request) {
-          const cached = store.get(request.url);
-          return cached ? cached.clone() : undefined;
-        },
-        async put(request, response) {
-          store.set(request.url, response.clone());
-        },
+    return {
+      store,
+      install() {
+        globalThis.caches = {
+          default: {
+            async match(request) {
+              const cached = store.get(request.url);
+              return cached ? cached.clone() : undefined;
+            },
+            async put(request, response) {
+              store.set(request.url, response.clone());
+            },
+          },
+        };
       },
     };
+  }
+
+  test("engages the edge cache, busting on the health-cron last_run_at stamp", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCacheStore();
+    cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/concentration"),
-      neuronsEnv([
-        {
-          stake_tao: 10,
-          emission_tao: 1,
-          coldkey: "ck-a",
-          validator_permit: 1,
-          netuid: 1,
-          captured_at: 1_700_000_000_000,
-        },
-      ]),
+      controlEnv("2026-06-18T00:00:00.000Z"),
       { waitUntil: (promise) => promise },
     );
     assert.equal(res.status, 200);
-    // A non-null stamp resolver + 200 means the response was cached: proof the
-    // stamp resolver arrow ran and returned the network captured_at.
-    assert.equal(store.size, 1);
+    // A warm stamp + 200 means the response was cached: proof the default
+    // health-cron stamp resolver ran and returned a real last_run_at.
+    assert.equal(cache.store.size, 1);
+  });
+
+  test("skips the cache entirely when the health stamp is cold", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCacheStore();
+    cache.install();
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/concentration"),
+      controlEnv(null),
+      { waitUntil: (promise) => promise },
+    );
+    assert.equal(res.status, 200);
+    // A cold/absent last_run_at must never seed the edge cache (mirrors the
+    // overlay cache's own `if (lastRunAt)` guard) — a cold-KV response can
+    // never poison a stale entry.
+    assert.equal(cache.store.size, 0);
   });
 });
