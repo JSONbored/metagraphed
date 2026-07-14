@@ -43,7 +43,6 @@ import {
 } from "./request-handlers/discovery.mjs";
 import {
   configureAnalytics,
-  d1All,
   d1Runner,
   handleBulkHealthTrends,
   handleChainActivity,
@@ -68,10 +67,7 @@ import {
   handleHealthPercentiles,
   handleHealthTrends,
   withEdgeCache,
-  withNeuronsEdgeCache,
-  readNeuronsCacheStamp,
   readIdentityHistoryCacheStamp,
-  readNeuronDailyCacheStamp,
 } from "./request-handlers/analytics.mjs";
 import {
   handleSubnetMetagraph,
@@ -1375,10 +1371,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
   // dispatched before subnet routing so the top-level collection stays unambiguous.
-  // Busts on the newest neuron captured_at across ALL subnets (like chain/concentration
-  // below), not a validator-permit-filtered stamp: a subnet refresh that drops a
-  // validator's permit=1 row wouldn't touch a filtered MAX(captured_at), leaving this
-  // leaderboard's edge cache stale for that change.
+  // Busts on the shared health-cron last_run_at stamp like every other Postgres-tier
+  // analytics route (the neurons snapshot itself is Postgres-backed; the D1-era
+  // captured_at-based stamp this once busted on was removed in #5358, since #4772
+  // dropped the D1 neurons table it read).
   if (url.pathname === "/api/v1/validators") {
     const validatorsCache = canonicalGlobalValidatorsCachePath(url, request);
     if (validatorsCache.response) return validatorsCache.response;
@@ -1389,13 +1385,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       "global-validators",
       (cacheRequest) => handleGlobalValidators(cacheRequest, env, url),
       validatorsCache.cachePathAndSearch,
-      (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
     );
   }
 
   // Site-wide accounts leaderboard (#4324/5.3): every currently-registered
   // hotkey, not just validator_permit=1 ones — the collection-level
-  // counterpart to /api/v1/validators above, same neurons-snapshot cache stamp.
+  // counterpart to /api/v1/validators above, same shared health-cron cache stamp.
   if (url.pathname === "/api/v1/accounts") {
     const accountsCache = canonicalAccountsListCachePath(url, request);
     if (accountsCache.response) return accountsCache.response;
@@ -1406,7 +1401,6 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       "accounts-list",
       () => handleAccountsList(request, env, url),
       accountsCache.cachePathAndSearch,
-      (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
     );
   }
 
@@ -1627,20 +1621,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
     if (concentrationMatch) {
       // Per-UID range read over the neurons tier — edge-cache busts on the
-      // subnet's neuron captured_at stamp, not the health prober tick.
-      return withNeuronsEdgeCache(
-        request,
-        ctx,
-        env,
-        Number(concentrationMatch[1]),
-        "subnet-concentration",
-        () =>
-          handleSubnetConcentration(
-            request,
-            env,
-            Number(concentrationMatch[1]),
-            resolved.url,
-          ),
+      // shared health-cron stamp like every sibling Postgres-tier route.
+      return withEdgeCache(request, ctx, env, "subnet-concentration", () =>
+        handleSubnetConcentration(
+          request,
+          env,
+          Number(concentrationMatch[1]),
+          resolved.url,
+        ),
       );
     }
     const turnoverMatch = SUBNET_TURNOVER_PATH_PATTERN.exec(
@@ -1913,14 +1901,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       );
     }
     // Per-UID emission yield distribution over the current neurons snapshot — computed
-    // live from the neurons D1 tier, like the sibling metagraph route.
+    // live from the neurons D1 tier, like the sibling metagraph route. Edge-cache
+    // busts on the shared health-cron stamp like every sibling Postgres-tier route.
     const yieldMatch = SUBNET_YIELD_PATH_PATTERN.exec(resolved.url.pathname);
     if (yieldMatch) {
-      return withNeuronsEdgeCache(
+      return withEdgeCache(
         request,
         ctx,
         env,
-        Number(yieldMatch[1]),
         "subnet-yield",
         () =>
           handleSubnetYield(request, env, Number(yieldMatch[1]), resolved.url),
@@ -1928,25 +1916,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       );
     }
     // Reward-distribution + score-spread over the current neurons snapshot —
-    // per-UID read of the neurons tier, so it edge-caches on the subnet's neuron
-    // captured_at stamp like /concentration, not the health prober tick.
+    // per-UID read of the neurons tier, edge-cache busts on the shared health-cron
+    // stamp like every sibling Postgres-tier route (like /concentration above).
     const performanceMatch = SUBNET_PERFORMANCE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
     if (performanceMatch) {
-      return withNeuronsEdgeCache(
-        request,
-        ctx,
-        env,
-        Number(performanceMatch[1]),
-        "subnet-performance",
-        () =>
-          handleSubnetPerformance(
-            request,
-            env,
-            Number(performanceMatch[1]),
-            resolved.url,
-          ),
+      return withEdgeCache(request, ctx, env, "subnet-performance", () =>
+        handleSubnetPerformance(
+          request,
+          env,
+          Number(performanceMatch[1]),
+          resolved.url,
+        ),
       );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
@@ -1999,12 +1981,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
     if (metagraphMatch) {
       // Full per-subnet metagraph (range read over the neurons tier) — edge-cache
-      // busts on neuron captured_at; ?validator_permit rides the search into the key.
-      return withNeuronsEdgeCache(
+      // busts on the shared health-cron stamp like every sibling Postgres-tier
+      // route; ?validator_permit rides the search into the key.
+      return withEdgeCache(
         request,
         ctx,
         env,
-        Number(metagraphMatch[1]),
         "subnet-metagraph",
         (cacheRequest) =>
           handleSubnetMetagraph(
@@ -2054,12 +2036,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (validatorsMatch) {
-      // Validator slice of the metagraph — edge-cache busts on neuron captured_at.
-      return withNeuronsEdgeCache(
+      // Validator slice of the metagraph — edge-cache busts on the shared
+      // health-cron stamp like every sibling Postgres-tier route.
+      return withEdgeCache(
         request,
         ctx,
         env,
-        Number(validatorsMatch[1]),
         "subnet-validators",
         () =>
           handleSubnetValidators(
@@ -2441,31 +2423,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleChainStakeTransfers(request, env, resolved.url, ctx);
     }
     // GET /api/v1/chain/concentration: network-wide neurons aggregate — edge-cache
-    // busts on the newest neuron captured_at across ALL subnets, not the health
-    // prober tick (like the per-subnet concentration route, but network-scoped).
+    // busts on the shared health-cron stamp like every sibling Postgres-tier route
+    // (like the per-subnet concentration route, but network-scoped).
     if (resolved.url.pathname === "/api/v1/chain/concentration") {
-      return withEdgeCache(
-        request,
-        ctx,
-        env,
-        "chain-concentration",
-        () => handleChainConcentration(request, env, resolved.url),
-        null,
-        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      return withEdgeCache(request, ctx, env, "chain-concentration", () =>
+        handleChainConcentration(request, env, resolved.url),
       );
     }
     // GET /api/v1/chain/performance: network-wide reward-distribution & score-spread
-    // aggregate — edge-cache busts on the newest neuron captured_at across ALL
-    // subnets (like chain/concentration, but the reward-flow lens).
+    // aggregate — edge-cache busts on the shared health-cron stamp like every
+    // sibling Postgres-tier route (like chain/concentration, but the reward-flow lens).
     if (resolved.url.pathname === "/api/v1/chain/performance") {
-      return withEdgeCache(
-        request,
-        ctx,
-        env,
-        "chain-performance",
-        () => handleChainPerformance(request, env, resolved.url),
-        null,
-        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      return withEdgeCache(request, ctx, env, "chain-performance", () =>
+        handleChainPerformance(request, env, resolved.url),
       );
     }
     // GET /api/v1/chain/identity-history: network-wide recent subnet-identity-change
@@ -2485,23 +2455,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       );
     }
     // GET /api/v1/chain/yield: network-wide emission-yield (return rate) aggregate
-    // — edge-cache busts on the newest neuron captured_at across ALL subnets (like
-    // chain/performance, but the emission/stake return-rate lens).
+    // — edge-cache busts on the shared health-cron stamp like every sibling
+    // Postgres-tier route (like chain/performance, but the emission/stake return-rate lens).
     if (resolved.url.pathname === "/api/v1/chain/yield") {
-      return withEdgeCache(
-        request,
-        ctx,
-        env,
-        "chain-yield",
-        () => handleChainYield(request, env, resolved.url),
-        null,
-        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      return withEdgeCache(request, ctx, env, "chain-yield", () =>
+        handleChainYield(request, env, resolved.url),
       );
     }
     // GET /api/v1/chain/turnover: network-wide validator-set churn across all subnets,
-    // neuron_daily-derived — edge-cache keyed on the resolved window/limit AND busted on the
-    // newest neuron captured_at across ALL subnets (like chain/concentration + chain/performance),
-    // so a neuron_daily refresh invalidates the cached scorecard instead of serving stale churn.
+    // neuron_daily-derived — edge-cache keyed on the resolved window/limit and busted on
+    // the shared health-cron stamp like every sibling Postgres-tier route (like
+    // chain/concentration + chain/performance).
     if (resolved.url.pathname === "/api/v1/chain/turnover") {
       return withEdgeCache(
         request,
@@ -2510,9 +2474,6 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         "chain-turnover",
         () => handleChainTurnover(request, env, resolved.url),
         canonicalChainTurnoverCachePath(resolved.url, request),
-        // neuron_daily-derived: stamp on the neuron_daily rollup (not the live neurons tier), so a
-        // new daily snapshot invalidates the cached scorecard on the same cadence as its source.
-        (edgeEnv) => readNeuronDailyCacheStamp(edgeEnv),
       );
     }
     // Network-wide economics time series (#1307): deterministic per cron snapshot
@@ -3093,9 +3054,16 @@ export async function readEconomicsCurrentKv(env, now = Date.now()) {
 }
 
 // Chain-events index heartbeat read. Memoized per-isolate at a short TTL so
-// repeated /health probes on warm isolates don't issue a billed D1 query per
-// request. Null results are not cached (cold/unbound store stays re-queried).
-// Keyed on env so tests / multi-binding callers never cross-read.
+// repeated /health probes on warm isolates don't issue a billed Postgres query
+// (via the DATA_API service binding) per request. Null results are not cached
+// (cold/unbound store stays re-queried). Keyed on env so tests / multi-binding
+// callers never cross-read.
+//
+// This used to query D1's `account_events` table directly, but that table was
+// fully dropped by #4772 (D1 chain-data write-path retirement) — the live
+// chain_events tier now lives in Postgres, reached through the DATA_API
+// service binding, the same way handleChainEventsProxy (above) and
+// dataApiFetchJson (src/data-api-mcp.mjs) already read it (#5357).
 export const CHAIN_EVENTS_DB_TTL_MS = 30_000;
 let chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
 
@@ -3103,14 +3071,25 @@ export async function readChainEventsDb(env, now = Date.now()) {
   if (chainEventsDbMemo.env === env && now < chainEventsDbMemo.expiresAt) {
     return chainEventsDbMemo.value;
   }
-  if (!env?.METAGRAPH_HEALTH_DB?.prepare) return null;
-  const rows = await d1All(
-    env,
-    "SELECT block_number AS block, observed_at AS at FROM account_events " +
-      "ORDER BY observed_at DESC LIMIT 1",
-    [],
-  );
-  const value = rows[0] || null;
+  if (!env?.DATA_API?.fetch) return null;
+  let value = null;
+  try {
+    const response = await env.DATA_API.fetch(
+      new Request("https://d/api/v1/chain-events?limit=1"),
+    );
+    if (response.ok) {
+      const body = await response.json();
+      const row = Array.isArray(body?.events) ? body.events[0] : null;
+      if (row) {
+        value = {
+          block: row.block_number ?? null,
+          at: row.observed_at ?? null,
+        };
+      }
+    }
+  } catch {
+    value = null;
+  }
   if (value !== null) {
     chainEventsDbMemo = { env, value, expiresAt: now + CHAIN_EVENTS_DB_TTL_MS };
   }
@@ -3677,6 +3656,7 @@ async function handleHealthRequest(request, env) {
     r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
     kv: Boolean(env.METAGRAPH_CONTROL?.get),
     health_db: Boolean(env.METAGRAPH_HEALTH_DB?.prepare),
+    data_api: Boolean(env.DATA_API?.fetch),
   };
 
   // Data freshness — the event-driven data publish (ADR 0007) advances the KV
@@ -3720,7 +3700,7 @@ async function handleHealthRequest(request, env) {
   // observability (does NOT gate the HTTP status, like operational_health);
   // best-effort + null on a cold/unbound store.
   let chainEvents = null;
-  if (bindings.health_db) {
+  if (bindings.data_api) {
     const chainEventsRow = await readChainEventsDb(env);
     const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
     // Blank/zero observed_at cells coerce via Number("") → 0; treat as absent

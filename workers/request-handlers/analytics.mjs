@@ -333,8 +333,11 @@ async function analyticsMeta(env, artifactPath, observedAt) {
 // The key varies on everything that changes the body: contract_version (a deploy
 // can never serve a cross-version payload) + a freshness stamp + the request
 // path (carries netuid) + the canonical search (carries `window`). By default
-// the stamp is the health cron snapshot (`last_run_at`); neurons-tier routes
-// pass `resolveCacheStamp` to bust on neuron `captured_at` instead (#1346).
+// the stamp is the health cron snapshot (`last_run_at`); the still-D1-written
+// identity-history routes pass `resolveCacheStamp` to bust on
+// `readIdentityHistoryCacheStamp`'s `observed_at` instead (#1346) — the sole
+// remaining bespoke-stamp consumer now that the neurons/neuron_daily tables (and
+// the cache stamps that read them) are gone (#4772, #5358).
 // `keyParts` is the extra namespace segment per route. When the stamp is cold
 // (null), caching is skipped entirely so a cold-KV/empty payload can never seed
 // a stale entry — identical to the overlay cache's `if (lastRunAt)` guard. The
@@ -418,39 +421,13 @@ function coerceCapturedAtStamp(value) {
   return Number.isInteger(n) && n > 0 ? String(n) : null;
 }
 
-// Neurons-tier routes refresh on the ~3-minute events/metagraph cron, not the
-// 15-minute health prober — bust their edge cache on per-subnet snapshot time.
-export async function readSubnetNeuronsCacheStamp(env, netuid) {
-  const rows = await d1All(
-    env,
-    "SELECT MAX(captured_at) AS captured_at FROM neurons WHERE netuid = ?",
-    [netuid],
-  );
-  if (hasD1FallbackRows(rows)) return null;
-  return coerceCapturedAtStamp(rows[0]?.captured_at);
-}
-
-// Network-wide neuron cache stamp: the newest captured_at across ALL subnets, so a
-// chain-level neurons aggregate (chain/concentration) busts its edge cache the
-// moment any subnet's snapshot advances — the network analog of the per-subnet
-// stamp above. Also backs /api/v1/validators: a filtered (validator_permit = 1)
-// variant was tried, but a subnet refresh that drops a permit=1 row wouldn't
-// touch that filtered MAX(captured_at), so the leaderboard's edge cache could
-// go stale for that change. The unfiltered stamp is used instead.
-export async function readNeuronsCacheStamp(env) {
-  const rows = await d1All(
-    env,
-    "SELECT MAX(captured_at) AS captured_at FROM neurons",
-    [],
-  );
-  if (hasD1FallbackRows(rows)) return null;
-  return coerceCapturedAtStamp(rows[0]?.captured_at);
-}
-
 // Network-wide identity-history cache stamp: the newest observed_at across ALL
 // subnets' identity changes, so the network identity-history feed busts its edge
-// cache the moment any subnet records a new change. The append-only feed analog of
-// readNeuronsCacheStamp.
+// cache the moment any subnet records a new change. The sole remaining bespoke
+// edge-cache stamp (see withEdgeCache's own doc comment above) — every other
+// analytics route now busts on the shared health-cron `last_run_at` stamp
+// (#5358; the neurons/neuron_daily-backed stamps this once sat beside were
+// removed once #4772 dropped those tables from D1).
 export async function readIdentityHistoryCacheStamp(env) {
   const rows = await d1All(
     env,
@@ -459,42 +436,6 @@ export async function readIdentityHistoryCacheStamp(env) {
   );
   if (hasD1FallbackRows(rows)) return null;
   return coerceCapturedAtStamp(rows[0]?.observed_at);
-}
-
-// Edge-cache stamp for routes derived from the neuron_daily rollup (the daily-snapshot tier), NOT
-// the live `neurons` tier. Use the indexed snapshot_date column so every public cache lookup can
-// resolve freshness with an index-backed tail read instead of scanning the large rollup table.
-// Used by neuron_daily-derived network routes (e.g. /chain/turnover) whose data source is
-// neuron_daily, not neurons.
-export async function readNeuronDailyCacheStamp(env) {
-  const rows = await d1All(
-    env,
-    "SELECT snapshot_date FROM neuron_daily ORDER BY snapshot_date DESC LIMIT 1",
-    [],
-  );
-  if (hasD1FallbackRows(rows)) return null;
-  const snapshotDate = rows[0]?.snapshot_date;
-  return typeof snapshotDate === "string" && snapshotDate ? snapshotDate : null;
-}
-
-export function withNeuronsEdgeCache(
-  request,
-  ctx,
-  env,
-  netuid,
-  keyParts,
-  buildResponse,
-  cachePathAndSearch = null,
-) {
-  return withEdgeCache(
-    request,
-    ctx,
-    env,
-    keyParts,
-    buildResponse,
-    cachePathAndSearch,
-    (edgeEnv) => readSubnetNeuronsCacheStamp(edgeEnv, netuid),
-  );
 }
 
 // D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a

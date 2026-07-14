@@ -26,6 +26,7 @@ import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { handleRpcProxyRequest } from "../workers/request-handlers/rpc-proxy.mjs";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
@@ -539,6 +540,7 @@ import {
 import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
 import { buildAlphaVolume } from "./alpha-volume.mjs";
+import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
 import { buildAccountPositionHistory } from "./account-position-history.mjs";
 import { loadAccountIdentity } from "./account-identity.mjs";
 import { loadAccountIdentityHistory } from "./account-identity-history.mjs";
@@ -990,9 +992,7 @@ function mcpD1Runner(ctx) {
 // DATA_API via tryPostgresTier (#4694) -- MCP tool handlers receive
 // structured args, not an inbound Request the way REST's handleExtrinsics
 // does, so this reconstructs the identical query-string shape
-// workers/data-api.mjs's extrinsics routes parse. list_extrinsics'
-// inputSchema has no call_hash param (REST-only, #4322), so that filter is
-// never forwarded here -- nothing else to reconcile. The host in the URL is
+// workers/data-api.mjs's extrinsics routes parse. The host in the URL is
 // never dispatched to (DATA_API.fetch resolves the binding directly, the
 // same convention src/data-api-mcp.mjs's dataApiFetchJson already uses).
 function mcpExtrinsicsListRequest(args) {
@@ -1005,6 +1005,8 @@ function mcpExtrinsicsListRequest(args) {
   if (callModule) params.set("call_module", callModule);
   const callFunction = optionalString(args, "call_function");
   if (callFunction) params.set("call_function", callFunction);
+  const callHash = optionalString(args, "call_hash");
+  if (callHash) params.set("call_hash", callHash);
   const success = optionalSuccessFilter(args);
   if (success !== undefined) params.set("success", String(success));
   const blockStart = optionalNonNegativeInt(args, "block_start");
@@ -2580,6 +2582,57 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetEconomics(ctx, netuid);
+    },
+  },
+  {
+    name: "get_subnet_stake_quote",
+    title: "Get a subnet stake/unstake quote",
+    description:
+      "Estimate a stake or unstake against one subnet's AMM pool: expected " +
+      "alpha/TAO out, spot and effective price, and price impact, computed " +
+      "with the chain's own constant-product swap formula against the " +
+      "subnet's live pool reserves (the same economics tier get_subnet_economics " +
+      "reads). direction stake (default) spends amount TAO for alpha; unstake " +
+      "spends amount alpha for TAO. Root (netuid 0) has no AMM pool and always " +
+      "quotes 1:1 with zero price impact. Read-only, pure math -- it builds no " +
+      "transaction, signs nothing, and never touches a key. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/stake-quote.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        amount: {
+          type: "number",
+          description:
+            "Amount to quote, in TAO for direction=stake or alpha for " +
+            "direction=unstake. Must be a finite number greater than 0.",
+          exclusiveMinimum: 0,
+        },
+        direction: {
+          type: "string",
+          enum: STAKE_QUOTE_DIRECTIONS,
+          description: 'Swap direction: stake or unstake (default "stake").',
+        },
+      },
+      required: ["netuid", "amount"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const amount = args?.amount;
+      const direction = optionalString(args, "direction") ?? "stake";
+      const { economics } = await loadSubnetEconomics(ctx, netuid);
+      const result = computeStakeQuote({
+        netuid,
+        taoInPool: economics?.tao_in_pool_tao,
+        alphaInPool: economics?.alpha_in_pool,
+        amount,
+        direction,
+      });
+      if (!result.ok) {
+        throw toolError(result.code, result.error);
+      }
+      return { schema_version: 1, ...result.quote };
     },
   },
   {
@@ -6682,10 +6735,13 @@ export const MCP_TOOLS = [
     description:
       "Fetch the extrinsic feed (newest first) from the chain extrinsic tier, with " +
       "optional filters: block (exact height), signer (SS58 address), call_module " +
-      "(e.g. 'SubtensorModule'), call_function (e.g. 'set_weights'), success " +
-      "(true|false), block_start/block_end (inclusive height range), and from/to " +
-      "(observed_at epoch-ms range). Page with limit (1-100, default 50) / offset, " +
-      "or follow next_cursor for stable keyset pagination. Mirrors GET /api/v1/extrinsics.",
+      "(e.g. 'SubtensorModule'), call_function (e.g. 'set_weights'), call_hash (0x " +
+      "hash matched within call_args, e.g. to link a Multisig approve_as_multi/" +
+      "cancel_as_multi/as_multi approval chain — pair with call_module for a " +
+      "narrow scan), success (true|false), block_start/block_end (inclusive " +
+      "height range), and from/to (observed_at epoch-ms range). Page with limit " +
+      "(1-100, default 50) / offset, or follow next_cursor for stable keyset " +
+      "pagination. Mirrors GET /api/v1/extrinsics.",
     inputSchema: {
       type: "object",
       properties: {
@@ -6710,6 +6766,13 @@ export const MCP_TOOLS = [
           type: "string",
           description:
             "Optional call function filter, e.g. 'set_weights'. Omit for all.",
+        },
+        call_hash: {
+          type: "string",
+          description:
+            "Optional 0x call hash to match inside call_args, e.g. to link a " +
+            "Multisig approve_as_multi/cancel_as_multi/as_multi approval chain. " +
+            "Pair with call_module for a narrow scan. Omit for all.",
         },
         success: {
           type: "boolean",
@@ -6769,6 +6832,7 @@ export const MCP_TOOLS = [
       optionalString(args, "signer");
       optionalString(args, "call_module");
       optionalString(args, "call_function");
+      optionalString(args, "call_hash");
       optionalString(args, "cursor");
       optionalNonNegativeInt(args, "block");
       optionalSuccessFilter(args);
@@ -8637,6 +8701,116 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "call_rpc",
+    title: "Call a read-only Bittensor RPC method",
+    description:
+      "Proxy a single read-only, allowlisted Substrate/Subtensor JSON-RPC call " +
+      "(chain_getBlock, chain_getBlockHash, chain_getFinalizedHead, chain_getHeader, " +
+      "rpc_methods, state_getRuntimeVersion, system_chain, system_health, " +
+      "system_name, system_properties, system_version, plus the state-query " +
+      "methods state_getStorage/state_getKeysPaged) against the finney or test " +
+      "network, with the same method allowlist, state-query param validation, " +
+      "rate limiting, and endpoint failover as the public proxy. Use " +
+      "get_best_rpc_endpoint to pick a node for direct WSS access instead. " +
+      "Mirrors POST /rpc/v1/{network}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        method: {
+          type: "string",
+          description:
+            "The JSON-RPC method name, e.g. 'chain_getBlockHash' or 'state_getStorage'.",
+        },
+        params: {
+          type: "array",
+          description:
+            "JSON-RPC positional params for the method. Omit for none.",
+        },
+        network: {
+          type: "string",
+          enum: ["finney", "test"],
+          description: "Bittensor network to query (default 'finney').",
+        },
+      },
+      required: ["method"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      if (typeof args?.method !== "string" || !args.method) {
+        throw toolError(
+          "invalid_params",
+          "Argument `method` is required and must be a non-empty string.",
+        );
+      }
+      if (args.params !== undefined && !Array.isArray(args.params)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `params`, when present, must be an array.",
+        );
+      }
+      if (args.network !== undefined && typeof args.network !== "string") {
+        throw toolError(
+          "invalid_params",
+          "Argument `network`, when present, must be a string.",
+        );
+      }
+      const network = args.network || "finney";
+      const rpcRequestBody = {
+        jsonrpc: "2.0",
+        id: 1,
+        method: args.method,
+        params: args.params ?? [],
+      };
+      // Forward through the SAME handler REST callers hit (allowlist, state-query
+      // param validation, rate limits, endpoint pool + failover, cache) rather
+      // than reimplementing any of it -- cf-connecting-ip is forged from
+      // ctx.clientIp (itself derived from the real inbound header, see
+      // mcpClientKey) so the proxy's per-client rate-limit buckets key on the
+      // actual caller instead of this synthetic request having none.
+      const proxyRequest = new Request(
+        `https://d/rpc/v1/${encodeURIComponent(network)}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "cf-connecting-ip": ctx.clientIp,
+          },
+          body: JSON.stringify(rpcRequestBody),
+        },
+      );
+      const response = await handleRpcProxyRequest(
+        proxyRequest,
+        ctx.env,
+        new URL(proxyRequest.url),
+      );
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        throw toolError(
+          "rpc_invalid_response",
+          "The RPC proxy returned a non-JSON response.",
+        );
+      }
+      if (!response.ok) {
+        // handleRpcProxyRequest's every error path goes through workers/http.mjs's
+        // errorResponse(), which always populates error.code/error.message -- no
+        // "malformed error body" case exists to guess a fallback for.
+        throw toolError(payload.error.code, payload.error.message);
+      }
+      return {
+        network,
+        method: args.method,
+        jsonrpc: payload?.jsonrpc ?? "2.0",
+        result: payload && "result" in payload ? payload.result : null,
+        error: payload?.error ?? null,
+        endpoint_id: response.headers.get("x-metagraph-rpc-endpoint-id"),
+        provider: response.headers.get("x-metagraph-rpc-provider"),
+        cache: response.headers.get("x-metagraph-rpc-cache"),
+      };
+    },
+  },
+  {
     name: "registry_summary",
     title: "Get the registry-wide summary",
     description:
@@ -9584,6 +9758,38 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       summary: { type: ["object", "null"] },
       economics: { type: ["object", "null"] },
+    },
+  },
+  get_subnet_stake_quote: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schema_version",
+      "netuid",
+      "direction",
+      "amount",
+      "expected_out",
+      "expected_out_unit",
+      "spot_price_tao",
+      "effective_price_tao",
+      "price_impact_pct",
+      "tao_in_pool_tao",
+      "alpha_in_pool",
+      "is_root",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      direction: { type: "string", enum: STAKE_QUOTE_DIRECTIONS },
+      amount: { type: "number" },
+      expected_out: { type: "number" },
+      expected_out_unit: { type: "string", enum: ["alpha", "tao"] },
+      spot_price_tao: { type: "number" },
+      effective_price_tao: { type: "number" },
+      price_impact_pct: { type: "number" },
+      tao_in_pool_tao: { type: ["number", "null"] },
+      alpha_in_pool: { type: ["number", "null"] },
+      is_root: { type: "boolean" },
     },
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
@@ -12436,6 +12642,21 @@ const TOOL_OUTPUT_SCHEMAS = {
         status: NULLABLE_STRING,
         health_source: NULLABLE_STRING,
       }),
+    },
+  },
+  call_rpc: {
+    type: "object",
+    additionalProperties: true,
+    required: ["network", "method", "jsonrpc"],
+    properties: {
+      network: { type: "string" },
+      method: { type: "string" },
+      jsonrpc: { type: "string" },
+      result: ANY,
+      error: { type: ["object", "null"] },
+      endpoint_id: NULLABLE_STRING,
+      provider: NULLABLE_STRING,
+      cache: NULLABLE_STRING,
     },
   },
   registry_summary: {

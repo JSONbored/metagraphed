@@ -5557,6 +5557,244 @@ describe("MCP get_rpc_usage", () => {
   });
 });
 
+describe("MCP call_rpc", () => {
+  // Mirrors rpcEnv() in tests/request-handlers-rpc-proxy.test.mjs: rpc/pools.json
+  // is R2-only, so both ASSETS and METAGRAPH_ARCHIVE are stubbed the same way
+  // readArtifact's tier resolution expects.
+  const RPC_POOL = {
+    pools: [
+      {
+        id: "finney-rpc",
+        endpoints: [
+          {
+            id: "fx",
+            provider: "fx",
+            pool_eligible: true,
+            status: "ok",
+            score: 100,
+            url: "https://bittensor-finney.api.onfinality.io/public",
+          },
+        ],
+      },
+    ],
+  };
+
+  function callRpcEnv(overrides = {}) {
+    return {
+      METAGRAPH_ENABLE_RPC_PROXY: "true",
+      ASSETS: {
+        async fetch(request) {
+          const target = new URL(request.url);
+          if (target.pathname === "/metagraph/rpc/pools.json") {
+            return Response.json(RPC_POOL);
+          }
+          return new Response("{}", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              return RPC_POOL;
+            },
+          };
+        },
+      },
+      ...overrides,
+    };
+  }
+
+  test("rejects a missing method as invalid_params", async () => {
+    const res = await callTool("call_rpc", {}, { env: callRpcEnv() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("rejects a non-array params as invalid_params", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", params: "nope" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("rejects a non-string network as invalid_params", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", network: 123 },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("propagates the REST route's rpc_method_blocked error verbatim for a denied method", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "author_submitExtrinsic" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_method_blocked/);
+  });
+
+  test("propagates rpc_network_unsupported for an unknown network", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health", network: "moonbeam" },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_network_unsupported/);
+  });
+
+  test("forwards the real MCP client IP into the proxy's rate-limit key", async () => {
+    let limiterKey;
+    const env = callRpcEnv({
+      // MCP_RATE_LIMITER absent falls back to RPC_RATE_LIMITER for the transport-
+      // level MCP rate limit too (enforceMcpRateLimit) -- stub it separately so
+      // only the proxy's own internal check below is under test.
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    });
+    const res = await callTool(
+      "call_rpc",
+      { method: "system_health" },
+      { env, headers: { "cf-connecting-ip": "198.51.100.7" } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /rpc_rate_limited/);
+    assert.equal(limiterKey, "rpc:198.51.100.7");
+  });
+
+  test("returns the upstream result plus served-endpoint metadata on success", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { isSyncing: false, peers: 3, shouldHavePeers: true },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.network, "finney");
+      assert.equal(out.method, "system_health");
+      assert.deepEqual(out.result, {
+        isSyncing: false,
+        peers: 3,
+        shouldHavePeers: true,
+      });
+      assert.equal(out.error, null);
+      assert.equal(out.endpoint_id, "fx");
+      assert.equal(out.provider, "fx");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("defaults jsonrpc to 2.0 and result to null when the upstream body omits them", async () => {
+    const originalFetch = globalThis.fetch;
+    // A real JSON-RPC 2.0 upstream always includes both fields; this exercises
+    // the defensive fallback for a hypothetical malformed/truncated upstream
+    // body, not a shape the proxy is known to ever actually produce.
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ id: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.jsonrpc, "2.0");
+      assert.equal(out.result, null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("state_getStorage forwards to the state-query path and validates the key", async () => {
+    const res = await callTool(
+      "call_rpc",
+      { method: "state_getStorage", params: ["not-hex"] },
+      { env: callRpcEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /0x-prefixed hex/);
+  });
+
+  test("rpc_invalid_response when the upstream body is not JSON", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response("not json", {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      });
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_health" },
+        { env: callRpcEnv() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rpc_invalid_response/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("advertises a call_rpc-shaped outputSchema and the result validates against it", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const def = listToolDefinitions().find((t) => t.name === "call_rpc");
+    assert.ok(def.outputSchema);
+    const validate = ajv.compile(def.outputSchema);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: "finney" }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    try {
+      const res = await callTool(
+        "call_rpc",
+        { method: "system_chain" },
+        { env: callRpcEnv() },
+      );
+      assert.ok(
+        validate(res.body.result.structuredContent),
+        JSON.stringify(validate.errors),
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
@@ -7460,6 +7698,117 @@ describe("MCP economics + metagraph data tools", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  // Realistic reserves (SN64 from the live economics.json artifact), matching
+  // the fixture in tests/subnet-stake-quote-api.test.mjs.
+  const STAKE_QUOTE_POOL_ROW = {
+    netuid: 64,
+    tao_in_pool_tao: 201959.938748425,
+    alpha_in_pool: 2730860.150574127,
+  };
+  const STAKE_QUOTE_BLOB = { subnets: [STAKE_QUOTE_POOL_ROW] };
+
+  test("get_subnet_stake_quote quotes a stake against the live pool reserves", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 1000, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, 64);
+    assert.equal(out.direction, "stake");
+    assert.equal(out.expected_out_unit, "alpha");
+    assert.equal(out.is_root, false);
+    assert.ok(out.expected_out > 0);
+    assert.ok(out.price_impact_pct > 0);
+    assert.equal(out.tao_in_pool_tao, STAKE_QUOTE_POOL_ROW.tao_in_pool_tao);
+  });
+
+  test("get_subnet_stake_quote quotes an unstake against the live pool reserves", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 500, direction: "unstake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.direction, "unstake");
+    assert.equal(out.expected_out_unit, "tao");
+    assert.ok(out.expected_out > 0);
+  });
+
+  test("get_subnet_stake_quote defaults direction to stake when omitted", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 10 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.structuredContent.direction, "stake");
+  });
+
+  test("get_subnet_stake_quote returns a 1:1 zero-impact quote for root (netuid 0)", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 0, amount: 42, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.is_root, true);
+    assert.equal(out.expected_out, 42);
+    assert.equal(out.price_impact_pct, 0);
+    assert.equal(out.tao_in_pool_tao, null);
+  });
+
+  test("get_subnet_stake_quote rejects a non-positive amount as invalid_amount", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: -5, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_amount/);
+  });
+
+  test("get_subnet_stake_quote rejects an unknown direction as invalid_direction", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 64, amount: 10, direction: "swap" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_direction/);
+  });
+
+  test("get_subnet_stake_quote surfaces insufficient_liquidity when the subnet has no pool row", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 999, amount: 10, direction: "stake" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /insufficient_liquidity/);
   });
 
   test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
@@ -11746,6 +12095,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       signer: EXTRINSIC_ROW.signer,
       call_module: "SubtensorModule",
       call_function: "set_weights",
+      call_hash: "0x" + "a".repeat(64),
       success: true,
       block_start: 100,
       block_end: 200,
@@ -11882,6 +12232,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
           });
         },
       };
+      const callHash = "0x" + "b".repeat(64);
       await callTool(
         "list_extrinsics",
         {
@@ -11889,6 +12240,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
           signer: SS58,
           call_module: "SubtensorModule",
           call_function: "set_weights",
+          call_hash: callHash,
           success: true,
           limit: 10,
           offset: 20,
@@ -11901,6 +12253,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(seenUrl.searchParams.get("signer"), SS58);
       assert.equal(seenUrl.searchParams.get("call_module"), "SubtensorModule");
       assert.equal(seenUrl.searchParams.get("call_function"), "set_weights");
+      assert.equal(seenUrl.searchParams.get("call_hash"), callHash);
       assert.equal(seenUrl.searchParams.get("success"), "true");
       assert.equal(seenUrl.searchParams.get("limit"), "10");
     });

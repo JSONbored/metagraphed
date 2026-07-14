@@ -584,18 +584,6 @@ CREATE INDEX IF NOT EXISTS idx_rpc_proxy_events_observed_endpoint
   ON rpc_proxy_events (observed_at, endpoint_id);
 
 -- ---------------------------------------------------------------------------
--- Indexer coordination
--- ---------------------------------------------------------------------------
-
--- Durable cursor (also mirrored in Redis for hot access). Single row id=1.
-CREATE TABLE IF NOT EXISTS indexer_cursor (
-  id               SMALLINT PRIMARY KEY DEFAULT 1,
-  last_block       BIGINT NOT NULL,
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT indexer_cursor_singleton CHECK (id = 1)
-);
-
--- ---------------------------------------------------------------------------
 -- Realtime firehose outbox (ADR 0015, #4980)
 -- ---------------------------------------------------------------------------
 

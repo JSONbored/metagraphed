@@ -101,6 +101,56 @@
         "https://github.com/sundae-bar/sb-validator/blob/main/README.md"
       ],
       "url": "https://raw.githubusercontent.com/sundae-bar/sb-validator/main/python/dataset_sbc9.jsonl"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-121-sundae-bar-llms-txt",
+      "kind": "data-artifact",
+      "name": "Sundae Bar llms.txt agent index",
+      "notes": "Public no-auth machine-readable llms.txt index served at www.sundaebar.ai/llms.txt for the SN121 sundae_bar directory (autonomous agents, agent skills, workflows, and prompts). Provides an agent-consumable Markdown map that points LLM crawlers at the site's JSON API as the source of truth and links featured/explore listings; content begins '# sundae_bar'. Regenerated hourly per the file's own header. Distinct from the sb-validator SBC9 JSONL benchmark dataset already registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://www.sundaebar.ai/",
+        "https://github.com/sundae-bar/bittensor-subnet"
+      ],
+      "url": "https://www.sundaebar.ai/llms.txt"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-121-sundae-bar-products-api",
+      "kind": "subnet-api",
+      "name": "Sundae Bar products catalog API",
+      "notes": "Public no-auth GET /api/products on www.sundaebar.ai returning the paginated JSON catalog of SN121 sundae_bar listings ({\"data\":[{type,name,description,...}]}) — the source-of-truth listings feed that the site's own llms.txt directs AI agents to query. Verified 200 application/json, distinct in host and path from the api.sundaebar.ai/api/v2/validators coordinator surface already registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "sundae-bar",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://www.sundaebar.ai/llms.txt",
+        "https://www.sundaebar.ai/"
+      ],
+      "url": "https://www.sundaebar.ai/api/products"
     }
   ],
   "social": {

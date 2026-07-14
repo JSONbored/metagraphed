@@ -7,7 +7,6 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "../src/chain-turnover.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { readNeuronDailyCacheStamp } from "../workers/request-handlers/analytics.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 // One neuron_daily validator row (the loader scopes the read to validator_permit = 1).
@@ -476,53 +475,6 @@ describe("GET /api/v1/chain/turnover", () => {
   });
 });
 
-describe("readNeuronDailyCacheStamp", () => {
-  const stampEnv = (rows) => ({
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        return {
-          bind: () => ({ all: () => Promise.resolve({ results: rows }) }),
-        };
-      },
-    },
-  });
-
-  test("reads the indexed latest snapshot_date from neuron_daily", async () => {
-    let seenSql;
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          seenSql = sql;
-          return {
-            bind: () => ({
-              all: () =>
-                Promise.resolve({
-                  results: [{ snapshot_date: "2026-06-27" }],
-                }),
-            }),
-          };
-        },
-      },
-    };
-    const stamp = await readNeuronDailyCacheStamp(env);
-    assert.equal(stamp, "2026-06-27");
-    assert.match(seenSql, /FROM neuron_daily/); // the correct source table, not `neurons`
-    assert.match(seenSql, /ORDER BY snapshot_date DESC LIMIT 1/);
-    assert.doesNotMatch(seenSql, /captured_at/);
-  });
-
-  test("returns null for a missing snapshot_date", async () => {
-    assert.equal(
-      await readNeuronDailyCacheStamp(stampEnv([{ snapshot_date: null }])),
-      null,
-    );
-  });
-
-  test("returns null when the D1 read degrades to the empty fallback", async () => {
-    assert.equal(await readNeuronDailyCacheStamp({}), null); // no METAGRAPH_HEALTH_DB
-  });
-});
-
 // #4909 D1 retirement: the "chain/turnover edge cache" describe block that
 // used to live here asserted the edge cache busts when the mocked D1
 // neuron_daily stamp changes. neurons/neuron_daily's D1 write path is
@@ -531,3 +483,14 @@ describe("readNeuronDailyCacheStamp", () => {
 // response is a fixed schema-stable-empty literal on a Postgres miss and
 // never varies with the D1 fixture, so there is nothing left for a
 // stamp-busts-the-cache assertion to observe.
+//
+// #5358: the "readNeuronDailyCacheStamp" describe block that used to live here
+// unit-tested the neuron_daily-backed stamp resolver directly. That function
+// (and its siblings readSubnetNeuronsCacheStamp / readNeuronsCacheStamp /
+// withNeuronsEdgeCache) has been deleted from
+// workers/request-handlers/analytics.mjs: it read the same dropped D1
+// neuron_daily table described above, so its stamp had been permanently frozen
+// since #4772 and could never bust the edge cache on new data. GET
+// /api/v1/chain/turnover now busts on the shared health-cron `last_run_at` KV
+// stamp instead, exercised end-to-end by the "GET /api/v1/chain/turnover"
+// describe block above.

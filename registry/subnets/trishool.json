@@ -121,8 +121,29 @@
         "https://github.com/TrishoolAI/trishool-phase2/blob/main/tri-check/data/submission_schema.json"
       ],
       "url": "https://raw.githubusercontent.com/TrishoolAI/trishool-phase2/main/tri-check/data/submission_schema.json"
+    },
+    {
+      "id": "sn-23-trishool-litepaper-docs",
+      "name": "Trishool litepaper",
+      "kind": "docs",
+      "url": "https://litepaper.trishool.ai/",
+      "provider": "trishool",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/TrishoolAI/trishool-phase2",
+        "https://trishool.ai/"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public no-auth Trishool litepaper (PDF) for SN23, served at litepaper.trishool.ai — a dedicated subdomain of the registered official website trishool.ai (same operator as the api.trishool.ai and docs.trishool.ai surfaces). A machine-readable primary-source document describing the subnet's design, mechanism, and roles. Distinct in URL from the docs.trishool.ai API documentation already registered."
     }
   ],
-  "social": { "x": "https://x.com/trishoolai" },
+  "social": {
+    "x": "https://x.com/trishoolai"
+  },
   "contact": "nav@astroware.ai"
 }

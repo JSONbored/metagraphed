@@ -128,6 +128,32 @@
         "https://lium.io/api/executors/stats"
       ],
       "url": "https://lium.io/api/executors/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-machines-capacity-api",
+      "kind": "subnet-api",
+      "name": "Lium machines capacity API",
+      "notes": "Public no-auth GET /api/machines/capacity on lium.io returning a JSON array of aggregate GPU capacity per base model (e.g. B300, H200) with per-GPU-count buckets carrying max_cap, unrented_count, and hourly_rate for the SN51 lium.io compute marketplace. Documented as a security-free GET /machines/capacity in the registered Lium Backend API OpenAPI spec and served on the same host as the existing machines, version, reclaims, and executors/stats surfaces. Distinct from the machines listing surface: this reports network-wide capacity/availability buckets rather than individual machine types. Verified 200 application/json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "schema_url": "https://lium.io/api/openapi.json",
+      "source_urls": [
+        "https://lium.io/api/openapi.json",
+        "https://lium.io/api/machines/capacity"
+      ],
+      "url": "https://lium.io/api/machines/capacity"
     }
   ],
   "source_repo": "https://github.com/Datura-ai/lium-io"
