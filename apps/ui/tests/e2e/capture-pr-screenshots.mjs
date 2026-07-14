@@ -131,6 +131,15 @@ function run(cmd, args, opts = {}) {
   return result.stdout.trim();
 }
 
+/** Prefers `origin/main` over local `main` -- a long-lived local checkout's
+ * `main` branch is very often stale (never fast-forwarded), which would
+ * silently point "before" at some arbitrary old commit instead of the real
+ * base. Falls back to local `main` only if there's no `origin` remote. */
+function resolveMainRef(cwd) {
+  const result = spawnSync("git", ["rev-parse", "--verify", "origin/main"], { cwd });
+  return result.status === 0 ? "origin/main" : "main";
+}
+
 function gitMergeBase(a, b, cwd) {
   return run("git", ["merge-base", a, b], { cwd });
 }
@@ -172,14 +181,19 @@ async function probeServerUp(url) {
   }
 }
 
-/** Spawns `npm run dev --workspace=apps/ui -- --port <port>` in `cwd`,
- * detached from this process's stdio so a slow/chatty dev server doesn't
- * flood the capture tool's own output. Caller is responsible for waiting on
- * readiness (waitForServer) and killing the returned child on cleanup. */
+/** Spawns `npm run dev -- --port <port>` with `cwd` already inside
+ * apps/ui (never `--workspace=apps/ui` here -- that flag resolves relative
+ * to a monorepo root, and `cwd` already points at the workspace itself, so
+ * combining them makes npm fail to find a nested "apps/ui" workspace and
+ * exit immediately). stdout is suppressed (a chatty dev server would flood
+ * the capture tool's own output) but stderr stays visible so a real startup
+ * failure doesn't just silently time out in waitForServer. Caller is
+ * responsible for waiting on readiness (waitForServer) and killing the
+ * returned child on cleanup. */
 function startDevServer(cwd, port) {
-  const child = spawn("npm", ["run", "dev", "--workspace=apps/ui", "--", "--port", String(port)], {
+  const child = spawn("npm", ["run", "dev", "--", "--port", String(port)], {
     cwd,
-    stdio: "ignore",
+    stdio: ["ignore", "ignore", "inherit"],
   });
   return child;
 }
@@ -251,6 +265,30 @@ async function setTheme(page, baseUrl, theme) {
   });
 }
 
+/** `networkidle` is the right wait condition (it's what lets a late-mounting
+ * chart or a client-side non-suspense query settle before capture -- see
+ * capture-operational-status-screenshots.mjs), but a just-spawned dev
+ * server's first hit on a route pays Vite's cold transform/optimize cost on
+ * top of the app's own data fetches, occasionally blowing past a single
+ * timeout. Retry once, then fall back to the cheaper `load` condition plus a
+ * fixed settle wait rather than failing the whole capture run outright. */
+async function gotoRoute(page, url) {
+  try {
+    await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
+    return;
+  } catch (err) {
+    console.warn(`networkidle wait failed for ${url}, retrying once: ${err.message}`);
+  }
+  try {
+    await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
+    return;
+  } catch (err) {
+    console.warn(`networkidle retry failed for ${url}, falling back to "load": ${err.message}`);
+  }
+  await page.goto(url, { waitUntil: "load", timeout: 60_000 });
+  await page.waitForTimeout(2000);
+}
+
 /** Scrolls `sectionId` into view, accounting for the sticky masthead's live
  * height, then re-scrolls once after a settle wait so late data-driven
  * layout shifts (queries resolving, charts mounting) don't push the target
@@ -293,7 +331,7 @@ async function captureVariant({
 
     for (const theme of THEMES) {
       await setTheme(page, baseUrl, theme);
-      await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle", timeout: 90_000 });
+      await gotoRoute(page, `${baseUrl}${route}`);
       // Let async, non-suspense queries (identity/balance/etc. -- anything
       // fetched client-side post-hydration) resolve before scrolling and
       // capturing, or the shot freezes on a loading skeleton.
@@ -425,7 +463,7 @@ async function main() {
 
   try {
     if (!skipOrchestration) {
-      const baseRef = args.baseRef || gitMergeBase("main", "HEAD", repoRoot);
+      const baseRef = args.baseRef || gitMergeBase(resolveMainRef(repoRoot), "HEAD", repoRoot);
       console.log(`Base ref for "before": ${baseRef}`);
 
       afterUrl = args.afterUrl ?? `http://localhost:${args.afterPort}`;
@@ -444,6 +482,16 @@ async function main() {
 
       console.log("Waiting for both dev servers to be ready...");
       await Promise.all([waitForServer(beforeUrl, "before"), waitForServer(afterUrl, "after")]);
+
+      // A dev server responding on / doesn't mean the target route is warm --
+      // Vite transforms each route's module graph lazily, on first hit. Pay
+      // that cold-start cost here (best-effort, errors ignored) instead of on
+      // the first real capture attempt below.
+      console.log(`Warming up ${args.route} on both servers...`);
+      await Promise.all([
+        fetch(`${beforeUrl}${args.route}`).catch(() => {}),
+        fetch(`${afterUrl}${args.route}`).catch(() => {}),
+      ]);
     }
 
     console.log(`\nCapturing "before" (${beforeUrl})...`);
