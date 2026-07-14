@@ -9,6 +9,8 @@ import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import {
+  CollapsibleFilters,
+  FilterActionRow,
   PageSizeSelect,
   ResetFiltersButton,
   SearchInput,
@@ -191,12 +193,12 @@ function ExtrinsicsTable() {
   const rowKey = (x: Extrinsic) =>
     x.extrinsic_hash || `${x.block_number ?? "?"}-${x.extrinsic_index ?? "?"}`;
 
-  const filtersActive = Boolean(
-    search.signer || search.call_module || search.call_function || search.success,
-  );
+  const filterValues = [search.signer, search.call_module, search.call_function, search.success];
+  const activeFilterCount = filterValues.filter(Boolean).length;
+  const filtersActive = activeFilterCount > 0;
 
   const filters = (
-    <>
+    <CollapsibleFilters activeCount={activeFilterCount}>
       <SearchInput
         value={search.signer}
         onChange={(v) => setSearch({ signer: v, offset: 0 })}
@@ -212,33 +214,35 @@ function ExtrinsicsTable() {
         onChange={(v) => setSearch({ call_function: v, offset: 0 })}
         placeholder="Call function…"
       />
-      <SelectFilter
-        label="Result"
-        value={search.success}
-        onChange={(v) => setSearch({ success: v, offset: 0 })}
-        options={[
-          { value: "true", label: "ok" },
-          { value: "false", label: "fail" },
-        ]}
-      />
-      <PageSizeSelect
-        value={search.limit}
-        onChange={(n) => setSearch({ limit: n, offset: 0 })}
-        options={[10, 25, 50, 100]}
-      />
-      <ResetFiltersButton
-        active={filtersActive}
-        onReset={() =>
-          setSearch({
-            signer: "",
-            call_module: "",
-            call_function: "",
-            success: "",
-            offset: 0,
-          })
-        }
-      />
-    </>
+      <FilterActionRow>
+        <SelectFilter
+          label="Result"
+          value={search.success}
+          onChange={(v) => setSearch({ success: v, offset: 0 })}
+          options={[
+            { value: "true", label: "ok" },
+            { value: "false", label: "fail" },
+          ]}
+        />
+        <PageSizeSelect
+          value={search.limit}
+          onChange={(n) => setSearch({ limit: n, offset: 0 })}
+          options={[10, 25, 50, 100]}
+        />
+        <ResetFiltersButton
+          active={filtersActive}
+          onReset={() =>
+            setSearch({
+              signer: "",
+              call_module: "",
+              call_function: "",
+              success: "",
+              offset: 0,
+            })
+          }
+        />
+      </FilterActionRow>
+    </CollapsibleFilters>
   );
 
   const emptyNode = (
