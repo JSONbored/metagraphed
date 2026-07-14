@@ -4,11 +4,12 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero, ShareButton } from "@jsonbored/ui-kit";
+import { PageHero, ShareButton, DownloadCsvButton } from "@jsonbored/ui-kit";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
+import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
@@ -70,6 +71,10 @@ function ValidatorsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const sort = search.sort ?? "subnet_count";
+  // Mirror the sibling ranked-list pages (subnets/blocks/surfaces): export the
+  // current view as CSV. DownloadCsvButton appends `format=csv`; the backend's
+  // handleGlobalValidators already serves it (#5482).
+  const validatorsCsvUrl = buildUrl("/api/v1/validators", { sort });
   return (
     <AppShell>
       <PageHero
@@ -77,7 +82,12 @@ function ValidatorsPage() {
         live
         title="Validators"
         description="Network-wide validator directory — hotkeys ranked across all Bittensor subnets, computed live from the chain-direct metagraph."
-        actions={<ShareButton />}
+        actions={
+          <>
+            <DownloadCsvButton url={validatorsCsvUrl} />
+            <ShareButton />
+          </>
+        }
       />
       <ValidatorGuide />
       <QueryErrorBoundary>
