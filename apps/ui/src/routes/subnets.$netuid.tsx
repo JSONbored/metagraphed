@@ -2,17 +2,19 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense, useState, type ReactNode } from "react";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowDownToLine,
   ArrowLeftRight,
   ArrowUpFromLine,
+  Calculator,
+  Minus,
+  TrendingDown,
+  TrendingUp,
   Waves,
   Activity,
   ChevronDown,
   Filter,
-  Minus,
-  TrendingDown,
-  TrendingUp,
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
@@ -43,6 +45,7 @@ import {
 import { taoCompact } from "@/components/metagraphed/neuron-table";
 import { ReadinessScorecard } from "@/components/metagraphed/readiness-scorecard";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
+import { SearchInput } from "@/components/metagraphed/table-controls";
 import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
@@ -76,6 +79,7 @@ import {
   subnetHyperparametersQuery,
   subnetHyperparamsHistoryQuery,
   subnetAlphaVolumeQuery,
+  subnetStakeQuoteQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -199,6 +203,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   incidents: "overview",
   economics: "overview",
   "volume-24h": "overview",
+  "stake-quote": "overview",
   reliability: "overview",
   lineage: "overview",
   evidence: "overview",
@@ -417,6 +422,18 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         <QueryErrorBoundary>
           <AlphaVolumeScorecard netuid={netuid} />
         </QueryErrorBoundary>
+      </SectionAnchor>
+
+      {/* 5a3 — Stake-quote calculator (#5235): a read-only constant-product
+          slippage estimate against the subnet's live AMM reserves. Pure math,
+          no chain write — the same swap math the chain itself uses. */}
+      <SectionAnchor
+        id="stake-quote"
+        title="Stake-quote calculator"
+        subtitle="Estimate the slippage and price impact of a stake or unstake before it happens."
+        info="GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake — a read-only constant-product AMM estimate against the subnet's live pool reserves. Pure math, no chain write, no custody."
+      >
+        <StakeQuoteCalculator netuid={netuid} />
       </SectionAnchor>
 
       {/* 5b — On-chain network history (#1302): daily neuron/validator counts,
@@ -711,6 +728,127 @@ function AlphaVolumeScorecard({ netuid }: { netuid: number }) {
             : "no volume yet"
         }
       />
+    </div>
+  );
+}
+
+const STAKE_QUOTE_DIRECTIONS = ["stake", "unstake"] as const;
+
+// Same precision rule as accounts.$ss58.tsx's fmtAlphaPrice — the same
+// alpha_price_tao-scale unit shown there and in subnet-price-ticker.tsx.
+function fmtQuotePrice(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  if (v < 0.001) return v.toExponential(2);
+  return v < 1 ? v.toFixed(4) : v.toFixed(3);
+}
+
+// #5235: read-only constant-product stake/unstake slippage calculator — the
+// one genuinely new interaction pattern on this page (a free-text amount
+// driving a live query, no existing precedent elsewhere in the app). Direction
+// gates the input/output units: "stake" takes a TAO amount and quotes alpha
+// out; "unstake" takes an alpha amount and quotes TAO out (mirrors the
+// chain's own swap direction, see src/stake-quote.mjs).
+function StakeQuoteCalculator({ netuid }: { netuid: number }) {
+  const [amountInput, setAmountInput] = useState("");
+  const [direction, setDirection] = useState<(typeof STAKE_QUOTE_DIRECTIONS)[number]>("stake");
+  const amount = Number(amountInput);
+  const hasValidAmount = amountInput.trim() !== "" && Number.isFinite(amount) && amount > 0;
+  const result = useQuery(subnetStakeQuoteQuery(netuid, hasValidAmount ? amount : 0, direction));
+  const quote = result.data?.data;
+  const inputUnit = direction === "stake" ? "τ" : "α";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          {/* SearchInput sets its own aria-label from `placeholder` -- this is a
+              visual label only, not `<label htmlFor>`, since SearchInput has no
+              `id` prop to associate with. */}
+          <span
+            aria-hidden="true"
+            className="font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+          >
+            Amount ({inputUnit})
+          </span>
+          <SearchInput
+            value={amountInput}
+            onChange={setAmountInput}
+            placeholder={`0.00 ${inputUnit}`}
+            inputMode="decimal"
+            className="w-40 flex-none font-mono tabular-nums"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            Direction
+          </span>
+          <div
+            role="tablist"
+            aria-label="Stake or unstake"
+            className="inline-flex items-center rounded-md border border-border bg-card p-0.5"
+          >
+            {STAKE_QUOTE_DIRECTIONS.map((d) => {
+              const active = d === direction;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setDirection(d)}
+                  className={classNames(
+                    "min-h-8 rounded px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest transition-colors",
+                    active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
+                  )}
+                >
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {!hasValidAmount ? (
+        <p className="font-mono text-[11px] text-ink-muted">
+          Enter an amount to estimate slippage against the subnet's live pool reserves.
+        </p>
+      ) : result.isError ? (
+        <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down">
+          <AlertCircle className="size-3.5 shrink-0" aria-hidden />
+          {result.error instanceof Error ? result.error.message : "Could not compute a quote."}
+        </p>
+      ) : result.isPending ? (
+        <p className="font-mono text-[11px] text-ink-muted">Calculating…</p>
+      ) : quote ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatTile
+            icon={Calculator}
+            eyebrow={`Expected ${quote.expected_out_unit}`}
+            value={`${formatNumber(quote.expected_out)} ${quote.expected_out_unit === "tao" ? "τ" : "α"}`}
+            hint={quote.is_root ? "root subnet · 1:1" : "live reserves"}
+          />
+          <StatTile
+            icon={Waves}
+            eyebrow="Spot price"
+            value={`${fmtQuotePrice(quote.spot_price_tao)} τ`}
+            hint="before this swap"
+          />
+          <StatTile
+            icon={ArrowLeftRight}
+            eyebrow="Effective price"
+            value={`${fmtQuotePrice(quote.effective_price_tao)} τ`}
+            hint="average, this swap"
+          />
+          <StatTile
+            icon={quote.price_impact_pct > 0 ? TrendingDown : Minus}
+            eyebrow="Price impact"
+            tone={quote.price_impact_pct > 5 ? "down" : "default"}
+            value={`${quote.price_impact_pct.toFixed(2)}%`}
+            hint={quote.is_root ? "no AMM · zero impact" : "vs spot price"}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1561,6 +1699,10 @@ function ApiPanel({ netuid }: { netuid: number }) {
       path: `/api/v1/subnets/${netuid}/hyperparameters/history`,
     },
     { label: "volume", path: `/api/v1/subnets/${netuid}/volume` },
+    {
+      label: "stake-quote",
+      path: `/api/v1/subnets/${netuid}/stake-quote?amount=100&direction=stake`,
+    },
     { label: "health", path: `/api/v1/subnets/${netuid}/health` },
     { label: "agent-catalog", path: `/api/v1/agent-catalog/${netuid}` },
     { label: "artifact", path: `/metagraph/subnets/${netuid}.json` },

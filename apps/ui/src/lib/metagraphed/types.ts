@@ -1640,6 +1640,26 @@ export interface SubnetHyperparamsHistory {
   next_cursor: string | null;
 }
 
+/** Read-only constant-product stake/unstake slippage quote for one subnet
+ * (#5235), from GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=.
+ * Pure math against the subnet's AMM pool reserves — no chain write, no
+ * custody. tao_in_pool_tao/alpha_in_pool are null for the root subnet
+ * (netuid 0, which has no AMM and returns a 1:1 zero-impact quote instead). */
+export interface SubnetStakeQuote {
+  schema_version: number;
+  netuid: number;
+  direction: "stake" | "unstake";
+  amount: number;
+  expected_out: number;
+  expected_out_unit: "alpha" | "tao";
+  spot_price_tao: number;
+  effective_price_tao: number;
+  price_impact_pct: number;
+  tao_in_pool_tao: number | null;
+  alpha_in_pool: number | null;
+  is_root: boolean;
+}
+
 /** Append-only on-chain identity timeline for one subnet (#1647), newest first. */
 export interface SubnetIdentityHistory {
   schema_version: number;

@@ -181,6 +181,7 @@ import type {
   SubnetHyperparametersDetail,
   SubnetHyperparamsHistory,
   SubnetHyperparamsHistoryEntry,
+  SubnetStakeQuote,
   SubnetIdentityHistory,
   SubnetWeightSetter,
   SubnetWeightSetters,
@@ -4878,6 +4879,51 @@ export const subnetHyperparamsHistoryQuery = (netuid: number) =>
       };
     },
     staleTime: STALE_MED,
+  });
+
+// #5235: read-only constant-product stake/unstake slippage quote for one
+// subnet, computed live against the subnet's AMM pool reserves. Unlike the
+// other subnet queries above, this one is user-input-driven (a free-text
+// amount): `enabled` gates on a valid positive amount so no request fires
+// for an empty/zero/negative field, and errors (400 invalid_amount, 422
+// insufficient_liquidity) are left to propagate as an ApiError for the
+// caller to render, rather than swallowed into a schema-stable zero --
+// unlike the other subnet endpoints, a failed quote has no meaningful
+// zero-value fallback to show the user.
+export const subnetStakeQuoteQuery = (
+  netuid: number,
+  amount: number,
+  direction: "stake" | "unstake",
+) =>
+  queryOptions({
+    queryKey: k("subnet-stake-quote", netuid, amount, direction),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/stake-quote`, {
+        params: { amount, direction },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+          netuid: firstFiniteNumber(d.netuid) ?? netuid,
+          direction: d.direction === "unstake" ? "unstake" : "stake",
+          amount: coerceFiniteNumber(d.amount) ?? amount,
+          expected_out: coerceFiniteNumber(d.expected_out) ?? 0,
+          expected_out_unit: d.expected_out_unit === "tao" ? "tao" : "alpha",
+          spot_price_tao: coerceFiniteNumber(d.spot_price_tao) ?? 0,
+          effective_price_tao: coerceFiniteNumber(d.effective_price_tao) ?? 0,
+          price_impact_pct: coerceFiniteNumber(d.price_impact_pct) ?? 0,
+          tao_in_pool_tao: coerceFiniteNumber(d.tao_in_pool_tao) ?? null,
+          alpha_in_pool: coerceFiniteNumber(d.alpha_in_pool) ?? null,
+          is_root: booleanValue(d.is_root) ?? false,
+        } as SubnetStakeQuote,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetStakeQuote>;
+    },
+    enabled: Number.isFinite(amount) && amount > 0,
+    staleTime: STALE_SHORT,
   });
 
 // #1302: per-subnet on-chain history — daily neuron/validator counts, total
