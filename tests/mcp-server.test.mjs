@@ -3191,62 +3191,6 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
   });
 });
 
-describe("MCP get_subnet_performance", () => {
-  test("returns reward-distribution + score-spread from D1", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              return {
-                async all() {
-                  assert.match(sql, /FROM neurons WHERE netuid = \?/);
-                  assert.ok(params.includes(7));
-                  return {
-                    results: [
-                      {
-                        incentive: 0.6,
-                        dividends: 0.5,
-                        trust: 0.9,
-                        consensus: 0.8,
-                        validator_trust: 0.95,
-                        active: 1,
-                        validator_permit: 1,
-                        captured_at: 1_750_000_000_000,
-                      },
-                      {
-                        incentive: 0.1,
-                        dividends: 0,
-                        trust: 0.3,
-                        consensus: 0.2,
-                        validator_trust: 0,
-                        active: 1,
-                        validator_permit: 0,
-                        captured_at: 1_750_000_000_000,
-                      },
-                    ],
-                  };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-    const res = await callTool(
-      "get_subnet_performance",
-      { netuid: 7 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.neuron_count, 2);
-    assert.equal(out.validator_count, 1);
-    assert.ok(out.incentive === null || typeof out.incentive === "object");
-    assert.ok(out.trust === null || typeof out.trust === "object");
-  });
-});
-
 describe("MCP get_chain_signers", () => {
   test("returns signers ranked by tx_count from D1", async () => {
     const env = {
@@ -3932,74 +3876,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  test("get_subnet_stake_flow aggregates StakeAdded and StakeRemoved", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const capture = [];
-      const res = await callTool(
-        "get_subnet_stake_flow",
-        { netuid: 7, window: "30d" },
-        {
-          env: stakeFlowD1(
-            [
-              {
-                event_kind: "StakeAdded",
-                total_tao: 200,
-                event_count: 4,
-                last_observed: 1_717_000_000_000,
-              },
-              {
-                event_kind: "StakeRemoved",
-                total_tao: 50,
-                event_count: 2,
-                last_observed: 1_717_000_000_000,
-              },
-            ],
-            capture,
-          ),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.netuid, 7);
-      assert.equal(out.window, "30d");
-      assert.equal(out.total_staked_tao, 200);
-      assert.equal(out.total_unstaked_tao, 50);
-      assert.equal(out.net_flow_tao, 150);
-      assert.match(capture[0].sql, /FROM account_events/);
-      assert.equal(capture[0].params[0], 7);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  test("get_subnet_stake_flow narrows to one side with direction=in", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_stake_flow",
-      { netuid: 7, window: "30d", direction: "in" },
-      {
-        env: stakeFlowD1(
-          [
-            {
-              event_kind: "StakeAdded",
-              total_tao: 200,
-              event_count: 4,
-              last_observed: 1_717_000_000_000,
-            },
-          ],
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.total_staked_tao, 200);
-    assert.equal(out.total_unstaked_tao, 0);
-    // direction=in binds only the StakeAdded kind, not StakeRemoved.
-    assert.ok(capture[0].params.includes("StakeAdded"));
-    assert.ok(!capture[0].params.includes("StakeRemoved"));
-  });
-
   test("get_subnet_stake_flow rejects an unsupported direction", async () => {
     const res = await callTool("get_subnet_stake_flow", {
       netuid: 7,
@@ -4032,43 +3908,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.equal(out.stake_events, 0);
   });
 
-  test("get_account_stake_flow shapes per-subnet direction labels", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_stake_flow",
-        { ss58: SS58, window: "7d" },
-        {
-          env: stakeFlowD1([
-            {
-              netuid: 7,
-              event_kind: "StakeAdded",
-              total_tao: 100,
-              event_count: 2,
-              last_observed: 1_717_000_000_000,
-            },
-            {
-              netuid: 9,
-              event_kind: "StakeRemoved",
-              total_tao: 40,
-              event_count: 1,
-              last_observed: 1_717_000_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].direction, "accumulating");
-      assert.equal(out.direction, "accumulating");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("get_account_stake_flow rejects a missing ss58", async () => {
     const res = await callTool("get_account_stake_flow", {});
     assert.equal(res.body.result.isError, true);
@@ -4082,34 +3921,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window must be one of/);
-  });
-
-  test("get_account_stake_flow narrows to one side with direction=in", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_account_stake_flow",
-      { ss58: SS58, window: "30d", direction: "in" },
-      {
-        env: stakeFlowD1(
-          [
-            {
-              netuid: 7,
-              event_kind: "StakeAdded",
-              total_tao: 200,
-              event_count: 4,
-              last_observed: 1_717_000_000_000,
-            },
-          ],
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.total_staked_tao, 200);
-    assert.equal(out.total_unstaked_tao, 0);
-    // direction=in binds only the StakeAdded kind, not StakeRemoved.
-    assert.ok(capture[0].params.includes("StakeAdded"));
-    assert.ok(!capture[0].params.includes("StakeRemoved"));
   });
 
   test("get_account_stake_flow rejects an unsupported direction", async () => {
@@ -4154,48 +3965,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
-
-  test("get_account_stake_moves shapes per-subnet movement counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_stake_moves",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountStakeMovesD1([
-            {
-              netuid: 7,
-              movements: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              movements: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_movements, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].movements, 3);
-      assert.equal(
-        out.subnets[0].first_moved_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 
   test("get_account_stake_moves rejects a missing ss58", async () => {
     const res = await callTool("get_account_stake_moves", {});
@@ -4270,48 +4039,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
-
-  test("get_account_axon_removals shapes per-subnet removal counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_axon_removals",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountAxonRemovalsD1([
-            {
-              netuid: 7,
-              removals: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              removals: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_removals, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].removals, 3);
-      assert.equal(
-        out.subnets[0].first_removed_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 
   test("get_account_axon_removals rejects a missing ss58", async () => {
     const res = await callTool("get_account_axon_removals", {});
@@ -4389,48 +4116,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  test("get_account_prometheus shapes per-subnet announcement counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_prometheus",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountPrometheusD1([
-            {
-              netuid: 7,
-              announcements: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              announcements: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_announcements, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].announcements, 3);
-      assert.equal(
-        out.subnets[0].first_announced_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("get_account_prometheus rejects a missing ss58", async () => {
     const res = await callTool("get_account_prometheus", {});
     assert.equal(res.body.result.isError, true);
@@ -4505,48 +4190,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
-
-  test("get_account_registrations shapes per-subnet registration counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_registrations",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountRegistrationsD1([
-            {
-              netuid: 7,
-              registrations: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              registrations: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_registrations, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].registrations, 3);
-      assert.equal(
-        out.subnets[0].first_registered_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 
   test("get_account_registrations rejects a missing ss58", async () => {
     const res = await callTool("get_account_registrations", {});
@@ -4623,48 +4266,6 @@ describe("MCP stake-flow and movers economics tools", () => {
       },
     };
   }
-
-  test("get_account_serving shapes per-subnet announcement counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_serving",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountServingD1([
-            {
-              netuid: 7,
-              announcements: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              announcements: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_announcements, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].announcements, 3);
-      assert.equal(
-        out.subnets[0].first_served_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 
   test("get_account_serving rejects a missing ss58", async () => {
     const res = await callTool("get_account_serving", {});
@@ -4771,48 +4372,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  test("get_account_deregistrations shapes per-subnet deregistration counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_deregistrations",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountDeregistrationsD1([
-            {
-              netuid: 7,
-              deregistrations: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              deregistrations: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_deregistrations, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].deregistrations, 3);
-      assert.equal(
-        out.subnets[0].first_deregistered_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("get_account_deregistrations rejects a missing ss58", async () => {
     const res = await callTool("get_account_deregistrations", {});
     assert.equal(res.body.result.isError, true);
@@ -4860,48 +4419,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     );
     const validate = new Ajv2020().compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
-  });
-
-  test("get_account_weight_setters shapes per-subnet weight-set counts and concentration", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_account_weight_setters",
-        { ss58: SS58, window: "7d" },
-        {
-          env: accountWeightSettersD1([
-            {
-              netuid: 7,
-              weight_sets: 3,
-              first_observed: 1_717_000_000_000,
-              last_observed: 1_717_500_000_000,
-            },
-            {
-              netuid: 9,
-              weight_sets: 1,
-              first_observed: 1_717_100_000_000,
-              last_observed: 1_717_100_000_000,
-            },
-          ]),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.address, SS58);
-      assert.equal(out.window, "7d");
-      assert.equal(out.total_weight_sets, 4);
-      assert.equal(out.subnet_count, 2);
-      assert.equal(out.subnets[0].netuid, 7);
-      assert.equal(out.dominant_netuid, 7);
-      assert.equal(out.subnets[0].weight_sets, 3);
-      assert.equal(
-        out.subnets[0].first_set_at,
-        new Date(1_717_000_000_000).toISOString(),
-      );
-      assert.ok(out.concentration > 0.5);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   test("get_account_weight_setters rejects a missing ss58", async () => {
@@ -4953,47 +4470,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  test("get_subnet_movers ranks subnets by stake delta", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_subnet_movers",
-        { window: "30d", sort: "stake", limit: 5 },
-        {
-          env: moversD1({
-            bounds: [{ start_date: "2026-05-31", end_date: "2026-06-30" }],
-            aggregateRows: [
-              {
-                netuid: 7,
-                snapshot_date: "2026-05-31",
-                neuron_count: 10,
-                validator_count: 3,
-                total_stake_tao: 100,
-                total_emission_tao: 5,
-              },
-              {
-                netuid: 7,
-                snapshot_date: "2026-06-30",
-                neuron_count: 12,
-                validator_count: 4,
-                total_stake_tao: 250,
-                total_emission_tao: 9,
-              },
-            ],
-          }),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.window, "30d");
-      assert.equal(out.sort, "stake");
-      assert.equal(out.movers[0].netuid, 7);
-      assert.equal(out.movers[0].stake_delta_tao, 150);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
   test("get_subnet_movers rejects an invalid sort", async () => {
     const res = await callTool("get_subnet_movers", { sort: "liquidity" });
     assert.equal(res.body.result.isError, true);
@@ -5004,45 +4480,6 @@ describe("MCP stake-flow and movers economics tools", () => {
     const res = await callTool("get_subnet_movers", { window: "1y" });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window must be one of/);
-  });
-
-  test("get_subnet_movers ranks subnets by emission delta", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    try {
-      const res = await callTool(
-        "get_subnet_movers",
-        { window: "7d", sort: "emission", limit: 10 },
-        {
-          env: moversD1({
-            bounds: [{ start_date: "2026-06-23", end_date: "2026-06-30" }],
-            aggregateRows: [
-              {
-                netuid: 3,
-                snapshot_date: "2026-06-23",
-                neuron_count: 5,
-                validator_count: 2,
-                total_stake_tao: 50,
-                total_emission_tao: 1,
-              },
-              {
-                netuid: 3,
-                snapshot_date: "2026-06-30",
-                neuron_count: 5,
-                validator_count: 2,
-                total_stake_tao: 50,
-                total_emission_tao: 4,
-              },
-            ],
-          }),
-        },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.sort, "emission");
-      assert.equal(out.movers[0].emission_delta_tao, 3);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   test("get_subnet_movers degrades to an empty leaderboard on cold D1", async () => {
@@ -5181,105 +4618,6 @@ describe("MCP stake-flow and movers economics tools", () => {
 });
 
 describe("MCP get_subnet_event_summary", () => {
-  function eventSummaryD1(
-    { kindRows = [], recentRows = [] } = {},
-    capture = [],
-  ) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  if (/GROUP BY event_kind/.test(sql)) {
-                    return { results: kindRows };
-                  }
-                  if (/ORDER BY block_number DESC/.test(sql)) {
-                    return { results: recentRows };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("summarizes per-kind counts plus a recent-events tail", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_event_summary",
-      { netuid: 7, window: "7d", limit: 2 },
-      {
-        env: eventSummaryD1(
-          {
-            kindRows: [
-              {
-                event_kind: "StakeAdded",
-                event_count: 5,
-                hotkey_count: 3,
-                coldkey_count: 2,
-                amount_tao: 120,
-                alpha_amount: 40,
-                first_block: 100,
-                last_block: 140,
-                first_observed_at: 1_717_000_000_000,
-                last_observed_at: 1_717_500_000_000,
-              },
-              {
-                event_kind: "StakeRemoved",
-                event_count: 2,
-                hotkey_count: 1,
-                coldkey_count: 1,
-                amount_tao: 30,
-                alpha_amount: 10,
-                first_block: 110,
-                last_block: 130,
-                first_observed_at: 1_717_100_000_000,
-                last_observed_at: 1_717_400_000_000,
-              },
-            ],
-            recentRows: [
-              {
-                block_number: 140,
-                event_index: 1,
-                event_kind: "StakeAdded",
-                hotkey: "5Hkey",
-                coldkey: "5Ckey",
-                netuid: 7,
-                uid: 3,
-                amount_tao: 25,
-                alpha_amount: 8,
-                observed_at: 1_717_500_000_000,
-                extrinsic_index: 2,
-              },
-            ],
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.limit, 2);
-    assert.equal(out.total_events, 7);
-    assert.equal(out.kind_count, 2);
-    assert.equal(out.recent_event_count, 1);
-    assert.equal(out.event_kinds[0].event_kind, "StakeAdded");
-    assert.equal(out.recent_events[0].block_number, 140);
-    // netuid bound first, and the recent-tail LIMIT is clamped to 2.
-    assert.equal(capture[0].params[0], 7);
-    const recentCall = capture.find((c) =>
-      /ORDER BY block_number DESC/.test(c.sql),
-    );
-    assert.equal(recentCall.params[recentCall.params.length - 1], 2);
-  });
-
   test("defaults to the 30d window and degrades to an empty summary on cold D1", async () => {
     const res = await callTool("get_subnet_event_summary", { netuid: 7 });
     const out = res.body.result.structuredContent;
@@ -5330,24 +4668,6 @@ describe("MCP get_subnet_stake_moves", () => {
       },
     };
   }
-
-  test("summarizes per-subnet stake-movement activity", async () => {
-    const res = await callTool(
-      "get_subnet_stake_moves",
-      { netuid: 5, window: "7d" },
-      {
-        env: stakeMovesD1({
-          movements: 9,
-          distinct_movers: 3,
-          newest_observed: 1_717_500_000_000,
-        }),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.movements, 9);
-    assert.equal(out.distinct_movers, 3);
-  });
 
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
@@ -5412,25 +4732,6 @@ describe("MCP get_subnet_stake_transfers", () => {
       },
     };
   }
-
-  test("summarizes per-subnet stake-transfer activity", async () => {
-    const res = await callTool(
-      "get_subnet_stake_transfers",
-      { netuid: 5, window: "7d" },
-      {
-        env: stakeTransfersD1({
-          transfers: 8,
-          distinct_senders: 4,
-          newest_observed: 1_717_500_000_000,
-        }),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.transfers, 8);
-    assert.equal(out.distinct_senders, 4);
-    assert.equal(out.transfers_per_sender, 2);
-  });
 
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
@@ -5497,24 +4798,6 @@ describe("MCP get_subnet_registrations", () => {
     };
   }
 
-  test("summarizes per-subnet registration activity", async () => {
-    const res = await callTool(
-      "get_subnet_registrations",
-      { netuid: 5, window: "7d" },
-      {
-        env: registrationsSubnetD1({
-          registrations: 12,
-          distinct_registrants: 4,
-          newest_observed: 1_717_500_000_000,
-        }),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.registrations, 12);
-    assert.equal(out.distinct_registrants, 4);
-  });
-
   test("cold subnet degrades to a schema-stable empty summary", async () => {
     const res = await callTool(
       "get_subnet_registrations",
@@ -5559,31 +4842,6 @@ describe("MCP get_subnet_weights", () => {
       },
     };
   }
-
-  test("reports weight-setting activity for one subnet over the window", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_weights",
-      { netuid: 5, window: "7d" },
-      {
-        env: weightsD1(
-          {
-            distinct_setters: 2,
-            weight_sets: 20,
-            newest_observed: 1_750_000_000_000,
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.window, "7d");
-    assert.equal(out.distinct_setters, 2);
-    assert.equal(out.weight_sets, 20);
-    assert.equal(out.sets_per_setter, 10);
-    assert.equal(capture[0].params[0], 5);
-  });
 
   test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
     const res = await callTool("get_subnet_weights", { netuid: 5 });
@@ -5630,88 +4888,7 @@ describe("MCP get_subnet_weights", () => {
 });
 
 describe("MCP get_subnet_weight_setters", () => {
-  // The loader runs two reads: the per-setter leaderboard (GROUP BY the
-  // hotkey-or-uid identity) and the subnet-wide totals row. Route by SQL shape.
-  function weightSettersD1(
-    { leaderboardRows = [], totalsRow = null } = {},
-    capture = [],
-  ) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  if (/GROUP BY/.test(sql)) {
-                    return { results: leaderboardRows };
-                  }
-                  return { results: totalsRow ? [totalsRow] : [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("ranks setters with per-setter shares and set-time bounds", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_weight_setters",
-      { netuid: 5, window: "7d" },
-      {
-        env: weightSettersD1(
-          {
-            leaderboardRows: [
-              {
-                hotkey: "5Val1",
-                uid: 3,
-                weight_sets: 6,
-                first_set: 1_717_000_000_000,
-                last_set: 1_717_500_000_000,
-              },
-              {
-                hotkey: "5Val2",
-                uid: 7,
-                weight_sets: 4,
-                first_set: 1_717_100_000_000,
-                last_set: 1_717_400_000_000,
-              },
-            ],
-            totalsRow: {
-              weight_sets: 10,
-              distinct_setters: 2,
-              newest_observed: 1_717_500_000_000,
-            },
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 5);
-    assert.equal(out.window, "7d");
-    assert.equal(out.weight_sets, 10);
-    assert.equal(out.distinct_setters, 2);
-    assert.equal(out.setter_count, 2);
-    assert.equal(out.setters[0].hotkey, "5Val1");
-    assert.equal(out.setters[0].uid, 3);
-    assert.equal(out.setters[0].weight_sets, 6);
-    assert.equal(out.setters[0].share, 0.6);
-    assert.equal(
-      out.setters[0].last_set_at,
-      new Date(1_717_500_000_000).toISOString(),
-    );
-    assert.equal(out.setters[1].hotkey, "5Val2");
-    assert.equal(out.setters[1].share, 0.4);
-    // netuid is bound first on both reads.
-    assert.equal(capture[0].params[0], 5);
-  });
-
-  test("defaults to the 7d window and degrades to an empty leaderboard on cold D1", async () => {
+  test("defaults to the 7d window and returns an empty leaderboard (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_weight_setters", { netuid: 5 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5738,51 +4915,7 @@ describe("MCP get_subnet_weight_setters", () => {
 });
 
 describe("MCP get_subnet_axon_removals", () => {
-  function axonRemovalsD1(row = null, capture = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                async all() {
-                  return { results: row ? [row] : [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("reports removal activity for one subnet over the window", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_axon_removals",
-      { netuid: 7, window: "7d" },
-      {
-        env: axonRemovalsD1(
-          {
-            distinct_removers: 2,
-            removals: 20,
-            newest_observed: 1_750_000_000_000,
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.distinct_removers, 2);
-    assert.equal(out.removals, 20);
-    assert.equal(out.removals_per_remover, 10);
-    assert.equal(capture[0].params[0], 7);
-  });
-
-  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_axon_removals", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5827,32 +4960,7 @@ describe("MCP get_subnet_serving", () => {
     };
   }
 
-  test("reports axon serving activity for one subnet over the window", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_serving",
-      { netuid: 7, window: "7d" },
-      {
-        env: servingD1(
-          {
-            distinct_servers: 2,
-            announcements: 20,
-            newest_observed: 1_750_000_000_000,
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.distinct_servers, 2);
-    assert.equal(out.announcements, 20);
-    assert.equal(out.announcements_per_server, 10);
-    assert.equal(capture[0].params[0], 7);
-  });
-
-  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_serving", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5916,32 +5024,7 @@ describe("MCP get_subnet_prometheus", () => {
     };
   }
 
-  test("reports Prometheus serving activity for one subnet over the window", async () => {
-    const capture = [];
-    const res = await callTool(
-      "get_subnet_prometheus",
-      { netuid: 7, window: "7d" },
-      {
-        env: prometheusD1(
-          {
-            distinct_exporters: 2,
-            announcements: 20,
-            newest_observed: 1_750_000_000_000,
-          },
-          capture,
-        ),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.distinct_exporters, 2);
-    assert.equal(out.announcements, 20);
-    assert.equal(out.announcements_per_exporter, 10);
-    assert.equal(capture[0].params[0], 7);
-  });
-
-  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_prometheus", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -5986,45 +5069,7 @@ describe("MCP get_subnet_prometheus", () => {
 });
 
 describe("MCP get_subnet_deregistrations", () => {
-  function deregistrationsD1(row = null) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(_sql) {
-          return {
-            bind(..._params) {
-              return {
-                async all() {
-                  return { results: row ? [row] : [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("returns the deregistration scorecard", async () => {
-    const res = await callTool(
-      "get_subnet_deregistrations",
-      { netuid: 9 },
-      {
-        env: deregistrationsD1({
-          deregistrations: 8,
-          distinct_deregistered_hotkeys: 2,
-          newest_observed: 1_717_400_000_000,
-        }),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 9);
-    assert.equal(out.window, "7d");
-    assert.equal(out.deregistrations, 8);
-    assert.equal(out.distinct_deregistered_hotkeys, 2);
-    assert.equal(out.deregistrations_per_hotkey, 4);
-  });
-
-  test("defaults to the 7d window and degrades to a zeroed card on cold D1", async () => {
+  test("defaults to the 7d window and returns a zeroed card (account_events retired, #4772)", async () => {
     const res = await callTool("get_subnet_deregistrations", { netuid: 9 });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
@@ -6050,50 +5095,6 @@ describe("MCP get_subnet_deregistrations", () => {
 });
 
 describe("MCP get_subnet_performance_history", () => {
-  function performanceHistoryD1(rows = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(_sql) {
-          return {
-            bind(..._params) {
-              return {
-                async all() {
-                  return { results: rows };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("returns the per-day performance series", async () => {
-    const res = await callTool(
-      "get_subnet_performance_history",
-      { netuid: 7, window: "7d" },
-      {
-        env: performanceHistoryD1([
-          {
-            snapshot_date: "2026-06-25",
-            incentive: 0.1,
-            dividends: 0.2,
-            trust: 0.5,
-            consensus: 0.6,
-            validator_trust: 0.7,
-            validator_permit: 1,
-            active: 1,
-          },
-        ]),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.point_count, 1);
-    assert.equal(out.points[0].snapshot_date, "2026-06-25");
-  });
-
   test("defaults to the 30d window on cold D1", async () => {
     const res = await callTool("get_subnet_performance_history", { netuid: 7 });
     const out = res.body.result.structuredContent;
@@ -6121,54 +5122,6 @@ describe("MCP get_subnet_performance_history", () => {
 });
 
 describe("MCP get_subnet_yield_history", () => {
-  function yieldHistoryD1(rows = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(_sql) {
-          return {
-            bind(..._params) {
-              return {
-                async all() {
-                  return { results: rows };
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("returns the per-day yield series", async () => {
-    const res = await callTool(
-      "get_subnet_yield_history",
-      { netuid: 7, window: "7d" },
-      {
-        env: yieldHistoryD1([
-          {
-            snapshot_date: "2026-06-27",
-            stake_tao: 100,
-            emission_tao: 10,
-            validator_permit: 1,
-          },
-          {
-            snapshot_date: "2026-06-27",
-            stake_tao: 100,
-            emission_tao: 5,
-            validator_permit: 0,
-          },
-        ]),
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.window, "7d");
-    assert.equal(out.point_count, 1);
-    assert.equal(out.points[0].snapshot_date, "2026-06-27");
-    assert.equal(out.points[0].yield_count, 2);
-    assert.equal(out.points[0].subnet_yield, 0.075);
-  });
-
   test("defaults to the 30d window on cold D1", async () => {
     const res = await callTool("get_subnet_yield_history", { netuid: 7 });
     const out = res.body.result.structuredContent;
@@ -6196,20 +5149,7 @@ describe("MCP get_subnet_yield_history", () => {
     const schema = listToolDefinitions().find(
       (t) => t.name === "get_subnet_yield_history",
     )?.outputSchema;
-    const res = await callTool(
-      "get_subnet_yield_history",
-      { netuid: 7 },
-      {
-        env: yieldHistoryD1([
-          {
-            snapshot_date: "2026-06-27",
-            stake_tao: 100,
-            emission_tao: 10,
-            validator_permit: 1,
-          },
-        ]),
-      },
-    );
+    const res = await callTool("get_subnet_yield_history", { netuid: 7 });
     const validate = new Ajv2020().compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
@@ -6401,88 +5341,6 @@ describe("MCP get_rpc_usage", () => {
 
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-  const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
-
-  // Returns the canned rows for the Transfer-tier read; records every query.
-  function cpD1(rows = [], capture = []) {
-    return {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              capture.push({ sql, params });
-              return {
-                all() {
-                  return Promise.resolve({
-                    results: /event_kind = 'Transfer'/.test(sql) ? rows : [],
-                  });
-                },
-              };
-            },
-          };
-        },
-      },
-    };
-  }
-
-  test("ranks counterparties by transfer volume from D1", async () => {
-    const capture = [];
-    const env = cpD1(
-      [
-        { hotkey: SS58, coldkey: "A", amount_tao: 100, block_number: 10 },
-        { hotkey: "C", coldkey: SS58, amount_tao: 200, block_number: 7 },
-      ],
-      capture,
-    );
-    const res = await callTool(
-      "get_account_counterparties",
-      { ss58: SS58, limit: 10 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.counterparty_count, 2);
-    assert.equal(out.counterparties[0].address, "C"); // highest volume (200)
-    // The single read is the bounded two-side union, never a hotkey/coldkey OR.
-    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
-    assert.match(q.sql, /UNION ALL/);
-    assert.equal(q.sql.includes(" OR "), false);
-    assert.deepEqual(q.params.slice(0, 3), [SS58, SS58, SS58]);
-  });
-
-  test("counterparty=<ss58> drills into the nested relationship detail", async () => {
-    const env = cpD1([
-      {
-        block_number: 20,
-        event_index: 2,
-        hotkey: SS58,
-        coldkey: CP,
-        netuid: 1,
-        amount_tao: 40,
-        observed_at: 1700,
-      },
-      {
-        block_number: 18,
-        event_index: 1,
-        hotkey: CP,
-        coldkey: SS58,
-        netuid: 1,
-        amount_tao: 10,
-        observed_at: 1600,
-      },
-    ]);
-    const res = await callTool(
-      "get_account_counterparties",
-      { ss58: SS58, counterparty: CP },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.counterparty_count, 1);
-    assert.equal(out.counterparties[0].address, CP);
-    assert.equal(out.relationship.counterparty, CP);
-    assert.equal(out.relationship.transfer_count, 2);
-    assert.equal(out.relationship.net_tao, -30); // 10 received - 40 sent
-  });
 
   test("rejects a malformed counterparty before any D1 work", async () => {
     const res = await callTool(
@@ -6520,6 +5378,25 @@ describe("MCP get_account_counterparties", () => {
     assert.equal(res.body.result.isError, false);
     assert.equal(out.counterparty_count, 0);
     assert.deepEqual(out.counterparties, []);
+  });
+
+  // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
+  // and the table is dropped in production, so the counterparty=<ss58>
+  // drilldown always builds from an empty rowset now.
+  test("counterparty=<ss58> degrades to an empty relationship on cold D1", async () => {
+    const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
+    const res = await callTool("get_account_counterparties", {
+      ss58: SS58,
+      counterparty: CP,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.counterparty_count, 0);
+    assert.deepEqual(out.counterparties, []);
+    assert.equal(out.relationship.counterparty, CP);
+    assert.equal(out.relationship.transfer_count, 0);
+    assert.deepEqual(out.relationship.transfers, []);
   });
 });
 
@@ -9007,7 +7884,10 @@ describe("MCP economics + metagraph data tools", () => {
     },
   });
 
-  test("get_subnet_metagraph returns every neuron with booleans coerced", async () => {
+  test("get_subnet_metagraph returns a schema-stable empty snapshot even with rows in scope", async () => {
+    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+    // table is dropped in production, so this always builds from an empty
+    // rowset now — d1Env's mocked neurons are never actually queried.
     const res = await callTool(
       "get_subnet_metagraph",
       { netuid: 7 },
@@ -9015,22 +7895,9 @@ describe("MCP economics + metagraph data tools", () => {
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 7);
-    assert.equal(out.neuron_count, 2);
-    assert.equal(out.block_number, 8454388);
-    assert.equal(typeof out.captured_at, "string");
-    assert.equal(out.neurons[0].validator_permit, true);
-    assert.equal(out.neurons[0].is_immunity_period, false);
-  });
-
-  test("get_subnet_metagraph with validator_permit returns only validators", async () => {
-    const res = await callTool(
-      "get_subnet_metagraph",
-      { netuid: 7, validator_permit: true },
-      { env: d1Env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.neuron_count, 1);
-    assert.equal(out.neurons[0].uid, 0);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.block_number, null);
+    assert.deepEqual(out.neurons, []);
   });
 
   test("get_subnet_metagraph rejects a non-boolean validator_permit", async () => {
@@ -9041,17 +7908,6 @@ describe("MCP economics + metagraph data tools", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /boolean/);
-  });
-
-  test("list_subnet_validators returns permit-holders ranked by stake", async () => {
-    const res = await callTool(
-      "list_subnet_validators",
-      { netuid: 7 },
-      { env: d1Env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.validator_count, 1);
-    assert.equal(out.validators[0].validator_permit, true);
   });
 
   function threeValidatorsD1() {
@@ -9099,57 +7955,19 @@ describe("MCP economics + metagraph data tools", () => {
     };
   }
 
-  test("list_subnet_validators limit keeps the highest-stake rows (already stake-ranked)", async () => {
-    const res = await callTool(
-      "list_subnet_validators",
-      { netuid: 7, limit: 2 },
-      { env: threeValidatorsD1() },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.validator_count, 2);
-    assert.deepEqual(
-      out.validators.map((v) => v.hotkey),
-      ["5Hk-a", "5Hk-b"],
-    );
-  });
-
-  test("list_subnet_validators min_stake_tao drops small-stake validators", async () => {
-    const res = await callTool(
-      "list_subnet_validators",
-      { netuid: 7, min_stake_tao: 50 },
-      { env: threeValidatorsD1() },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.validator_count, 2);
-    assert.deepEqual(
-      out.validators.map((v) => v.hotkey),
-      ["5Hk-a", "5Hk-b"],
-    );
-  });
-
-  test("list_subnet_validators combines min_stake_tao and limit", async () => {
+  test("list_subnet_validators returns a schema-stable empty list even with rows in scope", async () => {
+    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+    // table is dropped in production, so this always builds from an empty
+    // rowset now — threeValidatorsD1's mocked neurons are never actually
+    // queried, so limit/min_stake_tao filtering has nothing left to filter.
     const res = await callTool(
       "list_subnet_validators",
       { netuid: 7, min_stake_tao: 6, limit: 1 },
       { env: threeValidatorsD1() },
     );
     const out = res.body.result.structuredContent;
-    assert.equal(out.validator_count, 1);
-    assert.equal(out.validators[0].hotkey, "5Hk-a");
-  });
-
-  test("list_subnet_validators without limit/min_stake_tao is unchanged (full ranked list)", async () => {
-    const res = await callTool(
-      "list_subnet_validators",
-      { netuid: 7 },
-      { env: threeValidatorsD1() },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.validator_count, 3);
-    assert.deepEqual(
-      out.validators.map((v) => v.hotkey),
-      ["5Hk-a", "5Hk-b", "5Hk-c"],
-    );
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
   });
 
   test("list_subnet_validators rejects limit=0 and a negative min_stake_tao", async () => {
@@ -9180,150 +7998,19 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.captured_at, null);
   });
 
-  test("list_global_validators groups hotkeys across subnets and applies sort/limit", async () => {
-    const res = await callTool(
-      "list_global_validators",
-      { sort: "total_stake", limit: 1 },
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            neurons: [
-              {
-                netuid: 1,
-                uid: 0,
-                hotkey: "5Hk-wide",
-                coldkey: "5Co-wide",
-                validator_permit: 1,
-                stake_tao: 50,
-                emission_tao: 1,
-                validator_trust: 0.8,
-                captured_at: 1750000000000,
-                block_number: 100,
-              },
-              {
-                netuid: 2,
-                uid: 0,
-                hotkey: "5Hk-wide",
-                coldkey: "5Co-wide",
-                validator_permit: 1,
-                stake_tao: 60,
-                emission_tao: 2,
-                validator_trust: 0.9,
-                captured_at: 1750000001000,
-                block_number: 101,
-              },
-              {
-                netuid: 3,
-                uid: 0,
-                hotkey: "5Hk-small",
-                coldkey: "5Co-small",
-                validator_permit: 1,
-                stake_tao: 10,
-                emission_tao: 1,
-                validator_trust: 0.5,
-                captured_at: 1750000000000,
-                block_number: 100,
-              },
-            ],
-          }),
-        },
-      },
-    );
+  test("list_global_validators echoes sort/limit on a schema-stable empty list", async () => {
+    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+    // table is dropped in production, so this always builds from an empty
+    // rowset now — there is no longer a row-derived leaderboard to rank.
+    const res = await callTool("list_global_validators", {
+      sort: "total_stake",
+      limit: 1,
+    });
     const out = res.body.result.structuredContent;
     assert.equal(out.sort, "total_stake");
     assert.equal(out.limit, 1);
-    assert.equal(out.validator_count, 2);
-    assert.equal(out.validators.length, 1);
-    assert.equal(out.validators[0].hotkey, "5Hk-wide");
-    assert.equal(out.validators[0].subnet_count, 2);
-    assert.equal(out.validators[0].total_stake_tao, 110);
-    assert.equal(out.validators[0].subnets.length, 2);
-    const membershipByNetuid = Object.fromEntries(
-      out.validators[0].subnets.map((row) => [row.netuid, row]),
-    );
-    assert.deepEqual(membershipByNetuid[1], {
-      netuid: 1,
-      uid: 0,
-      stake_tao: 50,
-      emission_tao: 1,
-      validator_trust: 0.8,
-    });
-    assert.deepEqual(membershipByNetuid[2], {
-      netuid: 2,
-      uid: 0,
-      stake_tao: 60,
-      emission_tao: 2,
-      validator_trust: 0.9,
-    });
-    assert.equal(typeof out.validators[0].stake_dominance, "number");
-  });
-
-  test("list_global_validators honors each REST-supported sort key", async () => {
-    const globalEnv = {
-      METAGRAPH_HEALTH_DB: metagraphD1({
-        neurons: [
-          {
-            netuid: 1,
-            uid: 0,
-            hotkey: "5Hk-op-a",
-            coldkey: "5Co-a",
-            validator_permit: 1,
-            stake_tao: 50,
-            emission_tao: 4,
-            validator_trust: 0.6,
-            block_number: 100,
-            captured_at: 1750000000000,
-          },
-          {
-            netuid: 2,
-            uid: 1,
-            hotkey: "5Hk-op-a",
-            coldkey: "5Co-a",
-            validator_permit: 1,
-            stake_tao: 70,
-            emission_tao: 6,
-            validator_trust: 0.8,
-            block_number: 101,
-            captured_at: 1750000001000,
-          },
-          {
-            netuid: 3,
-            uid: 0,
-            hotkey: "5Hk-op-b",
-            coldkey: "5Co-b",
-            validator_permit: 1,
-            stake_tao: 500,
-            emission_tao: 40,
-            validator_trust: 0.95,
-            block_number: 102,
-            captured_at: 1750000002000,
-          },
-        ],
-      }),
-    };
-    const cases = [
-      ["subnet_count", "5Hk-op-a"],
-      ["uid_count", "5Hk-op-a"],
-      ["total_stake", "5Hk-op-b"],
-      ["total_emission", "5Hk-op-b"],
-      ["max_validator_trust", "5Hk-op-b"],
-      ["avg_validator_trust", "5Hk-op-b"],
-      ["stake_dominance", "5Hk-op-b"],
-    ];
-    for (const [sort, expectedHotkey] of cases) {
-      const res = await callTool(
-        "list_global_validators",
-        { sort, limit: 1 },
-        { env: globalEnv },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.sort, sort, `sort echo for ${sort}`);
-      assert.equal(
-        out.validators[0]?.hotkey,
-        expectedHotkey,
-        `top hotkey for sort=${sort}`,
-      );
-    }
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
   });
 
   test("list_global_validators rejects an invalid sort", async () => {
@@ -9332,19 +8019,16 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /sort/i);
   });
 
-  test("get_neuron returns one UID, neuron:null for an absent UID", async () => {
-    const present = await callTool(
+  test("get_neuron always returns neuron:null even with rows in scope", async () => {
+    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+    // table is dropped in production, so this always builds from a null row
+    // now — d1Env's mocked neurons are never actually queried.
+    const res = await callTool(
       "get_neuron",
       { netuid: 7, uid: 0 },
       { env: d1Env },
     );
-    assert.equal(present.body.result.structuredContent.neuron.uid, 0);
-    const absent = await callTool(
-      "get_neuron",
-      { netuid: 7, uid: 999 },
-      { env: d1Env },
-    );
-    assert.equal(absent.body.result.structuredContent.neuron, null);
+    assert.equal(res.body.result.structuredContent.neuron, null);
   });
 
   test("get_neuron requires a non-negative uid", async () => {
@@ -9403,31 +8087,19 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.emission, null);
   });
 
-  test("get_subnet_concentration computes entity-collapsed scorecards", async () => {
-    const res = await callTool(
-      "get_subnet_concentration",
-      { netuid: 7 },
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            neurons: [
-              { ...ROW, stake_tao: 100, emission_tao: 2, coldkey: "ck-a" },
-              {
-                ...MINER,
-                stake_tao: 50,
-                emission_tao: 1,
-                coldkey: "ck-a",
-              },
-            ],
-          }),
-        },
-      },
-    );
+  // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+  // table is dropped in production, so this always builds from an empty
+  // rowset now.
+  test("get_subnet_performance returns schema-stable null blocks on cold D1", async () => {
+    const res = await callTool("get_subnet_performance", { netuid: 7 });
     const out = res.body.result.structuredContent;
-    assert.equal(out.neuron_count, 2);
-    assert.equal(out.entity_count, 1);
-    assert.equal(out.entity_stake.total, 150);
-    assert.equal(out.stake.holders, 2);
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.validator_count, 0);
+    assert.equal(out.active_count, 0);
+    assert.equal(out.captured_at, null);
+    assert.equal(out.incentive, null);
+    assert.equal(out.dividends, null);
   });
 
   test("get_chain_concentration returns schema-stable null blocks on cold D1", async () => {
@@ -9439,41 +8111,6 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.emission, null);
   });
 
-  test("get_chain_concentration collapses entities across subnets network-wide", async () => {
-    const res = await callTool(
-      "get_chain_concentration",
-      {},
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            neurons: [
-              {
-                ...ROW,
-                netuid: 1,
-                stake_tao: 100,
-                emission_tao: 2,
-                coldkey: "ck-a",
-              },
-              {
-                ...MINER,
-                netuid: 2,
-                stake_tao: 50,
-                emission_tao: 1,
-                coldkey: "ck-a",
-              },
-            ],
-          }),
-        },
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.subnet_count, 2); // spans netuids 1 and 2
-    assert.equal(out.neuron_count, 2);
-    assert.equal(out.entity_count, 1); // both rows share coldkey ck-a
-    assert.equal(out.entity_stake.total, 150);
-    assert.equal(out.stake.holders, 2);
-  });
-
   test("get_chain_performance returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_performance", {});
     const out = res.body.result.structuredContent;
@@ -9482,31 +8119,6 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.incentive, null);
     assert.equal(out.trust, null);
     assert.equal(out.validator_trust, null);
-  });
-
-  test("get_chain_performance summarizes reward + score spread network-wide", async () => {
-    const res = await callTool(
-      "get_chain_performance",
-      {},
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            neurons: [
-              { ...ROW, netuid: 1, incentive: 0.6, trust: 0.9 },
-              { ...MINER, netuid: 2, incentive: 0.2, trust: 0.4 },
-            ],
-          }),
-        },
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.subnet_count, 2); // spans netuids 1 and 2
-    assert.equal(out.neuron_count, 2);
-    assert.equal(out.validator_count, 1); // only ROW carries a permit
-    assert.equal(out.incentive.holders, 2);
-    assert.equal(out.trust.count, 2);
-    assert.equal(out.trust.max, 0.9);
-    assert.equal(out.validator_trust.count, 1);
   });
 
   test("get_chain_identity_history returns a schema-stable empty feed on cold D1", async () => {
@@ -9733,43 +8345,6 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.distribution, null);
   });
 
-  test("get_chain_yield summarizes network return + distribution", async () => {
-    const res = await callTool(
-      "get_chain_yield",
-      {},
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            neurons: [
-              {
-                ...ROW,
-                netuid: 1,
-                validator_permit: 1,
-                stake_tao: 1000,
-                emission_tao: 50,
-              },
-              {
-                ...MINER,
-                netuid: 2,
-                validator_permit: 0,
-                stake_tao: 100,
-                emission_tao: 10,
-              },
-            ],
-          }),
-        },
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.subnet_count, 2); // spans netuids 1 and 2
-    assert.equal(out.neuron_count, 2);
-    assert.equal(out.validator_count, 1); // only ROW carries a permit
-    assert.ok(Math.abs(out.network_yield - 60 / 1100) < 1e-6);
-    assert.equal(out.validator_yield, 0.05); // 50 / 1000
-    assert.equal(out.miner_yield, 0.1); // 10 / 100
-    assert.equal(out.distribution.count, 2);
-  });
-
   test("get_blocks_summary returns a schema-stable zeroed card on cold D1", async () => {
     const res = await callTool("get_blocks_summary", {});
     const out = res.body.result.structuredContent;
@@ -9779,7 +8354,10 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.author_concentration, null);
   });
 
-  test("get_blocks_summary summarizes recent block production", async () => {
+  test("get_blocks_summary returns a schema-stable zeroed card even with rows in scope", async () => {
+    // #5047 D1 retirement: blocks' D1 write path is retired (#4772) and the
+    // table is dropped in production, so get_blocks_summary always builds from
+    // an empty rowset now — this mock is never actually queried.
     const res = await callTool(
       "get_blocks_summary",
       {},
@@ -9795,48 +8373,16 @@ describe("MCP economics + metagraph data tools", () => {
                 spec_version: 200,
                 observed_at: 1_750_000_000_000,
               },
-              {
-                block_number: 101,
-                author: "5Bob",
-                extrinsic_count: 1,
-                event_count: 4,
-                spec_version: 200,
-                observed_at: 1_750_000_012_000,
-              },
             ],
           }),
         },
       },
     );
     const out = res.body.result.structuredContent;
-    assert.equal(out.block_count, 2);
-    assert.equal(out.block_time.count, 1); // one consecutive interval
-    assert.equal(out.block_time.mean_ms, 12000);
-    assert.equal(out.distinct_authors, 2);
-    assert.equal(out.throughput.total_extrinsics, 4);
+    assert.equal(out.block_count, 0);
+    assert.equal(out.block_time, null);
+    assert.equal(out.throughput, null);
   });
-
-  // A validator-permit neuron_daily row for one boundary snapshot; keeps the
-  // turnover fixtures compact so the churn arithmetic under test stays legible.
-  function turnoverRow(snapshot_date, netuid, hotkey) {
-    return { snapshot_date, netuid, hotkey, validator_permit: 1 };
-  }
-
-  // A metagraphD1 env wired for the chain-turnover boundary reads: the MIN/MAX
-  // bounds row plus the two-snapshot validator rows the loader reads.
-  function chainTurnoverEnv(
-    rows,
-    { start = "2026-06-01", end = "2026-06-30" } = {},
-  ) {
-    return {
-      env: {
-        METAGRAPH_HEALTH_DB: metagraphD1({
-          turnoverBounds: [{ start_date: start, end_date: end }],
-          turnoverRows: rows,
-        }),
-      },
-    };
-  }
 
   test("get_chain_turnover returns schema-stable empty on cold D1", async () => {
     const res = await callTool("get_chain_turnover", {});
@@ -9849,92 +8395,17 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.network.validators_start, 0);
   });
 
-  test("get_chain_turnover defaults to the 30d window and default limit", async () => {
-    // 25 comparable subnets (each swaps its lone validator) so the default
-    // leaderboard limit (20) is observable as a cap, matching REST defaults.
-    const rows = [];
-    for (let netuid = 1; netuid <= 25; netuid += 1) {
-      rows.push(turnoverRow("2026-06-01", netuid, `A${netuid}`));
-      rows.push(turnoverRow("2026-06-30", netuid, `B${netuid}`));
-    }
-    const res = await callTool(
-      "get_chain_turnover",
-      {},
-      chainTurnoverEnv(rows),
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.window, "30d"); // REST default window parity
-    assert.equal(out.subnet_count, 25);
-    assert.equal(out.subnets.length, 20); // default limit
-  });
-
-  test("get_chain_turnover ranks per-subnet churn across the network", async () => {
-    const res = await callTool(
-      "get_chain_turnover",
-      { window: "30d", limit: 10 },
-      chainTurnoverEnv([
-        // netuid 1: one validator swapped (V2 -> V3) — churn of 2.
-        turnoverRow("2026-06-01", 1, "V1"),
-        turnoverRow("2026-06-01", 1, "V2"),
-        turnoverRow("2026-06-30", 1, "V1"),
-        turnoverRow("2026-06-30", 1, "V3"),
-        // netuid 2: stable set (V4 both boundaries) — churn of 0.
-        turnoverRow("2026-06-01", 2, "V4"),
-        turnoverRow("2026-06-30", 2, "V4"),
-      ]),
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.comparable, true);
-    assert.equal(out.window, "30d");
-    assert.equal(out.start_date, "2026-06-01");
-    assert.equal(out.end_date, "2026-06-30");
-    assert.equal(out.subnet_count, 2);
-    // Most volatile subnet first: netuid 1 (churn 2) ranks above netuid 2 (churn 0).
-    assert.equal(out.subnets[0].netuid, 1);
-    assert.equal(out.subnets[0].validators_entered, 1);
-    assert.equal(out.subnets[0].validators_exited, 1);
-    // Network union set (V1,V2,V4) -> (V1,V3,V4): one entered, one exited.
-    assert.equal(out.network.validators_entered, 1);
-    assert.equal(out.network.validators_exited, 1);
-    assert.equal(out.stability_distribution.count, 2);
-  });
-
   test("get_chain_turnover rejects an unsupported window", async () => {
     const res = await callTool("get_chain_turnover", { window: "1y" }, {});
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window/);
   });
 
-  test("get_chain_turnover caps the leaderboard by limit", async () => {
-    const res = await callTool(
-      "get_chain_turnover",
-      { limit: 1 },
-      chainTurnoverEnv([
-        turnoverRow("2026-06-01", 1, "V1"),
-        turnoverRow("2026-06-30", 1, "V2"),
-        turnoverRow("2026-06-01", 2, "V3"),
-        turnoverRow("2026-06-30", 2, "V4"),
-      ]),
-    );
-    const out = res.body.result.structuredContent;
-    // Both subnets are counted in the rollup/distribution, but the leaderboard is capped.
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.subnets.length, 1);
-    assert.equal(out.stability_distribution.count, 2);
-  });
-
   test("get_chain_turnover payload validates against its declared outputSchema", async () => {
     const schema = listToolDefinitions().find(
       (t) => t.name === "get_chain_turnover",
     )?.outputSchema;
-    const res = await callTool(
-      "get_chain_turnover",
-      {},
-      chainTurnoverEnv([
-        turnoverRow("2026-06-01", 1, "V1"),
-        turnoverRow("2026-06-30", 1, "V2"),
-      ]),
-    );
+    const res = await callTool("get_chain_turnover", {});
     const validate = new Ajv2020().compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
@@ -11034,7 +9505,10 @@ describe("MCP economics + metagraph data tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
+  test("get_subnet_concentration_history returns a schema-stable empty trend even with rows in scope", async () => {
+    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+    // the table is dropped in production, so this always builds from an empty
+    // rowset now — the mocked neuronDaily rows are never actually queried.
     const res = await callTool(
       "get_subnet_concentration_history",
       { netuid: 7 },
@@ -11051,8 +9525,8 @@ describe("MCP economics + metagraph data tools", () => {
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "30d");
-    assert.equal(out.point_count, 2);
-    assert.equal(out.points[0].snapshot_date, "2026-06-02");
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
   });
 
   test("concentration tools reject invalid window params", async () => {
@@ -11074,68 +9548,6 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.stability_score, null);
   });
 
-  test("get_subnet_turnover computes validator churn between boundary snapshots", async () => {
-    const res = await callTool(
-      "get_subnet_turnover",
-      { netuid: 9, window: "30d" },
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            turnoverBounds: [
-              { start_date: "2026-06-01", end_date: "2026-06-30" },
-            ],
-            turnoverRows: [
-              {
-                snapshot_date: "2026-06-01",
-                uid: 0,
-                hotkey: "V1",
-                validator_permit: 1,
-              },
-              {
-                snapshot_date: "2026-06-01",
-                uid: 1,
-                hotkey: "V2",
-                validator_permit: 1,
-              },
-              {
-                snapshot_date: "2026-06-01",
-                uid: 2,
-                hotkey: "M1",
-                validator_permit: 0,
-              },
-              {
-                snapshot_date: "2026-06-30",
-                uid: 0,
-                hotkey: "V1",
-                validator_permit: 1,
-              },
-              {
-                snapshot_date: "2026-06-30",
-                uid: 1,
-                hotkey: "V3",
-                validator_permit: 1,
-              },
-              {
-                snapshot_date: "2026-06-30",
-                uid: 2,
-                hotkey: "M1",
-                validator_permit: 0,
-              },
-            ],
-          }),
-        },
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.comparable, true);
-    assert.equal(out.start_date, "2026-06-01");
-    assert.equal(out.end_date, "2026-06-30");
-    assert.equal(out.validators_entered, 1);
-    assert.equal(out.validators_exited, 1);
-    assert.equal(out.uids_deregistered, 1);
-    assert.equal(out.stability_score, 42);
-  });
-
   test("get_subnet_turnover rejects an invalid window", async () => {
     const res = await callTool("get_subnet_turnover", {
       netuid: 7,
@@ -11146,37 +9558,17 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_subnet_turnover accepts the all window without a date cutoff", async () => {
-    const res = await callTool(
-      "get_subnet_turnover",
-      { netuid: 9, window: "all" },
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            turnoverBounds: [
-              { start_date: "2026-06-01", end_date: "2026-06-30" },
-            ],
-            turnoverRows: [
-              {
-                snapshot_date: "2026-06-01",
-                uid: 0,
-                hotkey: "V1",
-                validator_permit: 1,
-              },
-              {
-                snapshot_date: "2026-06-30",
-                uid: 0,
-                hotkey: "V1",
-                validator_permit: 1,
-              },
-            ],
-          }),
-        },
-      },
-    );
+    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+    // the table is dropped in production, so this always builds from an empty
+    // rowset now — the mocked turnover rows are never actually queried.
+    const res = await callTool("get_subnet_turnover", {
+      netuid: 9,
+      window: "all",
+    });
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "all");
-    assert.equal(out.comparable, true);
-    assert.equal(out.validator_retention, 1);
+    assert.equal(out.comparable, false);
+    assert.equal(out.validator_retention, null);
   });
 
   test("get_subnet_turnover omits changes detail unless changes=true", async () => {
@@ -11222,44 +9614,6 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.changes.uid_reassignments, []);
   });
 
-  test("get_subnet_turnover with changes=true returns entry, exit, and UID reassignment detail", async () => {
-    const res = await callTool(
-      "get_subnet_turnover",
-      { netuid: 9, window: "30d", changes: true },
-      {
-        env: {
-          METAGRAPH_HEALTH_DB: metagraphD1({
-            turnoverBounds: [
-              { start_date: "2026-06-01", end_date: "2026-06-30" },
-            ],
-            turnoverRows: [
-              {
-                snapshot_date: "2026-06-01",
-                uid: 1,
-                hotkey: "V2",
-                validator_permit: 1,
-              },
-              {
-                snapshot_date: "2026-06-30",
-                uid: 1,
-                hotkey: "V3",
-                validator_permit: 1,
-              },
-            ],
-          }),
-        },
-      },
-    );
-    const out = res.body.result.structuredContent;
-    assert.deepEqual(out.changes.validators_entered, [
-      { hotkey: "V3", uid: 1 },
-    ]);
-    assert.deepEqual(out.changes.validators_exited, [{ hotkey: "V2", uid: 1 }]);
-    assert.deepEqual(out.changes.uid_reassignments, [
-      { uid: 1, from_hotkey: "V2", to_hotkey: "V3" },
-    ]);
-  });
-
   test("get_subnet_turnover rejects a non-boolean changes flag", async () => {
     const res = await callTool("get_subnet_turnover", {
       netuid: 7,
@@ -11278,7 +9632,10 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.neurons, []);
   });
 
-  test("get_subnet_yield ranks UIDs by emission-per-stake return", async () => {
+  test("get_subnet_yield returns a schema-stable empty ranking even with rows in scope", async () => {
+    // #5047 D1 retirement: neurons' D1 write path is retired (#4772) and the
+    // table is dropped in production, so this always builds from an empty
+    // rowset now — the mocked neuron rows are never actually queried.
     const res = await callTool(
       "get_subnet_yield",
       { netuid: 7 },
@@ -11295,28 +9652,15 @@ describe("MCP economics + metagraph data tools", () => {
                 captured_at: 1750000000000,
                 block_number: 5000,
               },
-              {
-                uid: 1,
-                hotkey: "5Hk1",
-                validator_permit: 0,
-                stake_tao: 10,
-                emission_tao: 3,
-                captured_at: 1750000000000,
-                block_number: 5000,
-              },
             ],
           }),
         },
       },
     );
     const out = res.body.result.structuredContent;
-    assert.equal(out.neuron_count, 2);
-    assert.equal(out.validator_count, 1);
-    assert.equal(out.subnet_yield, 0.2);
-    assert.equal(out.neurons[0].uid, 1);
-    assert.equal(out.neurons[0].yield, 0.3);
-    assert.equal(out.neurons[1].uid, 0);
-    assert.equal(out.neurons[1].yield, 0.1);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.subnet_yield, null);
+    assert.deepEqual(out.neurons, []);
   });
 
   test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
@@ -12126,47 +10470,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     };
   }
 
-  test("get_account returns a cross-subnet summary with booleans coerced", async () => {
-    const env = accountD1({
-      agg: {
-        c: 12,
-        sc: 3,
-        fb: 100,
-        lb: 200,
-        fo: 1750000000000,
-        lo: 1750009000000,
-      },
-      kinds: [
-        { kind: "StakeAdded", count: 7 },
-        { kind: "WeightsSet", count: 5 },
-      ],
-      registrations: [
-        { netuid: 7, uid: 3, stake_tao: 100, validator_permit: 1, active: 1 },
-      ],
-      events: [
-        {
-          block_number: 200,
-          event_index: 1,
-          event_kind: "StakeAdded",
-          hotkey: SS58,
-          coldkey: null,
-          netuid: 7,
-          uid: 3,
-          amount_tao: 1.5,
-          observed_at: 1750009000000,
-        },
-      ],
-    });
-    const res = await callTool("get_account", { ss58: SS58 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.event_count, 12);
-    assert.equal(out.subnet_count, 3);
-    assert.equal(out.event_kinds[0].kind, "StakeAdded");
-    assert.equal(out.registrations[0].validator_permit, true);
-    assert.equal(out.recent_events[0].event_kind, "StakeAdded");
-  });
-
   test("get_account_balance returns balance_tao from finney RPC", async () => {
     const orig = globalThis.fetch;
     globalThis.fetch = async () => ({
@@ -12248,83 +10551,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
-  test("get_account_events filters by kind and echoes the limit", async () => {
-    const capture = [];
-    const env = accountD1(
-      {
-        events: [
-          {
-            block_number: 200,
-            event_index: 1,
-            event_kind: "StakeRemoved",
-            hotkey: SS58,
-            coldkey: null,
-            netuid: 7,
-            uid: 3,
-            amount_tao: 2.0,
-            observed_at: 1750009000000,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, kind: "StakeRemoved", limit: 50 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.events[0].event_kind, "StakeRemoved");
-    assert.equal(out.limit, 50);
-    assert.equal(out.offset, 0);
-    // The kind filter must reach the SQL as a bound param (never interpolated).
-    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
-    assert.ok(/AND event_kind = \?/.test(eventsQuery.sql));
-    assert.ok(eventsQuery.params.includes("StakeRemoved"));
-  });
-
-  test("get_account_events scopes to one subnet with netuid (#2585 parity)", async () => {
-    const capture = [];
-    const env = accountD1(
-      {
-        events: [
-          {
-            block_number: 210,
-            event_index: 0,
-            event_kind: "StakeAdded",
-            hotkey: SS58,
-            coldkey: null,
-            netuid: 74,
-            uid: 5,
-            amount_tao: 1.0,
-            observed_at: 1750009100000,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, netuid: 74 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.events[0].netuid, 74);
-    // The netuid filter must reach the SQL as a bound param inside each indexed
-    // branch of the hotkey/coldkey union (never interpolated).
-    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
-    assert.equal((eventsQuery.sql.match(/AND netuid = \?/g) || []).length, 2);
-    assert.ok(eventsQuery.params.includes(74));
-  });
-
-  test("get_account_events without netuid is unscoped (no netuid predicate)", async () => {
-    const capture = [];
-    const env = accountD1({ events: [] }, capture);
-    await callTool("get_account_events", { ss58: SS58 }, { env });
-    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
-    assert.doesNotMatch(eventsQuery.sql, /AND netuid = \?/);
-  });
-
   test("get_account_events rejects a malformed netuid", async () => {
     const env = accountD1({ events: [] });
     const res = await callTool(
@@ -12334,80 +10560,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /invalid_params/);
-  });
-
-  test("get_account_events clamps an over-range limit the same way the REST route does", async () => {
-    const capture = [];
-    const env = accountD1({ events: [] }, capture);
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, limit: 5000 },
-      { env },
-    );
-    // clampInt(5000, 100, 1, 1000) → 1000, in both the payload and the bound LIMIT.
-    assert.equal(res.body.result.structuredContent.limit, 1000);
-    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
-    assert.ok(eventsQuery.params.includes(1000));
-  });
-
-  test("get_account_events falls back to the default limit for a non-numeric limit", async () => {
-    const env = accountD1({ events: [] });
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, limit: "abc" },
-      { env },
-    );
-    // clampInt(NaN) → default 100.
-    assert.equal(res.body.result.structuredContent.limit, 100);
-  });
-
-  test("get_account_subnets returns the cross-subnet footprint", async () => {
-    const env = accountD1({
-      registrations: [
-        { netuid: 7, uid: 3, stake_tao: 100, validator_permit: 0, active: 1 },
-        { netuid: 64, uid: 12, stake_tao: 5, validator_permit: 1, active: 1 },
-      ],
-    });
-    const res = await callTool("get_account_subnets", { ss58: SS58 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.subnets[1].netuid, 64);
-    assert.equal(out.subnets[1].validator_permit, true);
-  });
-
-  test("get_account_portfolio returns positions + aggregates", async () => {
-    const env = accountD1({
-      registrations: [
-        {
-          netuid: 7,
-          uid: 3,
-          stake_tao: 1000,
-          emission_tao: 50,
-          validator_permit: 1,
-          active: 1,
-        },
-        {
-          netuid: 64,
-          uid: 12,
-          stake_tao: 200,
-          emission_tao: 30,
-          validator_permit: 0,
-          active: 1,
-        },
-      ],
-    });
-    const res = await callTool(
-      "get_account_portfolio",
-      { ss58: SS58 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.position_count, 2);
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.validator_count, 1);
-    assert.equal(out.total_stake_tao, 1200);
-    assert.equal(out.positions[0].netuid, 7); // biggest stake first
-    assert.equal(out.positions[0].yield, 0.05);
   });
 
   test("get_account_portfolio returns an empty portfolio on cold D1", async () => {
@@ -12517,77 +10669,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
-  test("get_account_events seeks by keyset cursor instead of offset", async () => {
-    const capture = [];
-    const env = accountD1({ events: [] }, capture);
-    await callTool(
-      "get_account_events",
-      { ss58: SS58, cursor: "200.1", limit: 50 },
-      { env },
-    );
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    // A valid cursor switches the page to a row-value seek and drops OFFSET.
-    assert.ok(/AND \(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.ok(q.params.includes(200) && q.params.includes(1));
-  });
-
-  test("get_account_events applies block_start/block_end and cursor pagination", async () => {
-    const capture = [];
-    const env = accountD1(
-      {
-        events: [
-          {
-            block_number: 150,
-            event_index: 4,
-            event_kind: "StakeAdded",
-            hotkey: SS58,
-            coldkey: null,
-            netuid: 7,
-            uid: 3,
-            amount_tao: 1.5,
-            observed_at: 1750009000000,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_events",
-      {
-        ss58: SS58,
-        block_start: 100,
-        block_end: 900,
-        cursor: "200.2",
-        limit: 1,
-        offset: 99,
-      },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.event_count, 1);
-    assert.equal(out.next_cursor, "150.4");
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/block_number <= \?/.test(q.sql));
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.deepEqual(q.params, [
-      SS58,
-      100,
-      900,
-      200,
-      2,
-      SS58,
-      SS58,
-      100,
-      900,
-      200,
-      2,
-      1,
-    ]);
-  });
-
   test("get_account_events rejects a non-integer block_start", async () => {
     const res = await callTool(
       "get_account_events",
@@ -12620,31 +10701,6 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /supported event kind/i);
     assert.equal(called, false);
-  });
-
-  test("get_account_events emits next_cursor for a full page", async () => {
-    const env = accountD1({
-      events: [
-        {
-          block_number: 200,
-          event_index: 1,
-          event_kind: "StakeAdded",
-          hotkey: SS58,
-          coldkey: null,
-          netuid: 7,
-          uid: 3,
-          amount_tao: 1.5,
-          observed_at: 1750009000000,
-        },
-      ],
-    });
-    // limit:1 with exactly one row is a full page → a keyset token for the next.
-    const res = await callTool(
-      "get_account_events",
-      { ss58: SS58, limit: 1 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.next_cursor, "200.1");
   });
 });
 
@@ -12685,54 +10741,6 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     };
   }
 
-  test("get_account_history returns daily series with fields correctly shaped", async () => {
-    const env = tailD1({
-      days: [
-        {
-          day: "2025-06-24",
-          netuid: 7,
-          event_count: 3,
-          event_kinds: "StakeAdded,WeightsSet",
-          first_block: 100,
-          last_block: 200,
-        },
-      ],
-    });
-    const res = await callTool("get_account_history", { ss58: SS58 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.day_count, 1);
-    assert.equal(out.days[0].day, "2025-06-24");
-    assert.equal(out.days[0].netuid, 7);
-    assert.deepEqual(out.days[0].event_kinds, ["StakeAdded", "WeightsSet"]);
-    assert.equal(out.days[0].first_block, 100);
-  });
-
-  test("get_account_history passes netuid and date bounds to the SQL query", async () => {
-    const capture = [];
-    const env = tailD1({ days: [] }, capture);
-    await callTool(
-      "get_account_history",
-      {
-        ss58: SS58,
-        netuid: 7,
-        from: "2025-01-01",
-        to: "2025-06-30",
-        limit: 10,
-      },
-      { env },
-    );
-    const q = capture.find((c) => /FROM account_events_daily/.test(c.sql));
-    assert.ok(q, "daily query must be executed");
-    assert.ok(/AND netuid = \?/.test(q.sql), "netuid filter must be applied");
-    assert.ok(/AND day >= \?/.test(q.sql), "from filter must be applied");
-    assert.ok(/AND day <= \?/.test(q.sql), "to filter must be applied");
-    assert.ok(q.params.includes(7));
-    assert.ok(q.params.includes("2025-01-01"));
-    assert.ok(q.params.includes("2025-06-30"));
-    assert.ok(q.params.includes(10));
-  });
-
   test("get_account_history degrades to empty payload on cold D1", async () => {
     const res = await callTool("get_account_history", { ss58: SS58 });
     assert.equal(res.body.result.isError, false);
@@ -12758,87 +10766,11 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.match(res.body.result.content[0].text, /netuid/i);
   });
 
-  test("get_account_extrinsics returns signed extrinsics with correct fields", async () => {
-    const env = tailD1({
-      extrinsics: [
-        {
-          block_number: 500,
-          extrinsic_index: 2,
-          extrinsic_hash: "0xabc",
-          signer: SS58,
-          call_module: "SubtensorModule",
-          call_function: "set_weights",
-          call_args: null,
-          success: 1,
-          fee_tao: 0.001,
-          tip_tao: null,
-          observed_at: 1750009000000,
-        },
-      ],
-    });
-    const res = await callTool(
-      "get_account_extrinsics",
-      { ss58: SS58, limit: 50 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.extrinsic_count, 1);
-    assert.equal(out.limit, 50);
-    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
-    assert.equal(out.extrinsics[0].success, true);
-  });
-
   test("get_account_extrinsics degrades to empty payload on cold D1", async () => {
     const res = await callTool("get_account_extrinsics", { ss58: SS58 });
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
-  });
-
-  test("get_account_extrinsics applies block_start/block_end and cursor pagination", async () => {
-    const capture = [];
-    const env = tailD1(
-      {
-        extrinsics: [
-          {
-            block_number: 150,
-            extrinsic_index: 4,
-            extrinsic_hash: "0xabc",
-            signer: SS58,
-            call_module: "Balances",
-            call_function: "transfer",
-            call_args: null,
-            success: 1,
-            fee_tao: 0.001,
-            tip_tao: null,
-            observed_at: 1750009000000,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_extrinsics",
-      {
-        ss58: SS58,
-        block_start: 100,
-        block_end: 900,
-        cursor: "200.2",
-        limit: 1,
-        offset: 99,
-      },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.extrinsic_count, 1);
-    assert.equal(out.next_cursor, "150.4");
-    const q = capture.find((c) => /FROM extrinsics WHERE signer/.test(c.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/block_number <= \?/.test(q.sql));
-    assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.deepEqual(q.params, [SS58, 100, 900, 200, 2, 1]);
   });
 
   test("get_account_extrinsics rejects a non-integer block_start", async () => {
@@ -12849,91 +10781,6 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /block_start/i);
-  });
-
-  test("get_account_transfers returns transfers with direction field", async () => {
-    const env = tailD1({
-      transfers: [
-        {
-          block_number: 300,
-          event_index: 1,
-          event_kind: "Transfer",
-          hotkey: SS58,
-          coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-          amount_tao: 10.5,
-          alpha_amount: null,
-          observed_at: 1750009000000,
-          extrinsic_index: null,
-        },
-      ],
-    });
-    const res = await callTool(
-      "get_account_transfers",
-      { ss58: SS58 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ss58, SS58);
-    assert.equal(out.transfer_count, 1);
-    assert.equal(out.transfers[0].direction, "sent");
-    assert.equal(out.transfers[0].amount_tao, 10.5);
-  });
-
-  test("get_account_transfers filters by direction=received", async () => {
-    const capture = [];
-    const env = tailD1({ transfers: [] }, capture);
-    await callTool(
-      "get_account_transfers",
-      { ss58: SS58, direction: "received" },
-      { env },
-    );
-    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
-    assert.ok(q, "transfer query must be executed");
-    assert.ok(/coldkey = \?/.test(q.sql), "received side uses coldkey match");
-    assert.ok(!/hotkey = \?/.test(q.sql), "received must not match hotkey");
-  });
-
-  test("get_account_transfers applies block_start/block_end and cursor pagination", async () => {
-    const capture = [];
-    const env = tailD1(
-      {
-        transfers: [
-          {
-            block_number: 150,
-            event_index: 4,
-            event_kind: "Transfer",
-            hotkey: SS58,
-            coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-            amount_tao: 10.5,
-            observed_at: 1750009000000,
-            extrinsic_index: null,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_account_transfers",
-      {
-        ss58: SS58,
-        direction: "sent",
-        block_start: 100,
-        block_end: 900,
-        cursor: "200.2",
-        limit: 1,
-        offset: 99,
-      },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.transfer_count, 1);
-    assert.equal(out.next_cursor, "150.4");
-    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/block_number <= \?/.test(q.sql));
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.deepEqual(q.params, [SS58, 100, 900, 200, 2, 1]);
   });
 
   test("get_account_transfers rejects a non-integer block_end", async () => {
@@ -13147,68 +10994,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     observed_at: 1750009000000,
   };
 
-  test("list_blocks returns block feed with block_count and correct fields", async () => {
-    const env = chainD1({ blocks: [BLOCK_ROW] });
-    const res = await callTool("list_blocks", {}, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.block_count, 1);
-    assert.equal(out.blocks[0].block_number, 4200000);
-    assert.equal(out.blocks[0].extrinsic_count, 5);
-    assert.equal(out.blocks[0].spec_version, 207);
-  });
-
-  test("list_blocks emits next_cursor for a full page", async () => {
-    const blocks = Array.from({ length: 50 }, (_, i) => ({
-      ...BLOCK_ROW,
-      block_number: 4200000 - i,
-    }));
-    const env = chainD1({ blocks });
-    const res = await callTool("list_blocks", { limit: 50 }, { env });
-    const out = res.body.result.structuredContent;
-    assert.ok(out.next_cursor, "full page must emit a keyset cursor");
-    assert.equal(out.block_count, 50);
-  });
-
-  test("list_blocks uses cursor WHERE clause instead of OFFSET", async () => {
-    const capture = [];
-    const env = chainD1({ blocks: [] }, capture);
-    await callTool("list_blocks", { cursor: "4200000" }, { env });
-    const q = capture.find((c) => /FROM blocks/.test(c.sql));
-    assert.ok(/WHERE block_number < \?/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.ok(q.params.includes(4200000));
-  });
-
   test("list_blocks degrades to empty payload on cold D1", async () => {
     const res = await callTool("list_blocks", {});
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.block_count, 0);
     assert.deepEqual(res.body.result.structuredContent.blocks, []);
-  });
-
-  test("list_blocks applies REST filter parity (author, ranges, count floors)", async () => {
-    const capture = [];
-    const env = chainD1({ blocks: [] }, capture);
-    await callTool(
-      "list_blocks",
-      {
-        author: BLOCK_ROW.author,
-        spec_version: 207,
-        block_start: 100,
-        block_end: 200,
-        from: 1_000,
-        to: 2_000,
-        min_extrinsics: 1,
-        min_events: 5,
-      },
-      { env },
-    );
-    const q = capture.find((c) => /FROM blocks/.test(c.sql));
-    assert.ok(/author = \?/.test(q.sql));
-    assert.ok(/spec_version = \?/.test(q.sql));
-    assert.ok(/extrinsic_count >= \?/.test(q.sql));
-    assert.ok(/event_count >= \?/.test(q.sql));
-    assert.ok(q.params.includes(BLOCK_ROW.author));
   });
 
   test("list_blocks short-circuits impossible count floors without querying D1", async () => {
@@ -13223,51 +11013,6 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.equal(capture.filter((c) => /FROM blocks/.test(c.sql)).length, 0);
   });
 
-  test("list_blocks ANDs cursor with filters", async () => {
-    const capture = [];
-    const env = chainD1({ blocks: [] }, capture);
-    await callTool(
-      "list_blocks",
-      { author: BLOCK_ROW.author, cursor: "4200000" },
-      { env },
-    );
-    const q = capture.find((c) => /FROM blocks/.test(c.sql));
-    assert.ok(/author = \? AND block_number < \?/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-  });
-
-  test("get_block returns block detail with prev/next neighbors", async () => {
-    const capture = [];
-    const env = chainD1(
-      { block: BLOCK_ROW, prev: 4199999, next: 4200001 },
-      capture,
-    );
-    const res = await callTool("get_block", { ref: "4200000" }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ref, "4200000");
-    assert.equal(out.block.block_number, 4200000);
-    assert.equal(out.prev_block_number, 4199999);
-    assert.equal(out.next_block_number, 4200001);
-    const neighborQuery = capture.find(
-      (c) => /AS prev/.test(c.sql) && /AS next/.test(c.sql),
-    );
-    assert.ok(neighborQuery, "get_block must query nearest stored neighbors");
-    assert.ok(/WHERE block_number < \?/.test(neighborQuery.sql));
-    assert.ok(/WHERE block_number > \?/.test(neighborQuery.sql));
-    assert.ok(!/CASE WHEN block_number/.test(neighborQuery.sql));
-    assert.deepEqual(neighborQuery.params, [4200000, 4200000]);
-  });
-
-  test("get_block accepts a 0x hash ref", async () => {
-    const capture = [];
-    const env = chainD1({ block: BLOCK_ROW }, capture);
-    const hash = "0x" + "a".repeat(64);
-    await callTool("get_block", { ref: hash }, { env });
-    const q = capture.find((c) => /block_hash = \?/.test(c.sql));
-    assert.ok(q, "hash ref must query by block_hash");
-    assert.ok(q.params.includes(hash));
-  });
-
   test("get_block returns block:null for an unknown ref (cold store)", async () => {
     const res = await callTool("get_block", { ref: "9999999" });
     assert.equal(res.body.result.isError, false);
@@ -13280,69 +11025,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.match(res.body.result.content[0].text, /ref/);
   });
 
-  test("list_block_extrinsics returns per-block extrinsics in read order", async () => {
-    const capture = [];
-    const env = chainD1(
-      { block: BLOCK_ROW, blockExtrinsics: [EXTRINSIC_ROW] },
-      capture,
-    );
-    const res = await callTool(
-      "list_block_extrinsics",
-      { ref: "4200000" },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ref, "4200000");
-    assert.equal(out.block_number, 4200000);
-    assert.equal(out.extrinsic_count, 1);
-    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
-    const q = capture.find((c) =>
-      /FROM extrinsics WHERE block_number = \? ORDER BY extrinsic_index/.test(
-        c.sql,
-      ),
-    );
-    assert.ok(q, "must query extrinsics by resolved block_number");
-    assert.deepEqual(q.params.slice(0, 3), [4200000, 50, 0]);
-  });
-
-  test("list_block_extrinsics accepts a 0x hash ref", async () => {
-    const capture = [];
-    const env = chainD1(
-      { block: BLOCK_ROW, blockExtrinsics: [EXTRINSIC_ROW] },
-      capture,
-    );
-    const hash = "0x" + "a".repeat(64);
-    await callTool("list_block_extrinsics", { ref: hash }, { env });
-    const q = capture.find((c) => /block_hash = \?/.test(c.sql));
-    assert.ok(q, "hash ref must resolve via blocks.block_hash");
-  });
-
   test("list_block_extrinsics returns empty payload for unknown ref", async () => {
     const res = await callTool("list_block_extrinsics", { ref: "9999999" });
     const out = res.body.result.structuredContent;
     assert.equal(out.block_number, null);
     assert.deepEqual(out.extrinsics, []);
-  });
-
-  test("get_block_events returns per-block events in read order", async () => {
-    const capture = [];
-    const env = chainD1(
-      { block: BLOCK_ROW, blockEvents: [EVENT_ROW] },
-      capture,
-    );
-    const res = await callTool("get_block_events", { ref: "4200000" }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ref, "4200000");
-    assert.equal(out.block_number, 4200000);
-    assert.equal(out.event_count, 1);
-    assert.equal(out.events[0].event_kind, "WeightsSet");
-    const q = capture.find((c) =>
-      /FROM account_events WHERE block_number = \? ORDER BY event_index/.test(
-        c.sql,
-      ),
-    );
-    assert.ok(q, "must query account_events by resolved block_number");
-    assert.deepEqual(q.params.slice(0, 3), [4200000, 100, 0]);
   });
 
   test("get_block_events returns empty payload for unknown ref", async () => {
@@ -13352,83 +11039,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.deepEqual(out.events, []);
   });
 
-  test("list_extrinsics returns extrinsic feed with correct fields", async () => {
-    const env = chainD1({ extrinsics: [EXTRINSIC_ROW] });
-    const res = await callTool("list_extrinsics", {}, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.extrinsic_count, 1);
-    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
-    assert.equal(out.extrinsics[0].success, true);
-  });
-
-  test("list_extrinsics filters by signer, call_module, call_function", async () => {
-    const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-    const capture = [];
-    const env = chainD1({ extrinsics: [] }, capture);
-    await callTool(
-      "list_extrinsics",
-      {
-        signer: SS58,
-        call_module: "SubtensorModule",
-        call_function: "set_weights",
-      },
-      { env },
-    );
-    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
-    assert.ok(/signer = \?/.test(q.sql));
-    assert.ok(/call_module = \?/.test(q.sql));
-    assert.ok(/call_function = \?/.test(q.sql));
-    assert.ok(q.params.includes(SS58));
-    assert.ok(q.params.includes("SubtensorModule"));
-    assert.ok(q.params.includes("set_weights"));
-  });
-
-  test("list_extrinsics uses cursor row-value seek instead of OFFSET", async () => {
-    const capture = [];
-    const env = chainD1({ extrinsics: [] }, capture);
-    await callTool("list_extrinsics", { cursor: "4200000.3" }, { env });
-    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
-    assert.ok(
-      /\(block_number, extrinsic_index\) < \(\?, \?\)/.test(q.sql),
-      "cursor must use row-value seek",
-    );
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.ok(q.params.includes(4200000) && q.params.includes(3));
-  });
-
   test("list_extrinsics degrades to empty payload on cold D1", async () => {
     const res = await callTool("list_extrinsics", {});
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
-  });
-
-  test("list_extrinsics applies REST filter parity (block, success, ranges)", async () => {
-    const capture = [];
-    const env = chainD1({ extrinsics: [] }, capture);
-    const toMs = Date.now();
-    const fromMs = toMs - 60_000;
-    await callTool(
-      "list_extrinsics",
-      {
-        block: 4200000,
-        signer: EXTRINSIC_ROW.signer,
-        call_module: "SubtensorModule",
-        call_function: "set_weights",
-        success: true,
-        block_start: 100,
-        block_end: 200,
-        from: fromMs,
-        to: toMs,
-      },
-      { env },
-    );
-    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
-    assert.ok(/block_number = \?/.test(q.sql));
-    assert.ok(/success = \?/.test(q.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/observed_at >= \?/.test(q.sql));
-    assert.ok(q.params.includes(1));
   });
 
   test("list_extrinsics short-circuits impossible time ranges without querying D1", async () => {
@@ -13450,50 +11065,6 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     const res = await callTool("list_extrinsics", { success: "maybe" });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /success/);
-  });
-
-  test("list_extrinsics binds success=false as 0", async () => {
-    const capture = [];
-    const env = chainD1({ extrinsics: [] }, capture);
-    await callTool("list_extrinsics", { success: false }, { env });
-    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
-    assert.ok(/success = \?/.test(q.sql));
-    assert.ok(q.params.includes(0));
-  });
-
-  test("get_extrinsic returns extrinsic detail by 0x hash", async () => {
-    const hash = "0x" + "c".repeat(64);
-    const env = chainD1({ extrinsic: EXTRINSIC_ROW });
-    const res = await callTool("get_extrinsic", { ref: hash }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.ref, hash);
-    assert.equal(out.extrinsic.block_number, 4200000);
-    assert.equal(out.extrinsic.call_function, "set_weights");
-  });
-
-  test("get_extrinsic returns extrinsic detail by composite block-index ref", async () => {
-    const capture = [];
-    const env = chainD1({ extrinsic: EXTRINSIC_ROW }, capture);
-    await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
-    const q = capture.find((c) =>
-      /block_number = \? AND extrinsic_index = \?/.test(c.sql),
-    );
-    assert.ok(
-      q,
-      "composite ref must use block_number + extrinsic_index PK hit",
-    );
-    assert.ok(q.params.includes(4200000) && q.params.includes(3));
-  });
-
-  test("get_extrinsic embeds emitted account_events (#1849)", async () => {
-    const env = chainD1({
-      extrinsic: EXTRINSIC_ROW,
-      extrinsicEvents: [EVENT_ROW],
-    });
-    const res = await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.events.length, 1);
-    assert.equal(out.events[0].event_kind, "WeightsSet");
   });
 
   test("get_extrinsic returns extrinsic:null for an unknown ref (cold store)", async () => {
@@ -13537,7 +11108,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.deepEqual(capture, []);
     });
 
-    test("list_extrinsics: flag=postgres falls back to D1 on failure", async () => {
+    // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
+    // the table is dropped in production, so the fallback below Postgres is
+    // now a schema-stable-empty literal, not a second (D1) query.
+    test("list_extrinsics: flag=postgres falls back to a zeroed feed on failure (D1 retired)", async () => {
       const env = chainD1({ extrinsics: [EXTRINSIC_ROW] });
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = {
@@ -13546,10 +11120,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         },
       };
       const res = await callTool("list_extrinsics", {}, { env });
-      assert.equal(res.body.result.structuredContent.extrinsic_count, 1);
+      assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     });
 
-    test("list_extrinsics: flag absent uses D1 even when DATA_API is bound (zero regression, unflipped)", async () => {
+    test("list_extrinsics: flag absent never queries D1 (D1 retired, #4772)", async () => {
       const capture = [];
       const env = chainD1({ extrinsics: [EXTRINSIC_ROW] }, capture);
       env.DATA_API = dataApi(
@@ -13560,8 +11134,8 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         }),
       );
       const res = await callTool("list_extrinsics", {}, { env });
-      assert.equal(res.body.result.structuredContent.extrinsic_count, 1);
-      assert.ok(capture.length > 0, "D1 must actually be queried");
+      assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
+      assert.deepEqual(capture, []);
     });
 
     test("list_extrinsics: flag=postgres forwards filters as REST-equivalent query params", async () => {
@@ -13623,7 +11197,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.deepEqual(capture, []);
     });
 
-    test("get_extrinsic: flag=postgres falls back to D1 on failure", async () => {
+    // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
+    // the table is dropped in production, so the fallback below Postgres is
+    // now a schema-stable extrinsic:null, not a second (D1) query.
+    test("get_extrinsic: flag=postgres falls back to extrinsic:null on failure (D1 retired)", async () => {
       const hash = "0x" + "c".repeat(64);
       const env = chainD1({ extrinsic: EXTRINSIC_ROW });
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
@@ -13631,10 +11208,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         fetch: async () => new Response("err", { status: 500 }),
       };
       const res = await callTool("get_extrinsic", { ref: hash }, { env });
-      assert.equal(
-        res.body.result.structuredContent.extrinsic.extrinsic_hash,
-        hash,
-      );
+      assert.equal(res.body.result.structuredContent.extrinsic, null);
     });
 
     test("get_extrinsic: flag=postgres forwards the ref in the request path", async () => {
@@ -14069,29 +11643,21 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     };
   }
 
-  test("get_subnet_history returns the per-day aggregate series newest-first", async () => {
-    const capture = [];
-    const env = parityD1(
-      {
-        dailyAgg: [
-          {
-            snapshot_date: "2026-06-26",
-            neuron_count: 256,
-            validator_count: 9,
-            total_stake_tao: 2_500_000,
-            total_emission_tao: 81,
-          },
-          {
-            snapshot_date: "2026-06-25",
-            neuron_count: 255,
-            validator_count: 9,
-            total_stake_tao: 2_400_000,
-            total_emission_tao: 80,
-          },
-        ],
-      },
-      capture,
-    );
+  test("get_subnet_history returns a schema-stable empty series even with rows in scope", async () => {
+    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+    // the table is dropped in production, so this always builds from an empty
+    // rowset now — the mocked dailyAgg rows are never actually queried.
+    const env = parityD1({
+      dailyAgg: [
+        {
+          snapshot_date: "2026-06-26",
+          neuron_count: 256,
+          validator_count: 9,
+          total_stake_tao: 2_500_000,
+          total_emission_tao: 81,
+        },
+      ],
+    });
     const res = await callTool(
       "get_subnet_history",
       { netuid: 1, window: "7d" },
@@ -14100,27 +11666,8 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 1);
     assert.equal(out.window, "7d");
-    assert.equal(out.point_count, 2);
-    assert.equal(out.points[0].snapshot_date, "2026-06-26");
-    assert.equal(out.points[0].neuron_count, 256);
-    // The window cutoff reached the SQL as a bound YYYY-MM-DD param.
-    const q = capture.find((c) => /GROUP BY snapshot_date/.test(c.sql));
-    assert.ok(q.params.some((p) => /^\d{4}-\d{2}-\d{2}$/.test(p)));
-  });
-
-  test("get_subnet_history (all) omits the date cutoff bind", async () => {
-    const capture = [];
-    const env = parityD1({ dailyAgg: [] }, capture);
-    const res = await callTool(
-      "get_subnet_history",
-      { netuid: 1, window: "all" },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.window, "all");
-    const q = capture.find((c) => /GROUP BY snapshot_date/.test(c.sql));
-    // Only netuid + MAX_HISTORY_POINTS limit are bound, no date cutoff.
-    assert.equal(q.params.length, 2);
-    assert.ok(!q.params.some((p) => /^\d{4}-\d{2}-\d{2}$/.test(p)));
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
   });
 
   test("get_subnet_history defaults to the 30d window when omitted", async () => {
@@ -14315,12 +11862,12 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     });
   });
 
-  test("get_neuron_history returns one UID's per-day series", async () => {
+  test("get_neuron_history returns a schema-stable empty series even with rows in scope", async () => {
+    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+    // the table is dropped in production, so this always builds from an empty
+    // rowset now — the mocked dailyRows are never actually queried.
     const env = parityD1({
-      dailyRows: [
-        neuronDailyRow("2026-06-26", 3, { stake_tao: 1200, rank: 0.9 }),
-        neuronDailyRow("2026-06-25", 3, { stake_tao: 1100, rank: 0.8 }),
-      ],
+      dailyRows: [neuronDailyRow("2026-06-26", 3, { stake_tao: 1200 })],
     });
     const res = await callTool(
       "get_neuron_history",
@@ -14330,9 +11877,8 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 1);
     assert.equal(out.uid, 3);
-    assert.equal(out.point_count, 2);
-    assert.equal(out.points[0].snapshot_date, "2026-06-26");
-    assert.equal(out.points[0].stake_tao, 1200);
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
   });
 
   test("get_neuron_history requires a non-negative uid", async () => {
@@ -14341,13 +11887,13 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.match(res.body.result.content[0].text, /uid/);
   });
 
-  test("get_subnet_concentration_history builds the per-day trend", async () => {
+  test("get_subnet_concentration_history returns a schema-stable empty trend even with rows in scope", async () => {
+    // #5047 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
+    // the table is dropped in production, so this always builds from an empty
+    // rowset now — the mocked concentrationRows are never actually queried.
     const env = parityD1({
       concentrationRows: [
         { snapshot_date: "2026-06-26", stake_tao: 100, emission_tao: 10 },
-        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
-        { snapshot_date: "2026-06-25", stake_tao: 80, emission_tao: 8 },
-        { snapshot_date: "2026-06-25", stake_tao: 40, emission_tao: 4 },
       ],
     });
     const res = await callTool(
@@ -14358,10 +11904,8 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 1);
     assert.equal(out.window, "30d");
-    assert.equal(out.point_count, 2);
-    assert.equal(out.points[0].snapshot_date, "2026-06-26");
-    assert.equal(out.points[0].neuron_count, 2);
-    assert.equal(typeof out.points[0].stake_gini, "number");
+    assert.equal(out.point_count, 0);
+    assert.deepEqual(out.points, []);
   });
 
   test("get_subnet_concentration_history rejects the 1y window (smaller set)", async () => {
@@ -14373,44 +11917,22 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
-  test("get_subnet_events filters by kind and paginates with a cursor", async () => {
-    const capture = [];
-    const env = parityD1(
-      {
-        events: [
-          {
-            block_number: 8502402,
-            event_index: 1,
-            event_kind: "WeightsSet",
-            hotkey: null,
-            coldkey: null,
-            netuid: 1,
-            uid: 226,
-            amount_tao: null,
-            alpha_amount: null,
-            observed_at: 1751081952000,
-            extrinsic_index: null,
-          },
-        ],
-      },
-      capture,
-    );
+  // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
+  // the table is dropped in production, so get_subnet_events always builds
+  // from an empty rowset now regardless of kind/limit/cursor.
+  test("returns a schema-stable empty feed (account_events retired, #4772)", async () => {
     const res = await callTool(
       "get_subnet_events",
-      { netuid: 1, kind: "WeightsSet", limit: 1 },
-      { env },
+      { netuid: 1, kind: "WeightsSet", limit: 5000 },
+      {},
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 1);
-    assert.equal(out.event_count, 1);
-    assert.equal(out.limit, 1);
-    assert.equal(out.events[0].event_kind, "WeightsSet");
-    // A full page yields a non-null keyset cursor.
-    assert.equal(typeof out.next_cursor, "string");
-    // The kind filter reaches the SQL as a bound param (never interpolated).
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(/AND event_kind = \?/.test(q.sql));
-    assert.ok(q.params.includes("WeightsSet"));
+    assert.equal(out.event_count, 0);
+    assert.deepEqual(out.events, []);
+    assert.equal(out.next_cursor, null);
+    // clampInt(5000, 100, 1, 1000) -> 1000, same as the REST route.
+    assert.equal(out.limit, 1000);
   });
 
   test("get_subnet_events rejects an unknown event kind before D1", async () => {
@@ -14437,85 +11959,6 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.equal(called, false);
   });
 
-  test("get_subnet_events accepts an ingested non-indexed kind (Transfer)", async () => {
-    const capture = [];
-    const env = parityD1(
-      {
-        events: [
-          {
-            block_number: 100,
-            event_index: 1,
-            event_kind: "Transfer",
-            hotkey: "5Hk",
-            coldkey: "5Ck",
-            netuid: 1,
-            uid: null,
-            amount_tao: 1,
-            observed_at: 1750009000000,
-            extrinsic_index: null,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_subnet_events",
-      { netuid: 1, kind: "Transfer" },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(
-      res.body.result.structuredContent.events[0].event_kind,
-      "Transfer",
-    );
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(/event_kind = \?/.test(q.sql));
-  });
-
-  test("get_subnet_events applies block_start/block_end and cursor pagination", async () => {
-    const capture = [];
-    const env = parityD1(
-      {
-        events: [
-          {
-            block_number: 150,
-            event_index: 4,
-            event_kind: "StakeAdded",
-            hotkey: "5Hk",
-            coldkey: null,
-            netuid: 1,
-            uid: 3,
-            amount_tao: 1.5,
-            observed_at: 1750009000000,
-            extrinsic_index: null,
-          },
-        ],
-      },
-      capture,
-    );
-    const res = await callTool(
-      "get_subnet_events",
-      {
-        netuid: 1,
-        block_start: 100,
-        block_end: 900,
-        cursor: "200.2",
-        limit: 1,
-        offset: 99,
-      },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.event_count, 1);
-    assert.equal(out.next_cursor, "150.4");
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(/block_number >= \?/.test(q.sql));
-    assert.ok(/block_number <= \?/.test(q.sql));
-    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
-    assert.ok(!/OFFSET/.test(q.sql));
-    assert.deepEqual(q.params, [1, 100, 900, 200, 2, 1]);
-  });
-
   test("get_subnet_events rejects a non-integer block_start", async () => {
     const res = await callTool(
       "get_subnet_events",
@@ -14524,19 +11967,6 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /block_start/i);
-  });
-
-  test("get_subnet_events clamps an over-range limit like the REST route", async () => {
-    const capture = [];
-    const env = parityD1({ events: [] }, capture);
-    const res = await callTool(
-      "get_subnet_events",
-      { netuid: 1, limit: 5000 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.limit, 1000);
-    const q = capture.find((c) => /FROM account_events/.test(c.sql));
-    assert.ok(q.params.includes(1000));
   });
 
   test("the parity history/events tools degrade to empty payloads on cold D1", async () => {
