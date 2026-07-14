@@ -61,6 +61,9 @@ export const R2_ONLY_PATTERNS = [
   // Rolling 24h buy/sell alpha volume (#4339/8.1): computed live from the same
   // account_events stream as stake-flow.
   /^subnets\/(?:\d+|\{netuid\})\/volume\.json$/,
+  // Constant-product AMM slippage/price-impact quote (#5235): pure math over
+  // economics.json's live pool reserves, never written as a file.
+  /^subnets\/(?:\d+|\{netuid\})\/stake-quote\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.

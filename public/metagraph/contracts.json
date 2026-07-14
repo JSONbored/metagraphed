@@ -619,7 +619,7 @@
       "id": "subnet-stake-quote",
       "path": "/metagraph/subnets/{netuid}/stake-quote.json",
       "schema_ref": "#/components/schemas/SubnetStakeQuoteArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
