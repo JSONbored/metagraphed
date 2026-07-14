@@ -803,6 +803,76 @@ describe("handleSubnetValidators", () => {
     assert.equal(body.data.validator_count, 0);
     assert.deepEqual(body.data.validators, []);
   });
+
+  test("moves a featured validator to the front (#5166, Postgres tier)", async () => {
+    // This route has no `sort` param at all -- the overlay always applies to
+    // its default stake-ranked view (see overlayFeaturedValidators).
+    const env = {
+      ...emptyEnv(),
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            netuid: NETUID,
+            validator_count: 2,
+            captured_at: null,
+            block_number: null,
+            validators: [
+              {
+                uid: 0,
+                hotkey: "hk-a",
+                coldkey: null,
+                active: true,
+                validator_permit: true,
+                rank: null,
+                trust: null,
+                validator_trust: null,
+                consensus: null,
+                incentive: null,
+                dividends: null,
+                emission_tao: null,
+                stake_tao: 10,
+                registered_at_block: null,
+                is_immunity_period: false,
+                axon: null,
+                featured: false,
+              },
+              {
+                uid: 1,
+                hotkey: "hk-b",
+                coldkey: null,
+                active: true,
+                validator_permit: true,
+                rank: null,
+                trust: null,
+                validator_trust: null,
+                consensus: null,
+                incentive: null,
+                dividends: null,
+                emission_tao: null,
+                stake_tao: 5,
+                registered_at_block: null,
+                is_immunity_period: false,
+                axon: null,
+                featured: true,
+              },
+            ],
+          }),
+      },
+    };
+    const res = await handleSubnetValidators(
+      req(`/api/v1/subnets/${NETUID}/validators`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/validators`),
+    );
+    const body = await json(res);
+    assert.equal(body.data.validators[0].hotkey, "hk-b");
+    assert.equal(body.data.validators[0].featured, true);
+    assert.equal(body.data.validators[1].hotkey, "hk-a");
+    await assertValidComponent("SubnetValidatorsArtifact", body.data);
+  });
 });
 
 describe("handleGlobalValidators", () => {
@@ -828,6 +898,92 @@ describe("handleGlobalValidators", () => {
       url("/api/v1/validators"),
     );
     assert.deepEqual(body.data.validators, []);
+  });
+
+  function globalValidatorEntry(overrides = {}) {
+    return {
+      hotkey: "hk-a",
+      featured: false,
+      coldkey: null,
+      coldkey_count: 0,
+      subnet_count: 1,
+      uid_count: 1,
+      total_stake_tao: 0,
+      total_emission_tao: 0,
+      stake_dominance: null,
+      avg_validator_trust: null,
+      max_validator_trust: null,
+      latest_captured_at: null,
+      latest_block_number: null,
+      subnets: [],
+      ...overrides,
+    };
+  }
+
+  test("moves a featured validator to the front on the default (unsorted) view (#5166, Postgres tier)", async () => {
+    const env = {
+      ...emptyEnv(),
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            sort: "subnet_count",
+            limit: 20,
+            captured_at: null,
+            block_number: null,
+            validator_count: 2,
+            validators: [
+              globalValidatorEntry({ hotkey: "hk-a", featured: false }),
+              globalValidatorEntry({ hotkey: "hk-b", featured: true }),
+            ],
+          }),
+      },
+    };
+    const res = await handleGlobalValidators(
+      req("/api/v1/validators"),
+      env,
+      url("/api/v1/validators"),
+    );
+    const body = await json(res);
+    assert.equal(body.data.validators[0].hotkey, "hk-b");
+    assert.equal(body.data.validators[0].featured, true);
+    assert.equal(body.data.validators[1].hotkey, "hk-a");
+    await assertValidComponent("GlobalValidatorsArtifact", body.data);
+  });
+
+  test("does NOT reorder an explicit, non-default ?sort= -- `featured` stays present (#5166)", async () => {
+    const env = {
+      ...emptyEnv(),
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            sort: "total_stake",
+            limit: 20,
+            captured_at: null,
+            block_number: null,
+            validator_count: 2,
+            validators: [
+              globalValidatorEntry({ hotkey: "hk-a", featured: false }),
+              globalValidatorEntry({ hotkey: "hk-b", featured: true }),
+            ],
+          }),
+      },
+    };
+    const res = await handleGlobalValidators(
+      req("/api/v1/validators?sort=total_stake"),
+      env,
+      url("/api/v1/validators?sort=total_stake"),
+    );
+    const body = await json(res);
+    // The caller's explicit ranking is untouched...
+    assert.equal(body.data.validators[0].hotkey, "hk-a");
+    assert.equal(body.data.validators[1].hotkey, "hk-b");
+    // ...but the badge-driving flag is still on every row.
+    assert.equal(body.data.validators[0].featured, false);
+    assert.equal(body.data.validators[1].featured, true);
   });
 });
 

@@ -131,11 +131,18 @@ function toD1Flag(value) {
 // are what keep "missing cell" cells flowing through as null. Mirrors the
 // proven toBlockNumber / toTaoOrNull null-guards in account-events.mjs
 // (#2487).
-export function formatNeuron(row) {
+// featuredHotkeys (optional) is a Set of hotkeys from the featured_validators
+// side table (#5166; see deploy/postgres/schema.sql for why that's a separate
+// hotkey-keyed table rather than a `neurons` column). Only passed by the
+// validator-list builders below -- buildSubnetMetagraph/buildNeuronDetail/
+// buildValidatorDetail never pass one, so `featured` is simply omitted from
+// their Neuron output, leaving those artifacts' shape unchanged.
+export function formatNeuron(row, featuredHotkeys) {
   if (!row || typeof row !== "object") return null;
-  return {
+  const hotkey = row.hotkey ?? null;
+  const neuron = {
     uid: row.uid == null ? null : nonNegativeInt(row.uid),
-    hotkey: row.hotkey ?? null,
+    hotkey,
     coldkey: row.coldkey ?? null,
     active: toD1Flag(row.active),
     validator_permit: toD1Flag(row.validator_permit),
@@ -160,6 +167,10 @@ export function formatNeuron(row) {
     is_immunity_period: toD1Flag(row.is_immunity_period),
     axon: row.axon ?? null,
   };
+  if (featuredHotkeys) {
+    neuron.featured = Boolean(hotkey && featuredHotkeys.has(hotkey));
+  }
+  return neuron;
 }
 
 // All rows of one subnet's snapshot share the same captured_at/block_number.
@@ -180,7 +191,9 @@ export function buildSubnetMetagraph(rows, netuid) {
   // Drop any malformed row (formatNeuron → null) so the array only holds real
   // Neuron objects, mirroring the blocks/extrinsics feed builders; the count
   // tracks the array, so callers can rely on neuron_count === neurons.length.
-  const neurons = rows.map(formatNeuron).filter(Boolean);
+  // Wrapped (not a bare `rows.map(formatNeuron)`) so Array#map's index arg
+  // never lands in formatNeuron's featuredHotkeys parameter.
+  const neurons = rows.map((row) => formatNeuron(row)).filter(Boolean);
   return {
     schema_version: 1,
     netuid,
@@ -191,9 +204,19 @@ export function buildSubnetMetagraph(rows, netuid) {
   };
 }
 
-export function buildSubnetValidators(rows, netuid) {
+export function buildSubnetValidators(
+  rows,
+  netuid,
+  { featuredHotkeys = new Set() } = {},
+) {
   const { captured_at, block_number } = snapshotStamp(rows);
-  const validators = rows.map(formatNeuron).filter(Boolean);
+  // A real (if possibly empty) Set is always passed to formatNeuron here, so
+  // `featured` is always present on a validator row -- unlike the metagraph/
+  // neuron-detail builders above, the frontend badge needs the field even
+  // when nothing is currently featured.
+  const validators = rows
+    .map((row) => formatNeuron(row, featuredHotkeys))
+    .filter(Boolean);
   return {
     schema_version: 1,
     netuid,
@@ -239,6 +262,7 @@ function buildGlobalValidatorEntry(entry) {
     .slice(0, GLOBAL_VALIDATOR_SUBNET_LIMIT);
   return {
     hotkey: entry.hotkey,
+    featured: entry.featured === true,
     coldkey: primaryColdkey(entry.coldkeys),
     coldkey_count: entry.coldkeys.size,
     subnet_count: entry.netuids.size,
@@ -280,6 +304,7 @@ export function buildGlobalValidators(
   {
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    featuredHotkeys = new Set(),
   } = {},
 ) {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
@@ -314,6 +339,7 @@ export function buildGlobalValidators(
     if (!entry) {
       entry = {
         hotkey,
+        featured: featuredHotkeys.has(hotkey),
         coldkeys: new Map(),
         netuids: new Set(),
         uidCount: 0,
@@ -409,6 +435,42 @@ function validatorSortValue(row, key) {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : Number.NEGATIVE_INFINITY;
+}
+
+// Stable partition, not a re-sort: featured rows keep their relative order
+// among themselves, and everyone else keeps theirs, so the pin only ever
+// bubbles rows up -- it never re-ranks within either group.
+function moveFeaturedToFront(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return rows;
+  const featured = [];
+  const rest = [];
+  for (const row of rows) {
+    (row?.featured === true ? featured : rest).push(row);
+  }
+  return featured.length === 0 ? rows : [...featured, ...rest];
+}
+
+// Featured-validator pin overlay (#5166): moves any row with featured=true to
+// the front of GlobalValidatorsArtifact.validators / SubnetValidatorsArtifact.
+// validators, applied ONCE at the point where the D1/Postgres tiers already
+// converge (mirrors overlayPreviouslyKnownAs in src/subnet-identity-history.mjs
+// -- a small pure post-processing function, not duplicated per tier). Must
+// never run on an explicit, non-default sort: GlobalValidatorsArtifact carries
+// `sort`, so a caller who chose e.g. total_stake keeps that exact order; the
+// per-subnet artifact has no `sort` field at all (its ranking is always the
+// stake-DESC default), so it always gets the pin. The `featured` flag itself
+// is untouched either way -- this function only ever reorders.
+export function overlayFeaturedValidators(data) {
+  if (!data || typeof data !== "object" || !Array.isArray(data.validators)) {
+    return data;
+  }
+  if (
+    Object.hasOwn(data, "sort") &&
+    data.sort !== DEFAULT_GLOBAL_VALIDATOR_SORT
+  ) {
+    return data;
+  }
+  return { ...data, validators: moveFeaturedToFront(data.validators) };
 }
 
 // D1 read paths shared by the REST handlers and the MCP tools (one source of

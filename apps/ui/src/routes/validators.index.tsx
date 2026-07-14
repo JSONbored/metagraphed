@@ -12,7 +12,7 @@ import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
-import { taoCompact } from "@/components/metagraphed/neuron-table";
+import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
 import type { GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 // The full GlobalValidatorSort set the /api/v1/validators endpoint accepts.
@@ -174,14 +174,17 @@ function ValidatorsTable({
               {validators.map((v) => (
                 <tr key={v.hotkey} className="hover:bg-surface/40">
                   <td className="px-3 py-2 font-mono text-[11px]">
-                    <Link
-                      to="/validators/$hotkey"
-                      params={{ hotkey: v.hotkey }}
-                      className="text-ink-strong hover:text-accent hover:underline"
-                      title={v.hotkey}
-                    >
-                      {shortHash(v.hotkey) ?? v.hotkey}
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      {v.featured ? <FeaturedBadge /> : null}
+                      <Link
+                        to="/validators/$hotkey"
+                        params={{ hotkey: v.hotkey }}
+                        className="text-ink-strong hover:text-accent hover:underline"
+                        title={v.hotkey}
+                      >
+                        {shortHash(v.hotkey) ?? v.hotkey}
+                      </Link>
+                    </div>
                   </td>
                   <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
                     {v.coldkey ? (

@@ -49,6 +49,7 @@ import {
   buildSubnetValidators,
   buildNeuronDetail,
   buildValidatorDetail,
+  overlayFeaturedValidators,
   GLOBAL_VALIDATOR_SORTS,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -655,9 +656,14 @@ export async function handleSubnetHyperparamsHistory(
 export async function handleSubnetValidators(request, env, netuid, url) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
-  const data =
+  // Featured-validator pin (#5166): applied once, right where the Postgres/D1
+  // tiers converge, so it never needs duplicating per tier. This route has no
+  // `sort` param at all -- its ranking is always the stake-DESC default -- so
+  // the overlay always applies here (see overlayFeaturedValidators).
+  const data = overlayFeaturedValidators(
     (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildSubnetValidators([], netuid);
+      buildSubnetValidators([], netuid),
+  );
   if (csvRequested(url, request)) {
     return csvResponse(
       data.validators,
@@ -731,12 +737,18 @@ export function canonicalGlobalValidatorsCachePath(url, request = null) {
 export async function handleGlobalValidators(request, env, url) {
   const parsed = parseGlobalValidatorsQuery(url);
   if (parsed.error) return analyticsQueryError(parsed.error);
-  const data =
+  // Featured-validator pin (#5166), applied once at tier convergence -- see
+  // handleSubnetValidators above. Unlike that route this one has a `sort`
+  // param, so overlayFeaturedValidators only reorders the default (unsorted)
+  // view; an explicit non-default ?sort= keeps the caller's exact order while
+  // `featured` stays present on every row either way.
+  const data = overlayFeaturedValidators(
     (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildGlobalValidators([], {
-      sort: parsed.sort,
-      limit: parsed.limit,
-    });
+      buildGlobalValidators([], {
+        sort: parsed.sort,
+        limit: parsed.limit,
+      }),
+  );
   if (csvRequested(url, request)) {
     return csvResponse(
       data.validators,

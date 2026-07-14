@@ -26,6 +26,22 @@ export function scoreStr(v?: number | null): string {
   return v.toFixed(3);
 }
 
+/**
+ * Small pill marking a DB-toggled featured validator (#5166) — same visual
+ * language as the "Validator" permit pill below. Shared with the global
+ * validators leaderboard table (routes/validators.index.tsx).
+ */
+export function FeaturedBadge() {
+  return (
+    <span
+      className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-accent-text"
+      title="Featured validator"
+    >
+      Featured
+    </span>
+  );
+}
+
 type SortField =
   | "uid"
   | "stake_tao"
@@ -191,29 +207,32 @@ export function NeuronTable({
                     )}
                   </td>
                   <td className="px-3 py-2.5 font-mono text-[11px]">
-                    {n.hotkey ? (
-                      isValidator ? (
-                        <Link
-                          to="/validators/$hotkey"
-                          params={{ hotkey: n.hotkey }}
-                          className="text-ink-muted hover:text-ink hover:underline"
-                          title={n.hotkey}
-                        >
-                          {shortHash(n.hotkey) ?? n.hotkey}
-                        </Link>
+                    <div className="flex items-center gap-1.5">
+                      {n.featured ? <FeaturedBadge /> : null}
+                      {n.hotkey ? (
+                        isValidator ? (
+                          <Link
+                            to="/validators/$hotkey"
+                            params={{ hotkey: n.hotkey }}
+                            className="text-ink-muted hover:text-ink hover:underline"
+                            title={n.hotkey}
+                          >
+                            {shortHash(n.hotkey) ?? n.hotkey}
+                          </Link>
+                        ) : (
+                          <Link
+                            to="/accounts/$ss58"
+                            params={{ ss58: n.hotkey }}
+                            className="text-ink-muted hover:text-ink hover:underline"
+                            title={n.hotkey}
+                          >
+                            {shortHash(n.hotkey) ?? n.hotkey}
+                          </Link>
+                        )
                       ) : (
-                        <Link
-                          to="/accounts/$ss58"
-                          params={{ ss58: n.hotkey }}
-                          className="text-ink-muted hover:text-ink hover:underline"
-                          title={n.hotkey}
-                        >
-                          {shortHash(n.hotkey) ?? n.hotkey}
-                        </Link>
-                      )
-                    ) : (
-                      "—"
-                    )}
+                        "—"
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-strong">
                     {taoCompact(n.stake_tao)}

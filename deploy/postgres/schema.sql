@@ -161,6 +161,23 @@ CREATE TABLE IF NOT EXISTS neurons (
 CREATE INDEX IF NOT EXISTS idx_neurons_netuid_permit ON neurons (netuid, validator_permit, stake_tao DESC);
 CREATE INDEX IF NOT EXISTS idx_neurons_hotkey        ON neurons (hotkey);
 
+-- Featured-validator pin (#5166): a maintainer toggle to elevate a validator to
+-- the top of /api/v1/validators and a subnet's validator list, keyed by
+-- hotkey rather than a column on `neurons`. `neurons`' primary key is
+-- (netuid, uid) -- a UID *slot*, not a stable identity -- and handleNeuronsSync
+-- (workers/data-api.mjs) hard-DELETEs a row once its UID falls out of the
+-- latest snapshot (deregistration), with that UID free to be reassigned to a
+-- different hotkey later. A `featured` column on `neurons` would either vanish
+-- silently on prune or, worse, incorrectly "follow" the slot to whatever
+-- hotkey registers into it next. hotkey identity survives deregistration/
+-- reassignment cycles, so this small side table sidesteps the hazard entirely.
+-- Toggled by a direct SQL UPDATE/INSERT -- no code deploy needed to change
+-- which validator is featured.
+CREATE TABLE IF NOT EXISTS featured_validators (
+  hotkey      TEXT PRIMARY KEY,
+  featured_at BIGINT NOT NULL
+);
+
 -- Daily per-UID history (mirror of D1 `neuron_daily`, ~10.8M rows / 370d).
 CREATE TABLE IF NOT EXISTS neuron_daily (
   netuid           INTEGER NOT NULL,

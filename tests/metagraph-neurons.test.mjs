@@ -7,6 +7,7 @@ import {
   buildGlobalValidators,
   buildNeuronDetail,
   buildValidatorDetail,
+  overlayFeaturedValidators,
   loadSubnetValidators,
   loadGlobalValidators,
   loadValidatorDetail,
@@ -302,6 +303,37 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.validators[0].validator_permit, true);
   });
 
+  test("formatNeuron omits `featured` when no featuredHotkeys set is passed", () => {
+    // buildSubnetMetagraph/buildNeuronDetail/buildValidatorDetail never pass a
+    // set, so metagraph/neuron-detail/validator-detail responses keep their
+    // existing Neuron shape unchanged (#5166).
+    const n = formatNeuron(ROW);
+    assert.equal("featured" in n, false);
+  });
+
+  test("formatNeuron sets `featured` true/false by hotkey when a set is passed", () => {
+    const featured = new Set(["5Hk1"]);
+    assert.equal(formatNeuron(ROW, featured).featured, true);
+    assert.equal(formatNeuron(MINER, featured).featured, false);
+    // An empty (but real) set still yields a real boolean, not an omission.
+    assert.equal(formatNeuron(ROW, new Set()).featured, false);
+  });
+
+  test("buildSubnetValidators always includes `featured`, matched by hotkey", () => {
+    const withNoFeatured = buildSubnetValidators([ROW], 7);
+    assert.equal(withNoFeatured.validators[0].featured, false);
+
+    const withFeatured = buildSubnetValidators([ROW], 7, {
+      featuredHotkeys: new Set(["5Hk1"]),
+    });
+    assert.equal(withFeatured.validators[0].featured, true);
+
+    const notFeatured = buildSubnetValidators([ROW], 7, {
+      featuredHotkeys: new Set(["someone-else"]),
+    });
+    assert.equal(notFeatured.validators[0].featured, false);
+  });
+
   test("coerces a string-typed D1 block_number to an integer in the snapshot stamp + neuron detail", () => {
     // block_number is a nullable D1 INTEGER that can come back as a numeric
     // string; the snapshot stamp (metagraph/validators) and neuron-detail top
@@ -441,6 +473,29 @@ describe("metagraph-neurons builders", () => {
         [5, 3],
       ],
     );
+  });
+
+  test("buildGlobalValidators sets `featured` per hotkey entry, defaulting false", () => {
+    const data = buildGlobalValidators(
+      [
+        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a" },
+        { ...ROW, netuid: 2, uid: 0, hotkey: "hk-a" },
+        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-b" },
+      ],
+      { featuredHotkeys: new Set(["hk-a"]) },
+    );
+    const byHotkey = Object.fromEntries(
+      data.validators.map((v) => [v.hotkey, v.featured]),
+    );
+    assert.equal(byHotkey["hk-a"], true);
+    assert.equal(byHotkey["hk-b"], false);
+
+    // No featuredHotkeys option at all -> every entry still carries a real
+    // boolean (false), never an omitted/undefined field.
+    const noOption = buildGlobalValidators([
+      { ...ROW, netuid: 1, hotkey: "hk-c" },
+    ]);
+    assert.equal(noOption.validators[0].featured, false);
   });
 
   test("buildGlobalValidators is cold-safe and normalizes direct-call options", () => {
@@ -892,6 +947,105 @@ describe("metagraph-neurons builders", () => {
   test("buildNeuronDetail returns neuron:null for a cold/absent row", () => {
     assert.equal(buildNeuronDetail(null, 7).neuron, null);
     assert.equal(buildNeuronDetail(ROW, 7).neuron.uid, 0);
+  });
+});
+
+describe("overlayFeaturedValidators (#5166)", () => {
+  test("moves featured rows to the front on the default (unsorted) view", () => {
+    const data = {
+      schema_version: 1,
+      sort: "subnet_count",
+      limit: 20,
+      validator_count: 3,
+      validators: [
+        { hotkey: "hk-a", featured: false },
+        { hotkey: "hk-b", featured: true },
+        { hotkey: "hk-c", featured: false },
+      ],
+    };
+    const out = overlayFeaturedValidators(data);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["hk-b", "hk-a", "hk-c"],
+    );
+  });
+
+  test("preserves relative order within the featured and non-featured groups (stable partition, not a re-sort)", () => {
+    const data = {
+      sort: "subnet_count",
+      validators: [
+        { hotkey: "hk-a", featured: true },
+        { hotkey: "hk-b", featured: false },
+        { hotkey: "hk-c", featured: true },
+        { hotkey: "hk-d", featured: false },
+      ],
+    };
+    const out = overlayFeaturedValidators(data);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["hk-a", "hk-c", "hk-b", "hk-d"],
+    );
+  });
+
+  test("does NOT reorder when an explicit, non-default sort is requested -- featured stays present", () => {
+    const data = {
+      sort: "total_stake",
+      validators: [
+        { hotkey: "hk-a", featured: false },
+        { hotkey: "hk-b", featured: true },
+      ],
+    };
+    const out = overlayFeaturedValidators(data);
+    // Order is untouched (the caller's explicit ranking is honored)...
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["hk-a", "hk-b"],
+    );
+    // ...but the flag itself is still on every row, so the frontend can still
+    // render the badge.
+    assert.equal(out.validators[0].featured, false);
+    assert.equal(out.validators[1].featured, true);
+  });
+
+  test("always reorders a SubnetValidatorsArtifact (no `sort` field at all)", () => {
+    const data = {
+      schema_version: 1,
+      netuid: 7,
+      validator_count: 2,
+      validators: [
+        { hotkey: "hk-a", featured: false },
+        { hotkey: "hk-b", featured: true },
+      ],
+    };
+    const out = overlayFeaturedValidators(data);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["hk-b", "hk-a"],
+    );
+  });
+
+  test("is a no-op when nothing is featured", () => {
+    const data = {
+      sort: "subnet_count",
+      validators: [
+        { hotkey: "hk-a", featured: false },
+        { hotkey: "hk-b", featured: false },
+      ],
+    };
+    const out = overlayFeaturedValidators(data);
+    assert.deepEqual(
+      out.validators.map((v) => v.hotkey),
+      ["hk-a", "hk-b"],
+    );
+  });
+
+  test("is null-safe / shape-safe (cold payloads, missing validators array)", () => {
+    assert.equal(overlayFeaturedValidators(null), null);
+    assert.equal(overlayFeaturedValidators(undefined), undefined);
+    const noValidators = { sort: "subnet_count" };
+    assert.equal(overlayFeaturedValidators(noValidators), noValidators);
+    const empty = { sort: "subnet_count", validators: [] };
+    assert.deepEqual(overlayFeaturedValidators(empty).validators, []);
   });
 });
 

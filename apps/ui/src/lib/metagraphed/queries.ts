@@ -5277,6 +5277,10 @@ function normalizeMetagraphNeuron(raw: unknown): MetagraphNeuron | undefined {
     registered_at_block: coerceFiniteNumber(raw.registered_at_block),
     is_immunity_period: booleanValue(raw.is_immunity_period),
     axon: coerceString(raw.axon) ?? null,
+    // Only /validators rows carry this (#5166); booleanValue already maps an
+    // absent/non-boolean cell to undefined, so metagraph/neuron-detail rows
+    // (which never send it) keep the field genuinely absent, not a false.
+    featured: booleanValue(raw.featured),
   };
 }
 
@@ -5352,6 +5356,9 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
     value == null ? null : (coerceFiniteNumber(value) ?? null);
   return {
     hotkey,
+    // Always present on the wire (#5166); this builder has no `...raw`
+    // spread, so it must be listed explicitly or it silently vanishes.
+    featured: booleanValue(raw.featured) ?? false,
     coldkey: typeof raw.coldkey === "string" ? raw.coldkey : null,
     coldkey_count: coerceFiniteNumber(raw.coldkey_count) ?? 0,
     subnet_count: coerceFiniteNumber(raw.subnet_count) ?? 0,

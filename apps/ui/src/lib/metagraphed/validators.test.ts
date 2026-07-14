@@ -72,6 +72,20 @@ describe("normalizeGlobalValidators", () => {
     expect(out.sort).toBe("subnet_count");
   });
 
+  it("carries the `featured` flag through (#5166), defaulting false when absent", () => {
+    const out = normalizeGlobalValidators({
+      sort: "subnet_count",
+      limit: 20,
+      validators: [
+        { hotkey: "hk-featured", featured: true, subnet_count: 1, uid_count: 1, subnets: [] },
+        { hotkey: "hk-plain", subnet_count: 1, uid_count: 1, subnets: [] },
+      ],
+    });
+
+    expect(out.validators[0].featured).toBe(true);
+    expect(out.validators[1].featured).toBe(false);
+  });
+
   it("coerces string numerics from live API payloads", () => {
     const out = normalizeGlobalValidators({
       sort: "total_stake",

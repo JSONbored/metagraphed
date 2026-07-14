@@ -9635,7 +9635,7 @@
       },
       "GlobalValidatorEntry": {
         "additionalProperties": false,
-        "description": "One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot.",
+        "description": "One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. `featured` (#5166) reflects a maintainer-toggled DB pin (featured_validators, keyed by hotkey) -- true moves the row to the front of the default (unsorted) view; an explicit non-default ?sort= keeps its normal rank while `featured` stays true.",
         "properties": {
           "avg_validator_trust": {
             "type": [
@@ -9652,6 +9652,9 @@
           "coldkey_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "featured": {
+            "type": "boolean"
           },
           "hotkey": {
             "type": "string"
@@ -9709,6 +9712,7 @@
         },
         "required": [
           "hotkey",
+          "featured",
           "coldkey",
           "coldkey_count",
           "subnet_count",
@@ -10913,7 +10917,7 @@
       },
       "Neuron": {
         "additionalProperties": false,
-        "description": "One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null.",
+        "description": "One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null. `featured` (#5166) is only populated on the validators-list artifacts (SubnetValidatorsArtifact) -- a DB-toggled pin (featured_validators, keyed by hotkey) that surfaces a maintainer-highlighted validator; omitted (not false) on the metagraph/neuron-detail artifacts, which don't compute it.",
         "properties": {
           "active": {
             "type": "boolean"
@@ -10947,6 +10951,9 @@
               "number",
               "null"
             ]
+          },
+          "featured": {
+            "type": "boolean"
           },
           "hotkey": {
             "type": [

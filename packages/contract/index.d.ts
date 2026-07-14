@@ -4926,11 +4926,12 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. */
+        /** @description One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. `featured` (#5166) reflects a maintainer-toggled DB pin (featured_validators, keyed by hotkey) -- true moves the row to the front of the default (unsorted) view; an explicit non-default ?sort= keeps its normal rank while `featured` stays true. */
         GlobalValidatorEntry: {
             avg_validator_trust: number | null;
             coldkey: string | null;
             coldkey_count: number;
+            featured: boolean;
             hotkey: string;
             latest_block_number: number | null;
             /** Format: date-time */
@@ -5251,7 +5252,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null. */
+        /** @description One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null. `featured` (#5166) is only populated on the validators-list artifacts (SubnetValidatorsArtifact) -- a DB-toggled pin (featured_validators, keyed by hotkey) that surfaces a maintainer-highlighted validator; omitted (not false) on the metagraph/neuron-detail artifacts, which don't compute it. */
         Neuron: {
             active: boolean;
             axon?: string | null;
@@ -5259,6 +5260,7 @@ export interface components {
             consensus?: number | null;
             dividends?: number | null;
             emission_tao?: number | null;
+            featured?: boolean;
             hotkey: string | null;
             incentive?: number | null;
             is_immunity_period?: boolean;
@@ -24588,6 +24590,7 @@ export interface operations {
                      *           "consensus": 0.5,
                      *           "dividends": 0.5,
                      *           "emission_tao": 0.5,
+                     *           "featured": false,
                      *           "hotkey": "example",
                      *           "incentive": 0.5,
                      *           "is_immunity_period": false,
@@ -28299,6 +28302,7 @@ export interface operations {
                      *             "avg_validator_trust": 0.5,
                      *             "coldkey": "example",
                      *             "coldkey_count": 1,
+                     *             "featured": false,
                      *             "hotkey": "example",
                      *             "latest_block_number": 5000000,
                      *             "latest_captured_at": "2026-06-01T00:00:00.000Z",

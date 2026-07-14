@@ -75,6 +75,10 @@ const healthChecksSyncFailure = vi.hoisted(() => ({ error: null }));
 const healthUptimeRollupSyncFailure = vi.hoisted(() => ({ error: null }));
 const subnetSnapshotSyncFailure = vi.hoisted(() => ({ error: null }));
 const rpcUsageSyncFailure = vi.hoisted(() => ({ error: null }));
+// State for the featured_validators read (#5166) tests only -- lets a test
+// simulate the table not existing yet (pre-migration) without touching any
+// other query's mock plumbing.
+const featuredValidatorsQueryFailure = vi.hoisted(() => ({ error: null }));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -166,6 +170,12 @@ vi.mock("postgres", () => ({
         /INSERT INTO surface_checks\b/.test(text)
       ) {
         return Promise.reject(healthChecksSyncFailure.error);
+      }
+      if (
+        featuredValidatorsQueryFailure.error &&
+        /FROM featured_validators\b/.test(text)
+      ) {
+        return Promise.reject(featuredValidatorsQueryFailure.error);
       }
       if (
         healthUptimeRollupSyncFailure.error &&
@@ -266,6 +276,7 @@ beforeEach(() => {
   subnetSnapshotSyncFailure.error = null;
   healthUptimeRollupSyncFailure.error = null;
   rpcUsageSyncFailure.error = null;
+  featuredValidatorsQueryFailure.error = null;
   mockRows.current = [
     {
       block_number: "123",
@@ -1295,6 +1306,42 @@ test("GET /api/v1/subnets/:netuid/validators ranks validator_permit rows by stak
   expect(queryText()).toMatch(/ORDER BY stake_tao DESC, uid ASC/);
 });
 
+test("GET /api/v1/subnets/:netuid/validators sets featured=true for a hotkey in featured_validators", async () => {
+  // mockQueue is consumed in call order: the transaction's leading `SET
+  // statement_timeout` (sql.begin, see workers/data-api.mjs) shifts first,
+  // then the neurons query, then loadFeaturedHotkeys's own query.
+  mockQueue.current = [[], [NEURON_ROW], [{ hotkey: "5Hot" }]];
+  const res = await req("/api/v1/subnets/7/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(queryText()).toMatch(/FROM featured_validators/);
+  // The reorder overlay (workers/request-handlers/entities.mjs) has already
+  // run by the time this route responds -- a single-row list just confirms
+  // the flag itself made it through the read path.
+  expect(body.validators[0].featured).toBe(true);
+});
+
+test("GET /api/v1/subnets/:netuid/validators sets featured=false when the hotkey isn't in featured_validators", async () => {
+  mockQueue.current = [[], [NEURON_ROW], []];
+  const res = await req("/api/v1/subnets/7/validators");
+  const body = await res.json();
+  expect(body.validators[0].featured).toBe(false);
+});
+
+test("GET /api/v1/subnets/:netuid/validators still serves the primary rows when the featured_validators read fails", async () => {
+  // A pre-migration deployment (table not created yet) or any other read
+  // failure must degrade to "nothing is featured", never break the route.
+  featuredValidatorsQueryFailure.error = new Error(
+    'relation "featured_validators" does not exist',
+  );
+  mockQueue.current = [[], [NEURON_ROW]];
+  const res = await req("/api/v1/subnets/7/validators");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.validator_count).toBe(1);
+  expect(body.validators[0].featured).toBe(false);
+});
+
 test("GET /api/v1/validators returns the network-wide validator leaderboard with defaults", async () => {
   mockRows.current = [
     {
@@ -1316,6 +1363,49 @@ test("GET /api/v1/validators returns the network-wide validator leaderboard with
   expect(body.limit).toBe(20);
   expect(body.validators[0].hotkey).toBe("5Hot");
   expect(body.validators[0].total_stake_tao).toBe(456.7);
+});
+
+test("GET /api/v1/validators sets featured per hotkey, matched against featured_validators", async () => {
+  // This route only sets the flag (via buildGlobalValidators) -- the "move to
+  // front" reorder is a separate overlay applied downstream in
+  // workers/request-handlers/entities.mjs (see request-handlers-entities.test.mjs),
+  // so this test asserts the flag only, not row order.
+  mockQueue.current = [
+    [], // sql.begin's leading `SET statement_timeout`
+    [
+      {
+        netuid: 1,
+        uid: 0,
+        hotkey: "hk-a",
+        coldkey: "ck-a",
+        validator_trust: "0.5",
+        emission_tao: "1",
+        stake_tao: "100",
+        block_number: "10",
+        captured_at: "1780000000000",
+      },
+      {
+        netuid: 2,
+        uid: 0,
+        hotkey: "hk-b",
+        coldkey: "ck-b",
+        validator_trust: "0.9",
+        emission_tao: "5",
+        stake_tao: "9000",
+        block_number: "10",
+        captured_at: "1780000000000",
+      },
+    ],
+    [{ hotkey: "hk-a" }],
+  ];
+  const res = await req("/api/v1/validators");
+  const body = await res.json();
+  expect(queryText()).toMatch(/FROM featured_validators/);
+  const byHotkey = Object.fromEntries(
+    body.validators.map((v) => [v.hotkey, v.featured]),
+  );
+  expect(byHotkey["hk-a"]).toBe(true);
+  expect(byHotkey["hk-b"]).toBe(false);
 });
 
 test("GET /api/v1/validators respects an explicit valid sort + limit", async () => {

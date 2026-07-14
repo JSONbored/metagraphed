@@ -2283,6 +2283,22 @@ function json(data, status = 200) {
   });
 }
 
+// featured_validators (#5166) is a small maintainer-toggled side table (see
+// deploy/postgres/schema.sql for why it's hotkey-keyed rather than a `neurons`
+// column) -- reading it must never break the primary validators query, so a
+// missing table (e.g. before the migration has landed) or any other read
+// failure here just yields "nothing is featured" instead of a 502 for the
+// whole /validators route.
+async function loadFeaturedHotkeys(sql) {
+  try {
+    const rows = await sql`SELECT hotkey FROM featured_validators`;
+    return new Set(rows.map((row) => row.hotkey));
+  } catch (err) {
+    console.error("featured_validators query failed:", err);
+    return new Set();
+  }
+}
+
 function clampLimit(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
@@ -5648,11 +5664,14 @@ export default {
         );
         if (subnetValidators) {
           const netuid = Number(subnetValidators[1]);
-          const rows = await sql`
+          const [rows, featuredHotkeys] = await Promise.all([
+            sql`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
           FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE
-          ORDER BY stake_tao DESC, uid ASC`;
-          return json(buildSubnetValidators(rows, netuid));
+          ORDER BY stake_tao DESC, uid ASC`,
+            loadFeaturedHotkeys(sql),
+          ]);
+          return json(buildSubnetValidators(rows, netuid, { featuredHotkeys }));
         }
 
         // GET /api/v1/validators?sort=&limit= (#4771): network-wide validator
@@ -5671,11 +5690,16 @@ export default {
             limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
               ? limitParam
               : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-          const rows = await sql`
+          const [rows, featuredHotkeys] = await Promise.all([
+            sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
-          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`;
-          return json(buildGlobalValidators(rows, { sort, limit }));
+          ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
+            loadFeaturedHotkeys(sql),
+          ]);
+          return json(
+            buildGlobalValidators(rows, { sort, limit, featuredHotkeys }),
+          );
         }
 
         // GET /api/v1/validators/:hotkey (#4771): cross-subnet validator detail,

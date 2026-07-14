@@ -1931,6 +1931,8 @@ export interface MetagraphNeuron {
   registered_at_block?: number;
   is_immunity_period?: boolean;
   axon?: string | null;
+  /** DB-toggled maintainer pin (#5166) — only set on /validators rows, absent elsewhere. */
+  featured?: boolean;
   [key: string]: unknown;
 }
 
@@ -1974,6 +1976,8 @@ export interface GlobalValidatorSubnet {
 /** One validator/operator row grouped by hotkey across subnet memberships. */
 export interface GlobalValidator {
   hotkey: string;
+  /** DB-toggled maintainer pin (#5166) — always present, moves the row to the front of the default (unsorted) view. */
+  featured: boolean;
   coldkey: string | null;
   coldkey_count: number;
   subnet_count: number;
