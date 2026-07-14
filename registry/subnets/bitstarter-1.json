@@ -190,6 +190,31 @@
         "https://github.com/AlphaCoreBittensor/alphacore/blob/main/modules/task_config.yaml"
       ],
       "url": "https://raw.githubusercontent.com/AlphaCoreBittensor/alphacore/main/modules/task_config.yaml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-91-alphacore-protocol",
+      "kind": "data-artifact",
+      "name": "AlphaCore subnet protocol definition",
+      "notes": "Public no-auth machine-readable protocol module (subnet/protocol.py) committed in SN91 Bitstarter's official AlphaCoreBittensor/alphacore repository, defining the Bittensor synapse/dendrite message schema the subnet's miners and validators communicate over (request/response fields for the task and scoring flow). Pinned to an immutable commit. Verified 200, SS58-clean, no keys or secrets. Distinct from the task-generation config already registered.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "provider": "alphacore",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "ultrahighsuper"
+      },
+      "source_urls": [
+        "https://github.com/AlphaCoreBittensor/alphacore/blob/e65670c8b5eaa8046f6ce40a805aece4804198a2/subnet/protocol.py",
+        "https://github.com/AlphaCoreBittensor/alphacore"
+      ],
+      "url": "https://raw.githubusercontent.com/AlphaCoreBittensor/alphacore/e65670c8b5eaa8046f6ce40a805aece4804198a2/subnet/protocol.py"
     }
   ],
   "social": {
