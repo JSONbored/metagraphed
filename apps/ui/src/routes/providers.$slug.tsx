@@ -24,6 +24,7 @@ import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import { providerQuery, providerEndpointsQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
+import { providerSlugSubtitle } from "@/lib/metagraphed/provider-display";
 import type { Endpoint, Subnet } from "@/lib/metagraphed/types";
 
 type SearchParams = { tab?: string };
@@ -104,6 +105,7 @@ function ProviderShell({ slug }: { slug: string }) {
   const tab = useActiveTab("overview");
   useHashScroll(tab, SECTION_TO_TAB);
   const stale = meta?.stale || isStaleFreshness(meta?.generated_at);
+  const slugSubtitle = providerSlugSubtitle(p?.name, slug);
 
   return (
     <>
@@ -127,7 +129,7 @@ function ProviderShell({ slug }: { slug: string }) {
           </span>
         }
         title={p?.name ?? slug}
-        subtitle={<>· {slug}</>}
+        subtitle={slugSubtitle ? <>· {slugSubtitle}</> : null}
         description={p?.notes}
         links={<PrimaryLinksRail website={p?.website ?? p?.homepage} docs={p?.docs} />}
         stats={[
