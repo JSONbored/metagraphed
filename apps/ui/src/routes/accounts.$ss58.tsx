@@ -14,6 +14,9 @@ import {
   Coins,
   Fingerprint,
   Gauge,
+  Github,
+  Globe,
+  MessageCircle,
   Radar,
   RefreshCw,
   Rows3,
@@ -38,6 +41,7 @@ import {
   StatTile,
   BarMini,
   DownloadCsvButton,
+  ExternalLink,
 } from "@jsonbored/ui-kit";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
@@ -52,6 +56,7 @@ import {
   accountRegistrationsQuery,
   accountWeightSettersQuery,
   accountBalanceQuery,
+  accountIdentityQuery,
   accountEventsQuery,
   accountExtrinsicsQuery,
   accountPrometheusQuery,
@@ -271,6 +276,8 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         />
       </div>
 
+      <AccountIdentitySection ss58={ss58} />
+
       <SectionAnchor
         id="history"
         title="Daily activity"
@@ -376,6 +383,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           rows={[
             { label: "summary", path: `/api/v1/accounts/${sourceRef}` },
             { label: "balance", path: `/api/v1/accounts/${sourceRef}/balance` },
+            { label: "identity", path: `/api/v1/accounts/${sourceRef}/identity` },
             { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
             { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
             { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
@@ -390,6 +398,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       <ApiSourceFooter
         paths={[
           `/api/v1/accounts/${sourceRef}`,
+          `/api/v1/accounts/${sourceRef}/identity`,
           `/api/v1/accounts/${sourceRef}/history`,
           `/api/v1/accounts/${sourceRef}/events`,
           `/api/v1/accounts/${sourceRef}/subnets`,
@@ -1373,6 +1382,90 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
           </tbody>
         </table>
       </DataPanel>
+    </SectionAnchor>
+  );
+}
+
+// #4324/5.1: personal (coldkey) on-chain identity for this account, from a
+// set_identity call — distinct from subnet identity and from the validator
+// directory's coldkey-identity join. has_identity is false for the common
+// case (most accounts never set one), so the section renders nothing rather
+// than an empty card. Non-blocking: while it loads or if it fails, the rest
+// of the account page is unaffected.
+function AccountIdentitySection({ ss58 }: { ss58: string }) {
+  const result = useQuery(accountIdentityQuery(ss58));
+  const identity = result.data?.data;
+  const SUBTITLE = "On-chain personal identity this account registered via set_identity.";
+
+  if (result.isPending && !identity) {
+    return <AccountFeedSectionSkeleton id="identity" title="Identity" subtitle={SUBTITLE} />;
+  }
+  if (result.isError) {
+    return (
+      <SectionAnchor id="identity" title="Identity" subtitle={SUBTITLE} tone="accent">
+        <TableState
+          variant="error"
+          title="Could not load identity"
+          description="The identity tier is optional enrichment — the rest of the account page is unaffected."
+          error={result.error}
+          onRetry={() => void result.refetch()}
+        />
+      </SectionAnchor>
+    );
+  }
+  if (!identity || !identity.has_identity) return null;
+
+  return (
+    <SectionAnchor
+      id="identity"
+      title="Identity"
+      subtitle={SUBTITLE}
+      tone="accent"
+      info="GET /api/v1/accounts/{ss58}/identity — the coldkey's own on-chain identity, distinct from subnet identity and the validator directory's coldkey-identity join."
+    >
+      <div className="rounded-2xl border border-border/80 bg-card/95 p-5 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="font-display text-lg font-semibold text-ink-strong">
+            {identity.name ?? "Unnamed identity"}
+          </span>
+          {identity.captured_at ? (
+            <span className="font-mono text-[11px] text-ink-muted">
+              captured <TimeAgo at={identity.captured_at} />
+            </span>
+          ) : null}
+        </div>
+        {identity.description ? (
+          <p className="mt-2 text-sm text-ink-muted">{identity.description}</p>
+        ) : null}
+        {identity.url || identity.github || identity.discord || identity.image ? (
+          <div className="mt-3 flex flex-wrap gap-3 text-[11px]">
+            {identity.url ? (
+              <ExternalLink href={identity.url} className="text-accent-text hover:underline">
+                <Globe className="size-3.5 shrink-0" aria-hidden /> website
+              </ExternalLink>
+            ) : null}
+            {identity.github ? (
+              <ExternalLink href={identity.github} className="text-accent-text hover:underline">
+                <Github className="size-3.5 shrink-0" aria-hidden /> github
+              </ExternalLink>
+            ) : null}
+            {identity.image ? (
+              <ExternalLink href={identity.image} className="text-accent-text hover:underline">
+                image
+              </ExternalLink>
+            ) : null}
+            {identity.discord ? (
+              <span className="inline-flex items-center gap-1 text-ink-muted">
+                <MessageCircle className="size-3.5 shrink-0" aria-hidden />
+                {identity.discord}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        {identity.additional ? (
+          <p className="mt-2 font-mono text-[11px] text-ink-muted">{identity.additional}</p>
+        ) : null}
+      </div>
     </SectionAnchor>
   );
 }

@@ -41,6 +41,7 @@ import type {
   AccountServing,
   AccountServingSubnet,
   AccountBalance,
+  AccountIdentity,
   AccountDay,
   AccountEvent,
   AccountEventsPage,
@@ -2433,6 +2434,41 @@ export const accountBalanceQuery = (ss58: string) =>
       } as ApiResult<AccountBalance>;
     },
     staleTime: STALE_SHORT,
+  });
+
+/**
+ * Personal (coldkey) on-chain identity for one account (#4324/5.1), from
+ * account_identity via Postgres (D1 frozen fallback). has_identity is false
+ * for the common case — most accounts never call set_identity — so every
+ * field but `account`/`has_identity` stays null rather than erroring.
+ */
+export const accountIdentityQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-identity", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/identity`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+          account: firstString(d.account) ?? ss58,
+          has_identity: booleanValue(d.has_identity) ?? false,
+          name: firstString(d.name) ?? null,
+          url: firstString(d.url) ?? null,
+          github: firstString(d.github) ?? null,
+          image: firstString(d.image) ?? null,
+          discord: firstString(d.discord) ?? null,
+          description: firstString(d.description) ?? null,
+          additional: firstString(d.additional) ?? null,
+          captured_at: firstString(d.captured_at) ?? null,
+        } as AccountIdentity,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountIdentity>;
+    },
+    staleTime: STALE_MED,
   });
 
 /** Extrinsics this account signed (by signer), newest-first (#264). */

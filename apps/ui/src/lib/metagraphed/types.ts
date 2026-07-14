@@ -1373,6 +1373,25 @@ export interface AccountSummary {
   [key: string]: unknown;
 }
 
+/** Personal (coldkey) on-chain identity for one account (#4324/5.1), from
+ * /api/v1/accounts/{ss58}/identity — distinct from subnet identity and from
+ * the validator directory's coldkey-identity join. has_identity is false
+ * (every field null) for the common case: an account that never called
+ * set_identity. Schema-stable, never a 404. */
+export interface AccountIdentity {
+  schema_version: number;
+  account: string;
+  has_identity: boolean;
+  name: string | null;
+  url: string | null;
+  github: string | null;
+  image: string | null;
+  discord: string | null;
+  description: string | null;
+  additional: string | null;
+  captured_at: string | null;
+}
+
 /** One hotkey-keyed daily activity row from /api/v1/accounts/{ss58}/history. */
 export interface AccountDay {
   day: string;
