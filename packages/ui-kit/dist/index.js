@@ -1370,7 +1370,11 @@ function CopyButton({
       "aria-label": copied ? "Copied" : `Copy ${label ?? "value"}`,
       title: copied ? "Copied!" : `Copy ${label ?? "value"}`,
       className: classNames(
-        "shrink-0 inline-flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong transition-colors",
+        // min-h-11 min-w-11 gives the icon-only button the same 44px minimum
+        // touch target as every other header icon button in the shell (the
+        // convention list-shell.tsx documents); p-1 keeps the icon itself compact
+        // and centered within that hit area.
+        "shrink-0 inline-flex items-center justify-center rounded p-1 min-h-11 min-w-11 text-ink-muted hover:text-ink-strong transition-colors",
         className
       ),
       children: /* @__PURE__ */ jsx(CopyIconToggle, { copied })
