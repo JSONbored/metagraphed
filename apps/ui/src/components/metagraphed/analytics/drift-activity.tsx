@@ -42,7 +42,6 @@ export function DriftActivity({ schemas, fromPath }: Props) {
 
   const visibleStable = scope === "all" ? stable : [];
   const visibleDrifting = showAllDrift ? drifting : drifting.slice(0, DRIFT_DIGEST_LIMIT);
-  const hiddenDriftCount = drifting.length - visibleDrifting.length;
   const total = schemas.length;
 
   if (total === 0) {
