@@ -7416,6 +7416,94 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(res.body.result.structuredContent.source, "r2-fallback");
   });
 
+  // A pool with a round 1000 TAO / 5000 alpha reserve → spot 0.2 TAO/alpha, so
+  // the stake-quote math below lands on tidy, hand-checkable numbers.
+  const QUOTE_BLOB = {
+    schema_version: 1,
+    captured_at: FRESH_RUN,
+    summary: { with_economics_count: 1, subnet_count: 1 },
+    subnets: [{ netuid: 7, tao_in_pool_tao: 1000, alpha_in_pool: 5000 }],
+  };
+
+  test("get_subnet_stake_quote prices a stake against the pool reserves", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 7, amount: 100 },
+      { deps: makeDeps({ "/metagraph/economics.json": QUOTE_BLOB }, {}) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, 7);
+    assert.equal(out.direction, "stake"); // defaults to stake
+    assert.equal(out.expected_out_unit, "alpha");
+    assert.equal(out.is_root, false);
+    // alpha_out = 5000·100/(1000+100) = 454.5454…; impact = |0.22-0.2|/0.2 = 10%.
+    assert.ok(Math.abs(out.expected_out - 454.545454) < 1e-4);
+    assert.ok(Math.abs(out.spot_price_tao - 0.2) < 1e-9);
+    assert.ok(Math.abs(out.price_impact_pct - 10) < 1e-6);
+  });
+
+  test("get_subnet_stake_quote prices an unstake in the mirror direction", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 7, amount: 100, direction: "unstake" },
+      { deps: makeDeps({ "/metagraph/economics.json": QUOTE_BLOB }, {}) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.direction, "unstake");
+    assert.equal(out.expected_out_unit, "tao");
+    // tao_out = 1000·100/(5000+100) = 19.6078…
+    assert.ok(Math.abs(out.expected_out - 19.607843) < 1e-4);
+  });
+
+  test("get_subnet_stake_quote treats the root subnet as 1:1 zero-impact", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 0, amount: 25 },
+      { deps: makeDeps() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.is_root, true);
+    assert.equal(out.expected_out, 25);
+    assert.equal(out.price_impact_pct, 0);
+  });
+
+  test("get_subnet_stake_quote rejects an unsupported direction", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 7, amount: 100, direction: "sideways" },
+      { deps: makeDeps({ "/metagraph/economics.json": QUOTE_BLOB }, {}) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /direction` must be one of/);
+  });
+
+  test("get_subnet_stake_quote rejects a non-positive amount", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 7, amount: 0 },
+      { deps: makeDeps({ "/metagraph/economics.json": QUOTE_BLOB }, {}) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /greater than 0/);
+  });
+
+  test("get_subnet_stake_quote surfaces insufficient liquidity for a pool-less subnet", async () => {
+    const res = await callTool(
+      "get_subnet_stake_quote",
+      { netuid: 7, amount: 100 },
+      // Economics row present but carrying no AMM reserves → 422 domain error.
+      {
+        deps: makeDeps(
+          { "/metagraph/economics.json": { subnets: [{ netuid: 7 }] } },
+          {},
+        ),
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /no AMM pool liquidity/);
+  });
+
   test("get_subnet_economics returns economics:null for a subnet with no row", async () => {
     const res = await callTool(
       "get_subnet_economics",

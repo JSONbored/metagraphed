@@ -461,6 +461,7 @@ import {
   DEFAULT_STAKE_FLOW_DIRECTION,
 } from "./stake-flow.mjs";
 import { buildAccountStakeFlow } from "./account-stake-flow.mjs";
+import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
 import {
   buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
@@ -575,7 +576,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.78.4";
+export const MCP_SERVER_VERSION = "1.79.0";
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
@@ -703,6 +704,8 @@ export const MCP_INSTRUCTIONS =
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
   "open slots, and alpha price, " +
+  "get_subnet_stake_quote a read-only constant-product slippage/price-impact " +
+  "estimate for staking or unstaking a given amount against its AMM pool, " +
   GET_ECONOMICS_INSTRUCTIONS +
   "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
@@ -4753,6 +4756,73 @@ export const MCP_TOOLS = [
           ? netEconomics.economics.alpha_market_cap_tao
           : null;
       return buildAlphaVolume([], netuid, { marketCapTao });
+    },
+  },
+  {
+    name: "get_subnet_stake_quote",
+    title: "Get a subnet stake/unstake slippage quote",
+    description:
+      "Fetch a read-only constant-product slippage/price-impact quote for " +
+      "staking or unstaking a given amount against one subnet's AMM pool: the " +
+      "expected alpha/TAO out, spot vs effective price (TAO per alpha), and " +
+      "price-impact percent for a swap of ?amount in ?direction=stake|unstake " +
+      "(default stake). Pure math against the live economics-tier pool reserves " +
+      "(tao_in_pool_tao, alpha_in_pool) — no chain write, no custody — mirroring " +
+      "the chain's own constant-product swap and its InsufficientLiquidity " +
+      "guard (an amount over 1000x the relevant reserve is rejected). The root " +
+      "subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/stake-quote.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        amount: {
+          type: "number",
+          exclusiveMinimum: 0,
+          description:
+            "Swap size: TAO to stake (direction=stake) or alpha to unstake " +
+            "(direction=unstake).",
+        },
+        direction: {
+          type: "string",
+          enum: STAKE_QUOTE_DIRECTIONS,
+          description:
+            "Swap side: stake (TAO -> alpha) or unstake (alpha -> TAO). " +
+            "Default stake.",
+        },
+      },
+      required: ["netuid", "amount"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const direction = optionalString(args, "direction") ?? "stake";
+      // Root (netuid 0) has no AMM pool, so skip the economics lookup and let
+      // computeStakeQuote return its 1:1 short-circuit; every other subnet pulls
+      // its live pool reserves off the economics tier the way get_subnet_economics
+      // does. computeStakeQuote is the same pure-math authority the REST route
+      // uses — it validates amount/direction and pool liquidity in one place, so
+      // the tool stays parity with GET /subnets/{netuid}/stake-quote.
+      const economics =
+        netuid === 0
+          ? null
+          : (await loadSubnetEconomics(ctx, netuid)).economics;
+      const result = computeStakeQuote({
+        netuid,
+        taoInPool: economics?.tao_in_pool_tao,
+        alphaInPool: economics?.alpha_in_pool,
+        amount: args?.amount,
+        direction,
+      });
+      if (!result.ok) {
+        // Its 400s are argument problems (invalid_params in MCP terms); its 422
+        // is a valid request the pool can't fill — surface that domain code.
+        throw toolError(
+          result.status === 400 ? "invalid_params" : result.code,
+          result.error,
+        );
+      }
+      return { schema_version: 1, ...result.quote };
     },
   },
   {
@@ -10295,6 +10365,31 @@ const TOOL_OUTPUT_SCHEMAS = {
       sentiment_ratio: { type: ["number", "null"] },
       sentiment: NULLABLE_STRING,
       vol_mcap_ratio: { type: ["number", "null"] },
+    },
+  },
+  get_subnet_stake_quote: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "direction",
+      "amount",
+      "expected_out",
+      "expected_out_unit",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      direction: { type: "string" },
+      amount: { type: "number" },
+      expected_out: { type: "number" },
+      expected_out_unit: { type: "string" },
+      spot_price_tao: { type: "number" },
+      effective_price_tao: { type: "number" },
+      price_impact_pct: { type: "number" },
+      tao_in_pool_tao: { type: ["number", "null"] },
+      alpha_in_pool: { type: ["number", "null"] },
+      is_root: { type: "boolean" },
     },
   },
   get_subnet_recycled: {
