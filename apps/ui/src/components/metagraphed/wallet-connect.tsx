@@ -25,10 +25,19 @@ import type { InjectedAccountWithMeta } from "@/lib/metagraphed/wallet-injected"
 const DISCLAIMER =
   "metagraphed never sees your keys. Connecting only shares your public address — signing (a later step) always happens in your wallet, never on our servers.";
 
+// Taostats Wallet added after ADR 0018 was written -- it's a modified
+// Talisman wallet (per Taostats' own announcement), so it implements the
+// same window.injectedWeb3 standard the other three do; no code change to
+// the connect flow itself was needed, only this list. Listed despite
+// Taostats being a competing block explorer -- the wallet is a largely
+// orthogonal product category, and it's purpose-built for exactly this
+// epic's use case (native Bittensor staking), so omitting it would be a
+// disservice to users picking a wallet for this specific reason.
 const SUPPORTED_WALLETS = [
   { label: "Polkadot{.js}", href: "https://polkadot.js.org/extension/" },
   { label: "Talisman", href: "https://talisman.xyz/" },
   { label: "SubWallet", href: "https://subwallet.app/" },
+  { label: "Taostats Wallet", href: "https://taostats.io/bittensor-chrome-wallet" },
 ];
 
 /**
