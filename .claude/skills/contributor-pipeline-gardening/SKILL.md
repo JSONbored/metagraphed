@@ -55,7 +55,7 @@ Surface`, `Partner Flywheel Hardening`, or a new one if none fit) — this repo'
    merits, focused on that repo's actual goals (corrected by the maintainer 2026-07-14 — an earlier
    version of this doc wrongly said "combined total, not per-repo"). **Exclude the "Enrich SNxxx"
    family (see below) from this count** — it's a separately-automated queue, not this skill's backlog.
-1a. **The "Enrich SN<netuid> ..." family (tracked via #427, ~20-30 issues at any time) is handled by
+   1a. **The "Enrich SN<netuid> ..." family (tracked via #427, ~20-30 issues at any time) is handled by
    a separate automation, not this skill.** Don't count them toward the 50-100 top-up target (filter
    out any issue whose title matches "Enrich SN" before comparing against the target), and don't
    generate more of them yourselves — that automation owns that queue. Pass 1's stale-sweep/hygiene
