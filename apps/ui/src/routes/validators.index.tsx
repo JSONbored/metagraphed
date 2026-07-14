@@ -13,6 +13,7 @@ import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { taoCompact, FeaturedBadge } from "@/components/metagraphed/neuron-table";
+import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { ValidatorIdentityChip } from "@/components/metagraphed/validator-identity-chip";
 import {
@@ -165,7 +166,7 @@ function ValidatorsTable({
       </div>
 
       {validators.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface/50">
               <tr>
@@ -245,6 +246,13 @@ function ValidatorsTable({
           description="The global validator directory is empty for this window."
         />
       )}
+
+      {validators.length > 0 ? (
+        <ValidatorCardList
+          validators={validators}
+          className="grid gap-3 sm:grid-cols-2 md:hidden"
+        />
+      ) : null}
     </div>
   );
 }
