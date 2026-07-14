@@ -497,10 +497,13 @@ const NEURONS_SYNC_BOOLEAN_COLUMNS = new Set([
 // Separate from the read path's json() -- a write ack must never carry the
 // GET routes' `cache-control: public, max-age=10` (or the CORS wildcard,
 // meaningless for a service-binding-only route).
-function writeJson(data, status = 200) {
+function writeJson(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      ...extraHeaders,
+    },
   });
 }
 
@@ -2932,6 +2935,11 @@ function requireAlertTriggerOwner(request, storedOwnerToken) {
   return writeJson({ error: "no such trigger" }, 404);
 }
 
+// Policy for the create rate-limiter's 429 header family. Mirrors the
+// ALERT_TRIGGER_CREATE_RATE_LIMITER binding in wrangler.data.jsonc (10/60s) so
+// the advertised headers match the enforced limit. (#5475)
+const ALERT_TRIGGER_CREATE_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
+
 async function handleAlertTriggerCreate(request, env) {
   const configured = env.ALERT_TRIGGER_CREATE_TOKEN;
   if (!configured) {
@@ -2961,9 +2969,18 @@ async function handleAlertTriggerCreate(request, env) {
       key: resolveClientIp(request),
     });
     if (!success) {
+      // Carry the standard rate-limit header family so callers (and the api.mjs
+      // proxy that forwards this response) can detect throttling and honour the
+      // back-off -- matching handleAccountBalance/handleSubnetRecycled (#5475).
       return writeJson(
         { error: "too many alert trigger creation requests; slow down" },
         429,
+        {
+          "retry-after": String(ALERT_TRIGGER_CREATE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(ALERT_TRIGGER_CREATE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${ALERT_TRIGGER_CREATE_RATE_LIMIT.limit};w=${ALERT_TRIGGER_CREATE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
       );
     }
   }

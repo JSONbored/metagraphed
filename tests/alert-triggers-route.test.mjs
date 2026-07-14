@@ -265,6 +265,12 @@ test("create: 429 when ALERT_TRIGGER_CREATE_RATE_LIMITER rejects the request, wi
   assert.equal(res.status, 429);
   assert.equal(sqlCalls.length, 0);
   assert.equal(limiter.limit.mock.calls.length, 1);
+  // #5475: the 429 now carries the standard rate-limit header family so the
+  // api.mjs proxy (and clients) can honour the back-off.
+  assert.equal(res.headers.get("retry-after"), "60");
+  assert.equal(res.headers.get("x-ratelimit-limit"), "10");
+  assert.equal(res.headers.get("x-ratelimit-policy"), "10;w=60");
+  assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
 });
 
 test("create: 201 when ALERT_TRIGGER_CREATE_RATE_LIMITER allows the request", async () => {

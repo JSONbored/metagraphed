@@ -748,6 +748,40 @@ async function handleChainEventsProxy(request, env, url) {
 // auth (creation token / per-trigger owner token) and routing itself --
 // mirrors handleChainEventsProxy's envelope-translation shape above, just
 // generalized past GET.
+// Distinct error code per upstream failure condition instead of collapsing
+// every non-2xx into one generic `alert_trigger_request_failed`, following the
+// one-code-per-condition convention handleAccountBalance/handleSubnetRecycled
+// already use (#5475). The upstream (data-api handleAlertTriggersRoute) returns
+// a plain `{ error: "message" }` with no code of its own, so we key off status.
+function alertTriggerErrorCode(status) {
+  switch (status) {
+    case 400:
+      return "alert_trigger_invalid";
+    case 401:
+      return "alert_trigger_unauthorized";
+    case 404:
+      return "alert_trigger_not_found";
+    case 413:
+      return "alert_trigger_payload_too_large";
+    case 429:
+      return "alert_trigger_rate_limited";
+    case 502:
+    case 503:
+      return "alert_triggers_unavailable";
+    default:
+      return "alert_trigger_request_failed";
+  }
+}
+
+// Rate-limit family the proxy forwards from an upstream error so clients can
+// honour back-off; the proxy otherwise strips every upstream header.
+const FORWARDED_RATE_LIMIT_HEADERS = [
+  "retry-after",
+  "x-ratelimit-limit",
+  "x-ratelimit-remaining",
+  "x-ratelimit-policy",
+];
+
 async function handleAlertTriggersProxy(request, env) {
   if (!env.DATA_API) {
     return errorResponse(
@@ -768,12 +802,19 @@ async function handleAlertTriggersProxy(request, env) {
     );
   }
   if (!upstream.ok) {
+    const extraHeaders = {};
+    for (const name of FORWARDED_RATE_LIMIT_HEADERS) {
+      const value = upstream.headers.get(name);
+      if (value != null) extraHeaders[name] = value;
+    }
     return errorResponse(
-      "alert_trigger_request_failed",
+      alertTriggerErrorCode(upstream.status),
       typeof body?.error === "string"
         ? body.error
         : "The alert triggers tier returned an error.",
       upstream.status,
+      {},
+      extraHeaders,
     );
   }
   return dataResponse(env, body, upstream.status);

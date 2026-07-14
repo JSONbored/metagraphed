@@ -186,3 +186,96 @@ test("returns 502 when the upstream response body is unreadable", async () => {
   assert.equal(res.status, 502);
   assert.equal((await res.json()).error.code, "alert_triggers_unavailable");
 });
+
+// #5475: distinct error code per upstream failure condition + rate-limit header
+// forwarding, instead of collapsing everything into alert_trigger_request_failed
+// and dropping the headers.
+test("maps a 429 upstream to alert_trigger_rate_limited and forwards the rate-limit header family end-to-end", async () => {
+  const res = await handleRequest(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-alert-trigger-create-token": "t" },
+      body: {},
+    }),
+    {
+      DATA_API: {
+        fetch() {
+          return new Response(
+            JSON.stringify({
+              error: "too many alert trigger creation requests; slow down",
+            }),
+            {
+              status: 429,
+              headers: {
+                "retry-after": "60",
+                "x-ratelimit-limit": "10",
+                "x-ratelimit-policy": "10;w=60",
+                "x-ratelimit-remaining": "0",
+              },
+            },
+          );
+        },
+      },
+    },
+    {},
+  );
+  assert.equal(res.status, 429);
+  assert.equal((await res.json()).error.code, "alert_trigger_rate_limited");
+  assert.equal(res.headers.get("retry-after"), "60");
+  assert.equal(res.headers.get("x-ratelimit-limit"), "10");
+  assert.equal(res.headers.get("x-ratelimit-policy"), "10;w=60");
+  assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
+});
+
+test("maps each upstream status to a distinct, condition-specific error code", async () => {
+  const codeFor = async (status) => {
+    const res = await handleRequest(
+      req("/api/v1/alerts/triggers/1", {
+        method: "DELETE",
+        headers: { "x-alert-trigger-owner-token": "t" },
+      }),
+      {
+        DATA_API: {
+          fetch() {
+            return new Response(JSON.stringify({ error: "upstream said no" }), {
+              status,
+            });
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(res.status, status);
+    return (await res.json()).error.code;
+  };
+  assert.equal(await codeFor(400), "alert_trigger_invalid");
+  assert.equal(await codeFor(401), "alert_trigger_unauthorized");
+  assert.equal(await codeFor(404), "alert_trigger_not_found");
+  assert.equal(await codeFor(413), "alert_trigger_payload_too_large");
+  assert.equal(await codeFor(503), "alert_triggers_unavailable");
+  // An unmapped status still falls back to the generic code.
+  assert.equal(await codeFor(418), "alert_trigger_request_failed");
+});
+
+test("does not attach rate-limit headers when the upstream error carries none", async () => {
+  const res = await handleRequest(
+    req("/api/v1/alerts/triggers/1", {
+      method: "DELETE",
+      headers: { "x-alert-trigger-owner-token": "t" },
+    }),
+    {
+      DATA_API: {
+        fetch() {
+          return new Response(JSON.stringify({ error: "no such trigger" }), {
+            status: 404,
+          });
+        },
+      },
+    },
+    {},
+  );
+  assert.equal(res.status, 404);
+  assert.equal((await res.json()).error.code, "alert_trigger_not_found");
+  assert.equal(res.headers.get("retry-after"), null);
+  assert.equal(res.headers.get("x-ratelimit-limit"), null);
+});
