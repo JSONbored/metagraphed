@@ -39,6 +39,7 @@ jobs:
   resync:
     name: Full resync (community + machine-generated)
     runs-on: ubuntu-latest
+    timeout-minutes: 20 # HTTPS upserts to the registry-sync Worker, bounded by registry size
     permissions:
       contents: read
     steps:

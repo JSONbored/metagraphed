@@ -35,6 +35,7 @@ jobs:
   bump:
     name: Open client version bump PR
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # local diff/version bump + PR open, no external network calls beyond git/GitHub
     permissions:
       contents: write
       pull-requests: write

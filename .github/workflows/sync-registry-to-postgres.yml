@@ -48,6 +48,7 @@ jobs:
   sync:
     name: Upsert changed registry files into Postgres
     runs-on: ubuntu-latest
+    timeout-minutes: 20 # HTTPS upserts to the registry-sync Worker, scoped to one push's changed files
     permissions:
       contents: read
     steps:

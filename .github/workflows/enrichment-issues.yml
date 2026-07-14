@@ -25,6 +25,7 @@ concurrency:
 jobs:
   enrich:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # issue-buffer top-up against the GitHub API, no chain/network probing
     permissions:
       contents: read
       issues: write

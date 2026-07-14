@@ -25,6 +25,7 @@ concurrency:
 jobs:
   discover:
     runs-on: ubuntu-latest
+    timeout-minutes: 20 # network probe with per-request timeouts, bounded by subnet count
     permissions:
       contents: read
     steps:

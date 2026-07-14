@@ -58,6 +58,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 45 # full production build: chain snapshot + live probes + adapter re-snapshot
     permissions:
       contents: read
     outputs:
@@ -162,6 +163,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     needs: refresh
+    timeout-minutes: 45 # full validate suite plus R2/KV publish and the retried live smoke check
     permissions:
       contents: read
     env:

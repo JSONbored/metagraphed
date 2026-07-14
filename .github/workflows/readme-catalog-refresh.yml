@@ -26,6 +26,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # regenerates one README section from committed overlays, no network calls
     permissions:
       contents: write
       pull-requests: write

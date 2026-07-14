@@ -104,6 +104,7 @@ jobs:
   changes:
     name: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 10 # single inline git diff against the base ref, no build
     outputs:
       docs_only: ${{ steps.filter.outputs.docs_only }}
       run_workflows_validation: ${{ steps.filter.outputs.run_workflows_validation }}
@@ -202,6 +203,7 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # build + full suite with coverage, the main per-PR gate
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -341,6 +343,7 @@ jobs:
     name: checks
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # build plus the ~20 contract/schema/registry/safety validators
     env:
       # A single guard expression, computed once, that every expensive step
       # below gates on. Deliberately a per-STEP `if:`, not a job-level `if:`
@@ -625,6 +628,7 @@ jobs:
   python:
     name: python
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # hermetic unittest suite (37 cases), no network
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -649,6 +653,7 @@ jobs:
     name: ui
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # workspace install, drift-check builds, typecheck/test, and the Playwright e2e pass
     env:
       RUN_UI_VALIDATION: ${{ needs.changes.outputs.run_ui_validation }}
     steps:
