@@ -5662,6 +5662,8 @@ export const validatorDetailQuery = (hotkey: string) =>
           coldkey_count: firstFiniteNumber(d.coldkey_count) ?? 0,
           subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
           total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? 0,
+          root_stake_tao: firstFiniteNumber(d.root_stake_tao) ?? 0,
+          alpha_stake_tao: firstFiniteNumber(d.alpha_stake_tao) ?? 0,
           total_emission_tao: firstFiniteNumber(d.total_emission_tao) ?? 0,
           avg_validator_trust: firstFiniteNumber(d.avg_validator_trust) ?? null,
           max_validator_trust: firstFiniteNumber(d.max_validator_trust) ?? null,

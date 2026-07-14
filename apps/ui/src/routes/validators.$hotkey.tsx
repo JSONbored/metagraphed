@@ -234,7 +234,10 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
           icon={Coins}
           eyebrow="Total stake"
           value={taoCompact(detail.total_stake_tao)}
-          hint="across all subnets"
+          // Root (netuid 0) is TAO-denominated with no price exposure; alpha
+          // is the sum across every other subnet's own alpha token (#2550).
+          hint={`Root ${taoCompact(detail.root_stake_tao)} · Alpha ${taoCompact(detail.alpha_stake_tao)}`}
+          truncate={false}
           tone="accent"
           className="rounded-2xl border-accent/25 bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
         />

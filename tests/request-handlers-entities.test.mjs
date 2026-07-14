@@ -910,6 +910,8 @@ describe("handleGlobalValidators", () => {
       uid_count: 1,
       take: null,
       total_stake_tao: 0,
+      root_stake_tao: 0,
+      alpha_stake_tao: 0,
       total_emission_tao: 0,
       stake_dominance: null,
       avg_validator_trust: null,

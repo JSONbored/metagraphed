@@ -42,7 +42,7 @@ const NEURON_CSV_HEADER =
 const MOVERS_CSV_HEADER =
   "netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta";
 const GLOBAL_VALIDATOR_CSV_HEADER =
-  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
+  "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,root_stake_tao,alpha_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets";
 
 describe("metagraph-neurons builders", () => {
   test("formatNeuron coerces 0/1 INTEGER flags to real booleans", () => {
@@ -459,6 +459,8 @@ describe("metagraph-neurons builders", () => {
     assert.equal(top.subnet_count, 3);
     assert.equal(top.uid_count, 3);
     assert.equal(top.total_stake_tao, 151.123456789);
+    assert.equal(top.root_stake_tao, 0); // no netuid-0 row for hk-a
+    assert.equal(top.alpha_stake_tao, 151.123456789);
     assert.equal(top.total_emission_tao, 16);
     assert.equal(top.stake_dominance, 0.232096);
     assert.equal(top.avg_validator_trust, 0.6);
@@ -473,6 +475,42 @@ describe("metagraph-neurons builders", () => {
         [5, 3],
       ],
     );
+  });
+
+  test("buildGlobalValidators splits root (netuid 0) stake from alpha stake in exact rao space (#2550)", () => {
+    const data = buildGlobalValidators([
+      {
+        ...ROW,
+        netuid: 0,
+        uid: 1,
+        hotkey: "hk-root",
+        coldkey: "ck-root",
+        stake_tao: 200.5,
+        emission_tao: 1,
+      },
+      {
+        ...ROW,
+        netuid: 7,
+        uid: 2,
+        hotkey: "hk-root",
+        coldkey: "ck-root",
+        stake_tao: 50.25,
+        emission_tao: 3,
+      },
+      {
+        ...ROW,
+        netuid: 9,
+        uid: 4,
+        hotkey: "hk-root",
+        coldkey: "ck-root",
+        stake_tao: 49.25,
+        emission_tao: 2,
+      },
+    ]);
+    const entry = data.validators.find((v) => v.hotkey === "hk-root");
+    assert.equal(entry.total_stake_tao, 300);
+    assert.equal(entry.root_stake_tao, 200.5);
+    assert.equal(entry.alpha_stake_tao, 99.5); // 50.25 + 49.25, exact
   });
 
   test("buildGlobalValidators takes the first non-null take per hotkey and ignores later rows (#2548)", () => {
@@ -742,6 +780,8 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.coldkey_count, 2);
     assert.equal(data.subnet_count, 5);
     assert.equal(data.total_stake_tao, 653.123456789);
+    assert.equal(data.root_stake_tao, 0); // no netuid-0 row for hk-a
+    assert.equal(data.alpha_stake_tao, 653.123456789);
     assert.equal(data.total_emission_tao, 19);
     assert.equal(data.avg_validator_trust, 0.6); // (0.4 + 0.8 + 0.6) / 3
     assert.equal(data.max_validator_trust, 0.8);
@@ -757,6 +797,41 @@ describe("metagraph-neurons builders", () => {
         [6, 0],
       ],
     );
+  });
+
+  test("buildValidatorDetail splits root (netuid 0) stake from alpha stake in exact rao space (#2550)", () => {
+    const data = buildValidatorDetail(
+      [
+        {
+          netuid: 0,
+          uid: 1,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 200.5,
+          emission_tao: 1,
+        },
+        {
+          netuid: 7,
+          uid: 2,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 50.25,
+          emission_tao: 3,
+        },
+        {
+          netuid: 9,
+          uid: 4,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 49.25,
+          emission_tao: 2,
+        },
+      ],
+      "hk-a",
+    );
+    assert.equal(data.total_stake_tao, 300);
+    assert.equal(data.root_stake_tao, 200.5);
+    assert.equal(data.alpha_stake_tao, 99.5); // 50.25 + 49.25, exact
   });
 
   test("buildValidatorDetail: a null latest block_number is beaten by a real one on a captured_at tie, and a null incoming block_number never wins one", () => {
@@ -797,6 +872,8 @@ describe("metagraph-neurons builders", () => {
     assert.equal(empty.coldkey_count, 0);
     assert.equal(empty.subnet_count, 0);
     assert.equal(empty.total_stake_tao, 0);
+    assert.equal(empty.root_stake_tao, 0);
+    assert.equal(empty.alpha_stake_tao, 0);
     assert.equal(empty.total_emission_tao, 0);
     assert.equal(empty.avg_validator_trust, null);
     assert.equal(empty.max_validator_trust, null);

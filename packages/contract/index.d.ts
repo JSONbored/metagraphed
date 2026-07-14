@@ -4928,6 +4928,8 @@ export interface components {
         };
         /** @description One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. `featured` (#5166) reflects a maintainer-toggled DB pin (featured_validators, keyed by hotkey) -- true moves the row to the front of the default (unsorted) view; an explicit non-default ?sort= keeps its normal rank while `featured` stays true. */
         GlobalValidatorEntry: {
+            /** @description total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao. */
+            alpha_stake_tao: number;
             avg_validator_trust: number | null;
             coldkey: string | null;
             coldkey_count: number;
@@ -4937,6 +4939,8 @@ export interface components {
             /** Format: date-time */
             latest_captured_at: string | null;
             max_validator_trust: number | null;
+            /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
+            root_stake_tao: number;
             stake_dominance: number | null;
             subnet_count: number;
             subnets: components["schemas"]["GlobalValidatorSubnet"][];
@@ -7594,6 +7598,8 @@ export interface components {
         };
         /** @description Cross-subnet detail for one validator identity: its validator_permit=1 rows aggregated across every subnet it operates in, served live from the neurons D1 tier at /api/v1/validators/{hotkey} (no static file). Cold/absent hotkey (no validator-permit rows) returns a zeroed aggregate with an empty subnets array, never a 404 — the single-entity drill-in of /api/v1/validators. */
         ValidatorDetailArtifact: {
+            /** @description total_stake_tao minus root_stake_tao -- the sum of every non-root (netuid != 0) subnet membership's stake, each denominated in that subnet's own alpha token and summed as a TAO-equivalent figure (#2550). Price-exposed, unlike root_stake_tao. */
+            alpha_stake_tao: number;
             avg_validator_trust: number | null;
             block_number: number | null;
             /** Format: date-time */
@@ -7602,6 +7608,8 @@ export interface components {
             coldkey_count: number;
             hotkey: string;
             max_validator_trust: number | null;
+            /** @description Stake on netuid 0 (root), TAO-denominated 1:1 with no AMM/price exposure (#2550). 0 when the hotkey holds no root membership. Included in total_stake_tao. */
+            root_stake_tao: number;
             schema_version: number;
             subnet_count: number;
             subnets: components["schemas"]["ValidatorDetailSubnet"][];
@@ -28332,6 +28340,7 @@ export interface operations {
                      *         "validator_count": 1,
                      *         "validators": [
                      *           {
+                     *             "alpha_stake_tao": 0.5,
                      *             "avg_validator_trust": 0.5,
                      *             "coldkey": "example",
                      *             "coldkey_count": 1,
@@ -28340,6 +28349,7 @@ export interface operations {
                      *             "latest_block_number": 5000000,
                      *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
                      *             "max_validator_trust": 0.5,
+                     *             "root_stake_tao": 0.5,
                      *             "stake_dominance": 0.5,
                      *             "subnet_count": 1,
                      *             "subnets": [
@@ -28462,6 +28472,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "alpha_stake_tao": 0.5,
                      *         "avg_validator_trust": 0.5,
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
@@ -28469,6 +28480,7 @@ export interface operations {
                      *         "coldkey_count": 1,
                      *         "hotkey": "example",
                      *         "max_validator_trust": 0.5,
+                     *         "root_stake_tao": 0.5,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
                      *         "subnets": [

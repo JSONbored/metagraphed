@@ -255,6 +255,16 @@ function buildGlobalValidatorEntry(entry) {
     entry.validatorTrustCount > 0
       ? entry.validatorTrustTotal / entry.validatorTrustCount
       : null;
+  // Root (netuid 0) stake is TAO-denominated with no AMM/price exposure;
+  // every other netuid's stake is that subnet's alpha token (#2550). Both
+  // legs are already present in entry.subnets -- one membership row per
+  // netuid, including netuid 0 when the hotkey holds root stake -- so the
+  // split needs no new ingestion, just separating the existing rao-precision
+  // total by whether a root membership row exists. Rao-BigInt subtraction
+  // (not float) keeps it exact, mirroring stakeTotalRao's own accumulation.
+  const rootSubnet = entry.subnets.find((s) => s.netuid === 0) ?? null;
+  const rootStakeRao = rootSubnet ? toRaoBig(rootSubnet.stake_tao) : 0n;
+  const alphaStakeRao = entry.stakeTotalRao - rootStakeRao;
   const subnets = entry.subnets
     .sort(
       (a, b) =>
@@ -273,6 +283,8 @@ function buildGlobalValidatorEntry(entry) {
     uid_count: entry.uidCount,
     take: round(entry.take),
     total_stake_tao: roundTao(raoBigToTao(entry.stakeTotalRao)),
+    root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
+    alpha_stake_tao: roundTao(raoBigToTao(alphaStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
@@ -549,6 +561,11 @@ export async function loadNeuron(d1, netuid, uid) {
 export function buildValidatorDetail(rows, hotkey) {
   const coldkeys = new Map();
   let stakeTotalRao = 0n;
+  // Root (netuid 0) stake is TAO-denominated with no AMM/price exposure;
+  // every other netuid's stake is that subnet's alpha token (#2550) --
+  // tracked separately here since the root membership row (when present) is
+  // already one of `rows`, no new ingestion needed.
+  let rootStakeRao = 0n;
   let emissionTotalRao = 0n;
   let validatorTrustTotal = 0;
   let validatorTrustCount = 0;
@@ -576,7 +593,9 @@ export function buildValidatorDetail(rows, hotkey) {
       const rowTake = nullableNumber(row?.take);
       if (rowTake != null) take = rowTake;
     }
-    stakeTotalRao += toRaoBig(numberOrZero(row?.stake_tao));
+    const rowStakeRao = toRaoBig(numberOrZero(row?.stake_tao));
+    stakeTotalRao += rowStakeRao;
+    if (netuid === 0) rootStakeRao += rowStakeRao;
     emissionTotalRao += toRaoBig(numberOrZero(row?.emission_tao));
     const trust = nullableNumber(row?.validator_trust);
     if (trust != null) {
@@ -613,6 +632,8 @@ export function buildValidatorDetail(rows, hotkey) {
     subnet_count: subnets.length,
     take: round(take),
     total_stake_tao: roundTao(raoBigToTao(stakeTotalRao)),
+    root_stake_tao: roundTao(raoBigToTao(rootStakeRao)),
+    alpha_stake_tao: roundTao(raoBigToTao(stakeTotalRao - rootStakeRao)),
     total_emission_tao: roundTao(raoBigToTao(emissionTotalRao)),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(maxValidatorTrust),

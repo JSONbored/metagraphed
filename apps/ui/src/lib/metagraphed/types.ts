@@ -2040,6 +2040,10 @@ export interface ValidatorDetail {
   coldkey_count: number;
   subnet_count: number;
   total_stake_tao: number;
+  /** Stake on netuid 0 (root), TAO-denominated 1:1, no AMM/price exposure (#2550). */
+  root_stake_tao: number;
+  /** total_stake_tao minus root_stake_tao — the alpha-token-denominated legs. */
+  alpha_stake_tao: number;
   total_emission_tao: number;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;
